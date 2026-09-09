@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -17,57 +16,6 @@ use crate::{
     services::notifications::MockNotificationsManager,
     types::{dashboard::DASHBOARD_PAGINATION_LIMIT, permissions::GroupPermission},
 };
-
-#[tokio::test]
-async fn test_add_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let form = sample_sponsor_form();
-    let body = to_string(&form).unwrap();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::SponsorsWrite,
-    );
-    db.expect_add_group_sponsor()
-        .times(1)
-        .withf(move |actor_user_id, id, sponsor| {
-            *actor_user_id == user_id
-                && *id == group_id
-                && sponsor.featured == form.featured
-                && sponsor.name == form.name
-                && sponsor.logo_url == form.logo_url
-        })
-        .returning(|_, _, _| Err(anyhow!("db error")));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/dashboard/group/sponsors/add")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
 
 #[tokio::test]
 async fn test_add_invalid_body() {
@@ -210,53 +158,6 @@ async fn test_add_success() {
 }
 
 #[tokio::test]
-async fn test_delete_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let group_sponsor_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::SponsorsWrite,
-    );
-    db.expect_delete_group_sponsor()
-        .times(1)
-        .withf(move |actor_user_id, id, sponsor_id| {
-            *actor_user_id == user_id && *id == group_id && *sponsor_id == group_sponsor_id
-        })
-        .returning(|_, _, _| Err(anyhow!("db error")));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!(
-            "/dashboard/group/sponsors/{group_sponsor_id}/delete"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
 async fn test_delete_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -306,60 +207,6 @@ async fn test_delete_success() {
         StatusCode::NO_CONTENT,
         "refresh-group-dashboard-table",
     );
-}
-
-#[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::SponsorsWrite,
-    );
-    db.expect_list_group_sponsors()
-        .times(1)
-        .withf(move |id, filters, full_list| {
-            *id == group_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
-                && !*full_list
-        })
-        .returning(|_, _, _| Err(anyhow!("db error")));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/sponsors")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -485,113 +332,6 @@ async fn test_list_page_with_pagination_params() {
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
     assert!(!bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_update_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let group_sponsor_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let form = sample_sponsor_form();
-    let body = to_string(&form).unwrap();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::SponsorsWrite,
-    );
-    db.expect_update_group_sponsor()
-        .times(1)
-        .withf(move |actor_user_id, id, sponsor_id, sponsor| {
-            *actor_user_id == user_id
-                && *id == group_id
-                && *sponsor_id == group_sponsor_id
-                && sponsor.featured == form.featured
-                && sponsor.name == form.name
-        })
-        .returning(|_, _, _, _| Err(anyhow!("db error")));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/group/sponsors/{group_sponsor_id}/update"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_update_featured_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let group_sponsor_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let form = SponsorFeatured { featured: false };
-    let body = to_string(&form).unwrap();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::SponsorsWrite,
-    );
-    db.expect_update_group_sponsor_featured()
-        .times(1)
-        .withf(move |actor_user_id, id, sponsor_id, featured| {
-            *actor_user_id == user_id
-                && *id == group_id
-                && *sponsor_id == group_sponsor_id
-                && !*featured
-        })
-        .returning(|_, _, _, _| Err(anyhow!("db error")));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/group/sponsors/{group_sponsor_id}/featured"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]

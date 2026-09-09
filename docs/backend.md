@@ -272,9 +272,13 @@ Every side effect chooses its durability at the call site.
   `services::notifications::best_effort::enqueue_event_notification_best_effort`,
   which loads the event and site context, calls the supplied
   `payloads::build_*` builder, enqueues through `NotificationsManager`, and
-  logs any failure. Best-effort notifications outside the event context
-  (`GroupWelcome`, team invitations, CFS updates) build their payload inline
-  and call `NotificationsManager::enqueue` inside a logged block.
+  logs any failure. Best-effort notifications outside the event context have
+  their own named helper in the same module
+  (`enqueue_cfs_submission_updated_best_effort`,
+  `enqueue_community_team_invitation_best_effort`,
+  `enqueue_group_team_invitation_best_effort`); each loads its context,
+  builds its payload, enqueues, and logs, so the handler passes identifiers
+  only. `GroupWelcome` is enqueued by `EnrollmentManager::join_group`.
 
 Enqueue helpers own the notification content; callers pass identifiers and
 configuration. Content assertions live with the helper, not with the caller.
@@ -377,12 +381,28 @@ check-in scanner error envelope, and the "exactly one invite target" `400`.
 
 ## Test layering
 
-Each behavior is proven at the cheapest layer able to prove it.
+Each behavior is proven at the cheapest layer able to prove it. The mock
+surface per layer:
 
-- **Handler tests** (`handlers/**/tests.rs`) build the router with
-  `TestRouterBuilder`, mock managers and `MockDB`, and assert status,
-  headers, and body. Session and permission setup uses the shared helpers
-  (`expect_authenticated_session`, `expect_authenticated_community_session`,
+- Handler (`handlers/**/tests.rs`): mocks managers and `MockDB` for reads
+  and session; asserts status, headers, body, and the identifiers passed to
+  the manager or notifier.
+- Manager and service (`services/**/tests.rs`): mocks `MockDB`, providers,
+  and `MockNotificationsManager`; asserts workflow order, commit or
+  rollback, and side effects enqueued or suppressed.
+- Notification helper (`enqueue.rs` tests, `best_effort/tests.rs`,
+  `payloads.rs` tests): mocks `MockDB` and `MockNotificationsManager`;
+  asserts notification kind, recipients, `template_data` content, and the
+  tracking record.
+- Error contract (`handlers/error/tests.rs`): no mocks; asserts each
+  `HandlerError` variant's status and body.
+- Contract (`db/contract_tests`): real database; asserts SQL JSON to Rust
+  DTO shapes and the `PgUnitOfWork` lifecycle.
+
+- **Handler tests** build the router with `TestRouterBuilder`, mock managers
+  and `MockDB`, and assert status, headers, and body. Session and permission
+  setup uses the shared helpers (`expect_authenticated_session`,
+  `expect_authenticated_community_session`,
   `expect_authenticated_group_session`, `expect_community_permission`,
   `expect_group_permission`); the remaining direct transactions use
   `expect_successful_transaction`. A handler behind a manager has one or two
@@ -392,15 +412,27 @@ Each behavior is proven at the cheapest layer able to prove it.
   `HandlerError::Database`) returns 422 with its message, a `Rejected`
   returns 422 with its message, and an internal failure returns 500 with an
   empty body.
-- **Manager and service tests** (`services/**/tests.rs`) mock `MockDB` and
-  the provider traits and assert workflow order, commit or rollback (through
-  `expect_begin` with a transaction `MockDB` whose `commit` or `rollback` is
-  expected), provider validation before any write, and which side effects
-  were enqueued. Manager tests do not import `handlers`; they keep their own
-  transaction helpers and sample builders.
-- **Notification content** is asserted in the enqueue helper tests
-  (the `tests` module of `services/notifications/enqueue.rs`), not in the
-  tests of the callers.
+- **Handler DB-failure tests** exist only when they prove something the error
+  contract tests cannot: a failure mapped to a non-500 status, an explicitly
+  asserted suppression of a later side effect (`times(0)` or `.never()` on
+  a flash message, session write, or notification), or an error path outside
+  `HandlerError` (permission middleware, extractors). A handler that
+  propagates a direct `DynDB` read or write with `?` has no per-route
+  `*_db_error` test; `handlers/error/tests.rs::
+  test_non_db_anyhow_error_returns_500` proves the mapping once.
+- **Manager and service tests** mock `MockDB` and the provider traits and
+  assert workflow order, commit or rollback (through `expect_begin` with a
+  transaction `MockDB` whose `commit` or `rollback` is expected), provider
+  validation before any write, and which side effects were enqueued. Manager
+  tests do not import `handlers`; they keep their own transaction helpers and
+  sample builders.
+- **Notification content** (`template_data` fields, links, theme, tracking
+  record) is asserted in the notification helper tests: the `tests` module of
+  `services/notifications/enqueue.rs` for required and tracked
+  notifications, `services/notifications/best_effort/tests.rs` for
+  best-effort ones, and the `tests` module of `payloads.rs` for pure
+  builders. Callers, including handler tests, assert only the notification
+  kind, recipients, and tracking identifiers.
 - **Shared sample builders** for domain types (`sample_event_summary`,
   `sample_event_full`, `sample_site_settings`, and similar) live in
   `types/tests.rs`; `handlers/tests.rs` re-exports them next to the handler
@@ -419,10 +451,11 @@ Each behavior is proven at the cheapest layer able to prove it.
   together with its required notification, and a failing required enqueue
   rolls the attendance change back.
 
-A handler test is removed only when the PR names the test at the new layer
-that proves the same behavior: same failing call, same rollback or
-suppressed side effect, same status. Test counts are reported for
-information and never decide.
+A handler test is removed only when the PR description carries a
+replacement mapping: each deleted test listed next to the manager, notifier,
+or error test that proves the same behavior (same failing call, same rollback
+or suppressed side effect, same status). A test with no replacement stays.
+Test counts are reported for information and never decide.
 
 ## Bounded operations and worker health
 

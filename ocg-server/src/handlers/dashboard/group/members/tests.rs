@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -14,7 +13,6 @@ use crate::{
     db::mock::MockDB,
     handlers::{dashboard::group::members::GroupCustomNotification, tests::*},
     services::notifications::MockNotificationsManager,
-    templates::notifications::GroupCustom,
     types::{
         dashboard::DASHBOARD_PAGINATION_LIMIT, notifications::NotificationKind,
         permissions::GroupPermission,
@@ -157,64 +155,6 @@ async fn test_list_page_with_pagination_params() {
     assert!(!bytes.is_empty());
 }
 
-#[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let group = sample_group_summary(group_id);
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::MembersWrite,
-    );
-    db.expect_list_group_members()
-        .times(1)
-        .withf(move |id, filters| {
-            *id == group_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
-        })
-        .returning(move |_, _| Err(anyhow!("db error")));
-    db.expect_get_group_summary()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group.clone()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/members")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
 #[allow(clippy::too_many_lines)]
 #[tokio::test]
 async fn test_send_group_custom_notification_success() {
@@ -227,16 +167,7 @@ async fn test_send_group_custom_notification_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
-    let mut group_summary = sample_group_summary(group_id);
-    group_summary.slug_pretty = Some("pretty-group".to_string());
-    let expected_link = format!(
-        "/{}/group/{}",
-        group_summary.community_name,
-        group_summary.public_slug()
-    );
-    let group_for_notifications = group_summary.clone();
-    let group_for_db = group_summary.clone();
+    let group_summary = sample_group_summary(group_id);
     let notification_body = "Hello, group members!";
     let notification_subject = "Important Update";
     let mut expected_recipients = vec![member_id1, member_id2, team_member_id];
@@ -277,22 +208,12 @@ async fn test_send_group_custom_notification_success() {
     db.expect_get_group_summary()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group_for_db.clone()));
+        .returning(move |_, _| Ok(group_summary.clone()));
     db.expect_enqueue_tracked_custom_notification()
         .times(1)
         .withf(move |notification, tracking| {
             matches!(notification.kind, NotificationKind::GroupCustom)
                 && notification.recipients == expected_recipients
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<GroupCustom>(value.clone()).is_ok_and(|template| {
-                        template.subject == notification_subject
-                            && template.body == notification_body
-                            && template.group.name == group_for_notifications.name
-                            && template.link == expected_link
-                            && template.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
-                })
                 && tracking.created_by == track_user_id
                 && tracking.event_id.is_none()
                 && tracking.group_id == Some(track_group_id)

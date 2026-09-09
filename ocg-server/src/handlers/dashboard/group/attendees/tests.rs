@@ -26,7 +26,6 @@ use crate::{
         notifications::MockNotificationsManager,
         payments::MockPaymentsManager,
     },
-    templates::notifications::EventCustom,
     types::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
@@ -1181,43 +1180,6 @@ async fn test_list_page_success() {
 }
 
 #[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_attendee_list_permissions(&mut db, community_id, group_id, user_id, true);
-    db.expect_get_event_summary_dashboard()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
 async fn test_list_page_rejects_zero_pagination_limit() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1939,14 +1901,7 @@ async fn test_send_event_custom_notification_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
     let event = sample_event_summary(event_id, group_id);
-    let expected_link = format!(
-        "/{}/group/{}/event/{}",
-        event.community_name, event.group_slug, event.slug
-    );
-    let event_for_notifications = event.clone();
-    let event_for_db = event.clone();
     let notification_body = "Hello, event attendees!";
     let notification_subject = "Event Update";
     let form_data = serde_qs::to_string(&EventCustomNotification {
@@ -1986,7 +1941,7 @@ async fn test_send_event_custom_notification_success() {
     db.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_for_db.clone()));
+        .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
@@ -1995,17 +1950,6 @@ async fn test_send_event_custom_notification_success() {
         .withf(move |notification, tracking| {
             matches!(notification.kind, NotificationKind::EventCustom)
                 && notification.recipients == vec![attendee_id1, attendee_id2]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EventCustom>(value.clone()).is_ok_and(|template| {
-                        template.subject == notification_subject
-                            && template.body == notification_body
-                            && template.event.name == event_for_notifications.name
-                            && template.event.group_name == event_for_notifications.group_name
-                            && template.link == expected_link
-                            && template.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
-                })
                 && tracking.created_by == track_user_id
                 && tracking.event_id == Some(track_event_id)
                 && tracking.group_id == Some(track_group_id)
@@ -2061,9 +2005,6 @@ async fn test_send_event_custom_notification_selected_recipients_success() {
     .unwrap();
 
     // Create copies for expectation closures
-    let event_for_db = event.clone();
-    let event_for_notifications = event.clone();
-    let site_settings_for_notifications = site_settings.clone();
     let track_body = notification_body.to_string();
     let track_subject = notification_subject.to_string();
 
@@ -2089,7 +2030,7 @@ async fn test_send_event_custom_notification_selected_recipients_success() {
     db.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_for_db.clone()));
+        .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
@@ -2098,15 +2039,6 @@ async fn test_send_event_custom_notification_selected_recipients_success() {
         .withf(move |notification, tracking| {
             matches!(notification.kind, NotificationKind::EventCustom)
                 && notification.recipients == vec![selected_attendee_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EventCustom>(value.clone()).is_ok_and(|template| {
-                        template.subject == notification_subject
-                            && template.body == notification_body
-                            && template.event.name == event_for_notifications.name
-                            && template.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
-                })
                 && tracking.created_by == user_id
                 && tracking.event_id == Some(event_id)
                 && tracking.group_id == Some(group_id)

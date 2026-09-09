@@ -9,7 +9,7 @@ use axum::{
 };
 use garde::Validate;
 use serde::{Deserialize, Serialize};
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -22,16 +22,16 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::DynNotificationsManager,
-    templates::{dashboard::community::team, notifications::CommunityTeamInvitation},
+    services::notifications::{
+        DynNotificationsManager, best_effort::enqueue_community_team_invitation_best_effort,
+    },
+    templates::dashboard::community::team,
     types::{
         community::CommunityRole,
         dashboard::community::team::CommunityTeamFilters,
-        notifications::{NewNotification, NotificationKind},
         pagination::{self, NavigationLinks},
         permissions::CommunityPermission,
     },
-    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -84,36 +84,14 @@ pub(crate) async fn add(
         .await?;
 
     // Enqueue invitation email notification best-effort
-    if let Err(err) = async {
-        let (community, site_settings) = tokio::try_join!(
-            db.get_community_summary(community_id),
-            db.get_site_settings()
-        )?;
-        let template_data = CommunityTeamInvitation {
-            community_name: community.display_name,
-            link: format!(
-                "{}/dashboard/user?tab=invitations",
-                base_url_without_trailing_slash(&server_cfg.base_url)
-            ),
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::CommunityTeamInvitation,
-            recipients: vec![member.user_id],
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await
-    }
-    .await
-    {
-        warn!(
-            error = %err,
-            %community_id,
-            user_id = %member.user_id,
-            "failed to enqueue community team invitation notification"
-        );
-    }
+    enqueue_community_team_invitation_best_effort(
+        db.as_ref(),
+        &notifications_manager,
+        &server_cfg,
+        community_id,
+        member.user_id,
+    )
+    .await;
 
     Ok((
         StatusCode::CREATED,

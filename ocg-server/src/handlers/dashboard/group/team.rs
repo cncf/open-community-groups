@@ -9,7 +9,7 @@ use axum::{
 };
 use garde::Validate;
 use serde::Deserialize;
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -22,16 +22,16 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::DynNotificationsManager,
-    templates::{dashboard::group::team, notifications::GroupTeamInvitation},
+    services::notifications::{
+        DynNotificationsManager, best_effort::enqueue_group_team_invitation_best_effort,
+    },
+    templates::dashboard::group::team,
     types::{
         dashboard::group::team::GroupTeamFilters,
         group::GroupRole,
-        notifications::{NewNotification, NotificationKind},
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
-    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -93,37 +93,15 @@ pub(crate) async fn add(
         .await?;
 
     // Enqueue invitation email notification best-effort
-    if let Err(err) = async {
-        let (site_settings, group) = tokio::try_join!(
-            db.get_site_settings(),
-            db.get_group_summary(community_id, group_id)
-        )?;
-        let template_data = GroupTeamInvitation {
-            group,
-            link: format!(
-                "{}/dashboard/user?tab=invitations",
-                base_url_without_trailing_slash(&server_cfg.base_url)
-            ),
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::GroupTeamInvitation,
-            recipients: vec![member.user_id],
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await
-    }
-    .await
-    {
-        warn!(
-            error = %err,
-            %community_id,
-            %group_id,
-            user_id = %member.user_id,
-            "failed to enqueue group team invitation notification"
-        );
-    }
+    enqueue_group_team_invitation_best_effort(
+        db.as_ref(),
+        &notifications_manager,
+        &server_cfg,
+        community_id,
+        group_id,
+        member.user_id,
+    )
+    .await;
 
     Ok((
         StatusCode::CREATED,

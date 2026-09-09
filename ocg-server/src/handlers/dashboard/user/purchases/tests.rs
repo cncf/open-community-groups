@@ -14,7 +14,7 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::{notifications::MockNotificationsManager, payments::MockPaymentsManager},
-    types::dashboard::{DASHBOARD_PAGINATION_LIMIT, user::purchases::PurchaseDocumentsOutput},
+    types::dashboard::user::purchases::PurchaseDocumentsOutput,
 };
 
 #[tokio::test]
@@ -195,40 +195,6 @@ async fn test_invoice_document_success() {
         parts.headers.get(LOCATION),
         Some(&HeaderValue::from_static("https://payments.test/invoice")),
     );
-}
-
-#[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup an authenticated list request
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_list_user_purchase_documents()
-        .times(1)
-        .withf(move |uid, filters| {
-            *uid == user_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
-        })
-        .returning(|_, _| Err(anyhow!("db error")));
-
-    // Request the purchase-document partial
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/purchases")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the database failure remains visible
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]

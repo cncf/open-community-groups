@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -17,51 +16,6 @@ use crate::{
     services::notifications::MockNotificationsManager,
     types::{dashboard::common::AuditLogSort, permissions::GroupPermission},
 };
-
-#[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    db.expect_list_group_audit_logs()
-        .times(1)
-        .withf(move |id, filters| {
-            *id == group_id && filters.limit == Some(50) && filters.offset == Some(0)
-        })
-        .returning(|_, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/logs")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
 
 #[tokio::test]
 async fn test_list_page_success() {

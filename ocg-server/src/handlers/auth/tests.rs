@@ -1848,6 +1848,49 @@ async fn test_update_user_details_success() {
 }
 
 #[tokio::test]
+async fn test_update_user_details_returns_error_on_db_failure() {
+    // Setup identifiers and data structures
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock with a failing write and no flash message
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_update_user_details()
+        .times(1)
+        .withf(move |uid, details| {
+            *uid == user_id
+                && !details.optional_notifications_enabled
+                && details.name == "Updated User"
+        })
+        .returning(|_, _| Err(anyhow!("db error")));
+    db.expect_update_session().never();
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri("/dashboard/account/update/details")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(
+            "name=Updated+User&company=Example&optional_notifications_enabled=false",
+        ))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_update_user_details_invalid_body() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
@@ -1877,48 +1920,6 @@ async fn test_update_user_details_invalid_body() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert!(!bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_update_user_details_returns_error_on_db_failure() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_update_user_details()
-        .times(1)
-        .withf(move |uid, details| {
-            *uid == user_id
-                && !details.optional_notifications_enabled
-                && details.name == "Updated User"
-        })
-        .returning(|_, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/account/update/details")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(
-            "name=Updated+User&company=Example&optional_notifications_enabled=false",
-        ))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]

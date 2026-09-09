@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -215,56 +214,6 @@ async fn test_update_page_selects_current_inactive_parent_option() {
     let option_html = &body[option_start..option_start + option_end];
     assert!(option_html.contains("selected"));
     assert!(option_html.contains("(current, no longer selectable)"));
-}
-
-#[tokio::test]
-async fn test_update_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::SettingsWrite,
-    );
-    db.expect_get_group_full()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/settings/update")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]

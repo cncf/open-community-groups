@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -25,66 +24,6 @@ use crate::{
         permissions::GroupPermission,
     },
 };
-
-#[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-    db.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_search_event_waitlist()
-        .times(1)
-        .withf(move |gid, eid, filters| {
-            *gid == group_id
-                && *eid == event_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
-        })
-        .returning(|_, _, _| Err(anyhow!("db error")));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/waitlist"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
 
 #[tokio::test]
 async fn test_list_page_success() {

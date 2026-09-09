@@ -601,6 +601,7 @@ fn group_recipients_by_events(
 mod tests {
     use std::sync::{Arc, Mutex};
 
+    use anyhow::anyhow;
     use chrono::{Duration, Utc};
     use serde_json::from_value;
 
@@ -615,8 +616,8 @@ mod tests {
             event::{EventFull, EventSummary, Speaker},
             notifications::{NewNotification, NotificationKind},
             tests::{
-                sample_event_full, sample_event_summary, sample_site_settings,
-                sample_template_user_with_id,
+                sample_event_full, sample_event_summary, sample_group_summary,
+                sample_site_settings, sample_template_user_with_id,
             },
         },
     };
@@ -1262,6 +1263,200 @@ mod tests {
                 .expect("event rescheduled notification to deserialize");
         assert_eq!(template.event.event_id, event_id);
     }
+
+    #[tokio::test]
+    async fn test_enqueue_tracked_event_custom_notification_builds_content_and_tracking() {
+        // Setup identifiers and data structures
+        let actor_user_id = Uuid::new_v4();
+        let attendee_id1 = Uuid::new_v4();
+        let attendee_id2 = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let event = sample_event_summary(event_id, group_id);
+        let expected_link = format!(
+            "https://example.test/{}/group/{}/event/{}",
+            event.community_name, event.group_slug, event.slug
+        );
+        let expected_event_name = event.name.clone();
+        let input = EventCustomNotificationInput {
+            actor_user_id,
+            body: "Hello, event attendees!".to_string(),
+            community_id,
+            event_id,
+            group_id,
+            recipients: vec![attendee_id1, attendee_id2],
+            subject: "Event Update".to_string(),
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+        db.expect_enqueue_tracked_custom_notification()
+            .times(1)
+            .withf(move |notification, tracking| {
+                matches!(notification.kind, NotificationKind::EventCustom)
+                    && notification.attachments.is_empty()
+                    && notification.recipients == vec![attendee_id1, attendee_id2]
+                    && notification.template_data.as_ref().is_some_and(|value| {
+                        from_value::<EventCustom>(value.clone()).is_ok_and(|template| {
+                            template.subject == "Event Update"
+                                && template.body == "Hello, event attendees!"
+                                && template.event.name == expected_event_name
+                                && template.link == expected_link
+                                && template.theme.primary_color
+                                    == sample_site_settings().theme.primary_color
+                        })
+                    })
+                    && tracking.body == "Hello, event attendees!"
+                    && tracking.created_by == actor_user_id
+                    && tracking.event_id == Some(event_id)
+                    && tracking.group_id == Some(group_id)
+                    && tracking.recipient_count == 2
+                    && tracking.subject == "Event Update"
+            })
+            .returning(|_, _| Ok(()));
+
+        // Run the workflow
+        enqueue_tracked_event_custom_notification(&db, &sample_server_cfg(), &input)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_tracked_event_custom_notification_propagates_context_failure() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let input = EventCustomNotificationInput {
+            actor_user_id: Uuid::new_v4(),
+            body: "Hello".to_string(),
+            community_id,
+            event_id,
+            group_id: Uuid::new_v4(),
+            recipients: vec![Uuid::new_v4()],
+            subject: "Subject".to_string(),
+        };
+
+        // Setup database mock with a failing context load
+        let mut db = MockDB::new();
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .returning(|_, _| Err(anyhow!("database unavailable")));
+        db.expect_get_site_settings()
+            .times(0..=1)
+            .returning(|| Ok(sample_site_settings()));
+        db.expect_enqueue_tracked_custom_notification().never();
+
+        // Run the workflow
+        let result =
+            enqueue_tracked_event_custom_notification(&db, &sample_server_cfg(), &input).await;
+
+        // Check the failure propagates
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_tracked_group_custom_notification_builds_content_and_tracking() {
+        // Setup identifiers and data structures
+        let actor_user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let member_id1 = Uuid::new_v4();
+        let member_id2 = Uuid::new_v4();
+        let mut group = sample_group_summary(group_id);
+        group.slug_pretty = Some("pretty-group".to_string());
+        let expected_link = format!(
+            "https://example.test/{}/group/{}",
+            group.community_name,
+            group.public_slug()
+        );
+        let expected_group_name = group.name.clone();
+        let input = GroupCustomNotificationInput {
+            actor_user_id,
+            body: "Hello, group members!".to_string(),
+            community_id,
+            group_id,
+            recipients: vec![member_id1, member_id2],
+            subject: "Important Update".to_string(),
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_group_summary()
+            .times(1)
+            .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+            .returning(move |_, _| Ok(group.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+        db.expect_enqueue_tracked_custom_notification()
+            .times(1)
+            .withf(move |notification, tracking| {
+                matches!(notification.kind, NotificationKind::GroupCustom)
+                    && notification.attachments.is_empty()
+                    && notification.recipients == vec![member_id1, member_id2]
+                    && notification.template_data.as_ref().is_some_and(|value| {
+                        from_value::<GroupCustom>(value.clone()).is_ok_and(|template| {
+                            template.subject == "Important Update"
+                                && template.body == "Hello, group members!"
+                                && template.group.name == expected_group_name
+                                && template.link == expected_link
+                                && template.theme.primary_color
+                                    == sample_site_settings().theme.primary_color
+                        })
+                    })
+                    && tracking.body == "Hello, group members!"
+                    && tracking.created_by == actor_user_id
+                    && tracking.event_id.is_none()
+                    && tracking.group_id == Some(group_id)
+                    && tracking.recipient_count == 2
+                    && tracking.subject == "Important Update"
+            })
+            .returning(|_, _| Ok(()));
+
+        // Run the workflow
+        enqueue_tracked_group_custom_notification(&db, &sample_server_cfg(), &input)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_tracked_group_custom_notification_propagates_context_failure() {
+        // Setup identifiers and data structures
+        let input = GroupCustomNotificationInput {
+            actor_user_id: Uuid::new_v4(),
+            body: "Hello".to_string(),
+            community_id: Uuid::new_v4(),
+            group_id: Uuid::new_v4(),
+            recipients: vec![Uuid::new_v4()],
+            subject: "Subject".to_string(),
+        };
+
+        // Setup database mock with a failing context load
+        let mut db = MockDB::new();
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+        db.expect_get_group_summary()
+            .times(1)
+            .returning(|_, _| Err(anyhow!("database unavailable")));
+        db.expect_enqueue_tracked_custom_notification().never();
+
+        // Run the workflow
+        let result =
+            enqueue_tracked_group_custom_notification(&db, &sample_server_cfg(), &input).await;
+
+        // Check the failure propagates
+        assert!(result.is_err());
+    }
+
     // Helpers.
 
     /// Asserts that a recipient group exists for the exact event ids.
