@@ -30,9 +30,10 @@ pub(crate) mod common;
 /// Module containing database functionality for the community site.
 pub(crate) mod community;
 
-/// Module containing database contract tests.
+/// Module containing database contract tests and their shared real-database
+/// helpers, reused by manager contract tests in `services`.
 #[cfg(test)]
-mod contract_tests;
+pub(crate) mod contract_tests;
 
 /// Module containing database functionality for dashboards.
 pub(crate) mod dashboard;

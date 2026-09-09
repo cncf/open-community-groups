@@ -29,14 +29,14 @@ use crate::{
         PasswordCredentials,
     },
     config::{HttpServerConfig, OAuth2Provider, OidcProvider},
-    db::{DynDB, auth::EmailVerificationNotification},
+    db::DynDB,
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, OAuth2, Oidc, ValidatedForm, ValidatedFormQs},
     },
-    templates::{self, PageId, auth::UserMenuState, notifications::EmailVerification},
+    services::notifications::payloads::build_email_verification_notification,
+    templates::{self, PageId, auth::UserMenuState},
     types::user::{UserDetailsInput, UserPasswordInput},
-    util::base_url_without_trailing_slash,
     validation::{MAX_LEN_S, trimmed_non_empty},
 };
 
@@ -353,7 +353,8 @@ pub(crate) async fn sign_up(
     profile.password = Some(password_hash);
 
     // Prepare the required email verification notification before mutating users
-    let Ok(verification) = build_email_verification_notification(&db, &server_cfg).await else {
+    let Ok(verification) = build_email_verification_notification(db.as_ref(), &server_cfg).await
+    else {
         messages.error("Something went wrong while signing up. Please try again later.");
         return Ok(Redirect::to(SIGN_UP_URL).into_response());
     };
@@ -661,34 +662,6 @@ pub(crate) struct NextUrl {
 }
 
 // Helpers.
-
-/// Builds the email verification notification payload required by password signup.
-async fn build_email_verification_notification(
-    db: &DynDB,
-    server_cfg: &HttpServerConfig,
-) -> Result<EmailVerificationNotification, HandlerError> {
-    // Prepare verification link inputs before loading template context
-    let code = Uuid::new_v4();
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    if base_url.is_empty() {
-        return Err(HandlerError::Rejected(
-            "base URL is required to send verification email".to_string(),
-        ));
-    }
-
-    // Build template data from the current site theme
-    let site_settings = db.get_site_settings().await?;
-    let template_data = serde_json::to_value(EmailVerification {
-        link: format!("{base_url}/verify-email/{code}"),
-        theme: site_settings.theme,
-    })?;
-
-    // Return the database-ready verification notification payload
-    Ok(EmailVerificationNotification {
-        code,
-        template_data,
-    })
-}
 
 /// Percent-encode a `next_url` so it can be safely embedded in a query string.
 fn encode_next_url(next_url: &str) -> String {

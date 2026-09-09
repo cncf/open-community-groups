@@ -327,7 +327,6 @@ async fn test_send_group_custom_notification_success() {
 async fn test_send_group_custom_notification_no_members() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
-    let group_for_db = sample_group_summary(group_id);
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -347,10 +346,7 @@ async fn test_send_group_custom_notification_no_members() {
         user_id,
         GroupPermission::MembersWrite,
     );
-    db.expect_get_group_summary()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group_for_db.clone()));
+    db.expect_get_group_summary().never();
     db.expect_list_group_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
@@ -359,9 +355,8 @@ async fn test_send_group_custom_notification_no_members() {
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    db.expect_get_site_settings().never();
+    db.expect_enqueue_tracked_custom_notification().never();
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

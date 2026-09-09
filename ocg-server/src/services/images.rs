@@ -2,6 +2,7 @@
 
 pub(crate) mod db;
 pub(crate) mod s3;
+pub(crate) mod validation;
 
 use std::sync::Arc;
 

@@ -5,23 +5,19 @@ use axum::{
     Json,
     extract::{Path, State},
     http::{HeaderMap, HeaderValue, StatusCode, Uri, header::CACHE_CONTROL},
-    response::{Html, IntoResponse, Redirect},
+    response::{Html, IntoResponse, Redirect, Response},
 };
-use garde::{Error as ValidationError, Path as ValidationPath, Report, Validate};
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     auth::AuthSession,
     config::{HttpServerConfig, PaymentsConfig},
-    db::{
-        DBExt, DynDB,
-        event::AttendEventResult,
-        payments::{PrepareEventCheckoutPurchaseInput, PrepareEventCheckoutPurchaseResult},
-    },
+    db::DynDB,
     handlers::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
         request_headers_match_site_origin,
@@ -30,13 +26,9 @@ use crate::{
     },
     router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
     services::{
-        notifications::{
-            DynNotificationsManager,
-            enqueue::enqueue_event_attendance_cancellation_notifications,
-            load_event_notification_context,
-            payloads::{
-                build_event_waitlist_joined_notification, build_event_waitlist_left_notification,
-            },
+        enrollment::{
+            AttendEventInput, AttendOutcome, DynEnrollmentManager, LeaveEventInput,
+            StartCheckoutInput,
         },
         payments::{DynPaymentsManager, RequestRefundInput},
     },
@@ -46,15 +38,11 @@ use crate::{
         event::{CfsModal, Page},
     },
     types::{
-        event::{EventEnrollmentStatus, EventFull, EventSummary},
-        payments::{EventPurchaseStatus, EventTicketType, PreparedEventCheckout},
-        questionnaire::{
-            OptionalQuestionnaireAnswersForm, QuestionnaireAnswers, QuestionnaireQuestion,
-        },
+        event::{EventAttendanceInput, EventEnrollmentStatus, EventFull},
+        payments::{CheckoutInput, EventTicketType, PreparedEventCheckout},
     },
     validation::{
-        MAX_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_S,
-        trimmed_non_empty_opt,
+        MAX_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_DESCRIPTION_SHORT, trimmed_non_empty_opt,
     },
 };
 
@@ -183,204 +171,24 @@ pub(crate) async fn availability(
 
 /// Handler for attending an event.
 #[instrument(skip_all, err)]
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 pub(crate) async fn attend_event(
     CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
-    State(payments_manager): State<DynPaymentsManager>,
-    State(server_cfg): State<HttpServerConfig>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((_, event_id)): Path<(String, Uuid)>,
     CommunityId(community_id): CommunityId,
-    ValidatedForm(input): ValidatedForm<EventAttendanceInput>,
+    ValidatedForm(attendance): ValidatedForm<EventAttendanceInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate that the event is still attendee-visible before loading its enrollment state
-    ensure_attendee_event_is_active(&db, community_id, event_id).await?;
-
-    let event = db.get_event_summary_by_id(community_id, event_id).await?;
-
-    // Match the database fallback for clients that omit the sole public tier
-    let event_ticket_type_id = input.event_ticket_type_id.or_else(|| {
-        event
-            .single_public_ticket_type()
-            .map(|ticket_type| ticket_type.event_ticket_type_id)
-    });
-
-    // Defer waitlisted users' registration answers until promotion
-    let waitlist_join_without_answers =
-        should_defer_registration_answers(&event, event_ticket_type_id);
-    if !waitlist_join_without_answers {
-        // Get registration questions and validate answers
-        let registration_questions =
-            db.get_event_registration_questions(community_id, event_id).await?;
-        validate_registration_answers(
-            input.registration_answers.registration_answers.as_ref(),
-            &registration_questions,
-        )?;
-    }
-
-    // Attend event
-    let registration_answers = input.registration_answers.registration_answers;
-    let mut enrollment_status = match db
-        .attend_event(
+    // Register the attendance, waitlist entry, or checkout hold
+    let outcome = enrollment_manager
+        .attend_event(&AttendEventInput {
+            attendance,
             community_id,
             event_id,
-            user.user_id,
-            registration_answers.clone(),
-            event_ticket_type_id,
-        )
-        .await?
-    {
-        AttendEventResult::Conflict(conflict) => {
-            return Ok((
-                StatusCode::CONFLICT,
-                Json(json!({
-                    "conflict": conflict,
-                })),
-            ));
-        }
-        AttendEventResult::Enrollment(enrollment_status) => enrollment_status,
-    };
+            user_id: user.user_id,
+        })
+        .await?;
 
-    // Recollect answers when authoritative inventory changes from waitlist to checkout
-    if waitlist_join_without_answers && enrollment_status == EventEnrollmentStatus::PendingPayment {
-        let registration_questions =
-            db.get_event_registration_questions(community_id, event_id).await?;
-        if registration_answers.is_none() && !registration_questions.is_empty() {
-            return Ok((
-                StatusCode::CONFLICT,
-                Json(json!({
-                    "conflict": "registration-answers-required",
-                })),
-            ));
-        }
-        validate_registration_answers(registration_answers.as_ref(), &registration_questions)?;
-    }
-
-    // Complete or redirect every newly available direct ticket through checkout
-    if enrollment_status == EventEnrollmentStatus::PendingPayment {
-        let checkout_input = CheckoutInput {
-            admission_offer_id: None,
-            discount_code: None,
-            event_ticket_type_id,
-            registration_answers: OptionalQuestionnaireAnswersForm {
-                registration_answers,
-            },
-        };
-        let prepared_checkout = match create_checkout_hold(
-            &db,
-            community_id,
-            event_id,
-            payments_cfg.as_ref(),
-            user.user_id,
-            &checkout_input,
-        )
-        .await?
-        {
-            PrepareEventCheckoutPurchaseResult::Conflict(conflict) => {
-                return Ok((
-                    StatusCode::CONFLICT,
-                    Json(json!({
-                        "conflict": conflict,
-                    })),
-                ));
-            }
-            PrepareEventCheckoutPurchaseResult::Prepared(checkout) => *checkout,
-        };
-
-        // Resolve checkout states that no longer require payment orchestration
-        if let Some(updated_enrollment_status) =
-            get_checkout_status_response(prepared_checkout.purchase.status)?
-        {
-            enrollment_status = updated_enrollment_status;
-        } else if prepared_checkout.purchase.amount_minor != 0 {
-            // Return snapshot payment details for external pending purchases
-            if prepared_checkout.purchase.charge_model.is_external() {
-                return Ok((
-                    StatusCode::OK,
-                    Json(external_pending_payment_response(&prepared_checkout)),
-                ));
-            }
-
-            // Create or reuse the provider redirect for a paid pending purchase
-            let redirect_url = payments_manager
-                .get_or_create_checkout_redirect_url(&prepared_checkout, user.user_id)
-                .await?;
-
-            // Return the redirect while the checkout hold remains active
-            return Ok((
-                StatusCode::OK,
-                Json(json!({
-                    "hold_expires_at": prepared_checkout.purchase.hold_expires_at,
-                    "redirect_url": redirect_url,
-                    "status": EventEnrollmentStatus::PendingPayment,
-                })),
-            ));
-        } else {
-            // Finalize the zero-price purchase and its attendee notification
-            payments_manager
-                .complete_free_checkout(
-                    community_id,
-                    event_id,
-                    prepared_checkout.purchase.event_purchase_id,
-                    user.user_id,
-                )
-                .await?;
-            enrollment_status = EventEnrollmentStatus::Attendee;
-        }
-    }
-    let response = (
-        StatusCode::OK,
-        Json(json!({
-            "status": &enrollment_status,
-        })),
-    );
-
-    if enrollment_status == EventEnrollmentStatus::Attendee {
-        return Ok(response);
-    }
-
-    // Get site settings and event details for notifications
-    let (event, site_settings) = match load_event_notification_context(
-        db.as_ref(),
-        community_id,
-        event_id,
-    )
-    .await
-    {
-        Ok(context) => context,
-        Err(err) => {
-            warn!(error = %err, "failed to load event notification context after attendance change");
-            return Ok(response);
-        }
-    };
-
-    // Notify the user only when this request added them to the waitlist
-    let notification_result = match &enrollment_status {
-        EventEnrollmentStatus::Waitlisted => match build_event_waitlist_joined_notification(
-            &event,
-            user.user_id,
-            &server_cfg,
-            &site_settings,
-        ) {
-            Ok(notification) => notifications_manager.enqueue(&notification).await,
-            Err(err) => {
-                warn!(error = %err, "failed to build event waitlist join notification");
-                Ok(())
-            }
-        },
-        EventEnrollmentStatus::None => {
-            unreachable!("attend_event cannot return an unattached enrollment status")
-        }
-        _ => Ok(()),
-    };
-
-    if let Err(err) = notification_result {
-        warn!(error = %err, "failed to enqueue event attendance notification");
-    }
-
-    Ok(response)
+    Ok(attend_outcome_response(outcome))
 }
 
 /// Handler for canceling an active checkout hold.
@@ -452,88 +260,25 @@ pub(crate) async fn enrollment_state(
 #[instrument(skip_all, err)]
 pub(crate) async fn leave_event(
     CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
-    State(server_cfg): State<HttpServerConfig>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((_, event_id)): Path<(String, Uuid)>,
     CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Leave event and enqueue required attendee cancellation notifications
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-    let required_notification_server_cfg = server_cfg.clone();
-    let leave_result = db
-        .as_ref()
-        .transaction(|tx| {
-            Box::pin(async move {
-                // Leave the event
-                let leave_result = tx
-                    .leave_event(community_id, event_id, user.user_id, payment_provider)
-                    .await?;
-
-                // Enqueue required cancellation notifications before committing
-                if leave_result.left_status == EventEnrollmentStatus::Attendee {
-                    enqueue_event_attendance_cancellation_notifications(
-                        tx,
-                        &required_notification_server_cfg,
-                        community_id,
-                        event_id,
-                        user.user_id,
-                    )
-                    .await?;
-                }
-
-                Ok(leave_result)
-            })
+    // Leave the event with its required and best-effort notifications
+    let outcome = enrollment_manager
+        .leave_event(&LeaveEventInput {
+            community_id,
+            event_id,
+            user_id: user.user_id,
         })
         .await?;
-    let response = (
+
+    Ok((
         StatusCode::OK,
         Json(json!({
-            "left_status": &leave_result.left_status
+            "left_status": outcome.left_status,
         })),
-    );
-
-    // Enqueue waitlist leave notifications best-effort
-    match leave_result.left_status {
-        EventEnrollmentStatus::Waitlisted => {
-            // Get site settings and event details for notifications
-            let (event, site_settings) = match load_event_notification_context(
-                db.as_ref(),
-                community_id,
-                event_id,
-            )
-            .await
-            {
-                Ok(context) => context,
-                Err(err) => {
-                    warn!(error = %err, "failed to load event notification context after waitlist change");
-                    return Ok(response);
-                }
-            };
-
-            // Confirm the waitlist exit
-            match build_event_waitlist_left_notification(
-                &event,
-                user.user_id,
-                &server_cfg,
-                &site_settings,
-            ) {
-                Ok(notification) => {
-                    if let Err(err) = notifications_manager.enqueue(&notification).await {
-                        warn!(error = %err, "failed to enqueue event waitlist leave notification");
-                    }
-                }
-                Err(err) => {
-                    warn!(error = %err, "failed to build event waitlist leave notification");
-                }
-            }
-        }
-        EventEnrollmentStatus::Attendee | EventEnrollmentStatus::PendingApproval => {}
-        _ => unreachable!("leave_event cannot return this left status"),
-    }
-
-    Ok(response)
+    ))
 }
 
 /// Handler for requesting a refund.
@@ -565,103 +310,24 @@ pub(crate) async fn request_refund(
 
 /// Handler for starting or resuming event checkout.
 #[instrument(skip_all, err)]
-#[allow(clippy::too_many_arguments)]
-#[allow(clippy::too_many_lines)]
 pub(crate) async fn start_checkout(
     CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
-    State(payments_manager): State<DynPaymentsManager>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((_, event_id)): Path<(String, Uuid)>,
     CommunityId(community_id): CommunityId,
-    ValidatedForm(input): ValidatedForm<CheckoutInput>,
+    ValidatedForm(checkout): ValidatedForm<CheckoutInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Load the event
-    load_checkoutable_event(&db, community_id, event_id).await?;
-
-    // Get registration questions and validate answers
-    let registration_questions =
-        db.get_event_registration_questions(community_id, event_id).await?;
-    validate_registration_answers(
-        input.registration_answers.registration_answers.as_ref(),
-        &registration_questions,
-    )?;
-
-    // Reserve a purchase hold for the attendee
-    let prepared_checkout = match create_checkout_hold(
-        &db,
-        community_id,
-        event_id,
-        payments_cfg.as_ref(),
-        user.user_id,
-        &input,
-    )
-    .await?
-    {
-        PrepareEventCheckoutPurchaseResult::Conflict(conflict) => {
-            return Ok((
-                StatusCode::CONFLICT,
-                Json(json!({
-                    "conflict": conflict,
-                })),
-            ));
-        }
-        PrepareEventCheckoutPurchaseResult::Prepared(checkout) => *checkout,
-    };
-
-    // Return early when the attendee already has a purchase state that should not reopen checkout
-    if let Some(enrollment_status) =
-        get_checkout_status_response(prepared_checkout.purchase.status)?
-    {
-        return Ok((
-            StatusCode::OK,
-            Json(json!({
-                "status": enrollment_status,
-            })),
-        ));
-    }
-
-    // Finalize free tickets immediately and send welcome notification
-    if prepared_checkout.purchase.amount_minor == 0 {
-        payments_manager
-            .complete_free_checkout(
-                community_id,
-                event_id,
-                prepared_checkout.purchase.event_purchase_id,
-                user.user_id,
-            )
-            .await?;
-
-        return Ok((
-            StatusCode::OK,
-            Json(json!({
-                "status": EventEnrollmentStatus::Attendee,
-            })),
-        ));
-    }
-
-    // Return snapshot payment details for external pending purchases
-    if prepared_checkout.purchase.charge_model.is_external() {
-        return Ok((
-            StatusCode::OK,
-            Json(external_pending_payment_response(&prepared_checkout)),
-        ));
-    }
-
-    // Reuse an existing provider checkout when possible, otherwise create and persist a new one
-    let redirect_url = payments_manager
-        .get_or_create_checkout_redirect_url(&prepared_checkout, user.user_id)
+    // Reserve the ticket hold and resolve the attendee-facing outcome
+    let outcome = enrollment_manager
+        .start_checkout(&StartCheckoutInput {
+            checkout,
+            community_id,
+            event_id,
+            user_id: user.user_id,
+        })
         .await?;
 
-    // Return the payment redirect details while the ticket hold is still active
-    Ok((
-        StatusCode::OK,
-        Json(json!({
-            "hold_expires_at": prepared_checkout.purchase.hold_expires_at,
-            "redirect_url": redirect_url,
-            "status": EventEnrollmentStatus::PendingPayment,
-        })),
-    ))
+    Ok(attend_outcome_response(outcome))
 }
 
 /// Handler for submitting a CFS proposal to an event.
@@ -736,36 +402,6 @@ pub(crate) struct CfsSubmissionInput {
     /// Session proposal being submitted to the event CFS.
     #[garde(skip)]
     session_proposal_id: Uuid,
-}
-
-/// Ticket checkout form data.
-#[derive(Debug, Deserialize, Validate)]
-pub(crate) struct CheckoutInput {
-    /// Admission offer being claimed by the attendee.
-    #[garde(skip)]
-    admission_offer_id: Option<Uuid>,
-    /// Optional discount code entered by the attendee.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
-    discount_code: Option<String>,
-    /// Ticket type selected by the attendee.
-    #[garde(skip)]
-    event_ticket_type_id: Option<Uuid>,
-    /// Questionnaire answers encoded as JSON.
-    #[serde(default, flatten)]
-    #[garde(dive)]
-    registration_answers: OptionalQuestionnaireAnswersForm,
-}
-
-/// Public RSVP, approval request, or waitlist form data.
-#[derive(Debug, Deserialize, Validate)]
-pub(crate) struct EventAttendanceInput {
-    /// Ticket type selected by the attendee.
-    #[garde(skip)]
-    event_ticket_type_id: Option<Uuid>,
-    /// Questionnaire answers encoded as JSON.
-    #[serde(default, flatten)]
-    #[garde(dive)]
-    registration_answers: OptionalQuestionnaireAnswersForm,
 }
 
 /// Public event availability returned to hydrate cached event pages.
@@ -912,50 +548,41 @@ pub(crate) struct RefundRequestInput {
 
 // Helpers.
 
-/// Creates or reuses a pending checkout hold for the attendee.
-async fn create_checkout_hold(
-    db: &DynDB,
-    community_id: Uuid,
-    event_id: Uuid,
-    payments_cfg: Option<&PaymentsConfig>,
-    user_id: Uuid,
-    input: &CheckoutInput,
-) -> Result<PrepareEventCheckoutPurchaseResult, HandlerError> {
-    // Require an explicit ticket selection before opening checkout
-    let event_ticket_type_id = input
-        .event_ticket_type_id
-        .ok_or_else(|| HandlerError::Rejected("ticket type is required".to_string()))?;
-
-    // Prepare the attendee's current checkout purchase state
-    db.prepare_event_checkout_purchase(
-        community_id,
-        &PrepareEventCheckoutPurchaseInput {
-            event_id,
-            event_ticket_type_id,
-            platform_fee_bps: payments_cfg
-                .map(PaymentsConfig::platform_fee_bps)
-                .map_or(0, i32::from),
-            user_id,
-
-            admission_offer_id: input.admission_offer_id,
-            discount_code: input.discount_code.clone(),
-            payment_provider: payments_cfg.map(PaymentsConfig::provider),
-            registration_answers: input.registration_answers.registration_answers.clone(),
-        },
-    )
-    .await
-    .map_err(HandlerError::from)
-}
-
-/// Ensures attendee-facing event flows only continue for active events.
-async fn ensure_attendee_event_is_active(
-    db: &DynDB,
-    community_id: Uuid,
-    event_id: Uuid,
-) -> Result<(), HandlerError> {
-    db.ensure_event_is_active(community_id, event_id)
-        .await
-        .map_err(HandlerError::from)
+/// Maps an enrollment outcome to the attendee-facing JSON response.
+fn attend_outcome_response(outcome: AttendOutcome) -> Response {
+    match outcome {
+        AttendOutcome::CheckoutRedirect {
+            hold_expires_at,
+            redirect_url,
+        } => (
+            StatusCode::OK,
+            Json(json!({
+                "hold_expires_at": hold_expires_at,
+                "redirect_url": redirect_url,
+                "status": EventEnrollmentStatus::PendingPayment,
+            })),
+        )
+            .into_response(),
+        AttendOutcome::Conflict(conflict) => (
+            StatusCode::CONFLICT,
+            Json(json!({
+                "conflict": conflict,
+            })),
+        )
+            .into_response(),
+        AttendOutcome::Enrolled(status) => (
+            StatusCode::OK,
+            Json(json!({
+                "status": status,
+            })),
+        )
+            .into_response(),
+        AttendOutcome::ExternalPendingPayment(prepared_checkout) => (
+            StatusCode::OK,
+            Json(external_pending_payment_response(&prepared_checkout)),
+        )
+            .into_response(),
+    }
 }
 
 /// Builds the attendee-facing pending-payment payload for an external purchase.
@@ -979,40 +606,6 @@ fn external_pending_payment_response(
     })
 }
 
-/// Returns the attendee-facing status when checkout should not continue.
-fn get_checkout_status_response(
-    purchase_status: EventPurchaseStatus,
-) -> Result<Option<EventEnrollmentStatus>, HandlerError> {
-    match purchase_status {
-        EventPurchaseStatus::Completed => Ok(Some(EventEnrollmentStatus::Attendee)),
-        EventPurchaseStatus::Pending => Ok(None),
-        EventPurchaseStatus::RefundRecoveryPending => Err(HandlerError::Rejected(
-            "checkout is unavailable while refund recovery is in progress".to_string(),
-        )),
-        EventPurchaseStatus::RefundRequested => Err(HandlerError::Rejected(
-            "checkout is unavailable while a refund is in progress".to_string(),
-        )),
-        _ => Err(HandlerError::Rejected(
-            "checkout is unavailable for this purchase".to_string(),
-        )),
-    }
-}
-
-/// Loads an event and ensures it currently supports attendee checkout.
-async fn load_checkoutable_event(
-    db: &DynDB,
-    community_id: Uuid,
-    event_id: Uuid,
-) -> Result<EventSummary, HandlerError> {
-    // Stop checkout when the event is no longer attendee-visible
-    ensure_attendee_event_is_active(db, community_id, event_id).await?;
-
-    // The DB validates ticket and hold availability for every event
-    db.get_event_summary_by_id(community_id, event_id)
-        .await
-        .map_err(HandlerError::from)
-}
-
 /// Builds a public event URL with the original query string, if present.
 fn public_event_url(community_name: &str, group_slug: &str, event_slug: &str, uri: &Uri) -> String {
     let mut url = format!("/{community_name}/group/{group_slug}/event/{event_slug}");
@@ -1024,25 +617,6 @@ fn public_event_url(community_name: &str, group_slug: &str, event_slug: &str, ur
     url
 }
 
-/// Returns whether registration answers should be deferred until waitlist promotion.
-fn should_defer_registration_answers(
-    event: &EventSummary,
-    event_ticket_type_id: Option<Uuid>,
-) -> bool {
-    !event.attendee_approval_required
-        && event.waitlist_enabled
-        && event_ticket_type_id.is_some_and(|event_ticket_type_id| {
-            event
-                .ticket_types
-                .as_deref()
-                .unwrap_or_default()
-                .iter()
-                .any(|ticket_type| {
-                    ticket_type.event_ticket_type_id == event_ticket_type_id && ticket_type.sold_out
-                })
-        })
-}
-
 /// Returns whether a public event request should canonicalize to a pretty group slug.
 fn should_redirect_to_pretty_group_slug(event: &EventFull, group_slug: &str) -> bool {
     event
@@ -1050,28 +624,4 @@ fn should_redirect_to_pretty_group_slug(event: &EventFull, group_slug: &str) -> 
         .slug_pretty
         .as_deref()
         .is_some_and(|_| group_slug == event.group.slug)
-}
-
-/// Validates submitted registration answers against the event questionnaire.
-fn validate_registration_answers(
-    registration_answers: Option<&QuestionnaireAnswers>,
-    registration_questions: &[QuestionnaireQuestion],
-) -> Result<(), HandlerError> {
-    match registration_answers {
-        Some(answers) => answers
-            .validate_against_questions(registration_questions)
-            .map_err(validation_error),
-        None if registration_questions.is_empty() => Ok(()),
-        None => Err(validation_error("questionnaire answers are required")),
-    }
-}
-
-/// Builds a validation error for registration answer checks.
-fn validation_error(message: impl Into<String>) -> HandlerError {
-    let mut report = Report::new();
-    report.append(
-        ValidationPath::new("registration_answers"),
-        ValidationError::new(message.into()),
-    );
-    HandlerError::Validation(report)
 }

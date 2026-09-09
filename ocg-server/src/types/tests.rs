@@ -8,8 +8,10 @@ use uuid::Uuid;
 
 use crate::types::{
     community::CommunitySummary,
+    dashboard::group::events::EventInput,
     event::{EventFull, EventKind, EventSummary},
     group::{GroupCategory, GroupRegion, GroupSummary},
+    payments::{GroupPaymentRecipient, PaymentProvider},
     site::{SiteSettings, Theme},
     user::User,
 };
@@ -26,6 +28,23 @@ pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
         ad_banner_link_url: None,
         ad_banner_url: None,
         og_image_url: None,
+    }
+}
+
+/// Sample event form payload submitted from the dashboard.
+pub(crate) fn sample_event_form() -> EventInput {
+    EventInput {
+        category_id: Uuid::new_v4(),
+        description: "Event description".to_string(),
+        kind_id: "virtual".to_string(),
+        name: "Sample Event".to_string(),
+        timezone: "UTC".to_string(),
+
+        banner_url: Some("https://example.test/banner.png".to_string()),
+        capacity: Some(100),
+        description_short: Some("Short".to_string()),
+        waitlist_enabled: Some(false),
+        ..Default::default()
     }
 }
 
@@ -142,6 +161,15 @@ pub(crate) fn sample_group_category() -> GroupCategory {
     }
 }
 
+/// Sample Stripe payment recipient used in group dashboard tests.
+pub(crate) fn sample_group_payment_recipient() -> GroupPaymentRecipient {
+    GroupPaymentRecipient {
+        provider: PaymentProvider::Stripe,
+        recipient_id: "acct_test".to_string(),
+        seller_display_name: "Test Fiscal Sponsor".to_string(),
+    }
+}
+
 /// Sample group region definition reused across tests.
 pub(crate) fn sample_group_region() -> GroupRegion {
     GroupRegion {
@@ -181,6 +209,25 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         slug_pretty: None,
         state: Some("CA".to_string()),
     }
+}
+
+/// Sample paid event payload for dashboard group event form tests.
+pub(crate) fn sample_paid_event_body() -> String {
+    let event_form = sample_event_form();
+
+    format!(
+        concat!(
+            "{}",
+            "&payment_currency_code=USD",
+            "&ticket_types_present=true",
+            "&ticket_types[0][active]=true",
+            "&ticket_types[0][order]=1",
+            "&ticket_types[0][price_windows][0][amount_minor]=1500",
+            "&ticket_types[0][seats_total]=25",
+            "&ticket_types[0][title]=General%20admission"
+        ),
+        serde_qs::to_string(&event_form).unwrap(),
+    )
 }
 
 /// Sample site settings used across tests.

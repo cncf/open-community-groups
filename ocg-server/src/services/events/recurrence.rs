@@ -1,4 +1,4 @@
-//! Recurrence helpers for dashboard event creation.
+//! Recurrence helpers for event series creation.
 
 use anyhow::{Context, Result, bail};
 use chrono::{

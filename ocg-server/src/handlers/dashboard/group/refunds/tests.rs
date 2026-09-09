@@ -322,7 +322,7 @@ async fn test_complete_payment_job_recovery_records_provider_evidence() {
     let user_id = Uuid::new_v4();
     let payment_job_id = Uuid::new_v4();
 
-    // Expect provider evidence to reach the unified database function
+    // Expect provider evidence to reach the payments manager
     let mut db = MockDB::new();
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     expect_group_permission(
@@ -332,7 +332,11 @@ async fn test_complete_payment_job_recovery_records_provider_evidence() {
         user_id,
         GroupPermission::EventsWrite,
     );
-    db.expect_complete_payment_job_recovery()
+
+    // Setup payments manager mock
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_complete_payment_job_recovery()
         .times(1)
         .withf(move |input| {
             input.actor_user_id == user_id
@@ -342,10 +346,11 @@ async fn test_complete_payment_job_recovery_records_provider_evidence() {
                 && input.recovery_note == "Verified Stripe activity"
                 && input.recovery_reference == "ticket-456"
         })
-        .returning(|_| Ok(()));
+        .returning(|_| Box::pin(async { Ok(()) }));
 
     // Submit the payment job recovery evidence
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
         .build()
         .await;
     let request = Request::builder()
@@ -389,6 +394,8 @@ async fn test_complete_refund_recovery_allows_event_manager() {
         user_id,
         GroupPermission::EventsWrite,
     );
+
+    // Setup payments manager mock
     let mut payments_manager = MockPaymentsManager::new();
     payments_manager
         .expect_complete_refund_recovery()
@@ -457,6 +464,8 @@ async fn test_complete_refund_recovery_forbids_user_without_event_write_access()
         user_id,
         GroupPermission::Read,
     );
+
+    // Setup payments manager mock
     let mut payments_manager = MockPaymentsManager::new();
     payments_manager.expect_complete_refund_recovery().never();
 

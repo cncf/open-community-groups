@@ -52,60 +52,9 @@ const DB_OPERATION_TYPES: &[&str] = &[
 ];
 
 /// Handler files that still reference `db` operation types, as
-/// `(source file, operation type)`. Each entry is removed when the workflow
-/// moves behind a manager.
-const HANDLER_OPERATION_TYPE_ALLOWANCES: &[(&str, &str)] = &[
-    (
-        "handlers/auth.rs",
-        "db::auth::EmailVerificationNotification",
-    ),
-    (
-        "handlers/dashboard/group/attendees.rs",
-        "db::dashboard::group::EventAdmissionAllocationResult",
-    ),
-    (
-        "handlers/dashboard/group/attendees.rs",
-        "db::dashboard::group::EventAttendeeCancellationStatus",
-    ),
-    (
-        "handlers/dashboard/group/attendees.rs",
-        "db::dashboard::group::EventAttendeeInvitationInput",
-    ),
-    (
-        "handlers/dashboard/group/attendees.rs",
-        "db::notifications::CustomNotificationTracking",
-    ),
-    (
-        "handlers/dashboard/group/attendees/tests.rs",
-        "db::dashboard::group::EventAdmissionAllocationResult",
-    ),
-    (
-        "handlers/dashboard/group/attendees/tests.rs",
-        "db::dashboard::group::EventAttendeeCancellationStatus",
-    ),
-    (
-        "handlers/dashboard/group/members.rs",
-        "db::notifications::CustomNotificationTracking",
-    ),
-    (
-        "handlers/dashboard/group/refunds.rs",
-        "db::payments::CompletePaymentJobRecoveryInput",
-    ),
-    ("handlers/event.rs", "db::event::AttendEventResult"),
-    (
-        "handlers/event.rs",
-        "db::payments::PrepareEventCheckoutPurchaseInput",
-    ),
-    (
-        "handlers/event.rs",
-        "db::payments::PrepareEventCheckoutPurchaseResult",
-    ),
-    ("handlers/event/tests.rs", "db::event::AttendEventResult"),
-    (
-        "handlers/event/tests.rs",
-        "db::payments::PrepareEventCheckoutPurchaseResult",
-    ),
-];
+/// `(source file, operation type)`. Empty: every workflow that built one has
+/// moved behind a manager, and new handler code never adds an entry.
+const HANDLER_OPERATION_TYPE_ALLOWANCES: &[(&str, &str)] = &[];
 
 /// A source file with the `crate::` paths it references.
 struct SourceFile {

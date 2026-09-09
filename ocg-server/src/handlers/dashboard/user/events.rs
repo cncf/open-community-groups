@@ -11,14 +11,13 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    config::{HttpServerConfig, PaymentsConfig},
     db::{DBExt, DynDB},
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::enqueue::enqueue_event_attendance_cancellation_notifications,
+    services::enrollment::{DynEnrollmentManager, LeaveEventInput},
     templates::dashboard::user::events,
     types::{
         dashboard::user::events::UserEventsFilters,
@@ -64,8 +63,7 @@ pub(crate) async fn list_page(
 pub(crate) async fn cancel_attendance(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
-    State(server_cfg): State<HttpServerConfig>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((community_name, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Resolve the community from the dashboard route
@@ -82,28 +80,12 @@ pub(crate) async fn cancel_attendance(
         ));
     }
 
-    // Cancel attendance and enqueue required notifications
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-    let required_notification_server_cfg = server_cfg.clone();
-    db.as_ref()
-        .transaction(|tx| {
-            Box::pin(async move {
-                // Cancel attendance
-                tx.leave_event(community_id, event_id, user.user_id, payment_provider)
-                    .await?;
-
-                // Enqueue required cancellation notifications before committing
-                enqueue_event_attendance_cancellation_notifications(
-                    tx,
-                    &required_notification_server_cfg,
-                    community_id,
-                    event_id,
-                    user.user_id,
-                )
-                .await?;
-
-                Ok(())
-            })
+    // Cancel attendance with its required notifications
+    enrollment_manager
+        .leave_event(&LeaveEventInput {
+            community_id,
+            event_id,
+            user_id: user.user_id,
         })
         .await?;
 

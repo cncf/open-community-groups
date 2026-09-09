@@ -26,7 +26,8 @@ use crate::{
     db::{DynDB, PgDB, payments::DBPayments, pool as db_pool},
     services::{
         badges::start_badge_award_workers,
-        enrollment::start_enrollment_workers,
+        enrollment::{DynEnrollmentManager, PgEnrollmentManager, start_enrollment_workers},
+        events::{DynEventsManager, PgEventsManager},
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
         meetings::{DynMeetingsProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
@@ -117,6 +118,22 @@ async fn main() -> Result<()> {
         db.clone(),
         notifications_manager.clone(),
         payments_provider,
+        cfg.payments
+            .as_ref()
+            .map(PaymentsConfig::platform_fee_bps)
+            .map_or(0, i32::from),
+        &cfg.server,
+    );
+    let enrollment_manager = setup_enrollment_manager(
+        db.clone(),
+        notifications_manager.clone(),
+        payments_manager.clone(),
+        &cfg.server,
+    );
+    let events_manager = setup_events_manager(
+        db.clone(),
+        cfg.meetings.as_ref(),
+        payments_manager.clone(),
         &cfg.server,
     );
 
@@ -124,6 +141,8 @@ async fn main() -> Result<()> {
     run_server(
         activity_tracker,
         db,
+        enrollment_manager,
+        events_manager,
         image_storage,
         cfg.meetings.clone(),
         cfg.payments.clone(),
@@ -144,6 +163,8 @@ async fn main() -> Result<()> {
 async fn run_server(
     activity_tracker: Arc<ActivityTrackerDB>,
     db: Arc<PgDB>,
+    enrollment_manager: DynEnrollmentManager,
+    events_manager: DynEventsManager,
     image_storage: DynImageStorage,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
@@ -155,6 +176,8 @@ async fn run_server(
     let router = router::setup(
         activity_tracker,
         db,
+        enrollment_manager,
+        events_manager,
         image_storage,
         meetings_cfg,
         payments_cfg,
@@ -209,6 +232,36 @@ fn setup_db(cfg: &Config) -> Result<Arc<PgDB>> {
     Ok(db)
 }
 
+/// Configure the enrollment manager.
+fn setup_enrollment_manager(
+    db: Arc<PgDB>,
+    notifications_manager: Arc<PgNotificationsManager>,
+    payments_manager: DynPaymentsManager,
+    server_cfg: &HttpServerConfig,
+) -> DynEnrollmentManager {
+    Arc::new(PgEnrollmentManager::new(
+        db,
+        notifications_manager,
+        payments_manager,
+        server_cfg.clone(),
+    ))
+}
+
+/// Configure the events manager.
+fn setup_events_manager(
+    db: Arc<PgDB>,
+    meetings_cfg: Option<&MeetingsConfig>,
+    payments_manager: DynPaymentsManager,
+    server_cfg: &HttpServerConfig,
+) -> DynEventsManager {
+    Arc::new(PgEventsManager::new(
+        db,
+        meetings_cfg,
+        payments_manager,
+        server_cfg.clone(),
+    ))
+}
+
 /// Configure the image storage implementation.
 fn setup_image_storage(cfg: &Config, db: Arc<PgDB>) -> DynImageStorage {
     match &cfg.images {
@@ -240,12 +293,14 @@ fn setup_payments_manager(
     db: Arc<PgDB>,
     notifications_manager: Arc<PgNotificationsManager>,
     payments_provider: Option<DynPaymentsProvider>,
+    platform_fee_bps: i32,
     server_cfg: &HttpServerConfig,
 ) -> DynPaymentsManager {
     Arc::new(PgPaymentsManager::new(
         db,
         notifications_manager,
         payments_provider,
+        platform_fee_bps,
         server_cfg.clone(),
     ))
 }

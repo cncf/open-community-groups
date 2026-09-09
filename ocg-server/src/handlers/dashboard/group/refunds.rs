@@ -13,13 +13,13 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{DynDB, payments::CompletePaymentJobRecoveryInput},
+    db::DynDB,
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
-    services::payments::{CompleteRefundRecoveryInput, DynPaymentsManager},
+    services::payments::{CompleteRefundRecoveryInput, DynPaymentsManager, PaymentJobRecovery},
     templates::dashboard::group::refunds,
     types::{
         dashboard::group::refunds::RefundsFilters,
@@ -71,21 +71,20 @@ pub(crate) async fn list_page(
 pub(crate) async fn complete_payment_job_recovery(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
+    State(payments_manager): State<DynPaymentsManager>,
     ValidatedForm(input): ValidatedForm<PaymentJobRecoveryInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Compose the durable recovery evidence
-    let recovery = CompletePaymentJobRecoveryInput {
-        actor_user_id: user.user_id,
-        group_id,
-        payment_job_id: input.payment_job_id,
-        provider_object_id: input.provider_object_id,
-        recovery_note: input.recovery_note,
-        recovery_reference: input.recovery_reference,
-    };
-
-    // Complete the selected provider operation
-    db.complete_payment_job_recovery(&recovery).await?;
+    // Complete the selected provider operation with the recovery evidence
+    payments_manager
+        .complete_payment_job_recovery(&PaymentJobRecovery {
+            actor_user_id: user.user_id,
+            group_id,
+            payment_job_id: input.payment_job_id,
+            provider_object_id: input.provider_object_id,
+            recovery_note: input.recovery_note,
+            recovery_reference: input.recovery_reference,
+        })
+        .await?;
 
     // Refresh the operator's current refund view
     Ok((

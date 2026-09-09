@@ -3,12 +3,12 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
-use chrono::{TimeDelta, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::DBOperations,
+    db::{DBOperations, notifications::CustomNotificationTracking},
     services::notifications::{
         load_event_notification_context,
         payloads::{
@@ -18,12 +18,15 @@ use crate::{
         },
     },
     templates::notifications::{
-        EventSeriesCanceled, EventSeriesNotificationItem, EventSeriesPublished,
-        SpeakerSeriesWelcome,
+        EventCustom, EventSeriesCanceled, EventSeriesNotificationItem, EventSeriesPublished,
+        GroupCustom, SpeakerSeriesWelcome,
     },
     types::{
         event::{EventFull, EventSummary},
-        notifications::{NewNotification, NotificationKind},
+        notifications::{
+            EventCustomNotificationInput, GroupCustomNotificationInput, NewNotification,
+            NotificationKind,
+        },
     },
     util::{base_url_without_trailing_slash, build_event_page_link},
 };
@@ -208,6 +211,9 @@ pub(crate) async fn enqueue_event_published_notifications(
 }
 
 /// Enqueues reschedule notifications when an update moves a future published event.
+///
+/// `now` is the instant the caller read once for the whole operation; past and
+/// test events, and events that end up in the past, do not notify.
 pub(crate) async fn enqueue_event_rescheduled_notification(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
@@ -215,16 +221,17 @@ pub(crate) async fn enqueue_event_rescheduled_notification(
     group_id: Uuid,
     event_id: Uuid,
     before: &EventSummary,
+    now: DateTime<Utc>,
 ) -> Result<()> {
     // Past or test events should not broadcast reschedules
-    if before.is_past() || before.test_event {
+    if before.is_past_at(now) || before.test_event {
         return Ok(());
     }
 
     // Fetch updated event summary to compare start times and detect reschedule
     let after = db.get_event_summary(community_id, group_id, event_id).await?;
     let should_notify = match (before.published, before.starts_at, after.starts_at) {
-        (true, Some(b_starts_at), Some(a_starts_at)) if a_starts_at > Utc::now() => {
+        (true, Some(b_starts_at), Some(a_starts_at)) if a_starts_at > now => {
             (a_starts_at - b_starts_at).abs() >= MIN_RESCHEDULE_SHIFT
         }
         _ => false,
@@ -437,6 +444,103 @@ pub(crate) async fn enqueue_event_series_published_notifications(
     }
 
     Ok(())
+}
+
+/// Enqueues an organizer-authored event notification with its tracking record.
+///
+/// The caller resolves the recipients; the notification content and the
+/// tracking entry are built here so no caller constructs the database-owned
+/// tracking type.
+pub(crate) async fn enqueue_tracked_event_custom_notification(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+    input: &EventCustomNotificationInput,
+) -> Result<()> {
+    // Load the event and site context for the notification content
+    let (event, site_settings) =
+        load_event_notification_context(db, input.community_id, input.event_id).await?;
+
+    // Build the notification with its event page link
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
+    let template_data = EventCustom {
+        body: input.body.clone(),
+        link: build_event_page_link(base_url, &event),
+        event,
+        subject: input.subject.clone(),
+        theme: site_settings.theme,
+    };
+    let notification = NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::EventCustom,
+        recipients: input.recipients.clone(),
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+
+    // Enqueue the notification together with its audit record
+    db.enqueue_tracked_custom_notification(
+        &notification,
+        CustomNotificationTracking {
+            body: input.body.clone(),
+            created_by: input.actor_user_id,
+            event_id: Some(input.event_id),
+            group_id: Some(input.group_id),
+            recipient_count: input.recipients.len(),
+            subject: input.subject.clone(),
+        },
+    )
+    .await
+}
+
+/// Enqueues an organizer-authored group notification with its tracking record.
+///
+/// The caller resolves the recipients; the notification content and the
+/// tracking entry are built here so no caller constructs the database-owned
+/// tracking type.
+pub(crate) async fn enqueue_tracked_group_custom_notification(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+    input: &GroupCustomNotificationInput,
+) -> Result<()> {
+    // Load the group and site context for the notification content
+    let (site_settings, group) = tokio::try_join!(
+        db.get_site_settings(),
+        db.get_group_summary(input.community_id, input.group_id)
+    )?;
+
+    // Build the notification with its group page link
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
+    let template_data = GroupCustom {
+        body: input.body.clone(),
+        link: format!(
+            "{}/{}/group/{}",
+            base_url,
+            group.community_name,
+            group.public_slug()
+        ),
+        group,
+        subject: input.subject.clone(),
+        theme: site_settings.theme,
+    };
+    let notification = NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::GroupCustom,
+        recipients: input.recipients.clone(),
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+
+    // Enqueue the notification together with its audit record
+    db.enqueue_tracked_custom_notification(
+        &notification,
+        CustomNotificationTracking {
+            body: input.body.clone(),
+            created_by: input.actor_user_id,
+            event_id: None,
+            group_id: Some(input.group_id),
+            recipient_count: input.recipients.len(),
+            subject: input.subject.clone(),
+        },
+    )
+    .await
 }
 
 // Types.
@@ -1072,6 +1176,7 @@ mod tests {
             group_id,
             event_id,
             &before,
+            Utc::now(),
         )
         .await
         .unwrap();
@@ -1136,6 +1241,7 @@ mod tests {
             group_id,
             event_id,
             &before,
+            Utc::now(),
         )
         .await
         .unwrap();

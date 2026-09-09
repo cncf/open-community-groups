@@ -20,7 +20,7 @@ use crate::{
     handlers::tests::{TestRouterBuilder, sample_site_settings},
     router::CACHE_CONTROL_PUBLIC_SHARED,
     services::{
-        badges::{CredentialInput, EmailIdentity, SsiBadgesManager},
+        badges::{CredentialInput, EmailIdentity, SsiBadgesManager, png},
         notifications::MockNotificationsManager,
     },
     types::badges::{
@@ -302,17 +302,6 @@ async fn test_issuer_returns_stable_public_profile() {
     );
     assert!(method["publicKeyMultibase"].as_str().unwrap().starts_with("z6Mk"));
     assert!(parts.headers.get("cache-control").is_some());
-}
-
-#[test]
-fn test_recipient_display_name_falls_back_to_username() {
-    // Resolve the public recipient label with and without a profile name
-    let named = recipient_display_name(Some("Ada".to_string()), Some("ada".to_string()));
-    let username_only = recipient_display_name(None, Some("ada".to_string()));
-
-    // Check verification always has the available public identity label
-    assert_eq!(named.as_deref(), Some("Ada"));
-    assert_eq!(username_only.as_deref(), Some("ada"));
 }
 
 #[tokio::test]

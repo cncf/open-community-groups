@@ -1347,8 +1347,9 @@ pub(crate) enum EventPurchaseRefundStatus {
 }
 
 /// Conflict returned while preparing an attendee checkout.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub(crate) enum PrepareEventCheckoutPurchaseConflict {
     /// The selected admission offer cannot apply a new discount code.
     AdmissionOfferPriceLocked,

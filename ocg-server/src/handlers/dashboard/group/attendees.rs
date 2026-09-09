@@ -20,14 +20,7 @@ use uuid::Uuid;
 
 use crate::{
     config::{HttpServerConfig, PaymentsConfig},
-    db::{
-        DBExt, DynDB,
-        dashboard::group::{
-            EventAdmissionAllocationResult, EventAttendeeCancellationStatus,
-            EventAttendeeInvitationInput,
-        },
-        notifications::CustomNotificationTracking,
-    },
+    db::DynDB,
     handlers::{
         error::HandlerError,
         extractors::{
@@ -36,24 +29,24 @@ use crate::{
     },
     router::serde_qs_config,
     services::{
-        notifications::{
-            enqueue::enqueue_event_attendance_cancellation_notifications,
-            load_event_notification_context,
+        enrollment::{
+            AcceptInvitationRequestInput, AdmissionAllocationOutcome, DynEnrollmentManager,
+            InviteAttendeeInput, OrganizerCancellationInput,
         },
+        notifications::enqueue::enqueue_tracked_event_custom_notification,
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
-    templates::{dashboard::group::attendees, notifications::EventCustom},
+    templates::dashboard::group::attendees,
     types::{
         dashboard::group::attendees::{
             Attendee, AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
         },
-        notifications::{NewNotification, NotificationKind},
+        notifications::EventCustomNotificationInput,
         pagination::{self, NavigationLinks},
         payments::EventPurchaseChargeModel,
         permissions::GroupPermission,
         questionnaire::QuestionnaireQuestion,
     },
-    util::base_url_without_trailing_slash,
     validation::{
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, blank_string_as_none,
         trimmed_non_empty, trimmed_non_empty_opt,
@@ -150,30 +143,27 @@ pub(crate) async fn list_page(
 
 /// Accepts an event invitation request.
 #[instrument(skip_all, err)]
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn accept_invitation_request(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(_community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
     ValidatedForm(acceptance): ValidatedForm<EventInvitationRequestAcceptance>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Accept the request and allocate event admission
-    let allocation = db
-        .accept_event_invitation_request(
-            user.user_id,
-            group_id,
+    let outcome = enrollment_manager
+        .accept_invitation_request(&AcceptInvitationRequestInput {
+            actor_user_id: user.user_id,
             event_id,
+            group_id,
             user_id,
-            acceptance.event_ticket_type_id,
-            payments_cfg.as_ref().map(PaymentsConfig::provider),
-        )
+
+            event_ticket_type_id: acceptance.event_ticket_type_id,
+        })
         .await?;
 
-    Ok(event_admission_allocation_response(
-        &allocation,
+    Ok(admission_allocation_response(
+        outcome,
         StatusCode::NO_CONTENT,
         "refresh-event-attendees, refresh-event-invitation-requests",
     ))
@@ -240,53 +230,25 @@ pub(crate) async fn cancel_event_admission_offer(
 
 /// Cancels free attendance or queues a paid attendance refund.
 #[instrument(skip_all, err)]
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn cancel_event_attendee_attendance(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
-    State(server_cfg): State<HttpServerConfig>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Apply the cancellation workflow and any immediate notification atomically
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-    let required_notification_server_cfg = server_cfg.clone();
-    db.as_ref()
-        .transaction(|tx| {
-            Box::pin(async move {
-                // Cancel free attendance or queue a paid refund
-                let outcome = tx
-                    .cancel_event_attendee_attendance(
-                        user.user_id,
-                        group_id,
-                        event_id,
-                        user_id,
-                        payment_provider,
-                    )
-                    .await?;
-
-                // Notify only after attendance is removed immediately
-                if outcome.cancellation_status
-                    == EventAttendeeCancellationStatus::AttendanceCanceled
-                {
-                    enqueue_event_attendance_cancellation_notifications(
-                        tx,
-                        &required_notification_server_cfg,
-                        community_id,
-                        event_id,
-                        user_id,
-                    )
-                    .await?;
-                }
-
-                Ok(())
-            })
+    // Apply the cancellation workflow and any immediate notification
+    enrollment_manager
+        .cancel_attendance_as_organizer(&OrganizerCancellationInput {
+            actor_user_id: user.user_id,
+            community_id,
+            event_id,
+            group_id,
+            user_id,
         })
         .await?;
 
-    // Refresh attendee and refund views after the transaction commits
+    // Refresh attendee and refund views after the cancellation commits
     Ok((
         StatusCode::NO_CONTENT,
         [(
@@ -299,13 +261,10 @@ pub(crate) async fn cancel_event_attendee_attendance(
 
 /// Invites a user to attend an event.
 #[instrument(skip_all, err)]
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn invite_event_attendee(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(_community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path(event_id): Path<Uuid>,
     ValidatedForm(invitation): ValidatedForm<EventAttendeeInvitation>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -317,24 +276,20 @@ pub(crate) async fn invite_event_attendee(
     }
 
     // Allocate the organizer invitation
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-    let invitation = EventAttendeeInvitationInput {
-        email: invitation.email,
-        event_ticket_type_id: invitation.event_ticket_type_id,
-        user_id: invitation.user_id,
-    };
-    let allocation = db
-        .invite_event_attendee(
-            user.user_id,
-            group_id,
+    let outcome = enrollment_manager
+        .invite_event_attendee(&InviteAttendeeInput {
+            actor_user_id: user.user_id,
             event_id,
-            &invitation,
-            payment_provider,
-        )
+            group_id,
+
+            email: invitation.email,
+            event_ticket_type_id: invitation.event_ticket_type_id,
+            user_id: invitation.user_id,
+        })
         .await?;
 
-    Ok(event_admission_allocation_response(
-        &allocation,
+    Ok(admission_allocation_response(
+        outcome,
         StatusCode::CREATED,
         "refresh-event-attendees, refresh-event-waitlist",
     ))
@@ -457,16 +412,15 @@ pub(crate) async fn send_event_custom_notification(
         }
     };
 
-    // Get event data and site settings
-    let ((event, site_settings), event_attendees_ids) = tokio::try_join!(
-        load_event_notification_context(db.as_ref(), community_id, event_id),
-        db.resolve_event_custom_notification_recipient_ids(
+    // Resolve the eligible recipients before composing the notification
+    let event_attendees_ids = db
+        .resolve_event_custom_notification_recipient_ids(
             group_id,
             event_id,
             notification.recipient_scope.as_ref(),
-            requested_user_ids
-        ),
-    )?;
+            requested_user_ids,
+        )
+        .await?;
 
     // Reject empty recipient sets so stale pages cannot report a false success
     if event_attendees_ids.is_empty() {
@@ -481,37 +435,18 @@ pub(crate) async fn send_event_custom_notification(
         return Ok((StatusCode::BAD_REQUEST, message).into_response());
     }
 
-    // Build and enqueue the custom notification with its audit entry
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    let link = format!(
-        "{}/{}/group/{}/event/{}",
-        base_url,
-        event.community_name,
-        event.public_group_slug(),
-        event.slug
-    );
-    let template_data = EventCustom {
-        body: notification.body.clone(),
-        event,
-        link,
-        subject: notification.subject.clone(),
-        theme: site_settings.theme,
-    };
-    let new_notification = NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::EventCustom,
-        recipients: event_attendees_ids,
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
-    db.enqueue_tracked_custom_notification(
-        &new_notification,
-        CustomNotificationTracking {
-            body: notification.body.clone(),
-            created_by: user.user_id,
-            event_id: Some(event_id),
-            group_id: Some(group_id),
-            recipient_count: new_notification.recipients.len(),
-            subject: notification.subject.clone(),
+    // Enqueue the custom notification with its audit entry
+    enqueue_tracked_event_custom_notification(
+        db.as_ref(),
+        &server_cfg,
+        &EventCustomNotificationInput {
+            actor_user_id: user.user_id,
+            body: notification.body,
+            community_id,
+            event_id,
+            group_id,
+            recipients: event_attendees_ids,
+            subject: notification.subject,
         },
     )
     .await?;
@@ -671,6 +606,26 @@ pub(crate) struct RefundRejectionInput {
 
 // Helpers.
 
+/// Converts an admission allocation outcome into the stable HTTP contract.
+fn admission_allocation_response(
+    outcome: AdmissionAllocationOutcome,
+    success_status: StatusCode,
+    success_trigger: &'static str,
+) -> Response {
+    match outcome {
+        AdmissionAllocationOutcome::Allocated => {
+            (success_status, [("HX-Trigger", success_trigger)]).into_response()
+        }
+        AdmissionAllocationOutcome::Conflict(conflict) => (
+            StatusCode::CONFLICT,
+            Json(json!({
+                "conflict": conflict,
+            })),
+        )
+            .into_response(),
+    }
+}
+
 /// Builds the CSV payload for confirmed attendees, optionally appending one
 /// column per registration question with the attendee's answer.
 fn build_attendees_csv(
@@ -759,25 +714,5 @@ fn csv_payment_method(attendee: &Attendee) -> &'static str {
         Some(EventPurchaseChargeModel::External) => "External",
         Some(EventPurchaseChargeModel::OcgFree) => "Free",
         None => "",
-    }
-}
-
-/// Converts an organizer allocation result into the stable HTTP contract.
-fn event_admission_allocation_response(
-    allocation: &EventAdmissionAllocationResult,
-    success_status: StatusCode,
-    success_trigger: &'static str,
-) -> Response {
-    match allocation {
-        EventAdmissionAllocationResult::Conflict(conflict) => (
-            StatusCode::CONFLICT,
-            Json(json!({
-                "conflict": conflict,
-            })),
-        )
-            .into_response(),
-        EventAdmissionAllocationResult::Success(_) => {
-            (success_status, [("HX-Trigger", success_trigger)]).into_response()
-        }
     }
 }

@@ -15,6 +15,42 @@ pub(crate) struct Attachment {
     pub file_name: String,
 }
 
+/// Organizer-authored custom notification addressed to event attendees.
+#[derive(Debug, Clone)]
+pub(crate) struct EventCustomNotificationInput {
+    /// User sending the notification.
+    pub actor_user_id: Uuid,
+    /// Body text of the notification.
+    pub body: String,
+    /// Community containing the event.
+    pub community_id: Uuid,
+    /// Event the notification is about.
+    pub event_id: Uuid,
+    /// Group organizing the event.
+    pub group_id: Uuid,
+    /// Resolved recipient user identifiers.
+    pub recipients: Vec<Uuid>,
+    /// Subject line of the notification email.
+    pub subject: String,
+}
+
+/// Organizer-authored custom notification addressed to group members.
+#[derive(Debug, Clone)]
+pub(crate) struct GroupCustomNotificationInput {
+    /// User sending the notification.
+    pub actor_user_id: Uuid,
+    /// Body text of the notification.
+    pub body: String,
+    /// Community containing the group.
+    pub community_id: Uuid,
+    /// Group the notification is about.
+    pub group_id: Uuid,
+    /// Resolved recipient user identifiers.
+    pub recipients: Vec<Uuid>,
+    /// Subject line of the notification email.
+    pub subject: String,
+}
+
 /// Data required to create a new notification.
 #[derive(Debug, Clone)]
 pub(crate) struct NewNotification {

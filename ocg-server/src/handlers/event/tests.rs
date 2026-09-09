@@ -8,36 +8,31 @@ use axum::{
 };
 use axum_login::tower_sessions::session;
 use chrono::TimeZone;
-use serde_json::{from_slice, from_value, json};
+use serde_json::{from_slice, json};
 use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     activity_tracker::{Activity, MockActivityTracker},
-    db::{
-        event::{AttendEventConflict, AttendEventResult},
-        mock::MockDB,
-        payments::{PrepareEventCheckoutPurchaseConflict, PrepareEventCheckoutPurchaseResult},
-    },
+    db::mock::MockDB,
     handlers::tests::*,
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
-    services::{notifications::MockNotificationsManager, payments::MockPaymentsManager},
-    templates::notifications::{EventAttendanceCanceled, EventWaitlistJoined, EventWaitlistLeft},
+    services::{
+        enrollment::{AttendOutcome, EnrollmentError, MockEnrollmentManager},
+        notifications::MockNotificationsManager,
+        payments::MockPaymentsManager,
+    },
     types::{
         event::{EventEnrollmentState, EventEnrollmentStatus, EventLeaveOutcome},
-        notifications::NotificationKind,
         payments::{
             EventPurchaseChargeModel, EventPurchaseStatus, EventTicketCurrentPrice,
             EventTicketType, EventTicketTypeAvailability, PreparedEventCheckout,
         },
-        questionnaire::{
-            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
-            QuestionnaireQuestion, QuestionnaireQuestionKind,
-        },
+        questionnaire::{QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers},
     },
 };
 
-use super::{HandlerError, get_checkout_status_response};
+use super::HandlerError;
 
 #[tokio::test]
 async fn test_availability_success() {
@@ -575,12 +570,73 @@ async fn test_cfs_modal_db_error() {
 }
 
 #[tokio::test]
-async fn test_attend_event_capacity_conflict() {
-    // Setup identifiers and data structures
+async fn test_attend_event_returns_checkout_redirect() {
+    // Setup identifiers and the redirect outcome
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let event_summary = sample_event_summary(event_id, group_id);
+    let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let hold_expires_at = chrono::Utc.with_ymd_and_hms(2030, 1, 2, 3, 4, 5).unwrap();
+
+    // Setup session and community resolution
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+
+    // Setup the enrollment manager expectation
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager
+        .expect_attend_event()
+        .times(1)
+        .withf(move |input| {
+            input.community_id == community_id
+                && input.event_id == event_id
+                && input.user_id == user_id
+                && input.attendance.event_ticket_type_id == Some(ticket_type_id)
+                && input.attendance.registration_answers.registration_answers.is_none()
+        })
+        .returning(move |_| {
+            Box::pin(async move {
+                Ok(AttendOutcome::CheckoutRedirect {
+                    hold_expires_at: Some(hold_expires_at),
+                    redirect_url: "https://checkout.test/session".to_string(),
+                })
+            })
+        });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/attend"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the redirect payload
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body["hold_expires_at"], json!(hold_expires_at));
+    assert_eq!(body["redirect_url"], json!("https://checkout.test/session"));
+    assert_eq!(body["status"], json!("pending-payment"));
+}
+
+#[tokio::test]
+async fn test_attend_event_returns_conflict() {
+    // Setup identifiers and the conflict outcome
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
 
@@ -589,37 +645,21 @@ async fn test_attend_event_capacity_conflict() {
     expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_attend_event()
-        .times(1)
-        .withf(move |cid, eid, uid, answers, event_ticket_type_id| {
-            *cid == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && answers.is_none()
-                && event_ticket_type_id.is_none()
-        })
-        .returning(|_, _, _, _, _| {
-            Ok(AttendEventResult::Conflict(
-                AttendEventConflict::EventCapacityUnavailable,
-            ))
-        });
 
-    // Submit an RSVP after the final seat is allocated
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_attend_event().times(1).returning(|_| {
+        Box::pin(async {
+            Ok(AttendOutcome::Conflict(
+                "event-capacity-unavailable".to_string(),
+            ))
+        })
+    });
+
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
     let request = Request::builder()
@@ -633,150 +673,64 @@ async fn test_attend_event_capacity_conflict() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
+    // Check the conflict payload
     assert_eq!(parts.status, StatusCode::CONFLICT);
-    assert_eq!(
-        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
-        json!({
-            "conflict": "event-capacity-unavailable",
-        })
-    );
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body, json!({ "conflict": "event-capacity-unavailable" }));
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_attend_event_completes_with_registration_answers() {
-    // Setup identifiers and data structures
+async fn test_attend_event_returns_enrollment_status_with_registration_answers() {
+    // Setup identifiers and the submitted answers
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
-    let ticket_type_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General Admission".to_string(),
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 0,
-            ends_at: None,
-            starts_at: None,
-        }),
-        remaining_seats: Some(10),
-        seats_total: Some(10),
-        sold_out: false,
-        ..Default::default()
-    }]);
-    let registration_questions = vec![QuestionnaireQuestion {
-        id: question_id,
-        kind: QuestionnaireQuestionKind::FreeText,
-        prompt: "Dietary restrictions?".to_string(),
-        required: true,
-
-        options: vec![],
-    }];
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let answers_json = json!({
-        "answers": [
-            {
-                "question_id": question_id,
-                "value": "Vegetarian"
-            }
-        ]
-    });
-    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
-    purchase.amount_minor = 0;
-    purchase.currency_code = None;
-    purchase.event_purchase_id = event_purchase_id;
-    purchase.event_ticket_type_id = ticket_type_id;
+    let answers = QuestionnaireAnswers {
+        answers: vec![QuestionnaireAnswer {
+            question_id,
+            value: QuestionnaireAnswerValue::One("Vegetarian".to_string()),
+        }],
+    };
+    let form_body = serde_urlencoded::to_string([(
+        "registration_answers",
+        serde_json::to_string(&answers).unwrap(),
+    )])
+    .unwrap();
 
-    // Setup database mock
+    // Setup session and community resolution
     let mut db = MockDB::new();
     expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
+
+    // Setup the enrollment manager expectation on the decoded answers
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager
+        .expect_attend_event()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(registration_questions.clone()));
-    let expected_answers = answers_json.clone();
-    db.expect_attend_event()
-        .times(1)
-        .withf(move |id, eid, uid, answers, event_ticket_type_id| {
-            *id == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && answers.as_ref().and_then(|value| serde_json::to_value(value).ok())
-                    == Some(expected_answers.clone())
-                && *event_ticket_type_id == Some(ticket_type_id)
-        })
-        .returning(|_, _, _, _, _| {
-            Ok(AttendEventResult::Enrollment(
-                EventEnrollmentStatus::PendingPayment,
-            ))
-        });
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    let expected_checkout_answers = answers_json.clone();
-    db.expect_prepare_event_checkout_purchase()
-        .times(1)
-        .withf(move |cid, input| {
-            *cid == community_id
-                && input.admission_offer_id.is_none()
-                && input.event_id == event_id
-                && input.event_ticket_type_id == ticket_type_id
-                && input.user_id == user_id
+        .withf(move |input| {
+            input.attendance.event_ticket_type_id.is_none()
                 && input
+                    .attendance
+                    .registration_answers
                     .registration_answers
                     .as_ref()
-                    .and_then(|answers| serde_json::to_value(answers).ok())
-                    == Some(expected_checkout_answers.clone())
+                    .is_some_and(|answers| {
+                        answers.answers.len() == 1 && answers.answers[0].question_id == question_id
+                    })
         })
-        .returning(move |_, _| {
-            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
-                PreparedEventCheckout {
-                    community_name: "test-community".to_string(),
-                    event_id,
-                    event_slug: "event".to_string(),
-                    group_slug: "group".to_string(),
-                    purchase: purchase.clone(),
-                    group_slug_pretty: None,
-                    ..PreparedEventCheckout::default()
-                },
-            )))
+        .returning(|_| {
+            Box::pin(async { Ok(AttendOutcome::Enrolled(EventEnrollmentStatus::Waitlisted)) })
         });
-
-    // Complete the free RSVP through the checkout owner
-    let mut payments_manager = MockPaymentsManager::new();
-    payments_manager
-        .expect_complete_free_checkout()
-        .times(1)
-        .withf(move |cid, eid, purchase_id, uid| {
-            *cid == community_id
-                && *eid == event_id
-                && *purchase_id == event_purchase_id
-                && *uid == user_id
-        })
-        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_manager(payments_manager)
+        .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let form_body =
-        serde_urlencoded::to_string([("registration_answers", answers_json.to_string())]).unwrap();
     let request = Request::builder()
         .method("POST")
         .uri(format!("/test-community/event/{event_id}/attend"))
@@ -788,89 +742,53 @@ async fn test_attend_event_completes_with_registration_answers() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
+    // Check the enrollment status payload
     assert_eq!(parts.status, StatusCode::OK);
     let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "status": "attendee" }));
+    assert_eq!(body, json!({ "status": "waitlisted" }));
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_attend_event_requires_answers_when_waitlist_ticket_becomes_available() {
-    // Setup a sold-out snapshot with required registration questions
+async fn test_attend_event_returns_external_pending_payment() {
+    // Setup identifiers and the external purchase snapshot
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let question_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.has_registration_questions = true;
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General admission".to_string(),
+    let hold_expires_at = chrono::Utc.with_ymd_and_hms(2030, 1, 2, 3, 4, 5).unwrap();
+    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
+    purchase.charge_model = EventPurchaseChargeModel::External;
+    purchase.event_purchase_id = event_purchase_id;
+    purchase.external_payment_instructions = Some("Use reference on the transfer.".to_string());
+    purchase.external_payment_url = Some("https://pay.example.test/event".to_string());
+    purchase.hold_expires_at = Some(hold_expires_at);
 
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 0,
-            ends_at: None,
-            starts_at: None,
-        }),
-        remaining_seats: Some(0),
-        seats_total: Some(1),
-        sold_out: true,
-        ..Default::default()
-    }]);
-    event_summary.waitlist_enabled = true;
-    let registration_questions = vec![QuestionnaireQuestion {
-        id: question_id,
-        kind: QuestionnaireQuestionKind::FreeText,
-        prompt: "Dietary restrictions?".to_string(),
-        required: true,
-
-        options: vec![],
-    }];
-
-    // Return authoritative availability without creating a checkout hold
+    // Setup database mock
     let mut db = MockDB::new();
     expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(registration_questions.clone()));
-    db.expect_attend_event()
-        .times(1)
-        .withf(move |cid, eid, uid, answers, selected_ticket_type_id| {
-            *cid == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && answers.is_none()
-                && *selected_ticket_type_id == Some(ticket_type_id)
-        })
-        .returning(|_, _, _, _, _| {
-            Ok(AttendEventResult::Enrollment(
-                EventEnrollmentStatus::PendingPayment,
-            ))
-        });
-    db.expect_prepare_event_checkout_purchase().times(0);
 
-    // Submit the stale waitlist action without answers
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_attend_event().times(1).returning(move |_| {
+        let purchase = purchase.clone();
+        Box::pin(async move {
+            Ok(AttendOutcome::ExternalPendingPayment(Box::new(
+                PreparedEventCheckout {
+                    event_id,
+                    purchase,
+                    ..PreparedEventCheckout::default()
+                },
+            )))
+        })
+    });
+
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
     let request = Request::builder()
@@ -878,128 +796,54 @@ async fn test_attend_event_requires_answers_when_waitlist_ticket_becomes_availab
         .uri(format!("/test-community/event/{event_id}/attend"))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
+        .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the client is told to collect answers before retrying checkout
-    assert_eq!(parts.status, StatusCode::CONFLICT);
+    // Check the pending-payment payload uses the purchase snapshot
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body["status"], json!("pending-payment"));
+    assert_eq!(body["hold_expires_at"], json!(hold_expires_at.timestamp()));
     assert_eq!(
-        from_slice::<serde_json::Value>(&bytes).unwrap(),
-        json!({ "conflict": "registration-answers-required" })
+        body["external_payment"],
+        json!({
+            "amount_minor": 2500,
+            "currency_code": "USD",
+            "deadline": hold_expires_at.timestamp(),
+            "instructions": "Use reference on the transfer.",
+            "reference": event_purchase_id,
+            "url": "https://pay.example.test/event",
+        })
     );
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_attend_event_resolves_omitted_single_paid_ticket_type() {
-    // Setup a paid event whose only public ticket can be inferred
+async fn test_attend_event_returns_internal_server_error_when_manager_fails() {
+    // Setup identifiers and an internal manager failure
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.payment_currency_code = Some("USD".to_string());
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General admission".to_string(),
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 2_500,
-            ..Default::default()
-        }),
-        remaining_seats: Some(10),
-        seats_total: Some(10),
-        ..Default::default()
-    }]);
-    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
-    purchase.event_purchase_id = event_purchase_id;
-    purchase.event_ticket_type_id = ticket_type_id;
-    purchase.hold_expires_at = Some(chrono::Utc::now() + chrono::Duration::minutes(15));
 
-    // Require the resolved identifier at both database boundaries
+    // Setup database mock
     let mut db = MockDB::new();
     expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_attend_event()
-        .times(1)
-        .withf(move |cid, eid, uid, answers, selected_ticket_type_id| {
-            *cid == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && answers.is_none()
-                && *selected_ticket_type_id == Some(ticket_type_id)
-        })
-        .returning(|_, _, _, _, _| {
-            Ok(AttendEventResult::Enrollment(
-                EventEnrollmentStatus::PendingPayment,
-            ))
-        });
-    db.expect_prepare_event_checkout_purchase()
-        .times(1)
-        .withf(move |cid, input| {
-            *cid == community_id
-                && input.admission_offer_id.is_none()
-                && input.discount_code.is_none()
-                && input.event_id == event_id
-                && input.event_ticket_type_id == ticket_type_id
-                && input.payment_provider == Some(crate::types::payments::PaymentProvider::Stripe)
-                && input.registration_answers.is_none()
-                && input.user_id == user_id
-        })
-        .returning(move |_, _| {
-            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
-                PreparedEventCheckout {
-                    community_name: "test-community".to_string(),
-                    event_id,
-                    event_slug: "event".to_string(),
-                    group_slug: "group".to_string(),
-                    purchase: purchase.clone(),
 
-                    group_slug_pretty: None,
-                    ..PreparedEventCheckout::default()
-                },
-            )))
-        });
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_attend_event().times(1).returning(|_| {
+        Box::pin(async { Err(EnrollmentError::Other(anyhow!("database failure"))) })
+    });
 
-    let mut payments_manager = MockPaymentsManager::new();
-    payments_manager.expect_complete_free_checkout().times(0);
-    payments_manager
-        .expect_get_or_create_checkout_redirect_url()
-        .times(1)
-        .withf(move |prepared_checkout, id| {
-            *id == user_id
-                && prepared_checkout.event_id == event_id
-                && prepared_checkout.purchase.event_purchase_id == event_purchase_id
-        })
-        .returning(|_, _| Box::pin(async { Ok("https://checkout.test/session".to_string()) }));
-
-    // Omit the optional tier and continue through the paid checkout
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_cfg(sample_payments_cfg())
-        .with_payments_manager(payments_manager)
+        .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
     let request = Request::builder()
@@ -1013,144 +857,39 @@ async fn test_attend_event_resolves_omitted_single_paid_ticket_type() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body["redirect_url"], json!("https://checkout.test/session"));
-    assert_eq!(body["status"], json!("pending-payment"));
-    assert!(body["hold_expires_at"].is_string());
+    // Check the internal failure is hidden
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_attend_event_routes_newly_available_ticket_to_checkout() {
-    // Setup a multi-tier snapshot whose selected free ticket became paid
+async fn test_attend_event_returns_unprocessable_entity_for_database_rejection() {
+    // Setup identifiers and a user-facing database rejection
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let second_ticket_type_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.ticket_types = Some(vec![
-        EventTicketType {
-            active: true,
-            availability: EventTicketTypeAvailability::Public,
-            event_ticket_type_id: ticket_type_id,
-            order: 1,
-            title: "General admission".to_string(),
 
-            current_price: Some(EventTicketCurrentPrice {
-                amount_minor: 0,
-                ends_at: None,
-                starts_at: None,
-            }),
-            remaining_seats: Some(10),
-            seats_total: Some(10),
-            sold_out: false,
-            ..Default::default()
-        },
-        EventTicketType {
-            active: true,
-            availability: EventTicketTypeAvailability::Public,
-            event_ticket_type_id: second_ticket_type_id,
-            order: 2,
-            title: "Supporter admission".to_string(),
-
-            current_price: Some(EventTicketCurrentPrice {
-                amount_minor: 5_000,
-                ends_at: None,
-                starts_at: None,
-            }),
-            remaining_seats: Some(10),
-            seats_total: Some(10),
-            sold_out: false,
-            ..Default::default()
-        },
-    ]);
-    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
-    purchase.event_purchase_id = event_purchase_id;
-    purchase.event_ticket_type_id = ticket_type_id;
-    purchase.hold_expires_at = Some(chrono::Utc::now() + chrono::Duration::minutes(15));
-
-    // Setup the database boundary through the authoritative paid hold
+    // Setup database mock
     let mut db = MockDB::new();
     expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_attend_event()
-        .times(1)
-        .withf(move |cid, eid, uid, answers, selected_ticket_type_id| {
-            *cid == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && answers.is_none()
-                && *selected_ticket_type_id == Some(ticket_type_id)
-        })
-        .returning(|_, _, _, _, _| {
-            Ok(AttendEventResult::Enrollment(
-                EventEnrollmentStatus::PendingPayment,
+
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_attend_event().times(1).returning(|_| {
+        Box::pin(async {
+            Err(EnrollmentError::Other(
+                HandlerError::Database("event not found or inactive".to_string()).into(),
             ))
-        });
-    db.expect_prepare_event_checkout_purchase()
-        .times(1)
-        .withf(move |cid, input| {
-            *cid == community_id
-                && input.admission_offer_id.is_none()
-                && input.discount_code.is_none()
-                && input.event_id == event_id
-                && input.event_ticket_type_id == ticket_type_id
-                && input.payment_provider == Some(crate::types::payments::PaymentProvider::Stripe)
-                && input.registration_answers.is_none()
-                && input.user_id == user_id
         })
-        .returning(move |_, _| {
-            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
-                PreparedEventCheckout {
-                    community_name: "test-community".to_string(),
-                    event_id,
-                    event_slug: "event".to_string(),
-                    group_slug: "group".to_string(),
-                    purchase: purchase.clone(),
+    });
 
-                    group_slug_pretty: None,
-                    ..PreparedEventCheckout::default()
-                },
-            )))
-        });
-
-    // Route the changed price through the provider instead of failing after hold creation
-    let mut payments_manager = MockPaymentsManager::new();
-    payments_manager.expect_complete_free_checkout().times(0);
-    payments_manager
-        .expect_get_or_create_checkout_redirect_url()
-        .times(1)
-        .withf(move |prepared_checkout, id| {
-            *id == user_id
-                && prepared_checkout.event_id == event_id
-                && prepared_checkout.purchase.event_purchase_id == event_purchase_id
-        })
-        .returning(|_, _| Box::pin(async { Ok("https://checkout.test/session".to_string()) }));
-
-    // Submit the stale waitlist action after capacity becomes available
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_cfg(sample_payments_cfg())
-        .with_payments_manager(payments_manager)
+        .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
     let request = Request::builder()
@@ -1158,247 +897,66 @@ async fn test_attend_event_routes_newly_available_ticket_to_checkout() {
         .uri(format!("/test-community/event/{event_id}/attend"))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the client can continue the authoritative paid checkout
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body["redirect_url"], json!("https://checkout.test/session"));
-    assert_eq!(body["status"], json!("pending-payment"));
-    assert!(body["hold_expires_at"].is_string());
-}
-
-#[tokio::test]
-async fn test_attend_event_sends_waitlist_success_without_registration_answers() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let ticket_type_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.capacity = Some(1);
-    event_summary.has_registration_questions = true;
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General Admission".to_string(),
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 0,
-            ..Default::default()
-        }),
-        sold_out: true,
-        ..Default::default()
-    }]);
-    event_summary.remaining_capacity = Some(5);
-    event_summary.waitlist_enabled = true;
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_registration_questions().times(0);
-    db.expect_attend_event()
-        .times(1)
-        .withf(move |id, eid, uid, answers, event_ticket_type_id| {
-            *id == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && answers.is_none()
-                && *event_ticket_type_id == Some(ticket_type_id)
-        })
-        .returning(|_, _, _, _, _| {
-            Ok(AttendEventResult::Enrollment(
-                EventEnrollmentStatus::Waitlisted,
-            ))
-        });
-    db.expect_get_event_summary_by_id()
-        .times(2)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWaitlistJoined)
-                && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistJoined>(value.clone()).is_ok_and(|template| {
-                        template.link == "/test-community/group/def5678/event/ghi9abc"
-                    })
-                })
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "status": "waitlisted" }));
-}
-
-#[tokio::test]
-async fn test_attend_event_suppresses_notification_context_errors() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let ticket_type_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General Admission".to_string(),
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 0,
-            ends_at: None,
-            starts_at: None,
-        }),
-        sold_out: true,
-        ..Default::default()
-    }]);
-    event_summary.waitlist_enabled = true;
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_registration_questions().times(0);
-    db.expect_attend_event()
-        .times(1)
-        .withf(move |id, eid, uid, answers, event_ticket_type_id| {
-            *id == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && answers.is_none()
-                && *event_ticket_type_id == Some(ticket_type_id)
-        })
-        .returning(|_, _, _, _, _| {
-            Ok(AttendEventResult::Enrollment(
-                EventEnrollmentStatus::Waitlisted,
-            ))
-        });
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Err(anyhow!("db error")));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "status": "waitlisted" }));
-}
-
-#[tokio::test]
-async fn test_attend_event_validates_inactive_event_before_loading_enrollment_state() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| {
-            Err(HandlerError::Database("event not found or inactive".to_string()).into())
-        });
-    db.expect_get_event_summary_by_id().times(0);
-    db.expect_attend_event().times(0);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
+    // Check the rejection message is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
         "event not found or inactive"
+    );
+}
+
+#[tokio::test]
+async fn test_attend_event_returns_unprocessable_entity_for_rejection() {
+    // Setup identifiers and an application rejection
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .returning(move |_| Ok(Some(community_id)));
+
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_attend_event().times(1).returning(|_| {
+        Box::pin(async {
+            Err(EnrollmentError::Rejected(
+                "questionnaire answers are required".to_string(),
+            ))
+        })
+    });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/attend"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the rejection message is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "questionnaire answers are required"
     );
 }
 
@@ -1659,223 +1217,8 @@ async fn test_cancel_checkout_returns_internal_server_error_when_db_fails() {
 }
 
 #[tokio::test]
-async fn test_leave_event_completes_successfully() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
-    let site_settings = sample_site_settings();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    let mut tx = MockDB::new();
-    tx.expect_leave_event()
-        .times(1)
-        .withf(move |id, eid, uid, payment_provider| {
-            *id == community_id && *eid == event_id && *uid == user_id && payment_provider.is_none()
-        })
-        .returning(|_, _, _, _| {
-            Ok(EventLeaveOutcome {
-                left_status: EventEnrollmentStatus::Attendee,
-            })
-        });
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    tx.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    tx.expect_enqueue_notification()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
-                && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
-                        template.dashboard_link == "/dashboard/user?tab=events"
-                            && template.link == "/test-community/group/def5678/event/ghi9abc"
-                    })
-                })
-        })
-        .returning(|_| Ok(()));
-    expect_successful_transaction(&mut db, tx);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/test-community/event/{event_id}/leave"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "left_status": "attendee" }));
-}
-
-#[tokio::test]
-async fn test_leave_event_drops_waitlist_entry() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let event_summary = sample_event_summary(event_id, group_id);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    let mut tx = MockDB::new();
-    tx.expect_leave_event()
-        .times(1)
-        .withf(move |id, eid, uid, payment_provider| {
-            *id == community_id && *eid == event_id && *uid == user_id && payment_provider.is_none()
-        })
-        .returning(|_, _, _, _| {
-            Ok(EventLeaveOutcome {
-                left_status: EventEnrollmentStatus::Waitlisted,
-            })
-        });
-    expect_successful_transaction(&mut db, tx);
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWaitlistLeft)
-                && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistLeft>(value.clone()).is_ok_and(|template| {
-                        template.link == "/test-community/group/def5678/event/ghi9abc"
-                    })
-                })
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/test-community/event/{event_id}/leave"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "left_status": "waitlisted" }));
-}
-
-#[tokio::test]
-async fn test_leave_event_enqueues_attendance_cancellation_notification() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let event_summary = sample_event_summary(event_id, group_id);
-    let event_summary_for_notifications = event_summary.clone();
-    let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    let mut tx = MockDB::new();
-    tx.expect_leave_event()
-        .times(1)
-        .withf(move |id, eid, uid, payment_provider| {
-            *id == community_id && *eid == event_id && *uid == user_id && payment_provider.is_none()
-        })
-        .returning(move |_, _, _, _| {
-            Ok(EventLeaveOutcome {
-                left_status: EventEnrollmentStatus::Attendee,
-            })
-        });
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings_for_notifications.clone()));
-    tx.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary_for_notifications.clone()));
-    tx.expect_enqueue_notification()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
-                && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
-                        template.dashboard_link == "/dashboard/user?tab=events"
-                            && template.link == "/test-community/group/def5678/event/ghi9abc"
-                    })
-                })
-        })
-        .returning(|_| Ok(()));
-    expect_successful_transaction(&mut db, tx);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/test-community/event/{event_id}/leave"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "left_status": "attendee" }));
-}
-
-#[tokio::test]
-async fn test_leave_event_rolls_back_when_notification_context_load_fails() {
-    // Setup identifiers and data structures
+async fn test_leave_event_returns_internal_server_error_when_manager_fails() {
+    // Setup identifiers and an internal manager failure
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -1886,33 +1229,19 @@ async fn test_leave_event_rolls_back_when_notification_context_load_fails() {
     expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    let mut tx = MockDB::new();
-    tx.expect_leave_event()
-        .times(1)
-        .withf(move |id, eid, uid, payment_provider| {
-            *id == community_id && *eid == event_id && *uid == user_id && payment_provider.is_none()
-        })
-        .returning(|_, _, _, _| {
-            Ok(EventLeaveOutcome {
-                left_status: EventEnrollmentStatus::Attendee,
-            })
-        });
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    tx.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Err(anyhow!("db error")));
-    expect_rolled_back_transaction(&mut db, tx);
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_leave_event().times(1).returning(|_| {
+        Box::pin(async { Err(EnrollmentError::Other(anyhow!("database failure"))) })
+    });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
     let request = Request::builder()
         .method("DELETE")
         .uri(format!("/test-community/event/{event_id}/leave"))
@@ -1923,9 +1252,115 @@ async fn test_leave_event_rolls_back_when_notification_context_load_fails() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
+    // Check the internal failure is hidden
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_leave_event_returns_left_status() {
+    // Setup identifiers and the leave outcome
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager
+        .expect_leave_event()
+        .times(1)
+        .withf(move |input| {
+            input.community_id == community_id
+                && input.event_id == event_id
+                && input.user_id == user_id
+        })
+        .returning(|_| {
+            Box::pin(async {
+                Ok(EventLeaveOutcome {
+                    left_status: EventEnrollmentStatus::Attendee,
+                })
+            })
+        });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!("/test-community/event/{event_id}/leave"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the left status payload
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body, json!({ "left_status": "attendee" }));
+}
+
+#[tokio::test]
+async fn test_leave_event_returns_unprocessable_entity_for_database_rejection() {
+    // Setup identifiers and the paid-attendee database rejection
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .returning(move |_| Ok(Some(community_id)));
+
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_leave_event().times(1).returning(|_| {
+        Box::pin(async {
+            Err(EnrollmentError::Other(
+                HandlerError::Database(
+                    "paid attendance must be refunded before leaving".to_string(),
+                )
+                .into(),
+            ))
+        })
+    });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!("/test-community/event/{event_id}/leave"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the rejection message is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "paid attendance must be refunded before leaving"
+    );
 }
 
 #[tokio::test]
@@ -2035,782 +1470,16 @@ async fn test_request_refund_returns_internal_server_error_when_payments_manager
     assert!(bytes.is_empty());
 }
 
-#[test]
-fn test_get_checkout_status_response_rejects_refund_recovery_pending() {
-    // Resolve the attendee-facing checkout state during refund recovery
-    let err = get_checkout_status_response(EventPurchaseStatus::RefundRecoveryPending)
-        .expect_err("refund recovery to block checkout");
-
-    // Check the UI receives the specific recovery state error
-    assert!(matches!(
-        err,
-        HandlerError::Rejected(message)
-            if message == "checkout is unavailable while refund recovery is in progress"
-    ));
-}
-
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_start_checkout_blocks_refund_requested_purchase() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let question_id = Uuid::new_v4();
-    let ticket_type_id = Uuid::new_v4();
-    let registration_answers = QuestionnaireAnswers {
-        answers: vec![QuestionnaireAnswer {
-            question_id,
-            value: QuestionnaireAnswerValue::One("Vegetarian".to_string()),
-        }],
-    };
-    let registration_answers_json = serde_json::to_value(&registration_answers).unwrap();
-    let registration_questions = vec![QuestionnaireQuestion {
-        id: question_id,
-        kind: QuestionnaireQuestionKind::FreeText,
-        prompt: "Dietary restrictions?".to_string(),
-        required: true,
-
-        options: vec![],
-    }];
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.payment_currency_code = Some("USD".to_string());
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General admission".to_string(),
-
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 2_500,
-            ends_at: None,
-            starts_at: None,
-        }),
-        description: None,
-        price_windows: vec![],
-        remaining_seats: Some(10),
-        seats_total: Some(10),
-        sold_out: false,
-    }]);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(registration_questions.clone()));
-    let expected_registration_answers = registration_answers_json.clone();
-    db.expect_prepare_event_checkout_purchase()
-        .times(1)
-        .withf(move |cid, input| {
-            *cid == community_id
-                && input.admission_offer_id.is_none()
-                && input.event_id == event_id
-                && input.event_ticket_type_id == ticket_type_id
-                && input
-                    .registration_answers
-                    .as_ref()
-                    .and_then(|answers| serde_json::to_value(answers).ok())
-                    == Some(expected_registration_answers.clone())
-                && input.user_id == user_id
-        })
-        .returning(move |_, _| {
-            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
-                PreparedEventCheckout {
-                    community_name: "test-community".to_string(),
-                    event_id,
-                    event_slug: "event".to_string(),
-                    group_slug: "group".to_string(),
-                    purchase: sample_purchase_summary(EventPurchaseStatus::RefundRequested),
-                    group_slug_pretty: None,
-                    ..PreparedEventCheckout::default()
-                },
-            )))
-        });
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let form_body = serde_urlencoded::to_string([
-        ("event_ticket_type_id", ticket_type_id.to_string()),
-        (
-            "registration_answers",
-            registration_answers_json.to_string(),
-        ),
-    ])
-    .unwrap();
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form_body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(
-        String::from_utf8(bytes.to_vec()).unwrap(),
-        "checkout is unavailable while a refund is in progress"
-    );
-}
-
-#[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_start_checkout_completes_free_ticket_without_payments_config() {
-    // Setup an intrinsically free ticket and authenticated attendee
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let ticket_type_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.payment_currency_code = None;
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "Free admission".to_string(),
-
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 0,
-            ends_at: None,
-            starts_at: None,
-        }),
-        description: None,
-        price_windows: vec![],
-        remaining_seats: Some(10),
-        seats_total: Some(10),
-        sold_out: false,
-    }]);
-    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
-    purchase.amount_minor = 0;
-    purchase.currency_code = None;
-    purchase.event_purchase_id = event_purchase_id;
-    purchase.event_ticket_type_id = ticket_type_id;
-    purchase.hold_expires_at = Some(chrono::Utc::now() + chrono::Duration::minutes(15));
-
-    // Prepare the provider-free checkout through the database boundary
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_prepare_event_checkout_purchase()
-        .times(1)
-        .withf(move |cid, input| {
-            *cid == community_id
-                && input.admission_offer_id.is_none()
-                && input.payment_provider.is_none()
-                && input.event_id == event_id
-                && input.event_ticket_type_id == ticket_type_id
-                && input.user_id == user_id
-        })
-        .returning(move |_, _| {
-            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
-                PreparedEventCheckout {
-                    community_name: "test-community".to_string(),
-                    event_id,
-                    event_slug: "event".to_string(),
-                    group_slug: "group".to_string(),
-                    purchase: purchase.clone(),
-                    group_slug_pretty: None,
-                    ..PreparedEventCheckout::default()
-                },
-            )))
-        });
-
-    // Complete locally without attempting to create a provider checkout
-    let mut payments_manager = MockPaymentsManager::new();
-    payments_manager
-        .expect_complete_free_checkout()
-        .times(1)
-        .withf(move |cid, eid, purchase_id, uid| {
-            *cid == community_id
-                && *eid == event_id
-                && *purchase_id == event_purchase_id
-                && *uid == user_id
-        })
-        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
-    payments_manager.expect_get_or_create_checkout_redirect_url().times(0);
-
-    // Submit checkout without a PaymentsConfig
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_manager(payments_manager)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check local completion is returned as confirmed attendance
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body["status"], json!("attendee"));
-}
-
-#[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_start_checkout_keeps_active_hold_after_registration_window_closes() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let ticket_type_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.payment_currency_code = Some("USD".to_string());
-    event_summary.registration_ends_at = Some(chrono::Utc::now() - chrono::Duration::hours(1));
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General admission".to_string(),
-
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 2_500,
-            ends_at: None,
-            starts_at: None,
-        }),
-        description: None,
-        price_windows: vec![],
-        remaining_seats: Some(10),
-        seats_total: Some(10),
-        sold_out: false,
-    }]);
-    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
-    purchase.event_ticket_type_id = ticket_type_id;
-    purchase.hold_expires_at = Some(chrono::Utc::now() + chrono::Duration::minutes(15));
-    let event_purchase_id = purchase.event_purchase_id;
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_prepare_event_checkout_purchase()
-        .times(1)
-        .withf(move |cid, input| {
-            *cid == community_id
-                && input.admission_offer_id.is_none()
-                && input.payment_provider.is_none()
-                && input.event_id == event_id
-                && input.event_ticket_type_id == ticket_type_id
-                && input.user_id == user_id
-        })
-        .returning(move |_, _| {
-            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
-                PreparedEventCheckout {
-                    community_name: "test-community".to_string(),
-                    event_id,
-                    event_slug: "event".to_string(),
-                    group_slug: "group".to_string(),
-                    purchase: purchase.clone(),
-                    group_slug_pretty: None,
-                    ..PreparedEventCheckout::default()
-                },
-            )))
-        });
-
-    // Setup payments manager mock
-    let mut payments_manager = MockPaymentsManager::new();
-    payments_manager
-        .expect_get_or_create_checkout_redirect_url()
-        .times(1)
-        .withf(move |prepared_checkout, id| {
-            *id == user_id
-                && prepared_checkout.event_id == event_id
-                && prepared_checkout.purchase.event_purchase_id == event_purchase_id
-        })
-        .returning(|_, _| Box::pin(async { Ok("https://checkout.test/session".to_string()) }));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_payments_manager(payments_manager)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body["redirect_url"], json!("https://checkout.test/session"));
-    assert_eq!(body["status"], json!("pending-payment"));
-}
-
-#[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_start_checkout_keeps_active_hold_when_tickets_are_unavailable() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let ticket_type_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.payment_currency_code = Some("USD".to_string());
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General admission".to_string(),
-
-        current_price: None,
-        description: None,
-        price_windows: vec![],
-        remaining_seats: Some(0),
-        seats_total: Some(10),
-        sold_out: true,
-    }]);
-    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
-    purchase.event_ticket_type_id = ticket_type_id;
-    purchase.hold_expires_at = Some(chrono::Utc::now() + chrono::Duration::minutes(15));
-    let event_purchase_id = purchase.event_purchase_id;
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_prepare_event_checkout_purchase()
-        .times(1)
-        .withf(move |cid, input| {
-            *cid == community_id
-                && input.admission_offer_id.is_none()
-                && input.payment_provider.is_none()
-                && input.event_id == event_id
-                && input.event_ticket_type_id == ticket_type_id
-                && input.user_id == user_id
-        })
-        .returning(move |_, _| {
-            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
-                PreparedEventCheckout {
-                    community_name: "test-community".to_string(),
-                    event_id,
-                    event_slug: "event".to_string(),
-                    group_slug: "group".to_string(),
-                    purchase: purchase.clone(),
-                    group_slug_pretty: None,
-                    ..PreparedEventCheckout::default()
-                },
-            )))
-        });
-
-    // Setup payments manager mock
-    let mut payments_manager = MockPaymentsManager::new();
-    payments_manager
-        .expect_get_or_create_checkout_redirect_url()
-        .times(1)
-        .withf(move |prepared_checkout, id| {
-            *id == user_id
-                && prepared_checkout.event_id == event_id
-                && prepared_checkout.purchase.event_purchase_id == event_purchase_id
-        })
-        .returning(|_, _| Box::pin(async { Ok("https://checkout.test/session".to_string()) }));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_payments_manager(payments_manager)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body["redirect_url"], json!("https://checkout.test/session"));
-    assert_eq!(body["status"], json!("pending-payment"));
-}
-
-#[tokio::test]
-async fn test_start_checkout_rejects_inactive_event_before_ticket_checks() {
-    // Setup identifiers and data structures
+async fn test_start_checkout_returns_checkout_redirect() {
+    // Setup identifiers and the redirect outcome
+    let admission_offer_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| {
-            Err(HandlerError::Database("event not found or inactive".to_string()).into())
-        });
-    db.expect_get_event_summary_by_id().times(0);
-    db.expect_prepare_event_checkout_purchase().times(0);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(
-        String::from_utf8(bytes.to_vec()).unwrap(),
-        "event not found or inactive"
-    );
-}
-
-#[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_start_checkout_returns_external_pending_payment() {
-    // Setup a paid external hold without creating a provider checkout
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let ticket_type_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.payment_currency_code = Some("USD".to_string());
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General admission".to_string(),
-
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 2_500,
-            ends_at: None,
-            starts_at: None,
-        }),
-        description: None,
-        price_windows: vec![],
-        remaining_seats: Some(10),
-        seats_total: Some(10),
-        sold_out: false,
-    }]);
     let hold_expires_at = chrono::Utc.with_ymd_and_hms(2030, 1, 2, 3, 4, 5).unwrap();
-    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
-    purchase.amount_minor = 2_500;
-    purchase.charge_model = EventPurchaseChargeModel::External;
-    purchase.currency_code = Some("USD".to_string());
-    purchase.event_purchase_id = event_purchase_id;
-    purchase.event_ticket_type_id = ticket_type_id;
-    purchase.external_payment_instructions = Some("Use reference on the transfer.".to_string());
-    purchase.external_payment_url = Some("https://pay.example.test/event".to_string());
-    purchase.hold_expires_at = Some(hold_expires_at);
-
-    // Prepare the external checkout through the database boundary
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_prepare_event_checkout_purchase()
-        .times(1)
-        .withf(move |cid, input| {
-            *cid == community_id
-                && input.admission_offer_id.is_none()
-                && input.event_id == event_id
-                && input.event_ticket_type_id == ticket_type_id
-                && input.user_id == user_id
-        })
-        .returning(move |_, _| {
-            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
-                PreparedEventCheckout {
-                    community_name: "test-community".to_string(),
-                    event_id,
-                    event_slug: "event".to_string(),
-                    group_slug: "group".to_string(),
-                    purchase: purchase.clone(),
-                    group_slug_pretty: None,
-                    ..PreparedEventCheckout::default()
-                },
-            )))
-        });
-
-    // Skip provider checkout creation for external purchases
-    let mut payments_manager = MockPaymentsManager::new();
-    payments_manager.expect_complete_free_checkout().times(0);
-    payments_manager.expect_get_or_create_checkout_redirect_url().times(0);
-
-    // Submit checkout for the external ticket
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_manager(payments_manager)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the pending-payment payload uses the purchase snapshot
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body["status"], json!("pending-payment"));
-    assert_eq!(body["hold_expires_at"], json!(hold_expires_at.timestamp()));
-    assert_eq!(
-        body["external_payment"],
-        json!({
-            "amount_minor": 2500,
-            "currency_code": "USD",
-            "deadline": hold_expires_at.timestamp(),
-            "instructions": "Use reference on the transfer.",
-            "reference": event_purchase_id,
-            "url": "https://pay.example.test/event",
-        })
-    );
-}
-
-#[tokio::test]
-async fn test_start_checkout_returns_sold_out_conflict() {
-    // Setup identifiers and active event context
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let ticket_type_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.payment_currency_code = Some("USD".to_string());
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: ticket_type_id,
-        order: 1,
-        title: "General admission".to_string(),
-
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 2_500,
-            ends_at: None,
-            starts_at: None,
-        }),
-        description: None,
-        price_windows: vec![],
-        remaining_seats: Some(1),
-        seats_total: Some(10),
-        sold_out: false,
-    }]);
-
-    // Setup checkout preparation to return the committed reconciliation conflict
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_prepare_event_checkout_purchase()
-        .times(1)
-        .withf(move |cid, input| {
-            *cid == community_id
-                && input.admission_offer_id.is_none()
-                && input.event_id == event_id
-                && input.event_ticket_type_id == ticket_type_id
-                && input.user_id == user_id
-        })
-        .returning(|_, _| {
-            Ok(PrepareEventCheckoutPurchaseResult::Conflict(
-                PrepareEventCheckoutPurchaseConflict::TicketTypeSoldOut,
-            ))
-        });
-
-    // Submit checkout for the now-reserved ticket type
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Return the stable sold-out conflict payload
-    assert_eq!(parts.status, StatusCode::CONFLICT);
-    assert_eq!(
-        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
-        json!({
-            "conflict": "ticket-type-sold-out",
-        })
-    );
-}
-
-#[tokio::test]
-async fn test_start_checkout_validates_missing_ticket_type() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
-    event_summary.payment_currency_code = Some("USD".to_string());
-    event_summary.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        availability: EventTicketTypeAvailability::Public,
-        event_ticket_type_id: Uuid::new_v4(),
-        order: 1,
-        title: "General admission".to_string(),
-
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 2_500,
-            ends_at: None,
-            starts_at: None,
-        }),
-        description: None,
-        price_windows: vec![],
-        remaining_seats: Some(10),
-        seats_total: Some(10),
-        sold_out: false,
-    }]);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2819,25 +1488,227 @@ async fn test_start_checkout_validates_missing_ticket_type() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_ensure_event_is_active()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_prepare_event_checkout_purchase().times(0);
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    // Setup the enrollment manager expectation on the decoded form
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager
+        .expect_start_checkout()
+        .times(1)
+        .withf(move |input| {
+            input.community_id == community_id
+                && input.event_id == event_id
+                && input.user_id == user_id
+                && input.checkout.admission_offer_id == Some(admission_offer_id)
+                && input.checkout.discount_code.as_deref() == Some("EARLY")
+                && input.checkout.event_ticket_type_id == Some(ticket_type_id)
+                && input.checkout.registration_answers.registration_answers.is_none()
+        })
+        .returning(move |_| {
+            Box::pin(async move {
+                Ok(AttendOutcome::CheckoutRedirect {
+                    hold_expires_at: Some(hold_expires_at),
+                    redirect_url: "https://checkout.test/session".to_string(),
+                })
+            })
+        });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/checkout"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!(
+            "admission_offer_id={admission_offer_id}&discount_code=EARLY&event_ticket_type_id={ticket_type_id}"
+        )))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the redirect payload
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body["hold_expires_at"], json!(hold_expires_at));
+    assert_eq!(body["redirect_url"], json!("https://checkout.test/session"));
+    assert_eq!(body["status"], json!("pending-payment"));
+}
+
+#[tokio::test]
+async fn test_start_checkout_returns_conflict() {
+    // Setup identifiers and the sold-out conflict
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .returning(move |_| Ok(Some(community_id)));
+
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_start_checkout().times(1).returning(|_| {
+        Box::pin(async { Ok(AttendOutcome::Conflict("ticket-type-sold-out".to_string())) })
+    });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/checkout"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!(
+            "event_ticket_type_id={}",
+            Uuid::new_v4()
+        )))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the conflict payload
+    assert_eq!(parts.status, StatusCode::CONFLICT);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body, json!({ "conflict": "ticket-type-sold-out" }));
+}
+
+#[tokio::test]
+async fn test_start_checkout_returns_enrollment_status() {
+    // Setup identifiers and a completed free checkout
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .returning(move |_| Ok(Some(community_id)));
+
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_start_checkout().times(1).returning(|_| {
+        Box::pin(async { Ok(AttendOutcome::Enrolled(EventEnrollmentStatus::Attendee)) })
+    });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/checkout"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!(
+            "event_ticket_type_id={}",
+            Uuid::new_v4()
+        )))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the enrollment status payload
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body, json!({ "status": "attendee" }));
+}
+
+#[tokio::test]
+async fn test_start_checkout_returns_internal_server_error_when_manager_fails() {
+    // Setup identifiers and an internal manager failure
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .returning(move |_| Ok(Some(community_id)));
+
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_start_checkout().times(1).returning(|_| {
+        Box::pin(async { Err(EnrollmentError::Other(anyhow!("provider unavailable"))) })
+    });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/checkout"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!(
+            "event_ticket_type_id={}",
+            Uuid::new_v4()
+        )))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the internal failure is hidden
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_start_checkout_returns_unprocessable_entity_for_rejection() {
+    // Setup identifiers and the missing ticket rejection
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .returning(move |_| Ok(Some(community_id)));
+
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager
+        .expect_start_checkout()
+        .times(1)
+        .withf(|input| input.checkout.event_ticket_type_id.is_none())
+        .returning(|_| {
+            Box::pin(async {
+                Err(EnrollmentError::Rejected(
+                    "ticket type is required".to_string(),
+                ))
+            })
+        });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
     let request = Request::builder()
         .method("POST")
         .uri(format!("/test-community/event/{event_id}/checkout"))
@@ -2849,7 +1720,7 @@ async fn test_start_checkout_validates_missing_ticket_type() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
+    // Check the rejection message is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
@@ -3051,6 +1922,8 @@ async fn test_track_view_rejects_cross_origin_request() {
 async fn test_track_view_rejects_missing_origin_request() {
     // Setup dependencies that must not record the unverified request
     let db = MockDB::new();
+
+    // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
     let mut activity_tracker = MockActivityTracker::new();
     activity_tracker.expect_track().never();

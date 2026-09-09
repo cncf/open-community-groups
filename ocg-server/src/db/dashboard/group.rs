@@ -1840,8 +1840,9 @@ pub(crate) struct EventAdmissionAllocation {
 }
 
 /// Conflict returned while allocating organizer-controlled event capacity.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub(crate) enum EventAdmissionAllocationConflict {
     /// Queue reconciliation consumed the final available seat.
     QueueHasPriority,

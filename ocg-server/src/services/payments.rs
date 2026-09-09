@@ -20,7 +20,8 @@ mod workers;
 
 pub(crate) use manager::{
     ApproveRefundRequestInput, CompleteRefundRecoveryInput, DynPaymentsManager, HandleWebhookError,
-    PgPaymentsManager, RejectRefundRequestInput, RequestRefundInput,
+    PaymentJobRecovery, PaymentsError, PgPaymentsManager, PrepareCheckoutOutcome,
+    RejectRefundRequestInput, RequestRefundInput,
 };
 pub(crate) use provider::{
     ApplicationFeeAdjustmentInput, AutomaticTaxReadiness, AutomaticTaxReadinessError,

@@ -7,34 +7,30 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
-use serde_json::{from_value, json};
+use serde_json::json;
 use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    services::notifications::MockNotificationsManager,
-    templates::notifications::EventAttendanceCanceled,
+    services::{
+        enrollment::{EnrollmentError, MockEnrollmentManager},
+        notifications::MockNotificationsManager,
+    },
     types::{
         dashboard::{DASHBOARD_PAGINATION_LIMIT, user::events::UserEventRole},
         event::{EventEnrollmentState, EventEnrollmentStatus, EventLeaveOutcome},
-        notifications::NotificationKind,
     },
 };
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
-async fn test_cancel_attendance_enqueues_cancellation_notification() {
-    // Setup identifiers and data structures
+async fn test_cancel_attendance_leaves_event_for_attendee() {
+    // Setup identifiers and the attendee enrollment
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
-    let event_for_notifications = event.clone();
-    let site_settings = sample_site_settings();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -46,62 +42,31 @@ async fn test_cancel_attendance_enqueues_cancellation_notification() {
     db.expect_get_event_enrollment()
         .times(1)
         .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| {
-            Ok(EventEnrollmentState {
-                is_checked_in: false,
-                status: EventEnrollmentStatus::Attendee,
+        .returning(|_, _, _| Ok(sample_enrollment_state(EventEnrollmentStatus::Attendee)));
 
-                admission_offer_id: None,
-                event_ticket_type_id: None,
-                external_payment: None,
-                manually_invited: false,
-                purchase_amount_minor: None,
-                purchase_charge_model: None,
-                refund_rejection_reason: None,
-                refund_request_status: None,
-                resume_checkout_url: None,
-            })
-        });
-    let mut tx = MockDB::new();
-    tx.expect_leave_event()
+    // Setup the enrollment manager expectation
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager
+        .expect_leave_event()
         .times(1)
-        .withf(move |cid, eid, uid, payment_provider| {
-            *cid == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && payment_provider.is_none()
+        .withf(move |input| {
+            input.community_id == community_id
+                && input.event_id == event_id
+                && input.user_id == user_id
         })
-        .returning(move |_, _, _, _| {
-            Ok(EventLeaveOutcome {
-                left_status: EventEnrollmentStatus::Attendee,
-            })
-        });
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    tx.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_for_notifications.clone()));
-    tx.expect_enqueue_notification()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
-                && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
-                        template.dashboard_link == "/dashboard/user?tab=events"
-                            && template.link == "/test-community/group/def5678/event/ghi9abc"
-                    })
+        .returning(|_| {
+            Box::pin(async {
+                Ok(EventLeaveOutcome {
+                    left_status: EventEnrollmentStatus::Attendee,
                 })
-        })
-        .returning(|_| Ok(()));
-    expect_successful_transaction(&mut db, tx);
+            })
+        });
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
     let request = Request::builder()
         .method("DELETE")
         .uri(format!(
@@ -124,77 +89,34 @@ async fn test_cancel_attendance_enqueues_cancellation_notification() {
 }
 
 #[tokio::test]
-async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
-    // Setup identifiers and data structures
+async fn test_cancel_attendance_returns_internal_server_error_when_manager_fails() {
+    // Setup identifiers and an internal manager failure
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
-    let site_settings = sample_site_settings();
 
     // Setup database mock
     let mut db = MockDB::new();
     expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
     db.expect_get_event_enrollment()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| {
-            Ok(EventEnrollmentState {
-                is_checked_in: false,
-                status: EventEnrollmentStatus::Attendee,
+        .returning(|_, _, _| Ok(sample_enrollment_state(EventEnrollmentStatus::Attendee)));
 
-                admission_offer_id: None,
-                event_ticket_type_id: None,
-                external_payment: None,
-                manually_invited: false,
-                purchase_amount_minor: None,
-                purchase_charge_model: None,
-                refund_rejection_reason: None,
-                refund_request_status: None,
-                resume_checkout_url: None,
-            })
-        });
-    let mut tx = MockDB::new();
-    tx.expect_leave_event()
-        .times(1)
-        .withf(move |cid, eid, uid, payment_provider| {
-            *cid == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && payment_provider.is_none()
-        })
-        .returning(|_, _, _, _| {
-            Ok(EventLeaveOutcome {
-                left_status: EventEnrollmentStatus::Attendee,
-            })
-        });
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    tx.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    tx.expect_enqueue_notification()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
-                && notification.recipients == vec![user_id]
-        })
-        .returning(|_| Err(anyhow!("queue error")));
-    expect_rolled_back_transaction(&mut db, tx);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_leave_event().times(1).returning(|_| {
+        Box::pin(async { Err(EnrollmentError::Other(anyhow!("queue unavailable"))) })
+    });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
     let request = Request::builder()
         .method("DELETE")
         .uri(format!(
@@ -207,7 +129,7 @@ async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
+    // Check the internal failure is hidden
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
 }
@@ -489,6 +411,8 @@ async fn test_submit_registration_answers_success() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
+
+    // Setup transaction mock
     let mut tx = MockDB::new();
     tx.expect_submit_event_registration_answers()
         .times(1)
@@ -557,6 +481,8 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
+
+    // Setup transaction mock
     let mut tx = MockDB::new();
     tx.expect_submit_event_registration_answers()
         .times(1)
@@ -600,4 +526,24 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
         &HeaderValue::from_static("refresh-user-dashboard-content"),
     );
     assert!(bytes.is_empty());
+}
+
+// Helpers.
+
+/// Builds an enrollment state with the given status and no purchase data.
+fn sample_enrollment_state(status: EventEnrollmentStatus) -> EventEnrollmentState {
+    EventEnrollmentState {
+        is_checked_in: false,
+        status,
+
+        admission_offer_id: None,
+        event_ticket_type_id: None,
+        external_payment: None,
+        manually_invited: false,
+        purchase_amount_minor: None,
+        purchase_charge_model: None,
+        refund_rejection_reason: None,
+        refund_request_status: None,
+        resume_checkout_url: None,
+    }
 }

@@ -3,8 +3,14 @@
 /// Open Badges credential service module.
 pub(crate) mod badges;
 
-/// Event enrollment reconciliation service module.
+/// Attendee check-in credential service module.
+pub(crate) mod check_in;
+
+/// Event attendance and group membership service module.
 pub(crate) mod enrollment;
+
+/// Dashboard event management service module.
+pub(crate) mod events;
 
 /// Images service module.
 pub(crate) mod images;

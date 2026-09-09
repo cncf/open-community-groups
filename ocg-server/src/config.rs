@@ -25,7 +25,10 @@ use ssi_verification_methods::ed25519_dalek::{SigningKey, VerifyingKey};
 use strum::AsRefStr;
 use tracing::instrument;
 
-use crate::types::payments::{PaymentMode, PaymentProvider};
+use crate::types::{
+    meetings::MeetingProvider,
+    payments::{PaymentMode, PaymentProvider},
+};
 
 /// Default organizer-confirmation window in hours for external payments.
 const DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS: i32 = 72;
@@ -265,6 +268,15 @@ pub(crate) struct MeetingsConfig {
 }
 
 impl MeetingsConfig {
+    /// Returns the maximum meeting participants configured per provider.
+    pub(crate) fn max_participants_by_provider(&self) -> HashMap<MeetingProvider, i32> {
+        let mut max_participants = HashMap::new();
+        if let Some(zoom) = &self.zoom {
+            max_participants.insert(MeetingProvider::Zoom, zoom.max_participants);
+        }
+        max_participants
+    }
+
     /// Check if at least one meetings provider is enabled.
     pub(crate) fn meetings_enabled(&self) -> bool {
         self.zoom.as_ref().is_some_and(|z| z.enabled)

@@ -24,8 +24,6 @@ use crate::{
     },
 };
 
-use super::events::{automatic_tax_handler_error, event_venue};
-
 #[cfg(test)]
 mod tests;
 
@@ -112,7 +110,7 @@ pub(crate) async fn update(
                 for event_id in event_ids {
                     let event = db.get_event_full(community_id, group_id, event_id).await?;
                     payments_manager
-                        .ensure_automatic_tax_readiness(recipient, &event_venue(&event))
+                        .ensure_automatic_tax_readiness(recipient, &event.ticket_venue())
                         .await
                         .map_err(|error| upcoming_event_automatic_tax_error(&event.name, error))?;
                 }
@@ -144,7 +142,7 @@ fn upcoming_event_automatic_tax_error(
     event_name: &str,
     error: AutomaticTaxReadinessError,
 ) -> HandlerError {
-    match automatic_tax_handler_error(error) {
+    match HandlerError::from(error) {
         HandlerError::Rejected(message) => HandlerError::Rejected(format!(
             "cannot update fiscal sponsor: upcoming event \"{event_name}\" is not ready for payments: {message}"
         )),

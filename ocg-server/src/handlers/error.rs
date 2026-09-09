@@ -9,7 +9,12 @@ use tokio_postgres::error::SqlState;
 use tracing::warn;
 
 use crate::{
-    db::USER_FACING_DB_ERROR_CODE, services::payments::FiscalSponsorReadinessError,
+    db::USER_FACING_DB_ERROR_CODE,
+    services::{
+        enrollment::EnrollmentError,
+        events::EventsError,
+        payments::{AutomaticTaxReadinessError, FiscalSponsorReadinessError, PaymentsError},
+    },
     types::search::FilterError,
 };
 
@@ -109,6 +114,33 @@ impl From<anyhow::Error> for HandlerError {
     }
 }
 
+impl From<AutomaticTaxReadinessError> for HandlerError {
+    fn from(err: AutomaticTaxReadinessError) -> Self {
+        match err {
+            AutomaticTaxReadinessError::Unexpected(err) => HandlerError::from(err),
+            err => HandlerError::Rejected(err.to_string()),
+        }
+    }
+}
+
+impl From<EnrollmentError> for HandlerError {
+    fn from(err: EnrollmentError) -> Self {
+        match err {
+            EnrollmentError::Other(err) => HandlerError::from(err),
+            EnrollmentError::Rejected(message) => HandlerError::Rejected(message),
+        }
+    }
+}
+
+impl From<EventsError> for HandlerError {
+    fn from(err: EventsError) -> Self {
+        match err {
+            EventsError::Other(err) => HandlerError::from(err),
+            EventsError::Rejected(message) => HandlerError::Rejected(message),
+        }
+    }
+}
+
 impl From<FilterError> for HandlerError {
     fn from(err: FilterError) -> Self {
         match err {
@@ -123,6 +155,15 @@ impl From<FiscalSponsorReadinessError> for HandlerError {
         match err {
             FiscalSponsorReadinessError::NotReady(message) => HandlerError::Rejected(message),
             FiscalSponsorReadinessError::Unexpected(err) => HandlerError::from(err),
+        }
+    }
+}
+
+impl From<PaymentsError> for HandlerError {
+    fn from(err: PaymentsError) -> Self {
+        match err {
+            PaymentsError::Other(err) => HandlerError::from(err),
+            PaymentsError::Rejected(message) => HandlerError::Rejected(message),
         }
     }
 }

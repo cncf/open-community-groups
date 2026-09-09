@@ -40,7 +40,7 @@ use verification::{VerifiedEmailIdentity, contains_unsupported_identifier, singl
 pub(crate) use award_worker::start_badge_award_workers;
 pub(crate) use contexts::{CID_CONTEXT_URL, MULTIKEY_CONTEXT_URL, OPEN_BADGES_CONTEXT_URL};
 pub(crate) use credential::{CredentialInput, EmailIdentity, rfc3339};
-pub(crate) use verification::VerifiedCredential;
+pub(crate) use verification::{VerificationError, VerifiedCredential, verify_submission};
 
 /// Trait for a badges manager, responsible for issuing, caching, and verifying
 /// Open Badges credentials and their issuer key material.
@@ -602,6 +602,11 @@ pub(crate) enum BadgesManagerError {
 
 /// Shared badges manager result.
 pub(crate) type Result<T> = std::result::Result<T, BadgesManagerError>;
+
+/// Builds the public URL for stored badge artwork.
+pub(crate) fn badge_image_url(image_file_name: &str) -> String {
+    format!("/images/badges/{image_file_name}")
+}
 
 /// Returns the stable display name for a group issuer profile.
 pub(crate) fn issuer_name(group_id: Uuid) -> String {

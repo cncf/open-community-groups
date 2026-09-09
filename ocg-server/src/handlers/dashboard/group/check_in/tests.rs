@@ -14,14 +14,14 @@ use crate::{
         TestRouterBuilder, assert_html_response, expect_authenticated_group_session,
         expect_group_permission,
     },
-    services::notifications::MockNotificationsManager,
+    services::{check_in::CheckInScanRejection, notifications::MockNotificationsManager},
     types::{
         dashboard::group::check_in::{CheckInAttendee, CheckInOutcome, CheckInScanResult},
         permissions::GroupPermission,
     },
 };
 
-use super::{parse_credential, scan_database_error_response};
+use super::scan_rejection_response;
 
 #[tokio::test]
 async fn test_list_page_returns_group_check_in_fragment() {
@@ -61,43 +61,6 @@ async fn test_list_page_returns_group_check_in_fragment() {
     // Verify the fragment renders its empty scanner state
     assert_html_response(&parts, &body, StatusCode::OK);
     assert!(String::from_utf8_lossy(&body).contains("No events available for check-in"));
-}
-
-#[test]
-fn test_parse_credential_accepts_versioned_payload() {
-    // Setup a versioned credential
-    let event_id = Uuid::from_u128(1);
-    let check_in_code = Uuid::from_u128(2);
-
-    // Parse and verify the credential identifiers
-    assert_eq!(
-        parse_credential(&format!("ocg-check-in:v1:{event_id}:{check_in_code}")),
-        Ok((event_id, check_in_code))
-    );
-}
-
-#[test]
-fn test_parse_credential_rejects_extra_fields() {
-    // Setup a credential carrying an unexpected field
-    let event_id = Uuid::from_u128(1);
-    let check_in_code = Uuid::from_u128(2);
-
-    // Parse and reject the credential
-    assert_eq!(
-        parse_credential(&format!("ocg-check-in:v1:{event_id}:{check_in_code}:extra")),
-        Err(())
-    );
-}
-
-#[test]
-fn test_parse_credential_rejects_unknown_version() {
-    // Parse and reject an unsupported credential version
-    assert_eq!(
-        parse_credential(
-            "ocg-check-in:v2:00000000-0000-0000-0000-000000000001:00000000-0000-0000-0000-000000000002"
-        ),
-        Err(())
-    );
 }
 
 #[tokio::test]
@@ -193,7 +156,8 @@ async fn test_scan_returns_mapped_database_domain_errors() {
 
     for (message, expected_status, expected_code) in cases {
         // Map and decode the typed response
-        let response = scan_database_error_response(message).unwrap();
+        let rejection = CheckInScanRejection::from_db_message(message).unwrap();
+        let response = scan_rejection_response(rejection);
         let (parts, body) = response.into_parts();
         let body: Value =
             serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();

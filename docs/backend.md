@@ -50,12 +50,11 @@ The test `layers::layer_dependencies_follow_backend_rules`
 (`ocg-server/src/layers.rs`, run by `just server-tests`) enforces these
 rules. It reads every Rust file under the layered directories, including
 tests, flattens the `crate::` paths each file references, and fails on a
-forbidden edge. `LAYER_EDGE_ALLOWANCES` is empty: no file crosses a layer
-edge in the wrong direction. `HANDLER_OPERATION_TYPE_ALLOWANCES` lists the
-handler files that still build `db` operation types, one entry per type; an
-allowance that no longer matches any edge also fails the test, so the list
-only shrinks. A change that removes an edge removes its allowance in the same
-change, and new code never adds one.
+forbidden edge. `LAYER_EDGE_ALLOWANCES` and
+`HANDLER_OPERATION_TYPE_ALLOWANCES` are both empty: no file crosses a layer
+edge in the wrong direction and no handler builds a `db` operation type. An
+allowance that no longer matches any edge also fails the test, so the lists
+can only stay empty; new code never adds one.
 
 Types that lower layers need from a higher one live in `types/` instead:
 meeting, image, and notification shapes (`types/{meetings,images,
@@ -87,7 +86,13 @@ a symptom of a boundary, not the rule for where a type goes.
 - `db/<module>.rs`: input and result types for that module's own SQL
   operations, consumed only by `db` and `services`.
 - `handlers/`: only response-only shapes that no other layer reads
-  (`EventAvailability`, HTMX trigger payloads).
+  (`EventAvailability`, HTMX trigger payloads) and request-shaping inputs that
+  the handler consumes itself (`EventActionQuery`, `TaxRatesQuery`).
+- Manager input and outcome types (`AttendEventInput`, `AttendOutcome`,
+  `EventActionInput`, `PaymentJobRecovery`) live in the manager module that
+  consumes them, next to the trait, following `services/payments/manager.rs`.
+  The validated forms they wrap (`EventAttendanceInput`, `CheckoutInput`,
+  `EventInput`, `EventActionScope`) live in `types/`.
 
 Placement inside `types/`:
 
@@ -167,25 +172,88 @@ Current managers and provider traits:
 
 - `services::badges::BadgesManager` (`SsiBadgesManager`), which signs,
   caches, and verifies Open Badges credentials with locally configured keys.
+- `services::enrollment::EnrollmentManager` (`PgEnrollmentManager`): event
+  attendance, checkout, self-service and organizer cancellation, organizer
+  invitations and request acceptance, and group membership.
+- `services::events::EventsManager` (`PgEventsManager`): organizer event
+  mutations (add, update, publish, unpublish, cancel, delete, series
+  expansion in `services/events/recurrence.rs`), fiscal sponsor validation
+  before paid changes, and automatic-tax readiness and Tax Rate lookups.
 - `services::notifications::NotificationsManager` (`PgNotificationsManager`)
   with the `EmailSender` provider trait.
 - `services::payments::PaymentsManager` (`PgPaymentsManager`) with the
   `PaymentsProvider` trait and the webhook reconciler, refund recorder, and
-  notification composer around it.
+  notification composer around it. It owns checkout hold preparation
+  (`prepare_checkout`) and payment job recovery
+  (`complete_payment_job_recovery`) so no handler builds `db::payments`
+  operation types.
 - `services::meetings::MeetingsProvider`, keyed by provider in
   `DynMeetingsProviders`.
 - `services::images::ImageStorage`.
 
 Everything that does not warrant a manager is a free function over
 `&dyn DBOperations` in `services/`, or stays in the handler when it is
-request shaping only.
+request shaping only: `services::images::validation` (upload format,
+extension, SVG, and dimension checks), `services::badges::verify_submission`
+(credential verification bound to durable awards), `services::check_in`
+(credential parsing and scan rejection classification), and the notification
+helpers in `services::notifications::{enqueue, payloads, best_effort}`.
 
 Manager wiring follows `setup_payments_manager` in `main.rs`; handler tests
 inject mocks through `TestRouterBuilder::with_*_manager`, whose defaults
 expect no calls.
 
-This section is completed with a worked example when the first domain
-manager extracted from the handlers lands.
+### Worked example: `EnrollmentManager::attend_event`
+
+`handlers/event.rs::attend_event` extracts `CurrentUser`, `CommunityId`, the
+event path parameter, and `ValidatedForm<EventAttendanceInput>`; it calls
+`enrollment_manager.attend_event(&AttendEventInput { .. })` and maps the returned
+`AttendOutcome` to the response:
+
+| Outcome | Status | Body |
+| --- | --- | --- |
+| `Conflict(code)` | 409 | `{"conflict": code}` |
+| `Enrolled(status)` | 200 | `{"status": status}` |
+| `ExternalPendingPayment(checkout)` | 200 | payment snapshot |
+| `CheckoutRedirect { .. }` | 200 | `redirect_url`, `hold_expires_at` |
+
+The manager owns everything else: the active-event guard, the single-ticket
+fallback, the deferred-answers rule for sold-out waitlist tickets, the
+`attend_event` call, the answers re-collection conflict, the checkout hold
+through `PaymentsManager::prepare_checkout`, free completion, the provider
+redirect, and the best-effort waitlist notification. Conflict codes are the
+kebab-case `Display` of the `db` conflict enums, so the manager returns
+`Conflict(String)` and handlers never import a `db` type.
+
+Manager methods return a typed error with exactly two variants,
+`Rejected(String)` and `Other(anyhow::Error)` (`EnrollmentError`,
+`EventsError`, `PaymentsError`). `Rejected` is a business decision made in
+Rust; `Other` wraps database and provider failures unchanged so
+`HandlerError::from(anyhow::Error)` can still classify `OCG01` rejections.
+Provider errors with their own user-facing variants
+(`FiscalSponsorReadinessError`, `AutomaticTaxReadinessError`) convert into
+the manager error with `From`, mapping correctable variants to `Rejected`.
+The explicit readiness check is the one exception: it returns
+`AutomaticTaxCheckError`, whose `Readiness` variant carries the full
+`AutomaticTaxReadinessError` for the endpoint's JSON contract and whose
+`Other` variant keeps context-loading failures (event, fiscal sponsor) on
+the regular `HandlerError::from(anyhow::Error)` path, so a database failure
+is never reported as a provider outage.
+
+Event mutations keep the JSON payload produced by `EventInput::to_db_payload`
+as the contract with the database: `services/events/recurrence.rs` shifts the
+nested schedule fields of that payload for each occurrence, and
+paid-capability detection reads the same shape. A typed
+`Unchanged | Clear | Set(T)` mutation was evaluated and not adopted because
+the payload is produced and consumed inside the manager and the database
+function is the only reader.
+
+Pure eligibility predicates take the clock as a parameter: the manager reads
+`Utc::now()` once per operation and passes it to
+`cancellation_notification_events`, `publication_notification_events`,
+`enqueue_event_rescheduled_notification`, and `EventSummary::is_past_at`.
+The `Utc::now()` convenience wrappers on `types/event.rs` stay for templates
+and delegate to the `*_at(now)` variants.
 
 ## Side-effect durability
 
@@ -200,11 +268,32 @@ Every side effect chooses its durability at the call site.
   `DBOperations`, so `tx: &dyn DBOperations` cannot enforce it.
 - **Best-effort** work runs after commit, is logged with `warn!` on failure
   together with the identifiers needed to reconstruct it, and never undoes or
-  fails the core operation. Best-effort notifications build their payload
-  and call `NotificationsManager::enqueue`.
+  fails the core operation. Best-effort event notifications go through
+  `services::notifications::best_effort::enqueue_event_notification_best_effort`,
+  which loads the event and site context, calls the supplied
+  `payloads::build_*` builder, enqueues through `NotificationsManager`, and
+  logs any failure. Best-effort notifications outside the event context
+  (`GroupWelcome`, team invitations, CFS updates) build their payload inline
+  and call `NotificationsManager::enqueue` inside a logged block.
 
 Enqueue helpers own the notification content; callers pass identifiers and
 configuration. Content assertions live with the helper, not with the caller.
+Organizer-authored custom notifications go through
+`enqueue::enqueue_tracked_{event,group}_custom_notification`, which build the
+`CustomNotificationTracking` audit record; the password sign-up verification
+payload comes from `payloads::build_email_verification_notification`. No
+handler constructs a `db`-owned notification type.
+
+A generic `Notifier` abstraction over required and best-effort notifications
+was evaluated and not adopted: no caller needs to be generic over the
+notification kind, so the named `enqueue::*` functions plus the best-effort
+helper are the final shape. `PaymentsNotificationComposer` keeps its own
+composition path.
+
+Durability has a limit that no code can remove: when the commit
+acknowledgement is lost (a connection dropped after `commit` was sent), the
+outcome is uncertain to the caller. Only the persisted state is authoritative;
+callers surface the error and never assume the write failed.
 
 ## Error contract
 
@@ -280,11 +369,11 @@ type is a tuple.
 Pure domain logic (recurrence expansion, eligibility predicates) lives in
 `services/` or `types/`, not under `handlers/`.
 
-Known gaps: several mutation handlers (`handlers/dashboard/group/events.rs`,
-`handlers/event.rs`, `handlers/dashboard/group/attendees.rs`, and others)
-still open transactions and build `db/` operation types themselves, and
-`handlers/dashboard/group/events/recurrence.rs` holds domain logic. These are
-being migrated; new handlers follow the shape above.
+Handlers that open a transaction directly are limited to single-write
+operations with no side effects (`submit_registration_answers`); every
+multi-step workflow is behind a manager. Response-only concerns stay in the
+handler: HTMX headers, the `AutomaticTaxReadiness*` JSON contract, the
+check-in scanner error envelope, and the "exactly one invite target" `400`.
 
 ## Test layering
 
@@ -295,11 +384,20 @@ Each behavior is proven at the cheapest layer able to prove it.
   headers, and body. Session and permission setup uses the shared helpers
   (`expect_authenticated_session`, `expect_authenticated_community_session`,
   `expect_authenticated_group_session`, `expect_community_permission`,
-  `expect_group_permission`); transactions use
-  `expect_successful_transaction` and `expect_rolled_back_transaction`.
+  `expect_group_permission`); the remaining direct transactions use
+  `expect_successful_transaction`. A handler behind a manager has one or two
+  manager expectations per test and no workflow `MockDB` expectations. Every
+  typed manager error is proven at the handler through the mock with three
+  tests: an `OCG01` database rejection (an `Other` wrapping
+  `HandlerError::Database`) returns 422 with its message, a `Rejected`
+  returns 422 with its message, and an internal failure returns 500 with an
+  empty body.
 - **Manager and service tests** (`services/**/tests.rs`) mock `MockDB` and
-  the provider traits and assert workflow order, commit or rollback, and
-  which side effects were enqueued.
+  the provider traits and assert workflow order, commit or rollback (through
+  `expect_begin` with a transaction `MockDB` whose `commit` or `rollback` is
+  expected), provider validation before any write, and which side effects
+  were enqueued. Manager tests do not import `handlers`; they keep their own
+  transaction helpers and sample builders.
 - **Notification content** is asserted in the enqueue helper tests
   (the `tests` module of `services/notifications/enqueue.rs`), not in the
   tests of the callers.
@@ -310,16 +408,21 @@ Each behavior is proven at the cheapest layer able to prove it.
   `types::tests` so test code follows the same dependency direction.
 - **Real JSON contracts** between SQL functions and Rust DTOs are asserted in
   `db/contract_tests` against a real database (`just db-contract-tests`).
-- **Real-database lifecycle behavior** that mocks cannot prove (rollback on
-  drop, commit failure) also lives under `db/contract_tests`.
+- **Real-database lifecycle behavior** that mocks cannot prove runs with
+  `just db-contract-tests`. `db/contract_tests/lifecycle.rs` proves the
+  `PgUnitOfWork` contract: a dropped transaction future rolls back and
+  returns a clean connection to the pool, an explicit `rollback` leaves
+  nothing visible, and a `commit` that trips a deferred constraint fails and
+  persists nothing. Manager compositions live next to the manager
+  (`services/enrollment/manager/contract_tests.rs`) and reuse the
+  `db::contract_tests::helpers` fixtures: the organizer cancellation commits
+  together with its required notification, and a failing required enqueue
+  rolls the attendance change back.
 
 A handler test is removed only when the PR names the test at the new layer
 that proves the same behavior: same failing call, same rollback or
 suppressed side effect, same status. Test counts are reported for
 information and never decide.
-
-This section is refined with the mock surface per layer when the first
-domain manager extracted from the handlers lands.
 
 ## Bounded operations and worker health
 

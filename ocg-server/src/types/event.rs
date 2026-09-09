@@ -17,9 +17,10 @@ use crate::{
         meetings::MeetingProvider,
         payments::{
             EventDiscountCode, EventPurchaseChargeModel, EventRefundRequestStatus, EventTicketType,
-            ExternalPaymentInfo, TicketTaxBehavior, TicketTaxCalculationMode, format_amount_minor,
+            ExternalPaymentInfo, TicketTaxBehavior, TicketTaxCalculationMode, TicketVenue,
+            format_amount_minor,
         },
-        questionnaire::QuestionnaireQuestion,
+        questionnaire::{OptionalQuestionnaireAnswersForm, QuestionnaireQuestion},
         user::{User, UserSummary},
     },
     validation::{MAX_LEN_EVENT_LABEL_NAME, trimmed_non_empty, valid_cfs_label_color},
@@ -202,9 +203,14 @@ impl EventSummary {
 
     /// Check if the event is in the past.
     pub fn is_past(&self) -> bool {
+        self.is_past_at(Utc::now())
+    }
+
+    /// Returns whether the event ended, or started without an end time, before `now`.
+    pub fn is_past_at(&self, now: DateTime<Utc>) -> bool {
         let reference_time = self.ends_at.or(self.starts_at);
         match reference_time {
-            Some(time) => time < Utc::now(),
+            Some(time) => time < now,
             None => false,
         }
     }
@@ -556,9 +562,14 @@ impl EventFull {
 
     /// Check if the event is in the past.
     pub fn is_past(&self) -> bool {
+        self.is_past_at(Utc::now())
+    }
+
+    /// Returns whether the event ended, or started without an end time, before `now`.
+    pub fn is_past_at(&self, now: DateTime<Utc>) -> bool {
         let reference_time = self.ends_at.or(self.starts_at);
         match reference_time {
-            Some(time) => time < Utc::now(),
+            Some(time) => time < now,
             None => false,
         }
     }
@@ -647,6 +658,20 @@ impl EventFull {
         let mut ids: Vec<Uuid> = ids.into_iter().collect();
         ids.sort();
         ids
+    }
+
+    /// Builds the provider venue from the persisted venue fields.
+    pub fn ticket_venue(&self) -> TicketVenue {
+        TicketVenue {
+            address: self.venue_address.clone().unwrap_or_default(),
+            city: self.venue_city.clone().unwrap_or_default(),
+            country_code: self.venue_country_code.clone().unwrap_or_default(),
+            name: self.venue_name.clone().unwrap_or_default(),
+            zip_code: self.venue_zip_code.clone().unwrap_or_default(),
+
+            state_code: self.venue_state_code.clone(),
+            state_name: self.venue_state_name.clone(),
+        }
     }
 
     /// Returns active ticket types shown in the tickets modal, sorted by price.
@@ -782,6 +807,18 @@ pub enum EventAdmissionOfferStatus {
     Expired,
     /// Offer is available for the recipient to claim.
     Pending,
+}
+
+/// Public RSVP, approval request, or waitlist form data.
+#[derive(Debug, Clone, Default, Deserialize, Validate)]
+pub(crate) struct EventAttendanceInput {
+    /// Ticket type selected by the attendee.
+    #[garde(skip)]
+    pub event_ticket_type_id: Option<Uuid>,
+    /// Questionnaire answers encoded as JSON.
+    #[serde(default, flatten)]
+    #[garde(dive)]
+    pub registration_answers: OptionalQuestionnaireAnswersForm,
 }
 
 /// Event category information.

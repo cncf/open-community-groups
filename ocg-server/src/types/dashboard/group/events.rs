@@ -15,7 +15,7 @@ use crate::{
         pagination::{Pagination, ToRawQuery},
         payments::{
             EventDiscountType, EventTicketTypeAvailability, TicketTaxBehavior,
-            TicketTaxCalculationMode,
+            TicketTaxCalculationMode, TicketVenue,
         },
         questionnaire::QuestionnaireQuestion,
     },
@@ -96,6 +96,17 @@ pub(crate) struct DiscountCodeInput {
     /// Maximum number of redemptions allowed.
     #[garde(range(min = 0))]
     pub total_available: Option<i32>,
+}
+
+/// Event management action scope requested by the dashboard.
+#[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventActionScope {
+    /// Apply the action to the linked event series.
+    Series,
+    /// Apply the action only to the selected event.
+    #[default]
+    This,
 }
 
 /// Event details for dashboard management.
@@ -316,6 +327,29 @@ pub(crate) struct EventInput {
 }
 
 impl EventInput {
+    /// Returns whether the form selects at least one manual Tax Rate.
+    pub(crate) fn has_manual_tax_selection(&self) -> bool {
+        self.tax_calculation_mode == TicketTaxCalculationMode::Manual
+            && self
+                .manual_tax_rate_ids
+                .as_ref()
+                .is_some_and(|rate_ids| !rate_ids.is_empty())
+    }
+
+    /// Builds the provider venue from the submitted venue fields.
+    pub(crate) fn ticket_venue(&self) -> TicketVenue {
+        TicketVenue {
+            address: self.venue_address.clone().unwrap_or_default(),
+            city: self.venue_city.clone().unwrap_or_default(),
+            country_code: self.venue_country_code.clone().unwrap_or_default(),
+            name: self.venue_name.clone().unwrap_or_default(),
+            zip_code: self.venue_zip_code.clone().unwrap_or_default(),
+
+            state_code: self.venue_state_code.clone(),
+            state_name: self.venue_state_name.clone(),
+        }
+    }
+
     /// Converts the dashboard form payload into the JSON shape used by the database.
     pub(crate) fn to_db_payload(&self) -> anyhow::Result<Value> {
         // Serialize the full event form into a mutable JSON object

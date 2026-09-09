@@ -1,70 +1,19 @@
-//! Background reconciliation for due event enrollment reservations.
+//! Event attendance and group membership workflows.
+//!
+//! The enrollment manager owns the self-service and organizer enrollment
+//! operations (attending, leaving, checkout, invitations, and group
+//! membership) together with their required and best-effort notifications.
+//! The enrollment worker reconciles due reservations in the background.
 
-use tokio_util::sync::CancellationToken;
-use tracing::error;
+mod manager;
+mod worker;
 
-use crate::{
-    db::DynDB,
-    services::workers::{
-        BackgroundTasks,
-        claim_loop::{self, ClaimLoopConfig},
-    },
-    types::payments::PaymentProvider,
+pub(crate) use manager::{
+    AcceptInvitationRequestInput, AdmissionAllocationOutcome, AttendEventInput, AttendOutcome,
+    DynEnrollmentManager, EnrollmentError, InviteAttendeeInput, LeaveEventInput,
+    OrganizerCancellationInput, PgEnrollmentManager, StartCheckoutInput,
 };
+pub(crate) use worker::start_enrollment_workers;
 
 #[cfg(test)]
-mod tests;
-
-/// Number of concurrent enrollment reconciliation workers.
-const NUM_ENROLLMENT_WORKERS: usize = 1;
-
-/// Starts workers that expire due enrollment reservations and fill capacity.
-pub(crate) fn start_enrollment_workers(
-    db: &DynDB,
-    payment_provider: Option<PaymentProvider>,
-    background_tasks: &BackgroundTasks,
-) {
-    // Start independent workers with shared graceful-shutdown coordination
-    for _ in 0..NUM_ENROLLMENT_WORKERS {
-        let worker = EnrollmentWorker {
-            cancellation_token: background_tasks.cancellation_token(),
-            db: db.clone(),
-            payment_provider,
-        };
-        background_tasks.spawn(async move {
-            worker.run().await;
-        });
-    }
-}
-
-/// Reconciles due enrollment work until graceful shutdown.
-struct EnrollmentWorker {
-    /// Coordinates graceful worker shutdown.
-    cancellation_token: CancellationToken,
-    /// Persists enrollment reconciliation transitions.
-    db: DynDB,
-    /// Payment provider configured for checkout cleanup.
-    payment_provider: Option<PaymentProvider>,
-}
-
-impl EnrollmentWorker {
-    /// Processes due enrollment reservations until graceful shutdown.
-    async fn run(&self) {
-        claim_loop::run(
-            &self.cancellation_token,
-            ClaimLoopConfig::default(),
-            || async {
-                // Map the optional reconciliation outcome to the shared claim contract
-                self.db
-                    .reconcile_next_event_enrollment(self.payment_provider)
-                    .await
-                    .map(|outcome| outcome.is_some())
-            },
-            |err| {
-                error!(error = %err, "error reconciling event enrollment");
-                None
-            },
-        )
-        .await;
-    }
-}
+pub(crate) use manager::{EnrollmentManager, MockEnrollmentManager};

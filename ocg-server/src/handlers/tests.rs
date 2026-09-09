@@ -28,6 +28,8 @@ use crate::{
     handlers::auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
     services::{
+        enrollment::{DynEnrollmentManager, MockEnrollmentManager},
+        events::{DynEventsManager, MockEventsManager},
         images::{DynImageStorage, MockImageStorage},
         notifications::{DynNotificationsManager, MockNotificationsManager},
         payments::{DynPaymentsManager, MockPaymentsManager},
@@ -52,7 +54,7 @@ use crate::{
                     GroupPageViewsStats,
                 },
                 attendees::Attendee,
-                events::{EventInput, GroupEvents},
+                events::GroupEvents,
                 home::UserGroupsByCommunity,
                 invitation_requests::InvitationRequest,
                 members::GroupMember,
@@ -75,10 +77,7 @@ use crate::{
             SessionProposal as EventSessionProposal,
         },
         group::{GroupFull, GroupMinimal, GroupRole, GroupRoleSummary, GroupSponsor},
-        payments::{
-            EventPurchaseStatus, EventPurchaseSummary, GroupPaymentRecipient, PaymentMode,
-            PaymentProvider,
-        },
+        payments::{EventPurchaseStatus, EventPurchaseSummary, PaymentMode},
         permissions::{CommunityPermission, GroupPermission},
         search::{BBox, SearchEventsOutput, SearchGroupsOutput},
         user::{User as TemplateUser, UserSummary},
@@ -86,8 +85,9 @@ use crate::{
 };
 
 pub(crate) use crate::types::tests::{
-    sample_community_summary, sample_event_full, sample_event_summary, sample_group_category,
-    sample_group_region, sample_group_summary, sample_site_settings, sample_template_user_with_id,
+    sample_community_summary, sample_event_form, sample_event_full, sample_event_summary,
+    sample_group_category, sample_group_payment_recipient, sample_group_region,
+    sample_group_summary, sample_site_settings,
 };
 
 // Helpers.
@@ -270,13 +270,6 @@ pub(crate) fn expect_group_permission(
                 && permission == expected_permission
         })
         .returning(|_, _, _, _| Ok(true));
-}
-
-/// Expect a transaction to roll back without committing.
-pub(crate) fn expect_rolled_back_transaction(db: &mut MockDB, mut tx: MockDB) {
-    tx.expect_commit().never();
-    tx.expect_rollback().times(1).returning(|| Ok(()));
-    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
 }
 
 /// Expect a transaction to commit without rolling back.
@@ -617,23 +610,6 @@ pub(crate) fn sample_event_cfs_session_proposal(session_proposal_id: Uuid) -> Ev
     }
 }
 
-/// Sample event form payload submitted from the dashboard.
-pub(crate) fn sample_event_form() -> EventInput {
-    EventInput {
-        category_id: Uuid::new_v4(),
-        description: "Event description".to_string(),
-        kind_id: "virtual".to_string(),
-        name: "Sample Event".to_string(),
-        timezone: "UTC".to_string(),
-
-        banner_url: Some("https://example.test/banner.png".to_string()),
-        capacity: Some(100),
-        description_short: Some("Short".to_string()),
-        waitlist_enabled: Some(false),
-        ..Default::default()
-    }
-}
-
 /// Sample event invitation used in dashboard user invitation tests.
 pub(crate) fn sample_event_invitation(event_id: Uuid) -> EventInvitation {
     EventInvitation {
@@ -796,15 +772,6 @@ pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
         slug: "test-group".to_string(),
 
         slug_pretty: None,
-    }
-}
-
-/// Sample Stripe payment recipient used in group dashboard tests.
-pub(crate) fn sample_group_payment_recipient() -> GroupPaymentRecipient {
-    GroupPaymentRecipient {
-        provider: PaymentProvider::Stripe,
-        recipient_id: "acct_test".to_string(),
-        seller_display_name: "Test Fiscal Sponsor".to_string(),
     }
 }
 
@@ -1131,25 +1098,6 @@ pub(crate) fn sample_team_member(accepted: bool) -> GroupTeamMember {
     }
 }
 
-/// Sample paid event payload for dashboard group event form tests.
-pub(crate) fn sample_paid_event_body() -> String {
-    let event_form = sample_event_form();
-
-    format!(
-        concat!(
-            "{}",
-            "&payment_currency_code=USD",
-            "&ticket_types_present=true",
-            "&ticket_types[0][active]=true",
-            "&ticket_types[0][order]=1",
-            "&ticket_types[0][price_windows][0][amount_minor]=1500",
-            "&ticket_types[0][seats_total]=25",
-            "&ticket_types[0][title]=General%20admission"
-        ),
-        serde_qs::to_string(&event_form).unwrap(),
-    )
-}
-
 /// Sample server configuration for testing `track_view` handlers.
 pub(crate) fn sample_tracking_server_cfg() -> HttpServerConfig {
     HttpServerConfig {
@@ -1325,6 +1273,8 @@ pub(crate) fn test_state_with_server_cfg(
             badges_config,
         )),
         db,
+        enrollment_manager: Arc::new(MockEnrollmentManager::new()),
+        events_manager: Arc::new(MockEventsManager::new()),
         image_storage,
         meetings_cfg: None,
         notifications_manager,
@@ -1339,6 +1289,8 @@ pub(crate) fn test_state_with_server_cfg(
 pub(crate) struct TestRouterBuilder {
     activity_tracker: Option<crate::activity_tracker::MockActivityTracker>,
     db: Box<MockDB>,
+    enrollment_manager: Option<MockEnrollmentManager>,
+    events_manager: Option<MockEventsManager>,
     image_storage: Option<MockImageStorage>,
     meetings_cfg: Option<crate::config::MeetingsConfig>,
     nm: MockNotificationsManager,
@@ -1353,6 +1305,8 @@ impl TestRouterBuilder {
         Self {
             activity_tracker: None,
             db: Box::new(db),
+            enrollment_manager: None,
+            events_manager: None,
             image_storage: None,
             meetings_cfg: None,
             nm,
@@ -1383,10 +1337,15 @@ impl TestRouterBuilder {
             payments_manager
         });
         let payments_manager = Arc::new(payments_manager) as DynPaymentsManager;
+        let enrollment_manager =
+            Arc::new(self.enrollment_manager.unwrap_or_default()) as DynEnrollmentManager;
+        let events_manager = Arc::new(self.events_manager.unwrap_or_default()) as DynEventsManager;
 
         router::setup(
             activity_tracker,
             db,
+            enrollment_manager,
+            events_manager,
             is,
             self.meetings_cfg,
             self.payments_cfg,
@@ -1404,6 +1363,21 @@ impl TestRouterBuilder {
         activity_tracker: crate::activity_tracker::MockActivityTracker,
     ) -> Self {
         self.activity_tracker = Some(activity_tracker);
+        self
+    }
+
+    /// Sets a custom enrollment manager.
+    pub(crate) fn with_enrollment_manager(
+        mut self,
+        enrollment_manager: MockEnrollmentManager,
+    ) -> Self {
+        self.enrollment_manager = Some(enrollment_manager);
+        self
+    }
+
+    /// Sets a custom events manager.
+    pub(crate) fn with_events_manager(mut self, events_manager: MockEventsManager) -> Self {
+        self.events_manager = Some(events_manager);
         self
     }
 

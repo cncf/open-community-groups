@@ -41,6 +41,8 @@ use crate::{
     },
     services::{
         badges::{DynBadgesManager, SsiBadgesManager},
+        enrollment::DynEnrollmentManager,
+        events::DynEventsManager,
         images::DynImageStorage,
         notifications::DynNotificationsManager,
         payments::DynPaymentsManager,
@@ -115,6 +117,10 @@ pub(crate) struct State {
     pub badges_manager: DynBadgesManager,
     /// Database handle.
     pub db: DynDB,
+    /// Enrollment manager handle.
+    pub enrollment_manager: DynEnrollmentManager,
+    /// Events manager handle.
+    pub events_manager: DynEventsManager,
     /// Image storage provider handle.
     pub image_storage: DynImageStorage,
     /// Meetings configuration.
@@ -141,6 +147,8 @@ pub(crate) struct State {
 pub(crate) async fn setup(
     activity_tracker: DynActivityTracker,
     db: DynDB,
+    enrollment_manager: DynEnrollmentManager,
+    events_manager: DynEventsManager,
     image_storage: DynImageStorage,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
@@ -168,6 +176,8 @@ pub(crate) async fn setup(
         activity_tracker,
         badges_manager: Arc::new(SsiBadgesManager::new(&server_cfg.base_url, badges_config)),
         db: db.clone(),
+        enrollment_manager,
+        events_manager,
         image_storage,
         meetings_cfg,
         notifications_manager,

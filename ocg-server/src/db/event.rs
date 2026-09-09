@@ -264,8 +264,9 @@ where
 }
 
 /// Conflict returned while registering public event attendance.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub(crate) enum AttendEventConflict {
     /// The event has no unallocated RSVP capacity.
     EventCapacityUnavailable,
