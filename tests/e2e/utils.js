@@ -232,6 +232,7 @@ export const TEST_PAYMENT_EVENT_SLUGS = {
 export const TEST_FINANCIAL_WORK_JOB_IDS = {
   applicationFeeAdjustment: "64555555-5555-5555-5555-555555555531",
   creditNote: "64555555-5555-5555-5555-555555555534",
+  exhaustedRefund: "64555555-5555-5555-5555-555555555527",
 };
 
 /** Seeded purchase document identifiers used by dashboard coverage. */

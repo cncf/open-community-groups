@@ -513,12 +513,12 @@ test.describe("group dashboard refunds", () => {
     await actionsMenu.locator("summary").click();
 
     // Retry the durable refund and wait for the attention queue refresh.
+    const retryPath = `/dashboard/group/payment-jobs/${TEST_FINANCIAL_WORK_JOB_IDS.exhaustedRefund}/retry`;
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
-          response.url().includes("/dashboard/group/refunds/") &&
-          response.url().endsWith("/retry") &&
+          new URL(response.url()).pathname === retryPath &&
           response.ok(),
       ),
       waitForRefundsResponse(organizerGroupPage),
