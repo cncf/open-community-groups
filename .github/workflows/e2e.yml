@@ -6,6 +6,15 @@ on:
       - main
   workflow_dispatch:
 
+# Cancel stale runs when a PR receives new commits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep in sync with ci.yml and cache.yml so Rust caches share keys.
+  RUST_TOOLCHAIN: 1.98.0
+
 jobs:
   changes:
     permissions:
@@ -21,6 +30,7 @@ jobs:
         with:
           filters: |
             e2e:
+              - '.github/actions/**'
               - '.github/workflows/e2e.yml'
               - '.github/workflows/tern.conf'
               - 'Cargo.lock'
@@ -35,22 +45,99 @@ jobs:
         id: manual
         run: echo "e2e=true" >> "$GITHUB_OUTPUT"
 
-  e2e-tests:
-    name: ${{ matrix.suite }}
+  build-server:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.e2e == 'true'
-    runs-on: ubuntu-latest
+    runs-on:
+      labels: ubuntu-latest-16-cores
+    permissions:
+      contents: read
+    env:
+      # Debuginfo is not needed by the e2e suite; skipping it speeds up the build and shrinks the
+      # artifact. Keep in sync with cache.yml (part of the cache key).
+      CARGO_PROFILE_DEV_DEBUG: 0
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: e2e-server
+
+      - name: Install Tailwind CSS
+        uses: ./.github/actions/install-tailwind
+
+      - name: Build e2e server binary
+        run: cargo build --bin ocg-server
+
+      - name: Upload e2e server binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocg-server-e2e
+          # Debug builds do not embed static assets (rust-embed reads dist/static from disk at
+          # runtime), so ship the generated assets together with the binary.
+          path: |
+            target/debug/ocg-server
+            ocg-server/dist/static
+          retention-days: 1
+          if-no-files-found: error
+
+  e2e-tests:
+    name: ${{ matrix.suite }}
+    needs:
+      - changes
+      - build-server
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.e2e == 'true'
+    runs-on:
+      labels: ubuntu-latest-16-cores
     strategy:
       fail-fast: false
       matrix:
         include:
-          - suite: Smoke
-            command: npx playwright test --config playwright.config.js --project=chromium-smoke --project=firefox-smoke --project=webkit-smoke
-            artifact_name: playwright-artifacts-smoke
-          - suite: Functional
-            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep
-            artifact_name: playwright-artifacts-deep
+          - suite: Smoke chromium
+            browsers: chromium
+            command: npx playwright test --config playwright.config.js --project=chromium-smoke
+            artifact_name: playwright-artifacts-smoke-chromium
+          - suite: Smoke firefox
+            browsers: firefox
+            command: npx playwright test --config playwright.config.js --project=firefox-smoke
+            artifact_name: playwright-artifacts-smoke-firefox
+          - suite: Smoke webkit
+            browsers: webkit
+            command: npx playwright test --config playwright.config.js --project=webkit-smoke
+            artifact_name: playwright-artifacts-smoke-webkit
+          - suite: Functional 1/6
+            browsers: chromium
+            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=1/6
+            artifact_name: playwright-artifacts-functional-1
+          - suite: Functional 2/6
+            browsers: chromium
+            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=2/6
+            artifact_name: playwright-artifacts-functional-2
+          - suite: Functional 3/6
+            browsers: chromium
+            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=3/6
+            artifact_name: playwright-artifacts-functional-3
+          - suite: Functional 4/6
+            browsers: chromium
+            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=4/6
+            artifact_name: playwright-artifacts-functional-4
+          - suite: Functional 5/6
+            browsers: chromium
+            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=5/6
+            artifact_name: playwright-artifacts-functional-5
+          - suite: Functional 6/6
+            browsers: chromium
+            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=6/6
+            artifact_name: playwright-artifacts-functional-6
           - suite: Visual
+            browsers: chromium
             command: npx playwright test --config playwright.config.js --grep @visual --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-visual
     permissions:
@@ -83,46 +170,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.98.0
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
 
       - name: Install Node.js dependencies
         working-directory: tests/e2e
         run: npm ci
 
-      - name: Install Playwright browsers
-        working-directory: tests/e2e
-        run: npx playwright install --with-deps
+      - name: Restore Playwright browsers cache
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          # Keep the key and install flags in sync with cache.yml, which warms this cache on main.
+          key: ${{ runner.os }}-playwright-${{ matrix.browsers }}-${{ hashFiles('tests/e2e/package-lock.json') }}
 
-      - name: Install Tailwind CSS
-        run: |
-          curl -sL https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.10/tailwindcss-linux-x64 -o tailwindcss
-          chmod +x tailwindcss
-          sudo mv tailwindcss /usr/local/bin/tailwindcss
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: tests/e2e
+        # Headless chromium projects only need the headless shell build.
+        run: npx playwright install --with-deps ${{ matrix.browsers == 'chromium' && '--only-shell' || '' }} ${{ matrix.browsers }}
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: tests/e2e
+        run: npx playwright install-deps ${{ matrix.browsers }}
 
       - name: Install tern
-        run: |
-          curl -sL https://github.com/jackc/tern/releases/download/v2.3.2/tern_2.3.2_linux_amd64.tar.gz -o tern.tar.gz
-          tar -xzf tern.tar.gz
-          sudo mv tern /usr/local/bin/tern
+        uses: ./.github/actions/install-tern
 
       - name: Create e2e tern config
         run: |
@@ -214,8 +293,18 @@ jobs:
             oidc: {}
           EOF
 
-      - name: Build e2e server binary
-        run: cargo build --bin ocg-server
+      - name: Download e2e server binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ocg-server-e2e
+          # The artifact root is the repository root; restores target/debug/ocg-server and
+          # ocg-server/dist/static in place.
+          path: .
+
+      - name: Verify e2e server artifact
+        run: |
+          test -x ./target/debug/ocg-server || chmod +x ./target/debug/ocg-server
+          ls ocg-server/dist/static/css/*.css >/dev/null
 
       - name: Start server and wait for it to be ready
         uses: JarvusInnovations/background-action@v1

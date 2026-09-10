@@ -1,0 +1,20 @@
+name: Install Tailwind CSS
+description: Install the pinned Tailwind CSS standalone binary required by the ocg-server build script.
+
+inputs:
+  version:
+    description: Tailwind CSS release tag to install.
+    required: false
+    default: v4.1.10
+
+runs:
+  using: composite
+  steps:
+    - name: Install Tailwind CSS
+      shell: bash
+      run: |
+        curl -sSL --fail --retry 3 \
+          "https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.version }}/tailwindcss-linux-x64" \
+          -o tailwindcss
+        chmod +x tailwindcss
+        sudo mv tailwindcss /usr/local/bin/tailwindcss

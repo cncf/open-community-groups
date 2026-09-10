@@ -93,7 +93,8 @@ export default defineConfig({
     {
       name: "chromium-mobile-deep",
       grep: mobileTestPattern,
-      use: { ...devices["iPhone 12"], ...deepUseOverrides },
+      // The iPhone device descriptor defaults to WebKit; keep the deep suite on Chromium.
+      use: { ...devices["iPhone 12"], browserName: "chromium", ...deepUseOverrides },
     },
   ],
   webServer,

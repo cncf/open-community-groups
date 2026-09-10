@@ -1,0 +1,21 @@
+name: Install tern
+description: Install the pinned tern migration tool release.
+
+inputs:
+  version:
+    description: tern release version to install (without the leading v).
+    required: false
+    default: 2.4.3
+
+runs:
+  using: composite
+  steps:
+    - name: Install tern
+      shell: bash
+      run: |
+        curl -sSL --fail --retry 3 \
+          "https://github.com/jackc/tern/releases/download/v${{ inputs.version }}/tern_${{ inputs.version }}_linux_amd64.tar.gz" \
+          -o tern.tar.gz
+        tar -xzf tern.tar.gz
+        sudo mv tern /usr/local/bin/tern
+        rm -f tern.tar.gz

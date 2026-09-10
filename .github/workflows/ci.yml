@@ -5,6 +5,15 @@ on:
     branches:
       - main
 
+# Cancel stale runs when a PR receives new commits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep in sync with e2e.yml and cache.yml so Rust caches share keys.
+  RUST_TOOLCHAIN: 1.98.0
+
 jobs:
   changes:
     permissions:
@@ -29,6 +38,7 @@ jobs:
               - '.github/workflows/tern.conf'
               - 'database/**'
             database_contracts:
+              - '.github/actions/**'
               - '.github/workflows/ci.yml'
               - 'Cargo.lock'
               - 'Cargo.toml'
@@ -56,6 +66,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - '**/*.md'
             server:
+              - '.github/actions/**'
               - '.github/workflows/ci.yml'
               - '.rustfmt.toml'
               - 'Cargo.lock'
@@ -72,17 +83,20 @@ jobs:
     needs: changes
     if: needs.changes.outputs.dependencies == 'true'
     permissions:
-      checks: write
       contents: read
     runs-on:
       labels: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - name: Run cargo audit
-        uses: rustsec/audit-check@v2.0.0
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+      - name: Run cargo audit
+        run: cargo audit
 
   check-js-files-format:
     needs: changes
@@ -99,29 +113,29 @@ jobs:
           prettier_version: 3.9.4
           prettier_options: --check ocg-server/static/js/**/*.js --config ocg-server/static/js/.prettierrc.yaml
 
-  lint-and-test-server:
+  lint-server:
     needs: changes
     if: needs.changes.outputs.server == 'true'
     runs-on:
-      labels: ubuntu-latest
+      labels: ubuntu-latest-16-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.98.0
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: clippy, rustfmt
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: clippy
       - name: Install Tailwind CSS
-        run: |
-          wget -O /usr/local/bin/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.10/tailwindcss-linux-x64
-          chmod +x /usr/local/bin/tailwindcss
-      - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- --deny warnings
+        uses: ./.github/actions/install-tailwind
       - name: Run rustfmt
         run: cargo fmt --all -- --check
-      - name: Run tests
-        run: cargo test
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- --deny warnings
 
   lint-markdown-files:
     needs: changes
@@ -152,6 +166,30 @@ jobs:
             --check \
             --configuration ocg-server/templates/.djlintrc \
             ocg-server/templates
+
+  test-server:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on:
+      labels: ubuntu-latest-16-cores
+    env:
+      # Keep in sync with test-database-contracts and cache.yml (part of the cache key).
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test
+      - name: Install Tailwind CSS
+        uses: ./.github/actions/install-tailwind
+      - name: Run tests
+        run: cargo test
 
   test-database:
     needs: changes
@@ -193,10 +231,14 @@ jobs:
   test-database-contracts:
     needs: changes
     if: needs.changes.outputs.database_contracts == 'true'
-    runs-on: ubuntu-latest
+    runs-on:
+      labels: ubuntu-latest-16-cores
     permissions:
       contents: read
       packages: read
+    env:
+      # Keep in sync with test-server and cache.yml (part of the cache key).
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     services:
       postgres:
         image: ghcr.io/cncf/open-community-groups/postgres-db-tests
@@ -213,20 +255,19 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.98.0
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test
       - name: Install just
         uses: taiki-e/install-action@just
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Install Tailwind CSS
-        run: |
-          wget -O /usr/local/bin/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.10/tailwindcss-linux-x64
-          chmod +x /usr/local/bin/tailwindcss
+        uses: ./.github/actions/install-tailwind
       - name: Install tern
-        run: |
-          curl -sL https://github.com/jackc/tern/releases/download/v2.3.2/tern_2.3.2_linux_amd64.tar.gz -o tern.tar.gz
-          tar -xzf tern.tar.gz
-          sudo mv tern /usr/local/bin/tern
+        uses: ./.github/actions/install-tern
       - name: Create contract test tern config
         run: |
           mkdir -p /tmp/ocg
