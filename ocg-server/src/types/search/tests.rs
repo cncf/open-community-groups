@@ -62,11 +62,9 @@ fn test_events_filters_new_list_sets_default_date_range_when_missing() {
     // Capture the time after
     let after = Utc::now().date_naive();
 
-    // Parse the dates from the filters
-    let date_from = filters.date_from.as_ref().expect("date_from to exist");
-    let date_to = filters.date_to.as_ref().expect("date_to to exist");
-    let date_from = NaiveDate::parse_from_str(date_from, "%Y-%m-%d").expect("valid date");
-    let date_to = NaiveDate::parse_from_str(date_to, "%Y-%m-%d").expect("valid date");
+    // Read the dates from the filters
+    let date_from = filters.date_from.expect("date_from to exist");
+    let date_to = filters.date_to.expect("date_to to exist");
     let expected_date_to = date_from
         .checked_add_months(Months::new(12))
         .expect("valid future date");
@@ -92,11 +90,9 @@ fn test_events_filters_new_calendar_sets_month_date_range() {
     // Capture the time after
     let after = Utc::now();
 
-    // Parse the dates from the filters
-    let date_from = filters.date_from.as_ref().expect("date_from to exist");
-    let date_from = NaiveDate::parse_from_str(date_from, "%Y-%m-%d").expect("valid date");
-    let date_to = filters.date_to.as_ref().expect("date_to to exist");
-    let date_to = NaiveDate::parse_from_str(date_to, "%Y-%m-%d").expect("valid date");
+    // Read the dates from the filters
+    let date_from = filters.date_from.expect("date_from to exist");
+    let date_to = filters.date_to.expect("date_to to exist");
     let month_first_day_before =
         NaiveDate::from_ymd_opt(before.year(), before.month(), 1).expect("valid date");
     let month_first_day_after =
@@ -128,9 +124,67 @@ fn test_events_filters_new_list_uses_provided_date_range() {
     .expect("filters to be created");
 
     // Check filters match expected values
-    assert_eq!(filters.date_from.as_deref(), Some("2031-01-15"));
-    assert_eq!(filters.date_to.as_deref(), Some("2031-02-20"));
+    assert_eq!(filters.date_from, NaiveDate::from_ymd_opt(2031, 1, 15));
+    assert_eq!(filters.date_to, NaiveDate::from_ymd_opt(2031, 2, 20));
     assert_eq!(filters.view_mode, Some(ViewMode::List));
+}
+
+#[test]
+fn test_events_filters_new_list_treats_blank_dates_as_missing() {
+    // Capture the time before
+    let before = Utc::now().date_naive();
+
+    // Create filters with blank date values, as sent by a cleared date input
+    let filters = SearchEventsFilters::new(&HeaderMap::new(), "date_from=&date_to=&view_mode=list")
+        .expect("filters to be created");
+
+    // Capture the time after
+    let after = Utc::now().date_naive();
+
+    // Check the default date range was applied
+    let date_from = filters.date_from.expect("date_from to exist");
+    let date_to = filters.date_to.expect("date_to to exist");
+    assert!(
+        date_from == before || date_from == after,
+        "date_from should match today"
+    );
+    assert_eq!(
+        date_to,
+        date_from
+            .checked_add_months(Months::new(12))
+            .expect("valid future date")
+    );
+}
+
+#[test]
+fn test_events_filters_new_rejects_invalid_dates() {
+    // Check invalid values in either date field fail at deserialization
+    for raw_query in [
+        "date_from=not-a-date",
+        "date_to=2031-13-45",
+        "date_from=2031/01/15",
+    ] {
+        let err = SearchEventsFilters::new(&HeaderMap::new(), raw_query)
+            .expect_err("invalid date to be rejected");
+        assert!(
+            matches!(err, FilterError::Parse(_)),
+            "{raw_query} should fail with a parse error, got: {err}"
+        );
+    }
+
+    // Check years PostgreSQL cannot cast fail at validation
+    for raw_query in [
+        "date_from=0000-01-01",
+        "date_from=-5000-01-01",
+        "date_to=%2B12345-01-01",
+    ] {
+        let err = SearchEventsFilters::new(&HeaderMap::new(), raw_query)
+            .expect_err("out of range year to be rejected");
+        assert!(
+            matches!(err, FilterError::Validation(_)),
+            "{raw_query} should fail with a validation error, got: {err}"
+        );
+    }
 }
 
 #[test]
@@ -164,8 +218,8 @@ fn test_events_filters_new_map_sets_bbox_and_pagination() {
 fn test_events_filters_to_raw_query_preserves_custom_values() {
     // Prepare filters
     let filters = SearchEventsFilters {
-        date_from: Some("2030-01-01".to_string()),
-        date_to: Some("2030-06-01".to_string()),
+        date_from: NaiveDate::from_ymd_opt(2030, 1, 1),
+        date_to: NaiveDate::from_ymd_opt(2030, 6, 1),
         event_category: vec!["conference".to_string()],
         include_bbox: Some(false),
         kind: vec![EventKind::Hybrid],
@@ -203,8 +257,8 @@ fn test_events_filters_to_raw_query_resets_default_values() {
     let date_from = Utc::now().date_naive();
     let date_to = date_from.checked_add_months(Months::new(12)).expect("valid date");
     let filters = SearchEventsFilters {
-        date_from: Some(date_from.to_string()),
-        date_to: Some(date_to.to_string()),
+        date_from: Some(date_from),
+        date_to: Some(date_to),
         event_category: vec!["meetup".to_string()],
         include_bbox: Some(true),
         kind: vec![EventKind::InPerson],

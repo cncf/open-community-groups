@@ -5,7 +5,7 @@ use axum::http::HeaderMap;
 use chrono::{Datelike, Months, NaiveDate, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{NoneAsEmptyString, serde_as, skip_serializing_none};
 use tracing::{instrument, trace};
 
 use crate::{
@@ -16,8 +16,8 @@ use crate::{
         pagination::{Pagination, ToRawQuery},
     },
     validation::{
-        MAX_ITEMS, MAX_LEN_DATE, MAX_LEN_M, MAX_LEN_SORT_KEY, MAX_PAGINATION_LIMIT,
-        trimmed_non_empty_opt, valid_latitude, valid_longitude,
+        MAX_ITEMS, MAX_LEN_M, MAX_LEN_SORT_KEY, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt,
+        valid_date_opt, valid_latitude, valid_longitude,
     },
 };
 
@@ -31,6 +31,7 @@ mod tests;
 /// This struct captures all possible filtering criteria for events including
 /// location-based filters (bounding box, distance), temporal filters (date range),
 /// categorical filters, etc.
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct SearchEventsFilters {
@@ -71,12 +72,16 @@ pub(crate) struct SearchEventsFilters {
     /// Southwest longitude of bounding box for map view.
     #[garde(custom(valid_longitude))]
     pub bbox_sw_lon: Option<f64>,
-    /// Start date for event filtering (YYYY-MM-DD format).
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DATE))]
-    pub date_from: Option<String>,
-    /// End date for event filtering (YYYY-MM-DD format).
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DATE))]
-    pub date_to: Option<String>,
+    /// Start date for event filtering (YYYY-MM-DD format, blank treated as missing).
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    #[garde(custom(valid_date_opt))]
+    pub date_from: Option<NaiveDate>,
+    /// End date for event filtering (YYYY-MM-DD format, blank treated as missing).
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    #[garde(custom(valid_date_opt))]
+    pub date_to: Option<NaiveDate>,
     /// Maximum distance in meters from user's location.
     #[garde(skip)]
     pub distance: Option<u64>,
@@ -138,7 +143,7 @@ impl SearchEventsFilters {
                 // Today
                 now.date_naive()
             };
-            filters.date_from = Some(default_date_from.to_string());
+            filters.date_from = Some(default_date_from);
         }
         if filters.date_to.is_none() {
             let default_to_date = if filters.view_mode == Some(ViewMode::Calendar) {
@@ -153,7 +158,7 @@ impl SearchEventsFilters {
                     .checked_add_months(Months::new(12))
                     .expect("valid date")
             };
-            filters.date_to = Some(default_to_date.to_string());
+            filters.date_to = Some(default_to_date);
         }
 
         // Set some defaults when the view mode is calendar or map
@@ -184,11 +189,12 @@ impl ToRawQuery for SearchEventsFilters {
     fn to_raw_query(&self) -> Result<String> {
         // Reset some filters we don't want to include in the query string
         let mut filters = self.clone();
-        if filters.date_from == Some(Utc::now().date_naive().to_string()) {
+        let today = Utc::now().date_naive();
+        if filters.date_from == Some(today) {
             filters.date_from = None;
         }
-        if let Some(date_to) = Utc::now().date_naive().checked_add_months(Months::new(12))
-            && filters.date_to == Some(date_to.to_string())
+        if let Some(date_to) = today.checked_add_months(Months::new(12))
+            && filters.date_to == Some(date_to)
         {
             filters.date_to = None;
         }

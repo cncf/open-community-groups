@@ -453,6 +453,31 @@ async fn test_search_events_success() {
 }
 
 #[tokio::test]
+async fn test_search_events_invalid_date_filter() {
+    // Setup database mock (search must not be reached)
+    let db = MockDB::new();
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/explore/events/search?date_from=not-a-date")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body, INVALID_REQUEST_PAYLOAD);
+}
+
+#[tokio::test]
 async fn test_search_events_with_location_headers_but_no_location_sensitive_filter_is_cached() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();

@@ -1,7 +1,7 @@
 //! Contract tests for the `DBCommon` and cross-cutting error functions.
 
 use anyhow::Result;
-use chrono::DateTime;
+use chrono::{DateTime, NaiveDate};
 use tokio_postgres::error::{DbError, SqlState};
 
 use crate::{
@@ -356,8 +356,8 @@ async fn db_contracts_search_events_deserializes() -> Result<()> {
     let filters = SearchEventsFilters {
         community: vec!["contract-community".to_string()],
 
-        date_from: Some("2099-01-01".to_string()),
-        date_to: Some("2099-12-31".to_string()),
+        date_from: NaiveDate::from_ymd_opt(2099, 1, 1),
+        date_to: NaiveDate::from_ymd_opt(2099, 12, 31),
         include_bbox: Some(true),
         limit: Some(10),
         offset: Some(0),

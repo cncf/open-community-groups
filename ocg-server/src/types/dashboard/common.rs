@@ -14,7 +14,7 @@ use crate::{
         dashboard,
         pagination::{Pagination, ToRawQuery},
     },
-    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
+    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt, valid_date_opt},
 };
 
 /// Shared audit log filter parameters.
@@ -28,10 +28,10 @@ pub(crate) struct AuditLogFilters {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub actor: Option<String>,
     /// Inclusive start date filter.
-    #[garde(skip)]
+    #[garde(custom(valid_date_opt))]
     pub date_from: Option<NaiveDate>,
     /// Inclusive end date filter.
-    #[garde(skip)]
+    #[garde(custom(valid_date_opt))]
     pub date_to: Option<NaiveDate>,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
