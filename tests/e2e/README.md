@@ -117,6 +117,24 @@ settings from `server-tests-e2e.yml`.
   `just db-load-tests-e2e-data`.
 - Firefox and WebKit only run the smoke suite.
 
+## CI Layout
+
+The `E2E` workflow builds the server binary once and runs the suite as
+parallel jobs, each with its own database and server instance:
+
+- `Smoke chromium`, `Smoke firefox`, `Smoke webkit`: one smoke project each.
+- `Functional 1/6` to `6/6`: the `chromium-deep` and `chromium-mobile-deep`
+  projects without `@visual` tests, sharded by spec file with `--shard`.
+- `Visual`: only the `@visual` tests on the deep projects.
+
+To reproduce a single functional shard locally:
+
+```sh
+cd tests/e2e; npx playwright test --config playwright.config.js \
+  --project=chromium-deep --project=chromium-mobile-deep \
+  --grep-invert @visual --shard=1/6
+```
+
 ## Troubleshooting
 
 - If navigation fails, verify the server is reachable at

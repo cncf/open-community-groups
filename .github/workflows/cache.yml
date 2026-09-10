@@ -1,0 +1,127 @@
+name: Warm caches
+
+# Populates the default-branch caches that PR runs (including stacked PRs) restore from.
+# Rust cache keys only depend on Cargo.lock / Cargo.toml / .cargo config / the toolchain and
+# CARGO* env set in the workflows, and the Playwright cache key only depends on the e2e
+# package-lock, so this only needs to run when the paths below change. The cache keys, env and
+# install commands below must match ci.yml and e2e.yml.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.cargo/**'
+      - '.github/actions/**'
+      - '.github/workflows/cache.yml'
+      - '.github/workflows/e2e.yml'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '**/Cargo.toml'
+      - 'tests/e2e/package-lock.json'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep in sync with ci.yml and e2e.yml so Rust caches share keys.
+  RUST_TOOLCHAIN: 1.98.0
+
+jobs:
+  clippy:
+    runs-on:
+      labels: ubuntu-latest-16-cores
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy, rustfmt
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: clippy
+          cache-on-failure: true
+      - name: Install Tailwind CSS
+        uses: ./.github/actions/install-tailwind
+      - name: Build clippy artifacts
+        run: cargo clippy --all-targets --all-features -- --deny warnings
+
+  test:
+    runs-on:
+      labels: ubuntu-latest-16-cores
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test
+          cache-on-failure: true
+      - name: Install Tailwind CSS
+        uses: ./.github/actions/install-tailwind
+      - name: Build test artifacts
+        run: cargo test --no-run
+
+  e2e-server:
+    runs-on:
+      labels: ubuntu-latest-16-cores
+    env:
+      CARGO_PROFILE_DEV_DEBUG: 0
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: e2e-server
+          cache-on-failure: true
+      - name: Install Tailwind CSS
+        uses: ./.github/actions/install-tailwind
+      - name: Build e2e server binary
+        run: cargo build --bin ocg-server
+
+  playwright-browsers:
+    runs-on:
+      labels: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browsers: [chromium, firefox, webkit]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+      - name: Install Node.js dependencies
+        working-directory: tests/e2e
+        run: npm ci
+      - name: Restore Playwright browsers cache
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ matrix.browsers }}-${{ hashFiles('tests/e2e/package-lock.json') }}
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: tests/e2e
+        # Headless chromium projects only need the headless shell build.
+        run: npx playwright install ${{ matrix.browsers == 'chromium' && '--only-shell' || '' }} ${{ matrix.browsers }}
