@@ -25,173 +25,79 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url,
-    og_image_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png',
-    'https://example.com/community-og.png'
-);
+-- Community returned in group details
+select fx_community(:'communityID', jsonb_build_object(
+    'banner_mobile_url', 'https://example.com/banner_mobile.png',
+    'banner_url', 'https://example.com/banner.png',
+    'display_name', 'Cloud Native Seattle Group Full By Slug',
+    'logo_url', 'https://example.com/logo.png',
+    'name', 'cloud-native-seattle-group-full-by-slug',
+    'og_image_url', 'https://example.com/community-og.png'
+));
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+-- Group category returned in group details
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Technology'));
 
 -- Region
 insert into region (region_id, name, community_id)
 values (:'regionID', 'North America', :'communityID');
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    created_at,
-    bio,
-    company,
-    name,
-    photo_url,
-    title
-)
-values
-    (
-        :'organizer1ID',
-        'test_hash',
-        'organizer1@example.com',
-        true,
-        'organizer1',
-        '2024-01-01 00:00:00',
-        'Group founder and speaker',
-        'Tech Corp',
-        'John Doe',
-        'https://example.com/john.png',
-        'CTO'
-    ),
-    (
-        :'organizer2ID',
-        'test_hash',
-        'organizer2@example.com',
-        true,
-        'organizer2',
-        '2024-01-01 00:00:00',
-        'Community events coordinator',
-        'Dev Inc',
-        'Jane Smith',
-        'https://example.com/jane.png',
-        'Lead Dev'
-    ),
-    (
-        :'memberID',
-        'test_hash',
-        'member@example.com',
-        true,
-        'member1',
-        '2024-01-01 00:00:00',
-        null,
-        'StartUp',
-        'Bob Wilson',
-        'https://example.com/bob.png',
-        'Engineer'
-    );
+-- Organizers and member returned in group details
+select fx_user(:'organizer1ID', jsonb_build_object(
+    'bio', 'Group founder and speaker',
+    'company', 'Tech Corp',
+    'name', 'John Doe',
+    'photo_url', 'https://example.com/john.png',
+    'title', 'CTO',
+    'username', 'organizer1'
+));
+select fx_user(:'organizer2ID', jsonb_build_object(
+    'bio', 'Community events coordinator',
+    'company', 'Dev Inc',
+    'name', 'Jane Smith',
+    'photo_url', 'https://example.com/jane.png',
+    'title', 'Lead Dev',
+    'username', 'organizer2'
+));
+select fx_user(:'memberID', jsonb_build_object(
+    'company', 'StartUp',
+    'photo_url', 'https://example.com/bob.png'
+));
 
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    region_id,
-    description,
-    logo_url,
-    og_image_url,
-    banner_url,
-    city,
-    state,
-    country_code,
-    country_name,
-    location,
-    tags,
-    website_url,
-    bluesky_url,
-    facebook_url,
-    twitter_url,
-    linkedin_url,
-    github_url
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Kubernetes NYC',
-    'abc1234',
-    :'regionID',
-    'New York Kubernetes meetup group for cloud native enthusiasts',
-    'https://example.com/k8s-logo.png',
-    'https://example.com/group-og.png',
-    'https://example.com/k8s-banner.png',
-    'New York',
-    'NY',
-    'US',
-    'United States',
-    ST_GeogFromText('POINT(-74.0060 40.7128)'),
-    array['kubernetes', 'cloud-native', 'devops'],
-    'https://k8s-nyc.example.com',
-    'https://bsky.app/profile/k8snyc',
-    'https://facebook.com/k8snyc',
-    'https://twitter.com/k8snyc',
-    'https://linkedin.com/company/k8snyc',
-    'https://github.com/k8snyc'
-);
+-- Group returned by full-detail slug lookup
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'banner_url', 'https://example.com/k8s-banner.png',
+    'bluesky_url', 'https://bsky.app/profile/k8snyc',
+    'city', 'New York',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'description', 'New York Kubernetes meetup group for cloud native enthusiasts',
+    'facebook_url', 'https://facebook.com/k8snyc',
+    'github_url', 'https://github.com/k8snyc',
+    'linkedin_url', 'https://linkedin.com/company/k8snyc',
+    'location', ST_GeogFromText('POINT(-74.0060 40.7128)'),
+    'logo_url', 'https://example.com/k8s-logo.png',
+    'name', 'Kubernetes NYC',
+    'og_image_url', 'https://example.com/group-og.png',
+    'region_id', :'regionID',
+    'slug', 'abc1234',
+    'state', 'NY',
+    'tags', array['kubernetes', 'cloud-native', 'devops'],
+    'twitter_url', 'https://twitter.com/k8snyc',
+    'website_url', 'https://k8s-nyc.example.com'
+));
 
--- Group variants
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted,
+-- Deleted group variant excluded from slug lookup
+select fx_group(:'groupDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true,
+    'slug', 'deleted-kubernetes-nyc'
+));
 
-    slug_pretty
-) values
-    (
-        :'groupDeletedID',
-        :'communityID',
-        :'groupCategoryID',
-        'Deleted Kubernetes NYC',
-        'deleted-kubernetes-nyc',
-        false,
-        true,
-
-        null
-    ),
-    (
-        :'groupPrettySlugID',
-        :'communityID',
-        :'groupCategoryID',
-        'Pretty Slug Kubernetes NYC',
-        'pretty-slug-kubernetes-nyc',
-        true,
-        false,
-
-        'kubernetes-nyc'
-    );
+-- Pretty slug variant resolved by alternate slug
+select fx_group(:'groupPrettySlugID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'slug_pretty', 'kubernetes-nyc'
+));
 
 -- Group Member
 insert into group_member (group_id, user_id, created_at)
@@ -276,9 +182,9 @@ select is(
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "community_id": "%s",
-            "display_name": "Cloud Native Seattle",
+            "display_name": "Cloud Native Seattle Group Full By Slug",
             "logo_url": "https://example.com/logo.png",
-            "name": "cloud-native-seattle",
+            "name": "cloud-native-seattle-group-full-by-slug",
             "og_image_url": "https://example.com/community-og.png"
         },
         "github_url": "https://github.com/k8snyc",

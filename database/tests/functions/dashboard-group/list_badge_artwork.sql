@@ -21,17 +21,10 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community that owns the gallery
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Gallery Community', '/logo', 'gallery-community');
-
--- Category used by the gallery group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the gallery
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Gallery Group', 'gallery-group');
+-- Baseline communities, group categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Reusable gallery artwork
 insert into badge_artwork (badge_artwork_id, created_at, file_name, group_id)

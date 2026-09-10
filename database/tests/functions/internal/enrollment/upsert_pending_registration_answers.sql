@@ -1,0 +1,246 @@
+-- Tests upserting pending checkout registration answers.
+
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
+begin;
+select plan(11);
+
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '79300000-0000-0000-0000-000000000001'
+\set canceledUserID '79300000-0000-0000-0000-000000000009'
+\set confirmedUserID '79300000-0000-0000-0000-000000000008'
+\set eventCategoryID '79300000-0000-0000-0000-000000000003'
+\set eventID '79300000-0000-0000-0000-000000000005'
+\set groupCategoryID '79300000-0000-0000-0000-000000000002'
+\set groupID '79300000-0000-0000-0000-000000000004'
+\set noQuestionsUserID '79300000-0000-0000-0000-000000000006'
+\set pendingUserID '79300000-0000-0000-0000-000000000007'
+\set registrationQuestionID '79300000-0000-0000-0000-000000000101'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'canceledUserID');
+select fx_user(:'confirmedUserID');
+select fx_user(:'noQuestionsUserID');
+select fx_user(:'pendingUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Event
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
+
+-- Existing confirmed attendee that must not be converted back to pending
+insert into event_attendee (event_id, user_id, registration_answers, status)
+values (
+    :'eventID',
+    :'confirmedUserID',
+    jsonb_build_object(
+        'answers',
+        jsonb_build_array(jsonb_build_object(
+            'question_id', :'registrationQuestionID',
+            'value', 'Original'
+        ))
+    ),
+    'confirmed'
+);
+
+-- Existing canceled attendee whose answers must be replaced on repurchase
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    registration_answers,
+    status,
+    user_id
+) values (
+    current_timestamp,
+    :'confirmedUserID',
+    :'eventID',
+    jsonb_build_object(
+        'answers',
+        jsonb_build_array(jsonb_build_object(
+            'question_id', :'registrationQuestionID',
+            'value', 'Stale'
+        ))
+    ),
+    'attendance-canceled',
+    :'canceledUserID'
+);
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Should ignore events without registration questions
+select lives_ok(
+    format($$
+        select upsert_pending_registration_answers(
+            %L::uuid,
+            %L::uuid,
+            '[]'::jsonb,
+            '{"answers": [{"question_id": "%s", "value": "Ignored"}]}'::jsonb
+        )
+    $$, :'eventID', :'noQuestionsUserID', :'registrationQuestionID'),
+    'Should ignore events without registration questions'
+);
+
+select is(
+    (
+        select count(*)::int
+        from event_attendee
+        where event_id = :'eventID'::uuid
+        and user_id = :'noQuestionsUserID'::uuid
+    ),
+    0,
+    'Should not create a pending attendee row when no questions are configured'
+);
+
+-- Should validate answers before writing the attendee row
+select throws_ok(
+    format($$
+        select upsert_pending_registration_answers(
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            null
+        )
+    $$, :'eventID', :'pendingUserID', :'registrationQuestionID'),
+    'OCG01',
+    'questionnaire answers are required',
+    'Should validate answers before writing the attendee row'
+);
+
+-- Should insert a new pending attendee row with answers
+select lives_ok(
+    format($$
+        select upsert_pending_registration_answers(
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            '{"answers": [{"question_id": "%s", "value": "Initial"}]}'::jsonb
+        )
+    $$, :'eventID', :'pendingUserID', :'registrationQuestionID', :'registrationQuestionID'),
+    'Should insert a new pending attendee row with answers'
+);
+
+select results_eq(
+    format($$
+        select status, registration_answers
+        from event_attendee
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventID', :'pendingUserID'),
+    format(
+        $$ values ('registration-questions-pending'::text, '{"answers": [{"question_id": "%s", "value": "Initial"}]}'::jsonb) $$,
+        :'registrationQuestionID'
+    ),
+    'Should store the pending registration answers'
+);
+
+-- Should refresh answers for an existing pending attendee row
+select lives_ok(
+    format($$
+        select upsert_pending_registration_answers(
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            '{"answers": [{"question_id": "%s", "value": "Updated"}]}'::jsonb
+        )
+    $$, :'eventID', :'pendingUserID', :'registrationQuestionID', :'registrationQuestionID'),
+    'Should refresh answers for an existing pending attendee row'
+);
+
+select is(
+    (
+        select registration_answers
+        from event_attendee
+        where event_id = :'eventID'::uuid
+        and user_id = :'pendingUserID'::uuid
+    ),
+    format(
+        $${"answers": [{"question_id": "%s", "value": "Updated"}]}$$,
+        :'registrationQuestionID'
+    )::jsonb,
+    'Should update the existing pending attendee answers'
+);
+
+-- Should revive canceled attendance with the new pending answers
+select lives_ok(
+    format($$
+        select upsert_pending_registration_answers(
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            '{"answers": [{"question_id": "%s", "value": "Repurchase"}]}'::jsonb
+        )
+    $$, :'eventID', :'canceledUserID', :'registrationQuestionID', :'registrationQuestionID'),
+    'Should revive canceled attendance for a new pending checkout'
+);
+
+select results_eq(
+    format($$
+        select
+            attendance_canceled_at is null,
+            attendance_canceled_by_user_id is null,
+            registration_answers,
+            status
+        from event_attendee
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventID', :'canceledUserID'),
+    format($$ values (
+        true,
+        true,
+        '{"answers": [{"question_id": "%s", "value": "Repurchase"}]}'::jsonb,
+        'registration-questions-pending'::text
+    ) $$, :'registrationQuestionID'),
+    'Should replace canceled attendance metadata and stale answers'
+);
+
+-- Should leave confirmed attendees untouched on conflict
+select lives_ok(
+    format($$
+        select upsert_pending_registration_answers(
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            '{"answers": [{"question_id": "%s", "value": "Ignored"}]}'::jsonb
+        )
+    $$, :'eventID', :'confirmedUserID', :'registrationQuestionID', :'registrationQuestionID'),
+    'Should leave confirmed attendees untouched on conflict'
+);
+
+select results_eq(
+    format($$
+        select status, registration_answers
+        from event_attendee
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventID', :'confirmedUserID'),
+    format(
+        $$ values ('confirmed'::text, '{"answers": [{"question_id": "%s", "value": "Original"}]}'::jsonb) $$,
+        :'registrationQuestionID'
+    ),
+    'Should keep confirmed attendee status and answers unchanged'
+);
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
+select * from finish();
+rollback;

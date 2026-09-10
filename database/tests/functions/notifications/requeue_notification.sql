@@ -9,20 +9,19 @@ select plan(17);
 -- VARIABLES
 -- ============================================================================
 
-\set notificationCappedDelayID '8a070000-0000-0000-0000-000000000005'
-\set notificationMaxAttemptsID '8a070000-0000-0000-0000-000000000001'
-\set notificationProcessedID '8a070000-0000-0000-0000-000000000002'
-\set notificationRetryID '8a070000-0000-0000-0000-000000000003'
-\set notificationStaleClaimID '8a070000-0000-0000-0000-000000000006'
-\set userID '8a070000-0000-0000-0000-000000000004'
+\set notificationCappedDelayID '8a000000-0000-0000-0000-000000000005'
+\set notificationMaxAttemptsID '8a000000-0000-0000-0000-000000000001'
+\set notificationProcessedID '8a000000-0000-0000-0000-000000000002'
+\set notificationRetryID '8a000000-0000-0000-0000-000000000003'
+\set notificationStaleClaimID '8a000000-0000-0000-0000-000000000006'
+\set userID '8a000000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- User who owns the retry notifications
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'user@example.com', true, 'user');
+select fx_user(:'userID', jsonb_build_object('username', 'user-requeue-notification'));
 
 -- Processing and processed notifications used by the retry scenarios
 insert into notification (

@@ -1699,104 +1699,171 @@ insert into event_refund_request (
     '00000000-0000-0000-0000-00000000c041'
 );
 
--- Provider refund records used by approval and recovery contracts
-insert into event_purchase_refund (
-    event_purchase_refund_id,
-    amount_minor,
-    currency_code,
+-- Provider refund job used by approval contracts
+insert into payment_job (
     event_purchase_id,
     idempotency_key,
     kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    '00000000-0000-0000-0000-00000000c0f6',
+    'event-purchase-refund-00000000-0000-0000-0000-00000000c0f6',
+    'event-purchase-refund',
+    '00000000-0000-0000-0000-00000000c139',
+    'stripe',
+    'pending'
+);
+
+-- Provider refund recovery job used by recovery contracts
+insert into payment_job (
+    event_purchase_id,
+    failure_message,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    '00000000-0000-0000-0000-00000000c0fd',
+    'provider refund failed: re_contract_refund_failed',
+    'event-purchase-refund-00000000-0000-0000-0000-00000000c0fd-recovery',
+    'event-purchase-refund',
+    '00000000-0000-0000-0000-00000000c13a',
+    'stripe',
+    'failed'
+);
+
+-- Provider refund records used by approval and recovery contracts
+insert into event_purchase_refund (
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    kind,
+    payment_job_id,
     payment_provider_id,
     status,
 
     event_refund_request_id,
-    failure_message,
     finalized_at,
     provider_refund_id,
     provider_refunded_at
 ) values
     (
-        '00000000-0000-0000-0000-00000000c0fa',
         2500,
         'USD',
         '00000000-0000-0000-0000-00000000c0f6',
-        'event-purchase-refund-00000000-0000-0000-0000-00000000c0f6',
+        '00000000-0000-0000-0000-00000000c0fa',
         'refund-request-approval',
+        '00000000-0000-0000-0000-00000000c139',
         'stripe',
         'provider-succeeded',
 
         '00000000-0000-0000-0000-00000000c0f7',
         null,
-        null,
         're_contract_refund_approve',
         '2024-01-11 10:00:00+00'
     ),
     (
-        '00000000-0000-0000-0000-00000000c0fe',
         2500,
         'USD',
         '00000000-0000-0000-0000-00000000c0fd',
-        'event-purchase-refund-00000000-0000-0000-0000-00000000c0fd-recovery',
+        '00000000-0000-0000-0000-00000000c0fe',
         'automatic-unfulfillable-checkout',
+        '00000000-0000-0000-0000-00000000c13a',
         'stripe',
         'provider-failed',
 
         null,
-        'provider refund failed: re_contract_refund_failed',
         '2024-01-12 10:00:00+00',
         null,
         null
     );
 
--- Exhausted application-fee adjustment used by dashboard recovery contracts
-insert into event_purchase_application_fee_adjustment (
-    amount_minor,
+-- Exhausted application-fee adjustment job used by dashboard recovery contracts
+insert into payment_job (
     attempt_count,
-    event_purchase_application_fee_adjustment_id,
     event_purchase_id,
     failure_message,
     idempotency_key,
     kind,
+    payment_job_id,
+    payment_provider_id,
     status,
     updated_at
 ) values (
-    25,
     10,
-    '00000000-0000-0000-0000-00000000c119',
     '00000000-0000-0000-0000-00000000c0f8',
     'Contract application-fee failure',
     'contract-financial-recovery-adjustment',
-    'purchase-refund',
+    'event-purchase-application-fee-adjustment',
+    '00000000-0000-0000-0000-00000000c137',
+    'stripe',
     'failed',
     '2024-02-03 10:00:00+00'
+);
+
+-- Exhausted application-fee adjustment used by dashboard recovery contracts
+insert into event_purchase_application_fee_adjustment (
+    amount_minor,
+    event_purchase_application_fee_adjustment_id,
+    event_purchase_id,
+    kind,
+    payment_job_id,
+    updated_at
+) values (
+    25,
+    '00000000-0000-0000-0000-00000000c119',
+    '00000000-0000-0000-0000-00000000c0f8',
+    'purchase-refund',
+    '00000000-0000-0000-0000-00000000c137',
+    '2024-02-03 10:00:00+00'
+);
+
+-- Exhausted credit note job used by dashboard recovery contracts
+insert into payment_job (
+    attempt_count,
+    event_purchase_id,
+    failure_message,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status,
+    updated_at
+) values (
+    10,
+    '00000000-0000-0000-0000-00000000c0f6',
+    'Contract credit-note failure',
+    'contract-financial-recovery-credit-note',
+    'event-purchase-credit-note',
+    '00000000-0000-0000-0000-00000000c138',
+    'stripe',
+    'failed',
+    '2024-02-04 10:00:00+00'
 );
 
 -- Exhausted credit note used by dashboard recovery contracts
 insert into event_purchase_credit_note (
     amount_minor,
-    attempt_count,
     currency_code,
     event_purchase_credit_note_id,
     event_purchase_refund_id,
-    failure_message,
-    idempotency_key,
+    payment_job_id,
     payment_provider_id,
     provider_object_account_id,
-    status,
     tax_amount_minor,
     updated_at
 ) values (
     2500,
-    10,
     'USD',
     '00000000-0000-0000-0000-00000000c11a',
     '00000000-0000-0000-0000-00000000c0fa',
-    'Contract credit-note failure',
-    'contract-financial-recovery-credit-note',
+    '00000000-0000-0000-0000-00000000c138',
     'stripe',
     'acct_contract',
-    'failed',
     0,
     '2024-02-04 10:00:00+00'
 );
@@ -1866,13 +1933,31 @@ insert into event_purchase (
     '{}'::jsonb
 );
 
+-- Provider refund job used by document contracts
+insert into payment_job (
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    '00000000-0000-0000-0000-00000000c11b',
+    'event-purchase-refund-contract-documents',
+    'event-purchase-refund',
+    '00000000-0000-0000-0000-00000000c136',
+    'stripe',
+    'pending'
+);
+
+-- Provider refund used by document contracts
 insert into event_purchase_refund (
     amount_minor,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     provider_refund_id,
     provider_refunded_at,
@@ -1882,34 +1967,70 @@ insert into event_purchase_refund (
     'USD',
     '00000000-0000-0000-0000-00000000c11b',
     '00000000-0000-0000-0000-00000000c11c',
-    'event-purchase-refund-contract-documents',
     'automatic-unfulfillable-checkout',
+    '00000000-0000-0000-0000-00000000c136',
     'stripe',
     're_contract_documents',
     '2024-02-02 10:00:00+00',
     'provider-succeeded'
 );
 
+-- Pending application-fee adjustment job used by document contracts
+insert into payment_job (
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    '00000000-0000-0000-0000-00000000c11b',
+    'event-purchase-application-fee-adjustment-contract-documents',
+    'event-purchase-application-fee-adjustment',
+    '00000000-0000-0000-0000-00000000c134',
+    'stripe',
+    'pending'
+);
+
+-- Pending application-fee adjustment used by document contracts
 insert into event_purchase_application_fee_adjustment (
     amount_minor,
     event_purchase_application_fee_adjustment_id,
     event_purchase_id,
-    idempotency_key,
-    kind
+    kind,
+    payment_job_id
 ) values (
     25,
     '00000000-0000-0000-0000-00000000c11d',
     '00000000-0000-0000-0000-00000000c11b',
-    'event-purchase-application-fee-adjustment-contract-documents',
-    'purchase-refund'
+    'purchase-refund',
+    '00000000-0000-0000-0000-00000000c134'
 );
 
+-- Pending credit-note job used by document contracts
+insert into payment_job (
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    '00000000-0000-0000-0000-00000000c11b',
+    'event-purchase-credit-note-contract-documents',
+    'event-purchase-credit-note',
+    '00000000-0000-0000-0000-00000000c135',
+    'stripe',
+    'pending'
+);
+
+-- Pending credit note used by document contracts
 insert into event_purchase_credit_note (
     amount_minor,
     currency_code,
     event_purchase_credit_note_id,
     event_purchase_refund_id,
-    idempotency_key,
+    payment_job_id,
     payment_provider_id,
     provider_object_account_id,
     tax_amount_minor
@@ -1918,7 +2039,7 @@ insert into event_purchase_credit_note (
     'USD',
     '00000000-0000-0000-0000-00000000c11e',
     '00000000-0000-0000-0000-00000000c11c',
-    'event-purchase-credit-note-contract-documents',
+    '00000000-0000-0000-0000-00000000c135',
     'stripe',
     'acct_contract_documents',
     0

@@ -1,0 +1,326 @@
+-- Tests validating event ticket type payloads.
+
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
+begin;
+select plan(14);
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Should reject an omitted ticket types payload
+select throws_ok(
+    $$select validate_event_ticket_types_payload(null)$$,
+    'OCG01',
+    'events require at least one ticket type',
+    'Should reject an omitted ticket types payload'
+);
+
+-- Should accept valid ticket types
+select lives_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "ends_at": "2025-06-30 23:59:59+00",
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
+                    },
+                    {
+                        "amount_minor": 2500,
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000003",
+                        "starts_at": "2025-07-01 00:00:00+00"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'Should accept valid ticket types'
+);
+
+-- Should reject unsupported ticket type availability
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "availability": "secret",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket type availability must be public or invitation_only',
+    'Should reject unsupported ticket type availability'
+);
+
+-- Should reject overlapping ticket price windows
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "ends_at": "2025-07-10 00:00:00+00",
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002",
+                        "starts_at": "2025-07-01 00:00:00+00"
+                    },
+                    {
+                        "amount_minor": 2500,
+                        "ends_at": "2025-07-15 00:00:00+00",
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000003",
+                        "starts_at": "2025-07-05 00:00:00+00"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket price windows cannot overlap',
+    'Should reject overlapping ticket price windows'
+);
+
+-- Should reject ticket price windows without identifiers
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket price windows require event_ticket_price_window_id',
+    'Should reject ticket price windows without identifiers'
+);
+
+-- Should reject ticket types without identifiers
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket types require event_ticket_type_id',
+    'Should reject ticket types without identifiers'
+);
+
+-- Should reject ticket types without title
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
+                    }
+                ],
+                "seats_total": 50,
+                "title": ""
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket types require title',
+    'Should reject ticket types without title'
+);
+
+-- Should reject ticket types without seats_total
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
+                    }
+                ],
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket types require seats_total',
+    'Should reject ticket types without seats_total'
+);
+
+-- Should reject ticket types with negative seats_total values
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
+                    }
+                ],
+                "seats_total": -1,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket type seats_total must be greater than or equal to 0',
+    'Should reject ticket types with negative seats_total values'
+);
+
+-- Should reject ticket types without price windows
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket types require at least one price window',
+    'Should reject ticket types without price windows'
+);
+
+-- Should reject ticket types with empty price windows
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket types require at least one price window',
+    'Should reject ticket types with empty price windows'
+);
+
+-- Should reject ticket price windows without amount_minor
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket price windows must have non-negative amounts and valid date ranges',
+    'Should reject ticket price windows without amount_minor'
+);
+
+-- Should reject ticket price windows with negative amount_minor
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": -1,
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket price windows must have non-negative amounts and valid date ranges',
+    'Should reject ticket price windows with negative amount_minor'
+);
+
+-- Should reject ticket price windows with inverted date ranges
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "ends_at": "2025-07-01 00:00:00+00",
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002",
+                        "starts_at": "2025-07-02 00:00:00+00"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'OCG01',
+    'ticket price windows must have non-negative amounts and valid date ranges',
+    'Should reject ticket price windows with inverted date ranges'
+);
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
+select * from finish();
+rollback;

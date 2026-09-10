@@ -16,13 +16,14 @@ begin
     and canceled = false
     and deleted = false
     and (
-        coalesce(ends_at, starts_at) is null
-        or coalesce(ends_at, starts_at) >= current_timestamp
+        event_effective_ends_at(event) is null
+        or event_effective_ends_at(event) >= current_timestamp
     )
     for update;
 
+    -- Reject events outside the group or already closed
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Cancel active offers, expire checkouts, and clear enrollment queues
@@ -48,8 +49,9 @@ begin
         or provider_payment_reference is null
     );
 
+    -- Reject cancellation while a paid purchase lacks its provider references
     if found then
-        raise exception 'event has a paid purchase that is not ready for refund';
+        raise exception 'event has a paid purchase that is not ready for refund' using errcode = 'OCG01';
     end if;
 
     -- Preserve attendance history while removing active access and capacity
@@ -63,6 +65,7 @@ begin
     where event_id = p_event_id
     and status in ('confirmed', 'registration-questions-pending');
 
+    -- Withdraw invitations that were never answered
     update event_attendee
     set status = 'invitation-canceled'
     where event_id = p_event_id
@@ -83,6 +86,7 @@ begin
         and status in ('completed', 'refund-requested')
         returning event_discount_code_id
     loop
+        -- Return the discount seat of each closed purchase
         if v_event_discount_code_id is not null then
             perform release_event_discount_code_availability(v_event_discount_code_id);
         end if;
@@ -106,14 +110,34 @@ begin
     and err.status in ('approving', 'pending');
 
     -- Queue provider-backed purchases that do not already have durable work
+    with queued_jobs as (
+        insert into payment_job (
+            event_purchase_id,
+            idempotency_key,
+            kind,
+            payment_provider_id
+        )
+        select
+            ep.event_purchase_id,
+            format('event-purchase-refund-%s', ep.event_purchase_id),
+            'event-purchase-refund',
+            ep.payment_provider_id
+        from event_purchase ep
+        where ep.event_id = p_event_id
+        and ep.amount_minor > 0
+        and ep.charge_model is distinct from 'external'
+        and ep.status in ('completed', 'refund-requested')
+        on conflict (idempotency_key) do nothing
+        returning event_purchase_id, payment_job_id
+    )
     insert into event_purchase_refund (
         amount_minor,
         currency_code,
         event_purchase_id,
         event_refund_request_id,
-        idempotency_key,
         initiated_by_user_id,
         kind,
+        payment_job_id,
         payment_provider_id,
         status
     )
@@ -122,20 +146,16 @@ begin
         ep.currency_code,
         ep.event_purchase_id,
         err.event_refund_request_id,
-        format('event-purchase-refund-%s', ep.event_purchase_id),
         p_actor_user_id,
         'event-cancellation',
+        qj.payment_job_id,
         ep.payment_provider_id,
         'provider-pending'
-    from event_purchase ep
+    from queued_jobs qj
+    join event_purchase ep on ep.event_purchase_id = qj.event_purchase_id
     left join event_refund_request err
         on err.event_purchase_id = ep.event_purchase_id
-        and err.status in ('approving', 'pending')
-    where ep.event_id = p_event_id
-    and ep.amount_minor > 0
-    and ep.charge_model is distinct from 'external'
-    and ep.status in ('completed', 'refund-requested')
-    on conflict (event_purchase_id) do nothing;
+        and err.status in ('approving', 'pending');
 
     -- Move attached paid requests into the worker-owned approval state
     update event_refund_request err

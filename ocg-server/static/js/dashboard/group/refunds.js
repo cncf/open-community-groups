@@ -264,10 +264,9 @@ const openFinancialRecoveryModal = (root, trigger) => {
 
   const attendee = getElementById(root, "financial-recovery-attendee");
   const event = getElementById(root, "financial-recovery-event");
-  const kind = getElementById(root, "financial-recovery-kind");
   const operation = getElementById(root, "financial-recovery-operation");
+  const paymentJobId = getElementById(root, "financial-recovery-payment-job-id");
   const providerLabel = getElementById(root, "financial-recovery-provider-label-text");
-  const workId = getElementById(root, "financial-recovery-work-id");
 
   if (attendee) {
     attendee.textContent = trigger.dataset.financialRecoveryAttendee || "-";
@@ -275,17 +274,14 @@ const openFinancialRecoveryModal = (root, trigger) => {
   if (event) {
     event.textContent = trigger.dataset.financialRecoveryEvent || "-";
   }
-  if (kind instanceof HTMLInputElement) {
-    kind.value = trigger.dataset.financialRecoveryKind || "";
-  }
   if (operation) {
     operation.textContent = trigger.dataset.financialRecoveryOperation || "-";
   }
+  if (paymentJobId instanceof HTMLInputElement) {
+    paymentJobId.value = trigger.dataset.financialRecoveryPaymentJobId || "";
+  }
   if (providerLabel) {
     providerLabel.textContent = trigger.dataset.financialRecoveryProviderLabel || "Provider object ID";
-  }
-  if (workId instanceof HTMLInputElement) {
-    workId.value = trigger.dataset.financialRecoveryWorkId || "";
   }
 
   const actionsMenuSummary = trigger.closest("[data-actions-menu]")?.querySelector("summary");

@@ -31,7 +31,7 @@ begin
     where ao.admission_offer_id = p_admission_offer_id;
 
     if not found then
-        raise exception 'admission offer is no longer available';
+        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
     -- Lock the organizer-owned event and ticket inventory
@@ -44,7 +44,7 @@ begin
     for update of e;
 
     if not found then
-        raise exception 'admission offer is no longer available';
+        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
     perform 1
@@ -71,12 +71,12 @@ begin
     from admission_offer ao
     where ao.admission_offer_id = p_admission_offer_id
     and ao.event_id = v_event_id
-    and ao.status in ('checkout_pending', 'pending')
+    and admission_offer_is_active(ao.status)
     and ao.expires_at > current_timestamp
     for update of ao;
 
     if not found then
-        raise exception 'admission offer is no longer available';
+        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
     -- Expire any linked checkout and release its discount and attendee hold
@@ -109,10 +109,10 @@ begin
         status = 'canceled',
         updated_at = current_timestamp
     where admission_offer_id = p_admission_offer_id
-    and status in ('checkout_pending', 'pending');
+    and admission_offer_is_active(status);
 
     if not found then
-        raise exception 'admission offer is no longer available';
+        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
     perform reconcile_event_enrollment(

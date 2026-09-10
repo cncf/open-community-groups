@@ -30,36 +30,42 @@ select plan(7);
 -- ============================================================================
 
 -- User whose public badges are requested
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'profile@example.test', true, 'profile-user');
+select fx_user(:'userID', jsonb_build_object(
+    'username', 'profile-user'
+));
 
 -- User whose null-limit listing proves the default public page cap
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'limitUserID', 'hash', 'limit-profile@example.test', true, 'limit-profile-user');
+select fx_user(:'limitUserID', jsonb_build_object('username', 'limit-profile-user'));
 
 -- Community that contains the first issuing group
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Profile Community', '/logo', 'profile-community');
+select fx_community(:'communityID', jsonb_build_object(
+    'banner_mobile_url', '/mobile',
+    'banner_url', '/banner',
+    'description', 'Description',
+    'display_name', 'Profile Community',
+    'logo_url', '/logo'
+));
 
 -- Community that contains the cross-community issuing group
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'otherCommunityID', '/mobile', '/banner', 'Description', 'Other Community', '/logo', 'other-community');
+select fx_community(:'otherCommunityID', jsonb_build_object(
+    'banner_mobile_url', '/mobile',
+    'banner_url', '/banner',
+    'description', 'Description',
+    'display_name', 'Other Community',
+    'logo_url', '/logo'
+));
 
 -- Category used by the first issuing group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Technology'));
 
 -- Category used by the cross-community issuing group
-insert into group_category (group_category_id, community_id, name)
-values (:'otherGroupCategoryID', :'otherCommunityID', 'Technology');
+select fx_group_category(:'otherGroupCategoryID', :'otherCommunityID', jsonb_build_object('name', 'Technology'));
 
 -- Group that issued the listed and hidden badges
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Profile Group', 'profile-group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Profile Group'));
 
 -- Group in the other community that issued the cross-community badge
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'otherGroupID', :'otherCommunityID', :'otherGroupCategoryID', 'Other Community Group', 'other-community-group');
+select fx_group(:'otherGroupID', :'otherCommunityID', :'otherGroupCategoryID', jsonb_build_object('name', 'Other Community Group'));
 
 -- Status list referenced by the first group's awards
 insert into badge_status_list (badge_status_list_id, group_id)
@@ -217,6 +223,7 @@ select is(
 -- Should reject requests above the public page-size cap
 select throws_ok(
     $$select list_user_public_badges('profile-user', 51, 0)$$,
+    'OCG01',
     'badge pagination is outside the supported range',
     'Should reject an unbounded public profile request'
 );

@@ -51,7 +51,7 @@
                 data-localized-currency>{{ recovery.formatted_amount() }}</td>
             <td class="px-3 py-4 text-stone-900 xl:px-5">{{ recovery.operation }}</td>
             <td class="px-3 py-4 xl:px-5">
-              {% let failure_tooltip_id -%}financial-failure-{{ recovery.work_id }}{%- endlet %}
+              {% let failure_tooltip_id -%}financial-failure-{{ recovery.payment_job_id }}{%- endlet %}
             <span class="group/financial-failure relative inline-flex">
               <button type="button"
                       class="relative inline-flex cursor-help rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
@@ -84,14 +84,12 @@
                 <div class="dropdown absolute end-0 top-8 z-10 w-[230px] rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
                   <ul class="text-sm text-stone-700">
                     <li>
-                      <form hx-put="/dashboard/group/financial-work/retry"
+                      <form hx-put="/dashboard/group/payment-jobs/{{ recovery.payment_job_id }}/retry"
                             hx-indicator="#dashboard-spinner"
                             hx-disabled-elt="find button[type='submit']"
                             data-htmx-response
                             data-success-message="Financial work requeued."
                             data-error-message="Something went wrong requeueing this financial work. Please try again later.">
-                        <input type="hidden" name="kind" value="{{ recovery.kind }}">
-                        <input type="hidden" name="work_id" value="{{ recovery.work_id }}">
                         <button type="submit"
                                 class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
                           <span class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"
@@ -103,8 +101,7 @@
                     <li>
                       <button type="button"
                               data-financial-recovery-open
-                              data-financial-recovery-kind="{{ recovery.kind }}"
-                              data-financial-recovery-work-id="{{ recovery.work_id }}"
+                              data-financial-recovery-payment-job-id="{{ recovery.payment_job_id }}"
                               data-financial-recovery-operation="{{ recovery.operation }}"
                               data-financial-recovery-attendee="{{ recovery.name.as_deref() |assigned_or(recovery.username) }}"
                               data-financial-recovery-event="{{ recovery.event_name }}"
@@ -358,7 +355,7 @@
               <div class="mt-1 text-xs text-stone-600">{{ refund.updated_at.format("%H:%M UTC") }}</div>
             </td>
             <td class="px-1 sm:px-3 xl:px-5 py-4 w-12 xl:w-[72px] text-right">
-              {% if (can_manage_events && (refund.can_approve() || refund.can_reject() || refund.can_retry())) || refund.can_recover() -%}
+              {% if (can_manage_events && (refund.can_approve() || refund.can_reject() || (refund.can_retry() && refund.payment_job_id.is_some()))) || refund.can_recover() -%}
                 <details data-actions-menu class="group relative">
                   <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
                            aria-label="Open refund actions for {{ refund.name.as_deref() |assigned_or(refund.username) }}"
@@ -398,19 +395,21 @@
                         </li>
                       {% endif -%}
                       {% if refund.can_retry() -%}
-                        <li>
-                          <button type="button"
-                                  hx-put="/dashboard/group/refunds/{{ refund.event_purchase_id }}/retry"
-                                  hx-indicator="#dashboard-spinner"
-                                  hx-disabled-elt="this"
-                                  data-htmx-response
-                                  data-success-message="Refund requeued."
-                                  data-error-message="Something went wrong requeueing this refund. Please try again later."
-                                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                            <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
-                            <span>Retry refund</span>
-                          </button>
-                        </li>
+                        {% if let Some(payment_job_id) = refund.payment_job_id -%}
+                          <li>
+                            <button type="button"
+                                    hx-put="/dashboard/group/payment-jobs/{{ payment_job_id }}/retry"
+                                    hx-indicator="#dashboard-spinner"
+                                    hx-disabled-elt="this"
+                                    data-htmx-response
+                                    data-success-message="Refund requeued."
+                                    data-error-message="Something went wrong requeueing this refund. Please try again later."
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                              <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
+                              <span>Retry refund</span>
+                            </button>
+                          </li>
+                        {% endif -%}
                       {% endif -%}
                       {% if refund.can_recover() -%}
                         <li>
@@ -486,15 +485,16 @@
             title = "Complete outside OCG",
             close_id = "close-financial-recovery-modal") -}}
           <form id="financial-recovery-form"
-                hx-put="/dashboard/group/financial-work/recovery"
+                hx-put="/dashboard/group/payment-jobs/recovery"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="find button[type='submit']"
                 data-htmx-response
                 data-success-message="Financial recovery completed."
                 data-error-message="Something went wrong completing this financial recovery. Please try again later.">
             <div class="modal-body p-4 md:px-6 md:py-5">
-              <input id="financial-recovery-kind" type="hidden" name="kind">
-              <input id="financial-recovery-work-id" type="hidden" name="work_id">
+              <input id="financial-recovery-payment-job-id"
+                     type="hidden"
+                     name="payment_job_id">
               <p id="financial-recovery-modal-description"
                  class="text-sm leading-6 text-stone-600">
                 Record the provider operation completed outside OCG and the evidence you reviewed.

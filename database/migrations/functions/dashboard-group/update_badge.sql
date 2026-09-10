@@ -11,16 +11,6 @@ declare
     v_badge_name text;
     v_image_file_name text;
 begin
-    -- Authorize the actor against the requested community and group
-    if not user_has_group_permission(
-        p_community_id,
-        p_group_id,
-        p_actor_user_id,
-        'group.badges.write'
-    ) then
-        raise exception 'badge permission denied' using errcode = 'insufficient_privilege';
-    end if;
-
     -- Normalize and lock the selected group-owned gallery artwork
     v_image_file_name := regexp_replace(p_badge->>'image_file_name', '^/images/(badges/)?', '');
     perform 1
@@ -30,7 +20,7 @@ begin
     for key share;
 
     if not found then
-        raise exception 'badge artwork not found';
+        raise exception 'badge artwork not found' using errcode = 'OCG01';
     end if;
 
     -- Update only the current definition, preserving issued snapshots
@@ -45,7 +35,7 @@ begin
     returning name into v_badge_name;
 
     if not found then
-        raise exception 'badge not found';
+        raise exception 'badge not found' using errcode = 'OCG01';
     end if;
 
     -- Record the successful definition update
@@ -61,6 +51,6 @@ begin
     );
 exception
     when not_null_violation or check_violation then
-        raise exception 'badge fields are invalid';
+        raise exception 'badge fields are invalid' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

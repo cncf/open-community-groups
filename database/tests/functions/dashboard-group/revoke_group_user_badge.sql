@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,36 +18,19 @@ select plan(7);
 \set recipientID 'b1100000-0000-0000-0000-000000000005'
 \set statusListID 'b1100000-0000-0000-0000-000000000006'
 \set userBadgeID 'b1100000-0000-0000-0000-000000000007'
-\set viewerID 'b1100000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Badge manager, recipient, and read-only viewer
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'actorID', 'hash', 'revoke-admin@example.test', true, 'revoke-admin'),
-    (:'recipientID', 'hash', 'revoke-recipient@example.test', true, 'revoke-recipient'),
-    (:'viewerID', 'hash', 'revoke-viewer@example.test', true, 'revoke-viewer');
-
--- Community that owns the award
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Revoke Community', '/logo', 'revoke-community');
-
--- Category used by the issuing group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+-- Baseline communities, group categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_user(:'recipientID');
 
 -- Group that owns the award
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Revoke Group', 'revoke-group');
-
--- Badge manager and viewer roles
-insert into group_team (group_id, accepted, role, user_id)
-values
-    (:'groupID', true, 'admin', :'actorID'),
-    (:'groupID', true, 'viewer', :'viewerID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Revoke Group'));
 
 -- Status list containing the active award
 insert into badge_status_list (badge_status_list_id, group_id)
@@ -69,16 +52,9 @@ insert into user_badge (
 -- Should require a non-empty internal reason
 select throws_ok(
     format($$select revoke_group_user_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, ' ')$$, :'actorID', :'communityID', :'groupID', :'userBadgeID'),
+    'OCG01',
     'badge revocation reason is required',
     'Should require a non-empty internal reason'
-);
-
--- Should reject a viewer before mutation
-select throws_ok(
-    format($$select revoke_group_user_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, 'reason')$$, :'viewerID', :'communityID', :'groupID', :'userBadgeID'),
-    '42501',
-    'badge permission denied',
-    'Should reject a viewer before mutation'
 );
 
 -- Should revoke the active award atomically

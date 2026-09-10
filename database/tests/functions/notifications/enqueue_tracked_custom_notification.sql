@@ -19,38 +19,14 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'tracked-custom-notification-community',
-    'Tracked Custom Notification Community',
-    'Community used for tracked custom notification tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, group category and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'senderID', gen_random_bytes(32), 'sender@example.com', true, 'sender'),
-    (:'recipientID', gen_random_bytes(32), 'recipient@example.com', true, 'recipient');
+select fx_user(:'senderID', jsonb_build_object('username', 'sender'));
+-- user
+select fx_user(:'recipientID', jsonb_build_object('username', 'recipient-enqueue-tracked-custom-notification'));
 
 -- ============================================================================
 -- TESTS

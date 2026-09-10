@@ -19,8 +19,7 @@ select plan(8);
 -- ============================================================================
 
 -- User who owns the manual-requeue notifications
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'user@example.com', true, 'user');
+select fx_user(:'userID', jsonb_build_object('username', 'user-manual-requeue-notifications'));
 
 -- Terminal and processed notifications used by the manual-requeue scenarios
 insert into notification (

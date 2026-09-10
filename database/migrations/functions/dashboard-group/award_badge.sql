@@ -35,17 +35,7 @@ begin
     for share of g;
 
     if not found then
-        raise exception 'group not found';
-    end if;
-
-    -- Authorize the actor to award badges within the group
-    if not user_has_group_permission(
-        p_community_id,
-        p_group_id,
-        p_actor_user_id,
-        'group.badges.write'
-    ) then
-        raise exception 'badge permission denied' using errcode = 'insufficient_privilege';
+        raise exception 'group not found' using errcode = 'OCG01';
     end if;
 
     -- Load the actor and definition snapshots used by deferred issuance
@@ -66,14 +56,14 @@ begin
     for share;
 
     if not found then
-        raise exception 'badge not found';
+        raise exception 'badge not found' using errcode = 'OCG01';
     end if;
 
     -- Normalize duplicates before validating the complete requested set
     if p_user_ids is null
        or cardinality(p_user_ids) = 0
        or array_position(p_user_ids, null) is not null then
-        raise exception 'badge recipients cannot be empty';
+        raise exception 'badge recipients cannot be empty' using errcode = 'OCG01';
     end if;
 
     select array_agg(distinct recipients.user_id order by recipients.user_id)
@@ -91,7 +81,7 @@ begin
         for share;
 
         if not found then
-            raise exception 'event not found';
+            raise exception 'event not found' using errcode = 'OCG01';
         end if;
 
         -- Count the requested recipients who are verified event participants
@@ -141,7 +131,7 @@ begin
     end if;
 
     if v_eligible_recipient_count <> cardinality(v_recipient_user_ids) then
-        raise exception 'badge recipient is not eligible';
+        raise exception 'badge recipient is not eligible' using errcode = 'OCG01';
     end if;
 
     -- Snapshot immutable definition and issuer fields before releasing request locks

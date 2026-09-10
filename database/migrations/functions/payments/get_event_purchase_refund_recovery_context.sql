@@ -26,7 +26,7 @@ begin
 
     -- Reject missing and cross-group purchases consistently
     if not found then
-        raise exception 'event purchase refund not found';
+        raise exception 'event purchase refund not found' using errcode = 'OCG01';
     end if;
 
     -- Return the stable app-facing contract

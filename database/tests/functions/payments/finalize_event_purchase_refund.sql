@@ -11,149 +11,92 @@ select plan(18);
 -- VARIABLES
 -- ============================================================================
 
-\set actorID 'd4060000-0000-0000-0000-000000000001'
-\set communityID 'd4060000-0000-0000-0000-000000000002'
-\set discountCodeID 'd4060000-0000-0000-0000-000000000003'
-\set eventCategoryID 'd4060000-0000-0000-0000-000000000004'
-\set eventID 'd4060000-0000-0000-0000-000000000005'
-\set groupCategoryID 'd4060000-0000-0000-0000-000000000006'
-\set groupID 'd4060000-0000-0000-0000-000000000007'
-\set happyClaimID 'd4060000-0000-0000-0000-000000000008'
-\set happyPurchaseID 'd4060000-0000-0000-0000-000000000009'
-\set happyRefundID 'd4060000-0000-0000-0000-000000000010'
-\set happyRequestID 'd4060000-0000-0000-0000-000000000011'
-\set happyUserID 'd4060000-0000-0000-0000-000000000012'
-\set incompleteClaimID 'd4060000-0000-0000-0000-000000000013'
-\set incompletePurchaseID 'd4060000-0000-0000-0000-000000000014'
-\set incompleteRefundID 'd4060000-0000-0000-0000-000000000015'
-\set incompleteUserID 'd4060000-0000-0000-0000-000000000016'
-\set missingRefundID 'd4060000-0000-0000-0000-000000000017'
-\set questionsClaimID 'd4060000-0000-0000-0000-000000000018'
-\set questionsPurchaseID 'd4060000-0000-0000-0000-000000000019'
-\set questionsRefundID 'd4060000-0000-0000-0000-000000000020'
-\set questionsUserID 'd4060000-0000-0000-0000-000000000021'
-\set rejectedClaimID 'd4060000-0000-0000-0000-000000000028'
-\set rejectedPurchaseID 'd4060000-0000-0000-0000-000000000029'
-\set rejectedRefundID 'd4060000-0000-0000-0000-000000000030'
-\set rejectedRequestID 'd4060000-0000-0000-0000-000000000031'
-\set rejectedUserID 'd4060000-0000-0000-0000-000000000032'
-\set replacementClaimID 'd4060000-0000-0000-0000-000000000035'
-\set replacementOfferID 'd4060000-0000-0000-0000-000000000040'
-\set replacementPurchaseID 'd4060000-0000-0000-0000-000000000036'
-\set replacementRefundedPurchaseID 'd4060000-0000-0000-0000-000000000037'
-\set replacementRefundID 'd4060000-0000-0000-0000-000000000038'
-\set replacementUserID 'd4060000-0000-0000-0000-000000000039'
-\set staleClaimID 'd4060000-0000-0000-0000-000000000022'
-\set stalePurchaseID 'd4060000-0000-0000-0000-000000000023'
-\set staleRefundID 'd4060000-0000-0000-0000-000000000024'
-\set staleUserID 'd4060000-0000-0000-0000-000000000025'
-\set ticketTypeID 'd4060000-0000-0000-0000-000000000026'
-\set ticketPriceWindowID 'd4060000-0000-0000-0000-000000000033'
-\set waitlistUserID 'd4060000-0000-0000-0000-000000000034'
-\set wrongClaimID 'd4060000-0000-0000-0000-000000000027'
+\set actorID '79020000-0000-0000-0000-000000000001'
+\set communityID '79020000-0000-0000-0000-000000000002'
+\set discountCodeID '79020000-0000-0000-0000-000000000003'
+\set eventCategoryID '79020000-0000-0000-0000-000000000004'
+\set eventID '79020000-0000-0000-0000-000000000005'
+\set groupCategoryID '79020000-0000-0000-0000-000000000006'
+\set groupID '79020000-0000-0000-0000-000000000007'
+\set happyClaimID '79020000-0000-0000-0000-000000000008'
+\set happyJobID '79020000-0000-0000-0000-000000000041'
+\set happyPurchaseID '79020000-0000-0000-0000-000000000009'
+\set happyRefundID '79020000-0000-0000-0000-000000000010'
+\set happyRequestID '79020000-0000-0000-0000-000000000011'
+\set happyUserID '79020000-0000-0000-0000-000000000012'
+\set incompleteClaimID '79020000-0000-0000-0000-000000000013'
+\set incompleteJobID '79020000-0000-0000-0000-000000000042'
+\set incompletePurchaseID '79020000-0000-0000-0000-000000000014'
+\set incompleteRefundID '79020000-0000-0000-0000-000000000015'
+\set incompleteUserID '79020000-0000-0000-0000-000000000016'
+\set missingRefundID '79020000-0000-0000-0000-000000000017'
+\set questionsClaimID '79020000-0000-0000-0000-000000000018'
+\set questionsJobID '79020000-0000-0000-0000-000000000043'
+\set questionsPurchaseID '79020000-0000-0000-0000-000000000019'
+\set questionsRefundID '79020000-0000-0000-0000-000000000020'
+\set questionsUserID '79020000-0000-0000-0000-000000000021'
+\set rejectedClaimID '79020000-0000-0000-0000-000000000028'
+\set rejectedJobID '79020000-0000-0000-0000-000000000044'
+\set rejectedPurchaseID '79020000-0000-0000-0000-000000000029'
+\set rejectedRefundID '79020000-0000-0000-0000-000000000030'
+\set rejectedRequestID '79020000-0000-0000-0000-000000000031'
+\set rejectedUserID '79020000-0000-0000-0000-000000000032'
+\set replacementClaimID '79020000-0000-0000-0000-000000000035'
+\set replacementJobID '79020000-0000-0000-0000-000000000045'
+\set replacementOfferID '79020000-0000-0000-0000-000000000040'
+\set replacementPurchaseID '79020000-0000-0000-0000-000000000036'
+\set replacementRefundedPurchaseID '79020000-0000-0000-0000-000000000037'
+\set replacementRefundID '79020000-0000-0000-0000-000000000038'
+\set replacementUserID '79020000-0000-0000-0000-000000000039'
+\set staleClaimID '79020000-0000-0000-0000-000000000022'
+\set staleJobID '79020000-0000-0000-0000-000000000046'
+\set stalePurchaseID '79020000-0000-0000-0000-000000000023'
+\set staleRefundID '79020000-0000-0000-0000-000000000024'
+\set staleUserID '79020000-0000-0000-0000-000000000025'
+\set ticketTypeID '79020000-0000-0000-0000-000000000026'
+\set ticketPriceWindowID '79020000-0000-0000-0000-000000000033'
+\set waitlistUserID '79020000-0000-0000-0000-000000000034'
+\set wrongClaimID '79020000-0000-0000-0000-000000000027'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the finalization fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'finalize-refund-community'
-);
-
--- Event category used by the finalization event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the finalization group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
+-- Baseline community, categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_user(:'incompleteUserID');
+select fx_user(:'staleUserID');
 
 -- Group owning the finalization event
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    payment_recipient,
-    slug
-) values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'Group',
-    '{"provider": "stripe", "recipient_id": "acct_finalize", "seller_display_name": "Finalize Refund Fiscal Sponsor"}'::jsonb,
-    'group'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_finalize", "seller_display_name": "Finalize Refund Fiscal Sponsor"}'::jsonb));
 
--- Users covering organizer, attendee-request, automatic, incomplete, rejected, and stale claims
-insert into "user" (auth_hash, email, user_id, username) values
-    ('actor', 'actor@example.test', :'actorID', 'actor'),
-    ('happy', 'happy@example.test', :'happyUserID', 'happy'),
-    ('incomplete', 'incomplete@example.test', :'incompleteUserID', 'incomplete'),
-    ('questions', 'questions@example.test', :'questionsUserID', 'questions'),
-    ('rejected', 'rejected@example.test', :'rejectedUserID', 'rejected'),
-    ('replacement', 'replacement@example.test', :'replacementUserID', 'replacement'),
-    ('stale', 'stale@example.test', :'staleUserID', 'stale'),
-    ('waitlist', 'waitlist@example.test', :'waitlistUserID', 'waitlist');
+-- Users covering attendee-request, automatic, rejected and waitlist claims
+select fx_user(:'happyUserID', jsonb_build_object('username', 'happy'));
+select fx_user(:'questionsUserID', jsonb_build_object('username', 'questions'));
+select fx_user(:'rejectedUserID', jsonb_build_object('username', 'rejected-finalize-event-purchase-refund'));
+select fx_user(:'replacementUserID', jsonb_build_object('username', 'replacement'));
+select fx_user(:'waitlistUserID', jsonb_build_object('username', 'waitlist-finalize-event-purchase-refund'));
 
 -- Event owning every finalization purchase
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    'Event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Event',
-    'USD',
-    true,
-    'event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'slug', 'event',
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
 
 -- Ticket type referenced by every finalization purchase
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values (:'eventID', :'ticketTypeID', 1, 6, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 6,
+    'title', 'General admission'
+));
 
 -- Current paid price used when reconciliation promotes the queue
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'ticketPriceWindowID',
-    2500,
-    :'ticketTypeID'
-);
+select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Discount reservation released by successful attendee-request finalization
 insert into event_discount_code (
@@ -408,18 +351,29 @@ insert into event_refund_request (
         :'actorID'
     );
 
+-- Processing payment jobs covering complete, incomplete, automatic, rejected, and stale claims
+insert into payment_job (
+    payment_job_id, attempt_count, event_purchase_id, idempotency_key,
+    kind, payment_provider_id, status,
+
+    claim_id, claimed_at
+) values
+    (:'happyJobID', 1, :'happyPurchaseID', 'refund-happy-finalize-event-purchase-refund', 'event-purchase-refund', 'stripe', 'processing', :'happyClaimID', current_timestamp),
+    (:'incompleteJobID', 1, :'incompletePurchaseID', 'refund-incomplete-finalize-event-purchase-refund', 'event-purchase-refund', 'stripe', 'processing', :'incompleteClaimID', current_timestamp),
+    (:'questionsJobID', 1, :'questionsPurchaseID', 'refund-questions-finalize-event-purchase-refund', 'event-purchase-refund', 'stripe', 'processing', :'questionsClaimID', current_timestamp),
+    (:'rejectedJobID', 1, :'rejectedPurchaseID', 'refund-rejected-finalize-event-purchase-refund', 'event-purchase-refund', 'stripe', 'processing', :'rejectedClaimID', current_timestamp),
+    (:'replacementJobID', 1, :'replacementRefundedPurchaseID', 'refund-replaced-finalize-event-purchase-refund', 'event-purchase-refund', 'stripe', 'processing', :'replacementClaimID', current_timestamp),
+    (:'staleJobID', 1, :'stalePurchaseID', 'refund-stale-finalize-event-purchase-refund', 'event-purchase-refund', 'stripe', 'processing', :'staleClaimID', current_timestamp);
+
 -- Claimed refund rows covering complete, incomplete, automatic, rejected, and stale claims
 insert into event_purchase_refund (
     amount_minor,
-    attempt_count,
-    claim_id,
-    claimed_at,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    idempotency_key,
     initiated_by_user_id,
     kind,
+    payment_job_id,
     payment_provider_id,
     review_note,
     status,
@@ -428,12 +382,12 @@ insert into event_purchase_refund (
     provider_refund_id,
     provider_refunded_at
 ) values
-    (2500, 1, :'happyClaimID', current_timestamp, 'USD', :'happyPurchaseID', :'happyRefundID', 'refund-happy', :'actorID', 'refund-request-approval', 'stripe', 'Approved by organizer', 'processing', :'happyRequestID', 're_happy', current_timestamp),
-    (2500, 1, :'incompleteClaimID', current_timestamp, 'USD', :'incompletePurchaseID', :'incompleteRefundID', 'refund-incomplete', :'actorID', 'event-cancellation', 'stripe', null, 'processing', null, null, null),
-    (2000, 1, :'questionsClaimID', current_timestamp, 'USD', :'questionsPurchaseID', :'questionsRefundID', 'refund-questions', null, 'automatic-unfulfillable-checkout', 'stripe', null, 'processing', null, 're_questions', current_timestamp),
-    (2500, 1, :'rejectedClaimID', current_timestamp, 'USD', :'rejectedPurchaseID', :'rejectedRefundID', 'refund-rejected', :'actorID', 'event-cancellation', 'stripe', null, 'processing', :'rejectedRequestID', 're_rejected', current_timestamp),
-    (2500, 1, :'replacementClaimID', current_timestamp, 'USD', :'replacementRefundedPurchaseID', :'replacementRefundID', 'refund-replaced', null, 'automatic-unfulfillable-checkout', 'stripe', null, 'processing', null, 're_replaced', current_timestamp),
-    (2500, 1, :'staleClaimID', current_timestamp, 'USD', :'stalePurchaseID', :'staleRefundID', 'refund-stale', :'actorID', 'event-cancellation', 'stripe', null, 'processing', null, 're_stale', current_timestamp);
+    (2500, 'USD', :'happyPurchaseID', :'happyRefundID', :'actorID', 'refund-request-approval', :'happyJobID', 'stripe', 'Approved by organizer', 'provider-succeeded', :'happyRequestID', 're_happy', current_timestamp),
+    (2500, 'USD', :'incompletePurchaseID', :'incompleteRefundID', :'actorID', 'event-cancellation', :'incompleteJobID', 'stripe', null, 'provider-pending', null, null, null),
+    (2000, 'USD', :'questionsPurchaseID', :'questionsRefundID', null, 'automatic-unfulfillable-checkout', :'questionsJobID', 'stripe', null, 'provider-succeeded', null, 're_questions', current_timestamp),
+    (2500, 'USD', :'rejectedPurchaseID', :'rejectedRefundID', :'actorID', 'event-cancellation', :'rejectedJobID', 'stripe', null, 'provider-succeeded', :'rejectedRequestID', 're_rejected', current_timestamp),
+    (2500, 'USD', :'replacementRefundedPurchaseID', :'replacementRefundID', null, 'automatic-unfulfillable-checkout', :'replacementJobID', 'stripe', null, 'provider-succeeded', null, 're_replaced', current_timestamp),
+    (2500, 'USD', :'stalePurchaseID', :'staleRefundID', :'actorID', 'event-cancellation', :'staleJobID', 'stripe', null, 'provider-succeeded', null, 're_stale_finalize_event_purchase_refund', current_timestamp);
 
 -- FIFO waitlist entry offered the seat released by successful finalization
 insert into event_waitlist (
@@ -476,7 +430,7 @@ select throws_ok(
         'select finalize_event_purchase_refund(%L::uuid, %L::uuid, %L::jsonb)',
         :'staleRefundID', :'wrongClaimID', '{}'
     ),
-    'event purchase refund claim is not provider-complete',
+    'payment job claim is stale',
     'Should reject a worker that no longer owns the refund claim'
 );
 
@@ -497,19 +451,22 @@ select results_eq(
             ep.status,
             ea.status,
             epr.status,
+            pj.status,
             count(n.notification_id)::int
         from event_purchase ep
         join event_attendee ea
             on ea.event_id = ep.event_id
             and ea.user_id = ep.user_id
         join event_purchase_refund epr using (event_purchase_id)
+        join payment_job pj using (payment_job_id)
         left join notification n on n.user_id = ep.user_id
         where ep.event_purchase_id = %L::uuid
-        group by ep.status, ea.status, epr.status
+        group by ep.status, ea.status, epr.status, pj.status
     $$, :'happyPurchaseID'),
     $$ values (
         'refund-pending'::text,
         'confirmed'::text,
+        'provider-succeeded'::text,
         'processing'::text,
         0
     ) $$,
@@ -549,10 +506,12 @@ select results_eq(
             err.reviewed_by_user_id,
             err.status,
             edc.available,
-            epr.claim_id,
-            epr.claimed_at,
             epr.finalized_at is not null,
-            epr.status
+            epr.status,
+            pj.claim_id,
+            pj.claimed_at,
+            pj.status,
+            pj.completed_at is not null
         from event_purchase ep
         join event_attendee ea
             on ea.event_id = ep.event_id
@@ -560,6 +519,7 @@ select results_eq(
         join event_discount_code edc using (event_discount_code_id)
         join event_purchase_refund epr using (event_purchase_id)
         join event_refund_request err using (event_purchase_id)
+        join payment_job pj using (payment_job_id)
         where ep.event_purchase_id = %L::uuid
     $$, :'happyPurchaseID'),
     format($$ values (
@@ -575,10 +535,12 @@ select results_eq(
         %L::uuid,
         'approved'::text,
         1,
+        true,
+        'finalized'::text,
         null::uuid,
         null::timestamptz,
-        true,
-        'finalized'::text
+        'completed'::text,
+        true
     ) $$, :'actorID', :'actorID'),
     'Should finalize purchase, attendance, review, discount, and claim state atomically'
 );

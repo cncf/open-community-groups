@@ -269,15 +269,7 @@ where
         group_id: &Uuid,
     ) -> Result<bool> {
         self.fetch_scalar_one(
-            r#"
-            select exists (
-                select 1
-                from "group"
-                where community_id = $1::uuid
-                  and group_id = $2::uuid
-                  and deleted = false
-            );
-            "#,
+            "select group_belongs_to_community($1::uuid, $2::uuid);",
             &[&community_id, &group_id],
         )
         .await

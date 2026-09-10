@@ -16,23 +16,15 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, password, username)
-values (
-    :'untouchedUserID',
-    'initial_hash_control',
-    'control@example.com',
-    true,
-    'control_password',
-    'control-user'
-), (
-    :'userID',
-    'initial_hash_target',
-    'target@example.com',
-    true,
-    'old_password',
-    'target-user'
-);
+-- Control user whose password remains unchanged
+select fx_user(:'untouchedUserID', jsonb_build_object('password', 'control_password'));
+
+-- Target user whose password and auth hash are updated
+select fx_user(:'userID', jsonb_build_object(
+    'auth_hash', 'initial_hash_target',
+    'password', 'old_password',
+    'username', 'target-user'
+));
 
 -- ============================================================================
 -- TESTS

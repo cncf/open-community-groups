@@ -1,4 +1,4 @@
--- Trigger function to validate session timestamps within event bounds.
+-- Validates that session timestamps fall within the bounds of their event.
 create or replace function check_session_within_event_bounds()
 returns trigger as $$
 declare
@@ -7,27 +7,28 @@ declare
 begin
     -- Allow legacy data imports to bypass this validation
     if coalesce(current_setting('ocg.skip_session_bounds_check', true)::boolean, false) then
-        return NEW;
+        return new;
     end if;
 
-    -- Get event bounds
+    -- Load the event bounds
     select starts_at, ends_at into v_event_starts_at, v_event_ends_at
     from event
-    where event_id = NEW.event_id;
+    where event_id = new.event_id;
 
-    -- Only validate if event has both bounds set
+    -- Validate only when the event has both bounds set
     if v_event_starts_at is not null and v_event_ends_at is not null then
-        -- Session starts_at must be within event bounds
-        if NEW.starts_at < v_event_starts_at or NEW.starts_at > v_event_ends_at then
-            raise exception 'session starts_at must be within event bounds';
+        -- Reject sessions starting outside the event
+        if new.starts_at < v_event_starts_at or new.starts_at > v_event_ends_at then
+            raise exception 'session starts_at must be within event bounds' using errcode = 'OCG01';
         end if;
 
-        -- Session ends_at (if set) must be within event bounds
-        if NEW.ends_at is not null and NEW.ends_at > v_event_ends_at then
-            raise exception 'session ends_at must be within event bounds';
+        -- Reject sessions ending after the event
+        if new.ends_at is not null and new.ends_at > v_event_ends_at then
+            raise exception 'session ends_at must be within event bounds' using errcode = 'OCG01';
         end if;
     end if;
 
-    return NEW;
+    -- Return the validated session row
+    return new;
 end;
 $$ language plpgsql;

@@ -28,96 +28,32 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values
-    (
-        :'communityID',
-        'parent-options-community',
-        'Parent Options Community',
-        'Community for parent option tests',
-        'https://example.com/banner-mobile.png',
-        'https://example.com/banner.png',
-        'https://example.com/logo.png'
-    ),
-    (
-        :'otherCommunityID',
-        'other-parent-options-community',
-        'Other Parent Options Community',
-        'Other community for parent option tests',
-        'https://example.com/other-banner-mobile.png',
-        'https://example.com/other-banner.png',
-        'https://example.com/other-logo.png'
-    );
+-- Baseline community, group category, users and groups
+select fx_community(:'communityID');
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group_category(:'otherGroupCategoryID', :'otherCommunityID');
+select fx_user(:'groupAdminID');
+select fx_user(:'noPermissionUserID');
+select fx_group(:'otherCommunityGroupID', :'otherCommunityID', :'otherGroupCategoryID');
 
--- Group categories
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Technology'),
-    (:'otherGroupCategoryID', :'otherCommunityID', 'Technology');
-
--- Users
-insert into "user" (user_id, auth_hash, email, username) values
-    (:'groupAdminID', 'hash-1', 'group-admin@example.com', 'group-admin'),
-    (:'noPermissionUserID', 'hash-2', 'no-permission@example.com', 'no-permission');
-
--- Parent candidate groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values
-    (:'adminParentID', :'communityID', :'groupCategoryID', 'Admin Parent', 'admin-parent', true, false),
-    (:'currentGroupID', :'communityID', :'groupCategoryID', 'Current Group', 'current-group', true, false),
-    (:'deletedGroupID', :'communityID', :'groupCategoryID', 'Deleted Parent', 'deleted-parent', false, true),
-    (:'otherCommunityGroupID', :'otherCommunityID', :'otherGroupCategoryID', 'Other Community Group', 'other-community-group', true, false),
-    (:'parentWithChildID', :'communityID', :'groupCategoryID', 'Parent With Child', 'parent-with-child', true, false),
-    (:'parentWithoutPermissionID', :'communityID', :'groupCategoryID', 'Parent Without Permission', 'parent-without-permission', true, false);
+select fx_group(:'adminParentID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Admin Parent'));
+-- group
+select fx_group(:'currentGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Current Group'));
+-- group
+select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
+-- group
+select fx_group(:'parentWithChildID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Parent With Child'));
+-- group
+select fx_group(:'parentWithoutPermissionID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Parent Without Permission'));
 
 -- Child groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted,
-
-    parent_group_id
-) values
-    (
-        :'childCandidateID',
-        :'communityID',
-        :'groupCategoryID',
-        'Child Candidate',
-        'child-candidate',
-        true,
-        false,
-
-        :'parentWithoutPermissionID'
-    ),
-    (
-        :'subgroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Existing Subgroup',
-        'existing-subgroup',
-        true,
-        false,
-
-        :'adminParentID'
-    );
+select fx_group(:'childCandidateID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'parentWithoutPermissionID'));
+-- group
+select fx_group(:'subgroupID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'adminParentID'));
 
 -- Group team
 insert into group_team (group_id, user_id, role, accepted) values

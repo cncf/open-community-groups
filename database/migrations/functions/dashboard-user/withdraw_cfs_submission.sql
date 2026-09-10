@@ -22,7 +22,7 @@ begin
 
     -- Ensure submission exists and can be withdrawn
     if not found then
-        raise exception 'submission not found or cannot be withdrawn';
+        raise exception 'submission not found or cannot be withdrawn' using errcode = 'OCG01';
     end if;
 
     -- Track the withdrawal

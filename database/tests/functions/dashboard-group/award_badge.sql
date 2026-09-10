@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(31);
+select plan(30);
 
 -- ============================================================================
 -- VARIABLES
@@ -31,133 +31,53 @@ select plan(31);
 \set sessionSpeakerID 'b1080000-0000-0000-0000-000000000018'
 \set unverifiedID 'b1080000-0000-0000-0000-000000000019'
 \set unknownBadgeID 'b1080000-0000-0000-0000-000000000020'
-\set viewerID 'b1080000-0000-0000-0000-000000000021'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Verified users representing every supported and unsupported award role
-insert into "user" (auth_hash, email, email_verified, name, user_id, username)
-values
-    ('hash', 'award-admin@example.test', true, 'Award Admin', :'actorID', 'award-admin'),
-    ('hash', 'award-attendee@example.test', true, 'Award Attendee', :'attendeeID', 'award-attendee'),
-    ('hash', 'award-checked-in@example.test', true, 'Award Checked In', :'checkedInID', 'award-checked-in'),
-    ('hash', 'award-host@example.test', true, 'Award Host', :'eventHostID', 'award-host'),
-    ('hash', 'award-organizer@example.test', true, 'Award Organizer', :'eventOrganizerID', 'award-organizer'),
-    ('hash', 'award-speaker@example.test', true, 'Award Speaker', :'eventSpeakerID', 'award-speaker'),
-    ('hash', 'award-member@example.test', true, 'Award Member', :'groupMemberID', 'award-member'),
-    ('hash', 'award-outsider@example.test', true, 'Award Outsider', :'outsiderID', 'award-outsider'),
-    ('hash', 'award-session-speaker@example.test', true, 'Award Session Speaker', :'sessionSpeakerID', 'award-session-speaker'),
-    ('hash', 'award-viewer@example.test', true, 'Award Viewer', :'viewerID', 'award-viewer');
 
 -- Unverified checked-in attendee excluded from every award scope
-insert into "user" (auth_hash, email, email_verified, name, user_id, username)
-values ('hash', 'award-unverified@example.test', false, 'Award Unverified', :'unverifiedID', 'award-unverified');
+select fx_user(:'unverifiedID', jsonb_build_object('email_verified', false));
 
 -- Community containing the issuing group
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    '/mobile',
-    '/banner',
-    :'communityID',
-    'Description',
-    'Award Community',
-    '/logo',
-    'award-community'
-);
+select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
 
--- Event category used by award fixtures
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Conference');
+-- Baseline categories, users and groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_user(:'attendeeID');
+select fx_user(:'checkedInID');
+select fx_user(:'eventHostID');
+select fx_user(:'eventOrganizerID');
+select fx_user(:'eventSpeakerID');
+select fx_user(:'groupMemberID');
+select fx_user(:'outsiderID');
+select fx_user(:'sessionSpeakerID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category used by the issuer
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
--- Group issuing the badge
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Award Group', 'award-group');
-
--- Badge manager, accepted team recipient, pending recipient, and unauthorized viewer roles
+-- Badge manager, accepted team recipient, and pending recipient roles
 insert into group_team (accepted, group_id, role, user_id)
 values
     (true, :'groupID', 'events-manager', :'actorID'),
     (true, :'groupID', 'viewer', :'eventOrganizerID'),
-    (false, :'groupID', 'viewer', :'outsiderID'),
-    (true, :'groupID', 'viewer', :'viewerID');
+    (false, :'groupID', 'viewer', :'outsiderID');
 
 -- Active event providing the recipient context
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'Description',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Award Event',
-    'award-event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Description',
+    'name', 'Award Event'
+));
 
 -- Canceled event rejected by award validation
-insert into event (
-    canceled,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    true,
-    'Description',
-    :'eventCategoryID',
-    :'canceledEventID',
-    'in-person',
-    :'groupID',
-    'Canceled Award Event',
-    'canceled-award-event',
-    'UTC'
-);
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'description', 'Description'
+));
 
 -- Active event with no eligible recipients
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'Description',
-    :'eventCategoryID',
-    :'emptyEventID',
-    'in-person',
-    :'groupID',
-    'Empty Award Event',
-    'empty-award-event',
-    'UTC'
-);
+select fx_event(:'emptyEventID', :'groupID', :'eventCategoryID', jsonb_build_object('description', 'Description'));
 
 -- Confirmed attendees covering registered, checked-in, and unverified states
 insert into event_attendee (checked_in, event_id, status, user_id)
@@ -283,6 +203,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'eventOrganizerID', :'eventID'
     ),
+    'OCG01',
     'badge recipient is not eligible',
     'Should reject an event organizer'
 );
@@ -352,6 +273,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, '{}'::uuid[], %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID'
     ),
+    'OCG01',
     'badge recipients cannot be empty',
     'Should require at least one recipient'
 );
@@ -362,6 +284,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid, %L::uuid], %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'attendeeID', :'outsiderID', :'eventID'
     ),
+    'OCG01',
     'badge recipient is not eligible',
     'Should reject a mixed list atomically when one recipient is ineligible'
 );
@@ -383,6 +306,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, null, %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'emptyEventID'
     ),
+    'OCG01',
     'badge recipients cannot be empty',
     'Should reject a null recipient array'
 );
@@ -393,6 +317,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'attendeeID', :'canceledEventID'
     ),
+    'OCG01',
     'event not found',
     'Should reject a canceled event'
 );
@@ -403,6 +328,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'unknownBadgeID', :'attendeeID', :'eventID'
     ),
+    'OCG01',
     'badge not found',
     'Should reject an unknown badge definition'
 );
@@ -413,6 +339,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
         :'actorID', :'communityID', gen_random_uuid(), :'badgeID', :'attendeeID', :'eventID'
     ),
+    'OCG01',
     'group not found',
     'Should reject an unknown group boundary'
 );
@@ -423,6 +350,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[gen_random_uuid()], %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID'
     ),
+    'OCG01',
     'badge recipient is not eligible',
     'Should reject an unknown recipient'
 );
@@ -433,6 +361,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'unverifiedID', :'eventID'
     ),
+    'OCG01',
     'badge recipient is not eligible',
     'Should reject an unverified recipient'
 );
@@ -443,6 +372,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'outsiderID', :'eventID'
     ),
+    'OCG01',
     'badge recipient is not eligible',
     'Should reject a recipient outside the event'
 );
@@ -453,6 +383,7 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], null)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'groupMemberID'
     ),
+    'OCG01',
     'badge recipient is not eligible',
     'Should reject a non-team group member without an event'
 );
@@ -463,19 +394,9 @@ select throws_ok(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], null)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'outsiderID'
     ),
+    'OCG01',
     'badge recipient is not eligible',
     'Should reject a pending group team member without an event'
-);
-
--- Should reject a viewer before mutation
-select throws_ok(
-    format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
-        :'viewerID', :'communityID', :'groupID', :'badgeID', :'attendeeID', :'eventID'
-    ),
-    '42501',
-    'badge permission denied',
-    'Should reject a viewer before mutation'
 );
 
 -- Should build an opaque snapshot without recipient identity data

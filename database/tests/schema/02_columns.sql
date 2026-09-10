@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(83);
+select plan(84);
 
 -- ============================================================================
 -- TESTS
@@ -524,83 +524,52 @@ select columns_are('event_purchase', array[
 select columns_are('event_purchase_application_fee_adjustment', array[
     'event_purchase_application_fee_adjustment_id',
     'amount_minor',
-    'attempt_count',
     'created_at',
     'event_purchase_id',
-    'idempotency_key',
     'kind',
-    'next_attempt_at',
-    'status',
+    'payment_job_id',
     'updated_at',
 
-    'claim_id',
-    'claimed_at',
-    'completed_at',
-    'failure_message',
-    'provider_application_fee_refund_id',
-    'recovery_completed_at',
-    'recovery_completed_by_user_id',
-    'recovery_note',
-    'recovery_reference'
+    'provider_application_fee_refund_id'
 ]);
 
 -- Test: event_purchase_credit_note columns should match expected
 select columns_are('event_purchase_credit_note', array[
     'event_purchase_credit_note_id',
     'amount_minor',
-    'attempt_count',
     'created_at',
     'currency_code',
     'event_purchase_refund_id',
-    'idempotency_key',
-    'next_attempt_at',
+    'payment_job_id',
     'payment_provider_id',
     'provider_object_account_id',
-    'status',
     'tax_amount_minor',
     'updated_at',
 
-    'claim_id',
-    'claimed_at',
-    'completed_at',
-    'failure_message',
     'provider_credit_note_id',
     'provider_hosted_url',
-    'provider_pdf_url',
-    'recovery_completed_at',
-    'recovery_completed_by_user_id',
-    'recovery_note',
-    'recovery_reference'
+    'provider_pdf_url'
 ]);
 
 -- Test: event_purchase_refund columns should match expected
 select columns_are('event_purchase_refund', array[
     'event_purchase_refund_id',
     'amount_minor',
-    'attempt_count',
     'created_at',
     'currency_code',
     'event_purchase_id',
-    'idempotency_key',
     'kind',
-    'next_attempt_at',
+    'payment_job_id',
     'payment_provider_id',
     'status',
     'terminal_failure',
     'updated_at',
 
-    'claim_id',
-    'claimed_at',
     'event_refund_request_id',
-    'failure_message',
     'finalized_at',
     'initiated_by_user_id',
     'provider_refund_id',
     'provider_refunded_at',
-    'recovery_completed_at',
-    'recovery_completed_by_user_id',
-    'recovery_note',
-    'recovery_reference',
     'review_note'
 ]);
 
@@ -1010,6 +979,29 @@ select columns_are('notification_template_data', array[
 select columns_are('payment_provider', array[
     'payment_provider_id',
     'display_name'
+]);
+
+-- Test: payment job columns should match expected
+select columns_are('payment_job', array[
+    'payment_job_id',
+    'attempt_count',
+    'created_at',
+    'event_purchase_id',
+    'idempotency_key',
+    'kind',
+    'next_attempt_at',
+    'payment_provider_id',
+    'status',
+    'updated_at',
+
+    'claim_id',
+    'claimed_at',
+    'completed_at',
+    'failure_message',
+    'recovery_completed_at',
+    'recovery_completed_by_user_id',
+    'recovery_note',
+    'recovery_reference'
 ]);
 
 -- Test: cached provider tax-resource columns should match expected

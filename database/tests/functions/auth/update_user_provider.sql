@@ -16,33 +16,15 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    provider,
-    username
-) values (
-    :'nullProviderUserID',
-    'null-provider-hash',
-    'null-provider@example.com',
-    true,
-    null,
-    'null-provider-user'
-), (
-    :'userID',
-    'test-hash',
-    'user@example.com',
-    true,
-    jsonb_build_object(
-        'github', jsonb_build_object(
-            'username', 'octocat'
-        )
-    ),
-    'test-user'
-);
+-- User with null provider metadata
+select fx_user(:'nullProviderUserID');
+
+-- User with existing provider metadata
+select fx_user(:'userID', jsonb_build_object('provider', jsonb_build_object(
+    'github', jsonb_build_object(
+        'username', 'octocat'
+    )
+)));
 
 -- ============================================================================
 -- TESTS

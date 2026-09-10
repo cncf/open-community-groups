@@ -2,6 +2,13 @@
 create or replace function list_user_dashboard_groups(p_user_id uuid, p_filters jsonb)
 returns json as $$
     with
+        -- Normalize common list filters.
+        filters as (
+            select
+                f.limit_value,
+                f.offset_value
+            from parse_search_filters(p_filters) f
+        ),
         -- Collect the user's membership and accepted team relationships
         relationship_rows as (
             select
@@ -51,8 +58,8 @@ returns json as $$
                 gr.name
             from group_rows gr
             order by gr.name asc, gr.group_id asc
-            offset (p_filters->>'offset')::int
-            limit (p_filters->>'limit')::int
+            offset (select offset_value from filters)
+            limit (select limit_value from filters)
         )
     -- Build the paginated response payload
     select json_build_object(
@@ -64,7 +71,7 @@ returns json as $$
                         'group', get_group_summary(grp.community_id, grp.group_id),
                         'is_member', grp.is_member,
                         'is_team_member', grp.is_team_member,
-                        'joined_at', floor(extract(epoch from grp.joined_at))
+                        'joined_at', epoch_seconds(grp.joined_at)
                     )
                     order by grp.name asc, grp.group_id asc
                 ),

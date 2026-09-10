@@ -26,95 +26,26 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'session-proposal-community',
-    'Session Proposal Community',
-    'Community for testing session proposal deletion',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'user2ID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'userID',
-    gen_random_bytes(32),
-    'alice@example.com',
-    true,
-    'alice',
-    'Alice'
-), (
-    :'user2ID',
-    gen_random_bytes(32),
-    'bob@example.com',
-    true,
-    'bob',
-    'Bob'
-);
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Session Proposal Group', 'proposal-group');
+select fx_user(:'userID', jsonb_build_object('username', 'alice-delete-session-proposal'));
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published,
-    cfs_description,
-    cfs_enabled,
-    cfs_starts_at,
-    cfs_ends_at,
-    starts_at,
-    ends_at
-) values (
-    :'eventID',
-    :'groupID',
-    'Event 1',
-    'event-1',
-    'Event description',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true,
-    'CFS open',
-    true,
-    current_timestamp - interval '1 day',
-    current_timestamp + interval '1 day',
-    current_timestamp + interval '7 days',
-    current_timestamp + interval '8 days'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'cfs_description', 'CFS open',
+    'cfs_enabled', true,
+    'cfs_ends_at', current_timestamp + interval '1 day',
+    'cfs_starts_at', current_timestamp - interval '1 day',
+    'ends_at', current_timestamp + interval '8 days',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days'
+));
 
 -- Session proposal
 insert into session_proposal (
@@ -218,7 +149,7 @@ select results_eq(
         values (
             'session_proposal_deleted',
             %L::uuid,
-            'alice',
+            'alice-delete-session-proposal',
             'session_proposal',
             %L::uuid
         )
@@ -236,6 +167,7 @@ select throws_ok(
         :'userID',
         :'proposalWithSubmissionID'
     ),
+    'OCG01',
     'session proposal has submissions',
     'Should reject deleting proposals with submissions'
 );
@@ -247,6 +179,7 @@ select throws_ok(
         :'userID',
         :'otherUserProposalID'
     ),
+    'OCG01',
     'session proposal not found',
     'Should not leak submissions for other users'
 );

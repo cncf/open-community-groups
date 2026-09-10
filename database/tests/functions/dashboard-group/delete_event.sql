@@ -33,252 +33,83 @@ select plan(22);
 -- SEED DATA
 -- ============================================================================
 
+
 -- Community owning the deletion scenarios
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'community'
-);
+select fx_community(:'communityID', jsonb_build_object('name', 'community'));
+
+-- Baseline categories
+select fx_event_category(:'eventCategoryID', :'communityID');
 
 -- Group category owning the test group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Category');
-
--- Event category used by deletion fixtures
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Category'));
 
 -- Group owning the deletion scenarios
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'name', 'Group',
+    'slug', 'group'
+));
 
 -- Actor deleting the eligible events
-insert into "user" (auth_hash, email, user_id, username)
-values ('hash', 'actor@example.test', :'actorID', 'actor');
+select fx_user(:'actorID', jsonb_build_object('username', 'actor-delete-event'));
 
 -- Active published event that must be canceled before deletion
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Active',
-    :'eventCategoryID',
-    :'activeEventID',
-    'in-person',
-    :'groupID',
-    'Active',
-    true,
-    'active',
-    now() + interval '1 day',
-    'UTC'
-);
+select fx_event(:'activeEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'slug', 'active',
+    'starts_at', now() + interval '1 day'
+));
 
 -- Canceled event eligible for deletion
-insert into event (
-    canceled,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    true,
-    'Canceled',
-    :'eventCategoryID',
-    :'canceledEventID',
-    'in-person',
-    :'groupID',
-    'Canceled',
-    false,
-    'canceled',
-    now() + interval '1 day',
-    'UTC'
-);
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'slug', 'canceled',
+    'starts_at', now() + interval '1 day'
+));
 
 -- Unused never-published draft eligible for deletion
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Draft',
-    :'eventCategoryID',
-    :'draftEventID',
-    'in-person',
-    :'groupID',
-    'Draft',
-    false,
-    'draft',
-    now() + interval '1 day',
-    'UTC'
-);
+select fx_event(:'draftEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'slug', 'draft',
+    'starts_at', now() + interval '1 day'
+));
 
 -- Canceled event without a requested meeting
-insert into event (
-    canceled,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    meeting_in_sync,
-    meeting_requested,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    true,
-    'No meeting',
-    :'eventCategoryID',
-    :'eventNoMeetingID',
-    'in-person',
-    :'groupID',
-    null,
-    false,
-    'No meeting',
-    false,
-    'no-meeting',
-    now() + interval '1 day',
-    'UTC'
-);
+select fx_event(:'eventNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'meeting_requested', false,
+    'starts_at', now() + interval '1 day'
+));
 
 -- Canceled event with requested event and session meetings
-insert into event (
-    capacity,
-    canceled,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    100,
-    true,
-    'Meeting cleanup',
-    now() + interval '2 days',
-    :'eventCategoryID',
-    :'meetingEventID',
-    'virtual',
-    :'groupID',
-    true,
-    'zoom',
-    true,
-    'Meeting cleanup',
-    false,
-    'meeting-cleanup',
-    now() + interval '1 day',
-    'UTC'
-);
+select fx_event(:'meetingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', now() + interval '2 days',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'starts_at', now() + interval '1 day'
+));
 
 -- Completed past event eligible for deletion without cancellation
-insert into event (
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Past',
-    now() - interval '1 hour',
-    :'eventCategoryID',
-    :'pastEventID',
-    'in-person',
-    :'groupID',
-    'Past',
-    true,
-    'past',
-    now() - interval '2 hours',
-    'UTC'
-);
+select fx_event(:'pastEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '1 hour',
+    'published', true,
+    'slug', 'past',
+    'starts_at', now() - interval '2 hours'
+));
 
 -- Active event with unresolved checkout work
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Pending payment',
-    :'eventCategoryID',
-    :'pendingEventID',
-    'in-person',
-    :'groupID',
-    'Pending payment',
-    true,
-    'pending-payment',
-    now() + interval '1 day',
-    'UTC'
-);
+select fx_event(:'pendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
 
 -- Ticket type owning the unresolved checkout
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'pendingEventID',
-    :'ticketTypeID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'pendingEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Pending checkout that blocks event deletion
 insert into event_purchase (
@@ -447,6 +278,7 @@ select is(
 -- Should preserve blocked active events
 select throws_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'activeEventID'),
+    'OCG01',
     'event must be canceled and all payment work settled before deletion',
     'Should reject an active event that has not been canceled'
 );
@@ -459,6 +291,7 @@ select is(
 -- Should preserve events with unresolved payment work
 select throws_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'pendingEventID'),
+    'OCG01',
     'event must be canceled and all payment work settled before deletion',
     'Should reject an event with unresolved payment work'
 );
@@ -502,6 +335,7 @@ select throws_ok(
         'select delete_event(%L, %L, %L)',
         :'actorID', :'missingGroupID', :'activeEventID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject deletion from the wrong group'
 );
@@ -509,6 +343,7 @@ select throws_ok(
 -- Should reject replaying deletion for an inactive event
 select throws_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'draftEventID'),
+    'OCG01',
     'event not found or inactive',
     'Should reject replaying deletion for an inactive event'
 );

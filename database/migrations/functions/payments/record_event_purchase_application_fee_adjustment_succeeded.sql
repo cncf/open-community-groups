@@ -1,4 +1,4 @@
--- Records an idempotent provider application-fee refund.
+-- Records an idempotent provider application-fee refund and completes its payment job.
 create or replace function record_event_purchase_application_fee_adjustment_succeeded(
     p_adjustment_id uuid,
     p_claim_id uuid,
@@ -7,6 +7,7 @@ create or replace function record_event_purchase_application_fee_adjustment_succ
 returns void as $$
 declare
     v_adjustment event_purchase_application_fee_adjustment;
+    v_job payment_job;
 begin
     -- Validate the provider refund reference
     if nullif(btrim(p_provider_application_fee_refund_id), '') is null then
@@ -20,46 +21,39 @@ begin
     where epafa.event_purchase_application_fee_adjustment_id = p_adjustment_id
     for update;
 
+    -- Reject unknown adjustment work
     if not found then
         raise exception 'application-fee adjustment not found';
     end if;
 
+    -- Lock the lifecycle row that owns the claim
+    select pj.*
+    into v_job
+    from payment_job pj
+    where pj.payment_job_id = v_adjustment.payment_job_id
+    for update;
+
     -- Accept idempotent replay of the same completed provider refund
-    if v_adjustment.status = 'completed' then
+    if v_job.status = 'completed' then
+        -- Reject replay for a different provider refund
         if v_adjustment.provider_application_fee_refund_id <>
             p_provider_application_fee_refund_id then
             raise exception 'application-fee adjustment has a different provider refund';
         end if;
+
         return;
     end if;
 
     -- Validate claim ownership before completing the adjustment
-    if v_adjustment.claim_id <> p_claim_id or v_adjustment.status <> 'processing' then
+    if v_job.claim_id <> p_claim_id or v_job.status <> 'processing' then
         raise exception 'application-fee adjustment claim is stale';
     end if;
 
-    -- Persist the successful provider refund
-    update event_purchase_application_fee_adjustment
-    set
-        claim_id = null,
-        claimed_at = null,
-        completed_at = current_timestamp,
-        failure_message = null,
-        provider_application_fee_refund_id = p_provider_application_fee_refund_id,
-        status = 'completed',
-        updated_at = current_timestamp
-    where event_purchase_application_fee_adjustment_id = p_adjustment_id;
-
-    -- Tax reconciliation is the only adjustment gating payment reconciliation
-    if v_adjustment.kind = 'tax-reconciliation' then
-        update event_purchase
-        set
-            financially_reconciled_at = coalesce(
-                financially_reconciled_at,
-                current_timestamp
-            ),
-            updated_at = current_timestamp
-        where event_purchase_id = v_adjustment.event_purchase_id;
-    end if;
+    -- Persist the typed outcome and complete the job
+    perform apply_event_purchase_application_fee_adjustment_outcome(
+        v_adjustment,
+        p_provider_application_fee_refund_id
+    );
+    perform complete_payment_job(v_job.payment_job_id, p_claim_id);
 end;
 $$ language plpgsql;

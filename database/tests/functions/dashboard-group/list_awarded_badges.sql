@@ -28,30 +28,28 @@ select plan(9);
 -- ============================================================================
 
 -- Active and revoked recipients used by history filters
-insert into "user" (user_id, auth_hash, email, email_verified, username, name)
-values
-    (:'recipientActiveID', 'hash', 'history-active@example.test', true, 'history-active', 'Active Recipient'),
-    (:'recipientRevokedID', 'hash', 'history-revoked@example.test', true, 'history-revoked', 'Revoked Recipient');
+select fx_user(:'recipientActiveID', jsonb_build_object(
+    'name', 'Active Recipient',
+    'username', 'history-active'
+));
+select fx_user(:'recipientRevokedID', jsonb_build_object(
+    'name', 'Revoked Recipient',
+    'username', 'history-revoked'
+));
 
 -- Community that owns the history
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'History Community', '/logo', 'history-community');
+select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
 
--- Category used by the history source event
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
-
--- Category used by the issuing group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the history
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'History Group', 'history-group');
+-- Baseline group categories, event categories and groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event represented by one award source
-insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
-values (:'eventID', 'Description', :'eventCategoryID', 'in-person', :'groupID', 'History Event', 'history-event', 'UTC');
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Description',
+    'name', 'History Event'
+));
 
 -- Renamed badge definition represented by an older award snapshot
 insert into badge (badge_id, criteria, description, group_id, image_file_name, name)

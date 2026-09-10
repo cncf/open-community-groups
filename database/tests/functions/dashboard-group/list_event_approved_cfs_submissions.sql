@@ -31,67 +31,16 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'user3ID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'user1ID',
-    gen_random_bytes(32),
-    'alice@example.com',
-    true,
-    'alice',
-    'Alice'
-), (
-    :'user2ID',
-    gen_random_bytes(32),
-    'bob@example.com',
-    true,
-    'bob',
-    'Bob'
-), (
-    :'user3ID',
-    gen_random_bytes(32),
-    'carol@example.com',
-    true,
-    'carol',
-    'Carol'
-);
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+select fx_user(:'user1ID', jsonb_build_object('name', 'Alice'));
+select fx_user(:'user2ID', jsonb_build_object('name', 'Bob'));
 
 -- Session proposals
 insert into session_proposal (
@@ -132,50 +81,16 @@ insert into session_proposal (
     );
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    published
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Event 1',
-    'event-1',
-    'Event description',
-    'UTC',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Event description',
+    'published', true
+));
 
 -- Event without approved submissions
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    published
-) values (
-    :'eventNoApprovedID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Event 2',
-    'event-2',
-    'Event description',
-    'UTC',
-    true
-);
+select fx_event(:'eventNoApprovedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Event description',
+    'published', true
+));
 
 -- CFS submissions
 insert into cfs_submission (

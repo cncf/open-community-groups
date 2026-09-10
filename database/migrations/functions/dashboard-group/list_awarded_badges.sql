@@ -5,8 +5,8 @@ returns json as $$
         -- Normalize pagination, search, and status filters
         filters as (
             select
-                greatest(coalesce((p_filters->>'limit')::integer, 20), 1) as limit_value,
-                greatest(coalesce((p_filters->>'offset')::integer, 0), 0) as offset_value,
+                greatest(coalesce(f.limit_value, 20), 1) as limit_value,
+                greatest(coalesce(f.offset_value, 0), 0) as offset_value,
                 nullif(btrim(p_filters->>'query'), '') as query_value,
 
                 nullif(p_filters->>'badge_id', '')::uuid as badge_id_value,
@@ -18,6 +18,7 @@ returns json as $$
                 coalesce(p_filters->>'source' = 'group', false) as group_source_value,
                 nullif(p_filters->>'status', '') as status_value,
                 nullif(p_filters->>'to', '')::timestamptz as to_value
+            from parse_search_filters(p_filters) f
         ),
         -- Apply group ownership plus all requested award filters
         filtered as (

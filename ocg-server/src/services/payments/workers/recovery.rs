@@ -34,7 +34,7 @@ pub(in crate::services::payments) fn start(db: &DynDB, background_tasks: &Backgr
     }
 }
 
-/// Recovers stale claims across the durable payment queues.
+/// Recovers stale claims across the durable payment job queue.
 struct Worker {
     /// Coordinates graceful recovery-worker shutdown.
     cancellation_token: CancellationToken,
@@ -53,37 +53,20 @@ impl Worker {
         .await;
     }
 
-    /// Attempts every payment queue recovery independently.
+    /// Attempts payment job recovery.
     async fn sweep_stale_claims(&self) {
-        // Recover abandoned application-fee adjustment claims
-        Self::report_recovery(
-            "application-fee-adjustment",
-            self.db
-                .requeue_stale_event_purchase_application_fee_adjustment_claims()
-                .await,
-        );
-
-        // Recover abandoned credit-note claims even if the prior queue failed
-        Self::report_recovery(
-            "credit-note",
-            self.db.requeue_stale_event_purchase_credit_note_claims().await,
-        );
-
-        // Recover abandoned refund claims even if another queue failed
-        Self::report_recovery(
-            "refund",
-            self.db.requeue_stale_event_purchase_refund_claims().await,
-        );
+        // Recover abandoned payment job claims in one database sweep
+        Self::report_recovery(self.db.requeue_stale_payment_job_claims().await);
     }
 
-    /// Reports recovery activity and queue-specific failures at the worker boundary.
-    fn report_recovery(queue: &'static str, result: Result<i32>) {
+    /// Reports recovery activity and sweep failures at the worker boundary.
+    fn report_recovery(result: Result<i32>) {
         match result {
             Ok(recovered) if recovered > 0 => {
-                warn!(queue, recovered, "requeued stale payment claims");
+                warn!(recovered, "requeued stale payment job claims");
             }
             Ok(_) => {}
-            Err(err) => error!(error = %err, queue, "error recovering payment claims"),
+            Err(err) => error!(error = %err, "error recovering payment job claims"),
         }
     }
 }

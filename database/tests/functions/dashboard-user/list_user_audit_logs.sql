@@ -27,28 +27,11 @@ select plan(4);
 -- ============================================================================
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'actorID',
-    gen_random_bytes(32),
-    'alice@example.com',
-    true,
-    'alice',
-    'Alice'
-), (
-    :'otherActorID',
-    gen_random_bytes(32),
-    'bob@example.com',
-    true,
-    'bob',
-    'Bob'
-);
+select fx_user(:'actorID', jsonb_build_object(
+    'name', 'Alice',
+    'username', 'alice-user-audit-logs'
+));
+select fx_user(:'otherActorID', jsonb_build_object('username', 'bob-user-audit-logs'));
 
 -- Session proposal
 insert into session_proposal (
@@ -84,7 +67,7 @@ insert into audit_log (
         :'audit1ID',
         'session_proposal_added',
         :'actorID',
-        'alice',
+        'alice-user-audit-logs',
         '2024-04-01 11:00:00+00',
         '{}'::jsonb,
         :'sessionProposalID',
@@ -94,7 +77,7 @@ insert into audit_log (
         :'audit2ID',
         'user_details_updated',
         :'actorID',
-        'alice',
+        'alice-user-audit-logs',
         '2024-04-02 11:00:00+00',
         '{}'::jsonb,
         :'actorID',
@@ -104,7 +87,7 @@ insert into audit_log (
         :'audit4ID',
         'event_attendee_invitation_accepted',
         :'actorID',
-        'alice',
+        'alice-user-audit-logs',
         '2024-04-01 12:00:00+00',
         jsonb_build_object('event_id', :'eventAcceptedID'),
         :'actorID',
@@ -114,7 +97,7 @@ insert into audit_log (
         :'audit5ID',
         'event_attendee_invitation_rejected',
         :'actorID',
-        'alice',
+        'alice-user-audit-logs',
         '2024-04-01 13:00:00+00',
         jsonb_build_object('event_id', :'eventRejectedID'),
         :'actorID',
@@ -124,7 +107,7 @@ insert into audit_log (
         :'audit3ID',
         'submission_withdrawn',
         :'otherActorID',
-        'bob',
+        'bob-user-audit-logs',
         '2024-04-03 11:00:00+00',
         '{"status": "withdrawn"}',
         :'submissionID',
@@ -148,7 +131,7 @@ select is(
                 [
                     {
                         "action": "user_details_updated",
-                        "actor_username": "alice",
+                        "actor_username": "alice-user-audit-logs",
                         "audit_log_id": "%s",
                         "created_at": 1712055600,
                         "details": {},
@@ -158,7 +141,7 @@ select is(
                     },
                     {
                         "action": "event_attendee_invitation_rejected",
-                        "actor_username": "alice",
+                        "actor_username": "alice-user-audit-logs",
                         "audit_log_id": "%s",
                         "created_at": 1711976400,
                         "details": {"event_id": "%s"},
@@ -168,7 +151,7 @@ select is(
                     },
                     {
                         "action": "event_attendee_invitation_accepted",
-                        "actor_username": "alice",
+                        "actor_username": "alice-user-audit-logs",
                         "audit_log_id": "%s",
                         "created_at": 1711972800,
                         "details": {"event_id": "%s"},
@@ -178,7 +161,7 @@ select is(
                     },
                     {
                         "action": "session_proposal_added",
-                        "actor_username": "alice",
+                        "actor_username": "alice-user-audit-logs",
                         "audit_log_id": "%s",
                         "created_at": 1711969200,
                         "details": {},
@@ -218,7 +201,7 @@ select is(
                 [
                     {
                         "action": "session_proposal_added",
-                        "actor_username": "alice",
+                        "actor_username": "alice-user-audit-logs",
                         "audit_log_id": "%s",
                         "created_at": 1711969200,
                         "details": {},
@@ -250,7 +233,7 @@ select is(
                 [
                     {
                         "action": "session_proposal_added",
-                        "actor_username": "alice",
+                        "actor_username": "alice-user-audit-logs",
                         "audit_log_id": "%s",
                         "created_at": 1711969200,
                         "details": {},

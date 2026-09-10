@@ -77,23 +77,14 @@ insert into community (
 );
 
 -- Community with minimal fields
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community2ID',
-    'cloud-native-portland',
-    'Cloud Native Portland',
-    'A growing community for cloud native technologies in Portland',
-    'https://portland.cloudnative.org/banner_mobile.png',
-    'https://portland.cloudnative.org/banner.png',
-    'https://portland.cloudnative.org/logo.png'
-);
+select fx_community(:'community2ID', jsonb_build_object(
+    'banner_mobile_url', 'https://portland.cloudnative.org/banner_mobile.png',
+    'banner_url', 'https://portland.cloudnative.org/banner.png',
+    'description', 'A growing community for cloud native technologies in Portland',
+    'display_name', 'Cloud Native Portland',
+    'logo_url', 'https://portland.cloudnative.org/logo.png',
+    'name', 'cloud-native-portland'
+));
 
 -- ============================================================================
 -- TESTS

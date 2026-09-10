@@ -15,24 +15,8 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cncf-seattle',
-    'CNCF Seattle',
-    'Community for region tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community
+select fx_community(:'communityID');
 
 -- ============================================================================
 -- TESTS
@@ -105,6 +89,7 @@ select throws_ok(
     ) $$,
         :'communityID'
     ),
+    'OCG01',
     'region already exists',
     'Should reject duplicate region names'
 );

@@ -17,18 +17,12 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    optional_notifications_enabled
-) values
-    (:'userID1', 'hash-1', 'user1@example.com', true, 'user-one', true),
-    (:'userID2', 'hash-2', 'user2@example.com', true, 'user-two', false),
-    (:'userID3', 'hash-3', 'user3@example.com', false, 'user-three', true);
+-- Baseline users
+select fx_user(:'userID1');
+
+select fx_user(:'userID2', jsonb_build_object('optional_notifications_enabled', false));
+-- user
+select fx_user(:'userID3', jsonb_build_object('email_verified', false));
 
 -- ============================================================================
 -- TESTS

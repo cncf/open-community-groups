@@ -38,7 +38,7 @@ begin
             and ub.revoked_at is null
         )
     ) then
-        raise exception 'badge order does not match active badges';
+        raise exception 'badge order does not match active badges' using errcode = 'OCG01';
     end if;
 
     -- Persist the complete zero-based order in one statement

@@ -14,7 +14,7 @@ begin
       and gc.group_category_id = p_group_category_id;
 
     if not found then
-        raise exception 'group category not found';
+        raise exception 'group category not found' using errcode = 'OCG01';
     end if;
 
     -- Update the category record
@@ -32,6 +32,6 @@ begin
         p_community_id
     );
 exception when unique_violation then
-    raise exception 'group category already exists';
+    raise exception 'group category already exists' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

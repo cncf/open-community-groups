@@ -29,6 +29,6 @@ begin
 
     return v_group_category_id;
 exception when unique_violation then
-    raise exception 'group category already exists';
+    raise exception 'group category already exists' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

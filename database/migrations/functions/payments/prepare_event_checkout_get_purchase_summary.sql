@@ -16,7 +16,7 @@ returns jsonb as $$
             'status', ep.status,
             'ticket_title', ep.ticket_title,
 
-            'completed_at', extract(epoch from ep.completed_at)::bigint,
+            'completed_at', epoch_seconds(ep.completed_at),
             'discount_code', ep.discount_code,
             'external_payment_instructions',
                 case
@@ -29,14 +29,14 @@ returns jsonb as $$
                     -- Expose the live event payment URL only for external holds
                     when ep.charge_model = 'external' then e.external_payment_url
                 end,
-            'hold_expires_at', extract(epoch from ep.hold_expires_at)::bigint,
+            'hold_expires_at', epoch_seconds(ep.hold_expires_at),
             'manual_tax_rate_ids', ep.manual_tax_rate_ids,
             'provider_checkout_url', ep.provider_checkout_url,
             'provider_object_account_id', ep.provider_object_account_id,
             'provider_payment_reference', ep.provider_payment_reference,
             'provider_session_id', ep.provider_checkout_session_id,
             'provider_total_minor', ep.provider_total_minor,
-            'refunded_at', extract(epoch from ep.refunded_at)::bigint,
+            'refunded_at', epoch_seconds(ep.refunded_at),
             'seller', ep.seller_snapshot,
             'tax_behavior', ep.tax_behavior,
             'tax_calculation_mode', ep.tax_calculation_mode,

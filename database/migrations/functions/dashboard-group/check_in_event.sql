@@ -26,7 +26,7 @@ begin
 
     -- Reject unavailable events before attendee mutation
     if not found then
-        raise exception 'event unavailable for check-in';
+        raise exception 'event unavailable for check-in' using errcode = 'OCG01';
     end if;
 
     -- Lock the confirmed attendee and capture the current state
@@ -40,7 +40,7 @@ begin
 
     -- Reject users without confirmed attendance
     if not found then
-        raise exception 'attendance is not confirmed';
+        raise exception 'attendance is not confirmed' using errcode = 'OCG01';
     end if;
 
     -- Preserve the original timestamp and audit record on repeated check-ins

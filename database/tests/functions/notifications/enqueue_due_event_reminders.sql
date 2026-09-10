@@ -38,7 +38,6 @@ select plan(17);
 -- SEED DATA
 -- ============================================================================
 
--- Site settings
 insert into site (site_id, title, description, theme) values (
     :'siteID',
     'Test Site',
@@ -47,347 +46,137 @@ insert into site (site_id, title, description, theme) values (
 );
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'event-reminders-community',
-    'Event Reminders Community',
-    'Reminder notification tests',
-    'https://example.com/community-banner-mobile.png',
-    'https://example.com/community-banner.png',
-    'https://example.com/community-logo.png'
-);
+select fx_community(:'communityID', jsonb_build_object('name', 'event-reminders-community'));
 
 -- Inactive community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    active,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityInactiveID',
-    'inactive-community',
-    'Inactive Community',
-    'Inactive community used for reminder tests',
-    false,
-    'https://example.com/inactive-community-banner-mobile.png',
-    'https://example.com/inactive-community-banner.png',
-    'https://example.com/inactive-community-logo.png'
-);
+select fx_community(:'communityInactiveID', jsonb_build_object('active', false));
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group category for inactive community
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryInactiveCommunityID', :'communityInactiveID', 'Design');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+-- Baseline categories, users and groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group_category(:'groupCategoryInactiveCommunityID', :'communityInactiveID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userVerifiedLateSignupID');
+select fx_group(:'groupInactiveCommunityID', :'communityInactiveID', :'groupCategoryInactiveCommunityID');
 
 -- Event category for inactive community
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryInactiveCommunityID', :'communityInactiveID', 'Community');
+select fx_event_category(:'eventCategoryInactiveCommunityID', :'communityInactiveID', jsonb_build_object('name', 'Community'));
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    slug_pretty,
-    description,
-    logo_url
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Test Group',
-    'test-group',
-    'test-group-pretty',
-    'Group used for reminder tests',
-    'https://example.com/group-logo.png'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'slug', 'test-group',
+    'slug_pretty', 'test-group-pretty'
+));
 
 -- Inactive and deleted groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted,
-    description,
-    logo_url
-) values
-    (
-        :'groupDeletedID',
-        :'communityID',
-        :'groupCategoryID',
-        'Deleted Group',
-        'deleted-group',
-        false,
-        true,
-        'Deleted group used for reminder tests',
-        'https://example.com/deleted-group-logo.png'
-    ),
-    (
-        :'groupInactiveID',
-        :'communityID',
-        :'groupCategoryID',
-        'Inactive Group',
-        'inactive-group',
-        false,
-        false,
-        'Inactive group used for reminder tests',
-        'https://example.com/inactive-group-logo.png'
-    );
-
--- Group in inactive community
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    description,
-    logo_url
-) values (
-    :'groupInactiveCommunityID',
-    :'communityInactiveID',
-    :'groupCategoryInactiveCommunityID',
-    'Inactive Community Group',
-    'inactive-community-group',
-    'Group in inactive community used for reminder tests',
-    'https://example.com/inactive-community-group-logo.png'
-);
+select fx_group(:'groupDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
+-- group
+select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    registration_status
-) values
-    (:'userVerifiedAttendeeID', 'hash-1', 'attendee@example.com', true, 'attendee', 'registered'),
-    (:'userVerifiedLateSignupID', 'hash-2', 'late-signup@example.com',
-        true, 'late-signup', 'registered'),
-    (:'userVerifiedSpeakerID', 'hash-3', 'speaker@example.com', true, 'speaker', 'registered'),
-    (:'userUnverifiedID', 'hash-4', 'unverified@example.com', false, 'unverified', 'registered'),
-    (:'userPreRegisteredInvitedID', 'hash-5', 'invited@example.com',
-        false, 'invited', 'pre-registered');
+select fx_user(:'userVerifiedAttendeeID', jsonb_build_object('username', 'attendee-enqueue-due-event-reminders'));
+-- user
+select fx_user(:'userVerifiedSpeakerID', jsonb_build_object('username', 'speaker-enqueue-due-event-reminders'));
+-- user
+select fx_user(:'userUnverifiedID', jsonb_build_object('email_verified', false));
+-- user
+select fx_user(:'userPreRegisteredInvitedID', jsonb_build_object(
+    'email_verified', false,
+    'registration_status', 'pre-registered'
+));
 
 -- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-    published,
-    venue_city,
-    venue_country_code,
-    venue_country_name,
-    venue_name
-) values
-    (
-        :'eventDueID',
-        :'groupID',
-        'Due Event',
-        'due-event',
-        'Event that should trigger reminders',
-        'UTC',
-        :'eventCategoryID',
-        'hybrid',
-        current_timestamp + interval '23 hours',
-        current_timestamp + interval '24 hours',
-        true,
-        'Seattle',
-        'US',
-        'United States',
-        'Conference Hall'
-    ),
-    (
-        :'eventNoRecipientsID',
-        :'groupID',
-        'No Recipients Event',
-        'no-recipients-event',
-        'Due event without verified recipients',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        current_timestamp + interval '20 hours',
-        current_timestamp + interval '21 hours',
-        true,
-        'Austin',
-        'US',
-        'United States',
-        'Remote'
-    ),
-    (
-        :'eventNotDueID',
-        :'groupID',
-        'Not Due Event',
-        'not-due-event',
-        'Event outside reminder window',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        current_timestamp + interval '30 hours',
-        current_timestamp + interval '31 hours',
-        true,
-        'Boston',
-        'US',
-        'United States',
-        'Center'
-    ),
-    (
-        :'eventDeletedGroupID',
-        :'groupDeletedID',
-        'Deleted Group Event',
-        'deleted-group-event',
-        'Due event from a deleted group',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        current_timestamp + interval '19 hours',
-        current_timestamp + interval '20 hours',
-        true,
-        'San Francisco',
-        'US',
-        'United States',
-        'Remote'
-    ),
-    (
-        :'eventInactiveCommunityID',
-        :'groupInactiveCommunityID',
-        'Inactive Community Event',
-        'inactive-community-event',
-        'Due event from an inactive community',
-        'UTC',
-        :'eventCategoryInactiveCommunityID',
-        'virtual',
-        current_timestamp + interval '18 hours',
-        current_timestamp + interval '19 hours',
-        true,
-        'Portland',
-        'US',
-        'United States',
-        'Remote'
-    ),
-    (
-        :'eventInactiveGroupID',
-        :'groupInactiveID',
-        'Inactive Group Event',
-        'inactive-group-event',
-        'Due event from an inactive group',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        current_timestamp + interval '17 hours',
-        current_timestamp + interval '18 hours',
-        true,
-        'San Diego',
-        'US',
-        'United States',
-        'Remote'
-    );
+select fx_event(:'eventDueID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '24 hours',
+    'event_kind_id', 'hybrid',
+    'published', true,
+    'slug', 'due-event',
+    'starts_at', current_timestamp + interval '23 hours',
+    'venue_city', 'Seattle',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Conference Hall'
+));
+-- event
+select fx_event(:'eventNoRecipientsID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '21 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', current_timestamp + interval '20 hours',
+    'venue_city', 'Austin',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Remote'
+));
+-- event
+select fx_event(:'eventNotDueID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '31 hours',
+    'published', true,
+    'starts_at', current_timestamp + interval '30 hours',
+    'venue_city', 'Boston',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Center'
+));
+-- event
+select fx_event(:'eventDeletedGroupID', :'groupDeletedID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '20 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', current_timestamp + interval '19 hours',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Remote'
+));
+-- event
+select fx_event(:'eventInactiveCommunityID', :'groupInactiveCommunityID', :'eventCategoryInactiveCommunityID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '19 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', current_timestamp + interval '18 hours',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Remote'
+));
+-- event
+select fx_event(:'eventInactiveGroupID', :'groupInactiveID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '18 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', current_timestamp + interval '17 hours',
+    'venue_city', 'San Diego',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Remote'
+));
 
 -- Event with reminders disabled
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-    published,
-    event_reminder_enabled,
-    venue_city,
-    venue_country_code,
-    venue_country_name,
-    venue_name
-) values (
-    :'eventDisabledID',
-    :'groupID',
-    'Disabled Reminder Event',
-    'disabled-reminder-event',
-    'Event with reminders disabled',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    current_timestamp + interval '20 hours',
-    current_timestamp + interval '21 hours',
-    true,
-    false,
-    'Denver',
-    'US',
-    'United States',
-    'Center'
-);
+select fx_event(:'eventDisabledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '21 hours',
+    'event_reminder_enabled', false,
+    'published', true,
+    'starts_at', current_timestamp + interval '20 hours',
+    'venue_city', 'Denver',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Center'
+));
 
 -- Event with reminder already sent
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-    published,
-    event_reminder_sent_at,
-    venue_city,
-    venue_country_code,
-    venue_country_name,
-    venue_name
-) values (
-    :'eventSentID',
-    :'groupID',
-    'Already Sent Event',
-    'already-sent-event',
-    'Event with reminder already sent',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    current_timestamp + interval '20 hours',
-    current_timestamp + interval '21 hours',
-    true,
-    current_timestamp,
-    'Chicago',
-    'US',
-    'United States',
-    'Center'
-);
+select fx_event(:'eventSentID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '21 hours',
+    'event_reminder_sent_at', current_timestamp,
+    'published', true,
+    'starts_at', current_timestamp + interval '20 hours',
+    'venue_city', 'Chicago',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Center'
+));
 
 -- Attendees and speakers for due event
 insert into event_attendee (event_id, user_id, status) values

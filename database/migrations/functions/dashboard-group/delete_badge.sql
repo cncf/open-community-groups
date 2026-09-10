@@ -9,16 +9,6 @@ returns void as $$
 declare
     v_badge_name text;
 begin
-    -- Authorize the actor against the requested community and group
-    if not user_has_group_permission(
-        p_community_id,
-        p_group_id,
-        p_actor_user_id,
-        'group.badges.write'
-    ) then
-        raise exception 'badge permission denied' using errcode = 'insufficient_privilege';
-    end if;
-
     -- Delete only a definition owned by the requested group
     delete from badge
     where badge_id = p_badge_id
@@ -26,7 +16,7 @@ begin
     returning name into v_badge_name;
 
     if not found then
-        raise exception 'badge not found';
+        raise exception 'badge not found' using errcode = 'OCG01';
     end if;
 
     -- Record the successful definition deletion

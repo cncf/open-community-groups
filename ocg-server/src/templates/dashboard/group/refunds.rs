@@ -66,17 +66,17 @@ impl ListPage {
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum FinancialRecoveryKind {
     /// Application-fee refund or tax correction.
-    ApplicationFeeAdjustment,
+    EventPurchaseApplicationFeeAdjustment,
     /// Customer credit-note creation.
-    CreditNote,
+    EventPurchaseCreditNote,
 }
 
 impl FinancialRecoveryKind {
     /// Returns the label for the provider object captured during recovery.
     pub(crate) fn provider_object_label(self) -> &'static str {
         match self {
-            Self::ApplicationFeeAdjustment => "Stripe application-fee refund ID",
-            Self::CreditNote => "Stripe credit note ID",
+            Self::EventPurchaseApplicationFeeAdjustment => "Stripe application-fee refund ID",
+            Self::EventPurchaseCreditNote => "Stripe credit note ID",
         }
     }
 }
@@ -100,10 +100,10 @@ pub(crate) struct GroupFinancialRecovery {
     pub kind: FinancialRecoveryKind,
     /// User-facing operation label.
     pub operation: String,
+    /// Durable payment job identifier.
+    pub payment_job_id: Uuid,
     /// Attendee username.
     pub username: String,
-    /// Durable work-item identifier.
-    pub work_id: Uuid,
 
     /// Attendee name.
     pub name: Option<String>,
@@ -157,6 +157,8 @@ pub(crate) struct GroupRefund {
     pub kind: Option<String>,
     /// Attendee name.
     pub name: Option<String>,
+    /// Durable payment job identifier.
+    pub payment_job_id: Option<Uuid>,
     /// Attendee profile photo URL.
     pub photo_url: Option<String>,
     /// Provider refund identifier.

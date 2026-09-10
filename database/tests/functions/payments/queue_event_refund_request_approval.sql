@@ -16,6 +16,7 @@ select plan(14);
 \set blankRequestID 'd4050000-0000-0000-0000-000000000003'
 \set blankUserID 'd4050000-0000-0000-0000-000000000004'
 \set communityID 'd4050000-0000-0000-0000-000000000005'
+\set conflictJobID 'd4050000-0000-0000-0000-00000000002d'
 \set conflictPurchaseID 'd4050000-0000-0000-0000-000000000006'
 \set conflictRefundID 'd4050000-0000-0000-0000-000000000007'
 \set conflictRequestID 'd4050000-0000-0000-0000-000000000008'
@@ -47,75 +48,29 @@ select plan(14);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the refund approval fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'queue-refund-community'
-);
-
--- Event category used by the refund approval event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the refund approval group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the refund approval event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Users covering every approval queue validation and normalization branch
-insert into "user" (auth_hash, email, user_id, username) values
-    ('actor', 'actor@example.test', :'actorID', 'actor'),
-    ('blank', 'blank@example.test', :'blankUserID', 'blank'),
-    ('conflict', 'conflict@example.test', :'conflictUserID', 'conflict'),
-    ('external', 'external@example.test', :'externalUserID', 'external'),
-    ('free', 'free@example.test', :'freeUserID', 'free'),
-    ('happy', 'happy@example.test', :'happyUserID', 'happy'),
-    ('missing-request', 'missing-request@example.test', :'missingRequestUserID', 'missing-request'),
-    ('no-reference', 'no-reference@example.test', :'noReferenceUserID', 'no-reference'),
-    ('replay-actor', 'replay-actor@example.test', :'replayActorID', 'replay-actor');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_user(:'blankUserID');
+select fx_user(:'conflictUserID');
+select fx_user(:'externalUserID');
+select fx_user(:'freeUserID');
+select fx_user(:'happyUserID');
+select fx_user(:'missingRequestUserID');
+select fx_user(:'noReferenceUserID');
+select fx_user(:'replayActorID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event owning every approval queue purchase
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values (
-    'Event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Event',
-    'USD',
-    'event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type referenced by every approval queue purchase
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values (:'eventID', :'ticketTypeID', 1, 100, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
 
 -- Purchases covering successful, blank-note, conflicting, free, missing-request, and missing-reference states
 insert into event_purchase (
@@ -178,7 +133,7 @@ from (values
     (2500, 'USD', :'eventID', :'blankPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'blankUserID', 'stripe', 'pi_blank'),
     (2500, 'USD', :'eventID', :'conflictPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'conflictUserID', 'stripe', 'pi_conflict'),
     (0, 'USD', :'eventID', :'freePurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'freeUserID', null, null),
-    (2500, 'USD', :'eventID', :'happyPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'happyUserID', 'stripe', 'pi_happy'),
+    (2500, 'USD', :'eventID', :'happyPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'happyUserID', 'stripe', 'pi_happy_queue_event_refund_request_approval'),
     (2500, 'USD', :'eventID', :'missingRequestPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'missingRequestUserID', 'stripe', 'pi_missing_request')
 ) as fixtures (
     amount_minor,
@@ -233,14 +188,24 @@ insert into event_refund_request (
     (:'freePurchaseID', :'freeRequestID', :'freeUserID', 'pending'),
     (:'happyPurchaseID', :'happyRequestID', :'happyUserID', 'pending');
 
+-- Existing payment job that conflicts with attendee-request approval
+insert into payment_job (
+    payment_job_id, event_purchase_id, idempotency_key, kind,
+    payment_provider_id
+) values (
+    :'conflictJobID', :'conflictPurchaseID',
+    'refund-conflict-queue-event-refund-request-approval-job',
+    'event-purchase-refund', 'stripe'
+);
+
 -- Existing cancellation refund that conflicts with attendee-request approval
 insert into event_purchase_refund (
     amount_minor,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status
 ) values (
@@ -248,8 +213,8 @@ insert into event_purchase_refund (
     'USD',
     :'conflictPurchaseID',
     :'conflictRefundID',
-    'refund-conflict',
     'event-cancellation',
+    :'conflictJobID',
     'stripe',
     'provider-pending'
 );
@@ -294,34 +259,37 @@ select results_eq(
         select
             epr.amount_minor,
             epr.currency_code,
-            epr.idempotency_key,
             epr.initiated_by_user_id,
             epr.kind,
             epr.payment_provider_id,
             epr.review_note,
             epr.status,
+            pj.idempotency_key,
+            pj.status,
             err.review_note,
             err.reviewed_at is not null,
             err.reviewed_by_user_id,
             err.status
         from event_purchase_refund epr
         join event_refund_request err using (event_refund_request_id)
+        join payment_job pj using (payment_job_id)
         where epr.event_purchase_id = %L::uuid
     $$, :'happyPurchaseID'),
     format($$ values (
         2500::bigint,
         'USD'::text,
-        %L::text,
         %L::uuid,
         'refund-request-approval'::text,
         'stripe'::text,
         'Approved by organizer'::text,
         'provider-pending'::text,
+        %L::text,
+        'pending'::text,
         'Approved by organizer'::text,
         true,
         %L::uuid,
         'approving'::text
-    ) $$, 'event-purchase-refund-' || :'happyPurchaseID', :'actorID', :'actorID'),
+    ) $$, :'actorID', 'event-purchase-refund-' || :'happyPurchaseID', :'actorID'),
     'Should persist the review decision and stable worker handoff'
 );
 
@@ -367,6 +335,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'groupID', :'externalPurchaseID'
     ),
+    'OCG01',
     'external purchases must be approved locally',
     'Should reject an external purchase that must be approved locally'
 );
@@ -377,6 +346,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'groupID', :'freePurchaseID'
     ),
+    'OCG01',
     'paid purchase is not ready for refund',
     'Should reject a free purchase'
 );
@@ -387,6 +357,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'groupID', :'missingPurchaseID'
     ),
+    'OCG01',
     'refund request not found',
     'Should reject a missing purchase'
 );
@@ -397,6 +368,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'groupID', :'missingRequestPurchaseID'
     ),
+    'OCG01',
     'refund request not found',
     'Should reject a purchase without a refund request'
 );
@@ -407,6 +379,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'missingGroupID', :'happyPurchaseID'
     ),
+    'OCG01',
     'refund request not found',
     'Should reject a request outside the requested group'
 );
@@ -417,6 +390,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, 'Approved')$$,
         :'actorID', :'groupID', :'conflictPurchaseID'
     ),
+    'OCG01',
     'event purchase refund already started with different kind',
     'Should reject durable work owned by a different refund kind'
 );

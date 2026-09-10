@@ -33,164 +33,76 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, description)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event candidates and exclusions
-insert into event (
-    capacity,
-    canceled,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values
-(
-    100,
-    false,
-    'Recent overdue event meeting',
-    current_timestamp - interval '25 minutes',
-    :'eventCategoryID',
-    :'eventRecentOverdueID',
-    'virtual',
-    :'groupID',
-    true,
-    'zoom',
-    true,
-    'Event Recent Overdue',
-    true,
-    'event-recent-overdue',
-    current_timestamp - interval '1 hour',
-    'UTC'
-),
-(
-    100,
-    false,
-    'Older overdue event meeting',
-    current_timestamp - interval '90 minutes',
-    :'eventCategoryID',
-    :'eventOlderOverdueID',
-    'virtual',
-    :'groupID',
-    true,
-    'zoom',
-    true,
-    'Event Older Overdue',
-    true,
-    'event-older-overdue',
-    current_timestamp - interval '3 hours',
-    'UTC'
-),
-(
-    100,
-    false,
-    'Event still inside grace window',
-    current_timestamp - interval '5 minutes',
-    :'eventCategoryID',
-    :'eventNotOverdueID',
-    'virtual',
-    :'groupID',
-    true,
-    'zoom',
-    true,
-    'Event Not Overdue',
-    true,
-    'event-not-overdue',
-    current_timestamp - interval '40 minutes',
-    'UTC'
-),
-(
-    100,
-    false,
-    'Event meeting already checked',
-    current_timestamp - interval '40 minutes',
-    :'eventCategoryID',
-    :'eventProcessedID',
-    'virtual',
-    :'groupID',
-    true,
-    'zoom',
-    true,
-    'Event Already Checked',
-    true,
-    'event-already-checked',
-    current_timestamp - interval '2 hours',
-    'UTC'
-),
-(
-    100,
-    true,
-    'Canceled event meeting',
-    current_timestamp - interval '40 minutes',
-    :'eventCategoryID',
-    :'eventCanceledID',
-    'virtual',
-    :'groupID',
-    true,
-    'zoom',
-    true,
-    'Event Canceled',
-    false,
-    'event-canceled',
-    current_timestamp - interval '2 hours',
-    'UTC'
-),
-(
-    100,
-    false,
-    'Parent event for session meetings',
-    current_timestamp + interval '2 hours',
-    :'eventCategoryID',
-    :'eventWithSessionsID',
-    'virtual',
-    :'groupID',
-    true,
-    'zoom',
-    true,
-    'Event With Sessions',
-    true,
-    'event-with-sessions',
-    current_timestamp - interval '2 hours',
-    'UTC'
-);
+select fx_event(:'eventRecentOverdueID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp - interval '25 minutes',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'slug', 'event-recent-overdue',
+    'starts_at', current_timestamp - interval '1 hour'
+));
+select fx_event(:'eventOlderOverdueID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp - interval '90 minutes',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'slug', 'event-older-overdue',
+    'starts_at', current_timestamp - interval '3 hours'
+));
+select fx_event(:'eventNotOverdueID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp - interval '5 minutes',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'slug', 'event-not-overdue',
+    'starts_at', current_timestamp - interval '40 minutes'
+));
+select fx_event(:'eventProcessedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp - interval '40 minutes',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'starts_at', current_timestamp - interval '2 hours'
+));
+select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', current_timestamp - interval '40 minutes',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'starts_at', current_timestamp - interval '2 hours'
+));
+select fx_event(:'eventWithSessionsID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '2 hours',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'starts_at', current_timestamp - interval '2 hours'
+));
 
 -- Session candidates and exclusions
 insert into session (

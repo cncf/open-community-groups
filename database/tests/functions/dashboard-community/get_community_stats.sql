@@ -46,54 +46,36 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'Community used for dashboard stats tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-), (
-    :'community2ID',
-    'other-community',
-    'Other Community',
-    'Separate community for isolation testing',
-    'https://example.com/banner-mobile-2.png',
-    'https://example.com/banner-2.png',
-    'https://example.com/logo-2.png'
-);
+-- Baseline community and group category
+select fx_community(:'community2ID');
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategory3ID', :'community2ID');
 
--- Group categories
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategory1ID', :'communityID', 'AI/ML'),
-    (:'groupCategory2ID', :'communityID', 'Cloud Native'),
-    (:'groupCategory3ID', :'community2ID', 'Security');
+select fx_group_category(:'groupCategory1ID', :'communityID', jsonb_build_object('name', 'AI/ML'));
+-- group category
+select fx_group_category(:'groupCategory2ID', :'communityID', jsonb_build_object('name', 'Cloud Native'));
 
 -- Event categories
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategory1ID', :'communityID', 'Conference'),
-    (:'eventCategory2ID', :'communityID', 'Meetup');
+select fx_event_category(:'eventCategory1ID', :'communityID', jsonb_build_object('name', 'Conference'));
+-- event category
+select fx_event_category(:'eventCategory2ID', :'communityID', jsonb_build_object('name', 'Meetup'));
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'user1ID', 'hash-1', 'user1@example.com', true, 'user1'),
-    (:'user2ID', 'hash-2', 'user2@example.com', true, 'user2'),
-    (:'user3ID', 'hash-3', 'user3@example.com', true, 'user3'),
-    (:'user4ID', 'hash-4', 'user4@example.com', true, 'user4'),
-    (:'user5ID', 'hash-5', 'user5@example.com', true, 'user5'),
-    (:'user6ID', 'hash-6', 'user6@example.com', true, 'user6'),
-    (:'user7ID', 'hash-7', 'user7@example.com', true, 'user7'),
-    (:'user8ID', 'hash-8', 'user8@example.com', true, 'user8');
+select fx_user(:'user1ID', jsonb_build_object('username', 'user1-community-stats'));
+-- user
+select fx_user(:'user2ID', jsonb_build_object('username', 'user2-community-stats'));
+-- user
+select fx_user(:'user3ID', jsonb_build_object('username', 'user3-community-stats'));
+-- user
+select fx_user(:'user4ID', jsonb_build_object('username', 'user4-community-stats'));
+-- user
+select fx_user(:'user5ID', jsonb_build_object('username', 'user5-community-stats'));
+-- user
+select fx_user(:'user6ID', jsonb_build_object('username', 'user6-community-stats'));
+-- user
+select fx_user(:'user7ID', jsonb_build_object('username', 'user7'));
+-- user
+select fx_user(:'user8ID', jsonb_build_object('username', 'user8'));
 
 -- Regions
 insert into region (region_id, community_id, name, "order") values
@@ -101,78 +83,36 @@ insert into region (region_id, community_id, name, "order") values
     (:'region2ID', :'communityID', 'North America', 2),
     (:'region3ID', :'community2ID', 'South America', 1);
 
--- Groups (using relative dates within 2-year window)
--- month_10 = date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months' (group1, AI/ML, Europe)
--- month_9  = date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months'  (group2, AI/ML, North America)
--- month_7  = date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months'  (group3, Cloud Native, Europe)
--- month_5  = date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months'  (group4, Cloud Native, North America)
 -- month_3  = date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months'  (group5, other community)
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    created_at,
-    deleted,
-    region_id
-) values (
-    :'group1ID',
-    :'communityID',
-    :'groupCategory1ID',
-    'AI Europe',
-    'ai-europe',
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months'
+select fx_group(:'group1ID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months'
         + interval '15 days',
-    false,
-    :'region1ID'
-), (
-    :'group2ID',
-    :'communityID',
-    :'groupCategory1ID',
-    'AI North America',
-    'ai-north-america',
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months'
+    'region_id', :'region1ID'
+));
+-- group
+select fx_group(:'group2ID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months'
         + interval '15 days',
-    false,
-    :'region2ID'
-), (
-    :'group3ID',
-    :'communityID',
-    :'groupCategory2ID',
-    'Cloud Europe',
-    'cloud-europe',
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months'
+    'region_id', :'region2ID'
+));
+-- group
+select fx_group(:'group3ID', :'communityID', :'groupCategory2ID', jsonb_build_object(
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months'
         + interval '15 days',
-    false,
-    :'region1ID'
-), (
-    :'group4ID',
-    :'communityID',
-    :'groupCategory2ID',
-    'Cloud North America',
-    'cloud-north-america',
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months'
+    'region_id', :'region1ID'
+));
+-- group
+select fx_group(:'group4ID', :'communityID', :'groupCategory2ID', jsonb_build_object(
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months'
         + interval '15 days',
-    false,
-    :'region2ID'
-), (
-    :'group5ID',
-    :'community2ID',
-    :'groupCategory3ID',
-    'Other Community Group',
-    'other-group',
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months'
+    'region_id', :'region2ID'
+));
+-- group
+select fx_group(:'group5ID', :'community2ID', :'groupCategory3ID', jsonb_build_object(
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months'
         + interval '15 days',
-    false,
-    :'region3ID'
-);
+    'region_id', :'region3ID'
+));
 
 -- Group members
 -- Members join across different months:
@@ -234,142 +174,51 @@ insert into group_member (group_id, user_id, created_at) values
             + interval '10 days'
     );
 
--- Events
--- Published events across different months:
--- month_10: event1 (group1/AI/ML/Europe, Conference)
--- month_8:  event2 (group1/AI/ML/Europe, Meetup)
--- month_6:  event3 (group2/AI/ML/N.America, Conference)
--- month_4:  event4 (group3/Cloud/Europe, Meetup)
--- month_3:  event5 (group3/Cloud/Europe, Conference)
--- month_2:  event6 (group4/Cloud/N.America, Meetup)
--- Unpublished/canceled events (should not be counted as events):
--- month_1:  event7 (unpublished)
 -- month_0:  event8 (canceled, but its page views should still count)
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    canceled,
-    deleted,
-    published,
-    starts_at
-) values (
-    :'event1ID',
-    :'eventCategory1ID',
-    'in-person',
-    :'group1ID',
-    'Conference 1',
-    'conference-1',
-    'Event 1',
-    'UTC',
-    false,
-    false,
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months'
+select fx_event(:'event1ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months'
         + interval '15 days'
-), (
-    :'event2ID',
-    :'eventCategory2ID',
-    'in-person',
-    :'group1ID',
-    'Meetup 1',
-    'meetup-1',
-    'Event 2',
-    'UTC',
-    false,
-    false,
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months'
+));
+-- event
+select fx_event(:'event2ID', :'group1ID', :'eventCategory2ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months'
         + interval '15 days'
-), (
-    :'event3ID',
-    :'eventCategory1ID',
-    'in-person',
-    :'group2ID',
-    'Conference 2',
-    'conference-2',
-    'Event 3',
-    'UTC',
-    false,
-    false,
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months'
+));
+-- event
+select fx_event(:'event3ID', :'group2ID', :'eventCategory1ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months'
         + interval '15 days'
-), (
-    :'event4ID',
-    :'eventCategory2ID',
-    'in-person',
-    :'group3ID',
-    'Meetup 2',
-    'meetup-2',
-    'Event 4',
-    'UTC',
-    false,
-    false,
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months'
+));
+-- event
+select fx_event(:'event4ID', :'group3ID', :'eventCategory2ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months'
         + interval '15 days'
-), (
-    :'event5ID',
-    :'eventCategory1ID',
-    'in-person',
-    :'group3ID',
-    'Conference 3',
-    'conference-3',
-    'Event 5',
-    'UTC',
-    false,
-    false,
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months'
+));
+-- event
+select fx_event(:'event5ID', :'group3ID', :'eventCategory1ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months'
         + interval '15 days'
-), (
-    :'event6ID',
-    :'eventCategory2ID',
-    'in-person',
-    :'group4ID',
-    'Meetup 3',
-    'meetup-3',
-    'Event 6',
-    'UTC',
-    false,
-    false,
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months'
+));
+-- event
+select fx_event(:'event6ID', :'group4ID', :'eventCategory2ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months'
         + interval '15 days'
-), (
-    :'event7ID',
-    :'eventCategory1ID',
-    'in-person',
-    :'group1ID',
-    'Conference Draft',
-    'conference-draft',
-    'Draft Event',
-    'UTC',
-    false,
-    false,
-    false,
-    date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month'
-        + interval '15 days'
-), (
-    :'event8ID',
-    :'eventCategory2ID',
-    'in-person',
-    :'group2ID',
-    'Meetup Canceled',
-    'meetup-canceled',
-    'Canceled Event',
-    'UTC',
-    true,
-    false,
-    true,
-    date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days'
-);
+));
+-- event
+select fx_event(:'event7ID', :'group1ID', :'eventCategory1ID', jsonb_build_object('starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month'
+        + interval '15 days'));
+-- event
+select fx_event(:'event8ID', :'group2ID', :'eventCategory2ID', jsonb_build_object(
+    'canceled', true,
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days'
+));
 
 -- Event attendees (in the same months as the events they attend)
 -- event1 (month_10): 3 attendees

@@ -1,15 +1,32 @@
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
-    http::{HeaderValue, Method, StatusCode, Uri, header::LOCATION},
+    http::{
+        HeaderValue, Method, StatusCode, Uri,
+        header::{COOKIE, LOCATION},
+    },
 };
+use axum_login::tower_sessions::session;
 use tower::ServiceExt;
+use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
+    db::mock::MockDB,
+    handlers::tests::*,
+    services::notifications::MockNotificationsManager,
+    types::permissions::{CommunityPermission, GroupPermission},
 };
 
 use super::*;
+
+/// Dashboard mutation routes that only change the session's selected scope.
+///
+/// They are guarded by login and read access instead of a write permission.
+const SCOPE_SELECTION_ROUTES: [&str; 3] = [
+    "/dashboard/community/{community_id}/select",
+    "/dashboard/group/community/{community_id}/select",
+    "/dashboard/group/{group_id}/select",
+];
 
 #[tokio::test]
 async fn test_browser_same_origin_middleware_enforces_browser_signals() {
@@ -183,6 +200,81 @@ async fn test_current_commit_ocg_fetch_request_runs_handler() {
         &HeaderValue::from_static(COMMIT_SHA)
     );
     assert_eq!(String::from_utf8(bytes.to_vec()).unwrap(), "fresh json");
+}
+
+#[tokio::test]
+async fn test_dashboard_mutation_routes_require_write_permission() {
+    // Setup an authenticated session that only holds read access everywhere
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_community_permission()
+        .returning(|_, _, permission| Ok(permission == CommunityPermission::Read));
+    db.expect_user_has_group_permission()
+        .returning(|_, _, _, permission| Ok(permission == GroupPermission::Read));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Collect every mutation route declared by the community and group dashboards
+    let mutation_routes = dashboard_mutation_routes();
+    for scope_route in SCOPE_SELECTION_ROUTES {
+        assert!(
+            mutation_routes.iter().any(|(path, _)| path == scope_route),
+            "scope selection route {scope_route} is no longer declared"
+        );
+    }
+    let write_routes: Vec<_> = mutation_routes
+        .into_iter()
+        .filter(|(path, _)| !SCOPE_SELECTION_ROUTES.contains(&path.as_str()))
+        .collect();
+    assert!(!write_routes.is_empty());
+
+    // Check every write route is rejected before its handler runs
+    for (path, method) in write_routes {
+        let uri = path
+            .split('/')
+            .map(|segment| {
+                if segment.starts_with('{') {
+                    Uuid::new_v4().to_string()
+                } else {
+                    segment.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("/");
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(method.clone())
+                    .uri(&uri)
+                    .header(COOKIE, format!("id={session_id}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            response.status(),
+            StatusCode::FORBIDDEN,
+            "{method} {path} is not protected by a write permission layer"
+        );
+    }
 }
 
 #[tokio::test]
@@ -640,6 +732,82 @@ async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
 }
 
 // Helpers.
+
+/// Checks whether the route arguments call the given axum method router.
+fn contains_method_call(args: &str, name: &str) -> bool {
+    let needle = format!("{name}(");
+    args.match_indices(&needle).any(|(index, _)| {
+        args[..index]
+            .chars()
+            .next_back()
+            .is_none_or(|c| !(c.is_alphanumeric() || c == '_' || c == ':'))
+    })
+}
+
+/// Extracts the mutation routes declared by the community and group dashboard routers.
+fn dashboard_mutation_routes() -> Vec<(String, Method)> {
+    const SOURCE: &str = include_str!("dashboard.rs");
+    const MUTATION_METHODS: [(&str, Method); 4] = [
+        ("delete", Method::DELETE),
+        ("patch", Method::PATCH),
+        ("post", Method::POST),
+        ("put", Method::PUT),
+    ];
+    let sections = [
+        (
+            "/dashboard/community",
+            "fn setup_community_dashboard_router",
+            "fn setup_group_dashboard_router",
+        ),
+        (
+            "/dashboard/group",
+            "fn setup_group_dashboard_router",
+            "fn setup_user_dashboard_router",
+        ),
+    ];
+
+    // Scan each router function for route declarations and their method chains
+    let mut routes = Vec::new();
+    for (prefix, start_marker, end_marker) in sections {
+        let start = SOURCE.find(start_marker).expect("router function should exist");
+        let end = SOURCE.find(end_marker).expect("router function should exist");
+        let mut rest = &SOURCE[start..end];
+        while let Some(index) = rest.find(".route(") {
+            rest = &rest[index + ".route(".len()..];
+
+            // Read the path literal and the arguments up to the matching parenthesis
+            let path_start = rest.find('"').expect("route path should be a literal") + 1;
+            let path_end =
+                path_start + rest[path_start..].find('"').expect("route path should close");
+            let path = &rest[path_start..path_end];
+            let mut depth = 1;
+            let mut args_end = rest.len();
+            for (i, c) in rest.char_indices() {
+                match c {
+                    '(' => depth += 1,
+                    ')' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            args_end = i;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let args = &rest[path_end..args_end];
+
+            // Record every mutation method routed on this path
+            for (name, method) in &MUTATION_METHODS {
+                if contains_method_call(args, name) {
+                    routes.push((format!("{prefix}{path}"), method.clone()));
+                }
+            }
+            rest = &rest[args_end..];
+        }
+    }
+    routes
+}
 
 /// Finds an embedded static asset path matching the given prefix and suffix.
 fn static_path_with_prefix_and_suffix(prefix: &str, suffix: &str) -> String {

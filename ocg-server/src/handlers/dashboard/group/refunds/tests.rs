@@ -136,10 +136,10 @@ async fn test_list_page_renders_filtered_refund_workflows() {
             email: "alice@example.test".to_string(),
             event_name: "Test event".to_string(),
             failure_message: "Provider request failed".to_string(),
-            kind: FinancialRecoveryKind::ApplicationFeeAdjustment,
+            kind: FinancialRecoveryKind::EventPurchaseApplicationFeeAdjustment,
             operation: "Application-fee refund".to_string(),
+            payment_job_id: Uuid::new_v4(),
             username: "alice".to_string(),
-            work_id: Uuid::new_v4(),
             name: Some("Alice".to_string()),
         }],
         refunds: vec![GroupRefund {
@@ -160,6 +160,7 @@ async fn test_list_page_renders_filtered_refund_workflows() {
             failure_message: None,
             kind: None,
             name: Some("Alice".to_string()),
+            payment_job_id: None,
             photo_url: None,
             provider_refund_id: None,
             requested_reason: Some("Unable to attend".to_string()),
@@ -313,13 +314,13 @@ async fn test_list_page_rejects_invalid_pagination_limit() {
 }
 
 #[tokio::test]
-async fn test_complete_financial_recovery_forbids_user_without_event_write_access() {
+async fn test_complete_payment_job_recovery_forbids_user_without_event_write_access() {
     // Setup an authenticated group member without event-management access
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let work_id = Uuid::new_v4();
+    let payment_job_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
@@ -329,7 +330,7 @@ async fn test_complete_financial_recovery_forbids_user_without_event_write_acces
         Some(group_id),
     );
 
-    // Reject recovery before either financial mutation can run
+    // Reject recovery before the payment job mutation can run
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -357,9 +358,7 @@ async fn test_complete_financial_recovery_forbids_user_without_event_write_acces
                 && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_complete_event_purchase_application_fee_adjustment_recovery()
-        .never();
-    db.expect_complete_event_purchase_credit_note_recovery().never();
+    db.expect_complete_payment_job_recovery().never();
 
     // Attempt recovery with otherwise valid evidence
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -367,29 +366,29 @@ async fn test_complete_financial_recovery_forbids_user_without_event_write_acces
         .await;
     let request = Request::builder()
         .method("PUT")
-        .uri("/dashboard/group/financial-work/recovery")
+        .uri("/dashboard/group/payment-jobs/recovery")
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(format!(
-            "kind=application-fee-adjustment&provider_object_id=fr_test_123&recovery_note=Verified+Stripe+activity&recovery_reference=ticket-456&work_id={work_id}"
+            "payment_job_id={payment_job_id}&provider_object_id=fr_test_123&recovery_note=Verified+Stripe+activity&recovery_reference=ticket-456"
         )))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the route rejects recovery before calling either database function
+    // Check the route rejects recovery before calling the database function
     assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
-async fn test_complete_financial_recovery_records_application_fee_evidence() {
-    // Setup an authenticated event manager and application-fee work item
+async fn test_complete_payment_job_recovery_records_provider_evidence() {
+    // Setup an authenticated event manager and payment job
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let work_id = Uuid::new_v4();
+    let payment_job_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
@@ -399,7 +398,7 @@ async fn test_complete_financial_recovery_records_application_fee_evidence() {
         Some(group_id),
     );
 
-    // Expect application-fee evidence to reach only its database function
+    // Expect provider evidence to reach the unified database function
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -418,106 +417,29 @@ async fn test_complete_financial_recovery_records_application_fee_evidence() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_complete_event_purchase_application_fee_adjustment_recovery()
+    db.expect_complete_payment_job_recovery()
         .times(1)
         .withf(move |input| {
             input.actor_user_id == user_id
                 && input.group_id == group_id
+                && input.payment_job_id == payment_job_id
                 && input.provider_object_id == "fr_test_123"
                 && input.recovery_note == "Verified Stripe activity"
                 && input.recovery_reference == "ticket-456"
-                && input.work_id == work_id
         })
         .returning(|_| Ok(()));
-    db.expect_complete_event_purchase_credit_note_recovery().never();
 
-    // Submit the application-fee recovery evidence
+    // Submit the payment job recovery evidence
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .build()
         .await;
     let request = Request::builder()
         .method("PUT")
-        .uri("/dashboard/group/financial-work/recovery")
+        .uri("/dashboard/group/payment-jobs/recovery")
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(format!(
-            "kind=application-fee-adjustment&provider_object_id=fr_test_123&recovery_note=Verified+Stripe+activity&recovery_reference=ticket-456&work_id={work_id}"
-        )))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the current financial-work view is refreshed
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-refunds",
-    );
-}
-
-#[tokio::test]
-async fn test_complete_financial_recovery_records_credit_note_evidence() {
-    // Setup an authenticated event manager and credit-note work item
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let work_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-
-    // Expect credit-note evidence to reach only its database function
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_complete_event_purchase_application_fee_adjustment_recovery()
-        .never();
-    db.expect_complete_event_purchase_credit_note_recovery()
-        .times(1)
-        .withf(move |input| {
-            input.actor_user_id == user_id
-                && input.group_id == group_id
-                && input.provider_object_id == "cn_test_123"
-                && input.recovery_note == "Verified Stripe credit note"
-                && input.recovery_reference == "ticket-789"
-                && input.work_id == work_id
-        })
-        .returning(|_| Ok(()));
-
-    // Submit the credit-note recovery evidence
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/group/financial-work/recovery")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
-            "kind=credit-note&provider_object_id=cn_test_123&recovery_note=Verified+Stripe+credit+note&recovery_reference=ticket-789&work_id={work_id}"
+            "payment_job_id={payment_job_id}&provider_object_id=fr_test_123&recovery_note=Verified+Stripe+activity&recovery_reference=ticket-456"
         )))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -680,13 +602,13 @@ async fn test_complete_refund_recovery_forbids_user_without_event_write_access()
 }
 
 #[tokio::test]
-async fn test_retry_financial_recovery_forbids_user_without_event_write_access() {
+async fn test_retry_payment_job_forbids_user_without_event_write_access() {
     // Setup an authenticated group member without event-management access
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let work_id = Uuid::new_v4();
+    let payment_job_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
@@ -696,7 +618,7 @@ async fn test_retry_financial_recovery_forbids_user_without_event_write_access()
         Some(group_id),
     );
 
-    // Reject retry before either financial mutation can run
+    // Reject retry before the payment job mutation can run
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -724,8 +646,7 @@ async fn test_retry_financial_recovery_forbids_user_without_event_write_access()
                 && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_requeue_event_purchase_application_fee_adjustment().never();
-    db.expect_requeue_event_purchase_credit_note().never();
+    db.expect_requeue_payment_job().never();
 
     // Attempt a retry with otherwise valid input
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -733,29 +654,28 @@ async fn test_retry_financial_recovery_forbids_user_without_event_write_access()
         .await;
     let request = Request::builder()
         .method("PUT")
-        .uri("/dashboard/group/financial-work/retry")
+        .uri(format!(
+            "/dashboard/group/payment-jobs/{payment_job_id}/retry"
+        ))
         .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
-            "kind=application-fee-adjustment&work_id={work_id}"
-        )))
+        .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the route rejects retry before calling either database function
+    // Check the route rejects retry before calling the database function
     assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
-async fn test_retry_financial_recovery_requeues_application_fee_adjustment() {
-    // Setup an authenticated event manager and application-fee work item
+async fn test_retry_payment_job_requeues_selected_job() {
+    // Setup an authenticated event manager and payment job
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let work_id = Uuid::new_v4();
+    let payment_job_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
@@ -765,7 +685,7 @@ async fn test_retry_financial_recovery_requeues_application_fee_adjustment() {
         Some(group_id),
     );
 
-    // Expect only the application-fee work item to be requeued
+    // Expect the selected payment job to be requeued
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -784,101 +704,33 @@ async fn test_retry_financial_recovery_requeues_application_fee_adjustment() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_requeue_event_purchase_application_fee_adjustment()
+    db.expect_requeue_payment_job()
         .times(1)
-        .withf(move |gid, id| *gid == group_id && *id == work_id)
+        .withf(move |gid, id| *gid == group_id && *id == payment_job_id)
         .returning(|_, _| Ok(()));
-    db.expect_requeue_event_purchase_credit_note().never();
 
-    // Submit an application-fee retry request
+    // Submit a payment job retry request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .build()
         .await;
     let request = Request::builder()
         .method("PUT")
-        .uri("/dashboard/group/financial-work/retry")
+        .uri(format!(
+            "/dashboard/group/payment-jobs/{payment_job_id}/retry"
+        ))
         .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
-            "kind=application-fee-adjustment&work_id={work_id}"
-        )))
+        .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the current financial-work view is refreshed
+    // Check the current payment job view is refreshed
     assert_empty_hx_trigger_response(
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-group-refunds",
-    );
-}
-
-#[tokio::test]
-async fn test_retry_financial_recovery_requeues_credit_note() {
-    // Setup an authenticated event manager and credit-note work item
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let work_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-
-    // Expect only the credit-note work item to be requeued
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_requeue_event_purchase_application_fee_adjustment().never();
-    db.expect_requeue_event_purchase_credit_note()
-        .times(1)
-        .withf(move |gid, id| *gid == group_id && *id == work_id)
-        .returning(|_, _| Ok(()));
-
-    // Submit a credit-note retry request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/group/financial-work/retry")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("kind=credit-note&work_id={work_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the current financial-work view is refreshed
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-refunds",
+        "refresh-event-attendees, refresh-group-refunds",
     );
 }
 

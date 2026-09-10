@@ -27,40 +27,21 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
+
 -- Community owning both recurring series
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'community'
-);
+select fx_community(:'communityID', jsonb_build_object('name', 'community-delete-event-series-events'));
+
+-- Baseline categories
+select fx_event_category(:'eventCategoryID', :'communityID');
 
 -- Group category owning the test group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Category');
-
--- Event category used by recurring events
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Category'));
 
 -- Group owning both recurring series
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('slug', 'group'));
 
 -- Actor deleting the recurring events
-insert into "user" (auth_hash, email, user_id, username)
-values ('hash', 'actor@example.test', :'actorID', 'actor');
+select fx_user(:'actorID', jsonb_build_object('username', 'actor-delete-event-series-events'));
 
 -- Series containing two eligible unused drafts
 insert into event_series (
@@ -101,98 +82,38 @@ insert into event_series (
 );
 
 -- Eligible unused draft occurrences
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    event_series_id,
-    group_id,
-    name,
-    slug,
-    starts_at,
-    timezone
-) values
-    (
-        'One',
-        :'eventCategoryID',
-        :'eligibleEventOneID',
-        'in-person',
-        :'eligibleSeriesID',
-        :'groupID',
-        'One',
-        'one',
-        now() + interval '1 day',
-        'UTC'
-    ),
-    (
-        'Two',
-        :'eventCategoryID',
-        :'eligibleEventTwoID',
-        'in-person',
-        :'eligibleSeriesID',
-        :'groupID',
-        'Two',
-        'two',
-        now() + interval '2 days',
-        'UTC'
-    );
+select fx_event(:'eligibleEventOneID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'One',
+    'event_series_id', :'eligibleSeriesID',
+    'name', 'One',
+    'slug', 'one',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'eligibleEventTwoID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Two',
+    'event_series_id', :'eligibleSeriesID',
+    'name', 'Two',
+    'starts_at', now() + interval '2 days'
+));
 
 -- Guarded series whose first occurrence is already canceled
-insert into event (
-    canceled,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    event_series_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    true,
-    'Allowed',
-    :'eventCategoryID',
-    :'guardedAllowedEventID',
-    'in-person',
-    :'guardedSeriesID',
-    :'groupID',
-    'Allowed',
-    false,
-    'allowed',
-    now() + interval '3 days',
-    'UTC'
-);
+select fx_event(:'guardedAllowedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'description', 'Allowed',
+    'event_series_id', :'guardedSeriesID',
+    'name', 'Allowed',
+    'starts_at', now() + interval '3 days'
+));
 
 -- Guarded series whose second occurrence must be canceled first
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    event_series_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Blocked',
-    :'eventCategoryID',
-    :'guardedBlockedEventID',
-    'in-person',
-    :'guardedSeriesID',
-    :'groupID',
-    'Blocked',
-    true,
-    'blocked',
-    now() + interval '4 days',
-    'UTC'
-);
+select fx_event(:'guardedBlockedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Blocked',
+    'event_series_id', :'guardedSeriesID',
+    'name', 'Blocked',
+    'published', true,
+    'slug', 'blocked',
+    'starts_at', now() + interval '4 days'
+));
 
 -- ============================================================================
 -- TESTS
@@ -242,6 +163,7 @@ select throws_ok(
         :'groupID',
         array[:'eligibleEventOneID', :'eligibleEventTwoID']
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject replaying deletion for inactive occurrences'
 );
@@ -254,6 +176,7 @@ select throws_ok(
         :'groupID',
         array[:'guardedAllowedEventID', :'guardedBlockedEventID']
     ),
+    'OCG01',
     'event must be canceled and all payment work settled before deletion',
     'Should reject a series containing a blocked occurrence'
 );

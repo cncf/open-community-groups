@@ -18,7 +18,7 @@ begin
       and ec.event_category_id = p_event_category_id;
 
     if not found then
-        raise exception 'event category not found';
+        raise exception 'event category not found' using errcode = 'OCG01';
     end if;
 
     -- Block deletion when events still reference this category
@@ -28,7 +28,7 @@ begin
     where e.event_category_id = p_event_category_id;
 
     if v_events_count > 0 then
-        raise exception 'cannot delete event category in use by events';
+        raise exception 'cannot delete event category in use by events' using errcode = 'OCG01';
     end if;
 
     -- Delete the category record

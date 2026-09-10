@@ -34,138 +34,61 @@ select plan(6);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url,
-
-    ad_banner_link_url,
-    ad_banner_url,
-    og_image_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png',
-
-    'https://example.com/ad-banner-link',
-    'https://example.com/ad-banner.png',
-    'https://example.com/community-og.png'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'ad_banner_link_url', 'https://example.com/ad-banner-link',
+    'ad_banner_url', 'https://example.com/ad-banner.png',
+    'banner_mobile_url', 'https://example.com/banner_mobile.png',
+    'banner_url', 'https://example.com/banner.png',
+    'display_name', 'Cloud Native Seattle Group Full',
+    'logo_url', 'https://example.com/logo.png',
+    'name', 'cloud-native-seattle-group-full',
+    'og_image_url', 'https://example.com/community-og.png'
+));
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Technology'));
 
 -- Region
 insert into region (region_id, community_id, name)
 values (:'regionID', :'communityID', 'North America');
 
 -- User
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    bio,
-    bluesky_url,
-    company,
-    facebook_url,
-    github_url,
-    linkedin_url,
-    name,
-    photo_url,
-    provider,
-    title,
-    twitter_url,
-    website_url
-) values (
-    :'user1ID',
-    'test_hash',
-    'alice@seattle.cloudnative.org',
-    false,
-    'alice-organizer',
-    'Community meetup organizer',
-    'https://bsky.app/profile/alice',
-    'Cloud Co',
-    'https://facebook.com/alice',
-    'https://github.com/alice',
-    'https://linkedin.com/in/alice',
-    'Alice Johnson',
-    'https://example.com/alice.png',
-    jsonb_build_object(
+select fx_user(:'user1ID', jsonb_build_object(
+    'bio', 'Community meetup organizer',
+    'bluesky_url', 'https://bsky.app/profile/alice',
+    'company', 'Cloud Co',
+    'email_verified', false,
+    'facebook_url', 'https://facebook.com/alice',
+    'github_url', 'https://github.com/alice',
+    'linkedin_url', 'https://linkedin.com/in/alice',
+    'name', 'Alice Johnson',
+    'photo_url', 'https://example.com/alice.png',
+    'provider', jsonb_build_object(
         'linuxfoundation', jsonb_build_object(
             'issuer', 'https://issuer.example.com',
             'subject', 'auth0|alice',
             'username', 'alice-lf'
         )
     ),
-    'Manager',
-    'https://twitter.com/alice',
-    'https://alice.com'
-), (
-    :'user2ID',
-    'test_hash',
-    'bob@seattle.cloudnative.org',
-    false,
-    'bob-organizer',
-    'Cloud native program lead',
-    null,
-    'StartUp',
-    null,
-    'https://github.com/bob',
-    'https://linkedin.com/in/bob',
-    'Bob Wilson',
-    'https://example.com/bob.png',
-    null,
-    'Engineer',
-    null,
-    'https://bob.com'
-), (
-    :'user3ID',
-    'test_hash',
-    'charlie@seattle.cloudnative.org',
-    false,
-    'charlie-member',
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    'Charlie Brown',
-    null,
-    null,
-    null,
-    null,
-    null
-), (
-    :'user4ID',
-    'test_hash',
-    'diana@seattle.cloudnative.org',
-    false,
-    'diana-member',
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    'Diana Prince',
-    null,
-    null,
-    null,
-    null,
-    null
-);
+    'title', 'Manager',
+    'twitter_url', 'https://twitter.com/alice',
+    'username', 'alice-organizer',
+    'website_url', 'https://alice.com'
+));
+select fx_user(:'user2ID', jsonb_build_object(
+    'bio', 'Cloud native program lead',
+    'company', 'StartUp',
+    'email_verified', false,
+    'github_url', 'https://github.com/bob',
+    'linkedin_url', 'https://linkedin.com/in/bob',
+    'name', 'Bob Wilson',
+    'photo_url', 'https://example.com/bob.png',
+    'title', 'Engineer',
+    'username', 'bob-organizer',
+    'website_url', 'https://bob.com'
+));
+select fx_user(:'user3ID', jsonb_build_object('email_verified', false));
+select fx_user(:'user4ID', jsonb_build_object('email_verified', false));
 
 -- Group
 insert into "group" (
@@ -285,134 +208,43 @@ values
     (:'groupID', :'user4ID');
 
 -- Group (inactive)
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-
-    active,
-    created_at
-) values (
-    :'groupInactiveID',
-    :'communityID',
-    :'groupCategoryID',
-    'Inactive DevOps Group',
-    'xyz9876',
-
-    false,
-    '2024-02-15 10:00:00+00'
-);
+select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'created_at', '2024-02-15 10:00:00+00'
+));
 
 -- Group variants
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    created_at,
-
-    logo_url,
-    slug_pretty
-) values
-    (
-        :'groupNoLogoID',
-        :'communityID',
-        :'groupCategoryID',
-        'Group Without Logo',
-        'group-without-logo',
-        true,
-        '2024-02-20 10:00:00+00',
-
-        null,
-        null
-    ),
-    (
-        :'groupPrettySlugID',
-        :'communityID',
-        :'groupCategoryID',
-        'Group With Pretty Slug',
-        'group-with-pretty-slug',
-        true,
-        '2024-02-21 10:00:00+00',
-
-        'https://example.com/pretty-slug-logo.png',
-        'seattle-kubernetes'
-    );
+select fx_group(:'groupNoLogoID', :'communityID', :'groupCategoryID', jsonb_build_object('created_at', '2024-02-20 10:00:00+00'));
+select fx_group(:'groupPrettySlugID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'created_at', '2024-02-21 10:00:00+00',
+    'slug_pretty', 'seattle-kubernetes'
+));
 
 -- Group hierarchy parent
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted,
-    created_at
-) values (
-    :'hierarchyParentID',
-    :'communityID',
-    :'groupCategoryID',
-    'Hierarchy Parent',
-    'hierarchy-parent',
-    true,
-    false,
-    '2024-03-01 10:00:00+00'
-);
+select fx_group(:'hierarchyParentID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'created_at', '2024-03-01 10:00:00+00',
+    'name', 'Hierarchy Parent',
+    'slug', 'hierarchy-parent'
+));
 
 -- Group hierarchy children
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted,
-    created_at,
-
-    parent_group_id
-) values
-    (
-        :'hierarchyChildActiveID',
-        :'communityID',
-        :'groupCategoryID',
-        'Active Hierarchy Child',
-        'active-hierarchy-child',
-        true,
-        false,
-        '2024-03-02 10:00:00+00',
-
-        :'hierarchyParentID'
-    ),
-    (
-        :'hierarchyChildInactiveID',
-        :'communityID',
-        :'groupCategoryID',
-        'Inactive Hierarchy Child',
-        'inactive-hierarchy-child',
-        false,
-        false,
-        '2024-03-03 10:00:00+00',
-
-        :'hierarchyParentID'
-    ),
-    (
-        :'hierarchyChildDeletedID',
-        :'communityID',
-        :'groupCategoryID',
-        'Deleted Hierarchy Child',
-        'deleted-hierarchy-child',
-        false,
-        true,
-        '2024-03-04 10:00:00+00',
-
-        :'hierarchyParentID'
-    );
+select fx_group(:'hierarchyChildActiveID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'created_at', '2024-03-02 10:00:00+00',
+    'name', 'Active Hierarchy Child',
+    'parent_group_id', :'hierarchyParentID',
+    'slug', 'active-hierarchy-child'
+));
+select fx_group(:'hierarchyChildInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'created_at', '2024-03-03 10:00:00+00',
+    'parent_group_id', :'hierarchyParentID'
+));
+select fx_group(:'hierarchyChildDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'created_at', '2024-03-04 10:00:00+00',
+    'deleted', true,
+    'parent_group_id', :'hierarchyParentID'
+));
 
 -- ============================================================================
 -- TESTS
@@ -476,9 +308,9 @@ select is(
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "community_id": "0c0a0000-0000-0000-0000-000000000001",
-            "display_name": "Cloud Native Seattle",
+            "display_name": "Cloud Native Seattle Group Full",
             "logo_url": "https://example.com/logo.png",
-            "name": "cloud-native-seattle",
+            "name": "cloud-native-seattle-group-full",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",
             "og_image_url": "https://example.com/community-og.png"
@@ -555,8 +387,8 @@ select is(
                     "name": "Technology",
                     "normalized_name": "technology"
                 },
-                "community_display_name": "Cloud Native Seattle",
-                "community_name": "cloud-native-seattle",
+                "community_display_name": "Cloud Native Seattle Group Full",
+                "community_name": "cloud-native-seattle-group-full",
                 "created_at": 1709287200,
                 "group_id": "%s",
                 "logo_url": "https://example.com/logo.png",
@@ -571,8 +403,8 @@ select is(
                         "name": "Technology",
                         "normalized_name": "technology"
                     },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
+                    "community_display_name": "Cloud Native Seattle Group Full",
+                    "community_name": "cloud-native-seattle-group-full",
                     "created_at": 1709373600,
                     "group_id": "%s",
                     "logo_url": "https://example.com/logo.png",

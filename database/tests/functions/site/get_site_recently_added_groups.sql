@@ -31,51 +31,13 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'site-recent-groups',
-    'Site Recent Groups',
-    'Community used for site recently added groups tests',
-    'https://example.com/site-recent-groups-banner-mobile.png',
-    'https://example.com/site-recent-groups-banner.png',
-    'https://example.com/site-recent-groups-logo.png'
-);
+-- Baseline active community and category for recently added groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategory1ID', :'communityID');
 
--- Inactive community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    active,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community2ID',
-    'inactive-site-recent-groups',
-    'Inactive Site Recent Groups',
-    'Inactive community used for site recently added groups tests',
-    false,
-    'https://example.com/inactive-site-recent-groups-banner-mobile.png',
-    'https://example.com/inactive-site-recent-groups-banner.png',
-    'https://example.com/inactive-site-recent-groups-logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values
-    (:'groupCategory1ID', :'communityID', 'Technology'),
-    (:'groupCategory2ID', :'community2ID', 'Technology');
+-- Inactive community whose groups are excluded
+select fx_community(:'community2ID', jsonb_build_object('active', false));
+select fx_group_category(:'groupCategory2ID', :'community2ID');
 
 -- Region
 insert into region (region_id, name, community_id)
@@ -83,56 +45,18 @@ values
     (:'region1ID', 'North America', :'communityID'),
     (:'region2ID', 'Europe', :'communityID');
 
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    city,
-    country_code,
-    country_name,
-    created_at,
-    description,
-    logo_url,
-    region_id,
-    state
-)
-values
-    (:'group1ID', :'communityID', :'groupCategory1ID', 'Test Group 1', 'abc1234',
-        'New York', 'US', 'United States', '2024-01-01 09:00:00+00',
-        'First group', 'https://example.com/logo1.png', :'region1ID', 'NY'),
-    (:'group2ID', :'communityID', :'groupCategory1ID', 'Test Group 2', 'def5678',
-        'San Francisco', 'US', 'United States', '2024-01-02 09:00:00+00',
-        'Second group', 'https://example.com/logo2.png', :'region1ID', 'CA'),
-    (:'group3ID', :'communityID', :'groupCategory1ID', 'Test Group 3', 'ghi9abc',
-        'London', 'GB', 'United Kingdom', '2024-01-03 09:00:00+00',
-        'Third group', 'https://example.com/logo3.png', :'region2ID', null),
-    (:'group4ID', :'communityID', :'groupCategory1ID', 'Test Group 4', 'jkl0def',
-        'Paris', 'FR', 'France', '2024-01-04 09:00:00+00',
-        'Fourth group (no logo)', null, :'region2ID', null),
-    (:'group5ID', :'community2ID', :'groupCategory2ID', 'Inactive Community Group', 'mno1ghi',
-        'Denver', 'US', 'United States', '2024-01-05 09:00:00+00',
-        'Group in inactive community', 'https://example.com/logo5.png', null, 'CO'),
-    (:'group6ID', :'communityID', :'groupCategory1ID', 'Test Group 6', 'pqr2jkl',
-        'Toronto', 'CA', 'Canada', '2024-01-06 09:00:00+00',
-        'Sixth group', 'https://example.com/logo6.png', :'region1ID', 'ON'),
-    (:'group7ID', :'communityID', :'groupCategory1ID', 'Test Group 7', 'stu3mno',
-        'Madrid', 'ES', 'Spain', '2024-01-07 09:00:00+00',
-        'Seventh group', 'https://example.com/logo7.png', :'region2ID', null),
-    (:'group8ID', :'communityID', :'groupCategory1ID', 'Test Group 8', 'vwx4pqr',
-        'Boston', 'US', 'United States', '2024-01-08 09:00:00+00',
-        'Eighth group', 'https://example.com/logo8.png', :'region1ID', 'MA'),
-    (:'group9ID', :'communityID', :'groupCategory1ID', 'Test Group 9', 'yza5stu',
-        'Rome', 'IT', 'Italy', '2024-01-09 09:00:00+00',
-        'Ninth group', 'https://example.com/logo9.png', :'region2ID', null),
-    (:'group10ID', :'communityID', :'groupCategory1ID', 'Test Group 10', 'bcd6vwx',
-        'Paris', 'FR', 'France', '2024-01-10 09:00:00+00',
-        'Tenth group', 'https://example.com/logo10.png', :'region2ID', null),
-    (:'group11ID', :'communityID', :'groupCategory1ID', 'Test Group 11', 'efg7yza',
-        'Seattle', 'US', 'United States', '2024-01-11 09:00:00+00',
-        'Eleventh group', 'https://example.com/logo11.png', :'region1ID', 'WA');
+-- Groups ordered by creation date across site results
+select fx_group(:'group1ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-01 09:00:00+00'));
+select fx_group(:'group2ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-02 09:00:00+00'));
+select fx_group(:'group3ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-03 09:00:00+00'));
+select fx_group(:'group4ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-04 09:00:00+00'));
+select fx_group(:'group5ID', :'community2ID', :'groupCategory2ID', jsonb_build_object('created_at', '2024-01-05 09:00:00+00'));
+select fx_group(:'group6ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-06 09:00:00+00'));
+select fx_group(:'group7ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-07 09:00:00+00'));
+select fx_group(:'group8ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-08 09:00:00+00'));
+select fx_group(:'group9ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-09 09:00:00+00'));
+select fx_group(:'group10ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-10 09:00:00+00'));
+select fx_group(:'group11ID', :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-11 09:00:00+00'));
 
 -- ============================================================================
 -- TESTS

@@ -11,34 +11,43 @@ select plan(14);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '4a170000-0000-0000-0000-000000000001'
-\set dueOfferID '4a170000-0000-0000-0000-000000000002'
-\set eventCategoryID '4a170000-0000-0000-0000-000000000003'
-\set eventID '4a170000-0000-0000-0000-000000000004'
-\set externalGroupID '4a170000-0000-0000-0000-000000000011'
-\set externalQueueEventID '4a170000-0000-0000-0000-000000000012'
-\set externalQueueRecipientID '4a170000-0000-0000-0000-000000000013'
-\set externalQueueTicketTypeID '4a170000-0000-0000-0000-000000000014'
-\set externalReminderEventID '4a170000-0000-0000-0000-000000000015'
-\set externalReminderPurchaseID '4a170000-0000-0000-0000-000000000016'
-\set externalReminderRecipientID '4a170000-0000-0000-0000-000000000017'
-\set externalReminderTicketTypeID '4a170000-0000-0000-0000-000000000018'
-\set futureOfferID '4a170000-0000-0000-0000-000000000005'
-\set futureRecipientID '4a170000-0000-0000-0000-000000000006'
-\set groupCategoryID '4a170000-0000-0000-0000-000000000007'
-\set groupID '4a170000-0000-0000-0000-000000000008'
-\set priceWindowID '4a170000-0000-0000-0000-00000000000b'
-\set queueRecipientID '4a170000-0000-0000-0000-00000000000c'
-\set recipientID '4a170000-0000-0000-0000-000000000009'
-\set rsvpDueOfferID '4a170000-0000-0000-0000-00000000000d'
-\set rsvpEventID '4a170000-0000-0000-0000-00000000000e'
-\set rsvpQueueRecipientID '4a170000-0000-0000-0000-00000000000f'
-\set rsvpRecipientID '4a170000-0000-0000-0000-000000000010'
-\set ticketTypeID '4a170000-0000-0000-0000-00000000000a'
+\set communityID '5e050000-0000-0000-0000-000000000001'
+\set dueOfferID '5e050000-0000-0000-0000-000000000002'
+\set eventCategoryID '5e050000-0000-0000-0000-000000000003'
+\set eventID '5e050000-0000-0000-0000-000000000004'
+\set externalGroupID '5e050000-0000-0000-0000-000000000011'
+\set externalQueueEventID '5e050000-0000-0000-0000-000000000012'
+\set externalQueueRecipientID '5e050000-0000-0000-0000-000000000013'
+\set externalQueueTicketTypeID '5e050000-0000-0000-0000-000000000014'
+\set externalReminderEventID '5e050000-0000-0000-0000-000000000015'
+\set externalReminderPurchaseID '5e050000-0000-0000-0000-000000000016'
+\set externalReminderRecipientID '5e050000-0000-0000-0000-000000000017'
+\set externalReminderTicketTypeID '5e050000-0000-0000-0000-000000000018'
+\set futureOfferID '5e050000-0000-0000-0000-000000000005'
+\set futureRecipientID '5e050000-0000-0000-0000-000000000006'
+\set groupCategoryID '5e050000-0000-0000-0000-000000000007'
+\set groupID '5e050000-0000-0000-0000-000000000008'
+\set priceWindowID '5e050000-0000-0000-0000-00000000000b'
+\set queueRecipientID '5e050000-0000-0000-0000-00000000000c'
+\set recipientID '5e050000-0000-0000-0000-000000000009'
+\set rsvpDueOfferID '5e050000-0000-0000-0000-00000000000d'
+\set rsvpEventID '5e050000-0000-0000-0000-00000000000e'
+\set rsvpQueueRecipientID '5e050000-0000-0000-0000-00000000000f'
+\set rsvpRecipientID '5e050000-0000-0000-0000-000000000010'
+\set ticketTypeID '5e050000-0000-0000-0000-00000000000a'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Baseline communities, group categories, event categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'externalQueueRecipientID');
+select fx_user(:'externalReminderRecipientID');
+select fx_user(:'rsvpQueueRecipientID');
+select fx_user(:'rsvpRecipientID');
 
 -- Operator allowlist used by external-ready worker claims
 insert into external_payments_config (
@@ -51,173 +60,42 @@ insert into external_payments_config (
     336
 );
 
--- Community hosting the reconciliation worker scenarios
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    :'communityID',
-    'Enrollment reconciliation worker tests',
-    'Enrollment Reconciliation Community',
-    'https://example.com/logo.png',
-    'enrollment-reconciliation-community'
-);
-
--- Event category used by the reconciliation event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'General');
-
--- Group category used by the reconciliation group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
--- Users owning due, future, and queued enrollment state
-insert into "user" (auth_hash, email, email_verified, user_id, username)
-values
-    ('hash-external-queue', 'external-queue@example.com', true, :'externalQueueRecipientID', 'external-queue'),
-    ('hash-external-reminder', 'external-reminder@example.com', true, :'externalReminderRecipientID', 'external-reminder'),
-    ('hash-future', 'future@example.com', true, :'futureRecipientID', 'future'),
-    ('hash-queue', 'queue@example.com', true, :'queueRecipientID', 'queue'),
-    ('hash-recipient', 'recipient@example.com', true, :'recipientID', 'recipient'),
-    ('hash-rsvp-queue', 'rsvp-queue@example.com', true, :'rsvpQueueRecipientID', 'rsvp-queue'),
-    ('hash-rsvp-recipient', 'rsvp-recipient@example.com', true, :'rsvpRecipientID', 'rsvp-recipient');
+select fx_user(:'futureRecipientID', jsonb_build_object('username', 'future'));
+select fx_user(:'queueRecipientID', jsonb_build_object('username', 'queue'));
+select fx_user(:'recipientID', jsonb_build_object('username', 'recipient-next-event-enrollment'));
 
 -- Group with a configured recipient for paid queue recovery
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    payment_recipient,
-    slug
-)
-values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'Enrollment Reconciliation Group',
-    '{"provider": "stripe", "recipient_id": "acct_reconciliation_worker", "seller_display_name": "Worker Fiscal Sponsor"}'::jsonb,
-    'enrollment-reconciliation-group'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_reconciliation_worker", "seller_display_name": "Worker Fiscal Sponsor"}'::jsonb));
 
 -- Allowlisted group with external payments enabled for worker claims
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-)
-values (
-    'KR',
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    :'externalGroupID',
-    'External Enrollment Reconciliation Group',
-    'external-enrollment-reconciliation-group'
-);
+select fx_group(:'externalGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- Published event with one due and one future admission offer
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Enrollment reconciliation event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Enrollment Reconciliation Event',
-    'USD',
-    true,
-    'enrollment-reconciliation-event',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- RSVP event with a due offer and one waiting recipient
-insert into event (
-    capacity,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    1,
-    'RSVP reconciliation event',
-    :'eventCategoryID',
-    :'rsvpEventID',
-    'in-person',
-    :'groupID',
-    'RSVP Reconciliation Event',
-    true,
-    'rsvp-reconciliation-event',
-    current_timestamp + interval '1 day',
-    'UTC',
-    true
-);
+select fx_event(:'rsvpEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day',
+    'waitlist_enabled', true
+));
 
 -- Public ticket tier with capacity remaining after the due offer expires
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventID',
-    :'ticketTypeID',
-    1,
-    2,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 2));
 
 -- Current positive price that requires the configured provider
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    1000,
-    :'ticketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 1000));
 
 -- RSVP events without a specialized ticket fixture use a default tier
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-select e.event_id, gen_random_uuid(), 1, 1, 'General Admission'
+select fx_event_ticket_type(gen_random_uuid(), e.event_id, jsonb_build_object('seats_total', 1))
 from event e
 where not exists (
     select 1
@@ -226,12 +104,7 @@ where not exists (
 );
 
 -- Current free price for the RSVP event's default tier
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-)
-select 0, gen_random_uuid(), ett.event_ticket_type_id
+select fx_event_ticket_price_window(gen_random_uuid(), ett.event_ticket_type_id, jsonb_build_object('amount_minor', 0))
 from event_ticket_type ett
 where not exists (
     select 1
@@ -314,61 +187,19 @@ values (
 );
 
 -- External-ready paid event claimed after Stripe work is exhausted
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    'External-ready paid queue worker event',
-    :'eventCategoryID',
-    :'externalQueueEventID',
-    'in-person',
-    'https://pay.example.test/worker-queue',
-    :'externalGroupID',
-    'External Queue Reconciliation Event',
-    'KRW',
-    true,
-    'external-queue-reconciliation-event',
-    current_timestamp + interval '1 day',
-    'UTC',
-    true
-);
+select fx_event(:'externalQueueEventID', :'externalGroupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/worker-queue',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day',
+    'waitlist_enabled', true
+));
 
 -- Paid ticket tier for the external-ready worker queue
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'externalQueueEventID',
-    :'externalQueueTicketTypeID',
-    1,
-    1,
-    'External queue admission'
-);
+select fx_event_ticket_type(:'externalQueueTicketTypeID', :'externalQueueEventID', jsonb_build_object('seats_total', 1));
 
 -- Current positive price for the external-ready worker queue
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    5000,
-    gen_random_uuid(),
-    :'externalQueueTicketTypeID'
-);
+select fx_event_ticket_price_window(gen_random_uuid(), :'externalQueueTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- External-ready paid queue head promoted without a Stripe provider
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)
@@ -379,59 +210,18 @@ values (
 );
 
 -- Event hosting a reminder-due external pending hold
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'External reminder-due worker event',
-    :'eventCategoryID',
-    :'externalReminderEventID',
-    'in-person',
-    'https://pay.example.test/worker-reminder',
-    :'externalGroupID',
-    'External Reminder Reconciliation Event',
-    'KRW',
-    true,
-    'external-reminder-reconciliation-event',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'externalReminderEventID', :'externalGroupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/worker-reminder',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Ticket tier for the reminder-due external hold
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'externalReminderEventID',
-    :'externalReminderTicketTypeID',
-    1,
-    1,
-    'External reminder admission'
-);
+select fx_event_ticket_type(:'externalReminderTicketTypeID', :'externalReminderEventID', jsonb_build_object('seats_total', 1));
 
 -- Current positive price for the reminder-due external hold
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    5000,
-    gen_random_uuid(),
-    :'externalReminderTicketTypeID'
-);
+select fx_event_ticket_price_window(gen_random_uuid(), :'externalReminderTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- Reminder-due external hold claimed by the background worker
 insert into event_purchase (

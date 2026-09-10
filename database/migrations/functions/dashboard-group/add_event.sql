@@ -8,50 +8,15 @@ create or replace function add_event(
 )
 returns uuid as $$
 declare
-    v_discount_codes jsonb := nullif(p_event->'discount_codes', 'null'::jsonb);
-    v_event_attendee_approval_required boolean := coalesce((p_event->>'attendee_approval_required')::boolean, false);
+    v_event event;
     v_event_id uuid;
-    v_external_mode boolean := false;
-    v_external_payment_instructions text := nullif(
-        btrim(p_event->>'external_payment_instructions'),
-        ''
-    );
-    v_external_payment_url text := nullif(btrim(p_event->>'external_payment_url'), '');
-    v_external_payment_window_hours int := nullif(
-        p_event->>'external_payment_window_hours',
-        ''
-    )::int;
     v_group_country_code text;
-    v_manual_tax_rate_ids text[] := coalesce(
-        jsonb_text_array(p_event->'manual_tax_rate_ids'),
-        '{}'::text[]
-    );
+    v_group_external_ready boolean;
     v_max_retries int := 10;
-    v_payment_currency_code text := nullif(p_event->>'payment_currency_code', '');
+    v_payload record;
     v_payment_recipient jsonb;
-    v_payment_validation jsonb := p_event->'_payment_validation';
     v_retries int := 0;
     v_slug text;
-    v_tax_calculation_mode text := coalesce(
-        nullif(p_event->>'tax_calculation_mode', ''),
-        'automatic'
-    );
-    v_ticket_types jsonb := coalesce(
-        nullif(p_event->'ticket_types', 'null'::jsonb),
-        jsonb_build_array(jsonb_build_object(
-            'active', true,
-            'availability', 'public',
-            'event_ticket_type_id', gen_random_uuid(),
-            'order', 1,
-            'price_windows', jsonb_build_array(jsonb_build_object(
-                'amount_minor', 0,
-                'event_ticket_price_window_id', gen_random_uuid()
-            )),
-            'seats_total', 500,
-            'title', 'General Admission'
-        ))
-    );
-    v_ticket_capacity int := get_event_ticket_capacity(v_ticket_types);
 begin
     -- Validate registration questions before writing the event
     perform validate_questionnaire_questions_payload(coalesce(p_event->'registration_questions', '[]'::jsonb));
@@ -63,87 +28,52 @@ begin
         g.payment_recipient
     into
         v_group_country_code,
-        v_external_mode,
+        v_group_external_ready,
         v_payment_recipient
     from "group" g
     where g.group_id = p_group_id
     for update of g;
 
-    -- Reject a submitted payment URL when the group cannot collect externally
-    if v_external_payment_url is not null and not v_external_mode then
-        raise exception 'external payments are not available for this event';
-    end if;
-
-    -- Normalize external paid events onto organizer-managed tax
-    if v_external_mode and is_event_ticketing_payload_paid_capable(v_ticket_types) then
-        v_manual_tax_rate_ids := '{}'::text[];
-        v_tax_calculation_mode := 'none';
-    -- Clear external fields when the group is not in paid external mode
-    else
-        v_external_payment_instructions := null;
-        v_external_payment_url := null;
-        v_external_payment_window_hours := null;
-    end if;
+    -- Resolve the event columns, ticket configuration and payment rail from the payload
+    select *
+    into v_payload
+    from resolve_event_payload(p_event, null::event, v_group_external_ready);
+    v_event := v_payload.resolved;
 
     -- Bind provider validation to the recipient protected by the group lock
     if p_configured_provider is not null
-       and is_event_ticketing_payload_paid_capable(v_ticket_types)
-       and not v_external_mode
-       and (
-           v_payment_validation is null
-           or not (v_payment_validation ? 'expected_payment_recipient')
-           or not (v_payment_validation ? 'validated_payment_recipient')
-           or not (v_payment_validation ? 'require_automatic_tax')
-           or v_payment_recipient is distinct from nullif(
-               v_payment_validation->'expected_payment_recipient',
-               'null'::jsonb
-           )
-           or v_payment_recipient is distinct from nullif(
-               v_payment_validation->'validated_payment_recipient',
-               'null'::jsonb
-           )
-           or (
-               coalesce(
-                   nullif(p_event->>'tax_calculation_mode', ''),
-                   'automatic'
-               ) = 'automatic'
-               and not (v_payment_validation->>'require_automatic_tax')::boolean
-           )
-           or (
-               v_tax_calculation_mode = 'manual'
-               and (
-                   v_payment_validation->'manual_tax_rate_ids'
-                       is distinct from to_jsonb(v_manual_tax_rate_ids)
-                   or v_payment_validation->>'tax_behavior' is distinct from
-                       coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
-                   or v_payment_validation->>'tax_calculation_mode' <> 'manual'
-               )
-           )
-       ) then
-        raise exception 'payment configuration changed during provider validation';
+       and is_event_ticketing_payload_paid_capable(v_payload.ticket_types)
+       and not v_payload.external_mode then
+        perform validate_event_payment_validation(
+            p_event,
+            v_payment_recipient,
+            v_event.manual_tax_rate_ids,
+            v_event.tax_behavior,
+            v_event.tax_calculation_mode
+        );
     end if;
 
     -- Validate enrollment and ticketing payload rules
     perform validate_event_enrollment_payload(
-        v_event_attendee_approval_required,
-        coalesce((p_event->>'waitlist_enabled')::boolean, false)
+        v_event.attendee_approval_required,
+        v_event.waitlist_enabled
     );
 
     perform validate_event_ticketing_payload(
         p_configured_provider,
-        v_discount_codes,
-        v_payment_currency_code,
+        v_payload.discount_codes,
+        v_event.payment_currency_code,
         v_payment_recipient,
-        v_ticket_types,
+        v_payload.ticket_types,
         true,
         null,
         p_event || jsonb_build_object(
-            'external_mode', v_external_mode,
-            'external_payment_url', v_external_payment_url,
-            'external_payment_window_hours', v_external_payment_window_hours,
+            'external_mode', v_payload.external_mode,
+            'external_payment_url', v_event.external_payment_url,
+            'external_payment_window_hours', v_event.external_payment_window_hours,
             'group_country_code', v_group_country_code,
-            'manual_tax_rate_ids', to_jsonb(v_manual_tax_rate_ids),
-            'tax_calculation_mode', v_tax_calculation_mode
+            'manual_tax_rate_ids', to_jsonb(v_event.manual_tax_rate_ids),
+            'tax_calculation_mode', v_event.tax_calculation_mode
         )
     );
 
@@ -154,7 +84,7 @@ begin
     perform validate_event_capacity(
         p_event,
         p_cfg_max_participants,
-        p_effective_capacity => v_ticket_capacity
+        p_effective_capacity => v_event.capacity
     );
     perform validate_event_cfs_labels_payload(p_event->'cfs_labels');
 
@@ -223,71 +153,66 @@ begin
                 waitlist_enabled
             ) values (
                 p_group_id,
-                p_event->>'name',
+                v_event.name,
                 v_slug,
-                p_event->>'description',
-                coalesce((p_event->>'test_event')::boolean, false),
-                p_event->>'timezone',
-                (p_event->>'category_id')::uuid,
-                p_event->>'kind_id',
+                v_event.description,
+                v_event.test_event,
+                v_event.timezone,
+                v_event.event_category_id,
+                v_event.event_kind_id,
 
-                v_event_attendee_approval_required,
-                nullif(p_event->>'banner_mobile_url', ''),
-                nullif(p_event->>'banner_url', ''),
-                v_ticket_capacity,
-                nullif(p_event->>'cfs_description', ''),
-                (p_event->>'cfs_enabled')::boolean,
-                (p_event->>'cfs_ends_at')::timestamp at time zone (p_event->>'timezone'),
-                (p_event->>'cfs_starts_at')::timestamp at time zone (p_event->>'timezone'),
+                v_event.attendee_approval_required,
+                v_event.banner_mobile_url,
+                v_event.banner_url,
+                v_event.capacity,
+                v_event.cfs_description,
+                v_event.cfs_enabled,
+                v_event.cfs_ends_at,
+                v_event.cfs_starts_at,
                 p_actor_user_id,
-                nullif(p_event->>'description_short', ''),
-                (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
-                coalesce((p_event->>'event_reminder_enabled')::boolean, true),
-                v_external_payment_instructions,
-                v_external_payment_url,
-                v_external_payment_window_hours,
-                jsonb_geography_point(p_event),
-                nullif(p_event->>'logo_url', ''),
-                nullif(p_event->>'luma_url', ''),
-                v_manual_tax_rate_ids,
-                jsonb_text_array(p_event->'meeting_hosts'),
+                v_event.description_short,
+                v_event.ends_at,
+                v_event.event_reminder_enabled,
+                v_event.external_payment_instructions,
+                v_event.external_payment_url,
+                v_event.external_payment_window_hours,
+                v_event.location,
+                v_event.logo_url,
+                v_event.luma_url,
+                v_event.manual_tax_rate_ids,
+                v_event.meeting_hosts,
                 case
                     -- Start requested meetings out of sync so provisioning runs
-                    when (p_event->>'meeting_requested')::boolean = true then false
+                    when v_event.meeting_requested = true then false
                     -- Leave unrequested meetings without sync state
                     else null
                 end,
-                nullif(p_event->>'meeting_join_instructions', ''),
-                nullif(p_event->>'meeting_join_url', ''),
-                nullif(p_event->>'meeting_provider_id', ''),
-                coalesce((p_event->>'meeting_recording_published')::boolean, false),
-                coalesce((p_event->>'meeting_recording_requested')::boolean, true),
-                nullif(p_event->>'meeting_recording_url', ''),
-                (p_event->>'meeting_requested')::boolean,
-                nullif(p_event->>'meetup_url', ''),
-                v_payment_currency_code,
-                jsonb_text_array(p_event->'photos_urls'),
-                (p_event->>'registration_ends_at')::timestamp at time zone (p_event->>'timezone'),
-                coalesce(p_event->'registration_questions', '[]'::jsonb),
-                (p_event->>'registration_starts_at')::timestamp at time zone (p_event->>'timezone'),
-                (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-                jsonb_text_array(p_event->'tags'),
-                case
-                    -- Normalize no-tax events onto inclusive display
-                    when v_tax_calculation_mode = 'none' then 'inclusive'
-                    -- Keep the submitted display behavior for tax-collecting events
-                    else coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
-                end,
-                v_tax_calculation_mode,
-                nullif(btrim(p_event->>'venue_address'), ''),
-                nullif(btrim(p_event->>'venue_city'), ''),
-                upper(nullif(btrim(p_event->>'venue_country_code'), '')),
-                nullif(btrim(p_event->>'venue_country_name'), ''),
-                nullif(btrim(p_event->>'venue_name'), ''),
-                upper(nullif(btrim(p_event->>'venue_state_code'), '')),
-                nullif(btrim(coalesce(p_event->>'venue_state_name', p_event->>'venue_state')), ''),
-                nullif(btrim(p_event->>'venue_zip_code'), ''),
-                coalesce((p_event->>'waitlist_enabled')::boolean, false)
+                v_event.meeting_join_instructions,
+                v_event.meeting_join_url,
+                v_event.meeting_provider_id,
+                v_event.meeting_recording_published,
+                v_event.meeting_recording_requested,
+                v_event.meeting_recording_url,
+                v_event.meeting_requested,
+                v_event.meetup_url,
+                v_event.payment_currency_code,
+                v_event.photos_urls,
+                v_event.registration_ends_at,
+                v_event.registration_questions,
+                v_event.registration_starts_at,
+                v_event.starts_at,
+                v_event.tags,
+                v_event.tax_behavior,
+                v_event.tax_calculation_mode,
+                v_event.venue_address,
+                v_event.venue_city,
+                v_event.venue_country_code,
+                v_event.venue_country_name,
+                v_event.venue_name,
+                v_event.venue_state_code,
+                v_event.venue_state_name,
+                v_event.venue_zip_code,
+                v_event.waitlist_enabled
             )
             returning event_id into v_event_id;
 
@@ -313,8 +238,8 @@ begin
     and gt.accepted = true;
 
     -- Insert ticketing data after creating the event row
-    perform sync_event_discount_codes(v_event_id, v_discount_codes);
-    perform sync_event_ticket_types(v_event_id, v_ticket_types);
+    perform sync_event_discount_codes(v_event_id, v_payload.discount_codes);
+    perform sync_event_ticket_types(v_event_id, v_payload.ticket_types);
 
     -- Insert CFS labels
     perform sync_event_cfs_labels(v_event_id, p_event->'cfs_labels');
@@ -323,7 +248,7 @@ begin
     perform sync_event_hosts_speakers_sponsors(v_event_id, p_event);
 
     -- Insert sessions and speakers
-    perform sync_event_sessions(v_event_id, p_event, '{}'::jsonb);
+    perform sync_event_sessions(v_event_id, p_event, null::event);
 
     -- Track the created event
     perform insert_audit_log(

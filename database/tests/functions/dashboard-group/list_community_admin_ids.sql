@@ -11,50 +11,27 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set acceptedAdmin1ID '2c110000-0000-0000-0000-000000000001'
-\set acceptedAdmin2ID '2c110000-0000-0000-0000-000000000002'
-\set communityID '2c110000-0000-0000-0000-000000000003'
-\set groupsManagerID '2c110000-0000-0000-0000-000000000004'
-\set missingCommunityID '2c110000-0000-0000-0000-000000000005'
-\set unacceptedAdminID '2c110000-0000-0000-0000-000000000006'
-\set unverifiedAdminID '2c110000-0000-0000-0000-000000000007'
+\set acceptedAdmin1ID '3a000000-0000-0000-0000-000000000001'
+\set acceptedAdmin2ID '3a000000-0000-0000-0000-000000000002'
+\set communityID '3a000000-0000-0000-0000-000000000003'
+\set groupsManagerID '3a000000-0000-0000-0000-000000000004'
+\set missingCommunityID '3a000000-0000-0000-0000-000000000005'
+\set unacceptedAdminID '3a000000-0000-0000-0000-000000000006'
+\set unverifiedAdminID '3a000000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community whose eligible admins are listed
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'Community for listing eligible admins',
-    'Admin List Community',
-    'https://example.com/logo.png',
-    'admin-list-community'
-);
+-- Baseline communities and users
+select fx_community(:'communityID');
+select fx_user(:'acceptedAdmin1ID');
+select fx_user(:'acceptedAdmin2ID');
+select fx_user(:'unacceptedAdminID');
 
 -- Users covering recipient eligibility states
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username
-) values
-    (:'acceptedAdmin1ID', gen_random_bytes(32), 'admin1@example.com', true, 'admin1'),
-    (:'acceptedAdmin2ID', gen_random_bytes(32), 'admin2@example.com', true, 'admin2'),
-    (:'groupsManagerID', gen_random_bytes(32), 'manager@example.com', true, 'manager'),
-    (:'unacceptedAdminID', gen_random_bytes(32), 'pending@example.com', true, 'pending-admin'),
-    (:'unverifiedAdminID', gen_random_bytes(32), 'unverified@example.com', false, 'unverified-admin');
+select fx_user(:'groupsManagerID', jsonb_build_object('username', 'manager'));
+select fx_user(:'unverifiedAdminID', jsonb_build_object('email_verified', false));
 
 -- Community team memberships covering recipient eligibility states
 insert into community_team (community_id, user_id, accepted, role) values

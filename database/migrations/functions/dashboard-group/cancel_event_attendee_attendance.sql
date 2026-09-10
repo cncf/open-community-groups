@@ -8,30 +8,20 @@ create or replace function cancel_event_attendee_attendance(
 ) returns json as $$
 declare
     v_community_id uuid;
+    v_event event;
     v_existing_refund_kind text;
+    v_payment_job_id uuid;
     v_purchase event_purchase;
     v_refund_request_id uuid;
 begin
     -- Lock the event and verify it belongs to the selected group and can be changed
+    v_event := lock_active_event(null, p_group_id, p_event_id, true);
+
+    -- Load group context needed for audit
     select g.community_id
     into v_community_id
-    from event e
-    join "group" g using (group_id)
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and e.published = true
-    and e.canceled = false
-    and (
-        coalesce(e.ends_at, e.starts_at) is null
-        or coalesce(e.ends_at, e.starts_at) >= current_timestamp
-    )
-    for update of e;
-
-    -- Reject missing or inactive events before changing attendance
-    if not found then
-        raise exception 'event not found or inactive';
-    end if;
+    from "group" g
+    where g.group_id = v_event.group_id;
 
     -- Lock ticket tiers before serializing this attendee's enrollment state
     perform 1
@@ -53,7 +43,7 @@ begin
 
     -- Reject cancellations that no longer have confirmed attendance
     if not found then
-        raise exception 'confirmed event attendee not found';
+        raise exception 'confirmed event attendee not found' using errcode = 'OCG01';
     end if;
 
     -- Lock the attendee's current purchase when one exists
@@ -85,7 +75,7 @@ begin
                 'attendance-cancellation',
                 'refund-request-approval'
             ) then
-                raise exception 'event purchase refund already started with different kind';
+                raise exception 'event purchase refund already started with different kind' using errcode = 'OCG01';
             end if;
 
             return json_build_object('cancellation_status', 'refund-queued');
@@ -94,7 +84,7 @@ begin
         -- Validate the provider contract before creating durable work
         if v_purchase.payment_provider_id is null
            or v_purchase.provider_payment_reference is null then
-            raise exception 'paid purchase is not ready for refund';
+            raise exception 'paid purchase is not ready for refund' using errcode = 'OCG01';
         end if;
 
         -- Attach a synthetic organizer decision or promote an existing request
@@ -127,16 +117,28 @@ begin
 
         -- Reject requests that cannot be promoted into attendance cancellation
         if v_refund_request_id is null then
-            raise exception 'refund request is not available for attendance cancellation';
+            raise exception 'refund request is not available for attendance cancellation' using errcode = 'OCG01';
         end if;
 
         -- Insert durable worker work with the purchase-level idempotency key
+        v_payment_job_id := enqueue_payment_job(
+            'event-purchase-refund',
+            v_purchase.payment_provider_id,
+            v_purchase.event_purchase_id,
+            format('event-purchase-refund-%s', v_purchase.event_purchase_id)
+        );
+
+        -- Reject purchases whose refund work already exists
+        if v_payment_job_id is null then
+            raise exception 'event purchase refund already started' using errcode = 'OCG01';
+        end if;
+
         insert into event_purchase_refund (
             amount_minor,
             currency_code,
             event_purchase_id,
-            idempotency_key,
             kind,
+            payment_job_id,
             payment_provider_id,
             status,
 
@@ -146,8 +148,8 @@ begin
             v_purchase.provider_total_minor,
             v_purchase.currency_code,
             v_purchase.event_purchase_id,
-            format('event-purchase-refund-%s', v_purchase.event_purchase_id),
             'attendance-cancellation',
+            v_payment_job_id,
             v_purchase.payment_provider_id,
             'provider-pending',
 

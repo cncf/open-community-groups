@@ -24,7 +24,7 @@ begin
             select 1
             from admission_offer ao
             where ao.event_id = e.event_id
-            and ao.status in ('checkout_pending', 'pending')
+            and admission_offer_is_active(ao.status)
             and ao.expires_at is not null
             and ao.expires_at <= current_timestamp
         )
@@ -61,32 +61,16 @@ begin
                 from event_waitlist ew
                 join event_ticket_type ett
                     on ett.event_ticket_type_id = ew.event_ticket_type_id
-                join lateral (
-                    select etpw.amount_minor
-                    from event_ticket_price_window etpw
-                    where etpw.event_ticket_type_id = ett.event_ticket_type_id
-                    and (
-                        etpw.starts_at is null
-                        or etpw.starts_at <= current_timestamp
-                    )
-                    and (
-                        etpw.ends_at is null
-                        or etpw.ends_at >= current_timestamp
-                    )
-                    order by
-                        etpw.starts_at desc nulls last,
-                        etpw.event_ticket_price_window_id
-                    limit 1
-                ) current_price on true
                 where ew.event_id = e.event_id
                 and ett.active = true
                 and ett.availability = 'public'
+                and event_ticket_type_current_price(ett.event_ticket_type_id) is not null
                 and get_event_ticket_type_allocated_seat_count(
                     e.event_id,
                     ett.event_ticket_type_id
                 ) < ett.seats_total
                 and (
-                    current_price.amount_minor = 0
+                    event_ticket_type_current_price(ett.event_ticket_type_id) = 0
                     or (
                         e.external_payment_url is not null
                         and is_event_external_payments_ready(e.event_id)

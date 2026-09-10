@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(35);
+select plan(34);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(35);
 
 \set actorUserID '79530000-0000-0000-0000-000000000001'
 \set activeRecoveryEventID '79530000-0000-0000-0000-000000000035'
+\set activeRecoveryJobID '79530000-0000-0000-0000-000000000057'
 \set activeRecoveryPriceWindowID '79530000-0000-0000-0000-000000000036'
 \set activeRecoveryPurchaseID '79530000-0000-0000-0000-000000000037'
 \set activeRecoveryQueueUserID '79530000-0000-0000-0000-000000000038'
@@ -21,16 +22,19 @@ select plan(35);
 \set activeRecoveryUserID '79530000-0000-0000-0000-000000000041'
 \set attendanceCancellationDiscountCodeID '79530000-0000-0000-0000-000000000047'
 \set attendanceCancellationInitiatorID '79530000-0000-0000-0000-000000000046'
+\set attendanceCancellationJobID '79530000-0000-0000-0000-000000000058'
 \set attendanceCancellationPurchaseID '79530000-0000-0000-0000-000000000042'
 \set attendanceCancellationRefundID '79530000-0000-0000-0000-000000000043'
 \set attendanceCancellationRefundRequestID '79530000-0000-0000-0000-000000000044'
 \set attendanceCancellationUserID '79530000-0000-0000-0000-000000000045'
 \set automaticPurchaseID '79530000-0000-0000-0000-000000000013'
 \set automaticRefundID '79530000-0000-0000-0000-000000000014'
+\set automaticJobID '79530000-0000-0000-0000-000000000059'
 \set automaticUserID '79530000-0000-0000-0000-000000000015'
 \set communityID '79530000-0000-0000-0000-000000000002'
 \set discountCodeID '79530000-0000-0000-0000-000000000026'
 \set eventCancellationDiscountCodeID '79530000-0000-0000-0000-000000000048'
+\set eventCancellationJobID '79530000-0000-0000-0000-000000000060'
 \set eventCancellationPurchaseID '79530000-0000-0000-0000-000000000027'
 \set eventCancellationRefundID '79530000-0000-0000-0000-000000000028'
 \set eventCancellationRefundRequestID '79530000-0000-0000-0000-000000000033'
@@ -40,13 +44,16 @@ select plan(35);
 \set eventTicketTypeID '79530000-0000-0000-0000-000000000005'
 \set groupCategoryID '79530000-0000-0000-0000-000000000006'
 \set groupID '79530000-0000-0000-0000-000000000007'
+\set invalidJobID '79530000-0000-0000-0000-000000000061'
 \set invalidPurchaseID '79530000-0000-0000-0000-000000000016'
 \set invalidRefundID '79530000-0000-0000-0000-000000000017'
 \set invalidUserID '79530000-0000-0000-0000-000000000018'
 \set missingRefundID '79530000-0000-0000-0000-000000000008'
+\set nonterminalJobID '79530000-0000-0000-0000-000000000062'
 \set nonterminalPurchaseID '79530000-0000-0000-0000-000000000030'
 \set nonterminalRefundID '79530000-0000-0000-0000-000000000031'
 \set nonterminalUserID '79530000-0000-0000-0000-000000000032'
+\set organizerJobID '79530000-0000-0000-0000-000000000063'
 \set organizerPurchaseID '79530000-0000-0000-0000-000000000019'
 \set organizerRefundID '79530000-0000-0000-0000-000000000020'
 \set organizerRefundRequestID '79530000-0000-0000-0000-000000000021'
@@ -54,7 +61,9 @@ select plan(35);
 \set priceWindowID '79530000-0000-0000-0000-000000000009'
 \set purchaseID '79530000-0000-0000-0000-000000000010'
 \set refundID '79530000-0000-0000-0000-000000000011'
+\set refundJobID '79530000-0000-0000-0000-000000000064'
 \set replacementRecoveryEventID '79530000-0000-0000-0000-000000000049'
+\set replacementRecoveryJobID '79530000-0000-0000-0000-000000000065'
 \set replacementRecoveryOriginalPurchaseID '79530000-0000-0000-0000-000000000050'
 \set replacementRecoveryPriceWindowID '79530000-0000-0000-0000-000000000056'
 \set replacementRecoveryRefundID '79530000-0000-0000-0000-000000000051'
@@ -63,6 +72,7 @@ select plan(35);
 \set replacementRecoveryTicketTypeID '79530000-0000-0000-0000-000000000054'
 \set replacementRecoveryUserID '79530000-0000-0000-0000-000000000055'
 \set siteID '79530000-0000-0000-0000-000000000034'
+\set unpinnedJobID '79530000-0000-0000-0000-000000000066'
 \set unpinnedPurchaseID '79530000-0000-0000-0000-000000000023'
 \set unpinnedRefundID '79530000-0000-0000-0000-000000000024'
 \set unpinnedUserID '79530000-0000-0000-0000-000000000025'
@@ -81,316 +91,80 @@ values (
     'Complete Refund Recovery Site'
 );
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'complete-refund-recovery-community',
-    'Complete Refund Recovery Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
+-- Baseline community, categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'activeRecoveryQueueUserID');
+select fx_user(:'activeRecoveryUserID');
+select fx_user(:'attendanceCancellationInitiatorID');
+select fx_user(:'attendanceCancellationUserID');
+select fx_user(:'automaticUserID');
+select fx_user(:'eventCancellationUserID');
+select fx_user(:'invalidUserID');
+select fx_user(:'nonterminalUserID');
+select fx_user(:'organizerUserID');
+select fx_user(:'replacementRecoveryUserID');
+select fx_user(:'unpinnedUserID');
+select fx_user(:'userID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'actorUserID',
-        'hash-1',
-        'recovery-operator@example.com',
-        true,
-        'recovery-operator'
-    ),
-    (
-        :'activeRecoveryQueueUserID',
-        'hash-9',
-        'active-recovery-queue@example.com',
-        true,
-        'active-recovery-queue'
-    ),
-    (
-        :'activeRecoveryUserID',
-        'hash-10',
-        'active-recovery-buyer@example.com',
-        true,
-        'active-recovery-buyer'
-    ),
-    (
-        :'attendanceCancellationInitiatorID',
-        'hash-attendance-cancellation-initiator',
-        'attendance-cancellation-initiator@example.com',
-        true,
-        'attendance-cancellation-initiator'
-    ),
-    (
-        :'attendanceCancellationUserID',
-        'hash-attendance-cancellation',
-        'attendance-cancellation-recovery@example.com',
-        true,
-        'attendance-cancellation-recovery'
-    ),
-    (
-        :'automaticUserID',
-        'hash-3',
-        'automatic-recovery-buyer@example.com',
-        true,
-        'automatic-recovery-buyer'
-    ),
-    (
-        :'eventCancellationUserID',
-        'hash-7',
-        'event-cancellation-recovery@example.com',
-        true,
-        'event-cancellation-recovery'
-    ),
-    (
-        :'invalidUserID',
-        'hash-4',
-        'invalid-recovery-buyer@example.com',
-        true,
-        'invalid-recovery-buyer'
-    ),
-    (
-        :'nonterminalUserID',
-        'hash-8',
-        'nonterminal-recovery@example.com',
-        true,
-        'nonterminal-recovery'
-    ),
-    (
-        :'organizerUserID',
-        'hash-5',
-        'organizer-recovery-buyer@example.com',
-        true,
-        'organizer-recovery-buyer'
-    ),
-    (
-        :'replacementRecoveryUserID',
-        'hash-replacement-recovery',
-        'replacement-recovery@example.com',
-        true,
-        'replacement-recovery'
-    ),
-    (
-        :'unpinnedUserID',
-        'hash-6',
-        'unpinned-recovery-buyer@example.com',
-        true,
-        'unpinned-recovery-buyer'
-    ),
-    (
-        :'userID',
-        'hash-2',
-        'recovery-buyer@example.com',
-        true,
-        'recovery-buyer'
-    );
+-- Operator completing refund recovery
+select fx_user(:'actorUserID', jsonb_build_object('username', 'recovery-operator'));
 
 -- Group
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    payment_recipient,
-    slug
-)
-values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'Complete Refund Recovery Group',
-    '{"provider":"stripe","recipient_id":"acct_recovery","seller_display_name":"Recovery Fiscal Sponsor"}'::jsonb,
-    'complete-refund-recovery-group'
-);
-
--- Accepted event manager allowed to complete recovery
-insert into group_team (accepted, group_id, role, user_id)
-values (true, :'groupID', 'events-manager', :'actorUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider":"stripe","recipient_id":"acct_recovery","seller_display_name":"Recovery Fiscal Sponsor"}'::jsonb));
 
 -- Canceled event shared by external recovery scenarios
-insert into event (
-    canceled,
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    published,
-    published_at
-) values (
-    true,
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Complete Refund Recovery Event',
-    'complete-refund-recovery-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
 
 -- Active event used to verify queue promotion after recovery completion
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Active recovery test event',
-    :'eventCategoryID',
-    :'activeRecoveryEventID',
-    'in-person',
-    :'groupID',
-    'Active Refund Recovery Event',
-    'USD',
-    true,
-    current_timestamp,
-    'active-refund-recovery-event',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'activeRecoveryEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Canceled event used to preserve attendance backed by a replacement purchase
-insert into event (
-    canceled,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    true,
-    'Replacement purchase recovery test event',
-    :'eventCategoryID',
-    :'replacementRecoveryEventID',
-    'in-person',
-    :'groupID',
-    'Replacement Purchase Recovery Event',
-    'USD',
-    true,
-    current_timestamp,
-    'replacement-purchase-recovery-event',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'replacementRecoveryEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventTicketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Full active tier whose recovery completion releases the queued seat
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'activeRecoveryEventID',
-    :'activeRecoveryTicketTypeID',
-    1,
-    1,
-    'Recovery admission'
-);
+select fx_event_ticket_type(:'activeRecoveryTicketTypeID', :'activeRecoveryEventID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'Recovery admission'
+));
 
 -- Ticket type shared by the original and replacement purchases
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'replacementRecoveryEventID',
-    :'replacementRecoveryTicketTypeID',
-    1,
-    10,
-    'Replacement recovery admission'
-);
+select fx_event_ticket_type(:'replacementRecoveryTicketTypeID', :'replacementRecoveryEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Replacement recovery admission'
+));
 
 -- Price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    2500,
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Current price used to snapshot the promoted recovery offer
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    2500,
-    :'activeRecoveryPriceWindowID',
-    :'activeRecoveryTicketTypeID'
-);
+select fx_event_ticket_price_window(:'activeRecoveryPriceWindowID', :'activeRecoveryTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Current paid price for replacement-purchase recovery
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    2500,
-    :'replacementRecoveryPriceWindowID',
-    :'replacementRecoveryTicketTypeID'
-);
+select fx_event_ticket_price_window(:'replacementRecoveryPriceWindowID', :'replacementRecoveryTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- App-composed notification payload handed to atomic recovery completion
 create temporary table refund_recovery_test_data (
@@ -807,20 +581,35 @@ insert into event_attendee (
     :'eventCancellationUserID'
 );
 
+-- Failed payment jobs for terminal provider refunds awaiting operator recovery
+insert into payment_job (
+    payment_job_id, event_purchase_id, failure_message, idempotency_key,
+    kind, payment_provider_id, status
+) values
+    (:'activeRecoveryJobID', :'activeRecoveryPurchaseID', 'destination account is closed: re_active_failed', 'event-purchase-refund-active-recovery-job', 'event-purchase-refund', 'stripe', 'failed'),
+    (:'attendanceCancellationJobID', :'attendanceCancellationPurchaseID', 'provider refund failed: re_attendance_cancellation_failed', 'event-purchase-refund-attendance-cancellation-recovery-job', 'event-purchase-refund', 'stripe', 'failed'),
+    (:'automaticJobID', :'automaticPurchaseID', 'provider refund failed: re_automatic_failed', 'event-purchase-refund-automatic-recovery-job', 'event-purchase-refund', 'stripe', 'failed'),
+    (:'eventCancellationJobID', :'eventCancellationPurchaseID', 'provider refund failed: re_event_cancellation_failed', 'event-purchase-refund-event-cancellation-recovery-job', 'event-purchase-refund', 'stripe', 'failed'),
+    (:'invalidJobID', :'invalidPurchaseID', 'provider refund failed: re_invalid_failed', 'event-purchase-refund-invalid-recovery-job', 'event-purchase-refund', 'stripe', 'failed'),
+    (:'nonterminalJobID', :'nonterminalPurchaseID', 'provider refund failed: re_nonterminal_failed', 'event-purchase-refund-nonterminal-recovery-job', 'event-purchase-refund', 'stripe', 'failed'),
+    (:'organizerJobID', :'organizerPurchaseID', 'provider refund failed: re_organizer_failed', 'event-purchase-refund-organizer-recovery-job', 'event-purchase-refund', 'stripe', 'failed'),
+    (:'refundJobID', :'purchaseID', 'destination account is closed: re_failed_123', 'event-purchase-refund-recovery-completion-job', 'event-purchase-refund', 'stripe', 'failed'),
+    (:'replacementRecoveryJobID', :'replacementRecoveryOriginalPurchaseID', 'provider refund failed: re_replacement_recovery_failed', 'event-purchase-refund-replacement-recovery-job', 'event-purchase-refund', 'stripe', 'failed'),
+    (:'unpinnedJobID', :'unpinnedPurchaseID', 'provider request failed before returning an id', 'event-purchase-refund-unpinned-recovery-job', 'event-purchase-refund', 'stripe', 'failed');
+
 -- Terminal provider refunds in each supported or invalid local state
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
     currency_code,
     event_purchase_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
     terminal_failure,
 
     event_refund_request_id,
-    failure_message,
     finalized_at,
     provider_refund_id
 ) values (
@@ -828,14 +617,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'purchaseID',
-    'event-purchase-refund-recovery-completion',
     'automatic-unfulfillable-checkout',
+    :'refundJobID',
     'stripe',
     'provider-failed',
     true,
 
     null,
-    'destination account is closed: re_failed_123',
     current_timestamp,
     're_failed_123'
 ), (
@@ -843,14 +631,13 @@ insert into event_purchase_refund (
     2000,
     'USD',
     :'eventCancellationPurchaseID',
-    'event-purchase-refund-event-cancellation-recovery',
     'event-cancellation',
+    :'eventCancellationJobID',
     'stripe',
     'provider-failed',
     true,
 
     :'eventCancellationRefundRequestID',
-    'provider refund failed: re_event_cancellation_failed',
     null,
     're_event_cancellation_failed'
 ), (
@@ -858,14 +645,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'automaticPurchaseID',
-    'event-purchase-refund-automatic-recovery',
     'automatic-unfulfillable-checkout',
+    :'automaticJobID',
     'stripe',
     'provider-failed',
     true,
 
     null,
-    'provider refund failed: re_automatic_failed',
     null,
     're_automatic_failed'
 ), (
@@ -873,14 +659,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'invalidPurchaseID',
-    'event-purchase-refund-invalid-recovery',
     'automatic-unfulfillable-checkout',
+    :'invalidJobID',
     'stripe',
     'provider-failed',
     true,
 
     null,
-    'provider refund failed: re_invalid_failed',
     null,
     're_invalid_failed'
 ), (
@@ -888,14 +673,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'nonterminalPurchaseID',
-    'event-purchase-refund-nonterminal-recovery',
     'automatic-unfulfillable-checkout',
+    :'nonterminalJobID',
     'stripe',
     'provider-failed',
     false,
 
     null,
-    'provider refund failed: re_nonterminal_failed',
     null,
     're_nonterminal_failed'
 ), (
@@ -903,14 +687,13 @@ insert into event_purchase_refund (
     2000,
     'USD',
     :'organizerPurchaseID',
-    'event-purchase-refund-organizer-recovery',
     'refund-request-approval',
+    :'organizerJobID',
     'stripe',
     'provider-failed',
     true,
 
     :'organizerRefundRequestID',
-    'provider refund failed: re_organizer_failed',
     null,
     're_organizer_failed'
 ), (
@@ -918,14 +701,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'unpinnedPurchaseID',
-    'event-purchase-refund-unpinned-recovery',
     'automatic-unfulfillable-checkout',
+    :'unpinnedJobID',
     'stripe',
     'provider-failed',
     false,
 
     null,
-    'provider request failed before returning an id',
     null,
     null
 );
@@ -936,14 +718,13 @@ insert into event_purchase_refund (
     amount_minor,
     currency_code,
     event_purchase_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
     terminal_failure,
 
     event_refund_request_id,
-    failure_message,
     initiated_by_user_id,
     provider_refund_id
 ) values
@@ -952,14 +733,13 @@ insert into event_purchase_refund (
         2000,
         'USD',
         :'attendanceCancellationPurchaseID',
-        'event-purchase-refund-attendance-cancellation-recovery',
         'attendance-cancellation',
+        :'attendanceCancellationJobID',
         'stripe',
         'provider-failed',
         true,
 
         :'attendanceCancellationRefundRequestID',
-        'provider refund failed: re_attendance_cancellation_failed',
         :'attendanceCancellationInitiatorID',
         're_attendance_cancellation_failed'
     ),
@@ -968,14 +748,13 @@ insert into event_purchase_refund (
         2500,
         'USD',
         :'replacementRecoveryOriginalPurchaseID',
-        'event-purchase-refund-replacement-recovery',
         'attendance-cancellation',
+        :'replacementRecoveryJobID',
         'stripe',
         'provider-failed',
         true,
 
         :'replacementRecoveryRefundRequestID',
-        'provider refund failed: re_replacement_recovery_failed',
         :'actorUserID',
         're_replacement_recovery_failed'
     );
@@ -986,10 +765,9 @@ insert into event_purchase_refund (
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    failure_message,
     finalized_at,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     provider_refund_id,
     status,
@@ -999,10 +777,9 @@ insert into event_purchase_refund (
     'USD',
     :'activeRecoveryPurchaseID',
     :'activeRecoveryRefundID',
-    'destination account is closed: re_active_failed',
     current_timestamp,
-    'event-purchase-refund-active-recovery',
     'automatic-unfulfillable-checkout',
+    :'activeRecoveryJobID',
     'stripe',
     're_active_failed',
     'provider-failed',
@@ -1028,10 +805,10 @@ select throws_ok(
 -- Should reject partial recovery evidence
 select throws_ok(
     format($$
-        update event_purchase_refund
+        update payment_job
         set recovery_reference = 'bank-transfer-123'
-        where event_purchase_refund_id = %L::uuid
-    $$, :'refundID'),
+        where payment_job_id = %L::uuid
+    $$, :'refundJobID'),
     '23514',
     null,
     'Should reject partial recovery evidence'
@@ -1061,6 +838,7 @@ select throws_ok(
         'Verified by finance',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'refundID'),
+    'OCG01',
     'recovery reference is required',
     'Should require an external recovery reference'
 );
@@ -1075,6 +853,7 @@ select throws_ok(
         ' ',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'refundID'),
+    'OCG01',
     'recovery note is required',
     'Should require a recovery note'
 );
@@ -1089,6 +868,7 @@ select throws_ok(
         'Verified by finance',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'missingRefundID'),
+    'OCG01',
     'event purchase refund not found',
     'Should reject an unknown durable refund'
 );
@@ -1103,6 +883,7 @@ select throws_ok(
         'Invalid local state',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'invalidRefundID'),
+    'OCG01',
     'recoverable event purchase refund not found',
     'Should reject a terminal refund outside a recoverable purchase state'
 );
@@ -1117,6 +898,7 @@ select throws_ok(
         'Provider attempt is uncertain',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'unpinnedRefundID'),
+    'OCG01',
     'recoverable event purchase refund not found',
     'Should reject a terminal refund without a pinned provider attempt'
 );
@@ -1131,6 +913,7 @@ select throws_ok(
         'Provider result remains retryable',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'nonterminalRefundID'),
+    'OCG01',
     'recoverable event purchase refund not found',
     'Should reject a pinned provider result that is not terminal'
 );
@@ -1138,9 +921,10 @@ select throws_ok(
 -- Should preserve a nonterminal provider failure after rejected recovery
 select results_eq(
     format($$
-        select ep.status, epr.recovery_completed_at, epr.terminal_failure
+        select ep.status, pj.recovery_completed_at, epr.terminal_failure
         from event_purchase ep
         join event_purchase_refund epr using (event_purchase_id)
+        join payment_job pj on pj.payment_job_id = epr.payment_job_id
         where epr.event_purchase_refund_id = %L::uuid
     $$, :'nonterminalRefundID'),
     $$ values ('refund-pending'::text, null::timestamptz, false) $$,
@@ -1152,9 +936,9 @@ select results_eq(
     format($$
         select
             invalid_ep.status,
-            invalid_epr.recovery_completed_at is null,
+            invalid_pj.recovery_completed_at is null,
             unpinned_ep.status,
-            unpinned_epr.recovery_completed_at is null,
+            unpinned_pj.recovery_completed_at is null,
             (
                 select count(*)::int
                 from audit_log
@@ -1162,9 +946,13 @@ select results_eq(
             )
         from event_purchase invalid_ep
         join event_purchase_refund invalid_epr using (event_purchase_id)
+        join payment_job invalid_pj
+            on invalid_pj.payment_job_id = invalid_epr.payment_job_id
         cross join event_purchase unpinned_ep
         join event_purchase_refund unpinned_epr
             on unpinned_epr.event_purchase_id = unpinned_ep.event_purchase_id
+        join payment_job unpinned_pj
+            on unpinned_pj.payment_job_id = unpinned_epr.payment_job_id
         where invalid_ep.event_purchase_id = %L::uuid
         and unpinned_ep.event_purchase_id = %L::uuid
     $$, :'invalidPurchaseID', :'unpinnedPurchaseID'),
@@ -1176,20 +964,6 @@ select results_eq(
         0::int
     ) $$,
     'Should preserve invalid states without appending audit entries'
-);
-
--- Should require events write access
-select throws_ok(
-    format($$select complete_event_purchase_refund_recovery(
-        %L::uuid,
-        %L::uuid,
-        %L::uuid,
-        'bank-transfer-automatic',
-        'Verified automatic refund',
-        (select notification_template_data from refund_recovery_test_data)
-    )$$, :'automaticUserID', :'groupID', :'automaticRefundID'),
-    'events write access is required',
-    'Should require events write access'
 );
 
 -- Should complete active-event recovery with configured provider reconciliation
@@ -1260,14 +1034,15 @@ select results_eq(
     format($$
         select
             epr.status,
-            epr.recovery_completed_at is not null,
-            epr.recovery_completed_by_user_id,
-            epr.recovery_note,
-            epr.recovery_reference,
+            pj.recovery_completed_at is not null,
+            pj.recovery_completed_by_user_id,
+            pj.recovery_note,
+            pj.recovery_reference,
             ep.status,
             ep.refunded_at is not null
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
+        join payment_job pj on pj.payment_job_id = epr.payment_job_id
         where epr.event_purchase_refund_id = %L::uuid
     $$, :'refundID'),
     format($$ values (
@@ -1307,6 +1082,7 @@ select results_eq(
         jsonb_build_object(
             'event_purchase_id', %L::uuid,
             'event_purchase_refund_id', %L::uuid,
+            'payment_job_id', %L::uuid,
             'provider_refund_id', 're_failed_123',
             'recovery_note', 'Verified by finance',
             'recovery_reference', 'bank-transfer-123',
@@ -1321,6 +1097,7 @@ select results_eq(
         :'communityID',
         :'purchaseID',
         :'refundID',
+        :'refundJobID',
         :'userID',
         :'eventID',
         :'groupID',
@@ -1369,6 +1146,7 @@ select throws_ok(
         'Different evidence',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'refundID'),
+    'OCG01',
     'refund recovery already completed with different evidence',
     'Should reject conflicting recovery evidence'
 );
@@ -1376,9 +1154,10 @@ select throws_ok(
 -- Should preserve the original evidence after a conflicting retry
 select results_eq(
     format($$
-        select recovery_note, recovery_reference
-        from event_purchase_refund
-        where event_purchase_refund_id = %L::uuid
+        select pj.recovery_note, pj.recovery_reference
+        from event_purchase_refund epr
+        join payment_job pj on pj.payment_job_id = epr.payment_job_id
+        where epr.event_purchase_refund_id = %L::uuid
     $$, :'refundID'),
     $$ values (
         'Verified by finance'::text,
@@ -1424,7 +1203,7 @@ select results_eq(
     format($$
         select
             epr.finalized_at is not null,
-            epr.recovery_reference,
+            pj.recovery_reference,
             epr.status,
             ep.refunded_at is not null,
             ep.status,
@@ -1436,6 +1215,7 @@ select results_eq(
             )
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
+        join payment_job pj on pj.payment_job_id = epr.payment_job_id
         where epr.event_purchase_refund_id = %L::uuid
     $$, :'eventID', :'automaticUserID', :'automaticRefundID'),
     $$ values (
@@ -1479,8 +1259,8 @@ select results_eq(
             ep.refunded_at is not null,
             ep.status,
             epr.finalized_at is not null,
-            epr.recovery_completed_at is not null,
-            epr.recovery_completed_by_user_id,
+            pj.recovery_completed_at is not null,
+            pj.recovery_completed_by_user_id,
             epr.status,
             err.review_note,
             err.reviewed_by_user_id,
@@ -1498,10 +1278,12 @@ select results_eq(
             )
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
+        join payment_job pj on pj.payment_job_id = epr.payment_job_id
         join event_attendee ea
             on ea.event_id = ep.event_id
             and ea.user_id = ep.user_id
-        join event_refund_request err using (event_purchase_id)
+        join event_refund_request err
+            on err.event_purchase_id = ep.event_purchase_id
         where epr.event_purchase_refund_id = %L::uuid
     $$,
         :'attendanceCancellationDiscountCodeID',
@@ -1562,7 +1344,7 @@ select results_eq(
             original.status,
             replacement.status,
             epr.finalized_at is not null,
-            epr.recovery_completed_at is not null,
+            pj.recovery_completed_at is not null,
             err.status
         from event_attendee ea
         join event_purchase original
@@ -1570,6 +1352,7 @@ select results_eq(
             and original.user_id = ea.user_id
         join event_purchase_refund epr
             on epr.event_purchase_id = original.event_purchase_id
+        join payment_job pj on pj.payment_job_id = epr.payment_job_id
         join event_refund_request err
             on err.event_purchase_id = original.event_purchase_id
         join event_purchase replacement
@@ -1641,7 +1424,8 @@ select results_eq(
             )
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
-        join event_refund_request err using (event_purchase_id)
+        join event_refund_request err
+            on err.event_purchase_id = ep.event_purchase_id
         where epr.event_purchase_refund_id = %L::uuid
     $$, :'discountCodeID', :'eventID', :'organizerUserID', :'organizerRefundID'),
     format($$ values (
@@ -1686,8 +1470,8 @@ select results_eq(
             ep.refunded_at is not null,
             ep.status,
             epr.finalized_at is not null,
-            epr.recovery_completed_at is not null,
-            epr.recovery_completed_by_user_id,
+            pj.recovery_completed_at is not null,
+            pj.recovery_completed_by_user_id,
             epr.status,
             err.reviewed_at is not null,
             err.reviewed_by_user_id,
@@ -1699,6 +1483,7 @@ select results_eq(
             )
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
+        join payment_job pj on pj.payment_job_id = epr.payment_job_id
         join event_attendee ea
             on ea.event_id = ep.event_id
             and ea.user_id = ep.user_id

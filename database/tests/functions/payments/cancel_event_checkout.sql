@@ -28,134 +28,38 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-)
-values
-    (
-        :'communityID',
-        'cancel-checkout-community',
-        'Cancel Checkout Community',
-        'Test',
-        'https://e/banner-mobile.png',
-        'https://e/banner.png',
-        'https://e/logo.png'
-    ),
-    (
-        :'otherCommunityID',
-        'other-cancel-checkout-community',
-        'Other Cancel Checkout Community',
-        'Test',
-        'https://e/banner-mobile.png',
-        'https://e/banner.png',
-        'https://e/logo.png'
-    );
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'userID', 'hash-1', 'buyer@example.com', true, 'buyer'),
-    (
-        :'waitlistUserID',
-        'hash-2',
-        'waitlist@example.com',
-        true,
-        'waitlist-user'
-    );
+-- Baseline community, categories and users
+select fx_community(:'communityID');
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_user(:'waitlistUserID');
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    payment_recipient
-)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Cancel Checkout Group',
-    'cancel-checkout-group',
-    jsonb_build_object(
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
         'provider', 'stripe',
         'recipient_id', 'acct_cancel_checkout',
         'seller_display_name', 'Cancel Checkout Fiscal Sponsor'
-    )
-);
+    )));
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    payment_currency_code,
-    published,
-    published_at,
-    waitlist_enabled
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Cancel Checkout Event',
-    'cancel-checkout-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    'USD',
-    true,
-    now(),
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day',
+    'waitlist_enabled', true
+));
 
 -- Ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventTicketTypeID',
-    :'eventID',
-    1,
-    1,
-    'General admission'
-);
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'General admission'
+));
 
 -- Price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    2500,
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Discount code
 insert into event_discount_code (

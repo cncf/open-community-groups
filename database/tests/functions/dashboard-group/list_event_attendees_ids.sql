@@ -29,122 +29,24 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'Test community description',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'user0ID');
+select fx_user(:'user1ID');
+select fx_user(:'user3ID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'user0ID',
-    gen_random_bytes(32),
-    'u0@example.com',
-    true,
-    'u0',
-    'U0'
-), (
-    :'user1ID',
-    gen_random_bytes(32),
-    'u1@example.com',
-    true,
-    'u1',
-    'U1'
-), (
-    :'user2ID',
-    gen_random_bytes(32),
-    'u2@example.com',
-    false,
-    'u2',
-    'U2'
-), (
-    :'user3ID',
-    gen_random_bytes(32),
-    'u3@example.com',
-    true,
-    'u3',
-    'U3'
-);
-
--- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group'),
-    (:'otherGroupID', :'communityID', :'groupCategoryID', 'Other Group', 'other-group');
+select fx_user(:'user2ID', jsonb_build_object('email_verified', false));
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    published
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Test Event',
-    'test-event',
-    'Test event description',
-    'UTC',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Other event in the same group used to prove event isolation
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    published
-) values (
-    :'otherEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Other Test Event',
-    'other-test-event',
-    'Other test event description',
-    'UTC',
-    true
-);
+select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Event attendees covering checked-in, pending, and unverified states
 insert into event_attendee (checked_in, event_id, status, user_id)

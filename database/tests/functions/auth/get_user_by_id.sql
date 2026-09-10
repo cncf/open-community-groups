@@ -23,118 +23,46 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'get-user-by-id-community',
-    'Get User By ID Community',
-    'Test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, category and group used by team memberships
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Users
-insert into "user" (
-    user_id,
-    name,
-    auth_hash,
-    bluesky_url,
-    email,
-    email_verified,
-    github_url,
-    password,
-    provider,
-    username
-) values (
-    :'userBothTeamsID',
-    'Both Teams User',
-    'test_hash_5',
-    null,
-    'both@example.com',
-    true,
-    null,
-    null,
-    null,
-    'bothuser'
-), (
-    :'userCommunityOnlyID',
-    'Community Only User',
-    'test_hash_4',
-    null,
-    'communityonly@example.com',
-    true,
-    null,
-    null,
-    null,
-    'communityonlyuser'
-), (
-    :'userGroupOnlyID',
-    'Group Only User',
-    'test_hash_3',
-    null,
-    'grouponly@example.com',
-    true,
-    null,
-    null,
-    null,
-    'grouponlyuser'
-), (
-    :'userNoTeamsID',
-    'No Groups User',
-    'test_hash_2',
-    null,
-    'nogroups@example.com',
-    true,
-    null,
-    null,
-    null,
-    'nogroupsuser'
-), (
-    :'userWithTeamsID',
-    'Test User',
-    'test_hash',
-    'https://bsky.app/profile/testuser',
-    'test@example.com',
-    true,
-    'https://github.com/testuser',
-    'hashed_password_here',
-    jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
-    'testuser'
-);
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    description,
-    logo_url,
-    slug,
-    website_url
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Kubernetes Study Group',
-    'Weekly Kubernetes study and discussion group',
-    'https://example.com/logo.png',
-    'kubernetes-study',
-    'https://example.com'
-);
+-- Users returned by identifier lookup scenarios
+select fx_user(:'userBothTeamsID', jsonb_build_object(
+    'auth_hash', 'test_hash_5',
+    'email', 'both@example.com',
+    'name', 'Both Teams User',
+    'username', 'bothuser'
+));
+select fx_user(:'userCommunityOnlyID', jsonb_build_object(
+    'auth_hash', 'test_hash_4',
+    'email', 'communityonly@example.com',
+    'name', 'Community Only User',
+    'username', 'communityonlyuser'
+));
+select fx_user(:'userGroupOnlyID', jsonb_build_object(
+    'auth_hash', 'test_hash_3',
+    'email', 'grouponly@example.com',
+    'name', 'Group Only User',
+    'username', 'grouponlyuser'
+));
+select fx_user(:'userNoTeamsID', jsonb_build_object(
+    'auth_hash', 'test_hash_2',
+    'email', 'nogroups@example.com',
+    'name', 'No Groups User',
+    'username', 'nogroupsuser'
+));
+select fx_user(:'userWithTeamsID', jsonb_build_object(
+    'auth_hash', 'test_hash',
+    'bluesky_url', 'https://bsky.app/profile/testuser',
+    'email', 'test@example.com',
+    'github_url', 'https://github.com/testuser',
+    'name', 'Test User',
+    'password', 'hashed_password_here',
+    'provider', jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
+    'username', 'testuser'
+));
 
 -- Group team memberships
 insert into group_team (group_id, user_id, role, accepted)

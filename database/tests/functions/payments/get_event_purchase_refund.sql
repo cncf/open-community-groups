@@ -11,108 +11,46 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '79530000-0000-0000-0000-000000000001'
-\set claimedClaimID '79530000-0000-0000-0000-000000000011'
-\set claimedPurchaseID '79530000-0000-0000-0000-000000000012'
-\set claimedRefundID '79530000-0000-0000-0000-000000000013'
-\set eventCategoryID '79530000-0000-0000-0000-000000000002'
-\set eventID '79530000-0000-0000-0000-000000000003'
-\set groupCategoryID '79530000-0000-0000-0000-000000000004'
-\set groupID '79530000-0000-0000-0000-000000000005'
-\set missingPurchaseID '79530000-0000-0000-0000-000000000010'
-\set purchaseID '79530000-0000-0000-0000-000000000008'
-\set refundID '79530000-0000-0000-0000-000000000009'
-\set ticketTypeID '79530000-0000-0000-0000-000000000006'
-\set userID '79530000-0000-0000-0000-000000000007'
+\set communityID '79010000-0000-0000-0000-000000000001'
+\set claimedClaimID '79010000-0000-0000-0000-000000000011'
+\set claimedJobID '79010000-0000-0000-0000-000000000014'
+\set claimedPurchaseID '79010000-0000-0000-0000-000000000012'
+\set claimedRefundID '79010000-0000-0000-0000-000000000013'
+\set eventCategoryID '79010000-0000-0000-0000-000000000002'
+\set eventID '79010000-0000-0000-0000-000000000003'
+\set groupCategoryID '79010000-0000-0000-0000-000000000004'
+\set groupID '79010000-0000-0000-0000-000000000005'
+\set missingPurchaseID '79010000-0000-0000-0000-000000000010'
+\set purchaseID '79010000-0000-0000-0000-000000000008'
+\set refundID '79010000-0000-0000-0000-000000000009'
+\set refundJobID '79010000-0000-0000-0000-000000000015'
+\set ticketTypeID '79010000-0000-0000-0000-000000000006'
+\set userID '79010000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community containing the recovery purchase
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'Test community',
-    'Refund Recovery Community',
-    'https://example.com/logo.png',
-    'refund-recovery-community'
-);
-
--- Event category used by the recovery event
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Group category used by the recovery group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Buyer whose finalized refund requires recovery
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'recovery@example.com', true, 'recovery-user');
-
--- Group containing the recovery event
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Refund Recovery Group',
-    'refund-recovery-group'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Ticketed event containing the recovery purchase
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    :'eventID',
-    'Test event',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Refund Recovery Event',
-    'USD',
-    true,
-    current_timestamp,
-    'refund-recovery-event',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Ticket type purchased before the refund
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Purchase waiting for manual refund recovery
 insert into event_purchase (
@@ -209,58 +147,75 @@ insert into event_purchase (
     2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 );
 
+-- Failed payment job preserving the completed local finalization
+insert into payment_job (
+    payment_job_id, event_purchase_id, failure_message, idempotency_key,
+    kind, payment_provider_id, status
+) values (
+    :'refundJobID', :'purchaseID',
+    'provider refund failed: re_failed_123',
+    'event-purchase-refund-recovery-get-event-purchase-refund',
+    'event-purchase-refund', 'stripe', 'failed'
+);
+
 -- Durable refund preserving the completed local finalization
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
     currency_code,
     event_purchase_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
 
-    failure_message,
     finalized_at
 ) values (
     :'refundID',
     2500,
     'USD',
     :'purchaseID',
-    'event-purchase-refund-recovery',
     'automatic-unfulfillable-checkout',
+    :'refundJobID',
     'stripe',
     'provider-failed',
 
-    'provider refund failed: re_failed_123',
     '2024-02-01 10:00:00+00'
+);
+
+-- Processing payment job currently claimed for provider processing
+insert into payment_job (
+    payment_job_id, attempt_count, event_purchase_id, idempotency_key,
+    kind, payment_provider_id, status,
+
+    claim_id, claimed_at
+) values (
+    :'claimedJobID', 2, :'claimedPurchaseID',
+    'event-purchase-refund-claimed-get-event-purchase-refund',
+    'event-purchase-refund', 'stripe', 'processing',
+
+    :'claimedClaimID', current_timestamp
 );
 
 -- Durable refund currently claimed for provider processing
 insert into event_purchase_refund (
     amount_minor,
-    attempt_count,
-    claim_id,
-    claimed_at,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status
 ) values (
     2500,
-    2,
-    :'claimedClaimID',
-    current_timestamp,
     'USD',
     :'claimedPurchaseID',
     :'claimedRefundID',
-    'event-purchase-refund-claimed',
     'event-cancellation',
+    :'claimedJobID',
     'stripe',
-    'processing'
+    'provider-pending'
 );
 
 -- ============================================================================
@@ -277,10 +232,11 @@ select is(
         'currency_code', 'USD',
         'event_purchase_id', :'claimedPurchaseID'::uuid,
         'event_purchase_refund_id', :'claimedRefundID'::uuid,
-        'idempotency_key', 'event-purchase-refund-claimed',
+        'idempotency_key', 'event-purchase-refund-claimed-get-event-purchase-refund',
         'kind', 'event-cancellation',
+        'payment_job_id', :'claimedJobID'::uuid,
         'payment_provider', 'stripe',
-        'status', 'processing',
+        'status', 'provider-pending',
         'terminal_failure', false
     ),
     'Should load an active worker claim'
@@ -295,8 +251,9 @@ select is(
         'currency_code', 'USD',
         'event_purchase_id', :'purchaseID'::uuid,
         'event_purchase_refund_id', :'refundID'::uuid,
-        'idempotency_key', 'event-purchase-refund-recovery',
+        'idempotency_key', 'event-purchase-refund-recovery-get-event-purchase-refund',
         'kind', 'automatic-unfulfillable-checkout',
+        'payment_job_id', :'refundJobID'::uuid,
         'payment_provider', 'stripe',
         'status', 'provider-failed',
         'terminal_failure', false,

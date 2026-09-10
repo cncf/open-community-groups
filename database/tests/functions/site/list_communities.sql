@@ -31,141 +31,41 @@ select plan(1);
 -- ============================================================================
 
 -- Communities covering active, inactive, and group eligibility scenarios
-insert into community (
-    community_id,
-    active,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values
-    (
-        :'communityActiveAlphaID',
-        true,
-        'https://example.com/alpha-banner-mobile.png',
-        'https://example.com/alpha-banner.png',
-        'Active community with an active group and no events',
-        'Alpha Community',
-        'https://example.com/alpha-logo.png',
-        'alpha-community'
-    ),
-    (
-        :'communityActiveBetaID',
-        true,
-        'https://example.com/beta-banner-mobile.png',
-        'https://example.com/beta-banner.png',
-        'Second active community with an active group and no events',
-        'Beta Community',
-        'https://example.com/beta-logo.png',
-        'beta-community'
-    ),
-    (
-        :'communityInactiveID',
-        false,
-        'https://example.com/inactive-banner-mobile.png',
-        'https://example.com/inactive-banner.png',
-        'Inactive community with an active group',
-        'Inactive Community',
-        'https://example.com/inactive-logo.png',
-        'inactive-community'
-    ),
-    (
-        :'communityNoGroupsID',
-        true,
-        'https://example.com/no-groups-banner-mobile.png',
-        'https://example.com/no-groups-banner.png',
-        'Active community without groups',
-        'No Groups Community',
-        'https://example.com/no-groups-logo.png',
-        'no-groups-community'
-    ),
-    (
-        :'communityOnlyDeletedGroupID',
-        true,
-        'https://example.com/deleted-group-banner-mobile.png',
-        'https://example.com/deleted-group-banner.png',
-        'Active community with only a deleted group',
-        'Only Deleted Group Community',
-        'https://example.com/deleted-group-logo.png',
-        'only-deleted-group-community'
-    ),
-    (
-        :'communityOnlyInactiveGroupID',
-        true,
-        'https://example.com/inactive-group-banner-mobile.png',
-        'https://example.com/inactive-group-banner.png',
-        'Active community with only an inactive group',
-        'Only Inactive Group Community',
-        'https://example.com/inactive-group-logo.png',
-        'only-inactive-group-community'
-    );
+select fx_community(:'communityActiveAlphaID', jsonb_build_object(
+    'banner_mobile_url', 'https://example.com/alpha-banner-mobile.png',
+    'banner_url', 'https://example.com/alpha-banner.png',
+    'display_name', 'Alpha Community List Communities',
+    'logo_url', 'https://example.com/alpha-logo.png',
+    'name', 'alpha-community-list-communities'
+));
+select fx_community(:'communityActiveBetaID', jsonb_build_object(
+    'banner_mobile_url', 'https://example.com/beta-banner-mobile.png',
+    'banner_url', 'https://example.com/beta-banner.png',
+    'display_name', 'Beta Community',
+    'logo_url', 'https://example.com/beta-logo.png',
+    'name', 'beta-community'
+));
+select fx_community(:'communityInactiveID', jsonb_build_object('active', false));
+select fx_community(:'communityNoGroupsID');
+select fx_community(:'communityOnlyDeletedGroupID');
+select fx_community(:'communityOnlyInactiveGroupID');
 
 -- Group categories for communities with group fixtures
-insert into group_category (group_category_id, community_id, name)
-values
-    (:'groupCategoryActiveAlphaID', :'communityActiveAlphaID', 'Technology'),
-    (:'groupCategoryActiveBetaID', :'communityActiveBetaID', 'Technology'),
-    (:'groupCategoryInactiveCommunityID', :'communityInactiveID', 'Technology'),
-    (:'groupCategoryOnlyDeletedID', :'communityOnlyDeletedGroupID', 'Technology'),
-    (:'groupCategoryOnlyInactiveID', :'communityOnlyInactiveGroupID', 'Technology');
+select fx_group_category(:'groupCategoryActiveAlphaID', :'communityActiveAlphaID');
+select fx_group_category(:'groupCategoryActiveBetaID', :'communityActiveBetaID');
+select fx_group_category(:'groupCategoryInactiveCommunityID', :'communityInactiveID');
+select fx_group_category(:'groupCategoryOnlyDeletedID', :'communityOnlyDeletedGroupID');
+select fx_group_category(:'groupCategoryOnlyInactiveID', :'communityOnlyInactiveGroupID');
 
 -- Groups covering active, inactive, and deleted eligibility scenarios
-insert into "group" (
-    group_id,
-    active,
-    community_id,
-    deleted,
-    group_category_id,
-    name,
-    slug
-) values
-    (
-        :'groupActiveAlphaID',
-        true,
-        :'communityActiveAlphaID',
-        false,
-        :'groupCategoryActiveAlphaID',
-        'Alpha Group',
-        'alpha-group'
-    ),
-    (
-        :'groupActiveBetaID',
-        true,
-        :'communityActiveBetaID',
-        false,
-        :'groupCategoryActiveBetaID',
-        'Beta Group',
-        'beta-group'
-    ),
-    (
-        :'groupInactiveCommunityID',
-        true,
-        :'communityInactiveID',
-        false,
-        :'groupCategoryInactiveCommunityID',
-        'Inactive Community Group',
-        'inactive-community-group'
-    ),
-    (
-        :'groupOnlyDeletedID',
-        false,
-        :'communityOnlyDeletedGroupID',
-        true,
-        :'groupCategoryOnlyDeletedID',
-        'Deleted Group',
-        'deleted-group'
-    ),
-    (
-        :'groupOnlyInactiveID',
-        false,
-        :'communityOnlyInactiveGroupID',
-        false,
-        :'groupCategoryOnlyInactiveID',
-        'Inactive Group',
-        'inactive-group'
-    );
+select fx_group(:'groupActiveAlphaID', :'communityActiveAlphaID', :'groupCategoryActiveAlphaID');
+select fx_group(:'groupActiveBetaID', :'communityActiveBetaID', :'groupCategoryActiveBetaID');
+select fx_group(:'groupInactiveCommunityID', :'communityInactiveID', :'groupCategoryInactiveCommunityID');
+select fx_group(:'groupOnlyDeletedID', :'communityOnlyDeletedGroupID', :'groupCategoryOnlyDeletedID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
+select fx_group(:'groupOnlyInactiveID', :'communityOnlyInactiveGroupID', :'groupCategoryOnlyInactiveID', jsonb_build_object('active', false));
 
 -- ============================================================================
 -- TESTS
@@ -179,9 +79,9 @@ select is(
             'banner_mobile_url', 'https://example.com/alpha-banner-mobile.png',
             'banner_url', 'https://example.com/alpha-banner.png',
             'community_id', :'communityActiveAlphaID',
-            'display_name', 'Alpha Community',
+            'display_name', 'Alpha Community List Communities',
             'logo_url', 'https://example.com/alpha-logo.png',
-            'name', 'alpha-community'
+            'name', 'alpha-community-list-communities'
         ),
         jsonb_build_object(
             'banner_mobile_url', 'https://example.com/beta-banner-mobile.png',

@@ -30,156 +30,30 @@ select plan(4);
 -- ============================================================================
 
 -- Community containing the group relationships
-insert into community (
-    community_id,
-    active,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    true,
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'Community for user group listing tests',
-    'User Groups Community',
-    'https://example.com/logo.png',
-    'user-groups-community'
-);
+select fx_community(:'communityID', jsonb_build_object('display_name', 'User Groups Community'));
 
 -- Inactive community containing an otherwise visible group
-insert into community (
-    community_id,
-    active,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'inactiveCommunityID',
-    false,
-    'https://example.com/inactive-banner-mobile.png',
-    'https://example.com/inactive-banner.png',
-    'Inactive community for user group listing tests',
-    'Inactive User Groups Community',
-    'https://example.com/inactive-logo.png',
-    'inactive-user-groups-community'
-);
+select fx_community(:'inactiveCommunityID', jsonb_build_object('active', false));
 
--- Category shared by the group fixtures
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
-) values (
-    :'groupCategoryID',
-    :'communityID',
-    'Technology'
-);
-
--- Category belonging to the inactive community
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
-) values (
-    :'inactiveCommunityCategoryID',
-    :'inactiveCommunityID',
-    'Inactive Technology'
-);
-
--- Users with populated and empty group listings
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username
-) values (
-    :'emptyUserID',
-    'hash-empty',
-    'groups-empty@example.com',
-    true,
-    'groups-empty'
-), (
-    :'userID',
-    'hash-user',
-    'groups-user@example.com',
-    true,
-    'groups-user'
-);
+-- Baseline group categories, users and groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group_category(:'inactiveCommunityCategoryID', :'inactiveCommunityID');
+select fx_user(:'emptyUserID');
+select fx_user(:'userID');
+select fx_group(:'inactiveCommunityGroupID', :'inactiveCommunityID', :'inactiveCommunityCategoryID');
+select fx_group(:'pendingTeamGroupID', :'communityID', :'groupCategoryID');
 
 -- Active, hidden, and pending group relationship fixtures
-insert into "group" (
-    group_id,
-    active,
-    community_id,
-    deleted,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'memberGroupID',
-    true,
-    :'communityID',
-    false,
-    :'groupCategoryID',
-    'Alpha Group',
-    'alpha-group'
-), (
-    :'memberTeamGroupID',
-    true,
-    :'communityID',
-    false,
-    :'groupCategoryID',
-    'Beta Group',
-    'beta-group'
-), (
-    :'deletedGroupID',
-    false,
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    'Deleted Group',
-    'deleted-group'
-), (
-    :'inactiveCommunityGroupID',
-    true,
-    :'inactiveCommunityID',
-    false,
-    :'inactiveCommunityCategoryID',
-    'Inactive Community Group',
-    'inactive-community-group'
-), (
-    :'inactiveGroupID',
-    false,
-    :'communityID',
-    false,
-    :'groupCategoryID',
-    'Inactive Group',
-    'inactive-group'
-), (
-    :'pendingTeamGroupID',
-    true,
-    :'communityID',
-    false,
-    :'groupCategoryID',
-    'Pending Group',
-    'pending-group'
-), (
-    :'teamGroupID',
-    true,
-    :'communityID',
-    false,
-    :'groupCategoryID',
-    'Team Group',
-    'team-group'
-);
+select fx_group(:'memberGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Alpha Group'));
+select fx_group(:'memberTeamGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Beta Group'));
+select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
+
+select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
+
+select fx_group(:'teamGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Team Group'));
 
 -- Membership relationships including hidden groups and a duplicate team group
 insert into group_member (

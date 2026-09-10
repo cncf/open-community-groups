@@ -12,6 +12,7 @@ select plan(4);
 -- ============================================================================
 
 \set adjustmentID 'd7340000-0000-0000-0000-000000000001'
+\set adjustmentJobID 'd7340000-0000-0000-0000-000000000011'
 \set claimID 'd7340000-0000-0000-0000-000000000002'
 \set communityID 'd7340000-0000-0000-0000-000000000003'
 \set eventCategoryID 'd7340000-0000-0000-0000-000000000004'
@@ -26,45 +27,21 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the adjustment event
-insert into community (
-    banner_mobile_url, banner_url, community_id, description, display_name,
-    logo_url, name
-) values (
-    'https://example.test/mobile.png', 'https://example.test/banner.png',
-    :'communityID', 'Community', 'Community', 'https://example.test/logo.png',
-    'complete-fee-adjustment-community'
-);
-
--- Event category used by the adjustment event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the adjustment group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the adjustment event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Attendee owning the direct-charge purchase
-insert into "user" (auth_hash, email, user_id, username)
-values ('user', 'user@example.test', :'userID', 'user');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event associated with the direct-charge purchase
-insert into event (
-    description, event_category_id, event_id, event_kind_id, group_id, name,
-    payment_currency_code, slug, timezone
-) values (
-    'Event', :'eventCategoryID', :'eventID', 'in-person', :'groupID', 'Event',
-    'USD', 'event', 'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type snapshotted by the purchase
-insert into event_ticket_type (
-    event_id, event_ticket_type_id, "order", seats_total, title
-) values (:'eventID', :'ticketTypeID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Direct-charge purchase awaiting tax reconciliation
 insert into event_purchase (
@@ -79,21 +56,34 @@ insert into event_purchase (
     venue_snapshot
 ) values (
     2500, 'direct-charge', 'acct_fee', 'USD', :'eventID', :'purchaseID',
-    :'ticketTypeID', 80, 'stripe', 'fee_adjust', 'ch_adjust', 'cs_adjust',
-    'acct_fee', 'pi_adjust', 2500, 100,
+    :'ticketTypeID', 80, 'stripe', 'fee_adjust', 'ch_adjust_fee_adjustment_succeeded', 'cs_adjust_fee_adjustment_succeeded',
+    'acct_fee', 'pi_adjust_fee_adjustment_succeeded', 2500, 100,
     '{"display_name":"Fiscal Sponsor"}'::jsonb, 'completed', 2300, 200,
     'inclusive', 'manual', 'professional-event-admission', 'General admission',
     :'userID', '{}'::jsonb
 );
 
--- Processing application-fee adjustment claim
-insert into event_purchase_application_fee_adjustment (
-    amount_minor, attempt_count, claim_id, claimed_at,
-    event_purchase_application_fee_adjustment_id, event_purchase_id,
-    idempotency_key, kind, status
+-- Processing payment job for the application-fee adjustment
+insert into payment_job (
+    payment_job_id, attempt_count, event_purchase_id, idempotency_key,
+    kind, payment_provider_id, status,
+
+    claim_id, claimed_at
 ) values (
-    20, 1, :'claimID', current_timestamp, :'adjustmentID', :'purchaseID',
-    'complete-fee-adjustment', 'tax-reconciliation', 'processing'
+    :'adjustmentJobID', 1, :'purchaseID',
+    'complete-fee-adjustment-succeeded-job',
+    'event-purchase-application-fee-adjustment', 'stripe', 'processing',
+
+    :'claimID', current_timestamp
+);
+
+-- Processing application-fee adjustment pinned to the job
+insert into event_purchase_application_fee_adjustment (
+    event_purchase_application_fee_adjustment_id, amount_minor,
+    event_purchase_id, kind, payment_job_id
+) values (
+    :'adjustmentID', 20,
+    :'purchaseID', 'tax-reconciliation', :'adjustmentJobID'
 );
 
 -- ============================================================================
@@ -112,13 +102,17 @@ select lives_ok(
 -- Should mark the tax-reconciled purchase financially reconciled
 select results_eq(
     format($$
-        select a.status, a.provider_application_fee_refund_id,
-            p.financially_reconciled_at is not null
+        select
+            a.provider_application_fee_refund_id,
+            p.financially_reconciled_at is not null,
+            pj.status,
+            pj.completed_at is not null
         from event_purchase_application_fee_adjustment a
         join event_purchase p using (event_purchase_id)
+        join payment_job pj using (payment_job_id)
         where a.event_purchase_application_fee_adjustment_id = %L::uuid
     $$, :'adjustmentID'),
-    $$ values ('completed'::text, 'fr_adjust'::text, true) $$,
+    $$ values ('fr_adjust'::text, true, 'completed'::text, true) $$,
     'Should mark the tax-reconciled purchase financially reconciled'
 );
 

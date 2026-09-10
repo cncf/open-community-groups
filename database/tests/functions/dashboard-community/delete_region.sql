@@ -20,37 +20,10 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cncf-seattle',
-    'CNCF Seattle',
-    'Community for region delete tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community and group category
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
 
--- Group category
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
-) values (
-    :'groupCategoryID',
-    :'communityID',
-    'Platform'
-);
-
--- Regions
 insert into region (
     region_id,
     community_id,
@@ -60,21 +33,7 @@ insert into region (
     (:'unusedRegionID', :'communityID', 'Europe');
 
 -- Group using the first region
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    region_id
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Seattle Platform',
-    'seattle-platform',
-    :'inUseRegionID'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('region_id', :'inUseRegionID'));
 
 -- ============================================================================
 -- TESTS
@@ -91,6 +50,7 @@ select throws_ok(
         :'communityID',
         :'inUseRegionID'
     ),
+    'OCG01',
     'cannot delete region in use by groups',
     'Should block deleting region referenced by groups'
 );
@@ -163,6 +123,7 @@ select throws_ok(
         :'communityID',
         :'unknownRegionID'
     ),
+    'OCG01',
     'region not found',
     'Should fail when deleting a non-existing region'
 );

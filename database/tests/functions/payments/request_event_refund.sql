@@ -51,104 +51,22 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-)
-values
-    (
-        :'communityID',
-        'request-community',
-        'Request Community',
-        'Test',
-        'https://e/banner-mobile.png',
-        'https://e/banner.png',
-        'https://e/logo.png'
-    ),
-    (
-        :'communityNoReviewID',
-        'no-review-community',
-        'No Review Community',
-        'Test',
-        'https://e/banner-mobile-2.png',
-        'https://e/banner-2.png',
-        'https://e/logo-2.png'
-    );
+-- Baseline communities, categories, users and groups
+select fx_community(:'communityID');
+select fx_community(:'communityNoReviewID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group_category(:'groupCategoryNoReviewID', :'communityNoReviewID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryNoReviewID', :'communityNoReviewID');
+select fx_user(:'communityViewerID');
+select fx_user(:'requesterID');
+select fx_user(:'teamUser2ID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'groupNoTeamID', :'communityNoReviewID', :'groupCategoryNoReviewID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values
-    (:'groupCategoryID', :'communityID', 'Tech'),
-    (:'groupCategoryNoReviewID', :'communityNoReviewID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values
-    (:'eventCategoryID', :'communityID', 'General'),
-    (:'eventCategoryNoReviewID', :'communityNoReviewID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'communityManagerID',
-        'hash-4',
-        'manager@example.com',
-        true,
-        'community-manager'
-    ),
-    (
-        :'communityViewerID',
-        'hash-5',
-        'viewer@example.com',
-        true,
-        'community-viewer'
-    ),
-    (
-        :'requesterID',
-        'hash-1',
-        'requester@example.com',
-        true,
-        'requester'
-    ),
-    (
-        :'teamUser1ID',
-        'hash-2',
-        'team1@example.com',
-        true,
-        'organizer-1'
-    ),
-    (
-        :'teamUser2ID',
-        'hash-3',
-        'team2@example.com',
-        true,
-        'organizer-2'
-    );
-
--- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (
-        :'groupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Refund Group',
-        'refund-group'
-    ),
-    (
-        :'groupNoTeamID',
-        :'communityNoReviewID',
-        :'groupCategoryNoReviewID',
-        'No Team Group',
-        'no-team-group'
-    );
+-- Notification users with asserted usernames
+select fx_user(:'communityManagerID', jsonb_build_object('username', 'community-manager'));
+select fx_user(:'teamUser1ID', jsonb_build_object('username', 'organizer-1'));
 
 -- Group team
 insert into group_team (group_id, user_id, accepted, role) values
@@ -161,151 +79,60 @@ insert into community_team (accepted, community_id, role, user_id) values
     (true, :'communityID', 'viewer', :'communityViewerID');
 
 -- Events
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    published,
-    published_at
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Refund Event',
-    'refund-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    true,
-    now()
-), (
-    :'eventStartedID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Started Refund Event',
-    'started-refund-event',
-    'Test event',
-    'UTC',
-    now() - interval '1 hour',
-    true,
-    now()
-), (
-    :'eventCanceledID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Canceled Refund Event',
-    'canceled-refund-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    true,
-    now()
-), (
-    :'eventNoTeamID',
-    :'eventCategoryNoReviewID',
-    'in-person',
-    :'groupNoTeamID',
-    'No Team Event',
-    'no-team-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    true,
-    now()
-), (
-    :'eventUnpublishedID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Unpublished Refund Event',
-    'unpublished-refund-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days'
+));
+select fx_event(:'eventStartedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() - interval '1 hour'
+));
+select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days'
+));
+select fx_event(:'eventNoTeamID', :'groupNoTeamID', :'eventCategoryNoReviewID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days'
+));
+select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days'
+));
 
 -- Ticket type and price window
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-)
-values
-    (
-        :'eventCanceledTicketTypeID',
-        :'eventCanceledID',
-        1,
-        10,
-        'General admission'
-    ),
-    (
-        :'eventNoTeamTicketTypeID',
-        :'eventNoTeamID',
-        1,
-        10,
-        'General admission'
-    ),
-    (
-        :'eventStartedTicketTypeID',
-        :'eventStartedID',
-        1,
-        10,
-        'General admission'
-    ),
-    (
-        :'eventTicketTypeID',
-        :'eventID',
-        1,
-        10,
-        'General admission'
-    ),
-    (
-        :'eventUnpublishedTicketTypeID',
-        :'eventUnpublishedID',
-        1,
-        10,
-        'General admission'
-    );
+select fx_event_ticket_type(:'eventCanceledTicketTypeID', :'eventCanceledID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'eventNoTeamTicketTypeID', :'eventNoTeamID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'eventStartedTicketTypeID', :'eventStartedID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'eventUnpublishedTicketTypeID', :'eventUnpublishedID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Price window that supplies the refundable purchase amount
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowCanceledID',
-    2500,
-    :'eventCanceledTicketTypeID'
-), (
-    :'priceWindowNoTeamID',
-    2500,
-    :'eventNoTeamTicketTypeID'
-), (
-    :'priceWindowStartedID',
-    2500,
-    :'eventStartedTicketTypeID'
-), (
-    :'priceWindowID',
-    2500,
-    :'eventTicketTypeID'
-), (
-    :'priceWindowUnpublishedID',
-    2500,
-    :'eventUnpublishedTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowCanceledID', :'eventCanceledTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowNoTeamID', :'eventNoTeamTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowStartedID', :'eventStartedTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowUnpublishedID', :'eventUnpublishedTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Purchases
 insert into event_purchase (
@@ -532,8 +359,9 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         null,
-        '{}'::jsonb
+        '{"scenario":"request-event-refund"}'::jsonb
     )$$, :'communityID', :'eventCanceledID', :'requesterID'),
+    'OCG01',
     'purchase not found or not refundable',
     'Should reject a redundant request after automatic cancellation refund starts'
 );
@@ -549,7 +377,7 @@ select lives_ok(
         %L::uuid,
         %L::uuid,
         null,
-        '{}'::jsonb
+        '{"scenario":"request-event-refund"}'::jsonb
     )$$, :'communityID', :'eventUnpublishedID', :'requesterID'),
     'Should allow refund requests after the event is unpublished'
 );
@@ -561,8 +389,9 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         null,
-        '{}'::jsonb
+        '{"scenario":"request-event-refund"}'::jsonb
     )$$, :'communityID', :'eventStartedID', :'requesterID'),
+    'OCG01',
     'purchase not found or not refundable',
     'Should reject refund requests after the event has started'
 );
@@ -574,8 +403,9 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         null,
-        '{}'::jsonb
+        '{"scenario":"request-event-refund"}'::jsonb
     )$$, :'communityID', :'eventID', :'requesterID'),
+    'OCG01',
     'refund request already exists for this purchase',
     'Should reject duplicate refund requests'
 );
@@ -587,7 +417,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         null,
-        '{}'::jsonb
+        '{"scenario":"request-event-refund"}'::jsonb
     )$$, :'communityNoReviewID', :'eventNoTeamID', :'requesterID'),
     'refund request notification has no recipients',
     'Should reject refund requests when no organizer recipients exist'

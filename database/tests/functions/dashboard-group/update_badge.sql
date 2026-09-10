@@ -21,25 +21,11 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Admin authorized to update badges
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'actorID', 'hash', 'update-admin@example.test', true, 'update-admin');
-
--- Community that owns the badge
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Update Community', '/logo', 'update-community');
-
--- Category used by the badge group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the badge
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Update Group', 'update-group');
-
--- Authorized group team member
-insert into group_team (group_id, accepted, role, user_id)
-values (:'groupID', true, 'events-manager', :'actorID');
+-- Baseline actor, community and group that owns the badge
+select fx_user(:'actorID');
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Current and replacement gallery artwork
 insert into badge_artwork (file_name, group_id)
@@ -80,6 +66,7 @@ select throws_ok(
         $$select update_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, '{"criteria":"C","description":"D","image_file_name":"missing.png","name":"N"}'::jsonb)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID'
     ),
+    'OCG01',
     'badge artwork not found',
     'Should reject unknown artwork'
 );

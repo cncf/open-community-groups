@@ -53,6 +53,21 @@ select plan(24);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline community, categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'externalCompletedUserID');
+select fx_user(:'externalPendingUserID');
+select fx_user(:'freeUserID');
+select fx_user(:'invalidPaymentUserID');
+select fx_user(:'invitationUserID');
+select fx_user(:'offerUserID');
+select fx_user(:'paidUserID');
+select fx_user(:'rejectedPaidUserID');
+select fx_user(:'waitlistUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+
 -- Site theme used by external payment expiry notifications
 insert into site (description, site_id, theme, title)
 values (
@@ -62,180 +77,56 @@ values (
     'Cancel Event Site'
 );
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
-
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id
-) values (
-    :'groupID',
-    :'communityID',
-    'Test Group',
-    'test-group',
-    'A test group',
-    :'groupCategoryID'
-);
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
 
 -- User (as previously published_by)
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    username
-) values (
-    :'userID',
-    'x',
-    'user@test.local',
-    'user'
-);
-
--- Attendees covering free, paid, invalid-payment, and invitation scenarios
-insert into "user" (user_id, auth_hash, email, username) values
-    (:'externalCompletedUserID', 'external-completed', 'external-completed@test.local', 'external-completed'),
-    (:'externalPendingUserID', 'external-pending', 'external-pending@test.local', 'external-pending'),
-    (:'freeUserID', 'free', 'free@test.local', 'free-user'),
-    (:'invalidPaymentUserID', 'invalid', 'invalid@test.local', 'invalid-user'),
-    (:'invitationUserID', 'invited', 'invited@test.local', 'invited-user'),
-    (:'offerUserID', 'offer', 'offer@test.local', 'offer-user'),
-    (:'paidUserID', 'paid', 'paid@test.local', 'paid-user'),
-    (:'rejectedPaidUserID', 'rejected', 'rejected@test.local', 'rejected-user'),
-    (
-        :'waitlistUserID',
-        'waitlist',
-        'waitlist@test.local',
-        'waitlist-user'
-    );
+select fx_user(:'userID', jsonb_build_object('username', 'user-cancel-event'));
 
 -- Event (published, not canceled)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    canceled,
-    capacity,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    published,
-    published_at,
-    published_by,
-    waitlist_enabled
-) values (
-    :'eventID',
-    :'groupID',
-    'Test Event',
-    'test-event',
-    'A test event',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    now() + interval '1 day',
-    now() + interval '1 day 1 hour',
-
-    false,
-    100,
-    true,
-    'zoom',
-    true,
-    true,
-    now(),
-    :'userID',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'published_at', now(),
+    'published_by', :'userID',
+    'starts_at', now() + interval '1 day',
+    'waitlist_enabled', true
+));
 
 -- Event without meeting_requested (to verify meeting_in_sync is not changed)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-    meeting_in_sync,
-    meeting_requested,
-    published,
-    published_at,
-    published_by,
-    canceled
-) values (
-    :'eventNoMeetingID',
-    :'groupID',
-    'Test Event No Meeting',
-    'test-event-no-meeting',
-    'A test event without meeting',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    now(),
-    now() + interval '1 hour',
-    null,
-    false,
-    true,
-    now(),
-    :'userID',
-    false
-);
+select fx_event(:'eventNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 hour',
+    'meeting_requested', false,
+    'published', true,
+    'published_at', now(),
+    'published_by', :'userID',
+    'starts_at', now()
+));
 
 -- Events rejected because they are already canceled, completed, or not refund-ready
-insert into event (
-    canceled,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values
-    (true, 'Canceled event', now() + interval '1 day 1 hour', :'eventCategoryID', :'eventAlreadyCanceledID', 'in-person', :'groupID', 'Already Canceled', true, 'already-canceled', now() + interval '1 day', 'UTC'),
-    (false, 'Invalid payment event', now() + interval '1 day 1 hour', :'eventCategoryID', :'eventInvalidPaymentID', 'in-person', :'groupID', 'Invalid Payment', true, 'invalid-payment', now() + interval '1 day', 'UTC'),
-    (false, 'Past event', now() - interval '1 hour', :'eventCategoryID', :'eventPastID', 'in-person', :'groupID', 'Past', true, 'past', now() - interval '2 hours', 'UTC');
+select fx_event(:'eventAlreadyCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'eventInvalidPaymentID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 day 1 hour',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'eventPastID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '1 hour',
+    'name', 'Past',
+    'published', true,
+    'slug', 'past',
+    'starts_at', now() - interval '2 hours'
+));
 
 -- Session with meeting_requested=true (should be marked as out of sync)
 insert into session (
@@ -282,10 +173,11 @@ insert into session (
 );
 
 -- Ticket types used by refundable and invalid-payment purchases
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values
-    (:'ticketTypeID', :'eventID', 1, 100, 'General admission'),
-    (:'invalidPaymentTicketTypeID', :'eventInvalidPaymentID', 1, 100, 'Invalid payment');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'invalidPaymentTicketTypeID', :'eventInvalidPaymentID', jsonb_build_object('seats_total', 100));
 
 -- Attendees covering confirmed attendance, pending invitations, and validation rollback
 insert into event_attendee (checked_in, checked_in_at, event_id, status, user_id) values
@@ -411,48 +303,17 @@ insert into event_waitlist (
 );
 
 -- External-marked event canceled with pending and completed external purchases
-insert into event (
-    canceled,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    false,
-    'External cancellation event',
-    :'eventCategoryID',
-    :'eventExternalID',
-    'in-person',
-    'https://pay.example.test/cancel',
-    :'groupID',
-    'External Cancel Event',
-    true,
-    'external-cancel-event',
-    current_timestamp + interval '2 days',
-    'UTC'
-);
+select fx_event(:'eventExternalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/cancel',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- Ticket type for the external cancellation event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'externalTicketTypeID',
-    :'eventExternalID',
-    1,
-    50,
-    'External admission'
-);
+select fx_event_ticket_type(:'externalTicketTypeID', :'eventExternalID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
 
 -- Confirmed attendee for the completed external purchase
 insert into event_attendee (event_id, status, user_id)
@@ -526,6 +387,7 @@ select throws_ok(
         $$select cancel_event(%L::uuid, %L::uuid, %L::uuid)$$,
         :'userID', :'groupID', :'eventAlreadyCanceledID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject an already canceled event'
 );
@@ -536,6 +398,7 @@ select throws_ok(
         $$select cancel_event(%L::uuid, %L::uuid, %L::uuid)$$,
         :'userID', :'groupID', :'eventPastID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject a completed past event'
 );
@@ -573,17 +436,25 @@ select isnt(
 -- Should finalize free purchases and queue provider-backed refunds
 select results_eq(
     format($$
-        select ep.event_purchase_id, ep.status, epr.kind, epr.status
+        select
+            ep.event_purchase_id,
+            ep.status,
+            epr.kind,
+            epr.status,
+            pj.idempotency_key,
+            pj.kind,
+            pj.status
         from event_purchase ep
         left join event_purchase_refund epr using (event_purchase_id)
+        left join payment_job pj on pj.payment_job_id = epr.payment_job_id
         where ep.event_id = %L::uuid
         order by ep.event_purchase_id
     $$, :'eventID'),
     format($$ values
-        (%L::uuid, 'refunded'::text, null::text, null::text),
-        (%L::uuid, 'refund-pending'::text, 'event-cancellation'::text, 'provider-pending'::text),
-        (%L::uuid, 'refund-pending'::text, 'event-cancellation'::text, 'provider-pending'::text)
-    $$, :'freePurchaseID', :'paidPurchaseID', :'rejectedPaidPurchaseID'),
+        (%L::uuid, 'refunded'::text, null::text, null::text, null::text, null::text, null::text),
+        (%L::uuid, 'refund-pending'::text, 'event-cancellation'::text, 'provider-pending'::text, 'event-purchase-refund-%s'::text, 'event-purchase-refund'::text, 'pending'::text),
+        (%L::uuid, 'refund-pending'::text, 'event-cancellation'::text, 'provider-pending'::text, 'event-purchase-refund-%s'::text, 'event-purchase-refund'::text, 'pending'::text)
+    $$, :'freePurchaseID', :'paidPurchaseID', :'paidPurchaseID', :'rejectedPaidPurchaseID', :'rejectedPaidPurchaseID'),
     'Should finalize free purchases and queue provider-backed refunds'
 );
 
@@ -741,6 +612,7 @@ select throws_ok(
         $$select cancel_event(null::uuid, %L::uuid, %L::uuid)$$,
         :'missingGroupID', :'eventID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );

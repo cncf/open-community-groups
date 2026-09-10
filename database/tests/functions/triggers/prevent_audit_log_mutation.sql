@@ -17,8 +17,7 @@ select plan(4);
 -- ============================================================================
 
 -- User
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'audit-user-hash', 'audit-user@example.com', true, 'audit-user');
+select fx_user(:'userID', jsonb_build_object('username', 'audit-user'));
 
 -- Audit log row
 insert into audit_log (action, actor_user_id, actor_username, resource_id, resource_type)

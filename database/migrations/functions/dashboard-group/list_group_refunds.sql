@@ -6,9 +6,10 @@ returns json as $$
         filters as (
             select
                 (p_filters->>'event_id')::uuid as event_id_value,
-                (p_filters->>'limit')::int as limit_value,
-                (p_filters->>'offset')::int as offset_value,
-                nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value,
+                f.ilike_pattern,
+                f.limit_value,
+                f.offset_value,
+                f.ts_query as ts_query_value,
                 case
                     when lower(p_filters->>'view') in (
                         'active',
@@ -18,6 +19,7 @@ returns json as $$
                     ) then lower(p_filters->>'view')
                     else 'active'
                 end as view_value
+            from parse_search_filters(p_filters) f
         ),
         -- Select every purchase that has entered a refund workflow
         base_refunds as (
@@ -35,12 +37,12 @@ returns json as $$
                 e.name as event_name,
                 ep.event_purchase_id,
                 ep.ticket_title,
-                greatest(ep.updated_at, err.updated_at, epr.updated_at) as updated_at_sort,
+                greatest(ep.updated_at, err.updated_at, epr.updated_at, pj.updated_at) as updated_at_sort,
                 u.user_id,
                 u.username,
 
-                epr.attempt_count,
-                epr.failure_message,
+                pj.attempt_count,
+                pj.failure_message,
                 coalesce(
                     epr.kind,
                     case
@@ -49,6 +51,7 @@ returns json as $$
                     end
                 ) as kind,
                 u.name,
+                epr.payment_job_id,
                 u.photo_url,
                 epr.provider_refund_id,
                 err.requested_reason,
@@ -63,16 +66,13 @@ returns json as $$
                     when ep.status = 'refund-recovery-pending'
                         or (epr.status = 'provider-failed' and epr.terminal_failure)
                         then 'recovery-required'
-                    when epr.status in ('provider-failed', 'provider-pending')
-                        and epr.attempt_count >= 10
+                    when payment_job_is_exhausted(pj)
                         then 'retryable-failure'
-                    when epr.status in ('processing', 'provider-succeeded')
-                        or (
-                            epr.status = 'provider-pending'
-                            and epr.provider_refund_id is not null
-                        )
+                    when pj.status = 'processing'
+                        or epr.status = 'provider-succeeded'
+                        or epr.provider_refund_id is not null
                         then 'processing'
-                    when epr.status in ('provider-failed', 'provider-pending')
+                    when pj.status in ('failed', 'pending')
                         then 'queued'
                     when ep.status = 'refund-pending'
                         or (e.canceled and ep.status = 'pending')
@@ -86,6 +86,7 @@ returns json as $$
             join "user" u using (user_id)
             left join event_refund_request err using (event_purchase_id)
             left join event_purchase_refund epr using (event_purchase_id)
+            left join payment_job pj on pj.payment_job_id = epr.payment_job_id
             where e.group_id = p_group_id
             and (
                 err.event_refund_request_id is not null
@@ -110,65 +111,64 @@ returns json as $$
         base_financial_recoveries as (
             select
                 epafa.amount_minor,
-                epafa.attempt_count,
+                pj.attempt_count,
                 ep.currency_code,
                 u.email,
                 e.event_id,
                 e.name as event_name,
                 ep.event_purchase_id,
                 coalesce(
-                    epafa.failure_message,
+                    pj.failure_message,
                     'Provider operation failed without details'
                 ) as failure_message,
-                'application-fee-adjustment'::text as kind,
+                pj.kind,
                 u.name,
                 case epafa.kind
                     when 'purchase-refund' then 'Application-fee refund'
                     when 'tax-reconciliation' then 'Tax fee correction'
                 end as operation,
+                pj.payment_job_id,
                 ep.ticket_title,
-                epafa.updated_at,
+                pj.updated_at,
                 u.user_id,
-                u.username,
-                epafa.event_purchase_application_fee_adjustment_id as work_id
+                u.username
             from event_purchase_application_fee_adjustment epafa
-            join event_purchase ep using (event_purchase_id)
+            join payment_job pj on pj.payment_job_id = epafa.payment_job_id
+            join event_purchase ep on ep.event_purchase_id = epafa.event_purchase_id
             join event e using (event_id)
             join "user" u using (user_id)
             where e.group_id = p_group_id
-            and epafa.status = 'failed'
-            and epafa.attempt_count >= 10
+            and payment_job_is_exhausted(pj)
 
             union all
 
             select
                 epcn.amount_minor,
-                epcn.attempt_count,
+                pj.attempt_count,
                 epcn.currency_code,
                 u.email,
                 e.event_id,
                 e.name as event_name,
                 ep.event_purchase_id,
                 coalesce(
-                    epcn.failure_message,
+                    pj.failure_message,
                     'Provider operation failed without details'
                 ) as failure_message,
-                'credit-note'::text as kind,
+                pj.kind,
                 u.name,
                 'Credit note'::text as operation,
+                pj.payment_job_id,
                 ep.ticket_title,
-                epcn.updated_at,
+                pj.updated_at,
                 u.user_id,
-                u.username,
-                epcn.event_purchase_credit_note_id as work_id
+                u.username
             from event_purchase_credit_note epcn
-            join event_purchase_refund epr using (event_purchase_refund_id)
-            join event_purchase ep using (event_purchase_id)
+            join payment_job pj on pj.payment_job_id = epcn.payment_job_id
+            join event_purchase ep on ep.event_purchase_id = pj.event_purchase_id
             join event e using (event_id)
             join "user" u using (user_id)
             where e.group_id = p_group_id
-            and epcn.status = 'failed'
-            and epcn.attempt_count >= 10
+            and payment_job_is_exhausted(pj)
         ),
         -- Apply the selected operational, event, and text filters
         filtered_refunds as (
@@ -188,7 +188,7 @@ returns json as $$
                     br.name,
                     br.ticket_title,
                     br.username
-                ) ilike '%' || escape_ilike_pattern(f.ts_query_value) || '%'
+                ) ilike f.ilike_pattern
             )
             and (
                 f.view_value = 'all'
@@ -230,7 +230,7 @@ returns json as $$
                     bfr.operation,
                     bfr.ticket_title,
                     bfr.username
-                ) ilike '%' || escape_ilike_pattern(f.ts_query_value) || '%'
+                ) ilike f.ilike_pattern
             )
         ),
         -- Combine refund and financial-recovery work into one bounded page
@@ -244,7 +244,7 @@ returns json as $$
             union all
 
             select
-                ffr.work_id as item_id,
+                ffr.payment_job_id as item_id,
                 'financial-recovery'::text as item_type,
                 ffr.updated_at
             from filtered_financial_recoveries ffr
@@ -260,7 +260,7 @@ returns json as $$
         refunds as (
             select
                 fr.amount_minor,
-                extract(epoch from fr.created_at_sort)::bigint as created_at,
+                epoch_seconds(fr.created_at_sort) as created_at,
                 fr.currency_code,
                 fr.email,
                 fr.event_id,
@@ -269,7 +269,7 @@ returns json as $$
                 fr.charge_model = 'external' as external,
                 fr.status,
                 fr.ticket_title,
-                extract(epoch from fr.updated_at_sort)::bigint as updated_at,
+                epoch_seconds(fr.updated_at_sort) as updated_at,
                 fr.user_id,
                 fr.username,
 
@@ -277,6 +277,7 @@ returns json as $$
                 fr.failure_message,
                 fr.kind,
                 fr.name,
+                fr.payment_job_id,
                 fr.photo_url,
                 fr.provider_refund_id,
                 fr.requested_reason,
@@ -298,16 +299,16 @@ returns json as $$
                 ffr.failure_message,
                 ffr.kind,
                 ffr.operation,
+                ffr.payment_job_id,
                 ffr.username,
-                ffr.work_id,
 
                 ffr.name,
                 ffr.updated_at as updated_at_sort
             from filtered_financial_recoveries ffr
             join paged_operational_items poi
-                on poi.item_id = ffr.work_id
+                on poi.item_id = ffr.payment_job_id
                 and poi.item_type = 'financial-recovery'
-            order by ffr.updated_at desc, ffr.work_id desc
+            order by ffr.updated_at desc, ffr.payment_job_id desc
         ),
         -- List events represented in the group's refund history
         events as (
@@ -350,11 +351,11 @@ returns json as $$
                         'failure_message', failure_message,
                         'kind', kind,
                         'operation', operation,
+                        'payment_job_id', payment_job_id,
                         'username', username,
-                        'work_id', work_id,
                         'name', name
                     )
-                    order by updated_at_sort desc, work_id desc
+                    order by updated_at_sort desc, payment_job_id desc
                 ),
                 '[]'::json
             ) as financial_recoveries

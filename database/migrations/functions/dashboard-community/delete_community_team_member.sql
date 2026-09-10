@@ -29,7 +29,7 @@ begin
 
     -- Raise error if membership does not exist
     if not found then
-        raise exception 'user is not a community team member';
+        raise exception 'user is not a community team member' using errcode = 'OCG01';
     end if;
 
     -- Prevent removing the last accepted community admin
@@ -42,7 +42,7 @@ begin
           and ct.role = 'admin';
 
         if v_accepted_admins = 1 then
-            raise exception 'cannot remove the last accepted community admin';
+            raise exception 'cannot remove the last accepted community admin' using errcode = 'OCG01';
         end if;
     end if;
 

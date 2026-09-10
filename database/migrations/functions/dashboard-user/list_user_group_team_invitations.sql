@@ -9,7 +9,7 @@ returns json as $$
             g.name as group_name,
             gt.role,
 
-            extract(epoch from gt.created_at)::bigint as created_at
+            epoch_seconds(gt.created_at) as created_at
         from group_team gt
         join "group" g using (group_id)
         join community c using (community_id)

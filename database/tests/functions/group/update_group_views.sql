@@ -19,57 +19,13 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'views-community',
-    'Views Community',
-    'Community for update_group_views tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, category and active group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'activeGroupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values
-    (
-        :'activeGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Active Group',
-        'active-group',
-        true,
-        false
-    ),
-    (
-        :'inactiveGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Inactive Group',
-        'inactive-group',
-        false,
-        false
-    );
+-- Inactive group ignored by view counters
+select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
 -- ============================================================================
 -- TESTS

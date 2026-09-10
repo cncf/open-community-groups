@@ -11,155 +11,57 @@ select plan(16);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '4a150000-0000-0000-0000-000000000001'
-\set eventCategoryID '4a150000-0000-0000-0000-000000000002'
-\set eventID '4a150000-0000-0000-0000-000000000003'
-\set eventNoQuestionsID '4a150000-0000-0000-0000-000000000004'
-\set eventRegistrationClosedID '4a150000-0000-0000-0000-000000000021'
-\set eventStartedID '4a150000-0000-0000-0000-000000000005'
-\set eventTicketedRegistrationClosedID '4a150000-0000-0000-0000-000000000024'
-\set eventTicketedID '4a150000-0000-0000-0000-000000000006'
-\set eventTicketedRegistrationClosedPriceWindowID '4a150000-0000-0000-0000-000000000027'
-\set eventTicketedRegistrationClosedTicketTypeID '4a150000-0000-0000-0000-000000000025'
-\set eventTicketTypeID '4a150000-0000-0000-0000-000000000007'
-\set groupCategoryID '4a150000-0000-0000-0000-000000000008'
-\set groupID '4a150000-0000-0000-0000-000000000009'
-\set nonAttendeeUserID '4a150000-0000-0000-0000-000000000010'
-\set optionStandardID '4a150000-0000-0000-0000-000000000011'
-\set optionVegetarianID '4a150000-0000-0000-0000-000000000012'
-\set pendingPurchaseID '4a150000-0000-0000-0000-000000000013'
-\set pendingUserID '4a150000-0000-0000-0000-000000000014'
-\set priceWindowID '4a150000-0000-0000-0000-000000000015'
-\set questionID '4a150000-0000-0000-0000-000000000016'
-\set startedEventUserID '4a150000-0000-0000-0000-000000000017'
-\set ticketedPendingUserID '4a150000-0000-0000-0000-000000000018'
-\set unknownCommunityID '4a150000-0000-0000-0000-000000000019'
-\set updateUserID '4a150000-0000-0000-0000-000000000020'
-\set windowCheckoutPurchaseID '4a150000-0000-0000-0000-000000000028'
-\set windowCheckoutUserID '4a150000-0000-0000-0000-000000000026'
-\set windowManualUserID '4a150000-0000-0000-0000-000000000022'
-\set windowSelfUserID '4a150000-0000-0000-0000-000000000023'
+\set communityID '4a070000-0000-0000-0000-000000000001'
+\set eventCategoryID '4a070000-0000-0000-0000-000000000002'
+\set eventID '4a070000-0000-0000-0000-000000000003'
+\set eventNoQuestionsID '4a070000-0000-0000-0000-000000000004'
+\set eventRegistrationClosedID '4a070000-0000-0000-0000-000000000021'
+\set eventStartedID '4a070000-0000-0000-0000-000000000005'
+\set eventTicketedRegistrationClosedID '4a070000-0000-0000-0000-000000000024'
+\set eventTicketedID '4a070000-0000-0000-0000-000000000006'
+\set eventTicketedRegistrationClosedPriceWindowID '4a070000-0000-0000-0000-000000000027'
+\set eventTicketedRegistrationClosedTicketTypeID '4a070000-0000-0000-0000-000000000025'
+\set eventTicketTypeID '4a070000-0000-0000-0000-000000000007'
+\set groupCategoryID '4a070000-0000-0000-0000-000000000008'
+\set groupID '4a070000-0000-0000-0000-000000000009'
+\set nonAttendeeUserID '4a070000-0000-0000-0000-000000000010'
+\set optionStandardID '4a070000-0000-0000-0000-000000000011'
+\set optionVegetarianID '4a070000-0000-0000-0000-000000000012'
+\set pendingPurchaseID '4a070000-0000-0000-0000-000000000013'
+\set pendingUserID '4a070000-0000-0000-0000-000000000014'
+\set priceWindowID '4a070000-0000-0000-0000-000000000015'
+\set questionID '4a070000-0000-0000-0000-000000000016'
+\set startedEventUserID '4a070000-0000-0000-0000-000000000017'
+\set ticketedPendingUserID '4a070000-0000-0000-0000-000000000018'
+\set unknownCommunityID '4a070000-0000-0000-0000-000000000019'
+\set updateUserID '4a070000-0000-0000-0000-000000000020'
+\set windowCheckoutPurchaseID '4a070000-0000-0000-0000-000000000028'
+\set windowCheckoutUserID '4a070000-0000-0000-0000-000000000026'
+\set windowManualUserID '4a070000-0000-0000-0000-000000000022'
+\set windowSelfUserID '4a070000-0000-0000-0000-000000000023'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'answers-community',
-    'Answers Community',
-    'Community for testing registration answers',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username
-) values (
-    :'pendingUserID',
-    'hash-1',
-    'pending@example.com',
-    true,
-    'pending-user'
-), (
-    :'updateUserID',
-    'hash-2',
-    'update@example.com',
-    true,
-    'update-user'
-), (
-    :'startedEventUserID',
-    'hash-3',
-    'started-event@example.com',
-    true,
-    'started-event-user'
-), (
-    :'nonAttendeeUserID',
-    'hash-4',
-    'non-attendee@example.com',
-    true,
-    'non-attendee'
-), (
-    :'ticketedPendingUserID',
-    'hash-5',
-    'ticketed-pending@example.com',
-    true,
-    'ticketed-pending'
-), (
-    :'windowManualUserID',
-    'hash-6',
-    'window-manual@example.com',
-    true,
-    'window-manual'
-), (
-    :'windowSelfUserID',
-    'hash-7',
-    'window-self@example.com',
-    true,
-    'window-self'
-), (
-    :'windowCheckoutUserID',
-    'hash-8',
-    'window-checkout@example.com',
-    true,
-    'window-checkout'
-);
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Answers Group', 'answers-group');
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'pendingUserID');
+select fx_user(:'updateUserID');
+select fx_user(:'startedEventUserID');
+select fx_user(:'nonAttendeeUserID');
+select fx_user(:'ticketedPendingUserID');
+select fx_user(:'windowManualUserID');
+select fx_user(:'windowSelfUserID');
+select fx_user(:'windowCheckoutUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published,
-    starts_at,
-    payment_currency_code,
-    registration_questions,
-    registration_ends_at
-) values (
-    :'eventID',
-    :'groupID',
-    'Answers Event',
-    'answers-event',
-    'Desc',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true,
-    now() + interval '1 day',
-    null,
-    format(
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'registration_questions', format(
         $json$
             [
                 {
@@ -178,20 +80,12 @@ insert into event (
         :'optionStandardID',
         :'optionVegetarianID'
     )::jsonb,
-    null
-), (
-    :'eventStartedID',
-    :'groupID',
-    'Started Event',
-    'started-event',
-    'Desc',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true,
-    now() - interval '1 hour',
-    null,
-    format(
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'eventStartedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 hour',
+    'published', true,
+    'registration_questions', format(
         $json$
             [
                 {
@@ -205,34 +99,16 @@ insert into event (
         $json$,
         :'questionID'
     )::jsonb,
-    null
-), (
-    :'eventNoQuestionsID',
-    :'groupID',
-    'No Questions Event',
-    'no-questions-event',
-    'Desc',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true,
-    now() + interval '7 days',
-    null,
-    '[]'::jsonb,
-    null
-), (
-    :'eventTicketedID',
-    :'groupID',
-    'Ticketed Answers Event',
-    'ticketed-answers-event',
-    'Desc',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true,
-    now() + interval '2 days',
-    'USD',
-    format(
+    'starts_at', now() - interval '1 hour'
+));
+select fx_event(:'eventNoQuestionsID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', now() + interval '7 days'
+));
+select fx_event(:'eventTicketedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'registration_questions', format(
         $json$
             [
                 {
@@ -251,20 +127,12 @@ insert into event (
         :'optionStandardID',
         :'optionVegetarianID'
     )::jsonb,
-    null
-), (
-    :'eventRegistrationClosedID',
-    :'groupID',
-    'Closed Answers Event',
-    'closed-answers-event',
-    'Desc',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true,
-    now() + interval '7 days',
-    null,
-    format(
+    'starts_at', now() + interval '2 days'
+));
+select fx_event(:'eventRegistrationClosedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'registration_ends_at', current_timestamp - interval '1 hour',
+    'registration_questions', format(
         $json$
             [
                 {
@@ -283,20 +151,13 @@ insert into event (
         :'optionStandardID',
         :'optionVegetarianID'
     )::jsonb,
-    current_timestamp - interval '1 hour'
-), (
-    :'eventTicketedRegistrationClosedID',
-    :'groupID',
-    'Closed Ticketed Answers Event',
-    'closed-ticketed-answers-event',
-    'Desc',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true,
-    now() + interval '7 days',
-    'USD',
-    format(
+    'starts_at', now() + interval '7 days'
+));
+select fx_event(:'eventTicketedRegistrationClosedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'registration_ends_at', current_timestamp - interval '1 hour',
+    'registration_questions', format(
         $json$
             [
                 {
@@ -315,35 +176,22 @@ insert into event (
         :'optionStandardID',
         :'optionVegetarianID'
     )::jsonb,
-    current_timestamp - interval '1 hour'
-);
+    'starts_at', now() + interval '7 days'
+));
 
 -- Event tickets
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values
-    (:'eventTicketTypeID', :'eventTicketedID', 1, 10, 'General admission'),
-    (
-        :'eventTicketedRegistrationClosedTicketTypeID',
-        :'eventTicketedRegistrationClosedID',
-        1,
-        10,
-        'General admission'
-    );
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventTicketedID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'eventTicketedRegistrationClosedTicketTypeID', :'eventTicketedRegistrationClosedID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Ticket price windows
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    1000,
-    :'eventTicketTypeID'
-), (
-    :'eventTicketedRegistrationClosedPriceWindowID',
-    1000,
-    :'eventTicketedRegistrationClosedTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 1000));
+select fx_event_ticket_price_window(:'eventTicketedRegistrationClosedPriceWindowID', :'eventTicketedRegistrationClosedTicketTypeID', jsonb_build_object('amount_minor', 1000));
 
 -- Event attendees
 insert into event_attendee (event_id, user_id, registration_answers, status)
@@ -577,6 +425,7 @@ select throws_ok(
         :'questionID',
         :'optionVegetarianID'
     ),
+    'OCG01',
     'event registration is not open',
     'Should reject registration answer updates after the registration window closes'
 );
@@ -682,6 +531,7 @@ select throws_ok(
         :'eventStartedID',
         :'questionID'
     ),
+    'OCG01',
     'registration answers can only be submitted before the event starts',
     'Should reject confirmed attendee updates after the event starts'
 );
@@ -701,6 +551,7 @@ select throws_ok(
         :'communityID',
         :'eventStartedID'
     ),
+    'OCG01',
     'registration answers can only be submitted before the event starts',
     'Should reject started events before validating answers'
 );
@@ -720,6 +571,7 @@ select throws_ok(
         :'communityID',
         :'eventNoQuestionsID'
     ),
+    'OCG01',
     'event does not have registration questions',
     'Should reject events without registration questions'
 );
@@ -739,6 +591,7 @@ select throws_ok(
         :'communityID',
         :'eventID'
     ),
+    'OCG01',
     'required questionnaire answer is missing',
     'Should reject invalid answers'
 );
@@ -760,6 +613,7 @@ select throws_ok(
         :'questionID',
         :'optionStandardID'
     ),
+    'OCG01',
     'event registration not found',
     'Should reject users without an attendee row'
 );
@@ -781,6 +635,7 @@ select throws_ok(
         :'questionID',
         :'optionStandardID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject events outside the route community'
 );

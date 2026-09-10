@@ -20,62 +20,19 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cloud-native-london',
-    'Cloud Native London',
-    'Community for cloud native technologies in London',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Group London', 'group-london');
 
 -- Sponsor
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values (:'sponsorID', :'groupID', 'Kappa', 'https://ex.com/kappa.png', null);
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone
-)
-values (
-    :'eventID',
-    :'eventCategoryID',
-    (select event_kind_id from event_kind limit 1),
-    :'groupID',
-    'Event 1',
-    'event-1',
-    'desc',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', (select event_kind_id from event_kind limit 1)));
 
 -- Event references sponsor
 insert into event_sponsor (event_id, group_sponsor_id, level)

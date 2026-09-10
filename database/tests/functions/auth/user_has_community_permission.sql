@@ -9,89 +9,26 @@ select plan(43);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '0a0d0000-0000-0000-0000-000000000001'
-\set otherCommunityID '0a0d0000-0000-0000-0000-000000000002'
-\set userAdminID '0a0d0000-0000-0000-0000-000000000003'
-\set userGroupsManagerID '0a0d0000-0000-0000-0000-000000000004'
-\set userPendingAdminID '0a0d0000-0000-0000-0000-000000000005'
-\set userRegularID '0a0d0000-0000-0000-0000-000000000006'
-\set userViewerID '0a0d0000-0000-0000-0000-000000000007'
+\set communityID '0a090000-0000-0000-0000-000000000001'
+\set otherCommunityID '0a090000-0000-0000-0000-000000000002'
+\set userAdminID '0a090000-0000-0000-0000-000000000003'
+\set userGroupsManagerID '0a090000-0000-0000-0000-000000000004'
+\set userPendingAdminID '0a090000-0000-0000-0000-000000000005'
+\set userRegularID '0a090000-0000-0000-0000-000000000006'
+\set userViewerID '0a090000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'community-permission-community',
-    'Community Permission Community',
-    'Test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-), (
-    :'otherCommunityID',
-    'community-permission-other-community',
-    'Community Permission Other Community',
-    'Other test community',
-    'https://example.com/other-banner-mobile.png',
-    'https://example.com/other-banner.png',
-    'https://example.com/other-logo.png'
-);
-
--- Users
-insert into "user" (
-    user_id,
-    name,
-    auth_hash,
-    email,
-    email_verified,
-    username
-) values (
-    :'userAdminID',
-    'Admin User',
-    gen_random_bytes(32),
-    'admin@example.com',
-    true,
-    'adminuser'
-), (
-    :'userGroupsManagerID',
-    'Groups Manager User',
-    gen_random_bytes(32),
-    'groups-manager@example.com',
-    true,
-    'groupsmanager'
-), (
-    :'userViewerID',
-    'Viewer User',
-    gen_random_bytes(32),
-    'viewer@example.com',
-    true,
-    'vieweruser'
-), (
-    :'userPendingAdminID',
-    'Pending Admin User',
-    gen_random_bytes(32),
-    'pending-admin@example.com',
-    true,
-    'pendingadmin'
-), (
-    :'userRegularID',
-    'Regular User',
-    gen_random_bytes(32),
-    'regular@example.com',
-    true,
-    'regularuser'
-);
+-- Baseline communities and users for permission checks
+select fx_community(:'communityID');
+select fx_community(:'otherCommunityID');
+select fx_user(:'userAdminID');
+select fx_user(:'userGroupsManagerID');
+select fx_user(:'userPendingAdminID');
+select fx_user(:'userRegularID');
+select fx_user(:'userViewerID');
 
 -- Community team memberships
 insert into community_team (

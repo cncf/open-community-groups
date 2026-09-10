@@ -15,24 +15,8 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cncf-seattle',
-    'CNCF Seattle',
-    'Community for event category tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community
+select fx_community(:'communityID');
 
 -- ============================================================================
 -- TESTS
@@ -105,6 +89,7 @@ select throws_ok(
     ) $$,
         :'communityID'
     ),
+    'OCG01',
     'event category already exists',
     'Should reject duplicate event category names'
 );
@@ -119,6 +104,7 @@ select throws_ok(
     ) $$,
         :'communityID'
     ),
+    'OCG01',
     'event category name is invalid',
     'Should reject event category names that generate empty slugs'
 );

@@ -21,80 +21,14 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cncf-seattle',
-    'CNCF Seattle',
-    'Community for event category delete tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, categories, groups and events
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'inUseEventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_event(:'eventID', :'groupID', :'inUseEventCategoryID');
 
--- Group category
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
-) values (
-    :'groupCategoryID',
-    :'communityID',
-    'Platform'
-);
-
--- Event categories
-insert into event_category (
-    event_category_id,
-    community_id,
-    name
-) values
-    (:'inUseEventCategoryID', :'communityID', 'Meetup'),
-    (:'unusedEventCategoryID', :'communityID', 'Webinar');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Seattle Platform',
-    'seattle-platform'
-);
-
--- Event using the first category
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone
-) values (
-    :'eventID',
-    :'inUseEventCategoryID',
-    'in-person',
-    :'groupID',
-    'Monthly Meetup',
-    'monthly-meetup',
-    'Test event',
-    'UTC'
-);
+select fx_event_category(:'unusedEventCategoryID', :'communityID', jsonb_build_object('name', 'Webinar'));
 
 -- ============================================================================
 -- TESTS
@@ -111,6 +45,7 @@ select throws_ok(
         :'communityID',
         :'inUseEventCategoryID'
     ),
+    'OCG01',
     'cannot delete event category in use by events',
     'Should block deleting event category referenced by events'
 );
@@ -183,6 +118,7 @@ select throws_ok(
         :'communityID',
         :'unknownEventCategoryID'
     ),
+    'OCG01',
     'event category not found',
     'Should fail when deleting a non-existing event category'
 );

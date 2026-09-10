@@ -28,51 +28,11 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values
-    (
-        :'community1ID',
-        'pretty-slug-validation',
-        'Pretty Slug Validation',
-        'A community for pretty slug validation tests',
-        'https://example.com/banner-mobile-pretty.png',
-        'https://example.com/banner-pretty.png',
-        'https://example.com/logo-pretty.png'
-    ),
-    (
-        :'community2ID',
-        'pretty-slug-validation-other',
-        'Pretty Slug Validation Other',
-        'Another community for pretty slug validation tests',
-        'https://example.com/banner-mobile-pretty-other.png',
-        'https://example.com/banner-pretty-other.png',
-        'https://example.com/logo-pretty-other.png'
-    );
-
--- Group categories
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
-) values
-    (
-        :'groupCategory1ID',
-        :'community1ID',
-        'Pretty Slug Category'
-    ),
-    (
-        :'groupCategory2ID',
-        :'community2ID',
-        'Pretty Slug Category Other'
-    );
+-- Baseline community and group categories
+select fx_community(:'community1ID');
+select fx_community(:'community2ID');
+select fx_group_category(:'groupCategory1ID', :'community1ID');
+select fx_group_category(:'groupCategory2ID', :'community2ID');
 
 -- ============================================================================
 -- TESTS
@@ -136,7 +96,7 @@ select throws_ok(
         'pretty-slug-valid',
         :'groupNullPrettyID'
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug is already used by another group in this community',
     'Should reject direct pretty slug conflicts'
 );
@@ -152,7 +112,7 @@ select throws_ok(
         'prettyupper1',
         'Pretty-Slug'
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug must use lowercase ASCII letters, numbers, and hyphens only',
     'Should reject uppercase characters'
 );
@@ -168,7 +128,7 @@ select throws_ok(
         'prettylong1',
         repeat('a', 51)
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug must be 50 characters or fewer',
     'Should reject excessive length'
 );
@@ -184,7 +144,7 @@ select throws_ok(
         'prettyhyphen1',
         'pretty--slug'
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug cannot contain consecutive hyphens',
     'Should reject consecutive hyphens'
 );
@@ -200,7 +160,7 @@ select throws_ok(
         'prettyedge1',
         '-pretty-slug'
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug must start and end with a lowercase ASCII letter or number',
     'Should reject leading or trailing hyphens'
 );
@@ -216,7 +176,7 @@ select throws_ok(
         'prettysame1',
         'prettysame1'
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug must be different from the generated slug',
     'Should reject pretty slugs matching the group''s generated slug'
 );
@@ -232,7 +192,7 @@ select throws_ok(
         'prettygenerated1',
         'prettyvalid1'
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug is already used by another group in this community',
     'Should reject pretty slugs matching another generated slug'
 );
@@ -248,7 +208,7 @@ select throws_ok(
         'prettypcollision1',
         'pretty-slug-valid'
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug is already used by another group in this community',
     'Should reject pretty slugs matching another pretty slug'
 );
@@ -260,7 +220,7 @@ select throws_ok(
         'pretty-slug-valid',
         :'groupNullPrettyID'
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug is already used by another group in this community',
     'Should reject generated slugs matching another pretty slug'
 );

@@ -13,6 +13,7 @@ select plan(6);
 
 \set communityID 'd7380000-0000-0000-0000-000000000001'
 \set creditNoteID 'd7380000-0000-0000-0000-000000000002'
+\set creditNoteJobID 'd7380000-0000-0000-0000-000000000014'
 \set eventCategoryID 'd7380000-0000-0000-0000-000000000003'
 \set eventID 'd7380000-0000-0000-0000-000000000004'
 \set externalCompletedPurchaseID 'd7380000-0000-0000-0000-000000000011'
@@ -22,6 +23,7 @@ select plan(6);
 \set groupID 'd7380000-0000-0000-0000-000000000006'
 \set purchaseID 'd7380000-0000-0000-0000-000000000007'
 \set refundID 'd7380000-0000-0000-0000-000000000008'
+\set refundJobID 'd7380000-0000-0000-0000-000000000015'
 \set ticketTypeID 'd7380000-0000-0000-0000-000000000009'
 \set userID 'd7380000-0000-0000-0000-000000000010'
 
@@ -29,49 +31,22 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the attendee document fixtures
-insert into community (
-    banner_mobile_url, banner_url, community_id, description, display_name,
-    logo_url, name
-) values (
-    'https://example.test/mobile.png', 'https://example.test/banner.png',
-    :'communityID', 'Community', 'Community', 'https://example.test/logo.png',
-    'list-purchase-documents-community'
-);
-
--- Event category used by the document event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the document group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the document event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Attendee owning the direct-charge purchase documents
-insert into "user" (auth_hash, email, user_id, username)
-values ('user', 'user@example.test', :'userID', 'user');
-
--- Attendee owning external completed and refunded purchases
-insert into "user" (auth_hash, email, user_id, username)
-values ('external-user', 'external@example.test', :'externalUserID', 'external-user');
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_user(:'externalUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event associated with the direct-charge purchase
-insert into event (
-    description, event_category_id, event_id, event_kind_id, group_id, name,
-    payment_currency_code, slug, timezone
-) values (
-    'Event', :'eventCategoryID', :'eventID', 'in-person', :'groupID', 'Event',
-    'USD', 'event', 'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type snapshotted by the purchase
-insert into event_ticket_type (
-    event_id, event_ticket_type_id, "order", seats_total, title
-) values (:'eventID', :'ticketTypeID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Refunded direct-charge purchase with a durable invoice
 insert into event_purchase (
@@ -96,28 +71,63 @@ insert into event_purchase (
     :'userID', '{}'::jsonb
 );
 
+-- Successful provider refund job linked to the purchase
+insert into payment_job (
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    :'purchaseID',
+    'refund-list-documents-refund-d738',
+    'event-purchase-refund',
+    :'refundJobID',
+    'stripe',
+    'pending'
+);
+
 -- Successful provider refund linked to the purchase
 insert into event_purchase_refund (
     amount_minor, currency_code, event_purchase_id, event_purchase_refund_id,
-    idempotency_key, kind, payment_provider_id, provider_refund_id,
+    kind, payment_job_id, payment_provider_id, provider_refund_id,
     provider_refunded_at, status
 ) values (
-    2500, 'USD', :'purchaseID', :'refundID', 'refund-list-documents',
-    'automatic-unfulfillable-checkout', 'stripe', 're_documents',
+    2500, 'USD', :'purchaseID', :'refundID',
+    'automatic-unfulfillable-checkout', :'refundJobID', 'stripe', 're_documents',
     current_timestamp, 'provider-succeeded'
 );
 
--- Issued credit note linked to the successful refund
-insert into event_purchase_credit_note (
-    amount_minor, completed_at, currency_code, event_purchase_credit_note_id,
-    event_purchase_refund_id, idempotency_key, payment_provider_id,
-    provider_credit_note_id, provider_hosted_url, provider_object_account_id,
-    provider_pdf_url, status, tax_amount_minor
+-- Completed credit-note job linked to the successful refund
+insert into payment_job (
+    completed_at,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
 ) values (
-    2500, current_timestamp, 'USD', :'creditNoteID', :'refundID',
-    'list-documents-credit-note', 'stripe', 'cn_documents',
-    'https://credit.test/one', 'acct_documents',
-    'https://credit.test/one.pdf', 'issued', 200
+    current_timestamp,
+    :'purchaseID',
+    'list-documents-credit-note-d738',
+    'event-purchase-credit-note',
+    :'creditNoteJobID',
+    'stripe',
+    'completed'
+);
+
+-- Completed credit note linked to the successful refund
+insert into event_purchase_credit_note (
+    amount_minor, currency_code, event_purchase_credit_note_id,
+    event_purchase_refund_id, payment_job_id, payment_provider_id,
+    provider_credit_note_id, provider_hosted_url, provider_object_account_id,
+    provider_pdf_url, tax_amount_minor
+) values (
+    2500, 'USD', :'creditNoteID', :'refundID', :'creditNoteJobID',
+    'stripe', 'cn_documents', 'https://credit.test/one', 'acct_documents',
+    'https://credit.test/one.pdf', 200
 );
 
 -- Completed external purchase listed without provider invoice links
@@ -279,7 +289,7 @@ select is(
     'Should paginate purchase documents while retaining their total'
 );
 
--- Should return the attendee invoice and linked issued credit note
+-- Should return the attendee invoice and linked completed credit note
 select results_eq(
     format($$
         select
@@ -298,9 +308,9 @@ select results_eq(
         'in_documents'::text,
         'Fiscal Sponsor'::text,
         'cn_documents'::text,
-        'issued'::text
+        'completed'::text
     ) $$,
-    'Should return the attendee invoice and linked issued credit note'
+    'Should return the attendee invoice and linked completed credit note'
 );
 
 -- ============================================================================

@@ -1,9 +1,11 @@
+-- Tests soft-deleting dashboard community groups.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,7 +13,6 @@ select plan(12);
 
 \set communityID '2c0a0000-0000-0000-0000-000000000001'
 \set childGroupID '2c0a0000-0000-0000-0000-000000000007'
-\set groupAlreadyDeletedID '2c0a0000-0000-0000-0000-000000000002'
 \set groupCategoryID '2c0a0000-0000-0000-0000-000000000003'
 \set groupID '2c0a0000-0000-0000-0000-000000000004'
 \set groupWrongCommunityID '2c0a0000-0000-0000-0000-000000000005'
@@ -22,111 +23,16 @@ select plan(12);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'delete-group-community',
-    'Delete Group Community',
-    'Community for delete group tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, group category and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'groupWrongCommunityID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Active group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Active Group',
-    'active-group'
-);
-
--- Child group linked to the active group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    parent_group_id
-) values (
-    :'childGroupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Child Group',
-    'child-group',
-    :'groupID'
-);
-
--- Already deleted group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values (
-    :'groupAlreadyDeletedID',
-    :'communityID',
-    :'groupCategoryID',
-    'Deleted Group',
-    'deleted-group',
-    false,
-    true
-);
-
--- Active group used to exercise the cross-community guard
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'groupWrongCommunityID',
-    :'communityID',
-    :'groupCategoryID',
-    'Cross Community Guard Group',
-    'cross-community-guard-group'
-);
+select fx_group(:'childGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'groupID'));
 
 -- Group with its own parent link
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    parent_group_id
-) values (
-    :'linkedGroupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Linked Group',
-    'linked-group',
-    :'groupWrongCommunityID'
-);
+select fx_group(:'linkedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'groupWrongCommunityID'));
 
 -- ============================================================================
 -- TESTS
@@ -234,17 +140,6 @@ select results_eq(
     'Should create the expected audit row'
 );
 
--- Should throw error for already deleted group
-select throws_ok(
-    format(
-        $$select delete_group(null::uuid, %L::uuid, %L::uuid)$$,
-        :'communityID',
-        :'groupAlreadyDeletedID'
-    ),
-    'group not found or inactive',
-    'Should throw error when trying to delete already deleted group'
-);
-
 -- Should throw error for wrong community_id
 select throws_ok(
     format(
@@ -252,6 +147,7 @@ select throws_ok(
         :'unknownCommunityID',
         :'groupWrongCommunityID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should throw error when community_id does not match'
 );

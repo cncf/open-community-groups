@@ -74,447 +74,105 @@ select plan(18);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'community-one',
-    'Community One',
-    'Community for testing user event listings',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Users participating in or holding checkout state for listed events
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'checkoutExpiredUserID',
-    'checkout-expired-auth-hash',
-    'checkout-expired@test.com',
-    true,
-    'checkout-expired',
-    'Checkout Expired'
-), (
-    :'checkoutUserID',
-    'checkout-auth-hash',
-    'checkout@test.com',
-    true,
-    'checkout',
-    'Checkout User'
-), (
-    :'externalCheckoutUserID',
-    'external-checkout-auth-hash',
-    'external-checkout@test.com',
-    true,
-    'external-checkout',
-    'External Checkout'
-), (
-    :'userID',
-    'auth-hash',
-    'alice@example.com',
-    true,
-    'alice',
-    'Alice'
-), (
-    :'bouncedDiscountUserID',
-    'bounced-discount-auth-hash',
-    'bounced-discount@test.com',
-    true,
-    'bounced-discount',
-    'Bounced Discount'
-), (
-    :'endedWindowApprovalUserID',
-    'ended-window-approval-auth-hash',
-    'ended-window-approval@test.com',
-    true,
-    'ended-window-approval',
-    'Ended Window Approval'
-), (
-    :'endedWindowWaitlistUserID',
-    'ended-window-waitlist-auth-hash',
-    'ended-window-waitlist@test.com',
-    true,
-    'ended-window-waitlist',
-    'Ended Window Waitlist'
-), (
-    :'livePriceUserID',
-    'live-price-auth-hash',
-    'live-price@test.com',
-    true,
-    'live-price',
-    'Live Price'
-), (
-    :'userPaidID',
-    'paid-auth-hash',
-    'paid@example.com',
-    true,
-    'paid',
-    'Paid User'
-), (
-    :'questionsAttendeeUserID',
-    'attendee-auth-hash',
-    'rq-attendee@test.com',
-    true,
-    'rq-attendee',
-    'RQ Attendee'
-), (
-    :'questionsCheckoutUserID',
-    'checkout-auth-hash',
-    'rq-checkout@test.com',
-    true,
-    'rq-checkout',
-    'RQ Checkout'
-), (
-    :'questionsCheckoutExpiredUserID',
-    'expired-auth-hash',
-    'rq-expired@test.com',
-    true,
-    'rq-expired',
-    'RQ Expired'
-), (
-    :'questionsInvitedUserID',
-    'invited-auth-hash',
-    'rq-invited@test.com',
-    true,
-    'rq-invited',
-    'RQ Invited'
-), (
-    :'questionsRefundPendingUserID',
-    'refund-pending-auth-hash',
-    'rq-refund-pending@test.com',
-    true,
-    'rq-refund-pending',
-    'RQ Refund Pending'
-);
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'checkoutExpiredUserID');
+select fx_user(:'checkoutUserID');
+select fx_user(:'externalCheckoutUserID');
+select fx_user(:'userID');
+select fx_user(:'bouncedDiscountUserID');
+select fx_user(:'endedWindowApprovalUserID');
+select fx_user(:'endedWindowWaitlistUserID');
+select fx_user(:'livePriceUserID');
+select fx_user(:'userPaidID');
+select fx_user(:'questionsAttendeeUserID');
+select fx_user(:'questionsCheckoutUserID');
+select fx_user(:'questionsCheckoutExpiredUserID');
+select fx_user(:'questionsInvitedUserID');
+select fx_user(:'questionsRefundPendingUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values (
-    :'groupDeletedID',
-    :'communityID',
-    :'groupCategoryID',
-    'Deleted Group',
-    'deleted-group',
-    false,
-    true
-), (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Main Group',
-    'main-group',
-    true,
-    false
-), (
-    :'groupInactiveID',
-    :'communityID',
-    :'groupCategoryID',
-    'Inactive Group',
-    'inactive-group',
-    false,
-    false
-);
+select fx_group(:'groupDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
+
+select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
 -- Events
-insert into event (
-    event_id,
-    canceled,
-    deleted,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values
-    (
-        :'eventAID',
-        false,
-        false,
-        'Event A',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Event A',
-        null,
-        true,
-        'event-a',
-        '2099-01-10 10:00:00+00',
-        'UTC'
-    ),
-    (
-        :'eventBID',
-        false,
-        false,
-        'Event B',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Event B',
-        null,
-        true,
-        'event-b',
-        '2099-01-11 10:00:00+00',
-        'UTC'
-    ),
-    (
-        :'eventCanceledID',
-        true,
-        false,
-        'Event Canceled',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Event Canceled',
-        null,
-        false,
-        'event-canceled',
-        '2099-01-13 10:00:00+00',
-        'UTC'
-    ),
-    (
-        :'eventCID',
-        false,
-        false,
-        'Event C',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Event C',
-        null,
-        true,
-        'event-c',
-        '2099-01-12 10:00:00+00',
-        'UTC'
-    ),
-    (
-        :'eventDeletedID',
-        false,
-        true,
-        'Event Deleted',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Event Deleted',
-        null,
-        false,
-        'event-deleted',
-        '2099-01-14 10:00:00+00',
-        'UTC'
-    ),
-    (
-        :'eventInactiveGroupID',
-        false,
-        false,
-        'Event Inactive Group',
-        :'eventCategoryID',
-        'virtual',
-        :'groupInactiveID',
-        'Event Inactive Group',
-        null,
-        true,
-        'event-inactive-group',
-        '2099-01-15 10:00:00+00',
-        'UTC'
-    ),
-    (
-        :'eventNoStartsAtID',
-        false,
-        false,
-        'Event No Start',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Event No Start',
-        null,
-        false,
-        'event-no-start',
-        null,
-        'UTC'
-    ),
-    (
-        :'eventPastID',
-        false,
-        false,
-        'Event Past',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Event Past',
-        null,
-        true,
-        'event-past',
-        '2000-01-01 10:00:00+00',
-        'UTC'
-    ),
-    (
-        :'eventPendingInvitationID',
-        false,
-        false,
-        'Event Pending Invitation',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Event Pending Invitation',
-        null,
-        true,
-        'event-pending-invitation',
-        '2099-01-13 12:00:00+00',
-        'UTC'
-    ),
-    (
-        :'eventUnpublishedID',
-        false,
-        false,
-        'Event Unpublished',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Event Unpublished',
-        null,
-        false,
-        'event-unpublished',
-        '2099-01-16 10:00:00+00',
-        'UTC'
-    ),
-    (
-        :'eventDeletedGroupID',
-        false,
-        false,
-        'Event Deleted Group',
-        :'eventCategoryID',
-        'virtual',
-        :'groupDeletedID',
-        'Event Deleted Group',
-        null,
-        true,
-        'event-deleted-group',
-        '2099-01-17 10:00:00+00',
-        'UTC'
-    );
+select fx_event(:'eventAID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', '2099-01-10 10:00:00+00'
+));
+select fx_event(:'eventBID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2099-01-11 10:00:00+00'
+));
+select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'event_kind_id', 'virtual',
+    'starts_at', '2099-01-13 10:00:00+00'
+));
+select fx_event(:'eventCID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2099-01-12 10:00:00+00'
+));
+select fx_event(:'eventDeletedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'event_kind_id', 'virtual',
+    'starts_at', '2099-01-14 10:00:00+00'
+));
+select fx_event(:'eventInactiveGroupID', :'groupInactiveID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2099-01-15 10:00:00+00'
+));
+select fx_event(:'eventNoStartsAtID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'eventPastID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2000-01-01 10:00:00+00'
+));
+select fx_event(:'eventPendingInvitationID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2099-01-13 12:00:00+00'
+));
+select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'starts_at', '2099-01-16 10:00:00+00'
+));
+select fx_event(:'eventDeletedGroupID', :'groupDeletedID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2099-01-17 10:00:00+00'
+));
 
 -- Paid event that also hosts a pending external checkout
-insert into event (
-    event_id,
-    canceled,
-    deleted,
-    description,
-    event_category_id,
-    event_kind_id,
-    external_payment_instructions,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    :'eventPaidID',
-    false,
-    false,
-    'Event Paid',
-    :'eventCategoryID',
-    'in-person',
-    'Wire the fee to the organizer bank account',
-    'https://pay.example.test/external-checkout',
-    :'groupID',
-    'Event Paid',
-    'USD',
-    true,
-    'event-paid',
-    '2099-01-18 10:00:00+00',
-    'UTC'
-);
+select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_instructions', 'Wire the fee to the organizer bank account',
+    'external_payment_url', 'https://pay.example.test/external-checkout',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', '2099-01-18 10:00:00+00'
+));
 
 -- Event whose ticket sales window has ended
-insert into event (
-    event_id,
-    canceled,
-    deleted,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    :'endedWindowEventID',
-    false,
-    false,
-    'Event whose ticket sales window has ended',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Ended Window Event',
-    'EUR',
-    true,
-    'ended-window-event',
-    '2099-01-19 10:00:00+00',
-    'UTC'
-);
+select fx_event(:'endedWindowEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'EUR',
+    'published', true,
+    'starts_at', '2099-01-19 10:00:00+00'
+));
 
 -- Event with registration questions shown in user event lists
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    published,
-    registration_questions,
-    starts_at,
-    timezone
-) values (
-    :'eventQuestionsID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Questions Event',
-    'questions-event',
-    'Event with registration questions',
-    true,
-    format(
+select fx_event(:'eventQuestionsID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'registration_questions', format(
         $json$
             [
                 {
@@ -528,9 +186,8 @@ insert into event (
         $json$,
         :'registrationQuestionID'
     )::jsonb,
-    now() + interval '1 day',
-    'UTC'
-);
+    'starts_at', now() + interval '1 day'
+));
 
 -- Sessions for speaker role tests
 insert into session (session_id, event_id, name, session_kind_id, starts_at) values
@@ -538,66 +195,30 @@ insert into session (session_id, event_id, name, session_kind_id, starts_at) val
     (:'sessionCID', :'eventCID', 'Session C', 'virtual', '2099-01-12 11:00:00+00');
 
 -- Event ticket types
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventPaidTicketTypeID',
-    :'eventPaidID',
-    1,
-    3,
-    'Paid admission'
-), (
-    :'eventQuestionsTicketTypeID',
-    :'eventQuestionsID',
-    1,
-    100,
-    'Questions admission'
-);
+select fx_event_ticket_type(:'eventPaidTicketTypeID', :'eventPaidID', jsonb_build_object(
+    'seats_total', 3,
+    'title', 'Paid admission'
+));
+select fx_event_ticket_type(:'eventQuestionsTicketTypeID', :'eventQuestionsID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'Questions admission'
+));
 
 -- Paid ticket price window used by purchase state tests
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'eventPaidPriceWindowID',
-    1500,
-    :'eventPaidTicketTypeID'
-);
+select fx_event_ticket_price_window(:'eventPaidPriceWindowID', :'eventPaidTicketTypeID', jsonb_build_object('amount_minor', 1500));
 
 -- Ticket tier whose sales window has already ended
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'endedWindowTicketTypeID',
-    :'endedWindowEventID',
-    1,
-    10,
-    'Ended window admission'
-);
+select fx_event_ticket_type(:'endedWindowTicketTypeID', :'endedWindowEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Ended window admission'
+));
 
 -- Lapsed price window used by ended-window offer display scenarios
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id,
-    ends_at,
-    starts_at
-) values (
-    2500,
-    :'endedWindowPriceWindowID',
-    :'endedWindowTicketTypeID',
-    current_timestamp - interval '1 minute',
-    current_timestamp - interval '2 days'
-);
+select fx_event_ticket_price_window(:'endedWindowPriceWindowID', :'endedWindowTicketTypeID', jsonb_build_object(
+    'amount_minor', 2500,
+    'ends_at', current_timestamp - interval '1 minute',
+    'starts_at', current_timestamp - interval '2 days'
+));
 
 -- Discount used by the bounced-back pending snapshot fixture
 insert into event_discount_code (
@@ -623,14 +244,14 @@ insert into event_discount_code (
 );
 
 -- Events without an explicit ticket fixture use default admission tiers
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
+select fx_event_ticket_type(
+    md5(e.event_id::text || ':ticket-type')::uuid,
+    e.event_id,
+    jsonb_build_object(
+        'seats_total', 100,
+        'title', 'General Admission'
+    )
 )
-select e.event_id, gen_random_uuid(), 1, 100, 'General Admission'
 from event e
 where not exists (
     select 1
@@ -639,12 +260,11 @@ where not exists (
 );
 
 -- Current free prices for the default admission tiers
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
+select fx_event_ticket_price_window(
+    md5(ett.event_ticket_type_id::text || ':price-window')::uuid,
+    ett.event_ticket_type_id,
+    jsonb_build_object('amount_minor', 0)
 )
-select 0, gen_random_uuid(), ett.event_ticket_type_id
 from event_ticket_type ett
 where not exists (
     select 1

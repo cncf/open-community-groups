@@ -21,53 +21,12 @@ select plan(14);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- User
-insert into "user" (user_id, email, username, auth_hash, name)
-values (:'userID', 'organizer@example.com', 'organizer', 'hash', 'Organizer');
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Meetup', :'communityID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id
-) values (
-    :'groupID',
-    :'communityID',
-    'Test Group',
-    'test-group',
-    'A test group',
-    :'groupCategoryID'
-);
+-- Baseline community, categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- ============================================================================
 -- TESTS
@@ -213,7 +172,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'paid-capable events require a payment recipient',
     'Should reject paid recurring events when payment readiness fails'
 );
@@ -240,7 +199,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'events must include between 2 and 13 items',
     'Should reject too few event payloads'
 );
@@ -269,7 +228,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'events must include between 2 and 13 items',
     'Should reject too many event payloads'
 );
@@ -306,7 +265,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'additional_occurrences must be between 1 and 12',
     'Should reject invalid additional occurrence count'
 );
@@ -343,7 +302,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'events count must match additional_occurrences',
     'Should reject mismatched event and recurrence counts'
 );
@@ -380,7 +339,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'unsupported recurrence pattern',
     'Should reject unsupported recurrence pattern'
 );
@@ -416,7 +375,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'recurring events require timezone',
     'Should reject missing timezone on the anchor event'
 );
@@ -452,7 +411,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'recurring events require starts_at',
     'Should reject missing start date on the anchor event'
 );
@@ -489,7 +448,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'event starts_at cannot be in the past',
     'Should roll back the whole series when one generated event fails'
 );

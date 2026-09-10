@@ -2,6 +2,13 @@
 create or replace function list_user_purchase_documents(p_user_id uuid, p_filters jsonb)
 returns json as $$
     with
+        -- Normalize common list filters.
+        filters as (
+            select
+                f.limit_value,
+                f.offset_value
+            from parse_search_filters(p_filters) f
+        ),
         purchase_rows as (
             select
                 c.name as community_name,
@@ -31,20 +38,14 @@ returns json as $$
             where ep.user_id = p_user_id
             and ep.amount_minor > 0
             and ep.charge_model in ('direct-charge', 'external')
-            and ep.status in (
-                'completed',
-                'refund-pending',
-                'refund-recovery-pending',
-                'refund-requested',
-                'refunded'
-            )
+            and (event_purchase_holds_seat(ep.status) or ep.status = 'refunded')
         ),
         purchase_rows_page as (
             select *
             from purchase_rows
             order by coalesce(completed_at, created_at) desc, event_purchase_id desc
-            offset (p_filters->>'offset')::int
-            limit (p_filters->>'limit')::int
+            offset (select offset_value from filters)
+            limit (select limit_value from filters)
         )
     select json_build_object(
         'purchases',
@@ -54,7 +55,7 @@ returns json as $$
                     jsonb_build_object(
                         'amount_minor', coalesce(prp.provider_total_minor, prp.amount_minor),
                         'community_name', prp.community_name,
-                        'created_at', floor(extract(epoch from prp.created_at)),
+                        'created_at', epoch_seconds(prp.created_at),
                         'credit_notes', coalesce(credit_notes.items, '[]'::jsonb),
                         'currency_code', prp.currency_code,
                         'event_canceled', prp.event_canceled,
@@ -68,8 +69,8 @@ returns json as $$
                         'ticket_title', prp.ticket_title
                     )
                     || jsonb_strip_nulls(jsonb_build_object(
-                        'completed_at', floor(extract(epoch from prp.completed_at)),
-                        'event_starts_at', floor(extract(epoch from prp.event_starts_at)),
+                        'completed_at', epoch_seconds(prp.completed_at),
+                        'event_starts_at', epoch_seconds(prp.event_starts_at),
                         'externally_managed', case
                             when prp.charge_model = 'external' then true
                         end,
@@ -94,7 +95,7 @@ returns json as $$
                     jsonb_build_object(
                         'event_purchase_credit_note_id',
                             epcn.event_purchase_credit_note_id,
-                        'status', epcn.status
+                        'status', pj.status
                     )
                     || jsonb_strip_nulls(jsonb_build_object(
                         'provider_credit_note_id', epcn.provider_credit_note_id
@@ -104,6 +105,7 @@ returns json as $$
                 ) as items
                 from event_purchase_refund epr
                 join event_purchase_credit_note epcn using (event_purchase_refund_id)
+                join payment_job pj on pj.payment_job_id = epcn.payment_job_id
                 where epr.event_purchase_id = prp.event_purchase_id
             ) credit_notes on true
         ),

@@ -19,8 +19,7 @@ select plan(7);
 -- ============================================================================
 
 -- User
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'user@example.com', true, 'user');
+select fx_user(:'userID', jsonb_build_object('username', 'user-update-notification'));
 
 -- Processing notifications used by current and stale claim scenarios
 insert into notification (

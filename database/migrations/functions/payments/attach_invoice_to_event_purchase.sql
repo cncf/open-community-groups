@@ -8,6 +8,7 @@ create or replace function attach_invoice_to_event_purchase(
 )
 returns void as $$
 declare
+    v_payment_job_id uuid;
     v_purchase event_purchase;
     v_refund event_purchase_refund;
 begin
@@ -18,15 +19,18 @@ begin
     where ep.event_purchase_id = p_event_purchase_id
     for update;
 
+    -- Reject unknown purchases
     if not found then
         raise exception 'event purchase not found';
     end if;
 
+    -- Reject invoices issued by another connected account
     if v_purchase.charge_model <> 'direct-charge'
        or v_purchase.provider_object_account_id <> p_connected_seller_id then
         raise exception 'invoice account does not match the purchase seller';
     end if;
 
+    -- Reject a second invoice for the same purchase
     if v_purchase.provider_invoice_id is not null
        and v_purchase.provider_invoice_id <> p_provider_invoice_id then
         raise exception 'event purchase already has a different provider invoice';
@@ -48,25 +52,35 @@ begin
     where epr.event_purchase_id = p_event_purchase_id
     and epr.provider_refunded_at is not null;
 
+    -- Document the confirmed refund once its invoice is known
     if found then
-        insert into event_purchase_credit_note (
-            amount_minor,
-            currency_code,
-            event_purchase_refund_id,
-            idempotency_key,
-            payment_provider_id,
-            provider_object_account_id,
-            tax_amount_minor
-        ) values (
-            v_purchase.provider_total_minor,
-            v_purchase.currency_code,
-            v_refund.event_purchase_refund_id,
-            format('event-purchase-credit-note-%s', v_refund.event_purchase_refund_id),
+        v_payment_job_id := enqueue_payment_job(
+            'event-purchase-credit-note',
             v_purchase.payment_provider_id,
-            v_purchase.provider_object_account_id,
-            v_purchase.tax_amount_minor
-        )
-        on conflict (event_purchase_refund_id) do nothing;
+            v_purchase.event_purchase_id,
+            format('event-purchase-credit-note-%s', v_refund.event_purchase_refund_id)
+        );
+
+        -- Create the credit note only once per refund
+        if v_payment_job_id is not null then
+            insert into event_purchase_credit_note (
+                amount_minor,
+                currency_code,
+                event_purchase_refund_id,
+                payment_job_id,
+                payment_provider_id,
+                provider_object_account_id,
+                tax_amount_minor
+            ) values (
+                v_purchase.provider_total_minor,
+                v_purchase.currency_code,
+                v_refund.event_purchase_refund_id,
+                v_payment_job_id,
+                v_purchase.payment_provider_id,
+                v_purchase.provider_object_account_id,
+                v_purchase.tax_amount_minor
+            );
+        end if;
     end if;
 end;
 $$ language plpgsql;

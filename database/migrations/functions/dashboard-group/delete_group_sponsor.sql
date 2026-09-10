@@ -12,7 +12,7 @@ begin
         from event_sponsor
         where group_sponsor_id = p_group_sponsor_id
     ) then
-        raise exception 'sponsor is used by one or more events';
+        raise exception 'sponsor is used by one or more events' using errcode = 'OCG01';
     end if;
 
     -- Delete the sponsor

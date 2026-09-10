@@ -41,91 +41,40 @@ values (
     'Refund Worker Lifecycle Site'
 );
 
--- Community owning the end-to-end refund lifecycle
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'refund-worker-community'
-);
-
--- Event category used by the end-to-end refund event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the end-to-end refund group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the end-to-end refund event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Organizer and buyer participating in the end-to-end refund lifecycle
-insert into "user" (auth_hash, email, user_id, username) values
-    ('actor', 'actor@example.test', :'actorID', 'actor'),
-    ('buyer', 'buyer@example.test', :'buyerID', 'buyer'),
-    ('rejected', 'rejected@example.test', :'rejectedBuyerID', 'rejected-buyer');
+-- Baseline community, categories, organizer, buyers and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_user(:'buyerID');
+select fx_user(:'rejectedBuyerID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Accepted event manager allowed to complete refund recovery
 insert into group_team (accepted, group_id, role, user_id)
 values (true, :'groupID', 'events-manager', :'actorID');
 
 -- Event owning the end-to-end refund purchase
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Event',
-    'USD',
-    true,
-    'event',
-    now() + interval '1 day',
-    'UTC'
-), (
-    'Rejected request event',
-    :'eventCategoryID',
-    :'rejectedEventID',
-    'in-person',
-    :'groupID',
-    'Rejected Request Event',
-    'USD',
-    true,
-    'rejected-request-event',
-    now() + interval '2 days',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'rejectedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', now() + interval '2 days'
+));
 
 -- Ticket type referenced by the end-to-end refund purchase
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values
-    (:'eventID', :'ticketTypeID', 1, 10, 'General admission'),
-    (:'rejectedEventID', :'rejectedTicketTypeID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'rejectedTicketTypeID', :'rejectedEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Confirmed attendee whose paid registration will be refunded
 insert into event_attendee (checked_in, checked_in_at, event_id, status, user_id)
@@ -241,17 +190,46 @@ select results_eq(
 );
 
 -- Should claim the queued provider work
-select lives_ok(
-    $$select claim_event_purchase_refund('stripe')$$,
+select results_eq(
+    format($$
+        with claim as materialized (
+            select claim_payment_job('event-purchase-refund', 'stripe') as payload
+        )
+        select
+            payload->>'kind',
+            (payload->>'attempt_count')::int,
+            payload ? 'claim_id',
+            payload ? 'refund',
+            payload->>'idempotency_key',
+            (payload->>'payment_job_id')::uuid =
+                (payload->'refund'->>'payment_job_id')::uuid,
+            payload->'refund'->>'idempotency_key',
+            payload->'refund'->>'status'
+        from claim
+    $$),
+    format($$ values (
+        'event-purchase-refund'::text,
+        1,
+        true,
+        true,
+        %L::text,
+        true,
+        %L::text,
+        'provider-pending'::text
+    ) $$,
+        'event-purchase-refund-' || :'purchaseID',
+        'event-purchase-refund-' || :'purchaseID'
+    ),
     'Should claim the queued provider work'
 );
 
 -- Should pin the first processing attempt
 select results_eq(
     format($$
-        select attempt_count, claim_id is not null, status
-        from event_purchase_refund
-        where event_purchase_id = %L::uuid
+        select pj.attempt_count, pj.claim_id is not null, pj.status
+        from event_purchase_refund epr
+        join payment_job pj using (payment_job_id)
+        where epr.event_purchase_id = %L::uuid
     $$, :'purchaseID'),
     $$ values (1, true, 'processing'::text) $$,
     'Should pin the first processing attempt'
@@ -262,14 +240,15 @@ select is(
     (
         select record_event_purchase_refund_succeeded(
             event_purchase_refund_id,
-            idempotency_key,
+            pj.idempotency_key,
             're_worker_succeeded',
-            claim_id
+            pj.claim_id
         )->>'status'
-        from event_purchase_refund
-        where event_purchase_id = :'purchaseID'
+        from event_purchase_refund epr
+        join payment_job pj using (payment_job_id)
+        where epr.event_purchase_id = :'purchaseID'
     ),
-    'processing',
+    'provider-succeeded',
     'Should record provider success without releasing the active claim'
 );
 
@@ -279,11 +258,12 @@ select lives_ok(
         $$
             select finalize_event_purchase_refund(
                 event_purchase_refund_id,
-                claim_id,
+                pj.claim_id,
                 jsonb_build_object('scenario', 'worker-lifecycle')
             )
-            from event_purchase_refund
-            where event_purchase_id = %L::uuid
+            from event_purchase_refund epr
+            join payment_job pj using (payment_job_id)
+            where epr.event_purchase_id = %L::uuid
         $$,
         :'purchaseID'
     ),
@@ -296,12 +276,14 @@ select results_eq(
         select
             ep.status,
             epr.status,
+            pj.status,
             ea.checked_in,
             ea.status,
             err.status
         from event_purchase ep
         join event_purchase_refund epr using (event_purchase_id)
         join event_refund_request err using (event_purchase_id)
+        join payment_job pj using (payment_job_id)
         join event_attendee ea
             on ea.event_id = ep.event_id
             and ea.user_id = ep.user_id
@@ -310,6 +292,7 @@ select results_eq(
     $$ values (
         'refunded'::text,
         'finalized'::text,
+        'completed'::text,
         false,
         'attendance-canceled'::text,
         'approved'::text
@@ -385,7 +368,7 @@ select results_eq(
 
 -- Should claim the cancellation refund after the rejected attendee request
 select lives_ok(
-    $$select claim_event_purchase_refund('stripe')$$,
+    $$select claim_payment_job('event-purchase-refund', 'stripe')$$,
     'Should claim the cancellation refund after the rejected attendee request'
 );
 
@@ -395,13 +378,14 @@ select lives_ok(
         $$
             select record_event_purchase_refund_terminal_failed(
                 event_purchase_refund_id,
-                idempotency_key,
+                pj.idempotency_key,
                 're_rejected_then_canceled',
                 'Provider refund requires external recovery',
-                claim_id
+                pj.claim_id
             )
-            from event_purchase_refund
-            where event_purchase_id = %L::uuid
+            from event_purchase_refund epr
+            join payment_job pj using (payment_job_id)
+            where epr.event_purchase_id = %L::uuid
         $$,
         :'rejectedPurchaseID'
     ),
@@ -418,7 +402,7 @@ select lives_ok(
                 event_purchase_refund_id,
                 'external-refund-rejected-then-canceled',
                 'Verified external refund',
-                '{}'::jsonb
+                '{"scenario":"worker-lifecycle-recovery"}'::jsonb
             )
             from event_purchase_refund
             where event_purchase_id = %L::uuid
@@ -436,12 +420,13 @@ select results_eq(
         select
             ep.status,
             epr.finalized_at is not null,
-            epr.recovery_completed_at is not null,
+            pj.recovery_completed_at is not null,
             epr.status,
             err.status
         from event_purchase ep
         join event_purchase_refund epr using (event_purchase_id)
         join event_refund_request err using (event_purchase_id)
+        join payment_job pj using (payment_job_id)
         where ep.event_purchase_id = %L::uuid
     $$, :'rejectedPurchaseID'),
     $$ values (

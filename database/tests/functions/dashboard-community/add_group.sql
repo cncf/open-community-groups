@@ -20,50 +20,17 @@ select plan(10);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline users
+select fx_user(:'groupAdminID');
+select fx_user(:'noPermissionUserID');
+
+select fx_community(:'communityID', jsonb_build_object('logo_url', 'https://example.com/logo.png'));
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Users
-insert into "user" (user_id, auth_hash, email, username) values
-    (:'groupAdminID', 'hash-1', 'group-admin@example.com', 'group-admin'),
-    (:'noPermissionUserID', 'hash-2', 'no-permission@example.com', 'no-permission');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Technology'));
 
 -- Existing group with a pretty slug in the generated-slug space
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    slug_pretty
-) values (
-    :'groupPrettySlugID',
-    :'communityID',
-    :'groupCategoryID',
-    'Pretty Slug Collision Group',
-    'existing-slug',
-    'abc2345'
-);
+select fx_group(:'groupPrettySlugID', :'communityID', :'groupCategoryID', jsonb_build_object('slug_pretty', 'abc2345'));
 
 -- Existing group team
 insert into group_team (group_id, user_id, role, accepted)
@@ -385,6 +352,7 @@ select throws_ok(
         :'groupCategoryID',
         :'groupPrettySlugID'
     ),
+    'OCG01',
     'you must be able to manage the selected parent group',
     'Should reject a selected parent when the actor cannot manage the parent'
 );

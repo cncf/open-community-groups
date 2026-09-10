@@ -8,6 +8,7 @@ create or replace function queue_event_refund_request_approval(
 returns void as $$
 declare
     v_existing_refund_kind text;
+    v_payment_job_id uuid;
     v_purchase event_purchase;
     v_refund_request_id uuid;
 begin
@@ -21,7 +22,7 @@ begin
 
     -- Reject purchases outside the requested group
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Lock and load the requested purchase before creating durable work
@@ -38,7 +39,7 @@ begin
 
     -- Reject unavailable purchases or refund requests
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Lock the current refund request after its purchase
@@ -51,7 +52,7 @@ begin
 
     -- Reject refund requests that changed while waiting for their lock
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Preserve the first durable approval decision on idempotent replays
@@ -65,7 +66,7 @@ begin
     if found then
         -- Reject durable work owned by another refund workflow
         if v_existing_refund_kind <> 'refund-request-approval' then
-            raise exception 'event purchase refund already started with different kind';
+            raise exception 'event purchase refund already started with different kind' using errcode = 'OCG01';
         end if;
 
         -- Finish a compatible replay without duplicating durable work
@@ -74,14 +75,14 @@ begin
 
     -- Reject external purchases that must be approved locally
     if v_purchase.charge_model = 'external' then
-        raise exception 'external purchases must be approved locally';
+        raise exception 'external purchases must be approved locally' using errcode = 'OCG01';
     end if;
 
     -- Validate the provider contract before creating durable work
     if v_purchase.amount_minor <= 0
        or v_purchase.payment_provider_id is null
        or v_purchase.provider_payment_reference is null then
-        raise exception 'paid purchase is not ready for refund';
+        raise exception 'paid purchase is not ready for refund' using errcode = 'OCG01';
     end if;
 
     -- Persist the review decision before the asynchronous provider handoff
@@ -95,30 +96,39 @@ begin
     where event_refund_request_id = v_refund_request_id;
 
     -- Insert the durable worker job with a stable purchase idempotency key
-    insert into event_purchase_refund (
-        amount_minor,
-        currency_code,
-        event_purchase_id,
-        event_refund_request_id,
-        idempotency_key,
-        initiated_by_user_id,
-        kind,
-        payment_provider_id,
-        review_note,
-        status
-    ) values (
-        v_purchase.provider_total_minor,
-        v_purchase.currency_code,
-        v_purchase.event_purchase_id,
-        v_refund_request_id,
-        format('event-purchase-refund-%s', v_purchase.event_purchase_id),
-        p_actor_user_id,
-        'refund-request-approval',
+    v_payment_job_id := enqueue_payment_job(
+        'event-purchase-refund',
         v_purchase.payment_provider_id,
-        nullif(btrim(p_review_note), ''),
-        'provider-pending'
-    )
-    on conflict (event_purchase_id) do nothing;
+        v_purchase.event_purchase_id,
+        format('event-purchase-refund-%s', v_purchase.event_purchase_id)
+    );
+
+    -- Create the refund only when no durable work exists for the purchase
+    if v_payment_job_id is not null then
+        insert into event_purchase_refund (
+            amount_minor,
+            currency_code,
+            event_purchase_id,
+            event_refund_request_id,
+            initiated_by_user_id,
+            kind,
+            payment_job_id,
+            payment_provider_id,
+            review_note,
+            status
+        ) values (
+            v_purchase.provider_total_minor,
+            v_purchase.currency_code,
+            v_purchase.event_purchase_id,
+            v_refund_request_id,
+            p_actor_user_id,
+            'refund-request-approval',
+            v_payment_job_id,
+            v_purchase.payment_provider_id,
+            nullif(btrim(p_review_note), ''),
+            'provider-pending'
+        );
+    end if;
 
     -- Reject a purchase already owned by another refund workflow
     perform 1
@@ -128,7 +138,7 @@ begin
 
     -- Reject durable work owned by another refund workflow
     if not found then
-        raise exception 'event purchase refund already started with different kind';
+        raise exception 'event purchase refund already started with different kind' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

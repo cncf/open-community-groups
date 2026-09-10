@@ -47,7 +47,7 @@ begin
     and registration_status = 'pre-registered';
 
     if not found then
-        raise exception 'pre-registered user not found';
+        raise exception 'pre-registered user not found' using errcode = 'OCG01';
     end if;
 
     -- Create/refresh email verification code for the activated user

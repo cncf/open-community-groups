@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(209);
+select plan(213);
 
 -- ============================================================================
 -- TESTS
@@ -75,6 +75,7 @@ select has_pk('notification');
 select has_pk('notification_attachment');
 select has_pk('notification_kind');
 select has_pk('notification_template_data');
+select has_pk('payment_job');
 select has_pk('payment_provider');
 select has_pk('payment_provider_tax_location');
 select has_pk('payment_provider_tax_product');
@@ -154,17 +155,17 @@ select col_is_fk(
 );
 select col_is_fk(
     'event_purchase_application_fee_adjustment',
-    'recovery_completed_by_user_id',
-    'user'
+    'payment_job_id',
+    'payment_job'
 );
 select col_is_fk('event_purchase_credit_note', 'event_purchase_refund_id', 'event_purchase_refund');
+select col_is_fk('event_purchase_credit_note', 'payment_job_id', 'payment_job');
 select col_is_fk('event_purchase_credit_note', 'payment_provider_id', 'payment_provider');
-select col_is_fk('event_purchase_credit_note', 'recovery_completed_by_user_id', 'user');
 select col_is_fk('event_purchase_refund', 'event_purchase_id', 'event_purchase');
 select col_is_fk('event_purchase_refund', 'event_refund_request_id', 'event_refund_request');
 select col_is_fk('event_purchase_refund', 'initiated_by_user_id', 'user');
+select col_is_fk('event_purchase_refund', 'payment_job_id', 'payment_job');
 select col_is_fk('event_purchase_refund', 'payment_provider_id', 'payment_provider');
-select col_is_fk('event_purchase_refund', 'recovery_completed_by_user_id', 'user');
 select col_is_fk('event_refund_request', 'event_purchase_id', 'event_purchase');
 select col_is_fk('event_refund_request', 'requested_by_user_id', 'user');
 select col_is_fk('event_refund_request', 'reviewed_by_user_id', 'user');
@@ -207,6 +208,9 @@ select col_is_fk('notification', 'notification_template_data_id', 'notification_
 select col_is_fk('notification', 'user_id', 'user');
 select col_is_fk('notification_attachment', 'attachment_id', 'attachment');
 select col_is_fk('notification_attachment', 'notification_id', 'notification');
+select col_is_fk('payment_job', 'event_purchase_id', 'event_purchase');
+select col_is_fk('payment_job', 'payment_provider_id', 'payment_provider');
+select col_is_fk('payment_job', 'recovery_completed_by_user_id', 'user');
 select col_is_fk('payment_provider_tax_location', 'payment_provider_id', 'payment_provider');
 select col_is_fk('payment_provider_tax_product', 'payment_provider_id', 'payment_provider');
 select col_is_fk('region', 'community_id', 'community');

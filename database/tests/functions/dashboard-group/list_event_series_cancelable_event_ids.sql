@@ -33,40 +33,31 @@ select plan(6);
 -- ============================================================================
 
 -- Community owning both series groups
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'cancelable-series-community'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'description', 'Community',
+    'display_name', 'Community'
+));
 
 -- Event category shared by the series events
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'Events'));
 
 -- Group category shared by the series groups
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Groups'));
+
+-- Baseline groups
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Groups used to verify ownership scoping
-insert into "group" (community_id, group_category_id, group_id, name, slug) values
-    (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group'),
-    (:'communityID', :'groupCategoryID', :'otherGroupID', 'Other Group', 'other-group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'name', 'Group',
+    'slug', 'group'
+));
 
 -- User who created both event series
-insert into "user" (auth_hash, email, user_id, username)
-values ('user', 'user@example.test', :'userID', 'user');
+select fx_user(:'userID', jsonb_build_object(
+    'auth_hash', 'user',
+    'username', 'user-list-event-series-cancelable-event-ids'
+));
 
 -- Event series used for group and ownership scenarios
 insert into event_series (
@@ -83,31 +74,63 @@ insert into event_series (
     (:'otherSeriesID', :'otherGroupID', 1, now() + interval '1 day', 'weekly', 'UTC', :'userID');
 
 -- Events covering active, completed, canceled, deleted, standalone, and cross-group cases
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone,
-
-    canceled,
-    deleted,
-    deleted_at,
-    ends_at,
-    event_series_id
-) values
-    ('Canceled', :'eventCategoryID', :'canceledEventID', 'virtual', :'groupID', 'Canceled', true, 'canceled', now() + interval '15 days', 'UTC', true, false, null, now() + interval '15 days 1 hour', :'eventSeriesID'),
-    ('Deleted', :'eventCategoryID', :'deletedEventID', 'virtual', :'groupID', 'Deleted', false, 'deleted', now() + interval '22 days', 'UTC', false, true, current_timestamp, now() + interval '22 days 1 hour', :'eventSeriesID'),
-    ('First', :'eventCategoryID', :'firstEventID', 'virtual', :'groupID', 'First', true, 'first', now() + interval '1 day', 'UTC', false, false, null, now() + interval '1 day 1 hour', :'eventSeriesID'),
-    ('Standalone', :'eventCategoryID', :'noSeriesEventID', 'virtual', :'groupID', 'Standalone', true, 'standalone', now() + interval '1 day', 'UTC', false, false, null, now() + interval '1 day 1 hour', null),
-    ('Other', :'eventCategoryID', :'otherEventID', 'virtual', :'otherGroupID', 'Other', true, 'other', now() + interval '1 day', 'UTC', false, false, null, now() + interval '1 day 1 hour', :'otherSeriesID'),
-    ('Past', :'eventCategoryID', :'pastEventID', 'virtual', :'groupID', 'Past', true, 'past', now() - interval '2 hours', 'UTC', false, false, null, now() - interval '1 hour', :'eventSeriesID'),
-    ('Second', :'eventCategoryID', :'secondEventID', 'virtual', :'groupID', 'Second', true, 'second', now() + interval '8 days', 'UTC', false, false, null, now() + interval '8 days 1 hour', :'eventSeriesID');
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '15 days 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'published', true,
+    'slug', 'canceled',
+    'starts_at', now() + interval '15 days'
+));
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'deleted_at', current_timestamp,
+    'ends_at', now() + interval '22 days 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'slug', 'deleted',
+    'starts_at', now() + interval '22 days'
+));
+select fx_event(:'firstEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'published', true,
+    'slug', 'first',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'noSeriesEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'slug', 'standalone',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'otherEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'otherSeriesID',
+    'published', true,
+    'slug', 'other',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'pastEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'published', true,
+    'slug', 'past',
+    'starts_at', now() - interval '2 hours'
+));
+select fx_event(:'secondEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '8 days 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'published', true,
+    'slug', 'second',
+    'starts_at', now() + interval '8 days'
+));
 
 -- ============================================================================
 -- TESTS

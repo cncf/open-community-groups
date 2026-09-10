@@ -21,7 +21,7 @@ begin
     for update of e;
 
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Mark only pending requests as rejected
@@ -35,7 +35,7 @@ begin
     and status = 'pending';
 
     if not found then
-        raise exception 'pending invitation request not found';
+        raise exception 'pending invitation request not found' using errcode = 'OCG01';
     end if;
 
     -- Track the organizer decision

@@ -7,15 +7,15 @@ returns json as $$
             select
                 nullif(p_filters->>'action', '') as action_value,
                 nullif(p_filters->>'actor', '') as actor_value,
-                nullif(p_filters->>'date_from', '')::date as date_from_value,
-                nullif(p_filters->>'date_to', '')::date as date_to_value,
-                coalesce((p_filters->>'limit')::int, 50) as limit_value,
-                coalesce((p_filters->>'offset')::int, 0) as offset_value,
+                f.date_from as date_from_value,
+                f.date_to as date_to_value,
+                coalesce(f.limit_value, 50) as limit_value,
+                coalesce(f.offset_value, 0) as offset_value,
                 case
-                    when lower(p_filters->>'sort') in ('created-asc', 'created-desc')
-                        then lower(p_filters->>'sort')
+                    when f.sort in ('created-asc', 'created-desc') then f.sort
                     else 'created-desc'
                 end as sort_value
+            from parse_search_filters(p_filters) f
         ),
         -- Filter rows before pagination
         filtered_logs as (
@@ -85,7 +85,7 @@ returns json as $$
             select
                 fl.action,
                 fl.audit_log_id,
-                extract(epoch from fl.created_at)::bigint as created_at,
+                epoch_seconds(fl.created_at) as created_at,
                 fl.details,
                 fl.resource_id,
                 fl.resource_type,

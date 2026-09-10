@@ -19,7 +19,7 @@ returns uuid[] as $$
     and e.tax_calculation_mode = 'automatic'
     and is_event_paid_capable(e.event_id)
     and (
-        coalesce(e.ends_at, e.starts_at) is null
-        or coalesce(e.ends_at, e.starts_at) > current_timestamp
+        event_effective_ends_at(e) is null
+        or event_effective_ends_at(e) > current_timestamp
     );
 $$ language sql stable;

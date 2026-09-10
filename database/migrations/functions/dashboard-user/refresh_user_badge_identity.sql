@@ -38,7 +38,7 @@ begin
     and ub.identity_bound_at is not null;
 
     if not found then
-        raise exception 'active user badge not found';
+        raise exception 'active user badge not found' using errcode = 'OCG01';
     end if;
 
     return v_binding;

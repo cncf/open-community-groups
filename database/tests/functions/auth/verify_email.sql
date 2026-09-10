@@ -18,14 +18,9 @@ select plan(8);
 -- ============================================================================
 
 -- User with an expired email verification code
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (
-    :'expiredUserID',
-    'expired-verification-code-hash',
-    'test2@example.com',
-    false,
-    'testuser2'
-);
+select fx_user(:'expiredUserID', jsonb_build_object(
+    'email_verified', false
+));
 
 insert into email_verification_code (email_verification_code_id, created_at, user_id)
 values (
@@ -48,7 +43,7 @@ with test_user as (
         ),
         false,
         gen_random_uuid(),
-        '{}'::jsonb
+        '{"scenario":"verify-email"}'::jsonb
     )
 )
 
@@ -78,7 +73,7 @@ with test_user as (
         ),
         false,
         gen_random_uuid(),
-        '{}'::jsonb
+        '{"scenario":"verify-email"}'::jsonb
     )
 )
 
@@ -100,6 +95,7 @@ where email_verification_code_id = :'verificationCodeToDelete'::uuid;
 -- Should raise exception for invalid verification code
 select throws_ok(
     format('select verify_email(%L::uuid)', :'invalidVerificationCodeID'),
+    'OCG01',
     'email verification failed: invalid code',
     'Should raise exception for non-existent verification code'
 );
@@ -107,6 +103,7 @@ select throws_ok(
 -- Should raise exception for expired verification code
 select throws_ok(
     format('select verify_email(%L::uuid)', :'expiredVerificationCodeID'),
+    'OCG01',
     'email verification failed: invalid code',
     'Should raise exception for expired verification code'
 );
@@ -115,13 +112,13 @@ select throws_ok(
 with test_user as (
     select * from sign_up_user(
         jsonb_build_object(
-            'email', 'test3@example.com',
-            'username', 'testuser3',
+            'email', 'test3-verify-email@example.com',
+            'username', 'testuser3-verify-email',
             'name', 'Test User 3'
         ),
         false,
         gen_random_uuid(),
-        '{}'::jsonb
+        '{"scenario":"verify-email"}'::jsonb
     )
 )
 
@@ -135,6 +132,7 @@ select lives_ok(
 
 select throws_ok(
     format('select verify_email(%L::uuid)', :'usedVerificationCode'),
+    'OCG01',
     'email verification failed: invalid code',
     'Should raise exception for already used verification code'
 );

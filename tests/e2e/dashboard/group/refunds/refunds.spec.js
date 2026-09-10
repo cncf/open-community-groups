@@ -2,7 +2,7 @@ import { expect, test } from "../../../fixtures.js";
 
 import {
   E2E_PAYMENTS_ENABLED,
-  TEST_FINANCIAL_WORK_IDS,
+  TEST_FINANCIAL_WORK_JOB_IDS,
   TEST_PAYMENT_EVENT_IDS,
   expectCurrentPaginationNavigation,
   expectTableColumnsAtViewport,
@@ -200,9 +200,11 @@ test.describe("group dashboard refunds", () => {
       name: "Financial work needing attention",
     });
     const applicationFeeWork = recoverySection.locator(
-      'tbody tr[data-financial-work-kind="application-fee-adjustment"]',
+      'tbody tr[data-financial-work-kind="event-purchase-application-fee-adjustment"]',
     );
-    const creditNoteWork = recoverySection.locator('tbody tr[data-financial-work-kind="credit-note"]');
+    const creditNoteWork = recoverySection.locator(
+      'tbody tr[data-financial-work-kind="event-purchase-credit-note"]',
+    );
 
     // Verify the durable credit-note fixture and its retry details popover.
     await expect(creditNoteWork).toContainText("E2E Events Manager One");
@@ -224,22 +226,18 @@ test.describe("group dashboard refunds", () => {
     }
 
     // Verify the retry request contract through an intercepted application route.
-    await organizerGroupPage.route("**/dashboard/group/financial-work/retry", (route) =>
-      route.fulfill({ status: 422 }),
-    );
+    const creditNoteRetryPath = `/dashboard/group/payment-jobs/${TEST_FINANCIAL_WORK_JOB_IDS.creditNote}/retry`;
+    await organizerGroupPage.route(`**${creditNoteRetryPath}`, (route) => route.fulfill({ status: 422 }));
     const creditNoteActionsMenu = creditNoteWork.locator("[data-actions-menu]");
     await creditNoteActionsMenu.locator("summary").click();
     const [retryResponse] = await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
-          response.request().method() === "PUT" &&
-          new URL(response.url()).pathname === "/dashboard/group/financial-work/retry",
+          response.request().method() === "PUT" && new URL(response.url()).pathname === creditNoteRetryPath,
       ),
       creditNoteActionsMenu.getByRole("button", { name: "Retry operation" }).click(),
     ]);
-    const retryData = new URLSearchParams(retryResponse.request().postData());
-    expect(retryData.get("kind")).toBe("credit-note");
-    expect(retryData.get("work_id")).toBe(TEST_FINANCIAL_WORK_IDS.creditNote);
+    expect(retryResponse.status()).toBe(422);
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "Something went wrong requeueing this financial work.",
     );
@@ -247,20 +245,17 @@ test.describe("group dashboard refunds", () => {
 
     // Verify manual recovery collects all evidence without submitting it.
     const manualRecoveryWork = (await applicationFeeWork.count()) > 0 ? applicationFeeWork : creditNoteWork;
-    const expectedRecoveryKind =
-      manualRecoveryWork === applicationFeeWork ? "application-fee-adjustment" : "credit-note";
-    const expectedRecoveryWorkId =
+    const expectedRecoveryJobId =
       manualRecoveryWork === applicationFeeWork
-        ? TEST_FINANCIAL_WORK_IDS.applicationFeeAdjustment
-        : TEST_FINANCIAL_WORK_IDS.creditNote;
+        ? TEST_FINANCIAL_WORK_JOB_IDS.applicationFeeAdjustment
+        : TEST_FINANCIAL_WORK_JOB_IDS.creditNote;
     const manualRecoveryActionsMenu = manualRecoveryWork.locator("[data-actions-menu]");
     if ((await manualRecoveryActionsMenu.getAttribute("open")) === null) {
       await manualRecoveryActionsMenu.locator("summary").click();
     }
     await manualRecoveryActionsMenu.getByText("Complete outside OCG", { exact: true }).click();
-    const recoveryForm = dashboardContent.locator('form[hx-put="/dashboard/group/financial-work/recovery"]');
-    await expect(recoveryForm.locator('input[name="kind"]')).toHaveValue(expectedRecoveryKind);
-    await expect(recoveryForm.locator('input[name="work_id"]')).toHaveValue(expectedRecoveryWorkId);
+    const recoveryForm = dashboardContent.locator('form[hx-put="/dashboard/group/payment-jobs/recovery"]');
+    await expect(recoveryForm.locator('input[name="payment_job_id"]')).toHaveValue(expectedRecoveryJobId);
     await expect(recoveryForm.locator('input[name="provider_object_id"]')).toHaveAttribute("required", "");
     await expect(recoveryForm.locator('input[name="recovery_reference"]')).toHaveAttribute("required", "");
     await expect(recoveryForm.locator('textarea[name="recovery_note"]')).toHaveAttribute("required", "");
@@ -518,12 +513,12 @@ test.describe("group dashboard refunds", () => {
     await actionsMenu.locator("summary").click();
 
     // Retry the durable refund and wait for the attention queue refresh.
+    const retryPath = `/dashboard/group/payment-jobs/${TEST_FINANCIAL_WORK_JOB_IDS.exhaustedRefund}/retry`;
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
-          response.url().includes("/dashboard/group/refunds/") &&
-          response.url().endsWith("/retry") &&
+          new URL(response.url()).pathname === retryPath &&
           response.ok(),
       ),
       waitForRefundsResponse(organizerGroupPage),

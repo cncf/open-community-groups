@@ -18,117 +18,66 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    name,
-    auth_hash,
-    bio,
-    bluesky_url,
-    city,
-    company,
-    country,
-    email,
-    email_verified,
-    facebook_url,
-    github_url,
-    interests,
-    linkedin_url,
-    photo_url,
-    timezone,
-    title,
-    twitter_url,
-    username,
-    website_url
-) values
-    (
-        :'user2ID',
-        'Second User',
-        gen_random_bytes(32),
-        'Original bio',
-        'https://bsky.app/profile/original',
-        'Seattle',
-        'Original Company',
-        'USA',
-        'test2@example.com',
-        true,
-        'https://facebook.com/original',
-        'https://github.com/original',
-        array['reading', 'gaming'],
-        'https://linkedin.com/in/original',
-        'https://example.com/original.jpg',
-        'America/Los_Angeles',
-        'Original Title',
-        'https://twitter.com/original',
-        'testuser2',
-        'https://example.com/original'
-    ),
-    (
-        :'user3ID',
-        'Third User',
-        gen_random_bytes(32),
-        'Third user bio',
-        'https://bsky.app/profile/third',
-        'Portland',
-        'Third Company',
-        'Canada',
-        'test3@example.com',
-        true,
-        'https://facebook.com/third',
-        'https://github.com/third',
-        array['cooking', 'travel'],
-        'https://linkedin.com/in/third',
-        'https://example.com/third.jpg',
-        'America/New_York',
-        'Third Title',
-        'https://twitter.com/third',
-        'testuser3',
-        'https://example.com/third'
-    ),
-    (
-        :'user4ID',
-        'Fourth User',
-        gen_random_bytes(32),
-        'Fourth user bio',
-        'https://bsky.app/profile/fourth',
-        'Austin',
-        'Fourth Company',
-        'USA',
-        'test4@example.com',
-        true,
-        'https://facebook.com/fourth',
-        'https://github.com/fourth',
-        array['cycling', 'music'],
-        'https://linkedin.com/in/fourth',
-        'https://example.com/fourth.jpg',
-        'America/Chicago',
-        'Fourth Title',
-        'https://twitter.com/fourth',
-        'testuser4',
-        'https://example.com/fourth'
-    ),
-    (
-        :'userID',
-        'Original User',
-        gen_random_bytes(32),
-        null,
-        null,
-        null,
-        null,
-        null,
-        'test@example.com',
-        true,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        'testuser',
-        null
-    );
+-- User updated with all updateable fields
+select fx_user(:'userID', jsonb_build_object(
+    'email', 'test-update-user-details@example.com',
+    'username', 'testuser-update-user-details'
+));
+
+-- User with populated optional fields cleared by a name-only update
+select fx_user(:'user2ID', jsonb_build_object(
+    'bio', 'Original bio',
+    'bluesky_url', 'https://bsky.app/profile/original',
+    'city', 'Seattle',
+    'company', 'Original Company',
+    'country', 'USA',
+    'email', 'test2@example.com',
+    'facebook_url', 'https://facebook.com/original',
+    'github_url', 'https://github.com/original',
+    'interests', array['reading', 'gaming'],
+    'linkedin_url', 'https://linkedin.com/in/original',
+    'photo_url', 'https://example.com/original.jpg',
+    'timezone', 'America/Los_Angeles',
+    'twitter_url', 'https://twitter.com/original',
+    'username', 'testuser2',
+    'website_url', 'https://example.com/original'
+));
+
+-- User with populated optional fields cleared by explicit null values
+select fx_user(:'user3ID', jsonb_build_object(
+    'bio', 'Third user bio',
+    'bluesky_url', 'https://bsky.app/profile/third',
+    'city', 'Portland',
+    'company', 'Third Company',
+    'country', 'Canada',
+    'email', 'test3@example.com',
+    'facebook_url', 'https://facebook.com/third',
+    'github_url', 'https://github.com/third',
+    'interests', array['cooking', 'travel'],
+    'linkedin_url', 'https://linkedin.com/in/third',
+    'photo_url', 'https://example.com/third.jpg',
+    'timezone', 'America/New_York',
+    'twitter_url', 'https://twitter.com/third',
+    'username', 'testuser3',
+    'website_url', 'https://example.com/third'
+));
+
+-- User with populated optional fields cleared by empty string values
+select fx_user(:'user4ID', jsonb_build_object(
+    'bio', 'Fourth user bio',
+    'bluesky_url', 'https://bsky.app/profile/fourth',
+    'city', 'Austin',
+    'company', 'Fourth Company',
+    'country', 'USA',
+    'facebook_url', 'https://facebook.com/fourth',
+    'github_url', 'https://github.com/fourth',
+    'interests', array['cycling', 'music'],
+    'linkedin_url', 'https://linkedin.com/in/fourth',
+    'photo_url', 'https://example.com/fourth.jpg',
+    'timezone', 'America/Chicago',
+    'twitter_url', 'https://twitter.com/fourth',
+    'website_url', 'https://example.com/fourth'
+));
 
 -- ============================================================================
 -- TESTS
@@ -170,11 +119,11 @@ select is(
     ) || '{
         "belongs_to_any_group_team": false,
         "belongs_to_community_team": false,
-        "email": "test@example.com",
+        "email": "test-update-user-details@example.com",
         "email_verified": true,
         "optional_notifications_enabled": false,
         "name": "Updated User",
-        "username": "testuser",
+        "username": "testuser-update-user-details",
         "bio": "This is my bio",
         "bluesky_url": "https://bsky.app/profile/updateduser",
         "city": "San Francisco",
@@ -208,7 +157,7 @@ select results_eq(
         values (
             'user_details_updated',
             %L::uuid,
-            'testuser',
+            'testuser-update-user-details',
             'user',
             %L::uuid
         )

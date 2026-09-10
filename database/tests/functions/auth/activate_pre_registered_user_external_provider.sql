@@ -18,40 +18,18 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    name,
-    auth_hash,
-    email,
-    email_verified,
-    registration_status,
-    username
-) values (
-    :'userID',
-    null,
-    'pre-registered-hash',
-    'invited@example.com',
-    false,
-    'pre-registered',
-    'invited-user'
-), (
-    :'registeredUserID',
-    'Registered User',
-    'registered-hash',
-    'registered@example.com',
-    true,
-    'registered',
-    'registered-user'
-), (
-    :'takenUsernameUserID',
-    'Taken User',
-    'taken-hash',
-    'taken@example.com',
-    true,
-    'registered',
-    'alice'
-);
+-- Pre-registered user activated by external provider
+select fx_user(:'userID', jsonb_build_object(
+    'auth_hash', 'pre-registered-hash',
+    'email_verified', false,
+    'registration_status', 'pre-registered'
+));
+
+-- Registered user that cannot be activated again
+select fx_user(:'registeredUserID');
+
+-- Existing username collision for activation
+select fx_user(:'takenUsernameUserID', jsonb_build_object('username', 'alice-external-provider'));
 
 -- ============================================================================
 -- TESTS
@@ -64,10 +42,10 @@ select is(
         '{
             "name": "Alice Invited",
             "provider": {"lf": {"sub": "123"}},
-            "username": "alice"
+            "username": "alice-external-provider"
         }'::jsonb
     )::jsonb->>'username',
-    'alice2',
+    'alice-external-provider2',
     'Should return the activated user with a unique username'
 );
 
@@ -89,7 +67,7 @@ select results_eq(
             'Alice Invited',
             '{"lf": {"sub": "123"}}'::jsonb,
             'registered',
-            'alice2'
+            'alice-external-provider2'
         )
     $$,
     'Should promote the placeholder row into a verified registered user'
@@ -111,6 +89,7 @@ select throws_ok(
         %L::uuid,
         '{"name": "Registered User", "provider": {}, "username": "registered-user"}'::jsonb
     ) $$, :'registeredUserID'),
+    'OCG01',
     'pre-registered user not found',
     'Should reject users that are already registered'
 );
@@ -121,6 +100,7 @@ select throws_ok(
         %L::uuid,
         '{"name": "Missing User", "provider": {}, "username": "missing"}'::jsonb
     ) $$, :'unknownUserID'),
+    'OCG01',
     'pre-registered user not found',
     'Should reject missing pre-registered users'
 );

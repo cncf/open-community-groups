@@ -27,6 +27,7 @@ select plan(50);
 -- SEED DATA
 -- ============================================================================
 
+
 -- Operator allowlist and window limits used by external paid-event scenarios
 insert into external_payments_config (
     allowed_countries,
@@ -39,75 +40,38 @@ insert into external_payments_config (
 );
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
+select fx_community(:'communityID', jsonb_build_object('logo_url', 'https://example.com/logo.png'));
+
+-- Baseline categories
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Users
-insert into "user" (user_id, email, username, auth_hash, name) values
-    (:'user1ID', 'host1@example.com', 'host1', 'hash1', 'Host One'),
-    (:'user2ID', 'host2@example.com', 'host2', 'hash2', 'Host Two'),
-    (:'user3ID', 'speaker1@example.com', 'speaker1', 'hash3', 'Speaker One');
+select fx_user(:'user1ID', jsonb_build_object(
+    'email', 'host1@example.com',
+    'name', 'Host One',
+    'username', 'host1'
+));
+select fx_user(:'user2ID', jsonb_build_object(
+    'email', 'host2@example.com',
+    'name', 'Host Two',
+    'username', 'host2'
+));
+select fx_user(:'user3ID', jsonb_build_object(
+    'name', 'Speaker One',
+    'username', 'speaker1'
+));
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Conference', :'communityID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'Conference'));
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id,
-    payment_recipient
-) values (
-    :'groupID',
-    :'communityID',
-    'Kubernetes Study Group',
-    'abc1234',
-    'A study group focused on Kubernetes best practices and implementation',
-    :'groupCategoryID',
-    '{"provider": "stripe", "recipient_id": "acct_add_event", "seller_display_name": "Add Event Fiscal Sponsor"}'::jsonb
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_add_event", "seller_display_name": "Add Event Fiscal Sponsor"}'::jsonb));
 
 -- Allowlisted group with external payments enabled for paid external creates
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'KR',
-    true,
-    :'groupCategoryID',
-    :'groupExternalID',
-    'External Payments Group',
-    'external-payments-group'
-);
+select fx_group(:'groupExternalID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- Group Sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
@@ -127,7 +91,6 @@ values
     (true, :'groupID', 'admin', :'user1ID', 2),
     (false, :'groupID', 'events-manager', :'user2ID', 1),
     (true, :'groupID', 'viewer', :'user3ID', null);
-
 
 -- ============================================================================
 -- TESTS
@@ -172,6 +135,7 @@ select throws_ok(
         null::jsonb,
         'stripe'
     )$$,
+    'OCG01',
     'payment configuration changed during provider validation',
     'Should reject event creation validated against a stale sponsor'
 );
@@ -585,6 +549,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'duplicate cfs label names',
     'Should throw error when CFS labels contain duplicate names'
 );
@@ -734,6 +699,7 @@ select throws_ok(
         '{"name": "Capacity Exceed Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
+    'OCG01',
     'event capacity (500) exceeds maximum participants allowed (100)',
     'Should reject the default tier above max participants'
 );
@@ -806,6 +772,7 @@ select throws_ok(
         '{"zoom": 100}'::jsonb,
         'stripe'
     )$$,
+    'OCG01',
     'event capacity (150) exceeds maximum participants allowed (100)',
     'Should reject ticket-derived capacity above the meeting provider limit'
 );
@@ -945,6 +912,7 @@ select throws_ok(
             "waitlist_enabled": true
         }'::jsonb
     )$$,
+    'OCG01',
     'approval-required events cannot enable waitlist',
     'Should reject approval-required events when waitlist is enabled'
 );
@@ -972,6 +940,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'discount_codes require positive ticket pricing',
     'Should throw error when discount codes are provided without ticket types'
 );
@@ -990,6 +959,7 @@ select throws_ok(
             "payment_currency_code": "USD"
         }'::jsonb
     )$$,
+    'OCG01',
     'payment_currency_code requires positive ticket pricing',
     'Should throw error when payment currency is provided without ticket types'
 );
@@ -1022,6 +992,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket types require event_ticket_type_id',
     'Should throw error when ticket types omit stable identifiers'
 );
@@ -1033,6 +1004,7 @@ select throws_ok(
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Past Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2020-01-01T10:00:00"}'::jsonb
     )$$,
+    'OCG01',
     'event starts_at cannot be in the past',
     'Should throw error when event starts_at is in the past'
 );
@@ -1044,6 +1016,7 @@ select throws_ok(
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Past End Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2020-01-01T12:00:00"}'::jsonb
     )$$,
+    'OCG01',
     'event ends_at cannot be in the past',
     'Should throw error when event ends_at is in the past'
 );
@@ -1055,6 +1028,7 @@ select throws_ok(
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session Past Start", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past Session", "starts_at": "2020-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
+    'OCG01',
     'session starts_at cannot be in the past',
     'Should throw error when session starts_at is in the past'
 );
@@ -1066,6 +1040,7 @@ select throws_ok(
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session Past End", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past End Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2020-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
+    'OCG01',
     'session ends_at cannot be in the past',
     'Should throw error when session ends_at is in the past'
 );
@@ -1140,6 +1115,7 @@ select throws_ok(
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session Before Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Early Session", "starts_at": "2030-01-01T09:00:00", "ends_at": "2030-01-01T10:30:00", "kind": "in-person"}]}'::jsonb
     )$$,
+    'OCG01',
     'session starts_at must be within event bounds',
     'Should throw error when session starts_at is before event starts_at'
 );
@@ -1151,6 +1127,7 @@ select throws_ok(
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session After Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Late Session", "starts_at": "2030-01-01T13:00:00", "ends_at": "2030-01-01T14:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
+    'OCG01',
     'session starts_at must be within event bounds',
     'Should throw error when session starts_at is after event ends_at'
 );
@@ -1162,6 +1139,7 @@ select throws_ok(
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session Exceeds Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Long Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T13:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
+    'OCG01',
     'session ends_at must be within event bounds',
     'Should throw error when session ends_at is after event ends_at'
 );
@@ -1200,6 +1178,7 @@ select throws_ok(
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Event With Invalid Questions", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "registration_questions": [{"id": "bad", "kind": "free-text", "prompt": "Question", "required": true, "options": []}]}'::jsonb
     )$$,
+    'OCG01',
     'questionnaire question id must be a uuid',
     'Should validate registration questions when creating an event'
 );
@@ -1243,6 +1222,7 @@ select throws_ok(
         null::jsonb,
         'stripe'
     )$$,
+    'OCG01',
     'external payments are not available for this event',
     'Should reject a submitted external URL when the group cannot collect externally'
 );
@@ -1396,6 +1376,7 @@ select throws_ok(
         )$$,
         :'groupExternalID'
     ),
+    'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject a paid external event without a payment URL'
 );
@@ -1440,6 +1421,7 @@ select throws_ok(
         )$$,
         :'groupExternalID'
     ),
+    'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject a paid external event with an invalid payment URL'
 );
@@ -1484,6 +1466,7 @@ select throws_ok(
         )$$,
         :'groupExternalID'
     ),
+    'OCG01',
     'external paid events require a venue in the group country',
     'Should reject a paid external event with a venue outside the group country'
 );
@@ -1529,6 +1512,7 @@ select throws_ok(
         )$$,
         :'groupExternalID'
     ),
+    'OCG01',
     'external payment window exceeds the configured maximum',
     'Should reject an external payment window above the configured maximum'
 );
@@ -1568,6 +1552,7 @@ select throws_ok(
         )$$,
         :'groupExternalID'
     ),
+    'OCG01',
     'paid ticketing requires an in-person or hybrid event with a complete physical venue',
     'Should reject paid external virtual events without a complete physical venue'
 );

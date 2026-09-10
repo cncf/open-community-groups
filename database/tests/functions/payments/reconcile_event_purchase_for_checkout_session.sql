@@ -72,211 +72,94 @@ select plan(45);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'complete-community',
-    'Complete Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'activeOfferRefundUserID',
-        'hash-active-offer-refund',
-        'active-offer-refund@example.com',
-        true,
-        'active-offer-refund'
-    ),
-    (:'user1ID', 'hash-1', 'user1@example.com', true, 'buyer-1'),
-    (:'user2ID', 'hash-2', 'user2@example.com', true, 'buyer-2'),
-    (:'user3ID', 'hash-3', 'user3@example.com', true, 'buyer-3'),
-    (:'user4ID', 'hash-4', 'user4@example.com', true, 'buyer-4'),
-    (:'user5ID', 'hash-5', 'user5@example.com', true, 'buyer-5'),
-    (:'user6ID', 'hash-6', 'user6@example.com', true, 'buyer-6'),
-    (:'user7ID', 'hash-7', 'user7@example.com', true, 'buyer-7'),
-    (:'user8ID', 'hash-8', 'user8@example.com', true, 'buyer-8'),
-    (:'user9ID', 'hash-9', 'user9@example.com', true, 'buyer-9'),
-    (:'user10ID', 'hash-10', 'user10@example.com', true, 'buyer-10'),
-    (:'dueUserID', 'hash-due', 'due@example.com', true, 'due-buyer'),
-    (:'linkedUserID', 'hash-linked', 'linked@example.com', true, 'linked-buyer'),
-    (:'noTaxUserID', 'hash-no-tax', 'no-tax@example.com', true, 'no-tax-buyer'),
-    (:'raceQueueUserID', 'hash-race-queue', 'race-queue@example.com', true, 'race-queue'),
-    (:'raceUserID', 'hash-race', 'race@example.com', true, 'race-buyer');
+-- Baseline community, categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'activeOfferRefundUserID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
+select fx_user(:'user4ID');
+select fx_user(:'user5ID');
+select fx_user(:'user6ID');
+select fx_user(:'user7ID');
+select fx_user(:'user8ID');
+select fx_user(:'user9ID');
+select fx_user(:'user10ID');
+select fx_user(:'dueUserID');
+select fx_user(:'linkedUserID');
+select fx_user(:'noTaxUserID');
+select fx_user(:'raceQueueUserID');
+select fx_user(:'raceUserID');
 
 -- Group
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    payment_recipient,
-    slug
-) values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'Complete Group',
-    '{"provider":"stripe","recipient_id":"acct_complete","seller_display_name":"Complete Fiscal Sponsor"}'::jsonb,
-    'complete-group'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider":"stripe","recipient_id":"acct_complete","seller_display_name":"Complete Fiscal Sponsor"}'::jsonb));
 
 -- Events
-insert into event (
-    canceled,
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    ends_at,
-    starts_at,
-    published,
-    published_at,
-    registration_questions,
-    registration_starts_at
-) values (
-    -- Event with pending registration answers created during checkout
-    false,
-    :'activeEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Active Event',
-    'active-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    true,
-    now(),
-    jsonb_build_array(jsonb_build_object(
+-- Event with pending registration answers created during checkout
+select fx_event(:'activeEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', :'registrationQuestionID',
         'kind', 'free-text',
         'options', jsonb_build_array(),
         'prompt', 'Note',
         'required', true
     )),
-    null
-), (
-    false,
-    :'startedEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Started Event',
-    'started-event',
-    'Test event',
-    'UTC',
-    null,
-    now() - interval '1 hour',
-    true,
-    now(),
-    '[]'::jsonb,
-    null
-), (
-    false,
-    :'openUntilStartEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Open Until Start Event',
-    'open-until-start-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 hour',
-    now() - interval '1 hour',
-    true,
-    now(),
-    '[]'::jsonb,
-    now() - interval '2 hours'
-), (
-    true,
-    :'canceledEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Canceled Event',
-    'canceled-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    false,
-    null,
-    '[]'::jsonb,
-    null
-);
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'startedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() - interval '1 hour'
+));
+select fx_event(:'openUntilStartEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 hour',
+    'published', true,
+    'published_at', now(),
+    'registration_starts_at', now() - interval '2 hours',
+    'starts_at', now() - interval '1 hour'
+));
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'starts_at', now() + interval '1 day'
+));
 
 -- Payment-race event whose only seat remains reserved during refund handoff
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Late payment capacity race',
-    :'eventCategoryID',
-    :'raceEventID',
-    'in-person',
-    :'groupID',
-    'Late Payment Capacity Race',
-    'USD',
-    true,
-    'late-payment-capacity-race',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'raceEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Ticket types
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values
-    (:'activeTicketTypeID', :'activeEventID', 1, 10, 'General admission'),
-    (:'canceledTicketTypeID', :'canceledEventID', 1, 10, 'General admission'),
-    (:'openUntilStartTicketTypeID', :'openUntilStartEventID', 1, 10, 'General admission'),
-    (:'raceTicketTypeID', :'raceEventID', 1, 1, 'Race admission'),
-    (:'startedTicketTypeID', :'startedEventID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'activeTicketTypeID', :'activeEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'canceledTicketTypeID', :'canceledEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'openUntilStartTicketTypeID', :'openUntilStartEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'raceTicketTypeID', :'raceEventID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'Race admission'
+));
+select fx_event_ticket_type(:'startedTicketTypeID', :'startedEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Ticket price windows
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'activePriceWindowID', 2500, :'activeTicketTypeID'),
-    (:'canceledPriceWindowID', 2500, :'canceledTicketTypeID'),
-    (:'racePriceWindowID', 2500, :'raceTicketTypeID');
+select fx_event_ticket_price_window(:'activePriceWindowID', :'activeTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'canceledPriceWindowID', :'canceledTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'racePriceWindowID', :'raceTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Discount code used by the expired purchase
 insert into event_discount_code (
@@ -1350,10 +1233,16 @@ select lives_ok(
 select lives_ok(
     $$
         with claim as (
-            select claim_event_purchase_application_fee_adjustment('stripe') as payload
+            select claim_payment_job(
+                'event-purchase-application-fee-adjustment',
+                'stripe'
+            ) as payload
         )
         select record_event_purchase_application_fee_adjustment_succeeded(
-            (payload->>'event_purchase_application_fee_adjustment_id')::uuid,
+            (
+                payload->'application_fee_adjustment'
+                    ->>'event_purchase_application_fee_adjustment_id'
+            )::uuid,
             (payload->>'claim_id')::uuid,
             'fr_expired'
         )
@@ -1646,12 +1535,14 @@ select results_eq(
             count(*)::int,
             bool_and(epr.amount_minor = ep.amount_minor),
             bool_and(epr.currency_code = ep.currency_code),
-            bool_and(epr.idempotency_key = 'event-purchase-refund-' || ep.event_purchase_id),
             bool_and(epr.kind = 'automatic-unfulfillable-checkout'),
             bool_and(epr.payment_provider_id = 'stripe'),
-            bool_and(epr.status = 'provider-pending')
+            bool_and(epr.status = 'provider-pending'),
+            bool_and(pj.idempotency_key = 'event-purchase-refund-' || ep.event_purchase_id),
+            bool_and(pj.status = 'pending')
         from event_purchase ep
         join event_purchase_refund epr using (event_purchase_id)
+        join payment_job pj on pj.payment_job_id = epr.payment_job_id
         where ep.event_purchase_id in (
             %L::uuid,
             %L::uuid,
@@ -1666,7 +1557,7 @@ select results_eq(
         :'purchaseRecoveryReplacementID',
         :'purchaseStartedID'
     ),
-    $$ values (5, true, true, true, true, true, true) $$,
+    $$ values (5, true, true, true, true, true, true, true) $$,
     'Should persist every automatic refund handoff for worker processing'
 );
 

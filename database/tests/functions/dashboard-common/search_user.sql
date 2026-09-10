@@ -25,141 +25,56 @@ select plan(12);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name,
-    photo_url,
-    registration_status
-)
-values
-    (
-        :'user1ID',
-        'hash1',
-        'john.doe@example.com',
-        true,
-        'johndoe',
-        'John Doe',
-        'https://example.com/john.jpg',
-        'registered'
-    ),
-    (
-        :'user2ID',
-        'hash2',
-        'jane.doe@example.com',
-        true,
-        'janedoe',
-        'Jane Doe',
-        'https://example.com/jane.jpg',
-        'registered'
-    ),
-    (
-        :'user3ID',
-        'hash3',
-        'john.smith@example.com',
-        true,
-        'johnsmith',
-        'John Smith',
-        null,
-        'registered'
-    ),
-    (
-        :'user4ID',
-        'hash4',
-        'alice@example.com',
-        true,
-        'alice',
-        'Alice Johnson',
-        'https://example.com/alice.jpg',
-        'registered'
-    ),
-    (
-        :'user5ID',
-        'hash5',
-        'bob@example.com',
-        true,
-        'bob',
-        null,
-        null,
-        'registered'
-    ),
-    (
-        :'user6ID',
-        'hash6',
-        'charlie@example.com',
-        true,
-        'charlie',
-        'Charlie Brown',
-        'https://example.com/charlie.jpg',
-        'registered'
-    ),
-    -- Users for testing special characters
-    (
-        :'user7ID',
-        'hash14',
-        'usertest@example.com',
-        true,
-        'user%test',
-        'User Percent Test',
-        null,
-        'registered'
-    ),
-    (
-        :'user8ID',
-        'hash15',
-        'userspecial@example.com',
-        true,
-        'user_special',
-        'User Underscore',
-        null,
-        'registered'
-    ),
-    (
-        :'user9ID',
-        'hash18',
-        'backslash@example.com',
-        true,
-        'back\slash',
-        'Back Slash',
-        null,
-        'registered'
-    ),
-    -- Pre-registered users should not appear in regular dashboard search
-    (
-        :'userPreRegisteredID',
-        'hash17',
-        'invited@example.com',
-        true,
-        'invited-user',
-        'Invited User',
-        null,
-        'pre-registered'
-    ),
-    -- User with unverified email (should not appear in results)
-    (
-        :'userUnverifiedID',
-        'hash16',
-        'unverified@example.com',
-        false,
-        'unverified',
-        'Unverified User',
-        null,
-        'registered'
-    );
+-- Baseline users
+select fx_user(:'user5ID');
+select fx_user(:'user6ID');
 
--- User (for testing max results limit)
-insert into "user" (username, email, email_verified, auth_hash, name)
-values
-    ('test1', 'test1@example.com', true, 'hash8', 'Test User 1'),
-    ('test2', 'test2@example.com', true, 'hash9', 'Test User 2'),
-    ('test3', 'test3@example.com', true, 'hash10', 'Test User 3'),
-    ('test4', 'test4@example.com', true, 'hash11', 'Test User 4'),
-    ('test5', 'test5@example.com', true, 'hash12', 'Test User 5'),
-    ('test6', 'test6@example.com', true, 'hash13', 'Test User 6');
+-- Users for testing max results limit
+select fx_user(gen_random_uuid(), jsonb_build_object('username', 'test1'));
+select fx_user(gen_random_uuid(), jsonb_build_object('username', 'test2'));
+select fx_user(gen_random_uuid(), jsonb_build_object('username', 'test3'));
+select fx_user(gen_random_uuid(), jsonb_build_object('username', 'test4'));
+select fx_user(gen_random_uuid(), jsonb_build_object('username', 'test5'));
+select fx_user(gen_random_uuid(), jsonb_build_object('username', 'test6'));
+
+-- Users used by search scenarios
+select fx_user(:'user1ID', jsonb_build_object(
+    'name', 'John Doe',
+    'photo_url', 'https://example.com/john.jpg',
+    'username', 'johndoe'
+));
+select fx_user(:'user2ID', jsonb_build_object(
+    'name', 'Jane Doe',
+    'photo_url', 'https://example.com/jane.jpg',
+    'username', 'janedoe'
+));
+select fx_user(:'user3ID', jsonb_build_object(
+    'name', 'John Smith',
+    'username', 'johnsmith'
+));
+select fx_user(:'user4ID', jsonb_build_object(
+    'email', 'alice@example.com',
+    'name', 'Alice Johnson',
+    'photo_url', 'https://example.com/alice.jpg',
+    'username', 'alice-search-user'
+));
+select fx_user(:'user7ID', jsonb_build_object(
+    'name', 'User Percent Test',
+    'username', 'user%test'
+));
+select fx_user(:'user8ID', jsonb_build_object(
+    'name', 'User Underscore',
+    'username', 'user_special'
+));
+select fx_user(:'user9ID', jsonb_build_object(
+    'name', 'Back Slash',
+    'username', 'back\slash'
+));
+select fx_user(:'userPreRegisteredID', jsonb_build_object('registration_status', 'pre-registered'));
+select fx_user(:'userUnverifiedID', jsonb_build_object(
+    'email_verified', false,
+    'username', 'unverified'
+));
 
 -- ============================================================================
 -- TESTS
@@ -205,7 +120,7 @@ select is(
     jsonb_build_array(
         jsonb_build_object(
             'user_id', :'user4ID',
-            'username', 'alice',
+            'username', 'alice-search-user',
             'name', 'Alice Johnson',
             'photo_url', 'https://example.com/alice.jpg'
         )

@@ -5,15 +5,15 @@ returns json as $$
         -- Parse filters for pagination
         filters as (
             select
-                (p_filters->>'limit')::int as limit_value,
-                (p_filters->>'offset')::int as offset_value,
+                f.limit_value,
+                f.offset_value,
                 case
-                    when lower(p_filters->>'sort') in (
+                    when f.sort in (
                         'created-at-asc',
                         'created-at-desc',
                         'name-asc',
                         'name-desc'
-                    ) then lower(p_filters->>'sort')
+                    ) then f.sort
                     else 'created-at-desc'
                 end as sort_value,
                 case
@@ -26,33 +26,18 @@ returns json as $$
                         then lower(p_filters->>'title')
                     else null
                 end as title_value,
-                nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value
-        ),
-        -- Prepare text search with prefix matching
-        search_filter as (
-            select
-                ts_rewrite(
-                    websearch_to_tsquery('simple', ts_query_value),
-                    format('
-                        select
-                            to_tsquery(''simple'', lexeme),
-                            to_tsquery(''simple'', lexeme || '':*'')
-                        from unnest(tsvector_to_array(to_tsvector(''simple'', %L))) as lexeme
-                        ', ts_query_value
-                    )
-                ) as ts_query
-            from filters
-            where ts_query_value is not null
+                f.tsquery
+            from parse_search_filters(p_filters) f
         ),
         -- Select invitation requests with internal search data
         base_invitation_requests as (
             select
                 ao.admission_offer_id,
                 ao.status as admission_offer_status,
-                extract(epoch from eir.created_at)::bigint as created_at,
+                epoch_seconds(eir.created_at) as created_at,
                 eir.created_at as created_at_sort,
                 eir.status as invitation_request_status,
-                extract(epoch from ao.expires_at)::bigint as offer_expires_at,
+                epoch_seconds(ao.expires_at) as offer_expires_at,
                 ao.event_ticket_type_id as offered_event_ticket_type_id,
                 offered_ett.title as offered_ticket_title,
                 eir.registration_answers,
@@ -70,7 +55,7 @@ returns json as $$
                 u.name,
                 u.photo_url,
                 get_public_user_provider(u.provider) as provider,
-                extract(epoch from eir.reviewed_at)::bigint as reviewed_at,
+                epoch_seconds(eir.reviewed_at) as reviewed_at,
                 u.twitter_url,
                 u.tsdoc,
                 u.title,
@@ -100,24 +85,21 @@ returns json as $$
         ),
         -- Apply table filters while retaining internal search data
         filtered_invitation_requests as (
-            select *
+            select base_invitation_requests.*
             from base_invitation_requests
+            cross join filters f
             where (
-                not exists (select 1 from search_filter)
-                or exists (
-                    select 1
-                    from search_filter
-                    where search_filter.ts_query @@ base_invitation_requests.tsdoc
-                )
+                f.tsquery is null
+                or f.tsquery @@ base_invitation_requests.tsdoc
             )
             and (
-                (select status_value from filters) is null
-                or invitation_request_status = (select status_value from filters)
+                f.status_value is null
+                or invitation_request_status = f.status_value
             )
             and (
-                (select title_value from filters) is null
-                or ((select title_value from filters) = 'present' and title is not null)
-                or ((select title_value from filters) = 'missing' and title is null)
+                f.title_value is null
+                or (f.title_value = 'present' and title is not null)
+                or (f.title_value = 'missing' and title is null)
             )
         ),
         -- Apply pagination and project public invitation request fields

@@ -14,7 +14,7 @@ begin
       and ec.event_category_id = p_event_category_id;
 
     if not found then
-        raise exception 'event category not found';
+        raise exception 'event category not found' using errcode = 'OCG01';
     end if;
 
     -- Update the category record
@@ -33,8 +33,8 @@ begin
     );
 exception
     when unique_violation then
-        raise exception 'event category already exists';
+        raise exception 'event category already exists' using errcode = 'OCG01';
     when check_violation then
-        raise exception 'event category name is invalid';
+        raise exception 'event category name is invalid' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

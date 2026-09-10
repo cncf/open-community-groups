@@ -19,7 +19,7 @@ begin
 
     -- Reject proposals outside the user's ownership
     if not found then
-        raise exception 'session proposal not found';
+        raise exception 'session proposal not found' using errcode = 'OCG01';
     end if;
 
     -- Parse incoming co-speaker
@@ -33,7 +33,7 @@ begin
 
     -- Protect proposals already represented by an event session
     if found then
-        raise exception 'session proposal linked to a session';
+        raise exception 'session proposal linked to a session' using errcode = 'OCG01';
     end if;
 
     -- Ensure proposals with submissions keep the same co-speaker
@@ -45,7 +45,7 @@ begin
 
         -- Preserve speakers after the first event submission
         if found then
-            raise exception 'session proposal with submissions cannot change co-speaker';
+            raise exception 'session proposal with submissions cannot change co-speaker' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -74,7 +74,7 @@ begin
 
     -- Reject proposals removed after ownership validation
     if not found then
-        raise exception 'session proposal not found';
+        raise exception 'session proposal not found' using errcode = 'OCG01';
     end if;
 
     -- Track the session proposal update

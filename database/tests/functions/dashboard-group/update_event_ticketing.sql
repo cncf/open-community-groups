@@ -56,686 +56,233 @@ select plan(32);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Community for registration-question update tests
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'questionsCommunityID',
-    'update-questions-community',
-    'Update Questions Community',
-    'Desc',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Users
-insert into "user" (user_id, auth_hash, email, username, name) values
-    (:'user1ID', 'hash1', 'host1@example.com', 'host1', 'Host One'),
-    (:'user2ID', 'hash2', 'host2@example.com', 'host2', 'Host Two'),
-    (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One'),
-    (:'user4ID', 'hash4', 'waitlist1@example.com', 'waitlist1', 'Waitlist One'),
-    (:'user5ID', 'hash5', 'waitlist2@example.com', 'waitlist2', 'Waitlist Two'),
-    (:'questionsOrganizerUserID', 'rq-hash-1', 'rq-organizer@example.com', 'rq-organizer', null),
-    (:'questionsAttendeeUserID', 'rq-hash-2', 'rq-attendee@example.com', 'rq-attendee', null),
-    (:'questionsHoldUserID', 'rq-hash-3', 'rq-hold@example.com', 'rq-hold', null);
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values
-    (:'category1ID', 'Conference', :'community1ID'),
-    (:'questionsEventCategoryID', 'General', :'questionsCommunityID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values ('3a3c0000-0000-0000-0000-000000000030', 'Technology', :'community1ID');
-
--- Group category for registration-question update tests
-insert into group_category (group_category_id, name, community_id)
-values (:'questionsCategoryID', 'Technology', :'questionsCommunityID');
+-- Baseline communities, group categories, event categories and users
+select fx_community(:'community1ID');
+select fx_community(:'questionsCommunityID');
+select fx_group_category('3a3c0000-0000-0000-0000-000000000030', :'community1ID');
+select fx_group_category(:'questionsCategoryID', :'questionsCommunityID');
+select fx_event_category(:'category1ID', :'community1ID');
+select fx_event_category(:'questionsEventCategoryID', :'questionsCommunityID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
+select fx_user(:'user4ID');
+select fx_user(:'user5ID');
+select fx_user(:'questionsOrganizerUserID');
+select fx_user(:'questionsAttendeeUserID');
+select fx_user(:'questionsHoldUserID');
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id,
-    payment_recipient
-) values (
-    :'group1ID',
-    :'community1ID',
-    'Test Group',
-    'abc1234',
-    'A test group',
-    '3a3c0000-0000-0000-0000-000000000030',
-    '{"provider": "stripe", "recipient_id": "acct_update_ticketing", "seller_display_name": "Update Ticketing Fiscal Sponsor"}'::jsonb
-);
+select fx_group(:'group1ID', :'community1ID', '3a3c0000-0000-0000-0000-000000000030', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_update_ticketing", "seller_display_name": "Update Ticketing Fiscal Sponsor"}'::jsonb));
 
 -- Group for registration-question update tests
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    payment_recipient
-) values (
-    :'questionsGroupID',
-    :'questionsCommunityID',
-    :'questionsCategoryID',
-    'Update Questions Group',
-    'update-questions-group',
-    '{"provider": "stripe", "recipient_id": "acct_update_questions", "seller_display_name": "Questions Fiscal Sponsor"}'::jsonb
-);
+select fx_group(:'questionsGroupID', :'questionsCommunityID', :'questionsCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_update_questions", "seller_display_name": "Questions Fiscal Sponsor"}'::jsonb));
 
 -- Events used to update and lock registration questions
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published,
-    starts_at,
-    registration_questions,
-    payment_currency_code
-) values (
-    :'eventQuestionsID',
-    :'questionsGroupID',
-    'Draft Questions Event',
-    'draft-questions-event',
-    'Desc',
-    'UTC',
-    :'questionsEventCategoryID',
-    'in-person',
-    false,
-    '2030-01-01 10:00:00+00',
-    '[]'::jsonb,
-    null
-), (
-    :'eventQuestionsPublishedID',
-    :'questionsGroupID',
-    'Published Questions Event',
-    'published-questions-event',
-    'Desc',
-    'UTC',
-    :'questionsEventCategoryID',
-    'in-person',
-    true,
-    '2030-01-01 10:00:00+00',
-    jsonb_build_array(jsonb_build_object(
+select fx_event(:'eventQuestionsID', :'questionsGroupID', :'questionsEventCategoryID', jsonb_build_object(
+    'description', 'Desc',
+    'name', 'Draft Questions Event',
+    'starts_at', '2030-01-01 10:00:00+00'
+));
+select fx_event(:'eventQuestionsPublishedID', :'questionsGroupID', :'questionsEventCategoryID', jsonb_build_object(
+    'description', 'Desc',
+    'name', 'Published Questions Event',
+    'published', true,
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', '3a3c0000-0000-0000-0000-000000000031',
         'kind', 'free-text',
         'options', '[]'::jsonb,
         'prompt', 'Original',
         'required', true
     )),
-    null
-), (
-    :'eventQuestionsAnsweredID',
-    :'questionsGroupID',
-    'Answered Questions Event',
-    'answered-questions-event',
-    'Desc',
-    'UTC',
-    :'questionsEventCategoryID',
-    'in-person',
-    false,
-    '2030-01-01 10:00:00+00',
-    jsonb_build_array(jsonb_build_object(
+    'starts_at', '2030-01-01 10:00:00+00'
+));
+select fx_event(:'eventQuestionsAnsweredID', :'questionsGroupID', :'questionsEventCategoryID', jsonb_build_object(
+    'description', 'Desc',
+    'name', 'Answered Questions Event',
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', '3a3c0000-0000-0000-0000-000000000031',
         'kind', 'free-text',
         'options', '[]'::jsonb,
         'prompt', 'Original',
         'required', true
     )),
-    null
-), (
-    :'eventQuestionsHoldID',
-    :'questionsGroupID',
-    'Held Questions Event',
-    'held-questions-event',
-    'Desc',
-    'UTC',
-    :'questionsEventCategoryID',
-    'in-person',
-    true,
-    '2030-01-01 10:00:00+00',
-    jsonb_build_array(jsonb_build_object(
+    'starts_at', '2030-01-01 10:00:00+00'
+));
+select fx_event(:'eventQuestionsHoldID', :'questionsGroupID', :'questionsEventCategoryID', jsonb_build_object(
+    'description', 'Desc',
+    'name', 'Held Questions Event',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', '3a3c0000-0000-0000-0000-000000000031',
         'kind', 'free-text',
         'options', '[]'::jsonb,
         'prompt', 'Original',
         'required', true
     )),
-    'USD'
-);
+    'starts_at', '2030-01-01 10:00:00+00'
+));
 
 -- Published event for waitlist promotion checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at,
-    waitlist_enabled
-) values (
-    :'event13ID',
-    :'group1ID',
-    'Published Waitlist Event',
-    'published-waitlist',
-    'Published event for waitlist promotion checks',
-    'UTC',
-    :'category1ID',
-    'in-person',
-    1,
-    true,
-    '2030-02-01 10:00:00+00',
-    true
-);
+select fx_event(:'event13ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'starts_at', '2030-02-01 10:00:00+00',
+    'waitlist_enabled', true
+));
 
 -- Published event used for attendee floor validation checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at
-) values (
-    :'event14ID',
-    :'group1ID',
-    'Capacity Validation Event',
-    'capacity-validation',
-    'Published event for attendee floor validation checks',
-    'America/New_York',
-    :'category1ID',
-    'in-person',
-    3,
-    true,
-    '2030-02-10 10:00:00-05'
-);
+select fx_event(:'event14ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 3,
+    'published', true,
+    'starts_at', '2030-02-10 10:00:00-05',
+    'timezone', 'America/New_York'
+));
 
 -- Published event used for waitlist promotion on capacity increase
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at,
-    ends_at,
-    waitlist_enabled
-) values (
-    :'event15ID',
-    :'group1ID',
-    'Waitlist Promotion Event',
-    'waitlist-promotion',
-    'Published event for waitlist capacity increase promotion checks',
-    'America/New_York',
-    :'category1ID',
-    'in-person',
-    3,
-    true,
-    '2030-03-01 10:00:00-05',
-    '2030-03-01 12:00:00-05',
-    true
-);
+select fx_event(:'event15ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 3,
+    'ends_at', '2030-03-01 12:00:00-05',
+    'published', true,
+    'starts_at', '2030-03-01 10:00:00-05',
+    'timezone', 'America/New_York',
+    'waitlist_enabled', true
+));
 
 -- Published event used when waitlist is disabled for new joins
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at,
-    waitlist_enabled
-) values (
-    :'event16ID',
-    :'group1ID',
-    'Waitlist Disabled Event',
-    'waitlist-disabled',
-    'Published event for disabled waitlist promotion checks',
-    'UTC',
-    :'category1ID',
-    'in-person',
-    2,
-    true,
-    '2030-02-16 10:00:00+00',
-    true
-);
+select fx_event(:'event16ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 2,
+    'published', true,
+    'starts_at', '2030-02-16 10:00:00+00',
+    'waitlist_enabled', true
+));
 
 -- Published event already over capacity because of a confirmed manual invitation
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at
-) values (
-    :'eventOverCapacityID',
-    :'group1ID',
-    'Manual Invite Over Capacity Event',
-    'manual-invite-over-capacity',
-    'Published event for unchanged over-capacity save checks',
-    'UTC',
-    :'category1ID',
-    'in-person',
-    2,
-    true,
-    '2030-02-12 10:00:00+00'
-);
+select fx_event(:'eventOverCapacityID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 2,
+    'published', true,
+    'starts_at', '2030-02-12 10:00:00+00'
+));
 
 -- Published event used when capacity becomes unlimited
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at,
-    waitlist_enabled
-) values (
-    :'event17ID',
-    :'group1ID',
-    'Unlimited Event',
-    'unlimited-event',
-    'Published event for unlimited capacity promotion checks',
-    'UTC',
-    :'category1ID',
-    'in-person',
-    1,
-    true,
-    '2030-02-17 10:00:00+00',
-    true
-);
+select fx_event(:'event17ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'starts_at', '2030-02-17 10:00:00+00',
+    'waitlist_enabled', true
+));
 
 -- Published event used for ticketing conversion without waitlist promotion
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at,
-    ends_at,
-    waitlist_enabled
-) values (
-    :'event20ID',
-    :'group1ID',
-    'Ticketing Conversion Event',
-    'ticketing-conversion',
-    'Published event used to verify ticketing conversion does not promote waitlist users',
-    'America/New_York',
-    :'category1ID',
-    'in-person',
-    1,
-    true,
-    '2030-04-01 10:00:00-04',
-    '2030-04-01 12:00:00-04',
-    true
-);
+select fx_event(:'event20ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 1,
+    'ends_at', '2030-04-01 12:00:00-04',
+    'published', true,
+    'starts_at', '2030-04-01 10:00:00-04',
+    'timezone', 'America/New_York',
+    'waitlist_enabled', true
+));
 
 -- Event used for admission-tier payload validation checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id
-) values (
-    :'event22ID',
-    :'group1ID',
-    'Admission Payload Event',
-    'admission-payload',
-    'Event used for admission-tier payload validation checks',
-    'UTC',
-    :'category1ID',
-    'virtual'
-);
+select fx_event(:'event22ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Event used for admission-tier payload validation checks',
+    'event_kind_id', 'virtual',
+    'name', 'Admission Payload Event'
+));
 
 -- Published event used for ticketing conversion waitlist checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at,
-    ends_at,
-    waitlist_enabled
-) values (
-    :'event23ID',
-    :'group1ID',
-    'Ticketing Waitlist Event',
-    'ticketing-waitlist',
-    'Published event used for ticketing conversion waitlist checks',
-    'UTC',
-    :'category1ID',
-    'in-person',
-    1,
-    true,
-    '2030-05-01 10:00:00+00',
-    '2030-05-01 12:00:00+00',
-    true
-);
+select fx_event(:'event23ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 1,
+    'description', 'Published event used for ticketing conversion waitlist checks',
+    'ends_at', '2030-05-01 12:00:00+00',
+    'name', 'Ticketing Waitlist Event',
+    'published', true,
+    'starts_at', '2030-05-01 10:00:00+00',
+    'waitlist_enabled', true
+));
 
 -- Approval-required event used for invitation request transition checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    attendee_approval_required
-) values (
-    :'event24ID',
-    :'group1ID',
-    'Approval Request Event',
-    'approval-request',
-    'Approval-required event used for invitation request checks',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    true
-);
+select fx_event(:'event24ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'description', 'Approval-required event used for invitation request checks',
+    'event_kind_id', 'virtual',
+    'name', 'Approval Request Event'
+));
 
 -- Paid event used for ticketing preservation checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    payment_currency_code,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_country_name,
-    venue_name,
-    venue_state_code,
-    venue_state_name,
-    venue_zip_code
-) values (
-    :'event19ID',
-    :'group1ID',
-    'Paid Event',
-    'paid-event',
-    'Event seeded for ticketing preservation tests',
-    'UTC',
-    :'category1ID',
-    'in-person',
-    10,
-    'USD',
-    '123 Main St',
-    'San Francisco',
-    'US',
-    'United States',
-    'Community Hall',
-    'CA',
-    'California',
-    '94105'
-);
+select fx_event(:'event19ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 10,
+    'description', 'Event seeded for ticketing preservation tests',
+    'name', 'Paid Event',
+    'payment_currency_code', 'USD',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Community Hall',
+    'venue_state_code', 'CA',
+    'venue_state_name', 'California',
+    'venue_zip_code', '94105'
+));
 
 -- Paid event used for purchased ticketing guard checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    payment_currency_code
-) values (
-    :'event21ID',
-    :'group1ID',
-    'Protected Paid Event',
-    'protected-paid-event',
-    'Paid event used for purchased ticketing guard checks',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    10,
-    'USD'
-);
+select fx_event(:'event21ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 10,
+    'description', 'Paid event used for purchased ticketing guard checks',
+    'event_kind_id', 'virtual',
+    'name', 'Protected Paid Event',
+    'payment_currency_code', 'USD'
+));
 
 -- Separate event used only for ticketing ownership checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    payment_currency_code
-) values (
-    '3a3c0000-0000-0000-0000-000000000032'::uuid,
-    :'group1ID',
-    'Other Paid Event',
-    'other-paid-event',
-    'Event seeded for ticketing ownership tests',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    'USD'
-);
+select fx_event('3a3c0000-0000-0000-0000-000000000032'::uuid, :'group1ID', :'category1ID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
 
 -- Paid in-person event used for event-kind transition checks
-insert into event (
-    capacity,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_country_name,
-    venue_name,
-    venue_state_code,
-    venue_state_name,
-    venue_zip_code
-) values (
-    10,
-    'Paid event used for event-kind transition checks',
-    :'category1ID',
-    :'eventPaidTransitionID',
-    'in-person',
-    :'group1ID',
-    'Paid Transition Event',
-    'USD',
-    'paid-transition-event',
-    'UTC',
-    '123 Main St',
-    'San Francisco',
-    'US',
-    'United States',
-    'Community Hall',
-    'CA',
-    'California',
-    '94105'
-);
+select fx_event(:'eventPaidTransitionID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 10,
+    'payment_currency_code', 'USD',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Community Hall',
+    'venue_state_code', 'CA',
+    'venue_state_name', 'California',
+    'venue_zip_code', '94105'
+));
 
 -- Published ticketed event used to verify tier capacity reconciliation
-insert into event (
-    capacity,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    1,
-    'Published event for ticket queue capacity checks',
-    :'category1ID',
-    :'eventTicketQueueID',
-    'virtual',
-    :'group1ID',
-    'Ticket Queue Capacity Event',
-    'USD',
-    true,
-    current_timestamp,
-    'ticket-queue-capacity-event',
-    current_timestamp + interval '1 day',
-    'UTC',
-    true
-);
+select fx_event(:'eventTicketQueueID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 1,
+    'description', 'Published event for ticket queue capacity checks',
+    'event_kind_id', 'virtual',
+    'name', 'Ticket Queue Capacity Event',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '1 day',
+    'waitlist_enabled', true
+));
 
 -- Paid tier used for event-kind transition checks
-insert into event_ticket_type (
-    active,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    true,
-    :'eventPaidTransitionID',
-    :'paidTransitionTicketTypeID',
-    1,
-    10,
-    'Hybrid admission'
-);
+select fx_event_ticket_type(:'paidTransitionTicketTypeID', :'eventPaidTransitionID', jsonb_build_object(
+    'seats_total', 10
+));
 
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    2500,
-    :'paidTransitionPriceWindowID',
-    :'paidTransitionTicketTypeID'
-);
+-- Event Ticket Price Window
+select fx_event_ticket_price_window(:'paidTransitionPriceWindowID', :'paidTransitionTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Ticket type initially owned by the primary ticketed event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    active,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    '3a3c0000-0000-0000-0000-000000000033'::uuid,
-    true,
-    :'event19ID',
-    1,
-    10,
-    'General'
-);
+select fx_event_ticket_type('3a3c0000-0000-0000-0000-000000000033'::uuid, :'event19ID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General'
+));
 
 -- Price window for the primary event ticket type
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    '3a3c0000-0000-0000-0000-000000000034'::uuid,
-    2500,
-    '3a3c0000-0000-0000-0000-000000000033'::uuid
-);
+select fx_event_ticket_price_window('3a3c0000-0000-0000-0000-000000000034'::uuid, '3a3c0000-0000-0000-0000-000000000033'::uuid, jsonb_build_object('amount_minor', 2500));
 
 -- Discount code initially owned by the primary ticketed event
 insert into event_discount_code (
@@ -757,60 +304,23 @@ insert into event_discount_code (
 );
 
 -- Protected ticket type referenced by a completed purchase
-insert into event_ticket_type (
-    event_ticket_type_id,
-    active,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    '3a3c0000-0000-0000-0000-000000000036'::uuid,
-    true,
-    :'event21ID',
-    1,
-    10,
-    'Protected General'
-);
+select fx_event_ticket_type('3a3c0000-0000-0000-0000-000000000036'::uuid, :'event21ID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Protected General'
+));
 
 -- Price window for the protected general ticket type
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    '3a3c0000-0000-0000-0000-000000000037'::uuid,
-    2500,
-    '3a3c0000-0000-0000-0000-000000000036'::uuid
-);
+select fx_event_ticket_price_window('3a3c0000-0000-0000-0000-000000000037'::uuid, '3a3c0000-0000-0000-0000-000000000036'::uuid, jsonb_build_object('amount_minor', 2500));
 
 -- Second protected ticket type used by synchronization scenarios
-insert into event_ticket_type (
-    event_ticket_type_id,
-    active,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    '3a3c0000-0000-0000-0000-000000000038'::uuid,
-    true,
-    :'event21ID',
-    2,
-    5,
-    'Protected VIP'
-);
+select fx_event_ticket_type('3a3c0000-0000-0000-0000-000000000038'::uuid, :'event21ID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 5,
+    'title', 'Protected VIP'
+));
 
 -- Price window for the protected VIP ticket type
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    '3a3c0000-0000-0000-0000-000000000039'::uuid,
-    5000,
-    '3a3c0000-0000-0000-0000-000000000038'::uuid
-);
+select fx_event_ticket_price_window('3a3c0000-0000-0000-0000-000000000039'::uuid, '3a3c0000-0000-0000-0000-000000000038'::uuid, jsonb_build_object('amount_minor', 5000));
 
 -- Protected discount code referenced by a completed purchase
 insert into event_discount_code (
@@ -834,60 +344,21 @@ insert into event_discount_code (
 );
 
 -- Ticketing rows on a different event used for ownership checks
-insert into event_ticket_type (
-    event_ticket_type_id,
-    active,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    '3a3c0000-0000-0000-0000-000000000041'::uuid,
-    true,
-    '3a3c0000-0000-0000-0000-000000000032'::uuid,
-    1,
-    25,
-    'Other Event General'
-);
+select fx_event_ticket_type('3a3c0000-0000-0000-0000-000000000041'::uuid, '3a3c0000-0000-0000-0000-000000000032'::uuid, jsonb_build_object(
+    'seats_total', 25
+));
 
 -- Price window owned by the other event
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    '3a3c0000-0000-0000-0000-000000000042'::uuid,
-    3000,
-    '3a3c0000-0000-0000-0000-000000000041'::uuid
-);
+select fx_event_ticket_price_window('3a3c0000-0000-0000-0000-000000000042'::uuid, '3a3c0000-0000-0000-0000-000000000041'::uuid, jsonb_build_object('amount_minor', 3000));
 
 -- Full public tier expanded by the capacity reconciliation test
-insert into event_ticket_type (
-    active,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    true,
-    :'eventTicketQueueID',
-    :'ticketQueueTicketTypeID',
-    1,
-    1,
-    'Queue General'
-);
+select fx_event_ticket_type(:'ticketQueueTicketTypeID', :'eventTicketQueueID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'Queue General'
+));
 
 -- Current price for the capacity reconciliation tier
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    2500,
-    :'ticketQueuePriceWindowID',
-    :'ticketQueueTicketTypeID'
-);
+select fx_event_ticket_price_window(:'ticketQueuePriceWindowID', :'ticketQueueTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Discount code owned by the other event
 insert into event_discount_code (
@@ -909,32 +380,13 @@ insert into event_discount_code (
 );
 
 -- Ticket type referenced by a pending registration-answer hold
-insert into event_ticket_type (
-    event_ticket_type_id,
-    active,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'questionsHoldTicketTypeID',
-    true,
-    :'eventQuestionsHoldID',
-    1,
-    10,
-    'Held General'
-);
+select fx_event_ticket_type(:'questionsHoldTicketTypeID', :'eventQuestionsHoldID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Held General'
+));
 
 -- Price window for the held ticket type
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'questionsHoldPriceWindowID',
-    2500,
-    :'questionsHoldTicketTypeID'
-);
+select fx_event_ticket_price_window(:'questionsHoldPriceWindowID', :'questionsHoldTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Completed purchase that protects ticketing rows from removal
 insert into event_purchase (
@@ -1005,21 +457,13 @@ insert into event_purchase (
 
 -- Every event uses ticket inventory. Seed a default free tier for events that
 -- are not exercising an explicit ticket configuration in this test
-insert into event_ticket_type (
-    active,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-select
-    true,
-    e.event_id,
+select fx_event_ticket_type(
     gen_random_uuid(),
-    1,
-    greatest(coalesce(e.capacity, 100), 1),
-    'General Admission'
+    e.event_id,
+    jsonb_build_object(
+        'seats_total', greatest(coalesce(e.capacity, 100), 1)
+    )
+)
 from event e
 where not exists (
     select 1
@@ -1028,15 +472,11 @@ where not exists (
 );
 
 -- Current free prices for the default ticket tiers
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-)
-select
-    0,
+select fx_event_ticket_price_window(
     gen_random_uuid(),
-    ett.event_ticket_type_id
+    ett.event_ticket_type_id,
+    jsonb_build_object('amount_minor', 0)
+)
 from event_ticket_type ett
 where not exists (
     select 1
@@ -1378,6 +818,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'paid ticketing requires an in-person or hybrid event with a complete physical venue',
     'Should reject changing a paid hybrid event to virtual'
 );
@@ -1429,6 +870,7 @@ select throws_ok(
             null
         )
     $$,
+    'OCG01',
     'payments are not configured on this server',
     'Should reject unrelated edits after payment setup is lost'
 );
@@ -1449,6 +891,7 @@ select throws_ok(
             "ticket_types": null
         }'::jsonb
     )$$,
+    'OCG01',
     'events require at least one ticket type',
     'Should reject removing every ticket type'
 );
@@ -1483,6 +926,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket type does not belong to event',
     'Should reject ticket types whose identifiers belong to another event'
 );
@@ -1517,6 +961,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket price window does not belong to event',
     'Should reject ticket price windows whose identifiers belong to another event'
 );
@@ -1564,6 +1009,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket price window does not belong to ticket type',
     'Should reject ticket price windows whose identifiers belong to another ticket type'
 );
@@ -1592,6 +1038,7 @@ select throws_ok(
             "kind_id": "virtual"
         }'::jsonb
     )$$,
+    'OCG01',
     'discount code does not belong to event',
     'Should reject discount codes whose identifiers belong to another event'
 );
@@ -1625,6 +1072,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'paid-capable events require payment_currency_code',
     'Should reject paid-capable events when payment_currency_code is omitted'
 );
@@ -1685,6 +1133,7 @@ select throws_ok(
             "attendee_approval_required": false
         }'::jsonb
     )$$,
+    'OCG01',
     'approval-required events with pending invitation requests cannot disable approval',
     'Should reject disabling attendee approval while invitation requests are pending'
 );
@@ -1708,6 +1157,7 @@ select throws_ok(
             "waitlist_enabled": false
         }'::jsonb
     )$$,
+    'OCG01',
     'approval-required events cannot have existing waitlist entries',
     'Should reject enabling attendee approval while queued users already exist'
 );
@@ -1755,6 +1205,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket type seats_total (0) cannot be less than current allocated seats (1)',
     'Should reject seat totals below the current purchased inventory for a ticket type'
 );
@@ -1789,6 +1240,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket types with purchases cannot be removed; deactivate them instead',
     'Should reject removing ticket types that already have purchases'
 );
@@ -1818,6 +1270,7 @@ select throws_ok(
             "kind_id": "virtual"
         }'::jsonb
     )$$,
+    'OCG01',
     'discount code total_available cannot be less than existing redemptions',
     'Should reject lowering discount code availability below existing redemptions'
 );
@@ -1837,6 +1290,7 @@ select throws_ok(
             "kind_id": "virtual"
         }'::jsonb
     )$$,
+    'OCG01',
     'discount codes with redemptions cannot be removed; deactivate them instead',
     'Should reject removing discount codes that already have redemptions'
 );
@@ -1950,6 +1404,7 @@ select throws_ok(
         '3a3c0000-0000-0000-0000-000000000016'::uuid,
         '{"name": "Draft Questions Event", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "bad", "kind": "free-text", "prompt": "Invalid", "required": true, "options": []}]}'::jsonb
     )$$,
+    'OCG01',
     'questionnaire question id must be a uuid',
     'Should validate registration questions when updating an event'
 );
@@ -1984,6 +1439,7 @@ select throws_ok(
         '3a3c0000-0000-0000-0000-000000000015'::uuid,
         '{"name": "Answered Questions Event", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "3a3c0000-0000-0000-0000-000000000031", "kind": "free-text", "prompt": "Changed", "required": true, "options": []}]}'::jsonb
     )$$,
+    'OCG01',
     'registration questions cannot be changed after attendees have submitted answers',
     'Should reject registration question changes after answers exist'
 );
@@ -2007,6 +1463,7 @@ select throws_ok(
         '3a3c0000-0000-0000-0000-000000000056'::uuid,
         '{"name": "Held Questions Event Updated", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "3a3c0000-0000-0000-0000-000000000031", "kind": "free-text", "prompt": "Changed", "required": true, "options": []}]}'::jsonb
     )$$,
+    'OCG01',
     'registration questions cannot be changed while checkout holds are active',
     'Should reject registration question changes while checkout holds are active'
 );

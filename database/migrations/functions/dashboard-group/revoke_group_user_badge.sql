@@ -13,18 +13,10 @@ declare
     v_theme jsonb;
     v_user_badge user_badge%rowtype;
 begin
-    -- Authorize the actor and normalize the private audit reason
-    if not user_has_group_permission(
-        p_community_id,
-        p_group_id,
-        p_actor_user_id,
-        'group.badges.write'
-    ) then
-        raise exception 'badge permission denied' using errcode = 'insufficient_privilege';
-    end if;
+    -- Normalize the private audit reason
     v_reason := nullif(btrim(p_reason), '');
     if v_reason is null then
-        raise exception 'badge revocation reason is required';
+        raise exception 'badge revocation reason is required' using errcode = 'OCG01';
     end if;
 
     -- Resolve and lock the recipient before the award to preserve lock order
@@ -35,7 +27,7 @@ begin
     and group_id = p_group_id;
 
     if not found then
-        raise exception 'awarded badge not found';
+        raise exception 'awarded badge not found' using errcode = 'OCG01';
     end if;
     if v_recipient_user_id is not null then
         perform 1
@@ -53,7 +45,7 @@ begin
     for update;
 
     if not found then
-        raise exception 'awarded badge not found';
+        raise exception 'awarded badge not found' using errcode = 'OCG01';
     end if;
     if v_user_badge.revoked_at is not null then
         return;

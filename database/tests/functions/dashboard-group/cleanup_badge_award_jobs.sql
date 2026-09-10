@@ -23,17 +23,11 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community that owns cleanup fixtures
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Cleanup Community', '/logo', 'cleanup-community');
+-- Baseline community, categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Category used by the cleanup group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns cleanup fixtures
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Cleanup Group', 'cleanup-group');
 
 -- Terminal and active jobs spanning the retention boundary
 insert into badge_award_job (

@@ -127,6 +127,8 @@ pub struct Attendee {
     /// Latest organizer offer expiration time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub offer_expires_at: Option<DateTime<Utc>>,
+    /// Durable refund payment job identifier.
+    pub refund_payment_job_id: Option<Uuid>,
     /// Durable refund progress for this attendee's purchase.
     pub refund_progress: Option<EventRefundProgress>,
     /// Refund request status for the attendee purchase.

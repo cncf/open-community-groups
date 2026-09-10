@@ -19,63 +19,14 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'community-one',
-    'Community One',
-    'First community with pending invitations',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-), (
-    :'community2ID',
-    'community-two',
-    'Community Two',
-    'Second community with pending invitations',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline users
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'user1ID',
-    gen_random_bytes(32),
-    'u1@example.com',
-    true,
-    'u1',
-    'User One'
-), (
-    :'user2ID',
-    gen_random_bytes(32),
-    'u2@example.com',
-    true,
-    'u2',
-    'User Two'
-), (
-    :'user3ID',
-    gen_random_bytes(32),
-    'u3@example.com',
-    true,
-    'u3',
-    'User Three'
-);
+-- Communities named in invitation payloads
+select fx_community(:'community1ID', jsonb_build_object('name', 'community-one'));
+select fx_community(:'community2ID', jsonb_build_object('name', 'community-two'));
 
 -- Invitations
 insert into community_team (

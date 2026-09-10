@@ -22,18 +22,11 @@ returns jsonb as $$
         left join event_purchase_credit_note epcn
             on epcn.event_purchase_refund_id = epr.event_purchase_refund_id
             and epcn.event_purchase_credit_note_id = p_event_purchase_credit_note_id
-            and epcn.status = 'issued'
         where ep.event_purchase_id = p_event_purchase_id
         and ep.user_id = p_user_id
         and ep.amount_minor > 0
         and ep.charge_model = 'direct-charge'
-        and ep.status in (
-            'completed',
-            'refund-pending',
-            'refund-recovery-pending',
-            'refund-requested',
-            'refunded'
-        )
+        and (event_purchase_holds_seat(ep.status) or ep.status = 'refunded')
         and (
             p_event_purchase_credit_note_id is null
             and ep.provider_invoice_id is not null

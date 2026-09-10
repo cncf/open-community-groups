@@ -12,7 +12,7 @@ begin
       and ct.accepted = false;
 
     if not found then
-        raise exception 'no pending community invitation found';
+        raise exception 'no pending community invitation found' using errcode = 'OCG01';
     end if;
 
     -- Track the rejected invitation

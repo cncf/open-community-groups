@@ -27,7 +27,7 @@ begin
 
     -- Reject missing or inactive owning groups
     if not found then
-        raise exception 'group not found or inactive';
+        raise exception 'group not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Lock every non-deleted target in canonical order
@@ -43,7 +43,7 @@ begin
 
     -- Reject stale or cross-group scopes after locking available targets
     if v_locked_event_count <> cardinality(v_event_ids) then
-        raise exception 'one or more events were not found or inactive';
+        raise exception 'one or more events were not found or inactive' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

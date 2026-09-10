@@ -30,219 +30,100 @@ select plan(4);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
+select fx_community(:'community1ID', jsonb_build_object(
+    'display_name', 'Test Community',
+    'logo_url', 'https://example.com/logo.png',
+    'name', 'test-community-list-group-events'
+));
 
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Conference', :'community1ID');
+-- Baseline event categories
+select fx_event_category(:'eventCategoryID', :'community1ID');
 
 -- User
-insert into "user" (user_id, email, username, auth_hash, name)
-values (:'user1ID', 'creator@example.com', 'creator', 'hash', 'Creator User');
+select fx_user(:'user1ID', jsonb_build_object(
+    'name', 'Creator User',
+    'username', 'creator-list-group-events'
+));
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategory1ID', 'Technology', :'community1ID');
+select fx_group_category(:'groupCategory1ID', :'community1ID', jsonb_build_object('name', 'Technology'));
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id,
-    city,
-    state,
-    country_code,
-    country_name
-) values 
-    (
-        :'group1ID',
-        :'community1ID',
-        'Test Group',
-        'test-group',
-        'A test group',
-        :'groupCategory1ID',
-        'San Francisco',
-        'CA',
-        'US',
-        'United States'
-    ),
-    (
-        :'group2ID',
-        :'community1ID',
-        'Another Group',
-        'another-group',
-        'Another test group',
-        :'groupCategory1ID',
-        'New York',
-        'NY',
-        'US',
-        'United States'
-    ),
-    (
-        :'group3ID',
-        :'community1ID',
-        'Ongoing Group',
-        'ongoing-group',
-        'Group with an ongoing event',
-        :'groupCategory1ID',
-        'Madrid',
-        null,
-        'ES',
-        'Spain'
-    );
+select fx_group(:'group1ID', :'community1ID', :'groupCategory1ID', jsonb_build_object(
+    'city', 'San Francisco',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'name', 'Test Group',
+    'slug', 'test-group',
+    'state', 'CA'
+));
+select fx_group(:'group2ID', :'community1ID', :'groupCategory1ID', jsonb_build_object(
+    'city', 'New York',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'name', 'Another Group',
+    'slug', 'another-group',
+    'state', 'NY'
+));
+select fx_group(:'group3ID', :'community1ID', :'groupCategory1ID', jsonb_build_object(
+    'city', 'Madrid',
+    'country_code', 'ES',
+    'country_name', 'Spain'
+));
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    event_category_id,
-    event_kind_id,
-    timezone,
-    starts_at,
-    created_at,
-    logo_url,
-    venue_city,
-
-    created_by
-) values 
-    (
-        :'event1ID',
-        :'group1ID',
-        'Future Event',
-        'future-event',
-        'An event in the future',
-        :'eventCategoryID',
-        'in-person',
-        'America/New_York',
-        '2099-12-01 10:00:00+00',
-        '2024-01-01 00:00:00',
-        'https://example.com/future-logo.png',
-        'San Francisco',
-
-        :'user1ID'
-    ),
-    (
-        :'event2ID',
-        :'group1ID',
-        'Past Event',
-        'past-event',
-        'An event in the past',
-        :'eventCategoryID',
-        'virtual',
-        'America/Los_Angeles',
-        '2000-01-15 14:00:00+00',
-        '2024-01-02 00:00:00',
-        null,
-        null,
-
-        null
-    ),
-    (
-        :'event3ID',
-        :'group1ID',
-        'Event Without Date',
-        'event-without-date',
-        'An event without a start date',
-        :'eventCategoryID',
-        'hybrid',
-        'Europe/London',
-        null,
-        '2024-01-03 00:00:00',
-        'https://example.com/no-date-logo.png',
-        'London',
-
-        null
-    ),
-    (
-        :'event4ID',
-        :'group2ID',
-        'Other Group Event',
-        'other-group-event',
-        'Event in different group',
-        :'eventCategoryID',
-        'in-person',
-        'America/Chicago',
-        '2099-06-01 09:00:00+00',
-        '2024-01-04 00:00:00',
-        null,
-        'Chicago',
-
-        null
-    );
+select fx_event(:'event1ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+    'created_at', '2024-01-01 00:00:00',
+    'created_by', :'user1ID',
+    'logo_url', 'https://example.com/future-logo.png',
+    'name', 'Future Event',
+    'slug', 'future-event',
+    'starts_at', '2099-12-01 10:00:00+00',
+    'timezone', 'America/New_York',
+    'venue_city', 'San Francisco'
+));
+select fx_event(:'event2ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+    'created_at', '2024-01-02 00:00:00',
+    'event_kind_id', 'virtual',
+    'name', 'Past Event',
+    'slug', 'past-event',
+    'starts_at', '2000-01-15 14:00:00+00',
+    'timezone', 'America/Los_Angeles'
+));
+select fx_event(:'event3ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+    'created_at', '2024-01-03 00:00:00',
+    'event_kind_id', 'hybrid',
+    'logo_url', 'https://example.com/no-date-logo.png',
+    'name', 'Event Without Date',
+    'slug', 'event-without-date',
+    'timezone', 'Europe/London',
+    'venue_city', 'London'
+));
+select fx_event(:'event4ID', :'group2ID', :'eventCategoryID', jsonb_build_object(
+    'created_at', '2024-01-04 00:00:00',
+    'name', 'Other Group Event',
+    'slug', 'other-group-event',
+    'starts_at', '2099-06-01 09:00:00+00',
+    'timezone', 'America/Chicago',
+    'venue_city', 'Chicago'
+));
 
 -- Event (deleted)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    event_category_id,
-    event_kind_id,
-    timezone,
-    starts_at,
-    created_at,
-    deleted
-) values (
-    :'event5ID',
-    :'group1ID',
-    'Deleted Event',
-    'deleted-event',
-    'An event that has been deleted',
-    :'eventCategoryID',
-    'virtual',
-    'America/New_York',
-    '2025-03-15 10:00:00+00',
-    '2024-01-05 00:00:00',
-    true
-);
+select fx_event(:'event5ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+    'created_at', '2024-01-05 00:00:00',
+    'deleted', true,
+    'event_kind_id', 'virtual',
+    'starts_at', '2025-03-15 10:00:00+00',
+    'timezone', 'America/New_York'
+));
 
 -- Ongoing event that started in the past but has not ended
-insert into event (
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Ongoing event',
-    current_timestamp + interval '1 hour',
-    :'eventCategoryID',
-    :'event6ID',
-    'in-person',
-    :'group3ID',
-    'Ongoing Event',
-    'ongoing-event',
-    current_timestamp - interval '1 hour',
-    'Europe/Madrid'
-);
+select fx_event(:'event6ID', :'group3ID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Ongoing event',
+    'ends_at', current_timestamp + interval '1 hour',
+    'starts_at', current_timestamp - interval '1 hour',
+    'timezone', 'Europe/Madrid'
+));
 
 -- ============================================================================
 -- TESTS
@@ -292,7 +173,7 @@ select is(
                     "attendee_count": 0,
                     "canceled": false,
                     "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "community_name": "test-community-list-group-events",
                     "delete_eligibility": "allowed",
                     "event_id": "%s",
                     "group_category_name": "Technology",
@@ -322,7 +203,7 @@ select is(
                     "attendee_count": 0,
                     "canceled": false,
                     "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "community_name": "test-community-list-group-events",
                     "delete_eligibility": "allowed",
                     "event_id": "%s",
                     "group_category_name": "Technology",
@@ -345,13 +226,13 @@ select is(
                     "waitlist_enabled": false,
 
                     "created_by_display_name": "Creator User",
-                    "created_by_username": "creator"
+                    "created_by_username": "creator-list-group-events"
                 },
                 {
                     "attendee_count": 0,
                     "canceled": false,
                     "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "community_name": "test-community-list-group-events",
                     "delete_eligibility": "allowed",
                     "event_id": "%s",
                     "group_category_name": "Technology",
@@ -399,7 +280,7 @@ select is(
                     "attendee_count": 0,
                     "canceled": false,
                     "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "community_name": "test-community-list-group-events",
                     "delete_eligibility": "allowed",
                     "event_id": "%s",
                     "group_category_name": "Technology",

@@ -29,7 +29,7 @@ begin
 
     -- Raise error if membership does not exist
     if not found then
-        raise exception 'user is not a group team member';
+        raise exception 'user is not a group team member' using errcode = 'OCG01';
     end if;
 
     -- Prevent removing the last accepted group admin
@@ -42,7 +42,7 @@ begin
           and gt.role = 'admin';
 
         if v_accepted_admins = 1 then
-            raise exception 'cannot remove the last accepted group admin';
+            raise exception 'cannot remove the last accepted group admin' using errcode = 'OCG01';
         end if;
     end if;
 

@@ -16,45 +16,14 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'activeCommunityID',
-    'community-id-lookup',
-    'Community ID Lookup',
-    'Community used for name lookups',
-    'https://example.com/community-id-lookup-banner-mobile.png',
-    'https://example.com/community-id-lookup-banner.png',
-    'https://example.com/community-id-lookup-logo.png'
-);
+-- Community matched by name lookup
+select fx_community(:'activeCommunityID', jsonb_build_object('name', 'community-id-lookup'));
 
--- Second community used to verify name-specific lookup
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    active,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'inactiveCommunityID',
-    'inactive-community-id-lookup',
-    'Inactive Community ID Lookup',
-    'Inactive community used for name lookups',
-    false,
-    'https://example.com/inactive-community-id-lookup-banner-mobile.png',
-    'https://example.com/inactive-community-id-lookup-banner.png',
-    'https://example.com/inactive-community-id-lookup-logo.png'
-);
+-- Inactive community excluded from name lookup
+select fx_community(:'inactiveCommunityID', jsonb_build_object(
+    'active', false,
+    'name', 'inactive-community-id-lookup'
+));
 
 -- ============================================================================
 -- TESTS

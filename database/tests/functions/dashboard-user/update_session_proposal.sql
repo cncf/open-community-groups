@@ -11,111 +11,42 @@ select plan(8);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '4a160000-0000-0000-0000-000000000001'
-\set eventCategoryID '4a160000-0000-0000-0000-000000000002'
-\set eventID '4a160000-0000-0000-0000-000000000003'
-\set groupCategoryID '4a160000-0000-0000-0000-000000000004'
-\set groupID '4a160000-0000-0000-0000-000000000005'
-\set linkedSubmissionID '4a160000-0000-0000-0000-000000000006'
-\set proposalID '4a160000-0000-0000-0000-000000000007'
-\set proposalRustID '4a160000-0000-0000-0000-000000000008'
-\set proposalWithSubmissionID '4a160000-0000-0000-0000-000000000009'
-\set user2ID '4a160000-0000-0000-0000-000000000010'
-\set userID '4a160000-0000-0000-0000-000000000011'
+\set communityID '4a110000-0000-0000-0000-000000000001'
+\set eventCategoryID '4a110000-0000-0000-0000-000000000002'
+\set eventID '4a110000-0000-0000-0000-000000000003'
+\set groupCategoryID '4a110000-0000-0000-0000-000000000004'
+\set groupID '4a110000-0000-0000-0000-000000000005'
+\set linkedSubmissionID '4a110000-0000-0000-0000-000000000006'
+\set proposalID '4a110000-0000-0000-0000-000000000007'
+\set proposalRustID '4a110000-0000-0000-0000-000000000008'
+\set proposalWithSubmissionID '4a110000-0000-0000-0000-000000000009'
+\set user2ID '4a110000-0000-0000-0000-000000000010'
+\set userID '4a110000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'session-proposal-community',
-    'Session Proposal Community',
-    'Community for testing session proposal updates',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'user2ID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'userID',
-    gen_random_bytes(32),
-    'alice@example.com',
-    true,
-    'alice',
-    'Alice'
-), (
-    :'user2ID',
-    gen_random_bytes(32),
-    'bob@example.com',
-    true,
-    'bob',
-    'Bob'
-);
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Session Proposal Group', 'proposal-group');
+select fx_user(:'userID', jsonb_build_object('username', 'alice-update-session-proposal'));
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published,
-    cfs_description,
-    cfs_enabled,
-    cfs_starts_at,
-    cfs_ends_at,
-    starts_at,
-    ends_at
-) values (
-    :'eventID',
-    :'groupID',
-    'Event 1',
-    'event-1',
-    'Event description',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true,
-    'CFS open',
-    true,
-    current_timestamp - interval '1 day',
-    current_timestamp + interval '1 day',
-    current_timestamp + interval '7 days',
-    current_timestamp + interval '8 days'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'cfs_description', 'CFS open',
+    'cfs_enabled', true,
+    'cfs_ends_at', current_timestamp + interval '1 day',
+    'cfs_starts_at', current_timestamp - interval '1 day',
+    'ends_at', current_timestamp + interval '8 days',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days'
+));
 
 -- Session proposal
 insert into session_proposal (
@@ -261,7 +192,7 @@ select results_eq(
             select
                 'session_proposal_updated',
                 %L::uuid,
-                'alice',
+                'alice-update-session-proposal',
                 'session_proposal',
                 session_proposal_id
             from session_proposal
@@ -310,6 +241,7 @@ select throws_ok(
             'title', 'Python 102'
         )::text
     ),
+    'OCG01',
     'session proposal with submissions cannot change co-speaker',
     'Should reject changing co-speaker for proposals with submissions'
 );
@@ -328,6 +260,7 @@ select throws_ok(
             'title', 'Zig 202'
         )::text
     ),
+    'OCG01',
     'session proposal linked to a session',
     'Should reject updating proposals linked to sessions'
 );
@@ -346,6 +279,7 @@ select throws_ok(
             'title', 'Zig 202'
         )::text
     ),
+    'OCG01',
     'session proposal not found',
     'Should not leak linked sessions for other users'
 );

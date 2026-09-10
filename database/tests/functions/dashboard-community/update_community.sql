@@ -17,59 +17,28 @@ select plan(8);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url,
-    active,
-    ad_banner_link_url,
-    ad_banner_url,
-    bluesky_url,
-    community_site_layout_id,
-    extra_links,
-    facebook_url,
-    flickr_url,
-    github_url,
-    instagram_url,
-    linkedin_url,
-    new_group_details,
-    photos_urls,
-    slack_url,
-    twitter_url,
-    website_url,
-    wechat_url,
-    youtube_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://original.com/community-banner-mobile.png',
-    'https://original.com/community-banner.png',
-    'https://original.com/logo.png',
-    true,
-    'https://original.com/banner-link',
-    'https://original.com/banner.png',
-    'https://bsky.app/profile/original',
-    'default',
-    '{"docs": "https://docs.original.com"}'::jsonb,
-    'https://facebook.com/original',
-    'https://flickr.com/original',
-    'https://github.com/original',
-    'https://instagram.com/original',
-    'https://linkedin.com/original',
-    'Contact team members to create groups',
-    array['https://original.com/photo1.jpg', 'https://original.com/photo2.jpg'],
-    'https://original.slack.com',
-    'https://twitter.com/original',
-    'https://original.com',
-    'https://wechat.com/original',
-    'https://youtube.com/original'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'ad_banner_link_url', 'https://original.com/banner-link',
+    'ad_banner_url', 'https://original.com/banner.png',
+    'banner_mobile_url', 'https://original.com/community-banner-mobile.png',
+    'banner_url', 'https://original.com/community-banner.png',
+    'bluesky_url', 'https://bsky.app/profile/original',
+    'display_name', 'Cloud Native Seattle Update Community',
+    'extra_links', '{"docs": "https://docs.original.com"}'::jsonb,
+    'facebook_url', 'https://facebook.com/original',
+    'flickr_url', 'https://flickr.com/original',
+    'github_url', 'https://github.com/original',
+    'instagram_url', 'https://instagram.com/original',
+    'linkedin_url', 'https://linkedin.com/original',
+    'name', 'cloud-native-seattle-update-community',
+    'new_group_details', 'Contact team members to create groups',
+    'photos_urls', array['https://original.com/photo1.jpg', 'https://original.com/photo2.jpg'],
+    'slack_url', 'https://original.slack.com',
+    'twitter_url', 'https://twitter.com/original',
+    'website_url', 'https://original.com',
+    'wechat_url', 'https://wechat.com/original',
+    'youtube_url', 'https://youtube.com/original'
+));
 
 -- ============================================================================
 -- TESTS
@@ -103,7 +72,7 @@ select is(
         "display_name": "Cloud Native Seattle Updated",
         "group_team_management_restricted": false,
         "logo_url": "https://updated.com/logo.png",
-        "name": "cloud-native-seattle"
+        "name": "cloud-native-seattle-update-community"
     }'::jsonb,
     'Should persist required fields and clear omitted optional fields'
 );
@@ -194,7 +163,7 @@ select is(
         "instagram_url": "https://instagram.com/new",
         "linkedin_url": "https://linkedin.com/new",
         "logo_url": "https://new.com/logo.png",
-        "name": "cloud-native-seattle",
+        "name": "cloud-native-seattle-update-community",
         "new_group_details": "New groups welcome!",
         "og_image_url": "https://new.com/og-image.png",
         "photos_urls": ["https://new.com/p1.jpg", "https://new.com/p2.jpg", "https://new.com/p3.jpg"],
@@ -276,6 +245,7 @@ select throws_ok(
     )$$,
         :'unknownCommunityID'
     ),
+    'OCG01',
     'community not found',
     'Should raise an error when the community does not exist'
 );

@@ -37,111 +37,39 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-)
-values
-    (
-        :'community1ID',
-        'site-stats-community-one',
-        'Site Stats Community One',
-        'Site stats community 1',
-        'https://example.com/site-stats-banner-mobile1.png',
-        'https://example.com/site-stats-banner1.png',
-        'https://example.com/site-stats-logo1.png'
-    ),
-    (
-        :'community2ID',
-        'site-stats-community-two',
-        'Site Stats Community Two',
-        'Site stats community 2',
-        'https://example.com/site-stats-banner-mobile2.png',
-        'https://example.com/site-stats-banner2.png',
-        'https://example.com/site-stats-logo2.png'
-    );
+-- Baseline active communities, categories and users for site stats
+select fx_community(:'community1ID');
+select fx_community(:'community2ID');
+select fx_group_category(:'groupCategoryID', :'community1ID');
+select fx_group_category(:'groupCategory2ID', :'community2ID');
+select fx_event_category(:'eventCategoryID', :'community1ID');
+select fx_event_category(:'eventCategory2ID', :'community2ID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
+select fx_user(:'user4ID');
+select fx_user(:'user5ID');
 
--- Inactive community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    active,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community3ID',
-    'inactive-site-stats-community',
-    'Inactive Site Stats Community',
-    'Inactive site stats community',
-    false,
-    'https://example.com/inactive-site-stats-banner-mobile.png',
-    'https://example.com/inactive-site-stats-banner.png',
-    'https://example.com/inactive-site-stats-logo.png'
-);
+-- Inactive community with otherwise-countable rows
+select fx_community(:'community3ID', jsonb_build_object('active', false));
+select fx_group_category(:'groupCategory3ID', :'community3ID');
+select fx_event_category(:'eventCategory3ID', :'community3ID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values
-    (:'groupCategoryID', :'community1ID', 'General'),
-    (:'groupCategory2ID', :'community2ID', 'General'),
-    (:'groupCategory3ID', :'community3ID', 'General');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values
-    (:'eventCategoryID', :'community1ID', 'Meetup'),
-    (:'eventCategory2ID', :'community2ID', 'Meetup'),
-    (:'eventCategory3ID', :'community3ID', 'Meetup');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'user1ID', 'hash-1', 'site-stats-user1@example.com', true, 'site-stats-user1'),
-    (:'user2ID', 'hash-2', 'site-stats-user2@example.com', true, 'site-stats-user2'),
-    (:'user3ID', 'hash-3', 'site-stats-user3@example.com', true, 'site-stats-user3'),
-    (:'user4ID', 'hash-4', 'site-stats-user4@example.com', true, 'site-stats-user4'),
-    (:'user5ID', 'hash-5', 'site-stats-user5@example.com', true, 'site-stats-user5');
-
--- Group
--- month_5: group1 (active)
--- month_3: group2 (active)
--- month_2: group3 (deleted)
--- month_5: group4 (active, inactive community)
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    created_at,
-    active,
-    deleted
-) values
-    (:'group1ID', :'community1ID', :'groupCategoryID', 'Group One', 'group-one',
-        date_trunc('month', current_timestamp at time zone 'UTC')
-            - interval '5 months' + interval '10 days',
-        true, false),
-    (:'group2ID', :'community2ID', :'groupCategory2ID', 'Group Two', 'group-two',
-        date_trunc('month', current_timestamp at time zone 'UTC')
-            - interval '3 months' + interval '10 days',
-        true, false),
-    (:'group3ID', :'community1ID', :'groupCategoryID', 'Group Three', 'group-three',
-        date_trunc('month', current_timestamp at time zone 'UTC')
-            - interval '2 months' + interval '10 days',
-        false, true),
-    (:'group4ID', :'community3ID', :'groupCategory3ID', 'Group Four', 'group-four',
-        date_trunc('month', current_timestamp at time zone 'UTC')
-            - interval '5 months' + interval '15 days',
-        true, false);
+-- Groups covering active, deleted and inactive-community stats states
+select fx_group(:'group1ID', :'community1ID', :'groupCategoryID', jsonb_build_object(
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' + interval '10 days'
+));
+select fx_group(:'group2ID', :'community2ID', :'groupCategory2ID', jsonb_build_object(
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '10 days'
+));
+select fx_group(:'group3ID', :'community1ID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '10 days',
+    'deleted', true
+));
+select fx_group(:'group4ID', :'community3ID', :'groupCategory3ID', jsonb_build_object(
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' + interval '15 days'
+));
 
 -- Group members
 -- month_4: user1 joins group1
@@ -173,44 +101,22 @@ values
 -- null: event3 (published, no start)
 -- month_1: event4 (unpublished)
 -- month_1: event5 (published, inactive community)
-insert into event (
-    event_id,
-    group_id,
-    event_category_id,
-    event_kind_id,
-    name,
-    slug,
-    description,
-    timezone,
-    published,
-    canceled,
-    deleted,
-    starts_at
-) values
-    (:'event1ID', :'group1ID', :'eventCategoryID', 'in-person',
-        'Event One', 'event-one', 'Event 1', 'UTC',
-        true, false, false,
-        date_trunc('month', current_timestamp at time zone 'UTC')
-            - interval '4 months' + interval '12 days'),
-    (:'event2ID', :'group2ID', :'eventCategory2ID', 'in-person',
-        'Event Two', 'event-two', 'Event 2', 'UTC',
-        true, false, false,
-        date_trunc('month', current_timestamp at time zone 'UTC')
-            - interval '1 month' + interval '12 days'),
-    (:'event3ID', :'group1ID', :'eventCategoryID', 'in-person',
-        'Event Three', 'event-three', 'Event 3', 'UTC',
-        true, false, false,
-        null),
-    (:'event4ID', :'group1ID', :'eventCategoryID', 'in-person',
-        'Event Four', 'event-four', 'Event 4', 'UTC',
-        false, false, false,
-        date_trunc('month', current_timestamp at time zone 'UTC')
-            - interval '1 month' + interval '6 days'),
-    (:'event5ID', :'group4ID', :'eventCategory3ID', 'in-person',
-        'Event Five', 'event-five', 'Event 5', 'UTC',
-        true, false, false,
-        date_trunc('month', current_timestamp at time zone 'UTC')
-            - interval '1 month' + interval '9 days');
+select fx_event(:'event1ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' + interval '12 days'
+));
+select fx_event(:'event2ID', :'group2ID', :'eventCategory2ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '12 days'
+));
+select fx_event(:'event3ID', :'group1ID', :'eventCategoryID', jsonb_build_object('published', true));
+select fx_event(:'event4ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '6 days'
+));
+select fx_event(:'event5ID', :'group4ID', :'eventCategory3ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '9 days'
+));
 
 -- Event attendees
 -- month_4: attendee1

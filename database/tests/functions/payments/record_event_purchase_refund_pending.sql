@@ -20,13 +20,17 @@ select plan(11);
 \set missingRefundID '79510000-0000-0000-0000-000000000012'
 \set priceWindowID '79510000-0000-0000-0000-000000000007'
 \set processingClaimID '79510000-0000-0000-0000-000000000017'
+\set processingJobID '79510000-0000-0000-0000-000000000020'
 \set processingPurchaseID '79510000-0000-0000-0000-000000000018'
 \set processingRefundID '79510000-0000-0000-0000-000000000019'
 \set purchaseID '79510000-0000-0000-0000-000000000008'
 \set refundID '79510000-0000-0000-0000-000000000009'
+\set refundJobID '79510000-0000-0000-0000-000000000021'
 \set refundRequestID '79510000-0000-0000-0000-000000000010'
+\set succeededJobID '79510000-0000-0000-0000-000000000022'
 \set succeededPurchaseID '79510000-0000-0000-0000-000000000013'
 \set succeededRefundID '79510000-0000-0000-0000-000000000014'
+\set terminalJobID '79510000-0000-0000-0000-000000000023'
 \set terminalPurchaseID '79510000-0000-0000-0000-000000000015'
 \set terminalRefundID '79510000-0000-0000-0000-000000000016'
 \set userID '79510000-0000-0000-0000-000000000011'
@@ -35,99 +39,28 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'record-refund-pending-community',
-    'Record Refund Pending Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- User
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'pending-buyer@example.com', true, 'pending-buyer');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Record Refund Pending Group',
-    'record-refund-pending-group'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    published,
-    published_at
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Record Refund Pending Event',
-    'record-refund-pending-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
 
 -- Ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventTicketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    2500,
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Purchases for pending, succeeded, and terminal refund scenarios
 insert into event_purchase (
@@ -223,20 +156,45 @@ insert into event_refund_request (
     'approving'
 );
 
+-- Payment jobs for pending, succeeded, and terminal refund scenarios
+insert into payment_job (
+    payment_job_id, event_purchase_id, idempotency_key, kind,
+    payment_provider_id, status,
+
+    failure_message
+) values (
+    :'refundJobID', :'purchaseID',
+    'event-purchase-refund-' || :'purchaseID',
+    'event-purchase-refund', 'stripe', 'pending',
+
+    null
+), (
+    :'succeededJobID', :'succeededPurchaseID',
+    'event-purchase-refund-' || :'succeededPurchaseID',
+    'event-purchase-refund', 'stripe', 'pending',
+
+    null
+), (
+    :'terminalJobID', :'terminalPurchaseID',
+    'event-purchase-refund-' || :'terminalPurchaseID',
+    'event-purchase-refund', 'stripe', 'failed',
+
+    'provider refund failed: re_terminal_123'
+);
+
 -- Provider refund records for pending, succeeded, and terminal scenarios
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
     currency_code,
     event_purchase_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
     terminal_failure,
 
     event_refund_request_id,
-    failure_message,
     finalized_at,
     provider_refund_id,
     provider_refunded_at
@@ -245,14 +203,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'purchaseID',
-    'event-purchase-refund-' || :'purchaseID',
     'refund-request-approval',
+    :'refundJobID',
     'stripe',
     'provider-pending',
     false,
 
     :'refundRequestID',
-    null,
     null,
     null,
     null
@@ -261,13 +218,12 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'succeededPurchaseID',
-    'event-purchase-refund-' || :'succeededPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'succeededJobID',
     'stripe',
     'provider-succeeded',
     false,
 
-    null,
     null,
     null,
     're_succeeded_123',
@@ -277,44 +233,51 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'terminalPurchaseID',
-    'event-purchase-refund-' || :'terminalPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'terminalJobID',
     'stripe',
     'provider-failed',
     true,
 
     null,
-    'provider refund failed: re_terminal_123',
     null,
     're_terminal_123',
     null
 );
 
+-- Processing payment job whose pending webhook releases worker ownership
+insert into payment_job (
+    payment_job_id, attempt_count, event_purchase_id, idempotency_key,
+    kind, payment_provider_id, status,
+
+    claim_id, claimed_at
+) values (
+    :'processingJobID', 3, :'processingPurchaseID',
+    'event-purchase-refund-' || :'processingPurchaseID',
+    'event-purchase-refund', 'stripe', 'processing',
+
+    :'processingClaimID', current_timestamp
+);
+
 -- Claimed provider refund whose pending webhook releases worker ownership
 insert into event_purchase_refund (
     amount_minor,
-    attempt_count,
-    claim_id,
-    claimed_at,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status
 ) values (
     2500,
-    3,
-    :'processingClaimID',
-    current_timestamp,
     'USD',
     :'processingPurchaseID',
     :'processingRefundID',
-    'event-purchase-refund-' || :'processingPurchaseID',
     'event-cancellation',
+    :'processingJobID',
     'stripe',
-    'processing'
+    'provider-pending'
 );
 
 -- ============================================================================
@@ -367,15 +330,16 @@ select results_eq(
 select results_eq(
     format($$
         select
-            claim_id,
-            claimed_at,
-            next_attempt_at = current_timestamp + interval '4 minutes',
-            status,
-            terminal_failure
-        from event_purchase_refund
+            pj.claim_id,
+            pj.claimed_at,
+            pj.next_attempt_at = current_timestamp + interval '4 minutes',
+            pj.status,
+            epr.terminal_failure
+        from event_purchase_refund epr
+        join payment_job pj using (payment_job_id)
         where event_purchase_refund_id = %L::uuid
     $$, :'processingRefundID'),
-    $$ values (null::uuid, null::timestamptz, true, 'provider-pending'::text, false) $$,
+    $$ values (null::uuid, null::timestamptz, true, 'pending'::text, false) $$,
     'Should persist claim release and exponential retry backoff'
 );
 
@@ -415,6 +379,7 @@ select is(
         'event_purchase_id', :'purchaseID'::uuid,
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
+        'payment_job_id', :'refundJobID'::uuid,
         'payment_provider', 'stripe',
         'provider_refund_id', 're_pending_123',
         'status', 'provider-pending',
@@ -437,6 +402,7 @@ select is(
         'event_purchase_id', :'purchaseID'::uuid,
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
+        'payment_job_id', :'refundJobID'::uuid,
         'payment_provider', 'stripe',
         'provider_refund_id', 're_pending_123',
         'status', 'provider-pending',

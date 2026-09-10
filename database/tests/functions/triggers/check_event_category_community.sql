@@ -22,43 +22,11 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community 1
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'community-1',
-    'Community 1',
-    'Test community 1',
-    'https://example.com/banner-mobile-1.png',
-    'https://example.com/banner-1.png',
-    'https://example.com/logo-1.png'
-);
-
--- Community 2
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community2ID',
-    'community-2',
-    'Community 2',
-    'Test community 2',
-    'https://example.com/banner-mobile-2.png',
-    'https://example.com/banner-2.png',
-    'https://example.com/logo-2.png'
-);
+-- Baseline community, group categories and groups
+select fx_community(:'community1ID');
+select fx_community(:'community2ID');
+select fx_group_category(:'groupCategoryID', :'community1ID');
+select fx_group(:'groupID', :'community1ID', :'groupCategoryID');
 
 -- Event Category 1 (belongs to community 1)
 insert into event_category (event_category_id, community_id, name)
@@ -67,27 +35,6 @@ values (:'eventCategory1ID', :'community1ID', 'Conference');
 -- Event Category 2 (belongs to community 2)
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategory2ID', :'community2ID', 'Workshop');
-
--- Group Category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'community1ID', 'Technology');
-
--- Group (belongs to community 1)
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    description
-) values (
-    :'groupID',
-    :'community1ID',
-    :'groupCategoryID',
-    'Test Group',
-    'test-group',
-    'A test group'
-);
 
 -- ============================================================================
 -- TESTS
@@ -104,6 +51,7 @@ select lives_ok(
 select throws_ok(
     format('insert into event (event_id, group_id, name, slug, description, timezone, event_category_id, event_kind_id) values (%L, %L, %L, %L, %L, %L, %L, %L)',
         :'missingEventID', :'groupID', 'Another Event', 'another-event', 'Another test event', 'UTC', :'eventCategory2ID', 'in-person'),
+    'OCG01',
     'event category not found in community',
     'Should fail when event category is from different community'
 );
@@ -111,6 +59,7 @@ select throws_ok(
 -- Should fail when updating event to category from different community
 select throws_ok(
     format('update event set event_category_id = %L where event_id = %L', :'eventCategory2ID', :'eventID'),
+    'OCG01',
     'event category not found in community',
     'Should fail when updating event to category from different community'
 );

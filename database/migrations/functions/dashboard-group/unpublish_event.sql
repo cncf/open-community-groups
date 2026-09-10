@@ -18,7 +18,7 @@ begin
     for update;
 
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Keep repeated unpublish requests idempotent

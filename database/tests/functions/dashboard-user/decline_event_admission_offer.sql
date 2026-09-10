@@ -40,6 +40,18 @@ select plan(15);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline community, group categories, event categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'organizerID');
+select fx_user(:'expiredRecipientID');
+select fx_user(:'invitationRecipientID');
+select fx_user(:'linkedRecipientID');
+select fx_user(:'terminalRecipientID');
+select fx_user(:'waitlistRecipientID');
+select fx_user(:'wrongUserID');
+
 -- Site providing the notification theme
 insert into site (description, site_id, theme, title)
 values (
@@ -49,111 +61,28 @@ values (
     'Offer Decline Site'
 );
 
--- Community hosting the offer decline scenarios
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    :'communityID',
-    'Offer decline tests',
-    'Offer Decline Community',
-    'https://example.com/logo.png',
-    'offer-decline-community'
-);
-
--- Event category used by the ticketed event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'General');
-
--- Group category used by the hosting group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
 -- Organizer, offer recipients, and a non-owner user
-insert into "user" (auth_hash, email, email_verified, user_id, username)
-values
-    ('hash-organizer', 'organizer@example.com', true, :'organizerID', 'organizer'),
-    ('hash-expired', 'expired@example.com', true, :'expiredRecipientID', 'expired-recipient'),
-    (
-        'hash-invitation',
-        'invitation@example.com',
-        true,
-        :'invitationRecipientID',
-        'invitation-recipient'
-    ),
-    ('hash-linked', 'linked@example.com', true, :'linkedRecipientID', 'linked-recipient'),
-    ('hash-recipient', 'recipient@example.com', true, :'recipientID', 'recipient'),
-    ('hash-terminal', 'terminal@example.com', true, :'terminalRecipientID', 'terminal-recipient'),
-    ('hash-waitlist', 'waitlist@example.com', true, :'waitlistRecipientID', 'waitlist-recipient'),
-    ('hash-wrong', 'wrong@example.com', true, :'wrongUserID', 'wrong-user');
+
+select fx_user(:'recipientID', jsonb_build_object('username', 'recipient-decline-event-admission-offer'));
 
 -- Group hosting the ticketed event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'Offer Decline Group',
-    'offer-decline-group'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Offer Decline Group'));
 
 -- Published ticketed event with offers to decline
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Offer decline event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Offer Decline Event',
-    true,
-    'offer-decline-event',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Offer Decline Event',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Ticket tier reserved by the pending offers
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventID',
-    :'ticketTypeID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Free price window for the ticket tier
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    0,
-    :'priceWindowID',
-    :'ticketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Pending approval and waitlist offers declined by the scenarios
 insert into admission_offer (
@@ -353,7 +282,7 @@ select throws_ok(
         :'wrongUserID',
         :'offerID'
     ),
-    'P0001',
+    'OCG01',
     'admission offer is no longer available',
     'Should reject declining another user''s offer'
 );
@@ -365,7 +294,7 @@ select throws_ok(
         :'expiredRecipientID',
         :'expiredOfferID'
     ),
-    'P0001',
+    'OCG01',
     'admission offer is no longer available',
     'Should reject declining an expired offer'
 );
@@ -377,7 +306,7 @@ select throws_ok(
         :'terminalRecipientID',
         :'terminalOfferID'
     ),
-    'P0001',
+    'OCG01',
     'admission offer is no longer available',
     'Should reject declining a terminal offer'
 );
@@ -425,7 +354,7 @@ select ok(
             'event_name', 'Offer Decline Event',
             'event_ticket_type_id', :'ticketTypeID',
             'group_name', 'Offer Decline Group',
-            'recipient_name', 'recipient',
+            'recipient_name', 'recipient-decline-event-admission-offer',
             'theme', jsonb_build_object('primary_color', '#2563eb'),
             'ticket_title', 'General admission',
             'user_id', :'recipientID'

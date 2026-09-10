@@ -33,156 +33,40 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Community for external completion scenarios
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'external-complete-community',
-    'External Complete Community',
-    'Community for external completion tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'attendeeID');
+select fx_user(:'completedAttendeeID');
+select fx_user(:'expiredAttendeeID');
+select fx_user(:'stripeAttendeeID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
--- Event category for external completion scenarios
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category for external completion scenarios
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the purchases under test
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'External Complete Group',
-    'external-complete-group'
-);
-
--- Separate group used by the ownership-rejection scenario
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    :'groupCategoryID',
-    :'otherGroupID',
-    'Other External Group',
-    'other-external-group'
-);
-
--- Organizer who marks the payment and attendee who holds the purchase
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'actorID', 'hash-actor', 'actor@example.test', true, 'external-actor'),
-    (:'attendeeID', 'hash-attendee', 'attendee@example.test', true, 'external-attendee'),
-    (
-        :'completedAttendeeID',
-        'hash-completed',
-        'completed@example.test',
-        true,
-        'external-completed'
-    ),
-    (
-        :'expiredAttendeeID',
-        'hash-expired',
-        'expired@example.test',
-        true,
-        'external-expired'
-    ),
-    (
-        :'stripeAttendeeID',
-        'hash-stripe',
-        'stripe@example.test',
-        true,
-        'external-stripe'
-    );
+-- Organizer who marks the payment
+select fx_user(:'actorID', jsonb_build_object('username', 'external-actor'));
 
 -- Published in-person event that can still be completed
-insert into event (
-    canceled,
-    deleted,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    false,
-    false,
-    'External completion event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    'https://pay.example.test/complete',
-    :'groupID',
-    'External Completion Event',
-    true,
-    'external-completion-event',
-    current_timestamp + interval '7 days',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/complete',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Paid ticket type for the completion event
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventID',
-    :'eventTicketTypeID',
-    1,
-    50,
-    'General admission'
-);
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General admission'
+));
 
 -- Positive price window for the completion event
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    5000,
-    :'priceWindowID',
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- Pending external purchase completed by the happy-path scenario
 insert into event_purchase (
@@ -474,7 +358,7 @@ select throws_ok(
         :'groupID',
         :'expiredPurchaseID'
     ),
-    'P0001',
+    'OCG01',
     'purchase hold has expired',
     'Should reject an expired external purchase'
 );
@@ -487,7 +371,7 @@ select throws_ok(
         :'otherGroupID',
         :'pendingPurchaseID'
     ),
-    'P0001',
+    'OCG01',
     'purchase not found',
     'Should reject a purchase that belongs to another group'
 );
@@ -500,7 +384,7 @@ select throws_ok(
         :'groupID',
         :'stripePurchaseID'
     ),
-    'P0001',
+    'OCG01',
     'only external purchases can be marked paid locally',
     'Should reject a Stripe purchase that cannot be marked paid locally'
 );
@@ -513,7 +397,7 @@ select throws_ok(
         :'groupID',
         '00000000-0000-0000-0000-000000000000'
     ),
-    'P0001',
+    'OCG01',
     'purchase not found',
     'Should reject a missing purchase'
 );

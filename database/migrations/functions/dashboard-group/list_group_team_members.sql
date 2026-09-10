@@ -5,8 +5,9 @@ returns json as $$
         -- Parse pagination filters
         filters as (
             select
-                (p_filters->>'limit')::int as limit_value,
-                (p_filters->>'offset')::int as offset_value
+                f.limit_value,
+                f.offset_value
+            from parse_search_filters(p_filters) f
         ),
         -- Select the paginated member list
         members as (

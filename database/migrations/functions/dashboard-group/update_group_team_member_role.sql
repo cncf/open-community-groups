@@ -30,7 +30,7 @@ begin
 
     -- Ensure membership exists
     if not found then
-        raise exception 'user is not a group team member';
+        raise exception 'user is not a group team member' using errcode = 'OCG01';
     end if;
 
     -- Update role for an existing group team member
@@ -50,7 +50,7 @@ begin
           and gt.role = 'admin';
 
         if v_accepted_admins = 0 then
-            raise exception 'cannot change role for the last accepted group admin';
+            raise exception 'cannot change role for the last accepted group admin' using errcode = 'OCG01';
         end if;
     end if;
 

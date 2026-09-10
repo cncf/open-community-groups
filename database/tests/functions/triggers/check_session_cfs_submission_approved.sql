@@ -31,46 +31,12 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cfs-submission-community',
-    'CFS Submission Community',
-    'A community for CFS submission trigger tests',
-    'https://example.com/cfs-banner-mobile.png',
-    'https://example.com/cfs-banner.png',
-    'https://example.com/cfs-logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- User
-insert into "user" (user_id, auth_hash, email, email_verified, name, username)
-values (:'userID', gen_random_bytes(32), 'alice@example.com', true, 'Alice', 'alice');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'CFS Submission Group',
-    'cfs-submission-group'
-);
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Session proposals
 insert into session_proposal (
@@ -111,40 +77,14 @@ insert into session_proposal (
     );
 
 -- Events
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    starts_at,
-    ends_at,
-    timezone
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Event 1',
-    'event-1',
-    'Event description',
-    '2025-01-10 10:00:00+00',
-    '2025-01-10 12:00:00+00',
-    'UTC'
-), (
-    :'event2ID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Event 2',
-    'event-2',
-    'Event description',
-    '2025-01-11 10:00:00+00',
-    '2025-01-11 12:00:00+00',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', '2025-01-10 12:00:00+00',
+    'starts_at', '2025-01-10 10:00:00+00'
+));
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', '2025-01-11 12:00:00+00',
+    'starts_at', '2025-01-11 10:00:00+00'
+));
 
 -- CFS submissions
 insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id) values
@@ -193,6 +133,7 @@ select throws_ok(
         '2025-01-10 11:30:00+00',
         :'submissionPendingID'
     ),
+    'OCG01',
     'cfs submission must be approved',
     'Should reject non-approved submissions'
 );
@@ -208,6 +149,7 @@ select throws_ok(
         '2025-01-10 11:30:00+00',
         :'submissionOtherEventID'
     ),
+    'OCG01',
     'cfs submission does not belong to the session event',
     'Should reject submissions from another event'
 );
@@ -219,6 +161,7 @@ select throws_ok(
         :'submissionPendingID',
         :'sessionID'
     ),
+    'OCG01',
     'cfs submission must be approved',
     'Should reject updating sessions to non-approved submissions'
 );

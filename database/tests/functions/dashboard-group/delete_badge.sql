@@ -24,27 +24,15 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Admin and credential recipient
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'actorID', 'hash', 'delete-admin@example.test', true, 'delete-admin'),
-    (:'recipientID', 'hash', 'delete-recipient@example.test', true, 'delete-recipient');
 
 -- Community that owns the badge
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Delete Community', '/logo', 'delete-community');
+select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
 
--- Category used by the badge group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the badge
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Delete Group', 'delete-group');
-
--- Authorized group team member
-insert into group_team (group_id, accepted, role, user_id)
-values (:'groupID', true, 'admin', :'actorID');
+-- Baseline categories, users and groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_user(:'recipientID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Definition deleted by the test
 insert into badge (badge_id, criteria, description, group_id, image_file_name, name)

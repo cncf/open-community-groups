@@ -18,48 +18,28 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    password,
-    registration_status,
-    username
-) values (
-    :'userNoPasswordID',
-    'no-password-hash',
-    'no-password@example.com',
-    true,
-    null,
-    'registered',
-    'no-password'
-), (
-    :'userPreRegisteredID',
-    'pre-registered-hash',
-    'pre-registered@example.com',
-    true,
-    'hidden-password',
-    'pre-registered',
-    'pre-registered-user'
-), (
-    :'userUnverifiedID',
-    'unverified-hash',
-    'unverified@example.com',
-    false,
-    'hidden-password',
-    'registered',
-    'unverified-user'
-), (
-    :'userWithPasswordID',
-    'password-hash',
-    'with-password@example.com',
-    true,
-    'password_value',
-    'registered',
-    'with-password'
-);
+-- Verified user without password excluded from username lookup
+select fx_user(:'userNoPasswordID', jsonb_build_object('username', 'no-password'));
+
+-- Pre-registered user with password excluded from username lookup
+select fx_user(:'userPreRegisteredID', jsonb_build_object(
+    'password', 'hidden-password',
+    'registration_status', 'pre-registered',
+    'username', 'pre-registered-user'
+));
+
+-- Unverified user with password excluded from username lookup
+select fx_user(:'userUnverifiedID', jsonb_build_object(
+    'email_verified', false,
+    'password', 'hidden-password',
+    'username', 'unverified-user'
+));
+
+-- Verified user with password returned by username lookup
+select fx_user(:'userWithPasswordID', jsonb_build_object(
+    'password', 'password_value',
+    'username', 'with-password'
+));
 
 -- ============================================================================
 -- TESTS

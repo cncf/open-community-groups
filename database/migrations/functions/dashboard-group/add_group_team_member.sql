@@ -24,6 +24,6 @@ begin
 exception
     when unique_violation then
         -- Reject duplicate group team memberships
-        raise exception 'user is already a group team member';
+        raise exception 'user is already a group team member' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

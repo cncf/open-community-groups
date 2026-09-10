@@ -9,83 +9,35 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '4a0d0000-0000-0000-0000-000000000001'
-\set communityOtherID '4a0d0000-0000-0000-0000-000000000002'
-\set groupAcceptedID '4a0d0000-0000-0000-0000-000000000003'
-\set groupCategoryID '4a0d0000-0000-0000-0000-000000000004'
-\set groupCategoryOtherID '4a0d0000-0000-0000-0000-000000000005'
-\set groupID '4a0d0000-0000-0000-0000-000000000006'
-\set groupOtherID '4a0d0000-0000-0000-0000-000000000007'
-\set userID '4a0d0000-0000-0000-0000-000000000008'
-\set userNoInvitationsID '4a0d0000-0000-0000-0000-000000000009'
+\set communityID '4a020000-0000-0000-0000-000000000001'
+\set communityOtherID '4a020000-0000-0000-0000-000000000002'
+\set groupAcceptedID '4a020000-0000-0000-0000-000000000003'
+\set groupCategoryID '4a020000-0000-0000-0000-000000000004'
+\set groupCategoryOtherID '4a020000-0000-0000-0000-000000000005'
+\set groupID '4a020000-0000-0000-0000-000000000006'
+\set groupOtherID '4a020000-0000-0000-0000-000000000007'
+\set userID '4a020000-0000-0000-0000-000000000008'
+\set userNoInvitationsID '4a020000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'community-one',
-    'Community One',
-    'Primary community with pending group invitations',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-), (
-    :'communityOtherID',
-    'community-two',
-    'Community Two',
-    'Secondary community with pending group invitations',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Communities named in invitation payloads
+select fx_community(:'communityID', jsonb_build_object('name', 'community-one-group-team-invitations'));
+select fx_community(:'communityOtherID', jsonb_build_object('name', 'community-two-group-team-invitations'));
 
--- Group categories
-insert into group_category (group_category_id, community_id, name)
-values
-    (:'groupCategoryID', :'communityID', 'Technology'),
-    (:'groupCategoryOtherID', :'communityOtherID', 'Design');
+-- Baseline group categories, users and groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group_category(:'groupCategoryOtherID', :'communityOtherID');
+select fx_user(:'userID');
+select fx_user(:'userNoInvitationsID');
+select fx_group(:'groupAcceptedID', :'communityID', :'groupCategoryID');
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'userID',
-    gen_random_bytes(32),
-    'alice@example.com',
-    true,
-    'alice',
-    'Alice'
-), (
-    :'userNoInvitationsID',
-    gen_random_bytes(32),
-    'bob@example.com',
-    true,
-    'bob',
-    'Bob'
-);
+-- Groups named in invitation payloads
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Group One'));
 
--- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Group One', 'group-one'),
-    (:'groupAcceptedID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two'),
-    (:'groupOtherID', :'communityOtherID', :'groupCategoryOtherID', 'Group Three', 'group-three');
+select fx_group(:'groupOtherID', :'communityOtherID', :'groupCategoryOtherID', jsonb_build_object('name', 'Group Three'));
 
 -- Pending and accepted group invitations used by listing scenarios
 insert into group_team (group_id, user_id, role, accepted, created_at) values
@@ -104,14 +56,14 @@ select is(
         $json$
             [
                 {
-                    "community_name": "community-two",
+                    "community_name": "community-two-group-team-invitations",
                     "group_id": "%s",
                     "group_name": "Group Three",
                     "role": "admin",
                     "created_at": 1704362400
                 },
                 {
-                    "community_name": "community-one",
+                    "community_name": "community-one-group-team-invitations",
                     "group_id": "%s",
                     "group_name": "Group One",
                     "role": "admin",
@@ -143,7 +95,7 @@ select is(
         $json$
             [
                 {
-                    "community_name": "community-one",
+                    "community_name": "community-one-group-team-invitations",
                     "group_id": "%s",
                     "group_name": "Group One",
                     "role": "admin",

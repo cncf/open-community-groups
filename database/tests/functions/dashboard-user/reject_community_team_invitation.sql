@@ -16,41 +16,11 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'Seattle community for cloud native technologies',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community
+select fx_community(:'communityID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'userID',
-    gen_random_bytes(32),
-    'user@example.com',
-    true,
-    'user',
-    'User'
-);
+select fx_user(:'userID', jsonb_build_object('username', 'user-reject-community-team-invitation'));
 
 -- Pending invitation
 insert into community_team (
@@ -110,7 +80,7 @@ select results_eq(
             values (
                 'community_team_invitation_rejected',
                 %L::uuid,
-                'user',
+                'user-reject-community-team-invitation',
                 %L::uuid,
                 'user',
                 %L::uuid
@@ -132,6 +102,7 @@ select throws_ok(
         :'userID',
         :'communityID'
     ),
+    'OCG01',
     'no pending community invitation found',
     'Should reject a second rejection when no pending invitation exists'
 );

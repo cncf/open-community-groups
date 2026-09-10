@@ -18,7 +18,7 @@ begin
       and gc.group_category_id = p_group_category_id;
 
     if not found then
-        raise exception 'group category not found';
+        raise exception 'group category not found' using errcode = 'OCG01';
     end if;
 
     -- Block deletion when groups still reference this category
@@ -28,7 +28,7 @@ begin
     where g.group_category_id = p_group_category_id;
 
     if v_groups_count > 0 then
-        raise exception 'cannot delete group category in use by groups';
+        raise exception 'cannot delete group category in use by groups' using errcode = 'OCG01';
     end if;
 
     -- Delete the category record

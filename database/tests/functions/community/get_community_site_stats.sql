@@ -28,95 +28,27 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'community-site-stats',
-    'Community Site Stats',
-    'Community used for site stats tests',
-    'https://example.com/community-site-stats-banner-mobile.png',
-    'https://example.com/community-site-stats-banner.png',
-    'https://example.com/community-site-stats-logo.png'
-);
+-- Baseline community, categories and users for community stats
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
+select fx_group(:'group1ID', :'communityID', :'groupCategoryID');
+select fx_group(:'group2ID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+-- Deleted group excluded from community stats
+select fx_group(:'group3ID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
 
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-)
-values
-    (:'group1ID', :'communityID', :'groupCategoryID',
-        'Site Stats Group One', 'site-stats-group-one', true, false),
-    (:'group2ID', :'communityID', :'groupCategoryID',
-        'Site Stats Group Two', 'site-stats-group-two', true, false),
-    (:'group3ID', :'communityID', :'groupCategoryID',
-        'Deleted Site Stats Group', 'deleted-site-stats-group', false, true);
-
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    created_at,
-    name
-)
-values
-    (:'user1ID', gen_random_bytes(32), 'stats-user1@example.com',
-        true, 'stats-user-one', '2024-01-01 00:00:00', 'Stats User One'),
-    (:'user2ID', gen_random_bytes(32), 'stats-user2@example.com',
-        true, 'stats-user-two', '2024-01-01 00:00:00', 'Stats User Two'),
-    (:'user3ID', gen_random_bytes(32), 'stats-user3@example.com',
-        true, 'stats-user-three', '2024-01-01 00:00:00', 'Stats User Three');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetups');
-
--- Event
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    canceled,
-    deleted,
-    published
-) values
-    (:'event1ID', 'Published Stats Event', 'published-stats-event',
-        'Published event for stats tests', 'UTC', :'eventCategoryID',
-        'in-person', :'group1ID', false, false, true),
-    (:'event2ID', 'Unpublished Stats Event', 'unpublished-stats-event',
-        'Unpublished event for stats tests', 'UTC', :'eventCategoryID',
-        'in-person', :'group1ID', false, false, false),
-    (:'event3ID', 'Canceled Stats Event', 'canceled-stats-event',
-        'Canceled event for stats tests', 'UTC', :'eventCategoryID',
-        'in-person', :'group2ID', true, false, false),
-    (:'event4ID', 'Deleted Stats Event', 'deleted-stats-event',
-        'Deleted event for stats tests', 'UTC', :'eventCategoryID',
-        'in-person', :'group2ID', false, true, false);
+-- Events covering published, unpublished, canceled and deleted stats states
+select fx_event(:'event1ID', :'group1ID', :'eventCategoryID', jsonb_build_object('published', true));
+select fx_event(:'event2ID', :'group1ID', :'eventCategoryID');
+select fx_event(:'event3ID', :'group2ID', :'eventCategoryID', jsonb_build_object('canceled', true));
+select fx_event(:'event4ID', :'group2ID', :'eventCategoryID', jsonb_build_object('deleted', true));
 
 -- Group Member
 insert into group_member (group_id, user_id, created_at)

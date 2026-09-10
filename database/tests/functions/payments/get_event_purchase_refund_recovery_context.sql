@@ -14,12 +14,14 @@ select plan(4);
 \set communityID '79540000-0000-0000-0000-000000000001'
 \set eventCategoryID '79540000-0000-0000-0000-000000000002'
 \set eventID '79540000-0000-0000-0000-000000000003'
+\set finalizedJobID '79540000-0000-0000-0000-000000000014'
 \set finalizedPurchaseID '79540000-0000-0000-0000-000000000004'
 \set finalizedRefundID '79540000-0000-0000-0000-000000000005'
 \set groupCategoryID '79540000-0000-0000-0000-000000000006'
 \set groupID '79540000-0000-0000-0000-000000000007'
 \set missingPurchaseID '79540000-0000-0000-0000-000000000008'
 \set otherGroupID '79540000-0000-0000-0000-000000000009'
+\set pendingJobID '79540000-0000-0000-0000-000000000015'
 \set pendingPurchaseID '79540000-0000-0000-0000-000000000010'
 \set pendingRefundID '79540000-0000-0000-0000-000000000011'
 \set ticketTypeID '79540000-0000-0000-0000-000000000012'
@@ -29,108 +31,27 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community containing the recovery purchases
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://example.test/banner-mobile.png',
-    'https://example.test/banner.png',
-    'Refund recovery context community',
-    'Refund Recovery Context Community',
-    'https://example.test/logo.png',
-    'refund-recovery-context-community'
-);
-
--- Event category used by the recovery event
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Events');
-
--- Group category used by both recovery groups
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Groups');
-
--- Buyer whose refunds require recovery
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (
-    :'userID',
-    'refund-recovery-context',
-    'refund-recovery-context@example.test',
-    true,
-    'refund-recovery-context'
-);
-
--- Group containing the recovery event
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Refund Recovery Context Group',
-    'refund-recovery-context-group'
-);
-
--- Different group used to verify ownership scoping
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'otherGroupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Other Refund Recovery Context Group',
-    'other-refund-recovery-context-group'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Event containing both recovery purchases
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone,
-
-    payment_currency_code,
-    published_at
-) values (
-    :'eventID',
-    'Refund recovery context event',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Refund Recovery Context Event',
-    true,
-    'refund-recovery-context-event',
-    current_timestamp + interval '1 day',
-    'UTC',
-
-    'USD',
-    current_timestamp
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Ticket type purchased before both refunds
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Purchases before and after local refund finalization
 insert into event_purchase (
@@ -197,19 +118,40 @@ insert into event_purchase (
     2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 );
 
+-- Failed payment jobs before and after local finalization
+insert into payment_job (
+    payment_job_id, event_purchase_id, failure_message, idempotency_key,
+    kind, payment_provider_id, status
+) values (
+    :'finalizedJobID',
+    :'finalizedPurchaseID',
+    'provider refund failed',
+    'event-purchase-refund-recovery-context-finalized-job',
+    'event-purchase-refund',
+    'stripe',
+    'failed'
+), (
+    :'pendingJobID',
+    :'pendingPurchaseID',
+    'provider refund failed',
+    'event-purchase-refund-recovery-context-pending-job',
+    'event-purchase-refund',
+    'stripe',
+    'failed'
+);
+
 -- Provider failures before and after local finalization
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
     currency_code,
     event_purchase_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
     terminal_failure,
 
-    failure_message,
     finalized_at,
     provider_refund_id
 ) values (
@@ -217,13 +159,12 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'finalizedPurchaseID',
-    'event-purchase-refund-recovery-context-finalized',
     'automatic-unfulfillable-checkout',
+    :'finalizedJobID',
     'stripe',
     'provider-failed',
     true,
 
-    'provider refund failed',
     '2024-02-01 10:00:00+00',
     're_refund_recovery_context_finalized'
 ), (
@@ -231,13 +172,12 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'pendingPurchaseID',
-    'event-purchase-refund-recovery-context-pending',
     'event-cancellation',
+    :'pendingJobID',
     'stripe',
     'provider-failed',
     true,
 
-    'provider refund failed',
     null,
     're_refund_recovery_context_pending'
 );
@@ -253,6 +193,7 @@ select throws_ok(
         :'groupID',
         :'missingPurchaseID'
     ),
+    'OCG01',
     'event purchase refund not found',
     'Should reject a missing purchase'
 );
@@ -264,6 +205,7 @@ select throws_ok(
         :'otherGroupID',
         :'pendingPurchaseID'
     ),
+    'OCG01',
     'event purchase refund not found',
     'Should reject a purchase outside the requested group'
 );

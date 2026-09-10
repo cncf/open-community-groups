@@ -435,25 +435,6 @@ pub(crate) async fn reject_refund_request(
         .into_response())
 }
 
-/// Requeues an exhausted retryable attendee refund.
-#[instrument(skip_all, err)]
-pub(crate) async fn retry_refund(
-    SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    Path(event_purchase_id): Path<Uuid>,
-) -> Result<impl IntoResponse, HandlerError> {
-    db.requeue_event_purchase_refund(group_id, event_purchase_id).await?;
-
-    Ok((
-        StatusCode::NO_CONTENT,
-        [(
-            "HX-Trigger",
-            "refresh-event-attendees, refresh-group-refunds",
-        )],
-    )
-        .into_response())
-}
-
 /// Sends a custom notification to event attendees.
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_arguments)]

@@ -29,60 +29,67 @@ select plan(7);
 -- ============================================================================
 
 -- Community owning the cancellation lock fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'cancellation-lock-community'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'description', 'Community',
+    'display_name', 'Community Lock Events For Cancellation'
+));
 
 -- Event category shared by the cancellation lock events
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'Events'));
 
 -- Group category shared by the cancellation lock groups
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Groups'));
+
+-- Baseline groups
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Groups used to verify cancellation lock ownership
-insert into "group" (community_id, group_category_id, group_id, name, slug) values
-    (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group'),
-    (:'communityID', :'groupCategoryID', :'otherGroupID', 'Other Group', 'other-group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'name', 'Group',
+    'slug', 'group'
+));
 
 -- Events covering active, canceled, deleted, past, and cross-group targets
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    starts_at,
-    timezone,
-
-    canceled,
-    deleted,
-    deleted_at,
-    ends_at
-) values
-    ('Active', :'eventCategoryID', :'activeEventID', 'virtual', :'groupID', 'Active', 'active', now() + interval '1 day', 'UTC', false, false, null, now() + interval '1 day 1 hour'),
-    ('Canceled', :'eventCategoryID', :'canceledEventID', 'virtual', :'groupID', 'Canceled', 'canceled', now() + interval '2 days', 'UTC', true, false, null, now() + interval '2 days 1 hour'),
-    ('Deleted', :'eventCategoryID', :'deletedEventID', 'virtual', :'groupID', 'Deleted', 'deleted', now() + interval '3 days', 'UTC', false, true, current_timestamp, now() + interval '3 days 1 hour'),
-    ('Other', :'eventCategoryID', :'otherEventID', 'virtual', :'otherGroupID', 'Other', 'other', now() + interval '4 days', 'UTC', false, false, null, now() + interval '4 days 1 hour'),
-    ('Past', :'eventCategoryID', :'pastEventID', 'virtual', :'groupID', 'Past', 'past', now() - interval '2 hours', 'UTC', false, false, null, now() - interval '1 hour'),
-    ('Second active', :'eventCategoryID', :'secondActiveEventID', 'virtual', :'groupID', 'Second active', 'second-active', now() + interval '5 days', 'UTC', false, false, null, now() + interval '5 days 1 hour');
+select fx_event(:'activeEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Active',
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'name', 'Active',
+    'slug', 'active',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '2 days 1 hour',
+    'event_kind_id', 'virtual',
+    'slug', 'canceled',
+    'starts_at', now() + interval '2 days'
+));
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'deleted_at', current_timestamp,
+    'ends_at', now() + interval '3 days 1 hour',
+    'event_kind_id', 'virtual',
+    'slug', 'deleted',
+    'starts_at', now() + interval '3 days'
+));
+select fx_event(:'otherEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '4 days 1 hour',
+    'event_kind_id', 'virtual',
+    'slug', 'other',
+    'starts_at', now() + interval '4 days'
+));
+select fx_event(:'pastEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '1 hour',
+    'event_kind_id', 'virtual',
+    'slug', 'past',
+    'starts_at', now() - interval '2 hours'
+));
+select fx_event(:'secondActiveEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '5 days 1 hour',
+    'event_kind_id', 'virtual',
+    'starts_at', now() + interval '5 days'
+));
 
 -- ============================================================================
 -- TESTS
@@ -107,6 +114,7 @@ select throws_ok(
         :'groupID',
         :'canceledEventID'
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject a canceled target'
 );
@@ -118,6 +126,7 @@ select throws_ok(
         :'groupID',
         :'otherEventID'
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject a cross-group target'
 );
@@ -129,6 +138,7 @@ select throws_ok(
         :'groupID',
         :'deletedEventID'
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject a deleted target'
 );
@@ -150,6 +160,7 @@ select throws_ok(
         :'groupID',
         :'missingEventID'
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject a missing target'
 );
@@ -161,6 +172,7 @@ select throws_ok(
         :'groupID',
         :'pastEventID'
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject a past target'
 );

@@ -26,8 +26,8 @@ begin
     and e.canceled = false
     and e.deleted = false
     and (
-        coalesce(e.ends_at, e.starts_at) is null
-        or coalesce(e.ends_at, e.starts_at) >= current_timestamp
+        event_effective_ends_at(e) is null
+        or event_effective_ends_at(e) >= current_timestamp
     )
     order by e.event_id
     for update;
@@ -36,7 +36,7 @@ begin
 
     -- Reject stale or cross-group scopes after acquiring all available locks
     if v_locked_event_count <> cardinality(v_event_ids) then
-        raise exception 'one or more events were not found or inactive';
+        raise exception 'one or more events were not found or inactive' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

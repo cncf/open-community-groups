@@ -15,7 +15,10 @@ use crate::{
     services::payments::CheckoutSession,
     types::{
         event::EventEnrollmentReconciliationOutcome,
-        payments::{EventPurchaseSummary, PaymentProvider, PreparedEventCheckout, TicketVenue},
+        payments::{
+            EventPurchaseSummary, PaymentJobKind, PaymentProvider, PreparedEventCheckout,
+            TicketVenue,
+        },
         questionnaire::QuestionnaireAnswers,
     },
 };
@@ -70,35 +73,12 @@ pub(crate) trait DBPayments {
         payment_provider: Option<PaymentProvider>,
     ) -> Result<()>;
 
-    /// Claims the next due application-fee adjustment.
-    async fn claim_event_purchase_application_fee_adjustment(
+    /// Claims the next due payment job of the requested kind.
+    async fn claim_payment_job(
         &self,
+        kind: PaymentJobKind,
         payment_provider: PaymentProvider,
-    ) -> Result<Option<ClaimedEventPurchaseApplicationFeeAdjustment>>;
-
-    /// Claims the next due credit note.
-    async fn claim_event_purchase_credit_note(
-        &self,
-        payment_provider: PaymentProvider,
-    ) -> Result<Option<ClaimedEventPurchaseCreditNote>>;
-
-    /// Claims the next refund ready for the configured provider.
-    async fn claim_event_purchase_refund(
-        &self,
-        payment_provider: PaymentProvider,
-    ) -> Result<Option<ClaimedEventPurchaseRefund>>;
-
-    /// Completes an application-fee adjustment resolved outside OCG.
-    async fn complete_event_purchase_application_fee_adjustment_recovery(
-        &self,
-        input: &CompleteEventPurchaseFinancialRecoveryInput,
-    ) -> Result<()>;
-
-    /// Completes a credit note issued outside OCG.
-    async fn complete_event_purchase_credit_note_recovery(
-        &self,
-        input: &CompleteEventPurchaseFinancialRecoveryInput,
-    ) -> Result<()>;
+    ) -> Result<Option<ClaimedPaymentJob>>;
 
     /// Completes an externally resolved terminal provider refund.
     async fn complete_event_purchase_refund_recovery(
@@ -122,6 +102,12 @@ pub(crate) trait DBPayments {
         &self,
         event_purchase_id: Uuid,
     ) -> Result<CompletedEventPurchase>;
+
+    /// Completes a payment job resolved outside OCG.
+    async fn complete_payment_job_recovery(
+        &self,
+        input: &CompletePaymentJobRecoveryInput,
+    ) -> Result<()>;
 
     /// Expires a pending purchase when its provider checkout session expires.
     async fn expire_event_purchase_for_checkout_session(
@@ -216,28 +202,12 @@ pub(crate) trait DBPayments {
         payment_provider: Option<PaymentProvider>,
     ) -> Result<Option<EventEnrollmentReconciliationOutcome>>;
 
-    /// Releases a failed application-fee adjustment claim for retry.
-    async fn record_event_purchase_application_fee_adjustment_failure(
-        &self,
-        adjustment_id: Uuid,
-        claim_id: Uuid,
-        failure_message: String,
-    ) -> Result<()>;
-
     /// Records a completed provider application-fee refund.
     async fn record_event_purchase_application_fee_adjustment_succeeded(
         &self,
         adjustment_id: Uuid,
         claim_id: Uuid,
         provider_application_fee_refund_id: String,
-    ) -> Result<()>;
-
-    /// Releases a failed credit-note claim for retry.
-    async fn record_event_purchase_credit_note_failure(
-        &self,
-        credit_note_id: Uuid,
-        claim_id: Uuid,
-        failure_message: String,
     ) -> Result<()>;
 
     /// Records an issued provider credit note and current document URLs.
@@ -259,14 +229,6 @@ pub(crate) trait DBPayments {
         expected_claim_id: Option<Uuid>,
     ) -> Result<EventPurchaseRefund>;
 
-    /// Releases a worker claim after a retryable provider error.
-    async fn record_event_purchase_refund_retryable_failure(
-        &self,
-        event_purchase_refund_id: Uuid,
-        claim_id: Uuid,
-        failure_message: String,
-    ) -> Result<()>;
-
     /// Records a successful provider refund for the expected attempt.
     async fn record_event_purchase_refund_succeeded(
         &self,
@@ -284,6 +246,14 @@ pub(crate) trait DBPayments {
         provider_refund_id: String,
         failure_message: String,
         expected_claim_id: Option<Uuid>,
+    ) -> Result<()>;
+
+    /// Releases a failed payment job claim for retry.
+    async fn record_payment_job_failure(
+        &self,
+        payment_job_id: Uuid,
+        claim_id: Uuid,
+        failure_message: String,
     ) -> Result<()>;
 
     /// Rejects a pending attendee refund request.
@@ -305,35 +275,11 @@ pub(crate) trait DBPayments {
         notification_template_data: serde_json::Value,
     ) -> Result<()>;
 
-    /// Requeues an exhausted application-fee adjustment.
-    async fn requeue_event_purchase_application_fee_adjustment(
-        &self,
-        group_id: Uuid,
-        adjustment_id: Uuid,
-    ) -> Result<()>;
+    /// Requeues an exhausted payment job after an administrator requests another attempt.
+    async fn requeue_payment_job(&self, group_id: Uuid, payment_job_id: Uuid) -> Result<()>;
 
-    /// Requeues an exhausted credit note.
-    async fn requeue_event_purchase_credit_note(
-        &self,
-        group_id: Uuid,
-        credit_note_id: Uuid,
-    ) -> Result<()>;
-
-    /// Requeues a retryable refund after an administrator requests another attempt.
-    async fn requeue_event_purchase_refund(
-        &self,
-        group_id: Uuid,
-        event_purchase_id: Uuid,
-    ) -> Result<()>;
-
-    /// Releases stale claims left by interrupted application-fee adjustment workers.
-    async fn requeue_stale_event_purchase_application_fee_adjustment_claims(&self) -> Result<i32>;
-
-    /// Releases stale claims left by interrupted credit-note workers.
-    async fn requeue_stale_event_purchase_credit_note_claims(&self) -> Result<i32>;
-
-    /// Releases stale claims left by interrupted refund workers.
-    async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32>;
+    /// Releases stale payment job claims left by interrupted workers.
+    async fn requeue_stale_payment_job_claims(&self) -> Result<i32>;
 
     /// Upserts or deletes the singleton external-payments configuration row.
     async fn sync_external_payments_config(
@@ -492,99 +438,16 @@ where
         .await
     }
 
-    /// [`DBPayments::claim_event_purchase_application_fee_adjustment`].
+    /// [`DBPayments::claim_payment_job`].
     #[instrument(skip(self), err)]
-    async fn claim_event_purchase_application_fee_adjustment(
+    async fn claim_payment_job(
         &self,
+        kind: PaymentJobKind,
         payment_provider: PaymentProvider,
-    ) -> Result<Option<ClaimedEventPurchaseApplicationFeeAdjustment>> {
+    ) -> Result<Option<ClaimedPaymentJob>> {
         self.fetch_json_opt(
-            "select claim_event_purchase_application_fee_adjustment($1::text)",
-            &[&payment_provider.to_string()],
-        )
-        .await
-    }
-
-    /// [`DBPayments::claim_event_purchase_credit_note`].
-    #[instrument(skip(self), err)]
-    async fn claim_event_purchase_credit_note(
-        &self,
-        payment_provider: PaymentProvider,
-    ) -> Result<Option<ClaimedEventPurchaseCreditNote>> {
-        self.fetch_json_opt(
-            "select claim_event_purchase_credit_note($1::text)",
-            &[&payment_provider.to_string()],
-        )
-        .await
-    }
-
-    /// [`DBPayments::claim_event_purchase_refund`].
-    #[instrument(skip(self), err)]
-    async fn claim_event_purchase_refund(
-        &self,
-        payment_provider: PaymentProvider,
-    ) -> Result<Option<ClaimedEventPurchaseRefund>> {
-        self.fetch_json_opt(
-            "select claim_event_purchase_refund($1::text)",
-            &[&payment_provider.to_string()],
-        )
-        .await
-    }
-
-    /// [`DBPayments::complete_event_purchase_application_fee_adjustment_recovery`].
-    #[instrument(skip(self, input), err)]
-    async fn complete_event_purchase_application_fee_adjustment_recovery(
-        &self,
-        input: &CompleteEventPurchaseFinancialRecoveryInput,
-    ) -> Result<()> {
-        self.execute(
-            "
-            select complete_event_purchase_application_fee_adjustment_recovery(
-                $1::uuid,
-                $2::uuid,
-                $3::uuid,
-                $4::text,
-                $5::text,
-                $6::text
-            )
-            ",
-            &[
-                &input.actor_user_id,
-                &input.group_id,
-                &input.work_id,
-                &input.provider_object_id,
-                &input.recovery_reference,
-                &input.recovery_note,
-            ],
-        )
-        .await
-    }
-
-    /// [`DBPayments::complete_event_purchase_credit_note_recovery`].
-    #[instrument(skip(self, input), err)]
-    async fn complete_event_purchase_credit_note_recovery(
-        &self,
-        input: &CompleteEventPurchaseFinancialRecoveryInput,
-    ) -> Result<()> {
-        self.execute(
-            "
-            select complete_event_purchase_credit_note_recovery(
-                $1::uuid,
-                $2::uuid,
-                $3::uuid,
-                $4::text,
-                $5::text,
-                $6::text
-            )
-            ",
-            &[
-                &input.actor_user_id,
-                &input.group_id,
-                &input.work_id,
-                &input.provider_object_id,
-                &input.recovery_reference,
-                &input.recovery_note,
-            ],
+            "select claim_payment_job($1::text, $2::text)",
+            &[&kind.to_string(), &payment_provider.to_string()],
         )
         .await
     }
@@ -654,6 +517,35 @@ where
         self.fetch_json_one(
             "select complete_free_event_purchase($1::uuid)",
             &[&event_purchase_id],
+        )
+        .await
+    }
+
+    /// [`DBPayments::complete_payment_job_recovery`].
+    #[instrument(skip(self, input), err)]
+    async fn complete_payment_job_recovery(
+        &self,
+        input: &CompletePaymentJobRecoveryInput,
+    ) -> Result<()> {
+        self.execute(
+            "
+            select complete_payment_job_recovery(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::text,
+                $5::text,
+                $6::text
+            )
+            ",
+            &[
+                &input.actor_user_id,
+                &input.group_id,
+                &input.payment_job_id,
+                &input.provider_object_id,
+                &input.recovery_reference,
+                &input.recovery_note,
+            ],
         )
         .await
     }
@@ -925,21 +817,6 @@ where
         .await
     }
 
-    /// [`DBPayments::record_event_purchase_application_fee_adjustment_failure`].
-    #[instrument(skip(self, failure_message), err)]
-    async fn record_event_purchase_application_fee_adjustment_failure(
-        &self,
-        adjustment_id: Uuid,
-        claim_id: Uuid,
-        failure_message: String,
-    ) -> Result<()> {
-        self.execute(
-            "select record_event_purchase_application_fee_adjustment_failure($1::uuid, $2::uuid, $3::text)",
-            &[&adjustment_id, &claim_id, &failure_message],
-        )
-        .await
-    }
-
     /// [`DBPayments::record_event_purchase_application_fee_adjustment_succeeded`].
     #[instrument(skip(self), err)]
     async fn record_event_purchase_application_fee_adjustment_succeeded(
@@ -955,21 +832,6 @@ where
                 &claim_id,
                 &provider_application_fee_refund_id,
             ],
-        )
-        .await
-    }
-
-    /// [`DBPayments::record_event_purchase_credit_note_failure`].
-    #[instrument(skip(self, failure_message), err)]
-    async fn record_event_purchase_credit_note_failure(
-        &self,
-        credit_note_id: Uuid,
-        claim_id: Uuid,
-        failure_message: String,
-    ) -> Result<()> {
-        self.execute(
-            "select record_event_purchase_credit_note_failure($1::uuid, $2::uuid, $3::text)",
-            &[&credit_note_id, &claim_id, &failure_message],
         )
         .await
     }
@@ -1018,21 +880,6 @@ where
         .await
     }
 
-    /// [`DBPayments::record_event_purchase_refund_retryable_failure`].
-    #[instrument(skip(self, failure_message), err)]
-    async fn record_event_purchase_refund_retryable_failure(
-        &self,
-        event_purchase_refund_id: Uuid,
-        claim_id: Uuid,
-        failure_message: String,
-    ) -> Result<()> {
-        self.execute(
-            "select record_event_purchase_refund_retryable_failure($1::uuid, $2::uuid, $3::text)",
-            &[&event_purchase_refund_id, &claim_id, &failure_message],
-        )
-        .await
-    }
-
     /// [`DBPayments::record_event_purchase_refund_succeeded`].
     #[instrument(skip(self), err)]
     async fn record_event_purchase_refund_succeeded(
@@ -1073,6 +920,21 @@ where
                 &failure_message,
                 &expected_claim_id,
             ],
+        )
+        .await
+    }
+
+    /// [`DBPayments::record_payment_job_failure`].
+    #[instrument(skip(self, failure_message), err)]
+    async fn record_payment_job_failure(
+        &self,
+        payment_job_id: Uuid,
+        claim_id: Uuid,
+        failure_message: String,
+    ) -> Result<()> {
+        self.execute(
+            "select record_payment_job_failure($1::uuid, $2::uuid, $3::text)",
+            &[&payment_job_id, &claim_id, &failure_message],
         )
         .await
     }
@@ -1131,72 +993,20 @@ where
         .await
     }
 
-    /// [`DBPayments::requeue_event_purchase_application_fee_adjustment`].
+    /// [`DBPayments::requeue_payment_job`].
     #[instrument(skip(self), err)]
-    async fn requeue_event_purchase_application_fee_adjustment(
-        &self,
-        group_id: Uuid,
-        adjustment_id: Uuid,
-    ) -> Result<()> {
+    async fn requeue_payment_job(&self, group_id: Uuid, payment_job_id: Uuid) -> Result<()> {
         self.execute(
-            "select requeue_event_purchase_application_fee_adjustment($1::uuid, $2::uuid)",
-            &[&group_id, &adjustment_id],
+            "select requeue_payment_job($1::uuid, $2::uuid)",
+            &[&group_id, &payment_job_id],
         )
         .await
     }
 
-    /// [`DBPayments::requeue_event_purchase_credit_note`].
+    /// [`DBPayments::requeue_stale_payment_job_claims`].
     #[instrument(skip(self), err)]
-    async fn requeue_event_purchase_credit_note(
-        &self,
-        group_id: Uuid,
-        credit_note_id: Uuid,
-    ) -> Result<()> {
-        self.execute(
-            "select requeue_event_purchase_credit_note($1::uuid, $2::uuid)",
-            &[&group_id, &credit_note_id],
-        )
-        .await
-    }
-
-    /// [`DBPayments::requeue_event_purchase_refund`].
-    #[instrument(skip(self), err)]
-    async fn requeue_event_purchase_refund(
-        &self,
-        group_id: Uuid,
-        event_purchase_id: Uuid,
-    ) -> Result<()> {
-        self.execute(
-            "select requeue_event_purchase_refund($1::uuid, $2::uuid)",
-            &[&group_id, &event_purchase_id],
-        )
-        .await
-    }
-
-    /// [`DBPayments::requeue_stale_event_purchase_application_fee_adjustment_claims`].
-    #[instrument(skip(self), err)]
-    async fn requeue_stale_event_purchase_application_fee_adjustment_claims(&self) -> Result<i32> {
-        self.fetch_scalar_one(
-            "select requeue_stale_event_purchase_application_fee_adjustment_claims()",
-            &[],
-        )
-        .await
-    }
-
-    /// [`DBPayments::requeue_stale_event_purchase_credit_note_claims`].
-    #[instrument(skip(self), err)]
-    async fn requeue_stale_event_purchase_credit_note_claims(&self) -> Result<i32> {
-        self.fetch_scalar_one(
-            "select requeue_stale_event_purchase_credit_note_claims()",
-            &[],
-        )
-        .await
-    }
-
-    /// [`DBPayments::requeue_stale_event_purchase_refund_claims`].
-    #[instrument(skip(self), err)]
-    async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32> {
-        self.fetch_scalar_one("select requeue_stale_event_purchase_refund_claims()", &[])
+    async fn requeue_stale_payment_job_claims(&self) -> Result<i32> {
+        self.fetch_scalar_one("select requeue_stale_payment_job_claims()", &[])
             .await
     }
 
@@ -1269,18 +1079,12 @@ where
 pub(crate) struct ClaimedEventPurchaseApplicationFeeAdjustment {
     /// Amount returned to the connected seller, in minor units.
     pub amount_minor: i64,
-    /// Current worker claim identifier.
-    pub claim_id: Uuid,
     /// Connected seller that owns the direct charge.
     pub connected_seller_id: String,
     /// Currency of the purchase and adjustment amount.
     pub currency_code: String,
     /// Durable adjustment identifier.
     pub event_purchase_application_fee_adjustment_id: Uuid,
-    /// Purchase whose application fee is adjusted.
-    pub event_purchase_id: Uuid,
-    /// Stable provider idempotency key.
-    pub idempotency_key: String,
     /// Adjustment reason.
     pub kind: String,
     /// Provider application fee being refunded.
@@ -1292,18 +1096,12 @@ pub(crate) struct ClaimedEventPurchaseApplicationFeeAdjustment {
 pub(crate) struct ClaimedEventPurchaseCreditNote {
     /// Gross credit-note amount, in minor units.
     pub amount_minor: i64,
-    /// Current worker claim identifier.
-    pub claim_id: Uuid,
     /// Connected seller that owns the invoice and refund.
     pub connected_seller_id: String,
     /// Durable credit-note identifier.
     pub event_purchase_credit_note_id: Uuid,
-    /// Purchase receiving the credit note.
-    pub event_purchase_id: Uuid,
     /// Customer refund linked to the credit note.
     pub event_purchase_refund_id: Uuid,
-    /// Stable provider idempotency key.
-    pub idempotency_key: String,
     /// Provider invoice receiving the credit note.
     pub provider_invoice_id: String,
     /// Existing provider refund linked without creating another refund.
@@ -1324,6 +1122,48 @@ pub(crate) struct ClaimedEventPurchaseRefund {
     /// Durable provider refund state.
     #[serde(flatten)]
     pub refund: EventPurchaseRefund,
+}
+
+/// Claimed payment job with lifecycle ownership and typed provider work.
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct ClaimedPaymentJob {
+    /// Number of provider attempts made, including this claim.
+    pub attempt_count: i32,
+    /// Current worker claim identifier.
+    pub claim_id: Uuid,
+    /// Purchase whose payment job is being processed.
+    pub event_purchase_id: Uuid,
+    /// Stable provider idempotency key.
+    pub idempotency_key: String,
+    /// Durable payment job identifier.
+    pub payment_job_id: Uuid,
+    /// Payments provider that owns the job.
+    pub payment_provider: PaymentProvider,
+    /// Typed provider work associated with the claimed job.
+    #[serde(flatten)]
+    pub work: ClaimedPaymentJobWork,
+}
+
+/// Provider work payload claimed from a durable payment job.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "kebab-case", tag = "kind")]
+#[allow(clippy::enum_variant_names)]
+pub(crate) enum ClaimedPaymentJobWork {
+    /// Application-fee adjustment provider work.
+    EventPurchaseApplicationFeeAdjustment {
+        /// Application-fee adjustment payload.
+        application_fee_adjustment: ClaimedEventPurchaseApplicationFeeAdjustment,
+    },
+    /// Credit-note provider work.
+    EventPurchaseCreditNote {
+        /// Credit-note payload.
+        credit_note: ClaimedEventPurchaseCreditNote,
+    },
+    /// Refund provider work.
+    EventPurchaseRefund {
+        /// Refund payload.
+        refund: ClaimedEventPurchaseRefund,
+    },
 }
 
 impl Deref for ClaimedEventPurchaseRefund {
@@ -1356,21 +1196,21 @@ pub(crate) struct CompletedEventPurchase {
     pub transitioned: Option<bool>,
 }
 
-/// Input used to complete exhausted financial work outside OCG.
+/// Input used to complete exhausted payment job work outside OCG.
 #[derive(Debug, Clone)]
-pub(crate) struct CompleteEventPurchaseFinancialRecoveryInput {
+pub(crate) struct CompletePaymentJobRecoveryInput {
     /// Operator completing the recovery.
     pub actor_user_id: Uuid,
     /// Group that owns the purchase.
     pub group_id: Uuid,
+    /// Durable payment job identifier.
+    pub payment_job_id: Uuid,
     /// Provider object created outside OCG.
     pub provider_object_id: String,
     /// Operator note describing the recovery evidence.
     pub recovery_note: String,
     /// External reference proving the recovery.
     pub recovery_reference: String,
-    /// Durable financial-work identifier.
-    pub work_id: Uuid,
 }
 
 /// Input used to complete an externally resolved refund recovery.
@@ -1417,6 +1257,8 @@ pub(crate) struct EventPurchaseRefund {
     pub idempotency_key: String,
     /// Refund workflow that owns this record.
     pub kind: EventPurchaseRefundKind,
+    /// Durable payment job identifier.
+    pub payment_job_id: Uuid,
     /// Payments provider processing the refund.
     pub payment_provider: PaymentProvider,
     /// Current provider refund lifecycle status.
@@ -1477,8 +1319,6 @@ pub(crate) enum EventPurchaseRefundKind {
 pub(crate) enum EventPurchaseRefundStatus {
     /// Local purchase and request state have been finalized.
     Finalized,
-    /// A refund worker currently owns the durable job.
-    Processing,
     /// Provider reconciliation failed transiently or terminally.
     ProviderFailed,
     /// Provider refund has not succeeded yet.
@@ -1653,9 +1493,139 @@ mod tests {
     use uuid::Uuid;
 
     use super::{
+        ClaimedPaymentJob, ClaimedPaymentJobWork, EventPurchaseRefundStatus,
         PrepareEventCheckoutPurchaseConflict, PrepareEventCheckoutPurchaseOutput,
         ReconcileEventPurchaseForCheckoutSessionOutput, ReconcileEventPurchaseResult,
     };
+
+    #[test]
+    fn claimed_payment_job_deserializes_application_fee_adjustment_work() {
+        let claim_id = Uuid::new_v4();
+        let payment_job_id = Uuid::new_v4();
+        let purchase_id = Uuid::new_v4();
+
+        // Deserialize the flattened lifecycle fields plus internally tagged work
+        let job: ClaimedPaymentJob = serde_json::from_value(json!({
+            "application_fee_adjustment": {
+                "amount_minor": 125,
+                "connected_seller_id": "acct_worker",
+                "currency_code": "USD",
+                "event_purchase_application_fee_adjustment_id": Uuid::new_v4(),
+                "kind": "tax-reconciliation",
+                "provider_application_fee_id": "fee_worker"
+            },
+            "attempt_count": 1,
+            "claim_id": claim_id,
+            "event_purchase_id": purchase_id,
+            "idempotency_key": "event-purchase-tax-fee-adjustment-test",
+            "kind": "event-purchase-application-fee-adjustment",
+            "payment_job_id": payment_job_id,
+            "payment_provider": "stripe",
+            "status": "processing"
+        }))
+        .unwrap();
+
+        // Check the job lifecycle and typed work remain distinct
+        assert_eq!(job.attempt_count, 1);
+        assert_eq!(job.claim_id, claim_id);
+        assert_eq!(job.event_purchase_id, purchase_id);
+        assert_eq!(job.payment_job_id, payment_job_id);
+        assert!(matches!(
+            job.work,
+            ClaimedPaymentJobWork::EventPurchaseApplicationFeeAdjustment { .. }
+        ));
+    }
+
+    #[test]
+    fn claimed_payment_job_deserializes_credit_note_work() {
+        let claim_id = Uuid::new_v4();
+        let payment_job_id = Uuid::new_v4();
+        let purchase_id = Uuid::new_v4();
+
+        // Deserialize the flattened lifecycle fields plus internally tagged work
+        let job: ClaimedPaymentJob = serde_json::from_value(json!({
+            "attempt_count": 1,
+            "claim_id": claim_id,
+            "credit_note": {
+                "amount_minor": 2500,
+                "connected_seller_id": "acct_worker",
+                "event_purchase_credit_note_id": Uuid::new_v4(),
+                "event_purchase_refund_id": Uuid::new_v4(),
+                "provider_invoice_id": "in_worker",
+                "provider_refund_id": "re_worker",
+                "tax_amount_minor": 200
+            },
+            "event_purchase_id": purchase_id,
+            "idempotency_key": "event-purchase-credit-note-test",
+            "kind": "event-purchase-credit-note",
+            "payment_job_id": payment_job_id,
+            "payment_provider": "stripe",
+            "status": "processing"
+        }))
+        .unwrap();
+
+        // Check the job lifecycle and typed work remain distinct
+        assert_eq!(job.attempt_count, 1);
+        assert_eq!(job.claim_id, claim_id);
+        assert_eq!(job.event_purchase_id, purchase_id);
+        assert_eq!(job.payment_job_id, payment_job_id);
+        assert!(matches!(
+            job.work,
+            ClaimedPaymentJobWork::EventPurchaseCreditNote { .. }
+        ));
+    }
+
+    #[test]
+    fn claimed_payment_job_deserializes_refund_work() {
+        let claim_id = Uuid::new_v4();
+        let payment_job_id = Uuid::new_v4();
+        let purchase_id = Uuid::new_v4();
+        let refund_id = Uuid::new_v4();
+
+        // Deserialize the flattened lifecycle fields plus internally tagged work
+        let job: ClaimedPaymentJob = serde_json::from_value(json!({
+            "attempt_count": 1,
+            "claim_id": claim_id,
+            "event_purchase_id": purchase_id,
+            "idempotency_key": "event-purchase-refund-test",
+            "kind": "event-purchase-refund",
+            "payment_job_id": payment_job_id,
+            "payment_provider": "stripe",
+            "refund": {
+                "amount_minor": 2500,
+                "claim_id": claim_id,
+                "community_id": Uuid::new_v4(),
+                "connected_seller_id": "acct_worker",
+                "currency_code": "USD",
+                "event_id": Uuid::new_v4(),
+                "event_purchase_id": purchase_id,
+                "event_purchase_refund_id": refund_id,
+                "idempotency_key": "event-purchase-refund-test",
+                "kind": "event-cancellation",
+                "payment_job_id": payment_job_id,
+                "payment_provider": "stripe",
+                "provider_payment_reference": "pi_worker",
+                "status": "provider-pending",
+                "terminal_failure": false
+            },
+            "status": "processing"
+        }))
+        .unwrap();
+
+        // Check the job lifecycle and nested refund DTO both deserialize
+        assert_eq!(job.attempt_count, 1);
+        assert_eq!(job.claim_id, claim_id);
+        assert_eq!(job.event_purchase_id, purchase_id);
+        assert_eq!(job.payment_job_id, payment_job_id);
+        match job.work {
+            ClaimedPaymentJobWork::EventPurchaseRefund { refund } => {
+                assert_eq!(refund.event_purchase_refund_id, refund_id);
+                assert_eq!(refund.payment_job_id, payment_job_id);
+                assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
+            }
+            _ => panic!("expected refund work"),
+        }
+    }
 
     #[test]
     fn prepare_event_checkout_purchase_output_maps_conflicts() {

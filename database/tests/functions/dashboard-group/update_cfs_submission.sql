@@ -31,41 +31,15 @@ select plan(18);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cfs-submission-community',
-    'CFS Submission Community',
-    'A test community for CFS submissions',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'CFS Group', 'cfs-group');
-
--- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice'),
-    (:'reviewerID', gen_random_bytes(32), 'reviewer@example.com', 'reviewer', true, 'Reviewer');
+select fx_user(:'reviewerID', jsonb_build_object('username', 'reviewer'));
 
 -- Session proposal
 insert into session_proposal (
@@ -103,50 +77,10 @@ insert into session_proposal (
 );
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published
-) values (
-    :'eventID',
-    :'groupID',
-    'Event 1',
-    'event-1',
-    'Event description',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Event used for invalid label checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published
-) values (
-    :'event2ID',
-    :'groupID',
-    'Event 2',
-    'event-2',
-    'Event description',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true
-);
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Event CFS labels
 insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
@@ -402,6 +336,7 @@ select throws_ok(
         :'submissionID',
         '{"action_required_message":"Need more info","status_id":"information-requested","rating_stars":6}'
     ),
+    'OCG01',
     'invalid rating stars',
     'Should reject invalid rating stars'
 );
@@ -420,6 +355,7 @@ select throws_ok(
         :'submission3ID',
         '{"status_id":"rejected"}'
     ),
+    'OCG01',
     'linked submissions must remain approved',
     'Should reject status changes for linked submissions'
 );
@@ -438,6 +374,7 @@ select throws_ok(
         :'submissionID',
         '{"status_id":"withdrawn"}'
     ),
+    'OCG01',
     'invalid submission status',
     'Should reject withdrawn status updates'
 );
@@ -456,6 +393,7 @@ select throws_ok(
         :'submission2ID',
         '{"status_id":"approved"}'
     ),
+    'OCG01',
     'submission not found',
     'Should reject updating withdrawn submissions'
 );
@@ -477,6 +415,7 @@ select throws_ok(
             :'labelInvalidID'
         )
     ),
+    'OCG01',
     'invalid event CFS labels',
     'Should reject labels that do not belong to the event'
 );

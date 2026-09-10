@@ -33,172 +33,61 @@ select plan(14);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'invitation-search-community',
-    'Invitation Search Community',
-    'A test community for invitation search',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+-- Baseline communities, group categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'group2ID', :'communityID', :'groupCategoryID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Invitation Group', 'invitation-group'),
-    (:'group2ID', :'communityID', :'groupCategoryID', 'Other Group', 'other-group');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
 
 -- Users
-insert into "user" (
-    auth_hash,
-    bio,
-    email,
-    github_url,
-    provider,
-    user_id,
-    username,
-    website_url,
-
-    company,
-    name,
-    photo_url,
-    title
-) values (
-    gen_random_bytes(32),
-    'Reviews invitation requests',
-    'alice@example.com',
-    'https://github.com/alice',
-    '{"github": {"username": "alice-gh", "private": "secret"}, "linuxfoundation": {"username": "alice-lf", "subject": "secret"}}'::jsonb,
-    :'user1ID',
-    'alice',
-    'https://example.com/alice',
-    'Cloud Corp',
-    'Alice',
-    'https://example.com/alice.png',
-    'Principal Engineer'
-), (
-    gen_random_bytes(32),
-    null,
-    'bob@example.com',
-    null,
-    null,
-    :'user2ID',
-    'bob',
-    null,
-    null,
-    null,
-    'https://example.com/bob.png',
-    null
-), (
-    gen_random_bytes(32),
-    null,
-    'carol@example.com',
-    null,
-    null,
-    :'user3ID',
-    'carol',
-    null,
-    null,
-    'Carol',
-    null,
-    'Designer'
-);
+select fx_user(:'user1ID', jsonb_build_object(
+    'bio', 'Reviews invitation requests',
+    'company', 'Cloud Corp',
+    'github_url', 'https://github.com/alice',
+    'name', 'Alice',
+    'photo_url', 'https://example.com/alice.png',
+    'provider', '{"github": {"username": "alice-gh", "private": "secret"}, "linuxfoundation": {"username": "alice-lf", "subject": "secret"}}'::jsonb,
+    'title', 'Principal Engineer',
+    'username', 'alice-search-event-invitation-requests',
+    'website_url', 'https://example.com/alice'
+));
+select fx_user(:'user2ID', jsonb_build_object(
+    'photo_url', 'https://example.com/bob.png',
+    'username', 'bob-search-event-invitation-requests'
+));
+select fx_user(:'user3ID', jsonb_build_object(
+    'name', 'Carol',
+    'title', 'Designer',
+    'username', 'carol'
+));
 
 -- Events
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    attendee_approval_required,
-    published,
-    canceled,
-    deleted
-)
-values (
-    :'event1ID',
-    'Invitation Event',
-    'invitation-event',
-    'An event for invitation requests',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    true,
-    true,
-    false,
-    false
-), (
-    :'event2ID',
-    'Other Invitation Event',
-    'other-invitation-event',
-    'Another event for invitation requests',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    true,
-    true,
-    false,
-    false
-);
+select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true
+));
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true
+));
 
 -- Public ticket tier requested by an accepted attendee
-insert into event_ticket_type (
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values
-    (
-        'public',
-        :'event1ID',
-        :'ticketTypeID',
-        1,
-        10,
-        'General admission'
-    ),
-    (
-        'invitation_only',
-        :'event2ID',
-        :'ticketType2ID',
-        1,
-        10,
-        'Private admission'
-    );
+select fx_event_ticket_type(:'ticketTypeID', :'event1ID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'ticketType2ID', :'event2ID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 10,
+    'title', 'Private admission'
+));
 
 -- Free price windows for the request ticket tiers
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values
-    (0, :'priceWindowID', :'ticketTypeID'),
-    (0, :'priceWindow2ID', :'ticketType2ID');
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'priceWindow2ID', :'ticketType2ID', jsonb_build_object('amount_minor', 0));
 
 -- Invitation requests
 insert into event_invitation_request (
@@ -306,8 +195,8 @@ select is(
     jsonb_build_object(
         'invitation_requests', '[
             {"created_at": 1704240000, "invitation_request_status": "rejected", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000011", "username": "carol", "name": "Carol", "title": "Designer"}, "reviewed_at": 1704243600},
-            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null, "registration_answers": {"answers": [{"question_id": "3a2f0000-0000-0000-0000-000000000018", "value": "Vegetarian"}]}},
-            {"admission_offer_id": "3a2f0000-0000-0000-0000-000000000012", "admission_offer_status": "pending", "created_at": 1704067200, "invitation_request_status": "accepted", "offer_expires_at": 4071686400, "offered_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "offered_ticket_title": "General admission", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice", "bio": "Reviews invitation requests", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "reviewed_at": 1704070800}
+            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob-search-event-invitation-requests", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null, "registration_answers": {"answers": [{"question_id": "3a2f0000-0000-0000-0000-000000000018", "value": "Vegetarian"}]}},
+            {"admission_offer_id": "3a2f0000-0000-0000-0000-000000000012", "admission_offer_status": "pending", "created_at": 1704067200, "invitation_request_status": "accepted", "offer_expires_at": 4071686400, "offered_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "offered_ticket_title": "General admission", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice-search-event-invitation-requests", "bio": "Reviews invitation requests", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "reviewed_at": 1704070800}
         ]'::jsonb,
         'total', 3
     ),
@@ -363,7 +252,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[
-            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null, "registration_answers": {"answers": [{"question_id": "3a2f0000-0000-0000-0000-000000000018", "value": "Vegetarian"}]}}
+            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob-search-event-invitation-requests", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null, "registration_answers": {"answers": [{"question_id": "3a2f0000-0000-0000-0000-000000000018", "value": "Vegetarian"}]}}
         ]'::jsonb,
         'total', 3
     ),
@@ -486,7 +375,7 @@ select is(
             'sort', 'name-asc'
         )
     )::jsonb#>>'{invitation_requests,0,user,username}',
-    'alice',
+    'alice-search-event-invitation-requests',
     'Should sort invitation requests by requester name ascending'
 );
 

@@ -50,136 +50,50 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Seed the owning and cross-scope communities.
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values
-    (
-        'https://example.test/banner-mobile.png',
-        'https://example.test/banner.png',
-        :'communityID',
-        'Enrollment function tests',
-        'Enrollment Community',
-        'https://example.test/logo.png',
-        'enrollment-community'
-    ),
-    (
-        'https://example.test/other-banner-mobile.png',
-        'https://example.test/other-banner.png',
-        :'otherCommunityID',
-        'Other community',
-        'Other Community',
-        'https://example.test/other-logo.png',
-        'other-enrollment-community'
-    );
-
--- Seed the owning group's category.
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
--- Seed the events' category.
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Meetups');
+-- Baseline communities, group categories, event categories and users
+select fx_community(:'communityID');
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'attendeeID');
+select fx_user(:'expiredUserID');
+select fx_user(:'externalPaymentUserID');
+select fx_user(:'offeredUserID');
+select fx_user(:'openRequestUserID');
+select fx_user(:'pendingPaymentUserID');
+select fx_user(:'pendingRequestUserID');
+select fx_user(:'refundOfferUserID');
+select fx_user(:'refundUserID');
+select fx_user(:'rejectedRefundUserID');
+select fx_user(:'rejectedRequestUserID');
+select fx_user(:'waitlistUserID');
 
 -- Seed the active owning group.
-insert into "group" (active, community_id, group_category_id, group_id, name, slug)
-values (true, :'communityID', :'groupCategoryID', :'groupID', 'Enrollment Group', 'enrollment');
-
--- Seed users for each enrollment-state scenario.
-insert into "user" (auth_hash, email, email_verified, user_id, username)
-values
-    ('hash', 'attendee@example.test', true, :'attendeeID', 'enrollment-attendee'),
-    ('hash', 'expired@example.test', true, :'expiredUserID', 'enrollment-expired'),
-    ('hash', 'external@example.test', true, :'externalPaymentUserID', 'enrollment-external'),
-    ('hash', 'offered@example.test', true, :'offeredUserID', 'enrollment-offered'),
-    ('hash', 'open-request@example.test', true, :'openRequestUserID', 'enrollment-open-request'),
-    ('hash', 'payment@example.test', true, :'pendingPaymentUserID', 'enrollment-payment'),
-    ('hash', 'request@example.test', true, :'pendingRequestUserID', 'enrollment-request'),
-    ('hash', 'refund-offer@example.test', true, :'refundOfferUserID', 'enrollment-refund-offer'),
-    ('hash', 'refund@example.test', true, :'refundUserID', 'enrollment-refund'),
-    ('hash', 'refund-rejected@example.test', true, :'rejectedRefundUserID', 'enrollment-refund-rejected'),
-    ('hash', 'rejected@example.test', true, :'rejectedRequestUserID', 'enrollment-rejected'),
-    ('hash', 'waitlist@example.test', true, :'waitlistUserID', 'enrollment-waitlist');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('slug', 'enrollment'));
 
 -- Seed approval-enabled and approval-disabled events.
-insert into event (
-    attendee_approval_required,
-    capacity,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_instructions,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values
-    (
-        true,
-        20,
-        'Approval event',
-        :'eventCategoryID',
-        :'eventID',
-        'in-person',
-        'Wire to account 123',
-        'https://pay.example.test/enrollment',
-        :'groupID',
-        'Approval Event',
-        'USD',
-        true,
-        'approval-event',
-        '2099-01-01 10:00:00+00',
-        'UTC'
-    ),
-    (
-        false,
-        10,
-        'Open event',
-        :'eventCategoryID',
-        :'openEventID',
-        'in-person',
-        null,
-        null,
-        :'groupID',
-        'Open Event',
-        null,
-        true,
-        'open-event',
-        '2099-01-02 10:00:00+00',
-        'UTC'
-    );
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'capacity', 20,
+    'external_payment_instructions', 'Wire to account 123',
+    'external_payment_url', 'https://pay.example.test/enrollment',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', '2099-01-01 10:00:00+00'
+));
+select fx_event(:'openEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 10,
+    'published', true,
+    'starts_at', '2099-01-02 10:00:00+00'
+));
 
 -- Seed one ticket tier for each event.
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'eventID', :'ticketTypeID', 1, 20, 'General admission'),
-    (:'openEventID', :'openTicketTypeID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 20));
+select fx_event_ticket_type(:'openTicketTypeID', :'openEventID', jsonb_build_object('seats_total', 10));
 
 -- Seed current free price windows for both tiers.
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-)
-values
-    (0, :'priceWindowID', :'ticketTypeID'),
-    (0, :'openPriceWindowID', :'openTicketTypeID');
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'openPriceWindowID', :'openTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Seed confirmed attendee states for check-in and refund scenarios.
 insert into event_attendee (
@@ -484,7 +398,7 @@ select is(
                 "status": "pending-payment"
             }
         $$,
-        extract(epoch from timestamptz '2099-01-01 12:00:00+00')::bigint,
+        epoch_seconds(timestamptz '2099-01-01 12:00:00+00'),
         :'externalPaymentID'
     )::jsonb,
     'Should return a pending external payment without a resume checkout URL'

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(52);
+select plan(54);
 
 -- ============================================================================
 -- VARIABLES
@@ -49,6 +49,7 @@ select plan(52);
 \set eventPaidToPaidID '3a390000-0000-0000-0000-000000000025'
 \set eventPaidToPaidPriceWindowID '3a390000-0000-0000-0000-000000000030'
 \set eventPaidToPaidTicketTypeID '3a390000-0000-0000-0000-000000000031'
+\set eventSessionHostsID '3a390000-0000-0000-0000-000000000064'
 \set eventTestFreeToPaidID '3a390000-0000-0000-0000-000000000032'
 \set eventTestFreeToPaidPriceWindowID '3a390000-0000-0000-0000-000000000033'
 \set eventTestFreeToPaidTicketTypeID '3a390000-0000-0000-0000-000000000034'
@@ -64,6 +65,7 @@ select plan(52);
 \set label2ID '3a390000-0000-0000-0000-000000000012'
 \set label3ID '3a390000-0000-0000-0000-000000000013'
 \set label4ID '3a390000-0000-0000-0000-000000000014'
+\set sessionHostsID '3a390000-0000-0000-0000-000000000065'
 \set sponsorNewID '3a390000-0000-0000-0000-000000000015'
 \set sponsorOrigID '3a390000-0000-0000-0000-000000000016'
 \set user1ID '3a390000-0000-0000-0000-000000000009'
@@ -74,6 +76,16 @@ select plan(52);
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Community
+select fx_community(:'community1ID', jsonb_build_object('logo_url', 'https://example.com/logo.png'));
+
+-- Baseline group category
+select fx_group_category('3a390000-0000-0000-0000-000000000006', :'community1ID');
+
+-- Event categories
+select fx_event_category(:'category1ID', :'community1ID', jsonb_build_object('name', 'Conference'));
+select fx_event_category(:'category2ID', :'community1ID', jsonb_build_object('name', 'Workshop'));
 
 -- Operator allowlist and window limits used by external update scenarios
 insert into external_payments_config (
@@ -86,212 +98,87 @@ insert into external_payments_config (
     336
 );
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
 -- Users
-insert into "user" (user_id, auth_hash, email, username, name) values
-    (:'user1ID', 'hash1', 'host1@example.com', 'host1', 'Host One'),
-    (:'user2ID', 'hash2', 'host2@example.com', 'host2', 'Host Two'),
-    (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One'),
-    (:'waitlistUserID', 'hash4', 'waitlist@example.com', 'waitlist', 'Waitlist User');
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values
-    (:'category1ID', 'Conference', :'community1ID'),
-    (:'category2ID', 'Workshop', :'community1ID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values ('3a390000-0000-0000-0000-000000000006', 'Technology', :'community1ID');
+select fx_user(:'user1ID', jsonb_build_object(
+    'email', 'host1-update-event@example.com',
+    'username', 'host1-update-event'
+));
+select fx_user(:'user2ID', jsonb_build_object(
+    'email', 'host2-update-event@example.com',
+    'name', 'Host Two',
+    'username', 'host2-update-event'
+));
+select fx_user(:'user3ID', jsonb_build_object(
+    'name', 'Speaker One',
+    'username', 'speaker1-update-event'
+));
+select fx_user(:'waitlistUserID', jsonb_build_object('username', 'waitlist'));
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id,
-    payment_recipient
-) values (
-    :'group1ID',
-    :'community1ID',
-    'Test Group',
-    'abc1234',
-    'A test group',
-    '3a390000-0000-0000-0000-000000000006',
-    '{"provider": "stripe", "recipient_id": "acct_update_event", "seller_display_name": "Update Event Fiscal Sponsor"}'::jsonb
-);
+select fx_group(:'group1ID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_update_event", "seller_display_name": "Update Event Fiscal Sponsor"}'::jsonb));
 
 -- Allowlisted group with external payments enabled for external update scenarios
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'community1ID',
-    'KR',
-    true,
-    '3a390000-0000-0000-0000-000000000006',
-    :'groupExternalID',
-    'External Update Group',
-    'external-update-group'
-);
+select fx_group(:'groupExternalID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- Delisted-country group used to reject a preserved external URL
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'community1ID',
-    'US',
-    true,
-    '3a390000-0000-0000-0000-000000000006',
-    :'groupDelistedID',
-    'Delisted External Group',
-    'delisted-external-group'
-);
+select fx_group(:'groupDelistedID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object(
+    'country_code', 'US',
+    'external_payments_enabled', true
+));
 
 -- Events used for paid-capability transition results
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone,
-
-    payment_currency_code,
-    test_event
-) values (
-    :'eventFreeToPaidID',
-    'Free event used for paid transition checks',
-    :'category1ID',
-    'virtual',
-    :'group1ID',
-    'Free To Paid',
-    'free-to-paid',
-    'UTC',
-
-    null,
-    false
-), (
-    :'eventPaidToFreeID',
-    'Paid event used for free transition checks',
-    :'category1ID',
-    'virtual',
-    :'group1ID',
-    'Paid To Free',
-    'paid-to-free',
-    'UTC',
-
-    'USD',
-    false
-), (
-    :'eventPaidToPaidID',
-    'Paid event used for paid edit checks',
-    :'category1ID',
-    'virtual',
-    :'group1ID',
-    'Paid To Paid',
-    'paid-to-paid',
-    'UTC',
-
-    'USD',
-    false
-), (
-    :'eventTestFreeToPaidID',
-    'Free test event promoted while adding paid tickets',
-    :'category1ID',
-    'virtual',
-    :'group1ID',
-    'Test Free To Paid',
-    'test-free-to-paid',
-    'UTC',
-
-    null,
-    true
-), (
-    :'eventTestPaidToLiveID',
-    'Paid test event promoted without changing tickets',
-    :'category1ID',
-    'virtual',
-    :'group1ID',
-    'Test Paid To Live',
-    'test-paid-to-live',
-    'UTC',
-
-    'USD',
-    true
-), (
-    :'eventTestPaidToTestID',
-    'Paid test event that remains a test event',
-    :'category1ID',
-    'virtual',
-    :'group1ID',
-    'Test Paid To Test',
-    'test-paid-to-test',
-    'UTC',
-
-    'USD',
-    true
-);
+select fx_event(:'eventFreeToPaidID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Free event used for paid transition checks',
+    'event_kind_id', 'virtual',
+    'name', 'Free To Paid',
+    'slug', 'free-to-paid'
+));
+select fx_event(:'eventPaidToFreeID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Paid event used for free transition checks',
+    'event_kind_id', 'virtual',
+    'name', 'Paid To Free',
+    'payment_currency_code', 'USD',
+    'slug', 'paid-to-free'
+));
+select fx_event(:'eventPaidToPaidID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Paid event used for paid edit checks',
+    'event_kind_id', 'virtual',
+    'name', 'Paid To Paid',
+    'payment_currency_code', 'USD',
+    'slug', 'paid-to-paid'
+));
+select fx_event(:'eventTestFreeToPaidID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Free test event promoted while adding paid tickets',
+    'event_kind_id', 'virtual',
+    'name', 'Test Free To Paid',
+    'test_event', true
+));
+select fx_event(:'eventTestPaidToLiveID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Paid test event promoted without changing tickets',
+    'event_kind_id', 'virtual',
+    'name', 'Test Paid To Live',
+    'payment_currency_code', 'USD',
+    'test_event', true
+));
+select fx_event(:'eventTestPaidToTestID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Paid test event that remains a test event',
+    'event_kind_id', 'virtual',
+    'name', 'Test Paid To Test',
+    'payment_currency_code', 'USD',
+    'test_event', true
+));
 
 -- Free manual-tax event with a selection that can be explicitly cleared
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    manual_tax_rate_ids,
-    name,
-    slug,
-    tax_behavior,
-    tax_calculation_mode,
-    timezone
-) values (
-    :'eventManualTaxID',
-    'Free manual-tax event used for selection clearing checks',
-    :'category1ID',
-    'virtual',
-    :'group1ID',
-    array['txr_state']::text[],
-    'Manual Tax Selection',
-    'manual-tax-selection',
-    'inclusive',
-    'manual',
-    'UTC'
-);
+select fx_event(:'eventManualTaxID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Free manual-tax event used for selection clearing checks',
+    'event_kind_id', 'virtual',
+    'manual_tax_rate_ids', array['txr_state']::text[],
+    'name', 'Manual Tax Selection',
+    'tax_calculation_mode', 'manual'
+));
 
 -- Existing ISO fields exercise updates from the deferred legacy form.
 update event
@@ -314,25 +201,10 @@ values
     );
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id
-) values (
-    :'event1ID',
-    :'group1ID',
-    'Original Event',
-    'def5678',
-    'Original description',
-    'America/New_York',
-    :'category1ID',
-    'in-person'
-);
+select fx_event(:'event1ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'slug', 'def5678',
+    'timezone', 'America/New_York'
+));
 
 -- Add initial host and sponsor to the event
 insert into event_host (event_id, user_id) values (:'event1ID', :'user1ID');
@@ -345,182 +217,75 @@ insert into event_sponsor (event_id, group_sponsor_id, level)
 values (:'event1ID', :'sponsorOrigID', 'Bronze');
 
 -- Canceled Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
+select fx_event(:'event4ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'canceled', true,
+    'timezone', 'America/New_York'
+));
 
-    canceled
-) values (
-    :'event4ID',
-    :'group1ID',
-    'Canceled Event',
-    'pqr4jkl',
-    'This event was canceled',
-    'America/New_York',
-    :'category1ID',
-    'in-person',
-
-    true
-);
+-- Event with a synced session meeting used for host change checks
+select fx_event(:'eventSessionHostsID', :'group1ID', :'category1ID', jsonb_build_object(
+    'ends_at', '2030-03-01 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'name', 'Session Hosts Event',
+    'starts_at', '2030-03-01 10:00:00+00',
+    'timezone', 'UTC'
+));
 
 -- Published event used for reminder evaluation checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-    published
-) values (
-    :'event10ID',
-    :'group1ID',
-    'Reminder Event',
-    'yz12abc',
-    'Published event for reminder evaluation checks',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    current_timestamp + interval '2 days',
-    current_timestamp + interval '2 days 2 hours',
-    true
-);
+select fx_event(:'event10ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '2 days 2 hours',
+    'event_kind_id', 'virtual',
+    'name', 'Reminder Event',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- Published soon-starting event used for reminder regression checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-    published
-) values (
-    :'event11ID',
-    :'group1ID',
-    'Reminder Event Soon',
-    'lmn45op',
-    'Published soon event for reminder regression checks',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    current_timestamp + interval '10 hours',
-    current_timestamp + interval '12 hours',
-    true
-);
+select fx_event(:'event11ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '12 hours',
+    'event_kind_id', 'virtual',
+    'name', 'Reminder Event Soon',
+    'published', true,
+    'starts_at', current_timestamp + interval '10 hours'
+));
 
 -- Event used for CFS labels update checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    cfs_description,
-    cfs_enabled,
-    cfs_ends_at,
-    cfs_starts_at,
-    starts_at,
-    ends_at
-) values (
-    :'event12ID',
-    :'group1ID',
-    'Event With Labels',
-    'opq67rs',
-    'Event seeded for CFS labels update tests',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    'Initial CFS description',
-    true,
-    '2030-01-05 00:00:00+00',
-    '2029-12-20 00:00:00+00',
-    '2030-01-15 10:00:00+00',
-    '2030-01-15 12:00:00+00'
-);
+select fx_event(:'event12ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'cfs_description', 'Initial CFS description',
+    'cfs_enabled', true,
+    'cfs_ends_at', '2030-01-05 00:00:00+00',
+    'cfs_starts_at', '2029-12-20 00:00:00+00',
+    'description', 'Event seeded for CFS labels update tests',
+    'ends_at', '2030-01-15 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'name', 'Event With Labels',
+    'starts_at', '2030-01-15 10:00:00+00'
+));
 
 -- Event used for CFS label upsert checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    cfs_description,
-    cfs_enabled,
-    cfs_ends_at,
-    cfs_starts_at,
-    starts_at,
-    ends_at
-) values (
-    :'event18ID',
-    :'group1ID',
-    'Event With Labels For Upsert',
-    'upsert-labels',
-    'Event seeded for CFS labels upsert tests',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    'Initial CFS description',
-    true,
-    '2030-01-05 00:00:00+00',
-    '2029-12-20 00:00:00+00',
-    '2030-01-15 10:00:00+00',
-    '2030-01-15 12:00:00+00'
-);
+select fx_event(:'event18ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'cfs_description', 'Initial CFS description',
+    'cfs_enabled', true,
+    'cfs_ends_at', '2030-01-05 00:00:00+00',
+    'cfs_starts_at', '2029-12-20 00:00:00+00',
+    'description', 'Event seeded for CFS labels upsert tests',
+    'ends_at', '2030-01-15 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'name', 'Event With Labels For Upsert',
+    'starts_at', '2030-01-15 10:00:00+00'
+));
 
 -- Live event used for update-driven waitlist promotion checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-    registration_starts_at,
-    published,
-    capacity,
-    waitlist_enabled
-) values (
-    :'eventWaitlistWindowID',
-    :'group1ID',
-    'Open Only Waitlist Event',
-    'open-only-waitlist-event',
-    'Event seeded for registration window waitlist update tests',
-    'UTC',
-    :'category1ID',
-    'in-person',
-    date_trunc('second', current_timestamp - interval '1 hour'),
-    date_trunc('second', current_timestamp + interval '1 hour'),
-    date_trunc('second', current_timestamp - interval '2 hours'),
-    true,
-    1,
-    true
-);
+select fx_event(:'eventWaitlistWindowID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 1,
+    'description', 'Event seeded for registration window waitlist update tests',
+    'ends_at', date_trunc('second', current_timestamp + interval '1 hour'),
+    'name', 'Open Only Waitlist Event',
+    'published', true,
+    'registration_starts_at', date_trunc('second', current_timestamp - interval '2 hours'),
+    'starts_at', date_trunc('second', current_timestamp - interval '1 hour'),
+    'waitlist_enabled', true
+));
 
 -- CFS labels seeded for update and upsert checks
 insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
@@ -540,9 +305,11 @@ values (:'event10ID', :'user1ID');
 insert into event_attendee (event_id, user_id)
 values (:'eventWaitlistWindowID', :'user2ID');
 
+-- Initial host of the session hosts event
+insert into event_host (event_id, user_id) values (:'eventSessionHostsID', :'user1ID');
+
 -- Every update fixture uses the unified ticket inventory
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-select
+select fx_event_ticket_type(
     case e.event_id
         when :'eventFreeToPaidID'::uuid then :'eventFreeToPaidTicketTypeID'::uuid
         when :'eventPaidToFreeID'::uuid then :'eventPaidToFreeTicketTypeID'::uuid
@@ -553,19 +320,16 @@ select
         else gen_random_uuid()
     end,
     e.event_id,
-    1,
-    coalesce(e.capacity, 100),
-    'General Admission'
+    jsonb_build_object(
+        'seats_total', coalesce(e.capacity, 100),
+        'title', 'General Admission'
+    )
+)
 from event e
 where e.group_id = :'group1ID';
 
 -- Price windows defining free and paid update scenarios
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-)
-select
+select fx_event_ticket_price_window(
     case e.event_id
         when :'eventFreeToPaidID'::uuid then :'eventFreeToPaidPriceWindowID'::uuid
         when :'eventPaidToFreeID'::uuid then :'eventPaidToFreePriceWindowID'::uuid
@@ -575,16 +339,19 @@ select
         when :'eventTestPaidToTestID'::uuid then :'eventTestPaidToTestPriceWindowID'::uuid
         else gen_random_uuid()
     end,
-    case
-        when e.event_id in (
-            :'eventPaidToFreeID'::uuid,
-            :'eventPaidToPaidID'::uuid,
-            :'eventTestPaidToLiveID'::uuid,
-            :'eventTestPaidToTestID'::uuid
-        ) then 1200
-        else 0
-    end,
-    ett.event_ticket_type_id
+    ett.event_ticket_type_id,
+    jsonb_build_object(
+        'amount_minor', case
+            when e.event_id in (
+                :'eventPaidToFreeID'::uuid,
+                :'eventPaidToPaidID'::uuid,
+                :'eventTestPaidToLiveID'::uuid,
+                :'eventTestPaidToTestID'::uuid
+            ) then 1200
+            else 0
+        end
+    )
+)
 from event_ticket_type ett
 join event e using (event_id)
 where e.group_id = :'group1ID';
@@ -603,246 +370,128 @@ select
     :'waitlistUserID',
     current_timestamp - interval '30 minutes';
 
--- Paid Stripe-shaped event on the non-external group used to prove leftover URLs clear
-insert into event (
-    description,
-    event_category_id,
+-- Session whose provider meeting is in sync with the initial host
+insert into session (
+    session_id,
     event_id,
-    event_kind_id,
-    external_payment_url,
-    external_payment_window_hours,
-    group_id,
     name,
-    payment_currency_code,
-    published,
-    slug,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
-    'Paid event that still carries leftover external fields',
-    :'category1ID',
-    :'eventExternalClearID',
-    'in-person',
-    'https://pay.example.test/leftover',
-    48,
-    :'group1ID',
-    'External Clear Event',
-    'USD',
-    false,
-    'external-clear-event',
-    'automatic',
-    'UTC',
-    '123 Main St',
-    'San Francisco',
-    'US',
-    'Community Hall',
-    '94105'
+    :'sessionHostsID',
+    :'eventSessionHostsID',
+    'Hosted Session',
+    'virtual',
+    '2030-03-01 10:30:00+00',
+    '2030-03-01 11:00:00+00',
+    true,
+    'zoom',
+    true
 );
+
+-- Paid Stripe-shaped event on the non-external group used to prove leftover URLs clear
+select fx_event(:'eventExternalClearID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Paid event that still carries leftover external fields',
+    'external_payment_url', 'https://pay.example.test/leftover',
+    'external_payment_window_hours', 48,
+    'name', 'External Clear Event',
+    'payment_currency_code', 'USD',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_name', 'Community Hall',
+    'venue_zip_code', '94105'
+));
 
 -- Paid leftover-URL event whose pending hold must keep the live event URL
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    external_payment_window_hours,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Paid event whose pending external hold keeps the live URL',
-    :'category1ID',
-    :'eventExternalPendingClearID',
-    'in-person',
-    'https://pay.example.test/pending-clear',
-    48,
-    :'group1ID',
-    'External Pending Clear Event',
-    'USD',
-    false,
-    'external-pending-clear-event',
-    'automatic',
-    'UTC',
-    '123 Main St',
-    'San Francisco',
-    'US',
-    'Community Hall',
-    '94105'
-);
+select fx_event(:'eventExternalPendingClearID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Paid event whose pending external hold keeps the live URL',
+    'external_payment_url', 'https://pay.example.test/pending-clear',
+    'external_payment_window_hours', 48,
+    'name', 'External Pending Clear Event',
+    'payment_currency_code', 'USD',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_name', 'Community Hall',
+    'venue_zip_code', '94105'
+));
 
 -- Paid event that keeps an external URL after the country leaves the allowlist
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    external_payment_window_hours,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Paid event whose group country is no longer allowlisted',
-    :'category1ID',
-    :'eventExternalDelistedID',
-    'in-person',
-    'https://pay.example.test/delisted',
-    48,
-    :'groupDelistedID',
-    'External Delisted Event',
-    'USD',
-    false,
-    'external-delisted-event',
-    'none',
-    'UTC',
-    '123 Main St',
-    'San Francisco',
-    'US',
-    'Community Hall',
-    '94105'
-);
+select fx_event(:'eventExternalDelistedID', :'groupDelistedID', :'category1ID', jsonb_build_object(
+    'description', 'Paid event whose group country is no longer allowlisted',
+    'external_payment_url', 'https://pay.example.test/delisted',
+    'external_payment_window_hours', 48,
+    'name', 'External Delisted Event',
+    'payment_currency_code', 'USD',
+    'tax_calculation_mode', 'none',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_name', 'Community Hall',
+    'venue_zip_code', '94105'
+));
 
 -- Paid external-group event without a URL that stays Stripe until URL is set
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    tax_behavior,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Published Stripe event waiting for an external URL',
-    :'category1ID',
-    :'eventExternalStripeID',
-    'in-person',
-    :'groupExternalID',
-    'External Stripe Event',
-    'KRW',
-    true,
-    'external-stripe-event',
-    current_timestamp + interval '7 days',
-    'inclusive',
-    'automatic',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventExternalStripeID', :'groupExternalID', :'category1ID', jsonb_build_object(
+    'description', 'Published Stripe event waiting for an external URL',
+    'name', 'External Stripe Event',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Paid external-group event already marked with a URL for window and tax updates
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    tax_behavior,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'External event updated for window and tax normalization',
-    :'category1ID',
-    :'eventExternalPaidID',
-    'in-person',
-    'https://pay.example.test/update',
-    :'groupExternalID',
-    'External Paid Event',
-    'KRW',
-    false,
-    'external-paid-event',
-    'exclusive',
-    'automatic',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventExternalPaidID', :'groupExternalID', :'category1ID', jsonb_build_object(
+    'description', 'External event updated for window and tax normalization',
+    'external_payment_url', 'https://pay.example.test/update',
+    'name', 'External Paid Event',
+    'payment_currency_code', 'KRW',
+    'tax_behavior', 'exclusive',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Ticket types for the external update fixtures
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'eventExternalClearTicketTypeID', :'eventExternalClearID', 1, 50, 'General Admission'),
-    (:'eventExternalDelistedTicketTypeID', :'eventExternalDelistedID', 1, 50, 'General Admission'),
-    (:'eventExternalPaidTicketTypeID', :'eventExternalPaidID', 1, 50, 'General Admission'),
-    (
-        :'eventExternalPendingClearTicketTypeID',
-        :'eventExternalPendingClearID',
-        1,
-        50,
-        'General Admission'
-    ),
-    (:'eventExternalStripeTicketTypeID', :'eventExternalStripeID', 1, 50, 'General Admission');
+select fx_event_ticket_type(:'eventExternalClearTicketTypeID', :'eventExternalClearID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General Admission'
+));
+select fx_event_ticket_type(:'eventExternalDelistedTicketTypeID', :'eventExternalDelistedID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General Admission'
+));
+select fx_event_ticket_type(:'eventExternalPaidTicketTypeID', :'eventExternalPaidID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General Admission'
+));
+select fx_event_ticket_type(:'eventExternalPendingClearTicketTypeID', :'eventExternalPendingClearID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General Admission'
+));
+select fx_event_ticket_type(:'eventExternalStripeTicketTypeID', :'eventExternalStripeID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General Admission'
+));
 
 -- Price windows for the external update fixtures
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'eventExternalClearPriceWindowID', 2500, :'eventExternalClearTicketTypeID'),
-    (:'eventExternalDelistedPriceWindowID', 2500, :'eventExternalDelistedTicketTypeID'),
-    (:'eventExternalPaidPriceWindowID', 5000, :'eventExternalPaidTicketTypeID'),
-    (
-        :'eventExternalPendingClearPriceWindowID',
-        2500,
-        :'eventExternalPendingClearTicketTypeID'
-    ),
-    (:'eventExternalStripePriceWindowID', 5000, :'eventExternalStripeTicketTypeID');
+select fx_event_ticket_price_window(:'eventExternalClearPriceWindowID', :'eventExternalClearTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'eventExternalDelistedPriceWindowID', :'eventExternalDelistedTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'eventExternalPaidPriceWindowID', :'eventExternalPaidTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'eventExternalPendingClearPriceWindowID', :'eventExternalPendingClearTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'eventExternalStripePriceWindowID', :'eventExternalStripeTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- Completed leftover external purchase that must not block clearing the URL
 insert into event_purchase (
@@ -1177,6 +826,7 @@ select throws_ok(
         null::jsonb,
         'stripe'
     )$$,
+    'OCG01',
     'payment configuration changed during provider validation',
     'Should reject a paid update validated against a stale sponsor'
 );
@@ -1562,12 +1212,12 @@ select is(
         "category_name": "Conference",
         "description": "Fully updated description",
         "hosts": [
-            {"name": "Host Two", "user_id": "3a390000-0000-0000-0000-000000000017", "username": "host2"},
-            {"name": "Speaker One", "user_id": "3a390000-0000-0000-0000-000000000018", "username": "speaker1"}
+            {"name": "Host Two", "user_id": "3a390000-0000-0000-0000-000000000017", "username": "host2-update-event"},
+            {"name": "Speaker One", "user_id": "3a390000-0000-0000-0000-000000000018", "username": "speaker1-update-event"}
         ],
         "speakers": [
-            {"name": "Host Two", "user_id": "3a390000-0000-0000-0000-000000000017", "username": "host2", "featured": true},
-            {"name": "Speaker One", "user_id": "3a390000-0000-0000-0000-000000000018", "username": "speaker1", "featured": false}
+            {"name": "Host Two", "user_id": "3a390000-0000-0000-0000-000000000017", "username": "host2-update-event", "featured": true},
+            {"name": "Speaker One", "user_id": "3a390000-0000-0000-0000-000000000018", "username": "speaker1-update-event", "featured": false}
         ],
         "kind": "hybrid",
         "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
@@ -1641,7 +1291,7 @@ select ok(
                 "meeting_provider": "zoom",
                 "meeting_requested": true,
                 "speakers": [
-                    {"name": "Host Two", "user_id": "3a390000-0000-0000-0000-000000000017", "username": "host2", "featured": true}
+                    {"name": "Host Two", "user_id": "3a390000-0000-0000-0000-000000000017", "username": "host2-update-event", "featured": true}
                 ]
             }
         ]'::jsonb
@@ -1680,6 +1330,50 @@ select is(
         }
     }'::jsonb,
     'Should set meeting_in_sync=false when meeting disabled to trigger deletion'
+);
+
+-- Should desync a session meeting when only the event hosts change
+select lives_ok(
+    format(
+        $$select update_event(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            jsonb_build_object(
+                'category_id', %L,
+                'description', 'Session hosts event',
+                'ends_at', '2030-03-01T12:00:00',
+                'hosts', jsonb_build_array(%L),
+                'kind_id', 'virtual',
+                'name', 'Session Hosts Event',
+                'sessions', jsonb_build_array(jsonb_build_object(
+                    'ends_at', '2030-03-01T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_provider_id', 'zoom',
+                    'meeting_requested', true,
+                    'name', 'Hosted Session',
+                    'session_id', %L,
+                    'starts_at', '2030-03-01T10:30:00'
+                )),
+                'starts_at', '2030-03-01T10:00:00',
+                'timezone', 'UTC'
+            )
+        )$$,
+        :'user1ID',
+        :'group1ID',
+        :'eventSessionHostsID',
+        :'category1ID',
+        :'user2ID',
+        :'sessionHostsID'
+    ),
+    'Should desync a session meeting when only the event hosts change'
+);
+
+-- Should mark the unchanged session out of sync after the host change
+select is(
+    (select meeting_in_sync from session where session_id = :'sessionHostsID'::uuid),
+    false,
+    'Should mark the unchanged session out of sync after the host change'
 );
 
 -- Should clear CFS labels when payload omits cfs_labels
@@ -1799,6 +1493,7 @@ select throws_ok(
         '3a390000-0000-0000-0000-000000000004'::uuid,
         '{"name": "Won''t Work", "description": "This should fail", "timezone": "UTC", "category_id": "3a390000-0000-0000-0000-000000000001", "kind_id": "in-person"}'::jsonb
     )$$,
+    'OCG01',
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );
@@ -1811,6 +1506,7 @@ select throws_ok(
         '3a390000-0000-0000-0000-000000000005'::uuid,
         '{"name": "Try to Update Canceled", "description": "This should fail", "timezone": "UTC", "category_id": "3a390000-0000-0000-0000-000000000001", "kind_id": "in-person"}'::jsonb
     )$$,
+    'OCG01',
     'event not found or inactive',
     'Should throw error when event is canceled'
 );
@@ -2004,6 +1700,7 @@ select throws_ok(
         :'eventExternalClearTicketTypeID',
         :'eventExternalClearPriceWindowID'
     ),
+    'OCG01',
     'external payments are not available for this event',
     'Should reject a persisted external URL when the group toggle is off'
 );
@@ -2055,6 +1752,7 @@ select throws_ok(
         :'eventExternalDelistedTicketTypeID',
         :'eventExternalDelistedPriceWindowID'
     ),
+    'OCG01',
     'external payments are not available for this event',
     'Should reject a persisted external URL when the group country is delisted'
 );
@@ -2202,6 +1900,7 @@ select throws_ok(
         :'eventExternalPendingClearTicketTypeID',
         :'eventExternalPendingClearPriceWindowID'
     ),
+    'OCG01',
     'external payment url cannot be cleared while pending external purchases exist',
     'Should reject clearing an external payment URL while a pending external purchase exists'
 );
@@ -2252,6 +1951,7 @@ select throws_ok(
         :'eventExternalDelistedTicketTypeID',
         :'eventExternalDelistedPriceWindowID'
     ),
+    'OCG01',
     'payment configuration changed during provider validation',
     'Should reject clearing an external URL when Stripe is not ready'
 );
@@ -2306,6 +2006,7 @@ select throws_ok(
         :'eventExternalStripeTicketTypeID',
         :'eventExternalStripePriceWindowID'
     ),
+    'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject updating a paid external event without a payment URL'
 );
@@ -2504,6 +2205,7 @@ select throws_ok(
         :'eventExternalPaidTicketTypeID',
         :'eventExternalPaidPriceWindowID'
     ),
+    'OCG01',
     'external payment window exceeds the configured maximum',
     'Should reject an external payment window above the configured maximum on update'
 );
@@ -2554,6 +2256,7 @@ select throws_ok(
         :'eventExternalPaidTicketTypeID',
         :'eventExternalPaidPriceWindowID'
     ),
+    'OCG01',
     'external paid events require a venue in the group country',
     'Should reject moving a paid external event venue outside the group country'
 );

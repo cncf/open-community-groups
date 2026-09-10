@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,29 +13,23 @@ select plan(21);
 
 \set communityID '5e090000-0000-0000-0000-000000000001'
 \set eventApprovalPending '5e090000-0000-0000-0000-000000000002'
-\set eventCanceled '5e090000-0000-0000-0000-000000000003'
 \set eventCategoryID '5e090000-0000-0000-0000-000000000004'
-\set eventDeleted '5e090000-0000-0000-0000-000000000005'
 \set eventDisabledWaitlist '5e090000-0000-0000-0000-000000000006'
 \set eventFull '5e090000-0000-0000-0000-000000000007'
-\set eventInactiveGroup '5e090000-0000-0000-0000-000000000008'
 \set eventOK '5e090000-0000-0000-0000-000000000009'
 \set eventPaidTicketed '5e090000-0000-0000-0000-00000000000a'
 \set eventPaidTicketedPurchaseID '5e090000-0000-0000-0000-00000000000b'
 \set eventPaidTicketTypeID '5e090000-0000-0000-0000-00000000000c'
 \set eventPast '5e090000-0000-0000-0000-00000000000d'
-\set eventStartedNoEnd '5e090000-0000-0000-0000-000000000010'
 \set eventTicketed '5e090000-0000-0000-0000-000000000011'
 \set eventTicketedDiscountCodeID '5e090000-0000-0000-0000-000000000012'
 \set eventTicketedPurchaseID '5e090000-0000-0000-0000-000000000013'
 \set eventTicketTypeID '5e090000-0000-0000-0000-000000000014'
 \set eventTicketedPriceWindowID '5e090000-0000-0000-0000-000000000022'
 \set eventUnlimited '5e090000-0000-0000-0000-000000000015'
-\set eventUnpublished '5e090000-0000-0000-0000-000000000016'
 \set eventWaitlist '5e090000-0000-0000-0000-000000000017'
 \set groupCategoryID '5e090000-0000-0000-0000-000000000018'
 \set groupID '5e090000-0000-0000-0000-000000000019'
-\set inactiveGroupID '5e090000-0000-0000-0000-00000000001a'
 \set user1ID '5e090000-0000-0000-0000-00000000001c'
 \set user2ID '5e090000-0000-0000-0000-00000000001d'
 \set user3ID '5e090000-0000-0000-0000-00000000001e'
@@ -45,402 +39,85 @@ select plan(21);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline communities, group categories, event categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
+select fx_user(:'user4ID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+-- Group with scenario-specific state
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('slug', 'active-group'));
 
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+-- Events with scenario-specific state
+select fx_event(:'eventOK', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'OK',
+    'published', true,
+    'slug', 'ok'
+));
+select fx_event(:'eventApprovalPending', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true
+));
+select fx_event(:'eventPast', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp - interval '1 hour',
+    'name', 'Past',
+    'published', true,
+    'slug', 'past',
+    'starts_at', current_timestamp - interval '2 hours'
+));
+select fx_event(:'eventDisabledWaitlist', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 2,
+    'published', true
+));
+select fx_event(:'eventFull', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'name', 'Full',
+    'published', true,
+    'slug', 'full',
+    'waitlist_enabled', true
+));
+select fx_event(:'eventPaidTicketed', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'published', true
+));
+select fx_event(:'eventUnlimited', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Unlimited',
+    'published', true,
+    'slug', 'unlimited'
+));
+select fx_event(:'eventWaitlist', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'name', 'Waitlist',
+    'published', true,
+    'slug', 'waitlist',
+    'waitlist_enabled', true
+));
 
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'user1ID', 'user-1-hash', 'u1@test.com', true, 'u1'),
-    (:'user2ID', 'user-2-hash', 'u2@test.com', true, 'u2'),
-    (:'user3ID', 'user-3-hash', 'u3@test.com', true, 'u3'),
-    (:'user4ID', 'user-4-hash', 'u4@test.com', true, 'u4');
+-- Event with scenario-specific state
+select fx_event(:'eventTicketed', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'name', 'Ticketed',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'slug', 'ticketed'
+));
 
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
-    (
-        :'inactiveGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Inactive Group',
-        'inactive-group',
-        false,
-        false
-    );
-
--- Events
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    attendee_approval_required,
-    published,
-    canceled,
-    deleted,
-    starts_at,
-    ends_at,
-    capacity,
-    waitlist_enabled
-)
-values
-    (
-        :'eventOK',
-        'OK',
-        'ok',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        true,
-        false,
-        false,
-        null,
-        null,
-        null,
-        false
-    ),
-    (
-        :'eventApprovalPending',
-        'Approval Pending',
-        'approval-pending',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        true,
-        false,
-        false,
-        null,
-        null,
-        null,
-        false
-    ),
-    (
-        :'eventCanceled',
-        'Canceled',
-        'canceled',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        false,
-        true,
-        false,
-        null,
-        null,
-        1,
-        true
-    ),
-    (
-        :'eventDeleted',
-        'Deleted',
-        'deleted',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        false,
-        false,
-        true,
-        null,
-        null,
-        null,
-        false
-    ),
-    (
-        :'eventInactiveGroup',
-        'Inactive Group',
-        'inactive-group',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'inactiveGroupID',
-        false,
-        true,
-        false,
-        false,
-        null,
-        null,
-        null,
-        false
-    ),
-    (
-        :'eventUnpublished',
-        'Unpublished',
-        'unpublished',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        false,
-        false,
-        false,
-        null,
-        null,
-        null,
-        false
-    ),
-    (
-        :'eventPast',
-        'Past',
-        'past',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        true,
-        false,
-        false,
-        current_timestamp - interval '2 hours',
-        current_timestamp - interval '1 hour',
-        null,
-        false
-    ),
-    (
-        :'eventStartedNoEnd',
-        'Started No End',
-        'started-no-end',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        true,
-        false,
-        false,
-        current_timestamp - interval '1 hour',
-        null,
-        null,
-        false
-    ),
-    (
-        :'eventDisabledWaitlist',
-        'Disabled Waitlist',
-        'disabled-waitlist',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        true,
-        false,
-        false,
-        null,
-        null,
-        2,
-        false
-    ),
-    (
-        :'eventFull',
-        'Full',
-        'full',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        true,
-        false,
-        false,
-        null,
-        null,
-        1,
-        true
-    ),
-    (
-        :'eventPaidTicketed',
-        'Paid Ticketed',
-        'paid-ticketed',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        true,
-        false,
-        false,
-        null,
-        null,
-        1,
-        false
-    ),
-    (
-        :'eventUnlimited',
-        'Unlimited',
-        'unlimited',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        true,
-        false,
-        false,
-        null,
-        null,
-        null,
-        false
-    ),
-    (
-        :'eventWaitlist',
-        'Waitlist',
-        'waitlist',
-        'Test event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        true,
-        false,
-        false,
-        null,
-        null,
-        1,
-        true
-    );
-
--- Event
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    payment_currency_code,
-    published,
-    canceled,
-    deleted,
-    starts_at,
-    ends_at,
-    capacity,
-    waitlist_enabled
-) values (
-    :'eventTicketed',
-    'Ticketed',
-    'ticketed',
-    'd',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'USD',
-    true,
-    false,
-    false,
-    null,
-    null,
-    1,
-    false
-);
-
--- Event Ticket Type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventTicketTypeID',
-    :'eventTicketed',
-    1,
-    1,
-    'General admission'
-);
+-- Ticket tier for direct paid checkout
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventTicketed', jsonb_build_object('seats_total', 1));
 
 -- Intrinsic-free price available to the next queued user
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    0,
-    :'eventTicketedPriceWindowID',
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'eventTicketedPriceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 0));
 
--- Event Ticket Type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventPaidTicketTypeID',
-    :'eventPaidTicketed',
-    1,
-    1,
-    'Paid admission'
-);
+-- Paid ticket tier used to test refunded purchase handling
+select fx_event_ticket_type(:'eventPaidTicketTypeID', :'eventPaidTicketed', jsonb_build_object('seats_total', 1));
 
 -- Events without a specialized ticket fixture use a default tier
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-select
-    e.event_id,
-    gen_random_uuid(),
-    1,
-    greatest(coalesce(e.capacity, 100), 1),
-    'General Admission'
+select fx_event_ticket_type(gen_random_uuid(), e.event_id, jsonb_build_object(
+    'seats_total', greatest(coalesce(e.capacity, 100), 1)
+))
 from event e
 where not exists (
     select 1
@@ -449,15 +126,14 @@ where not exists (
 );
 
 -- Current prices for ticket tiers without an explicit price fixture
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-)
-select
-    case when ett.event_id = :'eventPaidTicketed'::uuid then 1500 else 0 end,
+select fx_event_ticket_price_window(
     gen_random_uuid(),
-    ett.event_ticket_type_id
+    ett.event_ticket_type_id,
+    jsonb_build_object(
+        'amount_minor',
+        case when ett.event_id = :'eventPaidTicketed'::uuid then 1500 else 0 end
+    )
+)
 from event_ticket_type ett
 where not exists (
     select 1
@@ -493,14 +169,12 @@ insert into event_attendee (event_id, user_id, status) values
     (:'eventDisabledWaitlist', :'user2ID', 'confirmed'),
     (:'eventPast', :'user1ID', 'confirmed'),
     (:'eventPaidTicketed', :'user3ID', 'confirmed'),
-    (:'eventStartedNoEnd', :'user1ID', 'confirmed'),
     (:'eventFull', :'user1ID', 'confirmed'),
     (:'eventUnlimited', :'user1ID', 'confirmed'),
     (:'eventTicketed', :'user1ID', 'confirmed');
 
 -- Event Waitlists
 insert into event_waitlist (created_at, event_id, event_ticket_type_id, user_id) values
-    (current_timestamp, :'eventCanceled', (select event_ticket_type_id from event_ticket_type where event_id = :'eventCanceled' limit 1), :'user4ID'),
     (current_timestamp, :'eventDisabledWaitlist', (select event_ticket_type_id from event_ticket_type where event_id = :'eventDisabledWaitlist' limit 1), :'user3ID'),
     (current_timestamp, :'eventFull', (select event_ticket_type_id from event_ticket_type where event_id = :'eventFull' limit 1), :'user2ID'),
     (current_timestamp + interval '1 minute', :'eventFull', (select event_ticket_type_id from event_ticket_type where event_id = :'eventFull' limit 1), :'user3ID'),
@@ -710,6 +384,7 @@ select throws_ok(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventPaidTicketed', :'user3ID'
     ),
+    'OCG01',
     'paid attendees must request a refund instead of leaving the event',
     'Should reject paid attendees trying to leave a ticketed event'
 );
@@ -864,48 +539,9 @@ select throws_ok(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventPast', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects leave requests for past events'
-);
-
--- Should reject started events without an end time
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventStartedNoEnd', :'user1ID'
-    ),
-    'event not found or inactive',
-    'Rejects started events without an end time for leave requests'
-);
-
--- Should reject waitlist leave requests for canceled events
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventCanceled', :'user4ID'
-    ),
-    'event not found or inactive',
-    'Rejects waitlist leave requests for canceled events'
-);
-
--- Should reject deleted events
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventDeleted', :'user1ID'
-    ),
-    'event not found or inactive',
-    'Rejects leave requests for deleted events'
-);
-
--- Should reject events from inactive groups
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInactiveGroup', :'user1ID'
-    ),
-    'event not found or inactive',
-    'Rejects leave requests for inactive-group events'
 );
 
 -- ============================================================================

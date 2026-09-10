@@ -20,22 +20,22 @@ declare
 begin
     -- Validate event count
     if jsonb_array_length(p_events) < 2 or jsonb_array_length(p_events) > 13 then
-        raise exception 'events must include between 2 and 13 items';
+        raise exception 'events must include between 2 and 13 items' using errcode = 'OCG01';
     end if;
 
     -- Validate additional occurrence count
     if v_additional_occurrences is null or v_additional_occurrences < 1 or v_additional_occurrences > 12 then
-        raise exception 'additional_occurrences must be between 1 and 12';
+        raise exception 'additional_occurrences must be between 1 and 12' using errcode = 'OCG01';
     end if;
 
     -- Validate recurrence count consistency
     if jsonb_array_length(p_events) <> v_additional_occurrences + 1 then
-        raise exception 'events count must match additional_occurrences';
+        raise exception 'events count must match additional_occurrences' using errcode = 'OCG01';
     end if;
 
     -- Validate recurrence pattern
     if nullif(v_pattern, '') is null or v_pattern not in ('weekly', 'biweekly', 'monthly') then
-        raise exception 'unsupported recurrence pattern';
+        raise exception 'unsupported recurrence pattern' using errcode = 'OCG01';
     end if;
 
     v_first_event := p_events->0;
@@ -43,12 +43,12 @@ begin
 
     -- Validate anchor timezone
     if nullif(v_timezone, '') is null then
-        raise exception 'recurring events require timezone';
+        raise exception 'recurring events require timezone' using errcode = 'OCG01';
     end if;
 
     -- Validate anchor start date
     if nullif(v_first_event->>'starts_at', '') is null then
-        raise exception 'recurring events require starts_at';
+        raise exception 'recurring events require starts_at' using errcode = 'OCG01';
     end if;
 
     -- Create the series row shared by every generated event

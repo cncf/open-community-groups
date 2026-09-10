@@ -24,53 +24,12 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- User
-insert into "user" (user_id, email, username, auth_hash)
-values (:'userID', 'organizer@example.com', 'organizer', 'hash');
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Meetup', :'communityID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id
-) values (
-    :'groupID',
-    :'communityID',
-    'Test Group',
-    'test-group',
-    'A test group',
-    :'groupCategoryID'
-);
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event Series
 insert into event_series (
@@ -94,81 +53,30 @@ insert into event_series (
 );
 
 -- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    deleted,
-    event_series_id
-) values
-    (
-        :'event1ID',
-        :'groupID',
-        'First Series Event',
-        'first-series-event',
-        'First event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        '2030-01-07 10:00:00+00',
-        '2030-01-07 11:00:00+00',
-
-        false,
-        :'eventSeriesID'
-    ),
-    (
-        :'event2ID',
-        :'groupID',
-        'Second Series Event',
-        'second-series-event',
-        'Second event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        '2030-01-14 10:00:00+00',
-        '2030-01-14 11:00:00+00',
-
-        false,
-        :'eventSeriesID'
-    ),
-    (
-        :'standaloneEventID',
-        :'groupID',
-        'Standalone Event',
-        'standalone-event',
-        'Standalone event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        '2030-01-21 10:00:00+00',
-        '2030-01-21 11:00:00+00',
-
-        false,
-        null
-    ),
-    (
-        :'deletedEventID',
-        :'groupID',
-        'Deleted Series Event',
-        'deleted-series-event',
-        'Deleted event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        '2030-01-28 10:00:00+00',
-        '2030-01-28 11:00:00+00',
-
-        true,
-        :'eventSeriesID'
-    );
+select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', '2030-01-07 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'starts_at', '2030-01-07 10:00:00+00'
+));
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', '2030-01-14 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'starts_at', '2030-01-14 10:00:00+00'
+));
+select fx_event(:'standaloneEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', '2030-01-21 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'starts_at', '2030-01-21 10:00:00+00'
+));
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'ends_at', '2030-01-28 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'starts_at', '2030-01-28 10:00:00+00'
+));
 
 -- ============================================================================
 -- TESTS

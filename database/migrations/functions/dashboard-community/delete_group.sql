@@ -6,20 +6,16 @@ create or replace function delete_group(
 )
 returns void as $$
 begin
+    -- Lock the target group before mutating it
+    perform lock_active_group(p_community_id, p_group_id);
+
     -- Soft-delete the target group
     update "group" set
         active = false,
         deleted = true,
         deleted_at = current_timestamp,
         parent_group_id = null
-    where group_id = p_group_id
-    and community_id = p_community_id
-    and deleted = false;
-
-    -- Ensure the target group exists and is active
-    if not found then
-        raise exception 'group not found or inactive';
-    end if;
+    where group_id = p_group_id;
 
     -- Clear child links pointing to the deleted group
     update "group" set

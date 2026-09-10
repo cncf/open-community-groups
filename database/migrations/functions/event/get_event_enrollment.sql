@@ -18,43 +18,13 @@ returns json as $$
         and e.published = true
         and (e.canceled = true or e.ends_at is null or e.ends_at >= current_timestamp)
     ),
-    -- Resolve the newest claimable offer while suppressing refunding purchases.
-    active_offer as (
-        select ao.admission_offer_id, ao.event_ticket_type_id, ao.source
-        from admission_offer ao
-        where ao.event_id = p_event_id
-        and ao.user_id = p_user_id
-        and ao.status in ('checkout_pending', 'pending')
-        and ao.expires_at > current_timestamp
-        and not exists (
-            select 1
-            from event_purchase ep
-            where ep.admission_offer_id = ao.admission_offer_id
-            and ep.status in (
-                'refund-pending',
-                'refund-recovery-pending',
-                'refund-requested'
-            )
-        )
-        and exists (select 1 from scoped_event)
-        order by ao.created_at desc, ao.admission_offer_id desc
-        limit 1
+    -- Resolve the shared enrollment facts only for a visible event.
+    enrollment as (
+        select en.*
+        from scoped_event se
+        cross join lateral event_user_enrollment(p_event_id, p_user_id) en
     ),
-    -- Preserve the latest terminal or elapsed offer state for attendee feedback.
-    latest_offer as (
-        select ao.status = 'expired'
-            or (
-                ao.status in ('checkout_pending', 'pending')
-                and ao.expires_at <= current_timestamp
-            ) as is_expired
-        from admission_offer ao
-        where ao.event_id = p_event_id
-        and ao.user_id = p_user_id
-        and exists (select 1 from scoped_event)
-        order by ao.created_at desc, ao.admission_offer_id desc
-        limit 1
-    ),
-    -- Prefer resumable checkout state before completed attendee purchases.
+    -- Load the purchase the enrollment points at, with the event payment details.
     purchase_state as (
         select
             ep.amount_minor,
@@ -66,92 +36,35 @@ returns json as $$
             ep.hold_expires_at,
             ep.provider_checkout_url,
             ep.status
-        from event_purchase ep
+        from enrollment en
+        join event_purchase ep on ep.event_purchase_id = en.event_purchase_id
         join event e using (event_id)
-        where ep.event_id = p_event_id
-        and ep.user_id = p_user_id
-        and (
-            ep.status in (
-                'completed',
-                'refund-pending',
-                'refund-recovery-pending',
-                'refund-requested',
-                'refunded'
-            )
-            or (ep.status = 'pending' and ep.hold_expires_at > current_timestamp)
-        )
-        and exists (select 1 from scoped_event)
-        order by
-            case when ep.status = 'pending' then 0 else 1 end,
-            ep.created_at desc,
-            ep.event_purchase_id desc
-        limit 1
     ),
-    -- Apply the canonical enrollment-state precedence across normalized tables.
+    -- Map the shared facts to the attendee-facing labels.
     enrollment_state as (
         select
+            coalesce((select attendee_checked_in from enrollment), false) as is_checked_in,
             coalesce((
-                select bool_and(ea.checked_in)
-                from event_attendee ea
-                where ea.event_id = p_event_id
-                and ea.user_id = p_user_id
-                and ea.status = 'confirmed'
-                and exists (select 1 from scoped_event)
-            ), false) as is_checked_in,
+                select attendee_manually_invited
+                    or admission_offer_source = 'organizer_invitation'
+                from enrollment
+            ), false) as manually_invited,
             coalesce((
-                select bool_or(ea.manually_invited)
-                from event_attendee ea
-                where ea.event_id = p_event_id
-                and ea.user_id = p_user_id
-                and exists (select 1 from scoped_event)
-            ), false)
-            or exists (
-                select 1
-                from active_offer ao
-                where ao.source = 'organizer_invitation'
-            ) as manually_invited,
-            case
-                when exists (
-                    select 1
-                    from event_attendee ea
-                    where ea.event_id = p_event_id
-                    and ea.user_id = p_user_id
-                    and ea.status = 'confirmed'
-                    and exists (select 1 from scoped_event)
-                ) then 'attendee'
-                when exists (select 1 from purchase_state) and exists (
-                    select 1
-                    from event_purchase ep
-                    join purchase_state ps using (event_purchase_id)
-                    where ep.status = 'pending'
-                ) then 'pending-payment'
-                when exists (select 1 from active_offer) then 'invitation-approved'
-                when exists (
-                    select 1
-                    from event_invitation_request eir
-                    where eir.event_id = p_event_id
-                    and eir.user_id = p_user_id
-                    and eir.status = 'pending'
-                    and (select attendee_approval_required from scoped_event)
-                ) then 'pending-approval'
-                when exists (
-                    select 1
-                    from event_invitation_request eir
-                    where eir.event_id = p_event_id
-                    and eir.user_id = p_user_id
-                    and eir.status = 'rejected'
-                    and (select attendee_approval_required from scoped_event)
-                ) then 'rejected'
-                when exists (
-                    select 1
-                    from event_waitlist ew
-                    where ew.event_id = p_event_id
-                    and ew.user_id = p_user_id
-                    and exists (select 1 from scoped_event)
-                ) then 'waitlisted'
-                when exists (select 1 from latest_offer where is_expired) then 'offer-expired'
-                else 'none'
-            end as status
+                select case
+                    when en.attendee_status = 'confirmed' then 'attendee'
+                    when en.purchase_status = 'pending' then 'pending-payment'
+                    when en.admission_offer_id is not null then 'invitation-approved'
+                    when en.invitation_request_status = 'pending'
+                        and se.attendee_approval_required then 'pending-approval'
+                    when en.invitation_request_status = 'rejected'
+                        and se.attendee_approval_required then 'rejected'
+                    when en.waitlisted then 'waitlisted'
+                    when en.latest_offer_expired then 'offer-expired'
+                    else 'none'
+                end
+                from enrollment en
+                cross join scoped_event se
+            ), 'none') as status
     ),
     -- Attach the latest active review state for the selected purchase.
     refund_request_state as (
@@ -181,13 +94,13 @@ returns json as $$
             'status', es.status
         )
         || jsonb_strip_nulls(jsonb_build_object(
-            'admission_offer_id', (select admission_offer_id from active_offer),
-            'event_ticket_type_id', (select event_ticket_type_id from active_offer),
+            'admission_offer_id', (select admission_offer_id from enrollment),
+            'event_ticket_type_id', (select admission_offer_event_ticket_type_id from enrollment),
             'external_payment', (
                 select jsonb_strip_nulls(jsonb_build_object(
                     'amount_minor', amount_minor,
                     'currency_code', currency_code,
-                    'deadline', extract(epoch from hold_expires_at)::bigint,
+                    'deadline', epoch_seconds(hold_expires_at),
                     'instructions', external_payment_instructions,
                     'reference', event_purchase_id,
                     'url', external_payment_url

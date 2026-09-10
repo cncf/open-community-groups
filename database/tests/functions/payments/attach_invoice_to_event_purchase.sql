@@ -18,6 +18,7 @@ select plan(6);
 \set groupID 'd7310000-0000-0000-0000-000000000005'
 \set purchaseID 'd7310000-0000-0000-0000-000000000006'
 \set refundID 'd7310000-0000-0000-0000-000000000007'
+\set refundJobID 'd7310000-0000-0000-0000-000000000010'
 \set ticketTypeID 'd7310000-0000-0000-0000-000000000008'
 \set userID 'd7310000-0000-0000-0000-000000000009'
 
@@ -25,45 +26,21 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the invoiced event
-insert into community (
-    banner_mobile_url, banner_url, community_id, description, display_name,
-    logo_url, name
-) values (
-    'https://example.test/mobile.png', 'https://example.test/banner.png',
-    :'communityID', 'Community', 'Community', 'https://example.test/logo.png',
-    'attach-invoice-community'
-);
-
--- Event category used by the invoiced event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the invoiced event group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the invoiced event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Attendee owning the direct-charge purchase
-insert into "user" (auth_hash, email, user_id, username)
-values ('user', 'user@example.test', :'userID', 'user');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event associated with the direct-charge purchase
-insert into event (
-    description, event_category_id, event_id, event_kind_id, group_id, name,
-    payment_currency_code, slug, timezone
-) values (
-    'Event', :'eventCategoryID', :'eventID', 'in-person', :'groupID', 'Event',
-    'USD', 'event', 'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type snapshotted by the purchase
-insert into event_ticket_type (
-    event_id, event_ticket_type_id, "order", seats_total, title
-) values (:'eventID', :'ticketTypeID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Refunded direct-charge purchase awaiting its invoice event
 insert into event_purchase (
@@ -86,14 +63,25 @@ insert into event_purchase (
     :'userID', '{}'::jsonb
 );
 
+-- Payment job for the successful provider refund that predates the invoice
+insert into payment_job (
+    payment_job_id, event_purchase_id, idempotency_key, kind,
+    payment_provider_id
+) values (
+    :'refundJobID', :'purchaseID',
+    'refund-attach-invoice-refund-job',
+    'event-purchase-refund', 'stripe'
+);
+
 -- Successful provider refund that predates the invoice
 insert into event_purchase_refund (
     amount_minor, currency_code, event_purchase_id, event_purchase_refund_id,
-    idempotency_key, kind, payment_provider_id, provider_refund_id,
+    kind, payment_job_id, payment_provider_id, provider_refund_id,
     provider_refunded_at, status
 ) values (
-    2500, 'USD', :'purchaseID', :'refundID', 'refund-attach-invoice',
-    'automatic-unfulfillable-checkout', 'stripe', 're_invoice', current_timestamp,
+    2500, 'USD', :'purchaseID', :'refundID',
+    'automatic-unfulfillable-checkout', :'refundJobID', 'stripe',
+    're_invoice', current_timestamp,
     'provider-succeeded'
 );
 
@@ -140,8 +128,9 @@ select results_eq(
 -- Should queue a full credit note when the refund predates the invoice
 select results_eq(
     format($$
-        select amount_minor, currency_code, status, tax_amount_minor
-        from event_purchase_credit_note
+        select epcn.amount_minor, epcn.currency_code, pj.status, epcn.tax_amount_minor
+        from event_purchase_credit_note epcn
+        join payment_job pj using (payment_job_id)
         where event_purchase_refund_id = %L::uuid
     $$, :'refundID'),
     $$ values (2500::bigint, 'USD'::text, 'pending'::text, 200::bigint) $$,

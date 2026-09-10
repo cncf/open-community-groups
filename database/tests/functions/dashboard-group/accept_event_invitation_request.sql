@@ -116,6 +116,25 @@ select plan(68);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline community, categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'closedAcceptRequesterID');
+select fx_user(:'closedReissueRequesterID');
+select fx_user(:'notYetOpenRequesterID');
+select fx_user(:'externalReadyRequesterID');
+select fx_user(:'externalUnreadyRequesterID');
+select fx_user(:'questionsAcceptedRequestUserID');
+select fx_user(:'queuePriorityRequesterID');
+select fx_user(:'queuePriorityWaitlistUserID');
+select fx_user(:'soldOutOccupantID');
+select fx_user(:'soldOutRequesterID');
+select fx_user(:'expiredReservationOfferUserOneID');
+select fx_user(:'expiredReservationOfferUserTwoID');
+select fx_user(:'expiredReservationRequesterID');
+select fx_user(:'expiredReservationWaitlistUserID');
+
+
 -- Operator allowlist used by external approval readiness scenarios
 insert into external_payments_config (
     allowed_countries,
@@ -136,953 +155,311 @@ values (
     'Invitation Request Approval Site'
 );
 
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-)
-values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username)
-values
-    (:'actorID', 'h', 'actor@test.com', 'actor'),
-    (:'closedAcceptRequesterID', 'h', 'closed-accept@test.com', 'closed-accept'),
-    (:'closedReissueRequesterID', 'h', 'closed-reissue@test.com', 'closed-reissue'),
-    (:'inProgressRequesterID', 'h', 'in-progress@test.com', 'in-progress'),
-    (:'notYetOpenRequesterID', 'h', 'not-yet-open@test.com', 'not-yet-open'),
-    (:'requesterID', 'h', 'requester@test.com', 'requester'),
-    (:'requester2ID', 'h', 'requester2@test.com', 'requester2'),
-    (:'requester3ID', 'h', 'requester3@test.com', 'requester3'),
-    (:'requester4ID', 'h', 'requester4@test.com', 'requester4'),
-    (:'requester5ID', 'h', 'requester5@test.com', 'requester5'),
-    (:'requester6ID', 'h', 'requester6@test.com', 'requester6'),
-    (:'requester7ID', 'h', 'requester7@test.com', 'requester7'),
-    (:'requester8ID', 'h', 'requester8@test.com', 'requester8'),
-    (:'requester9ID', 'h', 'requester9@test.com', 'requester9'),
-    (:'requester10ID', 'h', 'requester10@test.com', 'requester10'),
-    (:'requester11ID', 'h', 'requester11@test.com', 'requester11'),
-    (:'requester12ID', 'h', 'requester12@test.com', 'requester12'),
-    (:'requester13ID', 'h', 'requester13@test.com', 'requester13'),
-    (:'paidReadyRequesterID', 'h', 'paid-ready@test.com', 'paid-ready'),
-    (:'externalReadyRequesterID', 'h', 'external-ready@test.com', 'external-ready'),
-    (:'externalUnreadyRequesterID', 'h', 'external-unready@test.com', 'external-unready'),
-    (:'questionsAcceptedRequestUserID', 'h', 'rq-accepted-request@test.com', 'rq-accepted-request'),
-    (:'queuePriorityRequesterID', 'h', 'queue-priority-requester@test.com', 'queue-priority-requester'),
-    (:'queuePriorityWaitlistUserID', 'h', 'queue-priority-waitlist@test.com', 'queue-priority-waitlist'),
-    (:'soldOutOccupantID', 'h', 'sold-out-occupant@test.com', 'sold-out-occupant'),
-    (:'soldOutRequesterID', 'h', 'sold-out-requester@test.com', 'sold-out-requester');
+select fx_user(:'actorID', jsonb_build_object('username', 'actor'));
 
--- Users used by expired RSVP reservation reconciliation acceptance
-insert into "user" (user_id, auth_hash, email, username)
-values
-    (
-        :'expiredReservationOfferUserOneID',
-        'h',
-        'expired-reservation-offer-one@test.com',
-        'expired-reservation-offer-one'
-    ),
-    (
-        :'expiredReservationOfferUserTwoID',
-        'h',
-        'expired-reservation-offer-two@test.com',
-        'expired-reservation-offer-two'
-    ),
-    (
-        :'expiredReservationRequesterID',
-        'h',
-        'expired-reservation-requester@test.com',
-        'expired-reservation-requester'
-    ),
-    (
-        :'expiredReservationWaitlistUserID',
-        'h',
-        'expired-reservation-waitlist@test.com',
-        'expired-reservation-waitlist'
-    );
+select fx_user(:'inProgressRequesterID', jsonb_build_object('username', 'in-progress'));
+
+select fx_user(:'requesterID', jsonb_build_object('username', 'requester'));
+select fx_user(:'requester2ID', jsonb_build_object('username', 'requester2'));
+select fx_user(:'requester3ID', jsonb_build_object('username', 'requester3'));
+select fx_user(:'requester4ID', jsonb_build_object('username', 'requester4'));
+select fx_user(:'requester5ID', jsonb_build_object('username', 'requester5'));
+select fx_user(:'requester6ID', jsonb_build_object('username', 'requester6'));
+select fx_user(:'requester7ID', jsonb_build_object('username', 'requester7'));
+select fx_user(:'requester8ID', jsonb_build_object('username', 'requester8'));
+select fx_user(:'requester9ID', jsonb_build_object('username', 'requester9'));
+select fx_user(:'requester10ID', jsonb_build_object('username', 'requester10'));
+select fx_user(:'requester11ID', jsonb_build_object('username', 'requester11'));
+select fx_user(:'requester12ID', jsonb_build_object('username', 'requester12'));
+select fx_user(:'requester13ID', jsonb_build_object('username', 'requester13'));
+select fx_user(:'paidReadyRequesterID', jsonb_build_object('username', 'paid-ready'));
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug, active)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Group', 'group', true),
-    (
-        :'inactiveGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Inactive Group',
-        'inactive-group',
-        false
-    );
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'name', 'Group',
+    'slug', 'group'
+));
+select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
 -- Group with a payment recipient for successful paid approval snapshots
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-
-    payment_recipient
-) values (
-    :'paidReadyGroupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Paid Ready Group',
-    'paid-ready-group',
-    true,
-
-    '{
+select fx_group(:'paidReadyGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{
         "provider": "stripe",
         "recipient_id": "acct_paid_ready",
         "seller_display_name": "Paid Ready Fiscal Sponsor"
-    }'::jsonb
-);
+    }'::jsonb));
 
 -- Allowlisted group with external payments enabled for ready approvals
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'KR',
-    true,
-    :'groupCategoryID',
-    :'groupExternalReadyID',
-    'External Ready Approval Group',
-    'external-ready-approval-group'
-);
+select fx_group(:'groupExternalReadyID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- External-marked group outside the allowlist for approval rejection
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'US',
-    true,
-    :'groupCategoryID',
-    :'groupExternalUnreadyID',
-    'External Unready Approval Group',
-    'external-unready-approval-group'
-);
+select fx_group(:'groupExternalUnreadyID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'US',
+    'external_payments_enabled', true
+));
 
 -- Events
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    published,
-    capacity,
-    attendee_approval_required,
-    starts_at,
-    ends_at,
-    registration_starts_at
-)
-values
-    (
-        :'eventID',
-        'Invite Event',
-        'invite-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        2,
-        true,
-        null,
-        null,
-        null
-    ),
-    (
-        :'eventAttendanceCanceledID',
-        'Attendance Canceled Event',
-        'attendance-canceled-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        null,
-        true,
-        null,
-        null,
-        null
-    ),
-    (
-        :'eventFullID',
-        'Full Invite Event',
-        'full-invite-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        1,
-        true,
-        null,
-        null,
-        null
-    ),
-    (
-        :'eventUnpublishedID',
-        'Unpublished Invite Event',
-        'unpublished-invite-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        false,
-        null,
-        true,
-        null,
-        null,
-        null
-    ),
-    (
-        :'eventInactiveGroupID',
-        'Inactive Group Invite Event',
-        'inactive-group-invite-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'inactiveGroupID',
-        true,
-        null,
-        true,
-        null,
-        null,
-        null
-    ),
-    (
-        :'eventApprovalDisabledID',
-        'Approval Disabled Event',
-        'approval-disabled-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        null,
-        false,
-        null,
-        null,
-        null
-    ),
-    (
-        :'eventPastID',
-        'Past Invite Event',
-        'past-invite-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        null,
-        true,
-        current_timestamp - interval '2 hours',
-        current_timestamp - interval '1 hour',
-        null
-    ),
-    (
-        :'eventPendingInvitationID',
-        'Pending Invitation Event',
-        'pending-invitation-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        null,
-        true,
-        null,
-        null,
-        null
-    ),
-    (
-        :'eventAttendeeConflictID',
-        'Attendee Conflict Event',
-        'attendee-conflict-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        null,
-        true,
-        null,
-        null,
-        null
-    ),
-    (
-        :'eventRegistrationOpenUntilStartID',
-        'Registration Open Until Start Event',
-        'registration-open-until-start-event',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        null,
-        true,
-        current_timestamp - interval '1 hour',
-        current_timestamp + interval '1 hour',
-        current_timestamp - interval '2 hours'
-    );
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'capacity', 2,
+    'description', 'd',
+    'published', true
+));
+select fx_event(:'eventAttendanceCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'description', 'd',
+    'published', true
+));
+select fx_event(:'eventFullID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'capacity', 1,
+    'description', 'd',
+    'published', true
+));
+select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'description', 'd'
+));
+select fx_event(:'eventInactiveGroupID', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'description', 'd',
+    'published', true
+));
+select fx_event(:'eventApprovalDisabledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'd',
+    'published', true
+));
+select fx_event(:'eventPastID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'description', 'd',
+    'ends_at', current_timestamp - interval '1 hour',
+    'published', true,
+    'starts_at', current_timestamp - interval '2 hours'
+));
+select fx_event(:'eventPendingInvitationID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'description', 'd',
+    'published', true
+));
+select fx_event(:'eventAttendeeConflictID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'description', 'd',
+    'published', true
+));
+select fx_event(:'eventRegistrationOpenUntilStartID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'description', 'd',
+    'ends_at', current_timestamp + interval '1 hour',
+    'published', true,
+    'registration_starts_at', current_timestamp - interval '2 hours',
+    'starts_at', current_timestamp - interval '1 hour'
+));
 
 -- RSVP approval event whose expired reservations are swept before acceptance
-insert into event (
-    attendee_approval_required,
-    capacity,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    true,
-    2,
-    'Expired reservation approval event',
-    :'eventCategoryID',
-    :'eventExpiredReservationID',
-    'in-person',
-    :'groupID',
-    'Expired Reservation Approval',
-    true,
-    'expired-reservation-approval',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'eventExpiredReservationID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'capacity', 2,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Event with registration questions used to verify answer copying on accept
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    published,
-    attendee_approval_required,
-    starts_at,
-    registration_questions
-) values (
-    :'eventQuestionsApprovalID',
-    'Approval Questions Event',
-    'approval-questions-event',
-    'd',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    true,
-    true,
-    '2030-01-02 10:00:00+00',
-    format(
+select fx_event(:'eventQuestionsApprovalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'description', 'd',
+    'published', true,
+    'registration_questions', format(
         '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
         :'registrationQuestionID'
-    )::jsonb
-);
+    )::jsonb,
+    'starts_at', '2030-01-02 10:00:00+00'
+));
 
 -- Ticketed approval events for tier assignment and capacity conflict scenarios
-insert into event (
-    attendee_approval_required,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values
-    (
-        true,
-        'Private ticket approval event',
-        :'eventCategoryID',
-        :'eventPrivateTicketApprovalID',
-        'in-person',
-        :'groupID',
-        'Private Ticket Approval',
-        true,
-        'private-ticket-approval',
-        current_timestamp + interval '1 day',
-        'UTC'
-    ),
-    (
-        true,
-        'Public ticket approval event',
-        :'eventCategoryID',
-        :'eventPublicTicketApprovalID',
-        'in-person',
-        :'groupID',
-        'Public Ticket Approval',
-        true,
-        'public-ticket-approval',
-        current_timestamp + interval '1 day',
-        'UTC'
-    ),
-    (
-        true,
-        'Queue priority ticket approval event',
-        :'eventCategoryID',
-        :'eventQueuePriorityID',
-        'in-person',
-        :'groupID',
-        'Queue Priority Ticket Approval',
-        true,
-        'queue-priority-ticket-approval',
-        current_timestamp + interval '1 day',
-        'UTC'
-    ),
-    (
-        true,
-        'Sold out ticket approval event',
-        :'eventCategoryID',
-        :'eventTicketSoldOutID',
-        'in-person',
-        :'groupID',
-        'Sold Out Ticket Approval',
-        true,
-        'sold-out-ticket-approval',
-        current_timestamp + interval '1 day',
-        'UTC'
-    ),
-    (
-        true,
-        'Unavailable ticket approval event',
-        :'eventCategoryID',
-        :'eventUnavailableTicketApprovalID',
-        'in-person',
-        :'groupID',
-        'Unavailable Ticket Approval',
-        true,
-        'unavailable-ticket-approval',
-        current_timestamp + interval '1 day',
-        'UTC'
-    ),
-    (
-        true,
-        'Reissue offer blocker approval event',
-        :'eventCategoryID',
-        :'eventReissueOfferBlockID',
-        'in-person',
-        :'groupID',
-        'Reissue Offer Blocker Approval',
-        true,
-        'reissue-offer-blocker-approval',
-        current_timestamp + interval '1 day',
-        'UTC'
-    ),
-    (
-        true,
-        'Reissue purchase blocker approval event',
-        :'eventCategoryID',
-        :'eventReissuePurchaseBlockID',
-        'in-person',
-        :'groupID',
-        'Reissue Purchase Blocker Approval',
-        true,
-        'reissue-purchase-blocker-approval',
-        current_timestamp + interval '1 day',
-        'UTC'
-    );
+select fx_event(:'eventPrivateTicketApprovalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event(:'eventPublicTicketApprovalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event(:'eventQueuePriorityID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event(:'eventTicketSoldOutID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event(:'eventUnavailableTicketApprovalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event(:'eventReissueOfferBlockID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event(:'eventReissuePurchaseBlockID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- In-progress ticketed approval event with a pending request
-insert into event (
-    attendee_approval_required,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    registration_ends_at,
-    registration_starts_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    true,
-    'In-progress ticket approval event',
-    current_timestamp + interval '2 hours',
-    :'eventCategoryID',
-    :'eventInProgressApprovalID',
-    'in-person',
-    :'groupID',
-    'In-Progress Ticket Approval',
-    true,
-    current_timestamp - interval '1 hour',
-    current_timestamp - interval '2 hours',
-    'in-progress-ticket-approval',
-    current_timestamp - interval '1 hour',
-    'UTC'
-);
+select fx_event(:'eventInProgressApprovalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'ends_at', current_timestamp + interval '2 hours',
+    'published', true,
+    'registration_ends_at', current_timestamp - interval '1 hour',
+    'registration_starts_at', current_timestamp - interval '2 hours',
+    'starts_at', current_timestamp - interval '1 hour'
+));
 
 -- Approval event whose registration window has closed before start
-insert into event (
-    attendee_approval_required,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    registration_ends_at,
-    registration_starts_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    true,
-    'Closed registration ticket approval event',
-    current_timestamp + interval '4 hours',
-    :'eventCategoryID',
-    :'eventRegistrationClosedApprovalID',
-    'in-person',
-    :'groupID',
-    'Closed Registration Ticket Approval',
-    true,
-    current_timestamp - interval '1 hour',
-    current_timestamp - interval '2 hours',
-    'closed-registration-ticket-approval',
-    current_timestamp + interval '2 hours',
-    'UTC'
-);
+select fx_event(:'eventRegistrationClosedApprovalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'ends_at', current_timestamp + interval '4 hours',
+    'published', true,
+    'registration_ends_at', current_timestamp - interval '1 hour',
+    'registration_starts_at', current_timestamp - interval '2 hours',
+    'starts_at', current_timestamp + interval '2 hours'
+));
 
 -- Approval event whose public registration window has not opened yet
-insert into event (
-    attendee_approval_required,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    registration_ends_at,
-    registration_starts_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    true,
-    'Not yet open ticket approval event',
-    current_timestamp + interval '6 hours',
-    :'eventCategoryID',
-    :'eventRegistrationNotYetOpenID',
-    'in-person',
-    :'groupID',
-    'Not Yet Open Ticket Approval',
-    true,
-    current_timestamp + interval '3 hours',
-    current_timestamp + interval '1 hour',
-    'not-yet-open-ticket-approval',
-    current_timestamp + interval '4 hours',
-    'UTC'
-);
+select fx_event(:'eventRegistrationNotYetOpenID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'ends_at', current_timestamp + interval '6 hours',
+    'published', true,
+    'registration_ends_at', current_timestamp + interval '3 hours',
+    'registration_starts_at', current_timestamp + interval '1 hour',
+    'starts_at', current_timestamp + interval '4 hours'
+));
 
 -- Paid ticket approval event with no payment recipient configured on the group
-insert into event (
-    attendee_approval_required,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    true,
-    'Paid ticket approval event',
-    :'eventCategoryID',
-    :'eventPaidNoRecipientApprovalID',
-    'in-person',
-    :'groupID',
-    'Paid Ticket Approval',
-    'USD',
-    true,
-    'paid-ticket-approval',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'eventPaidNoRecipientApprovalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Paid approval event with payment-ready venue context
-insert into event (
-    attendee_approval_required,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    true,
-    'Paid ready ticket approval event',
-    :'eventCategoryID',
-    :'eventPaidReadyApprovalID',
-    'in-person',
-    :'paidReadyGroupID',
-    'Paid Ready Ticket Approval',
-    'USD',
-    true,
-    'paid-ready-ticket-approval',
-    current_timestamp + interval '1 day',
-    'UTC',
-    '1 Main St',
-    'Portland',
-    'US',
-    'Venue',
-    '97201'
-);
+select fx_event(:'eventPaidReadyApprovalID', :'paidReadyGroupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_zip_code', '97201'
+));
 
 -- External-marked approval event that is ready without Stripe
-insert into event (
-    attendee_approval_required,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    true,
-    'External ready ticket approval event',
-    :'eventCategoryID',
-    :'eventExternalReadyApprovalID',
-    'in-person',
-    'https://pay.example.test/accept-ready',
-    :'groupExternalReadyID',
-    'External Ready Ticket Approval',
-    'KRW',
-    true,
-    'external-ready-ticket-approval',
-    current_timestamp + interval '1 day',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventExternalReadyApprovalID', :'groupExternalReadyID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'external_payment_url', 'https://pay.example.test/accept-ready',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- External-marked approval event that is not allowlisted
-insert into event (
-    attendee_approval_required,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    true,
-    'External unready ticket approval event',
-    :'eventCategoryID',
-    :'eventExternalUnreadyApprovalID',
-    'in-person',
-    'https://pay.example.test/accept-unready',
-    :'groupExternalUnreadyID',
-    'External Unready Ticket Approval',
-    'USD',
-    true,
-    'external-unready-ticket-approval',
-    current_timestamp + interval '1 day',
-    'UTC',
-    '123 Main St',
-    'San Francisco',
-    'US',
-    'Community Hall',
-    '94105'
-);
+select fx_event(:'eventExternalUnreadyApprovalID', :'groupExternalUnreadyID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'external_payment_url', 'https://pay.example.test/accept-unready',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_name', 'Community Hall',
+    'venue_zip_code', '94105'
+));
 
 -- Ticket tiers assigned or checked by the approval workflows
-insert into event_ticket_type (
-    active,
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values
-    (
-        true,
-        'public',
-        :'eventInProgressApprovalID',
-        :'inProgressTicketTypeID',
-        1,
-        1,
-        'In-progress admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventRegistrationClosedApprovalID',
-        :'closedTicketTypeID',
-        1,
-        2,
-        'Closed registration admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventRegistrationNotYetOpenID',
-        :'notYetOpenTicketTypeID',
-        1,
-        1,
-        'Not yet open admission'
-    ),
-    (
-        true,
-        'invitation_only',
-        :'eventPrivateTicketApprovalID',
-        :'privateTicketTypeID',
-        1,
-        1,
-        'Private admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventPublicTicketApprovalID',
-        :'publicAlternateTicketTypeID',
-        2,
-        2,
-        'Alternate public admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventPrivateTicketApprovalID',
-        :'publicGenericTicketTypeID',
-        2,
-        1,
-        'Generic public admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventPublicTicketApprovalID',
-        :'publicTicketTypeID',
-        1,
-        2,
-        'Public admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventQueuePriorityID',
-        :'queuePriorityTicketTypeID',
-        1,
-        1,
-        'Queue priority admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventTicketSoldOutID',
-        :'soldOutTicketTypeID',
-        1,
-        1,
-        'Sold out admission'
-    ),
-    (
-        false,
-        'public',
-        :'eventUnavailableTicketApprovalID',
-        :'unavailableTicketTypeID',
-        1,
-        1,
-        'Unavailable admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventPaidNoRecipientApprovalID',
-        :'paidTicketTypeID',
-        1,
-        1,
-        'Paid admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventPaidReadyApprovalID',
-        :'paidReadyTicketTypeID',
-        1,
-        1,
-        'Paid ready admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventExternalReadyApprovalID',
-        :'externalReadyTicketTypeID',
-        1,
-        1,
-        'External ready admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventExternalUnreadyApprovalID',
-        :'externalUnreadyTicketTypeID',
-        1,
-        1,
-        'External unready admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventReissueOfferBlockID',
-        :'reissueOfferBlockTicketTypeID',
-        1,
-        1,
-        'Reissue offer admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventReissuePurchaseBlockID',
-        :'reissuePurchaseBlockTicketTypeID',
-        1,
-        1,
-        'Reissue purchase admission'
-    );
+select fx_event_ticket_type(:'inProgressTicketTypeID', :'eventInProgressApprovalID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'closedTicketTypeID', :'eventRegistrationClosedApprovalID', jsonb_build_object('seats_total', 2));
+select fx_event_ticket_type(:'notYetOpenTicketTypeID', :'eventRegistrationNotYetOpenID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'privateTicketTypeID', :'eventPrivateTicketApprovalID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 1
+));
+select fx_event_ticket_type(:'publicAlternateTicketTypeID', :'eventPublicTicketApprovalID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 2
+));
+select fx_event_ticket_type(:'publicGenericTicketTypeID', :'eventPrivateTicketApprovalID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 1,
+    'title', 'Generic public admission'
+));
+select fx_event_ticket_type(:'publicTicketTypeID', :'eventPublicTicketApprovalID', jsonb_build_object('seats_total', 2));
+select fx_event_ticket_type(:'queuePriorityTicketTypeID', :'eventQueuePriorityID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'soldOutTicketTypeID', :'eventTicketSoldOutID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'unavailableTicketTypeID', :'eventUnavailableTicketApprovalID', jsonb_build_object(
+    'active', false,
+    'seats_total', 1
+));
+select fx_event_ticket_type(:'paidTicketTypeID', :'eventPaidNoRecipientApprovalID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'paidReadyTicketTypeID', :'eventPaidReadyApprovalID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'Paid ready admission'
+));
+select fx_event_ticket_type(:'externalReadyTicketTypeID', :'eventExternalReadyApprovalID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'externalUnreadyTicketTypeID', :'eventExternalUnreadyApprovalID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'reissueOfferBlockTicketTypeID', :'eventReissueOfferBlockID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'reissuePurchaseBlockTicketTypeID', :'eventReissuePurchaseBlockID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'Reissue purchase admission'
+));
 
 -- Current free prices for every ticket approval tier
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values
-    (0, :'closedPriceWindowID', :'closedTicketTypeID'),
-    (0, :'inProgressPriceWindowID', :'inProgressTicketTypeID'),
-    (0, :'notYetOpenPriceWindowID', :'notYetOpenTicketTypeID'),
-    (0, :'privateTicketPriceWindowID', :'privateTicketTypeID'),
-    (2500, :'paidTicketPriceWindowID', :'paidTicketTypeID'),
-    (2500, :'paidReadyPriceWindowID', :'paidReadyTicketTypeID'),
-    (5000, :'externalReadyPriceWindowID', :'externalReadyTicketTypeID'),
-    (2500, :'externalUnreadyPriceWindowID', :'externalUnreadyTicketTypeID'),
-    (0, :'publicAlternateTicketPriceWindowID', :'publicAlternateTicketTypeID'),
-    (0, :'publicGenericTicketPriceWindowID', :'publicGenericTicketTypeID'),
-    (0, :'publicTicketPriceWindowID', :'publicTicketTypeID'),
-    (0, :'reissueOfferBlockPriceWindowID', :'reissueOfferBlockTicketTypeID'),
-    (0, :'reissuePurchaseBlockPriceWindowID', :'reissuePurchaseBlockTicketTypeID'),
-    (0, :'queuePriorityPriceWindowID', :'queuePriorityTicketTypeID'),
-    (0, :'soldOutPriceWindowID', :'soldOutTicketTypeID');
+select fx_event_ticket_price_window(:'closedPriceWindowID', :'closedTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'inProgressPriceWindowID', :'inProgressTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'notYetOpenPriceWindowID', :'notYetOpenTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'privateTicketPriceWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'paidTicketPriceWindowID', :'paidTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'paidReadyPriceWindowID', :'paidReadyTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'externalReadyPriceWindowID', :'externalReadyTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'externalUnreadyPriceWindowID', :'externalUnreadyTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'publicAlternateTicketPriceWindowID', :'publicAlternateTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'publicGenericTicketPriceWindowID', :'publicGenericTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'publicTicketPriceWindowID', :'publicTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'reissueOfferBlockPriceWindowID', :'reissueOfferBlockTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'reissuePurchaseBlockPriceWindowID', :'reissuePurchaseBlockTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'queuePriorityPriceWindowID', :'queuePriorityTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'soldOutPriceWindowID', :'soldOutTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Events that do not exercise a named tier use a default free admission tier
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-select
-    e.event_id,
+select fx_event_ticket_type(
     gen_random_uuid(),
-    1,
-    greatest(coalesce(e.capacity, 100), 1),
-    'General Admission'
+    e.event_id,
+    jsonb_build_object(
+        'seats_total', greatest(coalesce(e.capacity, 100), 1),
+        'title', 'General Admission'
+    )
+)
 from event e
 where not exists (
     select 1
@@ -1091,12 +468,11 @@ where not exists (
 );
 
 -- Current free prices for tiers without a named price fixture
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
+select fx_event_ticket_price_window(
+    gen_random_uuid(),
+    ett.event_ticket_type_id,
+    jsonb_build_object('amount_minor', 0)
 )
-select 0, gen_random_uuid(), ett.event_ticket_type_id
 from event_ticket_type ett
 where not exists (
     select 1
@@ -1407,6 +783,7 @@ select throws_ok(
         :'publicAlternateTicketTypeID',
         'stripe'
     ),
+    'OCG01',
     'requested ticket type cannot be changed',
     'Should reject changing the requested ticket type during approval'
 );
@@ -1474,6 +851,7 @@ select throws_ok(
         :'requester9ID',
         'stripe'
     ),
+    'OCG01',
     'ticket type is not available',
     'Should reject unavailable requested ticket types'
 );
@@ -1508,6 +886,7 @@ select throws_ok(
         :'requester13ID',
         'stripe'
     ),
+    'OCG01',
     'invitation-only ticket type is required',
     'Should require a tier when accepting a generic private request'
 );
@@ -1523,6 +902,7 @@ select throws_ok(
         :'publicGenericTicketTypeID',
         'stripe'
     ),
+    'OCG01',
     'ticket type is not available',
     'Should reject a public tier assignment for a generic private request'
 );
@@ -1584,6 +964,7 @@ select throws_ok(
         :'publicGenericTicketTypeID',
         'stripe'
     ),
+    'OCG01',
     'user already has an active admission offer for this event',
     'Should reject duplicate approval while its offer is active'
 );
@@ -1598,6 +979,7 @@ select throws_ok(
         :'requester11ID',
         'stripe'
     ),
+    'OCG01',
     'user already has an active admission offer for this event',
     'Should reject reissuing when an active offer already exists'
 );
@@ -1632,6 +1014,7 @@ select throws_ok(
         :'requester12ID',
         'stripe'
     ),
+    'OCG01',
     'user already has an active purchase for this event',
     'Should reject reissuing when an active purchase already exists'
 );
@@ -1696,6 +1079,7 @@ select throws_ok(
         :'requester10ID',
         'stripe'
     ),
+    'OCG01',
     'paid-capable events require a payment recipient',
     'Should reject paid approval when the group payment recipient is missing'
 );
@@ -1709,6 +1093,7 @@ select throws_ok(
         :'eventExternalUnreadyApprovalID',
         :'externalUnreadyRequesterID'
     ),
+    'OCG01',
     'external payments are not available for this event',
     'Should reject paid approval when an external-marked event is not ready'
 );
@@ -1887,6 +1272,7 @@ select throws_ok(
         :'privateTicketTypeID',
         'stripe'
     ),
+    'OCG01',
     'requested ticket type cannot be changed',
     'Should reject changing the persisted request tier'
 );
@@ -2298,6 +1684,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventUnpublishedID', :'requesterID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject accepting when event is unpublished'
 );
@@ -2308,6 +1695,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'inactiveGroupID', :'eventInactiveGroupID', :'requesterID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject accepting when event belongs to an inactive group'
 );
@@ -2318,6 +1706,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventApprovalDisabledID', :'requesterID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject accepting when event approval is disabled'
 );
@@ -2328,6 +1717,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventPastID', :'requesterID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject accepting when event is past'
 );
@@ -2451,6 +1841,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventID', :'requesterID'
     ),
+    'OCG01',
     'user already has an active admission offer for this event',
     'Should reject accepting an already reviewed request'
 );
@@ -2461,6 +1852,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventAttendeeConflictID', :'requester4ID'
     ),
+    'OCG01',
     'user already has active attendance for this event',
     'Should reject accepting when the requester is already attending'
 );

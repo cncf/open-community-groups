@@ -1,3 +1,5 @@
+-- Tests listing CFS submissions for an event.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -33,43 +35,17 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
-
--- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true, null),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'bob', true, null),
-    (:'reviewer1ID', gen_random_bytes(32), 'reviewer-1@example.com', 'reviewer-1', true, null),
-    (:'reviewer2ID', gen_random_bytes(32), 'reviewer-2@example.com', 'reviewer-2', true, null);
+select fx_user(:'user1ID', jsonb_build_object('username', 'alice-list-event-cfs-submissions'));
+select fx_user(:'user2ID', jsonb_build_object('username', 'bob-list-event-cfs-submissions'));
+select fx_user(:'reviewer1ID', jsonb_build_object('username', 'reviewer-1'));
+select fx_user(:'reviewer2ID', jsonb_build_object('username', 'reviewer-2'));
 
 -- Session proposals
 insert into session_proposal (
@@ -110,27 +86,10 @@ insert into session_proposal (
     );
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published
-) values (
-    :'eventID',
-    :'groupID',
-    'Event 1',
-    'event-1',
-    'Event description',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Event description',
+    'published', true
+));
 
 -- Event CFS labels
 insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
@@ -138,27 +97,10 @@ insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
     (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2');
 
 -- Empty event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published
-) values (
-    :'eventEmptyID',
-    :'groupID',
-    'Event 2',
-    'event-2',
-    'Event description',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true
-);
+select fx_event(:'eventEmptyID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Event description',
+    'published', true
+));
 
 -- CFS submissions
 insert into cfs_submission (
@@ -268,7 +210,7 @@ select is(
                 'action_required_message', 'Looks good',
                 'average_rating', 4.5,
                 'cfs_submission_id', :'submission2ID'::uuid,
-                'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
+                'created_at', (select epoch_seconds(created_at) from cfs_submission
                     where cfs_submission_id = :'submission2ID'::uuid),
                 'labels', jsonb_build_array(
                     jsonb_build_object(
@@ -316,18 +258,18 @@ select is(
                 ),
                 'speaker', jsonb_build_object(
                     'user_id', :'user2ID'::uuid,
-                    'username', 'bob'
+                    'username', 'bob-list-event-cfs-submissions'
                 ),
                 'status_id', 'approved',
                 'status_name', 'Approved',
-                'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+                'updated_at', (select epoch_seconds(updated_at) from cfs_submission
                     where cfs_submission_id = :'submission2ID'::uuid)
             ),
             jsonb_build_object(
                 'action_required_message', null,
                 'average_rating', 2.0,
                 'cfs_submission_id', :'submission1ID'::uuid,
-                'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
+                'created_at', (select epoch_seconds(created_at) from cfs_submission
                     where cfs_submission_id = :'submission1ID'::uuid),
                 'labels', jsonb_build_array(
                     jsonb_build_object(
@@ -359,11 +301,11 @@ select is(
                 'reviewed_by', null,
                 'speaker', jsonb_build_object(
                     'user_id', :'user1ID'::uuid,
-                    'username', 'alice'
+                    'username', 'alice-list-event-cfs-submissions'
                 ),
                 'status_id', 'not-reviewed',
                 'status_name', 'Not reviewed',
-                'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+                'updated_at', (select epoch_seconds(updated_at) from cfs_submission
                     where cfs_submission_id = :'submission1ID'::uuid)
             )
         ),
@@ -407,7 +349,7 @@ select is(
             'action_required_message', 'Looks good',
             'average_rating', 4.5,
             'cfs_submission_id', :'submission2ID'::uuid,
-            'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
+            'created_at', (select epoch_seconds(created_at) from cfs_submission
                 where cfs_submission_id = :'submission2ID'::uuid),
             'labels', jsonb_build_array(
                 jsonb_build_object(
@@ -455,11 +397,11 @@ select is(
             ),
             'speaker', jsonb_build_object(
                 'user_id', :'user2ID'::uuid,
-                'username', 'bob'
+                'username', 'bob-list-event-cfs-submissions'
             ),
             'status_id', 'approved',
             'status_name', 'Approved',
-            'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+            'updated_at', (select epoch_seconds(updated_at) from cfs_submission
                 where cfs_submission_id = :'submission2ID'::uuid)
         )
     ),

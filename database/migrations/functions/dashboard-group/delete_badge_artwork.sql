@@ -9,16 +9,6 @@ returns void as $$
 declare
     v_file_name text;
 begin
-    -- Authorize the actor against the requested community and group
-    if not user_has_group_permission(
-        p_community_id,
-        p_group_id,
-        p_actor_user_id,
-        'group.badges.write'
-    ) then
-        raise exception 'badge permission denied' using errcode = 'insufficient_privilege';
-    end if;
-
     -- Lock the group-owned gallery entry before checking its references
     select file_name
     into v_file_name
@@ -28,7 +18,7 @@ begin
     for update;
 
     if not found then
-        raise exception 'badge artwork not found';
+        raise exception 'badge artwork not found' using errcode = 'OCG01';
     end if;
     if exists (
         select 1
@@ -36,7 +26,7 @@ begin
         where group_id = p_group_id
         and image_file_name = v_file_name
     ) then
-        raise exception 'badge artwork is used by a badge';
+        raise exception 'badge artwork is used by a badge' using errcode = 'OCG01';
     end if;
 
     -- Remove only the gallery reference, leaving stored image data intact

@@ -5,9 +5,10 @@ returns json as $$
         -- Normalize pagination and search filters
         filters as (
             select
-                greatest(coalesce((p_filters->>'limit')::integer, 20), 1) as limit_value,
-                greatest(coalesce((p_filters->>'offset')::integer, 0), 0) as offset_value,
+                greatest(coalesce(f.limit_value, 20), 1) as limit_value,
+                greatest(coalesce(f.offset_value, 0), 0) as offset_value,
                 nullif(btrim(p_filters->>'query'), '') as query_value
+            from parse_search_filters(p_filters) f
         ),
         -- Apply group ownership and full-text search
         filtered as (

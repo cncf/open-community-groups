@@ -5,15 +5,15 @@ returns json as $$
         -- Parse filters for pagination
         filters as (
             select
-                (p_filters->>'limit')::int as limit_value,
-                (p_filters->>'offset')::int as offset_value,
+                f.limit_value,
+                f.offset_value,
                 case
-                    when lower(p_filters->>'sort') in (
+                    when f.sort in (
                         'created-at-asc',
                         'created-at-desc',
                         'name-asc',
                         'name-desc'
-                    ) then lower(p_filters->>'sort')
+                    ) then f.sort
                     else 'created-at-asc'
                 end as sort_value,
                 case
@@ -21,23 +21,8 @@ returns json as $$
                         then lower(p_filters->>'title')
                     else null
                 end as title_value,
-                nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value
-        ),
-        -- Prepare text search with prefix matching
-        search_filter as (
-            select
-                ts_rewrite(
-                    websearch_to_tsquery('simple', ts_query_value),
-                    format('
-                        select
-                            to_tsquery(''simple'', lexeme),
-                            to_tsquery(''simple'', lexeme || '':*'')
-                        from unnest(tsvector_to_array(to_tsvector(''simple'', %L))) as lexeme
-                        ', ts_query_value
-                    )
-                ) as ts_query
-            from filters
-            where ts_query_value is not null
+                f.tsquery
+            from parse_search_filters(p_filters) f
         ),
         -- Combine queued users with offer history promoted from those queues
         enrollment_entries as (
@@ -64,7 +49,7 @@ returns json as $$
                 ao.created_at,
                 ao.event_id,
                 ao.event_ticket_type_id,
-                extract(epoch from ao.expires_at)::bigint,
+                epoch_seconds(ao.expires_at),
                 ao.user_id,
                 null::int
             from admission_offer ao
@@ -76,7 +61,7 @@ returns json as $$
             select
                 ee.admission_offer_id,
                 ee.admission_offer_status,
-                extract(epoch from ee.created_at)::bigint as created_at,
+                epoch_seconds(ee.created_at) as created_at,
                 ee.created_at as created_at_sort,
                 ee.event_ticket_type_id,
                 ee.offer_expires_at,
@@ -107,20 +92,17 @@ returns json as $$
         ),
         -- Apply table filters while retaining internal search data
         filtered_waitlist as (
-            select *
+            select base_waitlist.*
             from base_waitlist
+            cross join filters f
             where (
-                not exists (select 1 from search_filter)
-                or exists (
-                    select 1
-                    from search_filter
-                    where search_filter.ts_query @@ base_waitlist.tsdoc
-                )
+                f.tsquery is null
+                or f.tsquery @@ base_waitlist.tsdoc
             )
             and (
-                (select title_value from filters) is null
-                or ((select title_value from filters) = 'present' and title is not null)
-                or ((select title_value from filters) = 'missing' and title is null)
+                f.title_value is null
+                or (f.title_value = 'present' and title is not null)
+                or (f.title_value = 'missing' and title is null)
             )
         ),
         -- Apply pagination and project organizer waitlist fields

@@ -27,168 +27,52 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community containing the listed events
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'A test community',
-    'Test Community',
-    'https://example.com/logo.png',
-    'test-community'
-);
-
--- Group category used by the scanner group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category used by scanner events
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Group owning the scanner events
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Current, future, explicitly ended, and expired events used by visibility scenarios
-insert into event (
-    event_id,
-    description,
-    ends_at,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values
-    (
-        :'currentEventID',
-        'A current event',
-        current_timestamp + interval '1 hour',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Current Event',
-        true,
-        current_timestamp - interval '2 hours',
-        'current-event',
-        current_timestamp - interval '1 hour',
-        'UTC'
-    ),
-    (
-        :'endedEventID',
-        'An event that ended earlier on its local day',
-        date_trunc('day', current_timestamp at time zone 'UTC') at time zone 'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Ended Event',
-        true,
-        current_timestamp - interval '1 day',
-        'ended-event',
-        (
-            date_trunc('day', current_timestamp at time zone 'UTC') - interval '1 hour'
-        ) at time zone 'UTC',
-        'UTC'
-    ),
-    (
-        :'futureEventID',
-        'A future event',
-        null,
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Future Event',
-        true,
-        current_timestamp,
-        'future-event',
-        current_timestamp + interval '1 day',
-        'UTC'
-    ),
-    (
-        :'pastEventID',
-        'A past event',
-        current_timestamp - interval '2 days',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Past Event',
-        true,
-        current_timestamp - interval '4 days',
-        'past-event',
-        current_timestamp - interval '3 days',
-        'UTC'
-    );
+select fx_event(:'currentEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 hour',
+    'published', true,
+    'published_at', current_timestamp - interval '2 hours',
+    'starts_at', current_timestamp - interval '1 hour'
+));
+select fx_event(:'endedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', date_trunc('day', current_timestamp at time zone 'UTC') at time zone 'UTC',
+    'published', true,
+    'published_at', current_timestamp - interval '1 day',
+    'starts_at', (
+                    date_trunc('day', current_timestamp at time zone 'UTC') - interval '1 hour'
+                ) at time zone 'UTC'
+));
+select fx_event(:'futureEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event(:'pastEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp - interval '2 days',
+    'published', true,
+    'published_at', current_timestamp - interval '4 days',
+    'starts_at', current_timestamp - interval '3 days'
+));
 
 -- Canceled, unpublished, and unscheduled events excluded from the scanner
-insert into event (
-    event_id,
-    canceled,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values
-    (
-        :'canceledEventID',
-        true,
-        'A canceled event',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Canceled Event',
-        true,
-        current_timestamp,
-        'canceled-event',
-        current_timestamp + interval '2 days',
-        'UTC'
-    ),
-    (
-        :'unpublishedEventID',
-        false,
-        'An unpublished event',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Unpublished Event',
-        false,
-        null,
-        'unpublished-event',
-        current_timestamp + interval '2 days',
-        'UTC'
-    ),
-    (
-        :'unscheduledEventID',
-        false,
-        'An unscheduled event',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Unscheduled Event',
-        true,
-        current_timestamp,
-        'unscheduled-event',
-        null,
-        'UTC'
-    );
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '2 days'
+));
+select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('starts_at', current_timestamp + interval '2 days'));
+select fx_event(:'unscheduledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', current_timestamp
+));
 
 -- ============================================================================
 -- TESTS

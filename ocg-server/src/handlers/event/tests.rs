@@ -1455,7 +1455,9 @@ async fn test_attend_event_validates_inactive_event_before_loading_enrollment_st
     db.expect_ensure_event_is_active()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Err(anyhow!("event not found or inactive")));
+        .returning(|_, _| {
+            Err(HandlerError::Database("event not found or inactive".to_string()).into())
+        });
     db.expect_get_event_summary_by_id().times(0);
     db.expect_attend_event().times(0);
 
@@ -2757,7 +2759,9 @@ async fn test_start_checkout_rejects_inactive_event_before_ticket_checks() {
     db.expect_ensure_event_is_active()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Err(anyhow!("event not found or inactive")));
+        .returning(|_, _| {
+            Err(HandlerError::Database("event not found or inactive".to_string()).into())
+        });
     db.expect_get_event_summary_by_id().times(0);
     db.expect_prepare_event_checkout_purchase().times(0);
 

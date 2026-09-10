@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,10 +13,14 @@ select plan(15);
 
 \set communityID 'd4100000-0000-0000-0000-000000000001'
 \set creditNoteID 'd4100000-0000-0000-0000-000000000024'
+\set creditNoteJobID 'd4100000-0000-0000-0000-000000000028'
 \set eventCategoryID 'd4100000-0000-0000-0000-000000000002'
 \set eventID 'd4100000-0000-0000-0000-000000000003'
 \set event2ID 'd4100000-0000-0000-0000-000000000004'
+\set externalPurchaseID 'd4100000-0000-0000-0000-000000000026'
+\set externalUserID 'd4100000-0000-0000-0000-000000000027'
 \set feeAdjustmentID 'd4100000-0000-0000-0000-000000000025'
+\set feeAdjustmentJobID 'd4100000-0000-0000-0000-000000000029'
 \set groupCategoryID 'd4100000-0000-0000-0000-000000000005'
 \set groupID 'd4100000-0000-0000-0000-000000000006'
 \set missingGroupID 'd4100000-0000-0000-0000-000000000007'
@@ -25,17 +29,17 @@ select plan(15);
 \set needsUserID 'd4100000-0000-0000-0000-000000000010'
 \set refundedPurchaseID 'd4100000-0000-0000-0000-000000000011'
 \set refundedRefundID 'd4100000-0000-0000-0000-000000000012'
+\set refundedRefundJobID 'd4100000-0000-0000-0000-000000000030'
 \set refundedUserID 'd4100000-0000-0000-0000-000000000013'
 \set rejectedPurchaseID 'd4100000-0000-0000-0000-000000000014'
 \set rejectedRequestID 'd4100000-0000-0000-0000-000000000015'
 \set rejectedUserID 'd4100000-0000-0000-0000-000000000016'
 \set retryPurchaseID 'd4100000-0000-0000-0000-000000000017'
 \set retryRefundID 'd4100000-0000-0000-0000-000000000018'
+\set retryRefundJobID 'd4100000-0000-0000-0000-000000000031'
 \set retryUserID 'd4100000-0000-0000-0000-000000000019'
 \set ticketTypeID 'd4100000-0000-0000-0000-000000000020'
 \set ticketType2ID 'd4100000-0000-0000-0000-000000000021'
-\set externalPurchaseID 'd4100000-0000-0000-0000-000000000026'
-\set externalUserID 'd4100000-0000-0000-0000-000000000027'
 \set waitingPurchaseID 'd4100000-0000-0000-0000-000000000022'
 \set waitingUserID 'd4100000-0000-0000-0000-000000000023'
 
@@ -44,101 +48,76 @@ select plan(15);
 -- ============================================================================
 
 -- Community owning the refund list fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'refund-list-community'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'description', 'Community',
+    'display_name', 'Community List Group Refunds'
+));
 
 -- Event category used by the refund list events
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'Events'));
 
--- Group category used by the refund list group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
+-- Baseline group categories
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group owning the refund history
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'name', 'Group',
+    'slug', 'group'
+));
 
 -- Users representing every operational view
-insert into "user" (auth_hash, email, name, photo_url, user_id, username) values
-    (
-        'needs',
-        'requester@example.test',
-        'Requesting Attendee',
-        'https://example.test/requester.png',
-        :'needsUserID',
-        'requester'
-    ),
-    ('external', 'external@example.test', null, null, :'externalUserID', 'external'),
-    ('refunded', 'refunded@example.test', null, null, :'refundedUserID', 'refunded'),
-    ('rejected', 'rejected@example.test', null, null, :'rejectedUserID', 'rejected'),
-    ('retry', 'retry@example.test', null, null, :'retryUserID', 'retry'),
-    ('waiting', 'waiting@example.test', null, null, :'waitingUserID', 'waiting');
+select fx_user(:'needsUserID', jsonb_build_object(
+    'auth_hash', 'needs',
+    'email', 'requester@example.test',
+    'name', 'Requesting Attendee',
+    'photo_url', 'https://example.test/requester.png',
+    'username', 'requester-list-group-refunds'
+));
+select fx_user(:'externalUserID', jsonb_build_object(
+    'auth_hash', 'external',
+    'email', 'external@example.test',
+    'username', 'external'
+));
+select fx_user(:'refundedUserID', jsonb_build_object(
+    'auth_hash', 'refunded',
+    'username', 'refunded'
+));
+select fx_user(:'rejectedUserID', jsonb_build_object(
+    'auth_hash', 'rejected',
+    'username', 'rejected-list-group-refunds'
+));
+select fx_user(:'retryUserID', jsonb_build_object(
+    'auth_hash', 'retry',
+    'email', 'retry@example.test',
+    'username', 'retry'
+));
+select fx_user(:'waitingUserID', jsonb_build_object(
+    'auth_hash', 'waiting',
+    'username', 'waiting'
+));
 
 -- Events represented in the group refund history
-insert into event (
-    canceled,
-    deleted,
-    deleted_at,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values
-    (
-        true,
-        false,
-        null,
-        'Primary event',
-        :'eventCategoryID',
-        :'eventID',
-        'in-person',
-        :'groupID',
-        'Primary event',
-        'USD',
-        'primary-event',
-        'UTC'
-    ),
-    (
-        false,
-        true,
-        '2024-02-01 00:00:00+00',
-        'Historical event',
-        :'eventCategoryID',
-        :'event2ID',
-        'in-person',
-        :'groupID',
-        'Historical event',
-        'USD',
-        'historical-event',
-        'UTC'
-    );
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'description', 'Primary event',
+    'name', 'Primary event',
+    'payment_currency_code', 'USD'
+));
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'deleted_at', '2024-02-01 00:00:00+00',
+    'payment_currency_code', 'USD'
+));
 
 -- Ticket types referenced by the refund purchases
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values
-    (:'eventID', :'ticketTypeID', 1, 100, 'General admission'),
-    (:'event2ID', :'ticketType2ID', 1, 100, 'Workshop');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'ticketType2ID', :'event2ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'Workshop'
+));
 
 -- Purchases covering review, retry, live checkout, refunded, and rejected states
 insert into event_purchase (
@@ -297,111 +276,194 @@ insert into event_refund_request (
         '2024-01-05 03:00:00+00'
     );
 
--- Durable jobs represented in retryable and completed history
+-- Retryable refund job whose lifecycle update is newer than its refund row
+insert into payment_job (
+    attempt_count,
+    created_at,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    next_attempt_at,
+    payment_job_id,
+    payment_provider_id,
+    status,
+    updated_at,
+
+    failure_message
+) values (
+    10,
+    '2024-01-02 02:00:00+00',
+    :'retryPurchaseID',
+    'refund-list-retry-refund-d410',
+    'event-purchase-refund',
+    '2024-01-02 04:00:00+00',
+    :'retryRefundJobID',
+    'stripe',
+    'failed',
+    '2024-01-02 05:00:00+00',
+
+    'Refund request failed'
+);
+
+-- Completed refund job represented in completed history
+insert into payment_job (
+    attempt_count,
+    completed_at,
+    created_at,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    next_attempt_at,
+    payment_job_id,
+    payment_provider_id,
+    status,
+    updated_at
+) values (
+    1,
+    '2024-01-04 03:00:00+00',
+    '2024-01-04 02:00:00+00',
+    :'refundedPurchaseID',
+    'refund-list-completed-refund-d410',
+    'event-purchase-refund',
+    '2024-01-04 02:00:00+00',
+    :'refundedRefundJobID',
+    'stripe',
+    'completed',
+    '2024-01-04 03:00:00+00'
+);
+
+-- Durable refunds represented in retryable and completed history
 insert into event_purchase_refund (
     amount_minor,
-    attempt_count,
     created_at,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    idempotency_key,
     kind,
-    next_attempt_at,
+    payment_job_id,
     payment_provider_id,
     status,
     terminal_failure,
     updated_at,
 
-    failure_message,
     finalized_at,
     provider_refund_id
 ) values
     (
         2500,
-        10,
         '2024-01-02 02:00:00+00',
         'USD',
         :'retryPurchaseID',
         :'retryRefundID',
-        'refund-retry',
         'event-cancellation',
-        '2024-01-02 04:00:00+00',
+        :'retryRefundJobID',
         'stripe',
         'provider-pending',
         false,
         '2024-01-02 03:00:00+00',
-        null,
+
         null,
         're_retry'
     ),
     (
         5000,
-        1,
         '2024-01-04 02:00:00+00',
         'USD',
         :'refundedPurchaseID',
         :'refundedRefundID',
-        'refund-completed',
         'automatic-unfulfillable-checkout',
-        '2024-01-04 02:00:00+00',
+        :'refundedRefundJobID',
         'stripe',
         'finalized',
         false,
         '2024-01-04 03:00:00+00',
-        null,
+
         '2024-01-04 03:00:00+00',
         're_refunded'
     );
 
--- Exhausted application-fee work requiring operator action
-insert into event_purchase_application_fee_adjustment (
-    amount_minor,
+-- Exhausted application-fee job requiring operator action
+insert into payment_job (
     attempt_count,
-    event_purchase_application_fee_adjustment_id,
     event_purchase_id,
     failure_message,
     idempotency_key,
     kind,
+    payment_job_id,
+    payment_provider_id,
     status,
     updated_at
 ) values (
-    25,
     10,
-    :'feeAdjustmentID',
     :'retryPurchaseID',
     'Application-fee request failed',
-    'refund-list-fee-adjustment',
-    'tax-reconciliation',
+    'refund-list-fee-adjustment-d410',
+    'event-purchase-application-fee-adjustment',
+    :'feeAdjustmentJobID',
+    'stripe',
     'failed',
     '2024-01-02 05:00:00+00'
+);
+
+-- Exhausted application-fee work requiring operator action
+insert into event_purchase_application_fee_adjustment (
+    amount_minor,
+    event_purchase_application_fee_adjustment_id,
+    event_purchase_id,
+    kind,
+    payment_job_id,
+    updated_at
+) values (
+    25,
+    :'feeAdjustmentID',
+    :'retryPurchaseID',
+    'tax-reconciliation',
+    :'feeAdjustmentJobID',
+    '2024-01-02 05:00:00+00'
+);
+
+-- Exhausted credit-note job requiring operator action
+insert into payment_job (
+    attempt_count,
+    event_purchase_id,
+    failure_message,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status,
+    updated_at
+) values (
+    10,
+    :'retryPurchaseID',
+    'Credit-note request failed',
+    'refund-list-credit-note-d410',
+    'event-purchase-credit-note',
+    :'creditNoteJobID',
+    'stripe',
+    'failed',
+    '2024-01-02 06:00:00+00'
 );
 
 -- Exhausted credit-note work requiring operator action
 insert into event_purchase_credit_note (
     amount_minor,
-    attempt_count,
     currency_code,
     event_purchase_credit_note_id,
     event_purchase_refund_id,
-    failure_message,
-    idempotency_key,
+    payment_job_id,
     payment_provider_id,
     provider_object_account_id,
-    status,
     tax_amount_minor,
     updated_at
 ) values (
     2500,
-    10,
     'USD',
     :'creditNoteID',
     :'retryRefundID',
-    'Credit-note request failed',
-    'refund-list-credit-note',
+    :'creditNoteJobID',
     'stripe',
     'acct_group_refunds_test',
-    'failed',
     0,
     '2024-01-02 06:00:00+00'
 );
@@ -450,6 +512,22 @@ select is(
     'Should order and expose administrator attention states'
 );
 
+-- Should date refund activity by the latest payment job update
+select is(
+    (
+        select (refund->>'updated_at')::bigint
+        from jsonb_array_elements(
+            list_group_refunds(
+                :'groupID'::uuid,
+                '{"limit": 50, "offset": 0, "view": "attention"}'::jsonb
+            )::jsonb->'refunds'
+        ) refund
+        where (refund->>'event_purchase_id')::uuid = :'retryPurchaseID'
+    ),
+    epoch_seconds('2024-01-02 05:00:00+00'::timestamptz),
+    'Should date refund activity by the latest payment job update'
+);
+
 -- Should expose exhausted application-fee and credit-note work
 select is(
     (
@@ -461,7 +539,7 @@ select is(
             )::jsonb->'financial_recoveries'
         ) work
     ),
-    '["application-fee-adjustment", "credit-note"]'::jsonb,
+    '["event-purchase-application-fee-adjustment", "event-purchase-credit-note"]'::jsonb,
     'Should expose exhausted application-fee and credit-note work'
 );
 
@@ -484,11 +562,11 @@ select is(
             'email', 'retry@example.test',
             'event_name', 'Primary event',
             'failure_message', 'Credit-note request failed',
-            'kind', 'credit-note',
+            'kind', 'event-purchase-credit-note',
+            'name', null,
             'operation', 'Credit note',
-            'username', 'retry',
-            'work_id', :'creditNoteID'::uuid,
-            'name', null
+            'payment_job_id', :'creditNoteJobID'::uuid,
+            'username', 'retry'
         ),
         jsonb_build_object(
             'amount_minor', 25,
@@ -497,11 +575,11 @@ select is(
             'email', 'retry@example.test',
             'event_name', 'Primary event',
             'failure_message', 'Application-fee request failed',
-            'kind', 'application-fee-adjustment',
+            'kind', 'event-purchase-application-fee-adjustment',
+            'name', null,
             'operation', 'Tax fee correction',
-            'username', 'retry',
-            'work_id', :'feeAdjustmentID'::uuid,
-            'name', null
+            'payment_job_id', :'feeAdjustmentJobID'::uuid,
+            'username', 'retry'
         )
     ),
     'Should search ticket details and return complete financial recovery rows'
@@ -598,11 +676,12 @@ select is(
         'ticket_title', 'General admission',
         'updated_at', 1704078000,
         'user_id', :'needsUserID'::uuid,
-        'username', 'requester',
+        'username', 'requester-list-group-refunds',
         'attempt_count', null,
         'failure_message', null,
         'kind', 'refund-request-approval',
         'name', 'Requesting Attendee',
+        'payment_job_id', null,
         'photo_url', 'https://example.test/requester.png',
         'provider_refund_id', null,
         'requested_reason', 'Unable to attend',
@@ -617,7 +696,7 @@ select results_eq(
         select
             jsonb_array_length(result->'financial_recoveries'),
             jsonb_array_length(result->'refunds'),
-            (result->'financial_recoveries'->0->>'work_id')::uuid,
+            (result->'financial_recoveries'->0->>'payment_job_id')::uuid,
             (result->>'total')::int
         from (
             select list_group_refunds(
@@ -629,7 +708,7 @@ select results_eq(
     $$ values (
         1,
         0,
-        'd4100000-0000-0000-0000-000000000024'::uuid,
+        'd4100000-0000-0000-0000-000000000028'::uuid,
         4
     ) $$,
     'Should bound financial recovery work within the shared operational page'
@@ -700,6 +779,7 @@ select is(
         'failure_message', null,
         'kind', null,
         'name', null,
+        'payment_job_id', null,
         'photo_url', null,
         'provider_refund_id', null,
         'requested_reason', null,

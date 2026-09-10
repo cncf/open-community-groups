@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,37 +15,16 @@ select plan(6);
 \set communityID 'b1010000-0000-0000-0000-000000000002'
 \set groupCategoryID 'b1010000-0000-0000-0000-000000000003'
 \set groupID 'b1010000-0000-0000-0000-000000000004'
-\set viewerID 'b1010000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Admin authorized to manage badges
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'actorID', 'hash', 'art-admin@example.test', true, 'art-admin');
-
--- Viewer without badge write permission
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'viewerID', 'hash', 'art-viewer@example.test', true, 'art-viewer');
-
--- Community that owns the gallery
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Artwork Community', '/logo', 'artwork-community');
-
--- Category used by the gallery group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the gallery
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Artwork Group', 'artwork-group');
-
--- Authorized and read-only group team members
-insert into group_team (group_id, accepted, role, user_id)
-values
-    (:'groupID', true, 'admin', :'actorID'),
-    (:'groupID', true, 'viewer', :'viewerID');
+-- Baseline community, categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- ============================================================================
 -- TESTS
@@ -93,19 +72,9 @@ select throws_ok(
         $$select add_badge_artwork(%L::uuid, %L::uuid, %L::uuid, '../../log-out')$$,
         :'actorID', :'communityID', :'groupID'
     ),
+    'OCG01',
     'badge artwork file name is invalid',
     'Should reject artwork path traversal'
-);
-
--- Should reject a viewer before mutation
-select throws_ok(
-    format(
-        $$select add_badge_artwork(%L::uuid, %L::uuid, %L::uuid, 'denied.png')$$,
-        :'viewerID', :'communityID', :'groupID'
-    ),
-    '42501',
-    'badge permission denied',
-    'Should reject a viewer before mutation'
 );
 
 -- ============================================================================
