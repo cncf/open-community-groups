@@ -13,9 +13,10 @@ use uuid::Uuid;
 use crate::{
     db::{dashboard::user::SessionProposalCoSpeakerUser, mock::MockDB},
     handlers::tests::*,
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::{
-        DASHBOARD_PAGINATION_LIMIT, user::session_proposals::SessionProposalsOutput,
+    services::notifications::MockNotificationsManager,
+    types::{
+        dashboard::{DASHBOARD_PAGINATION_LIMIT, user::session_proposals::SessionProposalsOutput},
+        notifications::NotificationKind,
     },
 };
 
@@ -25,8 +26,6 @@ async fn test_list_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let output = SessionProposalsOutput {
         session_proposals: vec![sample_session_proposal(session_proposal_id)],
         total: 1,
@@ -36,14 +35,7 @@ async fn test_list_page_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_list_session_proposal_levels()
         .times(1)
         .returning(move || Ok(levels.clone()));
@@ -80,77 +72,15 @@ async fn test_list_page_success() {
 }
 
 #[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_session_proposal_levels()
-        .times(1)
-        .returning(|| Ok(sample_session_proposal_levels()));
-    db.expect_list_user_pending_session_proposal_co_speaker_invitations()
-        .times(1)
-        .withf(move |uid| *uid == user_id)
-        .returning(move |_| Ok(vec![]));
-    db.expect_list_user_session_proposals()
-        .times(1)
-        .withf(move |uid, filters| {
-            *uid == user_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
-        })
-        .returning(|_, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/session-proposals")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
 async fn test_accept_co_speaker_invitation_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let session_proposal_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_accept_session_proposal_co_speaker_invitation()
         .times(1)
         .withf(move |uid, pid| *uid == user_id && *pid == session_proposal_id)
@@ -193,8 +123,6 @@ async fn test_add_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let form_data = concat!(
         "title=Rust%20101",
         "&session_proposal_level_id=beginner",
@@ -204,14 +132,7 @@ async fn test_add_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_add_session_proposal()
         .times(1)
         .withf(move |uid, input| {
@@ -262,8 +183,6 @@ async fn test_add_success_with_co_speaker_notification() {
     let session_id = session::Id::default();
     let session_proposal_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let form_data = format!(
         concat!(
             "title=Rust%20101",
@@ -277,14 +196,7 @@ async fn test_add_success_with_co_speaker_notification() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_add_session_proposal()
         .times(1)
         .withf(move |uid, input| {
@@ -345,41 +257,35 @@ async fn test_add_success_with_co_speaker_notification() {
 #[tokio::test]
 async fn test_add_db_error() {
     // Setup identifiers and data structures
+    let co_speaker_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let form_data = concat!(
-        "title=Rust%20101",
-        "&session_proposal_level_id=beginner",
-        "&duration_minutes=45",
-        "&description=Session%20about%20Rust"
+    let form_data = format!(
+        concat!(
+            "title=Rust%20101",
+            "&session_proposal_level_id=beginner",
+            "&duration_minutes=45",
+            "&description=Session%20about%20Rust",
+            "&co_speaker_user_id={}"
+        ),
+        co_speaker_user_id
     );
 
-    // Setup database mock
+    // Setup database mock with a failing write, no invitation, and no flash message
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_add_session_proposal()
         .times(1)
         .withf(move |uid, input| {
-            *uid == user_id
-                && input.title == "Rust 101"
-                && input.session_proposal_level_id == "beginner"
-                && input.duration_minutes == 45
-                && input.description == "Session about Rust"
-                && input.co_speaker_user_id.is_none()
+            *uid == user_id && input.co_speaker_user_id == Some(co_speaker_user_id)
         })
         .returning(|_, _| Err(anyhow!("db error")));
+    db.expect_get_site_settings().never();
+    db.expect_update_session().never();
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    // Setup notifications manager mock, which must not be called
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue().never();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -404,19 +310,10 @@ async fn test_delete_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_delete_session_proposal()
         .times(1)
         .withf(move |uid, proposal_id| *uid == user_id && *proposal_id == session_proposal_id)
@@ -460,23 +357,15 @@ async fn test_delete_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
-    // Setup database mock
+    // Setup database mock with a failing write and no flash message
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_delete_session_proposal()
         .times(1)
         .withf(move |uid, proposal_id| *uid == user_id && *proposal_id == session_proposal_id)
         .returning(|_, _| Err(anyhow!("db error")));
+    db.expect_update_session().never();
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -505,19 +394,10 @@ async fn test_reject_co_speaker_invitation_success() {
     let session_id = session::Id::default();
     let session_proposal_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_reject_session_proposal_co_speaker_invitation()
         .times(1)
         .withf(move |uid, pid| *uid == user_id && *pid == session_proposal_id)
@@ -561,8 +441,6 @@ async fn test_update_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let form_data = concat!(
         "title=Rust%20102",
         "&session_proposal_level_id=intermediate",
@@ -572,14 +450,7 @@ async fn test_update_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_session_proposal_co_speaker_user_id()
         .times(1)
         .withf(move |uid, proposal_id| *uid == user_id && *proposal_id == session_proposal_id)
@@ -641,8 +512,6 @@ async fn test_update_success_with_co_speaker_notification() {
     let session_id = session::Id::default();
     let session_proposal_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let form_data = format!(
         concat!(
             "title=Rust%20102",
@@ -656,14 +525,7 @@ async fn test_update_success_with_co_speaker_notification() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_session_proposal_co_speaker_user_id()
         .times(1)
         .withf(move |uid, proposal_id| *uid == user_id && *proposal_id == session_proposal_id)
@@ -735,28 +597,24 @@ async fn test_update_success_with_co_speaker_notification() {
 #[tokio::test]
 async fn test_update_db_error() {
     // Setup identifiers and data structures
+    let co_speaker_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let form_data = concat!(
-        "title=Rust%20102",
-        "&session_proposal_level_id=intermediate",
-        "&duration_minutes=60",
-        "&description=Updated%20description"
+    let user_id = Uuid::new_v4();
+    let form_data = format!(
+        concat!(
+            "title=Rust%20102",
+            "&session_proposal_level_id=intermediate",
+            "&duration_minutes=60",
+            "&description=Updated%20description",
+            "&co_speaker_user_id={}"
+        ),
+        co_speaker_user_id
     );
 
-    // Setup database mock
+    // Setup database mock with a failing write, no invitation, and no flash message
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_session_proposal_co_speaker_user_id()
         .times(1)
         .withf(move |uid, proposal_id| *uid == user_id && *proposal_id == session_proposal_id)
@@ -770,16 +628,15 @@ async fn test_update_db_error() {
         .withf(move |uid, proposal_id, input| {
             *uid == user_id
                 && *proposal_id == session_proposal_id
-                && input.title == "Rust 102"
-                && input.session_proposal_level_id == "intermediate"
-                && input.duration_minutes == 60
-                && input.description == "Updated description"
-                && input.co_speaker_user_id.is_none()
+                && input.co_speaker_user_id == Some(co_speaker_user_id)
         })
         .returning(|_, _, _| Err(anyhow!("db error")));
+    db.expect_get_site_settings().never();
+    db.expect_update_session().never();
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    // Setup notifications manager mock, which must not be called
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue().never();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;

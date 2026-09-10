@@ -271,7 +271,7 @@ pub enum QuestionnaireQuestionKind {
 // Form types.
 
 /// Form payload with optional encoded questionnaire answers.
-#[derive(Debug, Default, Deserialize, Validate)]
+#[derive(Debug, Clone, Default, Deserialize, Validate)]
 pub(crate) struct OptionalQuestionnaireAnswersForm {
     /// Questionnaire answers decoded from the form field JSON.
     #[serde(

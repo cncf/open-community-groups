@@ -15,8 +15,8 @@ use crate::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
     },
-    templates::dashboard::community::settings::{self, CommunityUpdate},
-    types::permissions::CommunityPermission,
+    templates::dashboard::community::settings,
+    types::{dashboard::community::settings::CommunityUpdate, permissions::CommunityPermission},
 };
 
 #[cfg(test)]

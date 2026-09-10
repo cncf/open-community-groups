@@ -11,7 +11,8 @@ use tracing::{instrument, trace};
 use crate::{
     router::serde_qs_config,
     types::{
-        event::EventKind,
+        event::{EventKind, EventSummary},
+        group::GroupSummary,
         pagination::{Pagination, ToRawQuery},
     },
     validation::{
@@ -22,6 +23,8 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
+
+// Search filters.
 
 /// Filter parameters for event searches.
 ///
@@ -351,6 +354,57 @@ impl Pagination for SearchGroupsFilters {
     }
 }
 
+// Other related types.
+
+/// Geographic bounding box coordinates.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct BBox {
+    /// Northeastern latitude.
+    pub ne_lat: f64,
+    /// Northeastern longitude.
+    pub ne_lon: f64,
+    /// Southwestern latitude.
+    pub sw_lat: f64,
+    /// Southwestern longitude.
+    pub sw_lon: f64,
+}
+
+/// Error that can occur when creating filter instances.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum FilterError {
+    /// Error parsing the query string.
+    #[error("parse error: {0}")]
+    Parse(#[from] serde_qs::Error),
+
+    /// Validation error.
+    #[error("validation error: {0}")]
+    Validation(#[from] garde::Report),
+}
+
+/// Output structure for events search operations.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct SearchEventsOutput {
+    /// Events on the current result page.
+    pub events: Vec<EventSummary>,
+    /// Total matching event count.
+    pub total: usize,
+
+    /// Optional geographic bounds covering the results.
+    pub bbox: Option<BBox>,
+}
+
+/// Output structure for groups search operations.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct SearchGroupsOutput {
+    /// Groups on the current result page.
+    pub groups: Vec<GroupSummary>,
+    /// Total matching group count.
+    pub total: usize,
+
+    /// Optional geographic bounds covering the results.
+    pub bbox: Option<BBox>,
+}
+
 /// Display mode for explore results.
 ///
 /// Determines how results are displayed - as a traditional list, on a calendar view, or
@@ -365,18 +419,6 @@ pub(crate) enum ViewMode {
     List,
     /// Interactive map view.
     Map,
-}
-
-/// Error that can occur when creating filter instances.
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum FilterError {
-    /// Error parsing the query string.
-    #[error("parse error: {0}")]
-    Parse(#[from] serde_qs::Error),
-
-    /// Validation error.
-    #[error("validation error: {0}")]
-    Validation(#[from] garde::Report),
 }
 
 // Serde defaults.

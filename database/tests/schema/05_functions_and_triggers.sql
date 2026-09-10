@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(458);
+select plan(460);
 
 -- ============================================================================
 -- VARIABLES
@@ -287,6 +287,7 @@ select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]',
 select has_function('get_public_event_full', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_public_user_badge', array['uuid']::name[]);
 select has_function('get_public_user_provider', array['jsonb']::name[]);
+select has_function('get_worker_queue_health', '{}'::name[]);
 select has_function('group_belongs_to_community', array['uuid', 'uuid']::name[]);
 select has_function('group_has_active_subgroups', array['uuid', 'uuid']::name[]);
 select has_function('group_has_child_links', array['uuid', 'uuid']::name[]);
@@ -521,6 +522,7 @@ select has_function('remind_event_external_payment_holds', array['event', '"grou
 select has_function('release_meeting_auto_end_check_claim', array['timestamp with time zone', 'uuid']::name[]);
 select has_function('release_meeting_sync', array['uuid', 'uuid', 'timestamp with time zone', 'text', 'text']::name[]);
 select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
+select has_function('release_notification', array['uuid', 'timestamp with time zone']::name[]);
 select has_function('request_event_refund', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
 select has_function('requeue_badge_award_job', array['uuid']::name[]);
 select hasnt_function(

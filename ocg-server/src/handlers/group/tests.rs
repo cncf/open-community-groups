@@ -16,8 +16,10 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     router::CACHE_CONTROL_PUBLIC_SHARED,
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::notifications::GroupWelcome,
+    services::{
+        enrollment::{EnrollmentError, MockEnrollmentManager},
+        notifications::MockNotificationsManager,
+    },
     types::event::EventKind,
 };
 
@@ -60,54 +62,6 @@ async fn test_page_community_not_found() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
     assert!(body.contains("Go to home page"));
-}
-
-#[tokio::test]
-async fn test_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    db.expect_get_group_full_by_slug()
-        .times(1)
-        .withf(move |id, slug| *id == community_id && slug == "test-group")
-        .returning(move |_, _| Ok(Some(sample_group_full(community_id, group_id))));
-    db.expect_get_group_past_events()
-        .times(1)
-        .withf(move |id, slug, kinds, limit| {
-            *id == community_id
-                && slug == "test-group"
-                && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
-                && *limit == 9
-        })
-        .returning(move |_, _, _, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test-community/group/test-group")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -332,65 +286,75 @@ async fn test_page_success() {
 }
 
 #[tokio::test]
-async fn test_join_group_success() {
-    // Setup identifiers and data structures
+async fn test_join_group_returns_internal_server_error_when_manager_fails() {
+    // Setup identifiers and an internal manager failure
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_community_id_by_name()
         .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        .returning(move |_| Ok(Some(community_id)));
+
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager.expect_join_group().times(1).returning(|_, _, _| {
+        Box::pin(async { Err(EnrollmentError::Other(anyhow!("database failure"))) })
+    });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/group/{group_id}/join"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the internal failure is hidden
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_join_group_success() {
+    // Setup identifiers and the membership expectation
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_join_group()
-        .times(1)
-        .withf(move |id, gid, uid| *id == community_id && *gid == group_id && *uid == user_id)
-        .returning(|_, _, _| Ok(()));
-    let mut notification_group = sample_group_summary(group_id);
-    notification_group.slug_pretty = Some("pretty-group".to_string());
-    db.expect_get_group_summary()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(notification_group.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
 
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager
+        .expect_join_group()
         .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::GroupWelcome)
-                && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref().is_some_and(|data| {
-                    serde_json::from_value::<GroupWelcome>(data.clone()).is_ok_and(|welcome| {
-                        welcome.group.group_id == group_id
-                            && welcome.link == "/test-community/group/pretty-group"
-                            && welcome.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
-                })
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+        .returning(|_, _, _| Box::pin(async { Ok(()) }));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
     let request = Request::builder()
         .method("POST")
         .uri(format!("/test-community/group/{group_id}/join"))
@@ -408,38 +372,33 @@ async fn test_join_group_success() {
 
 #[tokio::test]
 async fn test_leave_group_success() {
-    // Setup identifiers and data structures
+    // Setup identifiers and the membership removal expectation
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_leave_group()
-        .times(1)
-        .withf(move |id, gid, uid| *id == community_id && *gid == group_id && *uid == user_id)
-        .returning(|_, _, _| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    // Setup enrollment manager mock
+    let mut enrollment_manager = MockEnrollmentManager::new();
+    enrollment_manager
+        .expect_leave_group()
+        .times(1)
+        .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+        .returning(|_, _, _| Box::pin(async { Ok(()) }));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_enrollment_manager(enrollment_manager)
+        .build()
+        .await;
     let request = Request::builder()
         .method("DELETE")
         .uri(format!("/test-community/group/{group_id}/leave"))
@@ -460,19 +419,10 @@ async fn test_membership_status_rejects_invalid_group_id_before_community_lookup
     // Setup an authenticated session
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Resolve authentication without looking up the community
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name().never();
 
     // Request membership with a malformed group identifier
@@ -503,19 +453,10 @@ async fn test_membership_status_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -627,6 +568,8 @@ async fn test_track_view_rejects_cross_origin_request() {
 async fn test_track_view_rejects_missing_origin_request() {
     // Setup dependencies that must not record the unverified request
     let db = MockDB::new();
+
+    // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
     let mut activity_tracker = MockActivityTracker::new();
     activity_tracker.expect_track().never();

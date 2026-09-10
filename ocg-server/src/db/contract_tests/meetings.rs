@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use crate::{db::meetings::DBMeetings, services::meetings::MeetingProvider};
+use crate::{db::meetings::DBMeetings, types::meetings::MeetingProvider};
 
 use super::helpers::{auto_end_meeting_id, contract_tests_db, sync_event_id};
 

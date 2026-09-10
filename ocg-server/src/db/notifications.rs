@@ -8,12 +8,12 @@ use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use cached::cached;
 use serde::Serialize;
-use tracing::instrument;
+use tracing::{info, instrument};
 use uuid::Uuid;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    services::notifications::{Attachment, NewNotification, Notification},
+    types::notifications::{Attachment, NewNotification, Notification},
 };
 
 /// Trait that defines database operations used to manage notifications.
@@ -48,6 +48,10 @@ pub(crate) trait DBNotifications {
     /// Marks stale claimed notifications with an unknown delivery outcome.
     async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration)
     -> Result<usize>;
+
+    /// Returns a claimed notification to the pending queue without recording an
+    /// outcome, leaving its delivery attempts and last error unchanged.
+    async fn release_notification(&self, notification: &Notification) -> Result<()>;
 
     /// Requeues a notification after a retryable delivery error.
     async fn requeue_notification(
@@ -159,23 +163,28 @@ where
         // Enqueue notification in database
         let kind = notification.kind.to_string();
         let db = self.client().await?;
-        db.execute(
-            "
-            select enqueue_notification(
-                $1::text,
-                $2::jsonb,
-                $3::jsonb,
-                $4::uuid[]
-            );
-            ",
-            &[
-                &kind,
-                &notification.template_data,
-                &attachments,
-                &notification.recipients,
-            ],
-        )
-        .await?;
+        let row = db
+            .query_one(
+                "
+                select enqueue_notification(
+                    $1::text,
+                    $2::jsonb,
+                    $3::jsonb,
+                    $4::uuid[]
+                ) as notification_ids;
+                ",
+                &[
+                    &kind,
+                    &notification.template_data,
+                    &attachments,
+                    &notification.recipients,
+                ],
+            )
+            .await?;
+
+        // Record the identifiers so delivery failures can be traced back to this enqueue
+        let notification_ids: Vec<Uuid> = row.try_get("notification_ids")?;
+        info!(%kind, ?notification_ids, "notifications enqueued");
 
         Ok(())
     }
@@ -308,6 +317,23 @@ where
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         Ok(count as usize)
+    }
+
+    /// [`DBNotifications::release_notification`].
+    #[instrument(skip(self, notification), err)]
+    async fn release_notification(&self, notification: &Notification) -> Result<()> {
+        // Return the active claim to the queue so another worker can pick it up
+        let db = self.client().await?;
+        db.execute(
+            "select release_notification($1::uuid, $2::timestamptz);",
+            &[
+                &notification.notification_id,
+                &notification.delivery_claimed_at,
+            ],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// [`DBNotifications::requeue_notification`].

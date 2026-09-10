@@ -10,8 +10,8 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, audit::AuditLogSort},
     types::{
+        dashboard::{DASHBOARD_PAGINATION_LIMIT, common::AuditLogSort},
         payments::GroupExternalPaymentsContext,
         permissions::GroupPermission::{self, CheckInsWrite},
     },
@@ -24,14 +24,6 @@ async fn test_page_analytics_tab_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let groups = sample_user_groups_by_community(community_id, group_id);
     let stats = sample_group_stats();
 
@@ -52,23 +44,14 @@ async fn test_page_analytics_tab_success() {
                 && permission == GroupPermission::BadgesWrite
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -202,14 +185,6 @@ async fn test_page_check_in_tab_falls_back_without_management_permission() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let groups = sample_user_groups_by_community(community_id, group_id);
     let stats = sample_group_stats();
 
@@ -230,23 +205,14 @@ async fn test_page_check_in_tab_falls_back_without_management_permission() {
                 && permission == GroupPermission::BadgesWrite
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -296,14 +262,6 @@ async fn test_page_events_tab_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let groups = sample_user_groups_by_community(community_id, group_id);
     let group_events = sample_group_events(event_id, group_id);
 
@@ -315,41 +273,28 @@ async fn test_page_events_tab_success() {
             (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &CheckInsWrite)
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::BadgesWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -403,16 +348,8 @@ async fn test_page_logs_tab_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
     let groups = sample_user_groups_by_community(community_id, group_id);
     let output = sample_audit_logs_output();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -422,32 +359,21 @@ async fn test_page_logs_tab_success() {
             (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &CheckInsWrite)
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::BadgesWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -491,18 +417,10 @@ async fn test_page_members_tab_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let groups = sample_user_groups_by_community(community_id, group_id);
     let group = sample_group_summary(group_id);
     let member = sample_group_member();
-    let output = crate::templates::dashboard::group::members::GroupMembersOutput {
+    let output = crate::types::dashboard::group::members::GroupMembersOutput {
         members: vec![member.clone()],
         total: 1,
     };
@@ -515,41 +433,28 @@ async fn test_page_members_tab_success() {
             (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &CheckInsWrite)
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::BadgesWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::MembersWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::MembersWrite,
+    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -600,14 +505,6 @@ async fn test_page_settings_tab_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let groups = sample_user_groups_by_community(community_id, group_id);
     let group_full = sample_group_full(community_id, group_id);
     let category = sample_group_category();
@@ -621,41 +518,28 @@ async fn test_page_settings_tab_success() {
             (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &CheckInsWrite)
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::BadgesWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SettingsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -725,17 +609,9 @@ async fn test_page_sponsors_tab_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let groups = sample_user_groups_by_community(community_id, group_id);
     let sponsor = sample_group_sponsor();
-    let output = crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+    let output = crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
         sponsors: vec![sponsor.clone()],
         total: 1,
     };
@@ -748,41 +624,28 @@ async fn test_page_sponsors_tab_success() {
             (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &CheckInsWrite)
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::BadgesWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SponsorsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SponsorsWrite,
+    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -826,19 +689,11 @@ async fn test_page_team_tab_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let groups = sample_user_groups_by_community(community_id, group_id);
     let team_member = sample_team_member(true);
     let role = sample_group_role_summary();
     let members = vec![team_member.clone(), sample_team_member(false)];
-    let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+    let output = crate::types::dashboard::group::team::GroupTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 1,
@@ -862,32 +717,21 @@ async fn test_page_team_tab_success() {
                 && permission == GroupPermission::BadgesWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::TeamWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::TeamWrite,
+    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -933,16 +777,8 @@ async fn test_page_refunds_tab_preserves_history_without_payments_setup() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let groups = sample_user_groups_by_community(community_id, group_id);
-    let output = crate::templates::dashboard::group::refunds::RefundsOutput {
+    let output = crate::types::dashboard::group::refunds::RefundsOutput {
         events: vec![],
         financial_recoveries: vec![],
         refunds: vec![],
@@ -961,48 +797,37 @@ async fn test_page_refunds_tab_preserves_history_without_payments_setup() {
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(|_, _| Ok(None));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_list_group_refunds()
         .times(1)
         .withf(move |gid, filters| {
             *gid == group_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.view == crate::templates::dashboard::group::refunds::RefundsView::Active
+                && filters.view == crate::types::dashboard::group::refunds::RefundsView::Active
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
         .returning(move |_| Ok(groups.clone()));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::BadgesWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -1042,16 +867,8 @@ async fn test_page_refunds_tab_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let groups = sample_user_groups_by_community(community_id, group_id);
-    let output = crate::templates::dashboard::group::refunds::RefundsOutput {
+    let output = crate::types::dashboard::group::refunds::RefundsOutput {
         events: vec![],
         financial_recoveries: vec![],
         refunds: vec![],
@@ -1066,45 +883,32 @@ async fn test_page_refunds_tab_success() {
             (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &CheckInsWrite)
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::BadgesWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_get_group_payment_recipient()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -1115,7 +919,7 @@ async fn test_page_refunds_tab_success() {
             *gid == group_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.view == crate::templates::dashboard::group::refunds::RefundsView::Active
+                && filters.view == crate::types::dashboard::group::refunds::RefundsView::Active
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_site_settings()

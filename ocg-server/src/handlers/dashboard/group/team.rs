@@ -9,7 +9,7 @@ use axum::{
 };
 use garde::Validate;
 use serde::Deserialize;
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -17,20 +17,22 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
-        auth::log_out_for_stale_dashboard_context,
+        auth::middleware::log_out_for_stale_dashboard_context,
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
+        },
     },
-    router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::dashboard::group::team::{self, GroupTeamFilters},
-    templates::notifications::GroupTeamInvitation,
+    services::notifications::{
+        DynNotificationsManager, best_effort::enqueue_group_team_invitation_best_effort,
+    },
+    templates::dashboard::group::team,
     types::{
+        dashboard::group::team::GroupTeamFilters,
         group::GroupRole,
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
-    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -92,37 +94,15 @@ pub(crate) async fn add(
         .await?;
 
     // Enqueue invitation email notification best-effort
-    if let Err(err) = async {
-        let (site_settings, group) = tokio::try_join!(
-            db.get_site_settings(),
-            db.get_group_summary(community_id, group_id)
-        )?;
-        let template_data = GroupTeamInvitation {
-            group,
-            link: format!(
-                "{}/dashboard/user?tab=invitations",
-                base_url_without_trailing_slash(&server_cfg.base_url)
-            ),
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::GroupTeamInvitation,
-            recipients: vec![member.user_id],
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await
-    }
-    .await
-    {
-        warn!(
-            error = %err,
-            %community_id,
-            %group_id,
-            user_id = %member.user_id,
-            "failed to enqueue group team invitation notification"
-        );
-    }
+    enqueue_group_team_invitation_best_effort(
+        db.as_ref(),
+        &notifications_manager,
+        &server_cfg,
+        community_id,
+        group_id,
+        member.user_id,
+    )
+    .await;
 
     Ok((
         StatusCode::CREATED,
@@ -142,7 +122,7 @@ pub(crate) async fn delete(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let Some(user) = auth_session.user.clone() else {
-        return Err(HandlerError::Auth("user not logged in".to_string()));
+        return Err(HandlerError::Auth);
     };
 
     // Remove team member from database
@@ -223,8 +203,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(GroupTeamFilters, team::ListPage), HandlerError> {
     // Fetch group team members
-    let filters: GroupTeamFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: GroupTeamFilters = ValidatedQuery::parse(raw_query)?;
     let (results, roles, can_award_badges, can_manage_team) = tokio::try_join!(
         db.list_group_team_members(group_id, &filters),
         db.list_group_roles(),
@@ -265,9 +244,7 @@ pub(crate) async fn prepare_list_page(
         navigation_links,
         roles,
         total: results.total,
-        total_accepted: results.total_accepted,
         total_admins_accepted: results.total_admins_accepted,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

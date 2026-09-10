@@ -4,8 +4,10 @@ use anyhow::Result;
 
 use crate::{
     db::dashboard::community::DBDashboardCommunity,
-    templates::dashboard::{audit::AuditLogFilters, community::team::CommunityTeamFilters},
-    types::community::CommunityRole,
+    types::{
+        community::CommunityRole,
+        dashboard::{common::AuditLogFilters, community::team::CommunityTeamFilters},
+    },
 };
 
 use super::helpers::{community_id, contract_tests_db, organizer_id, waitlist_id};

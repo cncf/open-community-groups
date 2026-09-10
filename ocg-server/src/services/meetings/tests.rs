@@ -8,7 +8,7 @@ use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::{
-    config::MeetingsZoomConfig,
+    config::{HttpClientConfig, MeetingsZoomConfig},
     db::meetings::{DynDBMeetings, MockDBMeetings},
 };
 
@@ -96,10 +96,10 @@ fn test_meeting_provider_error_retry_after_other() {
     );
 }
 
-// Meeting::sync_action tests.
+// SyncAction::for_meeting tests.
 
 #[test]
-fn test_meeting_sync_action_create() {
+fn test_sync_action_for_meeting_create() {
     // Setup meeting without provider_meeting_id
     let meeting = Meeting {
         provider_meeting_id: None,
@@ -108,11 +108,14 @@ fn test_meeting_sync_action_create() {
     };
 
     // Check sync action is Create
-    assert!(matches!(meeting.sync_action(), SyncAction::Create));
+    assert!(matches!(
+        SyncAction::for_meeting(&meeting),
+        SyncAction::Create
+    ));
 }
 
 #[test]
-fn test_meeting_sync_action_delete() {
+fn test_sync_action_for_meeting_delete() {
     // Setup meeting with delete flag
     let meeting = Meeting {
         provider_meeting_id: Some("provider-123".to_string()),
@@ -121,11 +124,14 @@ fn test_meeting_sync_action_delete() {
     };
 
     // Check sync action is Delete
-    assert!(matches!(meeting.sync_action(), SyncAction::Delete));
+    assert!(matches!(
+        SyncAction::for_meeting(&meeting),
+        SyncAction::Delete
+    ));
 }
 
 #[test]
-fn test_meeting_sync_action_update() {
+fn test_sync_action_for_meeting_update() {
     // Setup meeting with provider_meeting_id
     let meeting = Meeting {
         provider_meeting_id: Some("provider-123".to_string()),
@@ -134,7 +140,10 @@ fn test_meeting_sync_action_update() {
     };
 
     // Check sync action is Update
-    assert!(matches!(meeting.sync_action(), SyncAction::Update));
+    assert!(matches!(
+        SyncAction::for_meeting(&meeting),
+        SyncAction::Update
+    ));
 }
 
 // Meetings workers tests.
@@ -507,7 +516,65 @@ async fn test_worker_sync_meeting_creates_new_meeting() {
             Ok(MeetingProviderMeeting {
                 id: "zoom-123".to_string(),
                 join_url: "https://zoom.us/j/123".to_string(),
+                host_user_id: Some("host@example.com".to_string()),
                 password: Some("secret".to_string()),
+            })
+        })
+    });
+    let mp: DynMeetingsProvider = Arc::new(mp);
+
+    // Setup worker and sync meeting
+    let worker = sample_sync_worker(db, mp);
+    let synced = worker.sync_meeting().await.unwrap();
+
+    // Check result matches expectations
+    assert!(synced);
+}
+
+#[tokio::test]
+async fn test_worker_sync_meeting_stores_host_owning_adopted_meeting() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+    let meeting_id = Uuid::new_v4();
+    let starts_at = chrono::DateTime::from_timestamp(1_900_000_000, 0).unwrap();
+    let meeting = Meeting {
+        duration: Some(Duration::from_mins(30)),
+        event_id: Some(event_id),
+        meeting_id: Some(meeting_id),
+        provider_meeting_id: None,
+        starts_at: Some(starts_at),
+        topic: Some("Test Meeting".to_string()),
+        ..Default::default()
+    };
+
+    // Setup database mock: the reserved host differs from the one owning the
+    // provider meeting adopted from an interrupted creation
+    let mut db = MockDBMeetings::new();
+    db.expect_claim_meeting_out_of_sync()
+        .times(1)
+        .returning(move || Ok(Some(meeting.clone())));
+    db.expect_assign_zoom_host_user()
+        .times(1)
+        .returning(|_, _, _, _, _| Ok(Some("host@example.com".to_string())));
+    db.expect_add_meeting()
+        .times(1)
+        .withf(move |m| {
+            m.meeting_id == Some(meeting_id)
+                && m.provider_meeting_id == Some("zoom-123".to_string())
+                && m.provider_host_user_id == Some("other-host@example.com".to_string())
+        })
+        .returning(|_| Ok(()));
+    let db: DynDBMeetings = Arc::new(db);
+
+    // Setup meetings provider mock
+    let mut mp = MockMeetingsProvider::new();
+    mp.expect_create_meeting().times(1).returning(|_| {
+        Box::pin(async {
+            Ok(MeetingProviderMeeting {
+                id: "zoom-123".to_string(),
+                join_url: "https://zoom.us/j/123".to_string(),
+                host_user_id: Some("other-host@example.com".to_string()),
+                password: None,
             })
         })
     });
@@ -562,6 +629,7 @@ async fn test_worker_sync_meeting_updates_existing_meeting() {
                 Ok(MeetingProviderMeeting {
                     id: "zoom-456".to_string(),
                     join_url: "https://zoom.us/j/456".to_string(),
+                    host_user_id: None,
                     password: Some("newsecret".to_string()),
                 })
             })
@@ -936,5 +1004,7 @@ fn sample_zoom_cfg() -> MeetingsZoomConfig {
         max_participants: 100,
         max_simultaneous_meetings_per_host: 1,
         webhook_secret_token: "webhook-secret".to_string(),
+
+        http_client: HttpClientConfig::default(),
     }
 }

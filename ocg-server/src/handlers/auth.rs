@@ -1,4 +1,7 @@
-//! This module defines some handlers used for authentication.
+//! This module defines the handlers used for authentication: log in and sign
+//! up pages, password and external provider log in, and account maintenance.
+//! The dashboard authorization middleware lives in `middleware` and the
+//! session dashboard context helpers in `session_context`.
 
 use std::collections::HashMap;
 
@@ -6,10 +9,9 @@ use askama::Template;
 use async_trait::async_trait;
 use axum::{
     Form,
-    extract::{Path, Query, Request, State},
-    http::{HeaderMap, StatusCode},
-    middleware::Next,
-    response::{Html, IntoResponse, Redirect, Response},
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::{Html, IntoResponse, Redirect},
 };
 use axum_messages::Messages;
 use garde::Validate;
@@ -23,32 +25,29 @@ use uuid::Uuid;
 
 use crate::{
     auth::{
-        self, AuthSession, Credentials, OAuth2Credentials, OidcCredentials, PasswordCredentials,
+        self, AUTH_PROVIDER_KEY, AuthSession, Credentials, OAuth2Credentials, OidcCredentials,
+        PasswordCredentials,
     },
     config::{HttpServerConfig, OAuth2Provider, OidcProvider},
-    db::{DynDB, auth::EmailVerificationNotification},
+    db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{
-            CurrentUser, OAuth2, Oidc, SelectedCommunityId, SelectedGroupId, ValidatedForm,
-            ValidatedFormQs,
-        },
+        extractors::{CurrentUser, OAuth2, Oidc, ValidatedForm, ValidatedFormQs},
     },
-    templates::{
-        self, PageId,
-        auth::{User, UserDetails},
-        notifications::EmailVerification,
+    services::{
+        blocking::BlockingExecutor, notifications::payloads::build_email_verification_notification,
     },
-    types::permissions::{CommunityPermission, GroupPermission},
-    util::base_url_without_trailing_slash,
+    templates::{self, PageId, auth::UserMenuState},
+    types::user::{UserDetailsInput, UserPasswordInput},
     validation::{MAX_LEN_S, trimmed_non_empty},
 };
 
+use self::session_context::select_first_community_and_group;
+
+pub(crate) mod middleware;
+pub(crate) mod session_context;
 #[cfg(test)]
 mod tests;
-
-/// Key used to store the authentication provider in the session.
-pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
 
 /// Session value for password authentication.
 pub(crate) const AUTH_PROVIDER_EMAIL: &str = "email";
@@ -75,25 +74,8 @@ pub(crate) const OAUTH2_CSRF_STATE_KEY: &str = "oauth2.csrf_state";
 /// Key used to store the `Oidc` nonce in the session.
 pub(crate) const OIDC_NONCE_KEY: &str = "oidc.nonce";
 
-/// Key used to store the selected community ID in the session.
-pub(crate) const SELECTED_COMMUNITY_ID_KEY: &str = "selected_community_id";
-
-/// Key used to store the selected group ID in the session.
-pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
-
-/// Defines whether syncing a community selection requires a group selection.
-pub(crate) enum SelectedGroupPolicy {
-    /// Group selection may be absent.
-    Optional,
-    /// Group selection must be present.
-    Required,
-}
-
 /// URL for the sign up page.
 pub(crate) const SIGN_UP_URL: &str = "/sign-up";
-
-/// URL for user dashboard invitations tab.
-pub(crate) const USER_DASHBOARD_INVITATIONS_URL: &str = "/dashboard/user?tab=invitations";
 
 // Pages and sections handlers.
 
@@ -125,7 +107,7 @@ pub(crate) async fn log_in_page(
         page_id: PageId::LogIn,
         path: LOG_IN_URL.to_string(),
         site_settings,
-        user: User::default(),
+        user: UserMenuState::default(),
 
         next_url,
     };
@@ -161,7 +143,7 @@ pub(crate) async fn sign_up_page(
         page_id: PageId::SignUp,
         path: SIGN_UP_URL.to_string(),
         site_settings,
-        user: User::default(),
+        user: UserMenuState::default(),
 
         next_url,
     };
@@ -176,7 +158,7 @@ pub(crate) async fn user_menu_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let template = templates::auth::UserMenuSection {
-        user: User::from_session(auth_session).await?,
+        user: UserMenuState::from_session(auth_session).await?,
     };
 
     Ok(Html(template.render()?))
@@ -185,7 +167,7 @@ pub(crate) async fn user_menu_section(
 // Actions handlers.
 
 /// Handler that logs the user in.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn log_in(
     mut auth_session: AuthSession,
     messages: Messages,
@@ -212,7 +194,7 @@ pub(crate) async fn log_in(
     let Some(user) = auth_session
         .authenticate(Credentials::Password(creds))
         .await
-        .map_err(|e| HandlerError::Auth(e.to_string()))?
+        .map_err(|_| HandlerError::Auth)?
     else {
         messages
             .error("Invalid credentials. Please make sure you have verified your email address.");
@@ -221,10 +203,7 @@ pub(crate) async fn log_in(
     };
 
     // Log user in
-    auth_session
-        .login(&user)
-        .await
-        .map_err(|e| HandlerError::Auth(e.to_string()))?;
+    auth_session.login(&user).await.map_err(|_| HandlerError::Auth)?;
 
     // Select the first community and group as selected in the session
     select_first_community_and_group(&db, &session, &user.user_id).await?;
@@ -237,20 +216,17 @@ pub(crate) async fn log_in(
 }
 
 /// Handler that logs the user out.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn log_out(
     mut auth_session: AuthSession,
 ) -> Result<impl IntoResponse, HandlerError> {
-    auth_session
-        .logout()
-        .await
-        .map_err(|e| HandlerError::Auth(e.to_string()))?;
+    auth_session.logout().await.map_err(|_| HandlerError::Auth)?;
 
     Ok(Redirect::to(LOG_IN_URL))
 }
 
 /// Handler that completes the oauth2 authorization process.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn oauth2_callback(
     mut auth_session: AuthSession,
     messages: Messages,
@@ -272,7 +248,7 @@ pub(crate) async fn oauth2_callback(
 }
 
 /// Handler that redirects the user to the oauth2 provider.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn oauth2_redirect(
     session: Session,
     OAuth2(oauth2_provider): OAuth2,
@@ -297,7 +273,7 @@ pub(crate) async fn oauth2_redirect(
 }
 
 /// Handler that completes the oidc authorization process.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn oidc_callback(
     mut auth_session: AuthSession,
     messages: Messages,
@@ -319,7 +295,7 @@ pub(crate) async fn oidc_callback(
 }
 
 /// Handler that redirects the user to the oidc provider.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn oidc_redirect(
     session: Session,
     Oidc(oidc_provider): Oidc,
@@ -349,44 +325,49 @@ pub(crate) async fn oidc_redirect(
 }
 
 /// Handler that signs up a new user.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn sign_up(
     messages: Messages,
+    State(blocking_executor): State<BlockingExecutor>,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
-    Form(mut user_summary): Form<auth::UserSummary>,
+    Form(mut profile): Form<auth::ExternalUserProfile>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Sanitize next url
     let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
 
     // Validate form
-    if let Err(e) = user_summary.validate() {
+    if let Err(e) = profile.validate() {
         messages.error(e.to_string());
         return Ok(get_sign_up_url(next_url.as_deref()).into_response());
     }
 
     // Check if the password has been provided
-    let Some(password) = user_summary.password.take() else {
+    let Some(password) = profile.password.take() else {
         return Ok((StatusCode::BAD_REQUEST, "password not provided").into_response());
     };
 
-    // Generate password hash
-    user_summary.password = Some(password_auth::generate_hash(&password));
+    // Generate password hash within the shared CPU-heavy work bound
+    let password_hash = blocking_executor
+        .run(move || password_auth::generate_hash(&password))
+        .await?;
+    profile.password = Some(password_hash);
 
     // Prepare the required email verification notification before mutating users
-    let Ok(verification) = build_email_verification_notification(&db, &server_cfg).await else {
+    let Ok(verification) = build_email_verification_notification(db.as_ref(), &server_cfg).await
+    else {
         messages.error("Something went wrong while signing up. Please try again later.");
         return Ok(Redirect::to(SIGN_UP_URL).into_response());
     };
 
     // Sign up the user, reusing pre-registered invitation placeholders when present
     let sign_up_result = match db
-        .activate_pre_registered_user_email_password(&user_summary, &verification)
+        .activate_pre_registered_user_email_password(&profile, &verification)
         .await
     {
         Ok(Some((user, verification_code))) => Ok((user, Some(verification_code))),
-        Ok(None) => db.sign_up_user(&user_summary, false, Some(verification)).await,
+        Ok(None) => db.sign_up_user(&profile, false, Some(verification)).await,
         Err(err) => Err(err),
     };
     let Ok((_user, email_verification_code)) = sign_up_result else {
@@ -411,7 +392,7 @@ pub(crate) async fn update_user_details(
     CurrentUser(user): CurrentUser,
     messages: Messages,
     State(db): State<DynDB>,
-    ValidatedFormQs(user_data): ValidatedFormQs<UserDetails>,
+    ValidatedFormQs(user_data): ValidatedFormQs<UserDetailsInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update user in database
     let user_id = user.user_id;
@@ -426,24 +407,27 @@ pub(crate) async fn update_user_details(
 pub(crate) async fn update_user_password(
     mut auth_session: AuthSession,
     CurrentUser(user): CurrentUser,
+    State(blocking_executor): State<BlockingExecutor>,
     State(db): State<DynDB>,
-    ValidatedForm(mut input): ValidatedForm<templates::auth::UserPassword>,
+    ValidatedForm(input): ValidatedForm<UserPasswordInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check if the old password provided is correct
     let Some(old_password_hash) = db.get_user_password(&user.user_id).await? else {
         return Ok(StatusCode::BAD_REQUEST.into_response());
     };
-    if tokio::task::spawn_blocking(move || verify_password(&input.old_password, &old_password_hash))
-        .await
-        .map_err(anyhow::Error::from)?
+    if blocking_executor
+        .run(move || verify_password(&input.old_password, &old_password_hash))
+        .await?
         .is_err()
     {
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
-    // Update password in database
-    input.new_password = password_auth::generate_hash(&input.new_password);
-    db.update_user_password(&user.user_id, &input.new_password).await?;
+    // Hash the new password within the shared CPU-heavy work bound and update it
+    let new_password_hash = blocking_executor
+        .run(move || password_auth::generate_hash(&input.new_password))
+        .await?;
+    db.update_user_password(&user.user_id, &new_password_hash).await?;
 
     // Best-effort invalidate the current session after changing credentials
     if let Err(err) = auth_session.logout().await {
@@ -518,7 +502,7 @@ impl CallbackAuth for AuthSession {
     }
 
     async fn log_in(&mut self, user: &auth::User) -> Result<(), HandlerError> {
-        self.login(user).await.map_err(|e| HandlerError::Auth(e.to_string()))
+        self.login(user).await.map_err(|_| HandlerError::Auth)
     }
 }
 
@@ -679,207 +663,7 @@ pub(crate) struct NextUrl {
     pub next_url: Option<String>,
 }
 
-// Authorization middleware.
-
-/// Ensures the user can enter the community dashboard, falling back to the
-/// first accessible community when the selected one is no longer available.
-#[instrument(skip_all)]
-pub(crate) async fn user_has_community_dashboard_permission(
-    State(db): State<DynDB>,
-    auth_session: AuthSession,
-    session: Session,
-    request: Request,
-    next: Next,
-) -> impl IntoResponse {
-    // Require an authenticated user
-    let Some(user_id) = auth_session.user.as_ref().map(|user| user.user_id) else {
-        return StatusCode::FORBIDDEN.into_response();
-    };
-
-    // Resolve readable community context, repairing stale session state when possible
-    let community_id = match resolve_community_dashboard_context(
-        &db,
-        &session,
-        &user_id,
-        CommunityPermission::Read,
-    )
-    .await
-    {
-        Ok(Some(community_id)) => community_id,
-        Ok(None) => return redirect_to_invitations_for_request(request.headers()),
-        Err(error) => return error.into_response(),
-    };
-
-    // Store selected community context for downstream extractors
-    let mut request = request;
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
-
-    next.run(request).await.into_response()
-}
-
-/// Check if the user has a specific community permission in a path community.
-#[instrument(skip_all)]
-pub(crate) async fn user_has_path_community_permission(
-    State((db, permission)): State<(DynDB, CommunityPermission)>,
-    Path(community_id): Path<Uuid>,
-    auth_session: AuthSession,
-    request: Request,
-    next: Next,
-) -> impl IntoResponse {
-    // Require an authenticated user
-    let Some(user) = auth_session.user else {
-        return StatusCode::FORBIDDEN.into_response();
-    };
-
-    // Check required permission against the community id from the path
-    let Ok(has_permission) = db
-        .user_has_community_permission(&community_id, &user.user_id, permission)
-        .await
-    else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-    if !has_permission {
-        return StatusCode::FORBIDDEN.into_response();
-    }
-
-    next.run(request).await.into_response()
-}
-
-/// Check if the user has a specific group permission in a path group.
-#[instrument(skip_all)]
-pub(crate) async fn user_has_path_group_permission(
-    State((db, permission)): State<(DynDB, GroupPermission)>,
-    Path(group_id): Path<Uuid>,
-    auth_session: AuthSession,
-    session: Session,
-    request: Request,
-    next: Next,
-) -> impl IntoResponse {
-    // Require an authenticated user
-    let Some(user) = auth_session.user else {
-        return StatusCode::FORBIDDEN.into_response();
-    };
-
-    // Resolve selected community to evaluate group permission in that context
-    let community_id = match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
-        Ok(Some(community_id)) => community_id,
-        Ok(None) => return redirect_to_invitations_for_request(request.headers()),
-        Err(error) => return HandlerError::Session(error).into_response(),
-    };
-
-    // Ensure the path group belongs to the selected community before checking permissions
-    let Ok(group_belongs_to_community) =
-        db.group_belongs_to_community(&community_id, &group_id).await
-    else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-    if !group_belongs_to_community {
-        return StatusCode::FORBIDDEN.into_response();
-    }
-
-    // Check required permission against the group id from the path
-    let Ok(has_permission) = db
-        .user_has_group_permission(&community_id, &group_id, &user.user_id, permission)
-        .await
-    else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-    if !has_permission {
-        return StatusCode::FORBIDDEN.into_response();
-    }
-
-    next.run(request).await.into_response()
-}
-
-/// Check if the user has a specific community permission in the selected
-/// community.
-#[instrument(skip_all)]
-pub(crate) async fn user_has_selected_community_permission(
-    State((db, permission)): State<(DynDB, CommunityPermission)>,
-    auth_session: AuthSession,
-    session: Session,
-    request: Request,
-    next: Next,
-) -> impl IntoResponse {
-    // Require an authenticated user
-    let Some(user_id) = auth_session.user.as_ref().map(|user| user.user_id) else {
-        return StatusCode::FORBIDDEN.into_response();
-    };
-
-    // Resolve readable community context, repairing stale session state when possible
-    let community_id =
-        match resolve_community_dashboard_context(&db, &session, &user_id, permission).await {
-            Ok(Some(community_id)) => community_id,
-            Ok(None) => return redirect_to_invitations_for_request(request.headers()),
-            Err(error) => return error.into_response(),
-        };
-
-    // Store selected community context for downstream extractors
-    let mut request = request;
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
-
-    next.run(request).await.into_response()
-}
-
-/// Check if the user has a specific group permission in the selected group.
-#[instrument(skip_all)]
-pub(crate) async fn user_has_selected_group_permission(
-    State((db, permission)): State<(DynDB, GroupPermission)>,
-    auth_session: AuthSession,
-    session: Session,
-    request: Request,
-    next: Next,
-) -> impl IntoResponse {
-    // Require an authenticated user
-    let Some(user_id) = auth_session.user.as_ref().map(|user| user.user_id) else {
-        return StatusCode::FORBIDDEN.into_response();
-    };
-
-    // Resolve readable group context, repairing stale session state when possible
-    let (community_id, group_id) =
-        match resolve_group_dashboard_context(&db, &session, &user_id, permission).await {
-            Ok(Some(ids)) => ids,
-            Ok(None) => return redirect_to_invitations_for_request(request.headers()),
-            Err(error) => return error.into_response(),
-        };
-
-    // Store selected community and group context for downstream extractors
-    let mut request = request;
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
-    request.extensions_mut().insert(SelectedGroupId(group_id));
-
-    next.run(request).await.into_response()
-}
-
 // Helpers.
-
-/// Builds the email verification notification payload required by password signup.
-async fn build_email_verification_notification(
-    db: &DynDB,
-    server_cfg: &HttpServerConfig,
-) -> Result<EmailVerificationNotification, HandlerError> {
-    // Prepare verification link inputs before loading template context
-    let code = Uuid::new_v4();
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    if base_url.is_empty() {
-        return Err(HandlerError::Database(
-            "base URL is required to send verification email".to_string(),
-        ));
-    }
-
-    // Build template data from the current site theme
-    let site_settings = db.get_site_settings().await?;
-    let template_data = EmailVerification {
-        link: format!("{base_url}/verify-email/{code}"),
-        theme: site_settings.theme,
-    };
-
-    // Return the database-ready verification notification payload
-    Ok(EmailVerificationNotification {
-        code,
-        template_data,
-    })
-}
 
 /// Percent-encode a `next_url` so it can be safely embedded in a query string.
 fn encode_next_url(next_url: &str) -> String {
@@ -904,33 +688,6 @@ fn get_sign_up_url(next_url: Option<&str>) -> Redirect {
     Redirect::to(&sign_up_url)
 }
 
-/// Returns whether the request came from HTMX.
-fn is_htmx_request(headers: &HeaderMap) -> bool {
-    headers
-        .get("HX-Request")
-        .is_some_and(|value| value.as_bytes().eq_ignore_ascii_case(b"true"))
-}
-
-/// Returns whether the request came from an OCG fetch helper.
-fn is_ocg_fetch_request(headers: &HeaderMap) -> bool {
-    headers
-        .get("X-OCG-Fetch")
-        .is_some_and(|value| value.as_bytes().eq_ignore_ascii_case(b"true"))
-}
-
-/// Logs out the user after detecting a stale dashboard selection.
-pub(crate) async fn log_out_for_stale_dashboard_context(
-    auth_session: &mut AuthSession,
-    headers: &HeaderMap,
-) -> Result<Response, HandlerError> {
-    auth_session
-        .logout()
-        .await
-        .map_err(|e| HandlerError::Auth(e.to_string()))?;
-
-    Ok(redirect_to_log_in_for_request(headers))
-}
-
 /// Formats OIDC authorization errors for user-facing flash messages.
 fn oidc_authorization_error_message(err: &str) -> String {
     if err.contains(auth::EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR) {
@@ -944,225 +701,6 @@ fn oidc_authorization_error_message(err: &str) -> String {
     format!("OpenID Connect authorization failed: {err}")
 }
 
-/// Builds the invitations redirect response expected by the request type.
-fn redirect_to_invitations_for_request(headers: &HeaderMap) -> Response {
-    // HTMX follows redirect headers without swapping the user dashboard into a fragment
-    if is_htmx_request(headers) {
-        return (
-            StatusCode::OK,
-            [("HX-Redirect", USER_DASHBOARD_INVITATIONS_URL)],
-        )
-            .into_response();
-    }
-
-    // OCG fetch helpers use redirect metadata instead of following a fetch redirect
-    if is_ocg_fetch_request(headers) {
-        return (
-            StatusCode::OK,
-            [("X-OCG-Redirect", USER_DASHBOARD_INVITATIONS_URL)],
-        )
-            .into_response();
-    }
-
-    // Normal page requests can use a standard redirect response
-    Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response()
-}
-
-/// Builds the log-in redirect response expected by the request type.
-fn redirect_to_log_in_for_request(headers: &HeaderMap) -> Response {
-    // HTMX follows redirects from response headers when swapping fragments
-    if is_htmx_request(headers) {
-        return (StatusCode::OK, [("HX-Redirect", LOG_IN_URL)]).into_response();
-    }
-
-    // OCG fetch helpers use redirect metadata for browser navigation
-    if is_ocg_fetch_request(headers) {
-        return (StatusCode::UNAUTHORIZED, [("X-OCG-Redirect", LOG_IN_URL)]).into_response();
-    }
-
-    // Normal page requests can use a standard redirect response
-    Redirect::to(LOG_IN_URL).into_response()
-}
-
-/// Repairs community dashboard context using the first readable candidate.
-async fn repair_community_dashboard_context(
-    db: &DynDB,
-    session: &Session,
-    user_id: &Uuid,
-) -> Result<Option<Uuid>, HandlerError> {
-    // Find the first listed community that still grants dashboard access
-    let communities = db.list_user_communities(user_id).await?;
-    for community in communities {
-        let has_read_permission = db
-            .user_has_community_permission(
-                &community.community_id,
-                user_id,
-                CommunityPermission::Read,
-            )
-            .await?;
-        if !has_read_permission {
-            continue;
-        }
-
-        // Persist only verified replacement context
-        sync_selected_community_and_group(
-            db,
-            session,
-            user_id,
-            community.community_id,
-            SelectedGroupPolicy::Optional,
-        )
-        .await?;
-        return Ok(Some(community.community_id));
-    }
-
-    Ok(None)
-}
-
-/// Repairs group dashboard context using the first readable candidate.
-async fn repair_group_dashboard_context(
-    db: &DynDB,
-    session: &Session,
-    user_id: &Uuid,
-    selected_community_id: Option<Uuid>,
-    had_selected_group: bool,
-) -> Result<Option<(Uuid, Uuid)>, HandlerError> {
-    // Search the selected community before other listed group contexts
-    let groups_by_community = db.list_user_groups(user_id).await?;
-    let preferred_communities = groups_by_community
-        .iter()
-        .filter(|groups| Some(groups.community.community_id) == selected_community_id)
-        .chain(
-            groups_by_community
-                .iter()
-                .filter(|groups| Some(groups.community.community_id) != selected_community_id),
-        );
-    for groups in preferred_communities {
-        for group in &groups.groups {
-            let community_id = groups.community.community_id;
-            let has_read_permission = db
-                .user_has_group_permission(
-                    &community_id,
-                    &group.group_id,
-                    user_id,
-                    GroupPermission::Read,
-                )
-                .await?;
-            if !has_read_permission {
-                continue;
-            }
-
-            // Persist only verified replacement context
-            session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
-            session.insert(SELECTED_GROUP_ID_KEY, group.group_id).await?;
-            return Ok(Some((community_id, group.group_id)));
-        }
-    }
-
-    // Clear an unusable group without disturbing potentially valid community context
-    if had_selected_group {
-        session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
-    }
-
-    Ok(None)
-}
-
-/// Resolves community dashboard context and repairs stale selection.
-async fn resolve_community_dashboard_context(
-    db: &DynDB,
-    session: &Session,
-    user_id: &Uuid,
-    permission: CommunityPermission,
-) -> Result<Option<Uuid>, HandlerError> {
-    // Preserve the existing fast path for valid selected context
-    let selected_community_id = session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await?;
-    if let Some(community_id) = selected_community_id {
-        let has_permission = db
-            .user_has_community_permission(&community_id, user_id, permission)
-            .await?;
-        if has_permission {
-            return Ok(Some(community_id));
-        }
-
-        // Missing write permission is a normal denial while base access remains valid
-        if permission != CommunityPermission::Read {
-            let has_read_permission = db
-                .user_has_community_permission(&community_id, user_id, CommunityPermission::Read)
-                .await?;
-            if has_read_permission {
-                return Err(HandlerError::Forbidden);
-            }
-        }
-    }
-
-    // Repair missing or unreadable context before applying stronger permissions
-    let repaired_community_id = repair_community_dashboard_context(db, session, user_id).await?;
-    if let Some(community_id) = repaired_community_id
-        && permission != CommunityPermission::Read
-    {
-        let has_permission = db
-            .user_has_community_permission(&community_id, user_id, permission)
-            .await?;
-        if !has_permission {
-            return Err(HandlerError::Forbidden);
-        }
-    }
-
-    Ok(repaired_community_id)
-}
-
-/// Resolves group dashboard context and repairs stale selection.
-async fn resolve_group_dashboard_context(
-    db: &DynDB,
-    session: &Session,
-    user_id: &Uuid,
-    permission: GroupPermission,
-) -> Result<Option<(Uuid, Uuid)>, HandlerError> {
-    // Preserve the existing fast path for valid selected context
-    let selected_community_id = session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await?;
-    let selected_group_id = session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
-    if let (Some(community_id), Some(group_id)) = (selected_community_id, selected_group_id) {
-        let has_permission = db
-            .user_has_group_permission(&community_id, &group_id, user_id, permission)
-            .await?;
-        if has_permission {
-            return Ok(Some((community_id, group_id)));
-        }
-
-        // Missing write permission is a normal denial while base access remains valid
-        if permission != GroupPermission::Read {
-            let has_read_permission = db
-                .user_has_group_permission(&community_id, &group_id, user_id, GroupPermission::Read)
-                .await?;
-            if has_read_permission {
-                return Err(HandlerError::Forbidden);
-            }
-        }
-    }
-
-    // Repair missing or unreadable context before applying stronger permissions
-    let repaired_ids = repair_group_dashboard_context(
-        db,
-        session,
-        user_id,
-        selected_community_id,
-        selected_group_id.is_some(),
-    )
-    .await?;
-    if let Some((community_id, group_id)) = repaired_ids
-        && permission != GroupPermission::Read
-    {
-        let has_permission = db
-            .user_has_group_permission(&community_id, &group_id, user_id, permission)
-            .await?;
-        if !has_permission {
-            return Err(HandlerError::Forbidden);
-        }
-    }
-
-    Ok(repaired_ids)
-}
-
 /// Sanitize a `next_url` value ensuring it points to an in-site path.
 fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
     let value = next_url?.trim();
@@ -1173,66 +711,6 @@ fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
         return None;
     }
     Some(value.to_string())
-}
-
-/// Selects the first available community and group for the user in the session.
-pub(crate) async fn select_first_community_and_group(
-    db: &DynDB,
-    session: &Session,
-    user_id: &Uuid,
-) -> Result<(), HandlerError> {
-    let groups_by_community = db.list_user_groups(user_id).await?;
-    if let Some(first_community) = groups_by_community.first() {
-        session
-            .insert(
-                SELECTED_COMMUNITY_ID_KEY,
-                first_community.community.community_id,
-            )
-            .await?;
-        if let Some(first_group) = first_community.groups.first() {
-            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
-        }
-    } else {
-        // User might be a community team member without groups
-        let communities = db.list_user_communities(user_id).await?;
-        if let Some(first_community) = communities.first() {
-            session
-                .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
-                .await?;
-        }
-    }
-    Ok(())
-}
-
-/// Syncs the selected community and first available group in the session.
-pub(crate) async fn sync_selected_community_and_group(
-    db: &DynDB,
-    session: &Session,
-    user_id: &Uuid,
-    community_id: Uuid,
-    selected_group_policy: SelectedGroupPolicy,
-) -> Result<(), HandlerError> {
-    // Load the user's groups to keep the selected group in sync
-    let groups_by_community = db.list_user_groups(user_id).await?;
-    let first_group_id = groups_by_community
-        .iter()
-        .find(|c| c.community.community_id == community_id)
-        .and_then(|c| c.groups.first())
-        .map(|g| g.group_id);
-
-    if matches!(selected_group_policy, SelectedGroupPolicy::Required) && first_group_id.is_none() {
-        return Err(HandlerError::Forbidden);
-    }
-
-    // Persist the community selection and align the group selection with it
-    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
-    if let Some(first_group_id) = first_group_id {
-        session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
-    } else {
-        session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
-    }
-
-    Ok(())
 }
 
 /// Stores the authentication provider used for the current login.

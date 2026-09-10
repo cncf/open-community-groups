@@ -15,15 +15,13 @@ use crate::{
         TestRouterBuilder, assert_empty_hx_trigger_response, assert_empty_response,
         expect_authenticated_group_session, expect_group_permission,
     },
-    services::{
-        images::{Image, MockImageStorage},
-        notifications::MockNotificationsManager,
-    },
+    services::{images::MockImageStorage, notifications::MockNotificationsManager},
     types::{
         badges::{
             AwardBadgeOutcome, BadgeAwardInput, BadgeAwardSourceFilter, BadgeInput,
             GroupAwardedBadges, GroupBadges,
         },
+        images::Image,
         permissions::GroupPermission,
     },
 };
@@ -1051,7 +1049,7 @@ fn test_parse_to_date_filter_rejects_out_of_range_exclusive_bound() {
     // Check an unrepresentable exclusive upper bound remains an error
     assert!(matches!(
         parse_to_date_filter("+262142-12-31"),
-        Err(HandlerError::Deserialization(message)) if message == "to date is invalid"
+        Err(HandlerError::Rejected(message)) if message == "to date is invalid"
     ));
 }
 

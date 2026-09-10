@@ -6,17 +6,21 @@ use axum::{
     http::HeaderName,
     response::{Html, IntoResponse, Redirect},
 };
-use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CurrentUser},
-    router::serde_qs_config,
+    handlers::{
+        error::HandlerError,
+        extractors::{CurrentUser, ValidatedQuery},
+    },
     services::payments::DynPaymentsManager,
     templates::dashboard::user::purchases,
-    types::pagination::{self, NavigationLinks},
+    types::{
+        dashboard::user::purchases::PurchaseDocumentsFilters,
+        pagination::{self, NavigationLinks},
+    },
 };
 
 #[cfg(test)]
@@ -79,10 +83,8 @@ pub(crate) async fn prepare_list_page(
     db: &DynDB,
     user_id: Uuid,
     raw_query: &str,
-) -> Result<(purchases::PurchaseDocumentsFilters, purchases::ListPage), HandlerError> {
-    let filters: purchases::PurchaseDocumentsFilters =
-        serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+) -> Result<(PurchaseDocumentsFilters, purchases::ListPage), HandlerError> {
+    let filters: PurchaseDocumentsFilters = ValidatedQuery::parse(raw_query)?;
     let results = db.list_user_purchase_documents(user_id, &filters).await?;
     let navigation_links =
         NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;
@@ -90,7 +92,6 @@ pub(crate) async fn prepare_list_page(
     Ok((
         filters.clone(),
         purchases::ListPage {
-            limit: filters.limit,
             navigation_links,
             offset: filters.offset,
             purchases: results.purchases,

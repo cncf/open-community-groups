@@ -2,10 +2,9 @@
 
 use askama::Template;
 use axum::{
-    extract::{Path, RawQuery, State},
+    extract::{Path, State},
     response::{Html, IntoResponse},
 };
-use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -13,11 +12,11 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedQuery},
     },
-    router::serde_qs_config,
-    templates::dashboard::group::invitation_requests::{self, InvitationRequestsFilters},
+    templates::dashboard::group::invitation_requests,
     types::{
+        dashboard::group::invitation_requests::InvitationRequestsFilters,
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
@@ -36,13 +35,8 @@ pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
-    RawQuery(raw_query): RawQuery,
+    ValidatedQuery(filters): ValidatedQuery<InvitationRequestsFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate list filters
-    let filters: InvitationRequestsFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    filters.validate()?;
-
     // Fetch event context, questions, and invitation requests
     let (can_manage_events, event, registration_questions, search_results) = tokio::try_join!(
         db.user_has_group_permission(

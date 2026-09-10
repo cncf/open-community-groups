@@ -118,3 +118,16 @@ pub struct CommunitySummary {
     /// URL to the Open Graph image used for link previews.
     pub og_image_url: Option<String>,
 }
+
+/// Community statistics shown on the community home page.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct CommunityStats {
+    /// Total number of groups in the community.
+    pub groups: i64,
+    /// Total number of members across all groups.
+    pub groups_members: i64,
+    /// Total number of events hosted by all groups.
+    pub events: i64,
+    /// Total number of attendees across all events.
+    pub events_attendees: i64,
+}

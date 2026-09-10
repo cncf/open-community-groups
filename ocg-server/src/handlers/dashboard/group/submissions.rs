@@ -2,12 +2,11 @@
 
 use askama::Template;
 use axum::{
-    extract::{Path, RawQuery, State},
+    extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
-use garde::Validate;
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -15,21 +14,21 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
-    },
-    router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::{
-        dashboard::group::submissions::{
-            self, CfsSubmissionUpdate, CfsSubmissionsFilters, CfsSubmissionsSort,
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs, ValidatedQuery,
         },
-        notifications::CfsSubmissionUpdated,
     },
+    services::notifications::{
+        DynNotificationsManager, best_effort::enqueue_cfs_submission_updated_best_effort,
+    },
+    templates::dashboard::group::submissions,
     types::{
+        dashboard::group::submissions::{
+            CfsSubmissionUpdate, CfsSubmissionsFilters, CfsSubmissionsSort,
+        },
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
-    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -45,13 +44,10 @@ pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
-    RawQuery(raw_query): RawQuery,
+    ValidatedQuery(filters): ValidatedQuery<CfsSubmissionsFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event submissions (checking event belongs to group)
-    let filters: CfsSubmissionsFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    filters.validate()?;
-    let (can_manage_events, _event, labels, statuses, submissions) = tokio::try_join!(
+    let (can_manage_events, _event, labels, submissions) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -60,7 +56,6 @@ pub(crate) async fn list_page(
         ),
         db.get_event_summary(community_id, group_id, event_id), // ensure event belongs to group
         db.list_event_cfs_labels(event_id),
-        db.list_cfs_submission_statuses_for_review(),
         db.list_event_cfs_submissions(event_id, &filters)
     )?;
 
@@ -73,15 +68,12 @@ pub(crate) async fn list_page(
         can_manage_events,
         event_cfs_labels: labels,
         event_id,
-        statuses,
         submissions: submissions.submissions,
         navigation_links,
         refresh_url,
         selected_event_cfs_label_ids: filters.label_ids.clone(),
         sort: filters.sort.unwrap_or(CfsSubmissionsSort::CreatedDesc).to_string(),
         total: submissions.total,
-        limit: filters.limit,
-        offset: filters.offset,
     };
 
     Ok(Html(template.render()?))
@@ -110,40 +102,17 @@ pub(crate) async fn update(
         .update_cfs_submission(reviewer.user_id, event_id, cfs_submission_id, &update)
         .await?;
 
+    // Enqueue notification to submission author best-effort
     if should_notify {
-        // Enqueue notification to submission author best-effort
-        if let Err(err) = async {
-            let (notification_data, site_settings) = tokio::try_join!(
-                db.get_cfs_submission_notification_data(event_id, cfs_submission_id),
-                db.get_site_settings(),
-            )?;
-            let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-            let link = format!("{base_url}/dashboard/user?tab=submissions");
-            let template_data = CfsSubmissionUpdated {
-                action_required_message: notification_data.action_required_message,
-                event,
-                link,
-                status_name: notification_data.status_name,
-                theme: site_settings.theme,
-            };
-            let notification = NewNotification {
-                attachments: vec![],
-                kind: NotificationKind::CfsSubmissionUpdated,
-                recipients: vec![notification_data.user_id],
-                template_data: Some(serde_json::to_value(&template_data)?),
-            };
-            notifications_manager.enqueue(&notification).await
-        }
-        .await
-        {
-            warn!(
-                error = %err,
-                %event_id,
-                %cfs_submission_id,
-                reviewer_id = %reviewer.user_id,
-                "failed to enqueue CFS submission update notification"
-            );
-        }
+        enqueue_cfs_submission_updated_best_effort(
+            db.as_ref(),
+            &notifications_manager,
+            &server_cfg,
+            reviewer.user_id,
+            cfs_submission_id,
+            event,
+        )
+        .await;
     }
 
     Ok((

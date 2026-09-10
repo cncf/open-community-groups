@@ -8,7 +8,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect},
 };
 use serde_json::json;
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -20,15 +20,13 @@ use crate::{
         trim_public_gallery_images,
     },
     router::PUBLIC_SHARED_CACHE_HEADERS,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    services::enrollment::DynEnrollmentManager,
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         group::{self, Page},
-        notifications::GroupWelcome,
     },
     types::{event::EventKind, group::GroupFull},
-    util::base_url_without_trailing_slash,
 };
 
 use super::{error::HandlerError, extractors::CommunityId};
@@ -39,7 +37,7 @@ mod tests;
 // Pages handlers.
 
 /// Handler that renders the group home page.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
@@ -93,7 +91,7 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| group::UpcomingEventCard { event })
             .collect(),
-        user: User::default(),
+        user: UserMenuState::default(),
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
@@ -120,73 +118,39 @@ fn should_redirect_to_pretty_group_slug(group: &GroupFull, group_slug: &str) -> 
 // Actions handlers.
 
 /// Handler for joining a group.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn join_group(
     CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
-    State(server_cfg): State<HttpServerConfig>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((_, group_id)): Path<(String, Uuid)>,
     CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Join the group
-    db.join_group(community_id, group_id, user.user_id).await?;
-
-    // Enqueue welcome notification best-effort after the membership mutation
-    if let Err(err) = async {
-        let (site_settings, group) = tokio::try_join!(
-            db.get_site_settings(),
-            db.get_group_summary(community_id, group_id)
-        )?;
-        let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-        let template_data = GroupWelcome {
-            link: format!(
-                "{}/{}/group/{}",
-                base_url,
-                group.community_name,
-                group.public_slug()
-            ),
-            group,
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::GroupWelcome,
-            recipients: vec![user.user_id],
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await
-    }
-    .await
-    {
-        warn!(
-            error = %err,
-            %community_id,
-            %group_id,
-            user_id = %user.user_id,
-            "failed to enqueue group welcome notification"
-        );
-    }
+    // Join the group and welcome the member best-effort
+    enrollment_manager
+        .join_group(community_id, group_id, user.user_id)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// Handler for leaving a group.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn leave_group(
     CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((_, group_id)): Path<(String, Uuid)>,
     CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Leave the group
-    db.leave_group(community_id, group_id, user.user_id).await?;
+    enrollment_manager
+        .leave_group(community_id, group_id, user.user_id)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// Handler for checking group membership status.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn membership_status(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -202,7 +166,7 @@ pub(crate) async fn membership_status(
 }
 
 /// Tracks a group page view.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn track_view(
     headers: HeaderMap,
     State(activity_tracker): State<DynActivityTracker>,

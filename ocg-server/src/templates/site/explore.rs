@@ -1,17 +1,17 @@
-//! Templates and types for the site explore page.
+//! Templates for the site explore page.
 
 use anyhow::Result;
 use askama::Template;
 use minify_html::{Cfg as MinifyCfg, minify};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_with::skip_serializing_none;
 use tracing::instrument;
 
+use crate::types::site::explore::{Entity, FiltersOptions};
 use crate::{
-    db::BBox,
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         community::{EventCard as HomeEventCard, GroupCard as HomeGroupCard},
         filters,
         helpers::user_initials,
@@ -20,7 +20,7 @@ use crate::{
         event::{EventKind, EventSummary},
         group::GroupSummary,
         pagination::NavigationLinks,
-        search::{SearchEventsFilters, SearchGroupsFilters, ViewMode},
+        search::{BBox, SearchEventsFilters, SearchGroupsFilters, ViewMode},
         site::SiteSettings,
     },
 };
@@ -31,7 +31,7 @@ use crate::{
 ///
 /// This is the root template that renders the explore page with either events or groups
 /// content based on the selected entity.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/page.html")]
 pub(crate) struct Page {
     /// The type of content being explored (events or groups).
@@ -43,7 +43,7 @@ pub(crate) struct Page {
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 
     /// Events section data, populated when exploring events.
     pub events_section: Option<EventsSection>,
@@ -55,7 +55,7 @@ pub(crate) struct Page {
 ///
 /// This template renders the events exploration interface, including filters panel and
 /// results. It's used when `Entity::Events` is selected.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/events/section.html")]
 pub(crate) struct EventsSection {
     /// Active filters for events search.
@@ -70,7 +70,7 @@ pub(crate) struct EventsSection {
 ///
 /// This template renders the list of matching events along with pagination controls. It
 /// supports different view modes and includes geographic bounds for map display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/events/results.html")]
 pub(crate) struct EventsResultsSection {
     /// List of events matching the current filters.
@@ -97,15 +97,16 @@ impl EventsResultsSection {
 }
 
 /// Event card template for calendar popover display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/events/calendar_event_card.html")]
 pub(crate) struct CalendarEventCard {
     /// Event data
     pub event: EventSummary,
 }
 
-/// Event card template for explore page display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+/// Event card template for explore page display. Serialized for the calendar and map
+/// scripts through the `json` filter.
+#[derive(Debug, Clone, Template, Serialize)]
 #[template(path = "site/explore/events/event_card.html")]
 pub(crate) struct EventCard {
     /// Event data
@@ -117,7 +118,7 @@ pub(crate) struct EventCard {
 ///
 /// This template renders the groups exploration interface, including filters panel and
 /// results. It's used when `Entity::Groups` is selected.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/groups/section.html")]
 pub(crate) struct GroupsSection {
     /// Active filters for groups search.
@@ -132,7 +133,7 @@ pub(crate) struct GroupsSection {
 ///
 /// This template renders the list of matching groups along with pagination controls. It
 /// supports different view modes and includes geographic bounds for map display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/groups/results.html")]
 pub(crate) struct GroupsResultsSection {
     /// List of groups matching the current filters.
@@ -158,71 +159,15 @@ impl GroupsResultsSection {
     }
 }
 
-/// Group card template for explore page display.
+/// Group card template for explore page display. Serialized for the map script through
+/// the `json` filter.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template, Serialize)]
 #[template(path = "site/explore/groups/group_card.html")]
 pub(crate) struct GroupCard {
     /// Group data
     #[serde(flatten)]
     pub group: GroupSummary,
-}
-
-// Types.
-
-/// Represents the type of content being explored.
-///
-/// The explore page can display either events or groups. This enum determines which
-/// section is shown.
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
-)]
-#[strum(serialize_all = "kebab-case")]
-pub(crate) enum Entity {
-    /// Explore events (default).
-    #[default]
-    Events,
-    /// Explore groups.
-    Groups,
-}
-
-impl From<Option<&str>> for Entity {
-    fn from(entity: Option<&str>) -> Self {
-        entity.and_then(|value| value.parse().ok()).unwrap_or_default()
-    }
-}
-
-/// Available options for filters.
-///
-/// This struct provides the lists of available options for some filters.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct FiltersOptions {
-    /// Available communities.
-    pub communities: Vec<FilterOption>,
-    /// Available distance options (e.g., 5km, 10km, 25km).
-    pub distance: Vec<FilterOption>,
-
-    /// Available event categories.
-    #[serde(default)]
-    pub event_category: Option<Vec<FilterOption>>,
-    /// Available group categories.
-    #[serde(default)]
-    pub group_category: Option<Vec<FilterOption>>,
-    /// Available groups (only when filtering events within a community).
-    #[serde(default)]
-    pub groups: Option<Vec<FilterOption>>,
-    /// Available geographic regions.
-    #[serde(default)]
-    pub region: Option<Vec<FilterOption>>,
-}
-
-/// Individual filter option with display name and value.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct FilterOption {
-    /// Display name shown to users.
-    pub name: String,
-    /// Technical value used in queries.
-    pub value: String,
 }
 
 // Helpers for rendering popovers.

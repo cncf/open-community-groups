@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -6,18 +7,17 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
-use serde_json::from_value;
 use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
     handlers::{auth::LOG_IN_URL, tests::*},
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
-    templates::notifications::GroupTeamInvitation,
-    types::group::GroupRole,
-    types::permissions::GroupPermission,
+    services::notifications::MockNotificationsManager,
+    types::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT, group::GroupRole, notifications::NotificationKind,
+        permissions::GroupPermission,
+    },
 };
 
 use super::{GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP, NewTeamMember};
@@ -29,18 +29,10 @@ async fn test_list_page_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let member = sample_team_member(true);
     let members = vec![member.clone(), sample_team_member(false)];
     let role = sample_group_role_summary();
-    let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+    let output = crate::types::dashboard::group::team::GroupTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 1,
@@ -49,23 +41,14 @@ async fn test_list_page_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_list_group_team_members()
         .times(1)
         .withf(move |id, filters| {
@@ -126,18 +109,10 @@ async fn test_list_page_with_pagination_params() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let member = sample_team_member(true);
     let members = vec![member.clone(), sample_team_member(true)];
     let role = sample_group_role_summary();
-    let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+    let output = crate::types::dashboard::group::team::GroupTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 2,
@@ -146,23 +121,14 @@ async fn test_list_page_with_pagination_params() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_list_group_team_members()
         .times(1)
         .withf(move |id, filters| {
@@ -219,17 +185,9 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let members = vec![sample_team_member(true), sample_team_member(true)];
     let role = sample_group_role_summary();
-    let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+    let output = crate::types::dashboard::group::team::GroupTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 2,
@@ -240,23 +198,14 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_list_group_team_members()
         .times(1)
         .withf(move |id, filters| {
@@ -327,34 +276,17 @@ async fn test_add_success() {
     let new_member_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let form = NewTeamMember {
         role: GroupRole::Admin,
         user_id: new_member_id,
     };
     let body = format!("role={}&user_id={}", form.role, form.user_id);
     let group_summary = sample_group_summary(group_id);
-    let group_summary_for_db = group_summary.clone();
     let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -376,7 +308,7 @@ async fn test_add_success() {
     db.expect_get_group_summary()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group_summary_for_db.clone()));
+        .returning(move |_, _| Ok(group_summary.clone()));
     db.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
@@ -388,14 +320,6 @@ async fn test_add_success() {
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::GroupTeamInvitation)
                 && notification.recipients == vec![new_member_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<GroupTeamInvitation>(value.clone()).is_ok_and(|template| {
-                        template.group.group_id == group_summary.group_id
-                            && template.link == "/dashboard/user?tab=invitations"
-                            && template.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
-                })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
@@ -422,6 +346,65 @@ async fn test_add_success() {
 }
 
 #[tokio::test]
+async fn test_add_db_error() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let new_member_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let form = NewTeamMember {
+        role: GroupRole::Admin,
+        user_id: new_member_id,
+    };
+    let body = format!("role={}&user_id={}", form.role, form.user_id);
+
+    // Setup database mock with a failing write and no notification context reads
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::TeamWrite
+        })
+        .returning(move |_, _, _, _| Ok(true));
+    db.expect_add_group_team_member()
+        .times(1)
+        .withf(move |actor_user_id, id, uid, role| {
+            *actor_user_id == user_id
+                && *id == group_id
+                && *uid == new_member_id
+                && role == &GroupRole::Admin
+        })
+        .returning(move |_, _, _, _| Err(anyhow!("db error")));
+    db.expect_get_group_summary().never();
+    db.expect_get_site_settings().never();
+
+    // Setup notifications manager mock, which must not be called
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue().never();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/team/add")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
 async fn test_add_forbidden_when_group_team_management_is_restricted() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -429,26 +412,11 @@ async fn test_add_forbidden_when_group_team_management_is_restricted() {
     let new_member_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let body = format!("role={}&user_id={}", GroupRole::Admin, new_member_id);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -497,25 +465,10 @@ async fn test_delete_success() {
     let member_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -563,25 +516,10 @@ async fn test_delete_current_user_with_inherited_read_stays_logged_in() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -639,25 +577,10 @@ async fn test_delete_current_user_logs_out() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -715,25 +638,10 @@ async fn test_delete_forbidden_when_group_team_management_is_restricted() {
     let member_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -781,14 +689,6 @@ async fn test_update_role_success() {
     let member_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let form = super::NewTeamRole {
         role: GroupRole::Admin,
     };
@@ -796,14 +696,7 @@ async fn test_update_role_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -856,26 +749,11 @@ async fn test_update_role_forbidden_when_group_team_management_is_restricted() {
     let member_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let body = format!("role={}", GroupRole::Admin);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {

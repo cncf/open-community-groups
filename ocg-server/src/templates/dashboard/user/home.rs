@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     templates::{
         PageId,
-        auth::{self, User},
+        auth::{self, UserMenuState},
         dashboard::{
             audit,
             user::{
@@ -36,11 +36,11 @@ pub(crate) struct Page {
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 /// Content section for the user dashboard home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub(crate) enum Content {
     /// User account page.
     Account(Box<auth::UpdateUserPage>),

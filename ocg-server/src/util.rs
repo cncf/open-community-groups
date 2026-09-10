@@ -1,10 +1,14 @@
 //! Utility functions shared across modules.
 
+use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use icalendar::{Calendar, Component as _, Event, EventLike as _, EventStatus, Property};
 use sha2::{Digest, Sha256};
 
-use crate::{services::notifications::Attachment, types::event::EventSummary};
+use crate::{
+    config::HttpClientConfig,
+    types::{event::EventSummary, notifications::Attachment},
+};
 
 /// Returns a base URL without trailing slashes.
 pub(crate) fn base_url_without_trailing_slash(base_url: &str) -> &str {
@@ -138,6 +142,19 @@ pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> Str
         event.public_group_slug(),
         event.slug
     )
+}
+
+/// Builds an outbound HTTP client with the configured connection and request deadlines.
+///
+/// The request deadline covers the whole exchange, including reading the
+/// response body, so a peer that accepts the connection and never answers
+/// fails within `request_timeout` instead of holding the caller indefinitely.
+pub(crate) fn build_http_client(cfg: &HttpClientConfig) -> Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .connect_timeout(cfg.connect_timeout())
+        .timeout(cfg.request_timeout())
+        .build()
+        .context("error building http client")
 }
 
 /// Build the user dashboard events link.

@@ -1,28 +1,20 @@
-//! Templates and types for user session proposals.
+//! Templates for user session proposals.
 
 use askama::Template;
-use chrono::{DateTime, Utc};
-use garde::Validate;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
+use crate::types::dashboard::user::session_proposals::{
+    PendingCoSpeakerInvitation, SessionProposal, SessionProposalLevel,
+};
 use crate::{
-    templates::{dashboard, filters, helpers::user_initials},
-    types::{
-        pagination::{self, Pagination, ToRawQuery},
-        user::UserSummary,
-    },
-    validation::{
-        MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_PAGINATION_LIMIT,
-        MAX_SESSION_PROPOSAL_DURATION_MINUTES, trimmed_non_empty,
-    },
+    templates::{filters, helpers::user_initials},
+    types::pagination,
 };
 
 // Pages templates.
 
 /// List session proposals page template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/user/session_proposals_list.html")]
 pub(crate) struct ListPage {
     /// Current authenticated user identifier.
@@ -38,114 +30,6 @@ pub(crate) struct ListPage {
     /// Total number of session proposals.
     pub total: usize,
 
-    /// Number of results per page.
-    pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
-}
-
-// Types.
-
-/// Pending invitation to join a session proposal as co-speaker.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct PendingCoSpeakerInvitation {
-    /// Session proposal summary information.
-    #[serde(flatten)]
-    pub session_proposal: SessionProposal,
-    /// Display name of the speaker that sent this invitation.
-    pub speaker_name: String,
-
-    /// Profile photo URL of the speaker that sent this invitation.
-    pub speaker_photo_url: Option<String>,
-}
-
-/// Session proposal summary information.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct SessionProposal {
-    /// Proposal creation time.
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub created_at: DateTime<Utc>,
-    /// Proposal description.
-    pub description: String,
-    /// Duration in minutes.
-    pub duration_minutes: i32,
-    /// Whether the proposal has submissions.
-    pub has_submissions: bool,
-    /// Session proposal identifier.
-    pub session_proposal_id: Uuid,
-    /// Session proposal level identifier.
-    pub session_proposal_level_id: String,
-    /// Session proposal level display name.
-    pub session_proposal_level_name: String,
-    /// Proposal status identifier.
-    pub session_proposal_status_id: String,
-    /// Proposal status display name.
-    pub status_name: String,
-    /// Proposal title.
-    pub title: String,
-
-    /// Co-speaker information.
-    pub co_speaker: Option<UserSummary>,
-    /// Linked session identifier.
-    pub linked_session_id: Option<Uuid>,
-    /// Proposal last update time.
-    #[serde(default, with = "chrono::serde::ts_seconds_option")]
-    pub updated_at: Option<DateTime<Utc>>,
-}
-
-/// Session proposal form input.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct SessionProposalInput {
-    /// Proposal description.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
-    pub description: String,
-    /// Duration in minutes.
-    #[garde(range(min = 1, max = MAX_SESSION_PROPOSAL_DURATION_MINUTES))]
-    pub duration_minutes: i32,
-    /// Session proposal level identifier.
-    #[garde(custom(trimmed_non_empty))]
-    pub session_proposal_level_id: String,
-    /// Proposal title.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
-    pub title: String,
-
-    /// Co-speaker user identifier.
-    #[garde(skip)]
-    pub co_speaker_user_id: Option<Uuid>,
-}
-
-/// Session proposal level option.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct SessionProposalLevel {
-    /// Display name.
-    pub display_name: String,
-    /// Session proposal level identifier.
-    pub session_proposal_level_id: String,
-}
-
-/// Filter parameters for session proposals pagination.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct SessionProposalsFilters {
-    /// Number of results per page.
-    #[serde(default = "dashboard::default_limit")]
-    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
-    pub limit: Option<usize>,
-    /// Pagination offset for results.
-    #[serde(default = "dashboard::default_offset")]
-    #[garde(skip)]
-    pub offset: Option<usize>,
-}
-
-crate::impl_pagination_and_raw_query!(SessionProposalsFilters, limit, offset);
-
-/// Paginated session proposals response data.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct SessionProposalsOutput {
-    /// List of session proposals.
-    pub session_proposals: Vec<SessionProposal>,
-    /// Total number of session proposals.
-    pub total: usize,
 }

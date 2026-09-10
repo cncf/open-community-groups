@@ -593,6 +593,39 @@ async fn test_stale_ocg_fetch_request_refreshes_without_running_handler() {
 }
 
 #[tokio::test]
+async fn test_responses_carry_a_request_id_header() {
+    // Setup the application router
+    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Send a request without a request id and one with a client-supplied id
+    let generated = router
+        .clone()
+        .oneshot(Request::builder().uri("/health-check").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let propagated = router
+        .oneshot(
+            Request::builder()
+                .uri("/health-check")
+                .header("x-request-id", "client-supplied-id")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check a generated id is echoed and a supplied id is preserved
+    let generated_id = generated.headers().get("x-request-id").unwrap().to_str().unwrap();
+    assert!(Uuid::parse_str(generated_id).is_ok(), "{generated_id}");
+    assert_eq!(
+        propagated.headers().get("x-request-id").unwrap(),
+        &HeaderValue::from_static("client-supplied-id")
+    );
+}
+
+#[tokio::test]
 async fn test_static_handler_missing_asset_returns_not_found() {
     // Run handler
     let uri = Uri::from_static("/static/does/not/exist.txt");

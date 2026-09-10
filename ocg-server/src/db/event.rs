@@ -9,10 +9,10 @@ use uuid::Uuid;
 
 use crate::{
     db::PgExecutor,
-    templates::event::SessionProposal,
     types::{
         event::{
-            EventEnrollmentState, EventEnrollmentStatus, EventFull, EventLeaveOutcome, EventSummary,
+            EventEnrollmentState, EventEnrollmentStatus, EventFull, EventLeaveOutcome,
+            EventSummary, SessionProposal,
         },
         payments::PaymentProvider,
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
@@ -264,8 +264,9 @@ where
 }
 
 /// Conflict returned while registering public event attendance.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub(crate) enum AttendEventConflict {
     /// The event has no unallocated RSVP capacity.
     EventCapacityUnavailable,

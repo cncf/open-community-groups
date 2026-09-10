@@ -11,14 +11,17 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::tests::{
-        TestRouterBuilder, assert_html_response, sample_auth_user, sample_session_record,
+        TestRouterBuilder, assert_html_response, expect_authenticated_group_session,
+        expect_group_permission,
     },
-    services::notifications::MockNotificationsManager,
-    templates::dashboard::group::check_in::{CheckInAttendee, CheckInOutcome, CheckInScanResult},
-    types::permissions::GroupPermission,
+    services::{check_in::CheckInScanRejection, notifications::MockNotificationsManager},
+    types::{
+        dashboard::group::check_in::{CheckInAttendee, CheckInOutcome, CheckInScanResult},
+        permissions::GroupPermission,
+    },
 };
 
-use super::{parse_credential, scan_database_error_response};
+use super::scan_rejection_response;
 
 #[tokio::test]
 async fn test_list_page_returns_group_check_in_fragment() {
@@ -27,30 +30,15 @@ async fn test_list_page_returns_group_check_in_fragment() {
     let group_id = Uuid::from_u128(2);
     let session_id = session::Id::default();
     let user_id = Uuid::from_u128(3);
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::CheckInsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::CheckInsWrite,
+    );
     db.expect_list_group_check_in_events()
         .times(1)
         .withf(move |gid| *gid == group_id)
@@ -73,43 +61,6 @@ async fn test_list_page_returns_group_check_in_fragment() {
     // Verify the fragment renders its empty scanner state
     assert_html_response(&parts, &body, StatusCode::OK);
     assert!(String::from_utf8_lossy(&body).contains("No events available for check-in"));
-}
-
-#[test]
-fn test_parse_credential_accepts_versioned_payload() {
-    // Setup a versioned credential
-    let event_id = Uuid::from_u128(1);
-    let check_in_code = Uuid::from_u128(2);
-
-    // Parse and verify the credential identifiers
-    assert_eq!(
-        parse_credential(&format!("ocg-check-in:v1:{event_id}:{check_in_code}")),
-        Ok((event_id, check_in_code))
-    );
-}
-
-#[test]
-fn test_parse_credential_rejects_extra_fields() {
-    // Setup a credential carrying an unexpected field
-    let event_id = Uuid::from_u128(1);
-    let check_in_code = Uuid::from_u128(2);
-
-    // Parse and reject the credential
-    assert_eq!(
-        parse_credential(&format!("ocg-check-in:v1:{event_id}:{check_in_code}:extra")),
-        Err(())
-    );
-}
-
-#[test]
-fn test_parse_credential_rejects_unknown_version() {
-    // Parse and reject an unsupported credential version
-    assert_eq!(
-        parse_credential(
-            "ocg-check-in:v2:00000000-0000-0000-0000-000000000001:00000000-0000-0000-0000-000000000002"
-        ),
-        Err(())
-    );
 }
 
 #[tokio::test]
@@ -205,7 +156,8 @@ async fn test_scan_returns_mapped_database_domain_errors() {
 
     for (message, expected_status, expected_code) in cases {
         // Map and decode the typed response
-        let response = scan_database_error_response(message).unwrap();
+        let rejection = CheckInScanRejection::from_db_message(message).unwrap();
+        let response = scan_rejection_response(rejection);
         let (parts, body) = response.into_parts();
         let body: Value =
             serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
@@ -275,31 +227,16 @@ async fn assert_scan_result(outcome: CheckInOutcome, expected_outcome: &str) {
     let group_id = Uuid::from_u128(4);
     let session_id = session::Id::default();
     let user_id = Uuid::from_u128(5);
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::CheckInsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::CheckInsWrite,
+    );
     db.expect_check_in_attendee_by_code()
         .times(1)
         .withf(move |actor, code, community, event, group| {
@@ -357,22 +294,9 @@ async fn scan_test_router(has_permission: bool) -> (axum::Router, session::Id) {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -383,15 +307,13 @@ async fn scan_test_router(has_permission: bool) -> (axum::Router, session::Id) {
         })
         .returning(move |_, _, _, _| Ok(has_permission));
     if !has_permission {
-        db.expect_user_has_group_permission()
-            .times(1)
-            .withf(move |cid, gid, uid, permission| {
-                *cid == community_id
-                    && *gid == group_id
-                    && *uid == user_id
-                    && permission == GroupPermission::Read
-            })
-            .returning(|_, _, _, _| Ok(true));
+        expect_group_permission(
+            &mut db,
+            community_id,
+            group_id,
+            user_id,
+            GroupPermission::Read,
+        );
     }
     db.expect_check_in_attendee_by_code().never();
 

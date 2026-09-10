@@ -11,6 +11,8 @@ async fn test_run_forwards_payment_provider() {
     // Setup one reconciliation that requests shutdown after observing the provider
     let cancellation_token = CancellationToken::new();
     let cancellation_token_for_mock = cancellation_token.clone();
+
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_reconcile_next_event_enrollment()
         .times(1)

@@ -7,7 +7,6 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
-use garde::Validate;
 use serde_json::to_value;
 use tracing::{instrument, warn};
 use uuid::Uuid;
@@ -17,15 +16,17 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, ValidatedForm},
+        extractors::{CurrentUser, ValidatedForm, ValidatedQuery},
     },
-    router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    services::notifications::DynNotificationsManager,
     templates::{
-        dashboard::user::session_proposals::{self, SessionProposalInput},
-        notifications::SessionProposalCoSpeakerInvitation,
+        dashboard::user::session_proposals, notifications::SessionProposalCoSpeakerInvitation,
     },
-    types::pagination::{self, NavigationLinks},
+    types::{
+        dashboard::user::session_proposals::{SessionProposalInput, SessionProposalsFilters},
+        notifications::{NewNotification, NotificationKind},
+        pagination::{self, NavigationLinks},
+    },
     util::base_url_without_trailing_slash,
 };
 
@@ -172,7 +173,7 @@ pub(crate) async fn update(
         .get_session_proposal_co_speaker_user_id(user.user_id, session_proposal_id)
         .await?;
     let Some(previous_session_proposal) = previous_session_proposal else {
-        return Err(HandlerError::Database(
+        return Err(HandlerError::Rejected(
             "session proposal not found".to_string(),
         ));
     };
@@ -262,17 +263,9 @@ pub(crate) async fn prepare_list_page(
     db: &DynDB,
     user_id: Uuid,
     raw_query: &str,
-) -> Result<
-    (
-        session_proposals::SessionProposalsFilters,
-        session_proposals::ListPage,
-    ),
-    HandlerError,
-> {
+) -> Result<(SessionProposalsFilters, session_proposals::ListPage), HandlerError> {
     // Fetch pending invitations, session proposal levels, and session proposals
-    let filters: session_proposals::SessionProposalsFilters =
-        serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: SessionProposalsFilters = ValidatedQuery::parse(raw_query)?;
     let (pending_co_speaker_invitations, session_proposal_levels, session_proposals_output) = tokio::try_join!(
         db.list_user_pending_session_proposal_co_speaker_invitations(user_id),
         db.list_session_proposal_levels(),
@@ -293,7 +286,6 @@ pub(crate) async fn prepare_list_page(
         pending_co_speaker_invitations,
         navigation_links,
         total: session_proposals_output.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

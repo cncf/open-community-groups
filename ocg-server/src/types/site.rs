@@ -5,6 +5,9 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod explore;
+pub mod stats;
+
 // Site types.
 
 /// Statistics for the site home page.

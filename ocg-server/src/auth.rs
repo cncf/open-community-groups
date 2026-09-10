@@ -21,9 +21,13 @@ use tower_sessions::{Expiry, SessionManagerLayer, cookie::SameSite};
 use uuid::Uuid;
 
 use crate::{
-    config::{HttpServerConfig, OAuth2Config, OAuth2Provider, OidcConfig, OidcProvider},
+    config::{
+        HttpClientConfig, HttpServerConfig, OAuth2Config, OAuth2Provider, OidcConfig, OidcProvider,
+    },
     db::DynDB,
+    services::blocking::BlockingExecutor,
     types::user::UserProvider,
+    util::build_http_client,
     validation::{
         MAX_LEN_DISPLAY_NAME, MAX_LEN_S, MIN_PASSWORD_LEN, trimmed_non_empty, trimmed_non_empty_opt,
     },
@@ -31,6 +35,9 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
+
+/// Key used to store the authentication provider in the session.
+pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
 
 /// Error raised when an external-auth email is already owned by another user.
 pub(crate) const EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR: &str =
@@ -44,7 +51,11 @@ pub(crate) const EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR: &str =
 pub(crate) type AuthLayer = AuthManagerLayer<AuthnBackend, SessionStore>;
 
 /// Setup router authentication/authorization layer.
-pub(crate) async fn setup_layer(cfg: &HttpServerConfig, db: DynDB) -> Result<AuthLayer> {
+pub(crate) async fn setup_layer(
+    cfg: &HttpServerConfig,
+    blocking_executor: BlockingExecutor,
+    db: DynDB,
+) -> Result<AuthLayer> {
     // Setup session layer
     let session_store = SessionStore::new(db.clone());
     let secure = if let Some(cookie) = &cfg.cookie {
@@ -59,7 +70,14 @@ pub(crate) async fn setup_layer(cfg: &HttpServerConfig, db: DynDB) -> Result<Aut
         .with_secure(secure);
 
     // Setup auth layer
-    let authn_backend = AuthnBackend::new(db, &cfg.oauth2, &cfg.oidc).await?;
+    let authn_backend = AuthnBackend::new(
+        blocking_executor,
+        db,
+        &cfg.http_client,
+        &cfg.oauth2,
+        &cfg.oidc,
+    )
+    .await?;
     let auth_layer = AuthManagerLayerBuilder::new(authn_backend, session_layer).build();
 
     Ok(auth_layer)
@@ -136,6 +154,8 @@ impl std::fmt::Debug for SessionStore {
 /// Backend for authenticating users via `OAuth2`, `Oidc`, or password.
 #[derive(Clone)]
 pub(crate) struct AuthnBackend {
+    /// Bounded executor used for password verification.
+    blocking_executor: BlockingExecutor,
     /// Database handle.
     db: DynDB,
     /// HTTP client for making requests to `OAuth2` and `Oidc` providers.
@@ -144,28 +164,47 @@ pub(crate) struct AuthnBackend {
     pub oauth2_providers: OAuth2Providers,
     /// Registered `Oidc` providers.
     pub oidc_providers: OidcProviders,
+    /// HTTP client for provider profile APIs consulted after token exchange.
+    profile_client: reqwest::Client,
 }
 
 impl AuthnBackend {
     /// Create a new `AuthnBackend` instance.
+    ///
+    /// Every outbound client is built once with the configured connection and
+    /// request deadlines so a stalled provider cannot hold a login indefinitely.
     #[allow(unused_mut)]
-    pub async fn new(db: DynDB, oauth2_cfg: &OAuth2Config, oidc_cfg: &OidcConfig) -> Result<Self> {
-        let mut builder =
-            oauth2_reqwest::ClientBuilder::new().redirect(oauth2_reqwest::redirect::Policy::none());
+    pub async fn new(
+        blocking_executor: BlockingExecutor,
+        db: DynDB,
+        http_client_cfg: &HttpClientConfig,
+        oauth2_cfg: &OAuth2Config,
+        oidc_cfg: &OidcConfig,
+    ) -> Result<Self> {
+        // Build the token exchange client used by the OAuth2 and OIDC crates
+        let mut builder = oauth2_reqwest::ClientBuilder::new()
+            .connect_timeout(http_client_cfg.connect_timeout())
+            .redirect(oauth2_reqwest::redirect::Policy::none())
+            .timeout(http_client_cfg.request_timeout());
         #[cfg(test)]
         {
             // macOS sandbox testing workaround
             builder = builder.no_proxy();
         }
         let http_client = builder.build()?;
+
+        // Build the profile client and register the configured providers
+        let profile_client = build_http_client(http_client_cfg)?;
         let oauth2_providers = Self::setup_oauth2_providers(oauth2_cfg)?;
         let oidc_providers = Self::setup_oidc_providers(oidc_cfg, http_client.clone()).await?;
 
         Ok(Self {
+            blocking_executor,
             db,
             http_client,
             oauth2_providers,
             oidc_providers,
+            profile_client,
         })
     }
 
@@ -185,10 +224,13 @@ impl AuthnBackend {
             .clone();
 
         // Get the user if they exist, otherwise sign them up
-        let user_summary = match creds.provider {
-            OAuth2Provider::GitHub => UserSummary::from_github_profile(&access_token).await?,
+        let profile = match creds.provider {
+            OAuth2Provider::GitHub => {
+                ExternalUserProfile::from_github_profile(&self.profile_client, &access_token)
+                    .await?
+            }
         };
-        let user = self.get_or_sign_up_external_user(&user_summary).await?;
+        let user = self.get_or_sign_up_external_user(&profile).await?;
 
         Ok(Some(user))
     }
@@ -213,10 +255,12 @@ impl AuthnBackend {
         let claims = id_token.claims(&id_token_verifier, &creds.nonce)?;
 
         // Get the user if they exist, otherwise sign them up
-        let user_summary = match creds.provider {
-            OidcProvider::LinuxFoundation => UserSummary::from_oidc_id_token_claims(claims)?,
+        let profile = match creds.provider {
+            OidcProvider::LinuxFoundation => {
+                ExternalUserProfile::from_oidc_id_token_claims(claims)?
+            }
         };
-        let user = self.get_or_sign_up_external_user(&user_summary).await?;
+        let user = self.get_or_sign_up_external_user(&profile).await?;
 
         Ok(Some(user))
     }
@@ -233,8 +277,10 @@ impl AuthnBackend {
                 return Ok(None);
             };
 
-            // Verify the password
-            if tokio::task::spawn_blocking(move || verify_password(creds.password, &password_hash))
+            // Verify the password within the shared CPU-heavy work bound
+            if self
+                .blocking_executor
+                .run(move || verify_password(creds.password, &password_hash))
                 .await?
                 .is_ok()
             {
@@ -247,9 +293,9 @@ impl AuthnBackend {
     }
 
     /// Get an existing external-auth user or sign them up.
-    async fn get_or_sign_up_external_user(&self, user_summary: &UserSummary) -> Result<User> {
+    async fn get_or_sign_up_external_user(&self, profile: &ExternalUserProfile) -> Result<User> {
         // Extract immutable LF identity before email-based fallbacks
-        let incoming_linuxfoundation_identity = linuxfoundation_identity(user_summary);
+        let incoming_linuxfoundation_identity = linuxfoundation_identity(profile);
 
         // Try to reconcile returning LF users by OIDC identity, even if their email changed
         if let Some((issuer, subject)) = incoming_linuxfoundation_identity
@@ -258,20 +304,16 @@ impl AuthnBackend {
                 .get_user_by_linuxfoundation_identity_for_external_auth(issuer, subject)
                 .await?
         {
-            return self.db.update_user_external_auth(&user.user_id, user_summary).await;
+            return self.db.update_user_external_auth(&user.user_id, profile).await;
         }
 
         // Fall back to email for existing verified users and invitation placeholders
-        if let Some(mut user) = self
-            .db
-            .get_user_by_email_for_external_auth(&user_summary.email)
-            .await?
-        {
+        if let Some(mut user) = self.db.get_user_by_email_for_external_auth(&profile.email).await? {
             // Promote a pre-registered placeholder with the verified external identity
             if user.registration_status == "pre-registered" {
                 return self
                     .db
-                    .activate_pre_registered_user_external_provider(&user.user_id, user_summary)
+                    .activate_pre_registered_user_external_provider(&user.user_id, profile)
                     .await;
             }
 
@@ -285,7 +327,7 @@ impl AuthnBackend {
             }
 
             // Persist new provider metadata for the email-matched user when needed
-            if let Some(provider) = user_summary.provider.clone() {
+            if let Some(provider) = profile.provider.clone() {
                 let mut merged_provider = user.provider.clone().unwrap_or_default();
                 merged_provider.merge(provider.clone());
 
@@ -298,7 +340,7 @@ impl AuthnBackend {
             Ok(user)
         } else {
             // Create a verified account when no user or placeholder matches
-            let (user, _) = self.db.sign_up_user(user_summary, true, None).await?;
+            let (user, _) = self.db.sign_up_user(profile, true, None).await?;
             Ok(user)
         }
     }
@@ -493,6 +535,131 @@ pub(crate) struct PasswordCredentials {
 
 // User types and implementations.
 
+/// User profile received from an external authentication provider.
+#[skip_serializing_none]
+#[derive(Clone, Serialize, Deserialize, Validate)]
+pub(crate) struct ExternalUserProfile {
+    /// User's email address.
+    #[garde(email)]
+    pub email: String,
+    /// User's display name.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DISPLAY_NAME))]
+    pub name: String,
+    /// User's username.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
+    pub username: String,
+
+    /// Whether the user has a password set.
+    #[garde(skip)]
+    pub has_password: Option<bool>,
+    /// User's password (if present).
+    #[garde(custom(trimmed_non_empty_opt), length(min = MIN_PASSWORD_LEN, max = MAX_LEN_S))]
+    pub password: Option<String>,
+    /// External provider metadata.
+    #[garde(skip)]
+    pub provider: Option<UserProvider>,
+}
+
+impl ExternalUserProfile {
+    /// Create an `ExternalUserProfile` instance from a GitHub profile.
+    async fn from_github_profile(client: &reqwest::Client, access_token: &str) -> Result<Self> {
+        // Setup headers for GitHub API requests
+        let mut headers = HeaderMap::new();
+        headers.insert(USER_AGENT, "open-community-groups".parse()?);
+        headers.insert(
+            AUTHORIZATION,
+            format!("Bearer {access_token}").as_str().parse()?,
+        );
+
+        // Get user profile from GitHub
+        let profile = client
+            .get("https://api.github.com/user")
+            .headers(headers.clone())
+            .send()
+            .await?
+            .json::<GitHubProfile>()
+            .await?;
+
+        // Get user emails from GitHub
+        let emails = client
+            .get("https://api.github.com/user/emails")
+            .headers(headers)
+            .send()
+            .await?
+            .json::<Vec<GitHubUserEmail>>()
+            .await?;
+
+        // Get primary, verified email
+        let email = emails
+            .into_iter()
+            .find(|email| email.primary && email.verified)
+            .ok_or_else(|| anyhow!("no valid email found (primary email must be verified)"))?;
+
+        Ok(Self {
+            email: email.email,
+            name: profile.name,
+            provider: Some(UserProvider::from_github_username(profile.login.clone())),
+            username: profile.login,
+            has_password: Some(false),
+            password: None,
+        })
+    }
+
+    /// Create an `ExternalUserProfile` from `Oidc` Id token claims.
+    fn from_oidc_id_token_claims(
+        claims: &oidc::IdTokenClaims<oidc::EmptyAdditionalClaims, oidc::core::CoreGenderClaim>,
+    ) -> Result<Self> {
+        // Ensure email is verified and extract user info
+        if !claims.email_verified().unwrap_or(false) {
+            bail!("email not verified");
+        }
+
+        let email = claims.email().ok_or_else(|| anyhow!("email missing"))?.to_string();
+        let issuer = claims.issuer().as_str().to_string();
+        let name = get_localized_claim(claims.name()).ok_or_else(|| anyhow!("name missing"))?;
+        let subject = claims.subject().as_str().to_string();
+        let username =
+            get_localized_claim(claims.nickname()).ok_or_else(|| anyhow!("nickname missing"))?;
+
+        Ok(Self {
+            email,
+            name: name.to_string(),
+            provider: Some(UserProvider::from_linuxfoundation_identity(
+                issuer,
+                subject,
+                username.to_string(),
+            )),
+            username: username.to_string(),
+            has_password: Some(false),
+            password: None,
+        })
+    }
+}
+
+impl From<User> for ExternalUserProfile {
+    /// Convert a `User` into an `ExternalUserProfile`.
+    fn from(user: User) -> Self {
+        Self {
+            email: user.email,
+            name: user.name,
+            username: user.username,
+            has_password: user.has_password,
+            password: None,
+            provider: user.provider,
+        }
+    }
+}
+
+impl std::fmt::Debug for ExternalUserProfile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExternalUserProfile")
+            .field("email", &self.email)
+            .field("name", &self.name)
+            .field("username", &self.username)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Represents a user in the system.
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub(crate) struct User {
@@ -600,131 +767,6 @@ impl std::fmt::Debug for User {
     }
 }
 
-/// Summary of user information.
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct UserSummary {
-    /// User's email address.
-    #[garde(email)]
-    pub email: String,
-    /// User's display name.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DISPLAY_NAME))]
-    pub name: String,
-    /// User's username.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
-    pub username: String,
-
-    /// Whether the user has a password set.
-    #[garde(skip)]
-    pub has_password: Option<bool>,
-    /// User's password (if present).
-    #[garde(custom(trimmed_non_empty_opt), length(min = MIN_PASSWORD_LEN, max = MAX_LEN_S))]
-    pub password: Option<String>,
-    /// External provider metadata.
-    #[garde(skip)]
-    pub provider: Option<UserProvider>,
-}
-
-impl UserSummary {
-    /// Create a `UserSummary` instance from a GitHub profile.
-    async fn from_github_profile(access_token: &str) -> Result<Self> {
-        // Setup headers for GitHub API requests
-        let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, "open-community-groups".parse()?);
-        headers.insert(
-            AUTHORIZATION,
-            format!("Bearer {access_token}").as_str().parse()?,
-        );
-
-        // Get user profile from GitHub
-        let profile = reqwest::Client::new()
-            .get("https://api.github.com/user")
-            .headers(headers.clone())
-            .send()
-            .await?
-            .json::<GitHubProfile>()
-            .await?;
-
-        // Get user emails from GitHub
-        let emails = reqwest::Client::new()
-            .get("https://api.github.com/user/emails")
-            .headers(headers)
-            .send()
-            .await?
-            .json::<Vec<GitHubUserEmail>>()
-            .await?;
-
-        // Get primary, verified email
-        let email = emails
-            .into_iter()
-            .find(|email| email.primary && email.verified)
-            .ok_or_else(|| anyhow!("no valid email found (primary email must be verified)"))?;
-
-        Ok(Self {
-            email: email.email,
-            name: profile.name,
-            provider: Some(UserProvider::from_github_username(profile.login.clone())),
-            username: profile.login,
-            has_password: Some(false),
-            password: None,
-        })
-    }
-
-    /// Create a `UserSummary` from `Oidc` Id token claims.
-    fn from_oidc_id_token_claims(
-        claims: &oidc::IdTokenClaims<oidc::EmptyAdditionalClaims, oidc::core::CoreGenderClaim>,
-    ) -> Result<Self> {
-        // Ensure email is verified and extract user info
-        if !claims.email_verified().unwrap_or(false) {
-            bail!("email not verified");
-        }
-
-        let email = claims.email().ok_or_else(|| anyhow!("email missing"))?.to_string();
-        let issuer = claims.issuer().as_str().to_string();
-        let name = get_localized_claim(claims.name()).ok_or_else(|| anyhow!("name missing"))?;
-        let subject = claims.subject().as_str().to_string();
-        let username =
-            get_localized_claim(claims.nickname()).ok_or_else(|| anyhow!("nickname missing"))?;
-
-        Ok(Self {
-            email,
-            name: name.to_string(),
-            provider: Some(UserProvider::from_linuxfoundation_identity(
-                issuer,
-                subject,
-                username.to_string(),
-            )),
-            username: username.to_string(),
-            has_password: Some(false),
-            password: None,
-        })
-    }
-}
-
-impl From<User> for UserSummary {
-    /// Convert a `User` into a `UserSummary`.
-    fn from(user: User) -> Self {
-        Self {
-            email: user.email,
-            name: user.name,
-            username: user.username,
-            has_password: user.has_password,
-            password: None,
-            provider: user.provider,
-        }
-    }
-}
-
-impl std::fmt::Debug for UserSummary {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("UserSummary")
-            .field("email", &self.email)
-            .field("name", &self.name)
-            .field("username", &self.username)
-            .finish_non_exhaustive()
-    }
-}
-
 // Helpers.
 
 /// Default persisted registration status for regular users.
@@ -746,12 +788,9 @@ where
     })
 }
 
-/// Gets a Linux Foundation OIDC identity from a user summary.
-fn linuxfoundation_identity(user_summary: &UserSummary) -> Option<(&str, &str)> {
-    user_summary
-        .provider
-        .as_ref()
-        .and_then(linuxfoundation_provider_identity)
+/// Gets a Linux Foundation OIDC identity from an external user profile.
+fn linuxfoundation_identity(profile: &ExternalUserProfile) -> Option<(&str, &str)> {
+    profile.provider.as_ref().and_then(linuxfoundation_provider_identity)
 }
 
 /// Gets a Linux Foundation OIDC identity from external provider metadata.

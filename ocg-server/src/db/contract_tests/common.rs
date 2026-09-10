@@ -239,6 +239,30 @@ async fn db_contracts_get_group_summary_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_get_worker_queue_health_deserializes() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the queue health through the Rust contract
+    let health = db.get_worker_queue_health().await?;
+
+    // Check every queue decodes with an age only while something is pending
+    for queue in [
+        &health.badge_award_jobs,
+        &health.notifications,
+        &health.payment_jobs,
+    ] {
+        assert!(queue.pending >= 0);
+        assert!(queue.processing >= 0);
+        assert_eq!(queue.pending > 0, queue.oldest_pending_age_secs.is_some());
+        assert!(queue.oldest_pending_age_secs.is_none_or(|age| age >= 0));
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_internal_raise_keeps_default_sqlstate() -> Result<()> {
     // Setup a direct connection to call a worker-only function with invalid configuration
     let pool = contract_tests_pool()?;

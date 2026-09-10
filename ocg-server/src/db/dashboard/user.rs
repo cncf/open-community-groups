@@ -8,23 +8,23 @@ use uuid::Uuid;
 
 use crate::{
     db::PgExecutor,
-    templates::dashboard::{
-        audit::{AuditLogFilters, AuditLogsOutput},
-        user::{
-            check_in::UserCheckInEvent,
-            events::{UserEventsFilters, UserEventsOutput},
-            groups::{UserGroupsFilters, UserGroupsOutput},
-            invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
-            purchases::{PurchaseDocumentsFilters, PurchaseDocumentsOutput},
-            session_proposals::{
-                PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel,
-                SessionProposalsFilters, SessionProposalsOutput,
-            },
-            submissions::{CfsSubmissionsFilters, CfsSubmissionsOutput},
-        },
-    },
     types::{
         badges::{UserBadge, UserBadgeIdentity},
+        dashboard::{
+            common::{AuditLogFilters, AuditLogsOutput},
+            user::{
+                check_in::UserCheckInEvent,
+                events::{UserEventsFilters, UserEventsOutput},
+                groups::{UserGroupsFilters, UserGroupsOutput},
+                invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
+                purchases::{PurchaseDocumentsFilters, PurchaseDocumentsOutput},
+                session_proposals::{
+                    PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel,
+                    SessionProposalsFilters, SessionProposalsOutput,
+                },
+                submissions::{CfsSubmissionsFilters, CfsSubmissionsOutput},
+            },
+        },
         event::EventEnrollmentReconciliationOutcome,
         payments::PaymentProvider,
         questionnaire::QuestionnaireAnswers,

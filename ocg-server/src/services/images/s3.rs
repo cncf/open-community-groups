@@ -11,9 +11,9 @@ use aws_sdk_s3::{
 };
 use tracing::{instrument, trace};
 
-use crate::config::ImageStorageConfigS3;
+use crate::{config::ImageStorageConfigS3, types::images::Image};
 
-use super::{Image, ImageStorage, NewImage};
+use super::{ImageStorage, NewImage};
 
 /// S3-compatible image storage implementation.
 pub(crate) struct S3ImageStorage {

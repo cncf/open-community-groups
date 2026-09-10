@@ -28,7 +28,7 @@ pub(in crate::services::payments) fn start(db: &DynDB, background_tasks: &Backgr
             cancellation_token: background_tasks.cancellation_token(),
             db: db.clone(),
         };
-        background_tasks.spawn(async move {
+        background_tasks.spawn("payments-recovery", async move {
             worker.run().await;
         });
     }

@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         dashboard::{
             audit,
             community::{
@@ -40,11 +40,11 @@ pub(crate) struct Page {
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 /// Content section for the community dashboard home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub(crate) enum Content {
     /// Analytics page.
     Analytics(Box<analytics::Page>),

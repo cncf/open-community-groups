@@ -15,7 +15,7 @@ use tracing::{instrument, trace, warn};
 use crate::{
     config::{MeetingsConfig, MeetingsZoomConfig},
     db::DynDB,
-    services::meetings::MeetingProvider,
+    types::meetings::MeetingProvider,
 };
 
 #[cfg(test)]

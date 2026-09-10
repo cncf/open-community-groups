@@ -5,10 +5,11 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
+    db::{DBOperations, auth::EmailVerificationNotification},
     templates::notifications::{
-        EventAttendanceCanceled, EventCanceled, EventPaidConfigured, EventPaidConfiguredItem,
-        EventPublished, EventRefundApproved, EventRefundRejected, EventRescheduled,
-        EventWaitlistJoined, EventWaitlistLeft, EventWelcome, SpeakerWelcome,
+        EmailVerification, EventAttendanceCanceled, EventCanceled, EventPaidConfigured,
+        EventPaidConfiguredItem, EventPublished, EventRefundApproved, EventRefundRejected,
+        EventRescheduled, EventWaitlistJoined, EventWaitlistLeft, EventWelcome, SpeakerWelcome,
     },
     types::{event::EventSummary, site::SiteSettings},
     util::{
@@ -18,6 +19,35 @@ use crate::{
 };
 
 use super::{NewNotification, NotificationKind};
+
+/// Builds the email verification notification payload required by password
+/// sign-up.
+///
+/// The verification code is generated here and stored by the database together
+/// with the serialized template data.
+pub(crate) async fn build_email_verification_notification(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+) -> Result<EmailVerificationNotification> {
+    // Require a base URL before loading any template context
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
+    if base_url.is_empty() {
+        return Err(anyhow!("base URL is required to send verification email"));
+    }
+
+    // Build the template data from the current site theme
+    let code = Uuid::new_v4();
+    let site_settings = db.get_site_settings().await?;
+    let template_data = serde_json::to_value(EmailVerification {
+        link: format!("{base_url}/verify-email/{code}"),
+        theme: site_settings.theme,
+    })?;
+
+    Ok(EmailVerificationNotification {
+        code,
+        template_data,
+    })
+}
 
 /// Builds an event attendance cancellation notification.
 pub(crate) fn build_event_attendance_canceled_notification(
@@ -289,12 +319,14 @@ mod tests {
 
     use crate::{
         config::HttpServerConfig,
-        handlers::tests::{sample_event_summary, sample_site_settings},
-        services::notifications::NotificationKind,
         templates::notifications::{
             EventAttendanceCanceled, EventCanceled, EventPaidConfigured, EventPublished,
             EventRefundApproved, EventRefundRejected, EventRescheduled, EventWaitlistJoined,
             EventWaitlistLeft, EventWelcome, SpeakerWelcome,
+        },
+        types::{
+            notifications::NotificationKind,
+            tests::{sample_event_summary, sample_site_settings},
         },
     };
 

@@ -1,15 +1,15 @@
-//! Templates and data structures for the community site.
+//! Templates for the community site.
 //!
 //! The home page displays an overview of the community including community statistics,
 //! upcoming events (both in-person and virtual), and recently added groups.
 
 use askama::Template;
-use serde::{Deserialize, Serialize};
 
+use crate::types::community::CommunityStats;
 use crate::{
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         filters,
         helpers::{self, user_initials},
     },
@@ -28,7 +28,7 @@ pub(crate) const PREVIEW_DESCRIPTION: &str =
 // Pages and sections templates.
 
 /// Template for the community page.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "community/page.html")]
 pub(crate) struct Page {
     /// Configured public base URL.
@@ -50,7 +50,7 @@ pub(crate) struct Page {
     /// List of upcoming virtual events across all community groups.
     pub upcoming_virtual_events: Vec<EventCard>,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 impl Page {
@@ -74,7 +74,7 @@ impl Page {
 }
 
 /// Event card template for home page display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "common/event_card_small.html")]
 pub(crate) struct EventCard {
     /// Event data
@@ -82,23 +82,17 @@ pub(crate) struct EventCard {
 }
 
 /// Group card template for home page display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "community/group_card.html")]
 pub(crate) struct GroupCard {
     /// Group data
     pub group: GroupSummary,
 }
 
-/// Community statistics for the home page.
-#[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
+/// Community statistics section template.
+#[derive(Debug, Clone, Template)]
 #[template(path = "community/stats.html")]
 pub(crate) struct Stats {
-    /// Total number of groups in the community.
-    pub groups: i64,
-    /// Total number of members across all groups.
-    pub groups_members: i64,
-    /// Total number of events hosted by all groups.
-    pub events: i64,
-    /// Total number of attendees across all events.
-    pub events_attendees: i64,
+    /// Community statistics.
+    pub stats: CommunityStats,
 }

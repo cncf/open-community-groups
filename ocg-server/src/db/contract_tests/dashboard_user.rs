@@ -6,18 +6,18 @@ use tokio_postgres::{error::SqlState, types::Json};
 
 use crate::{
     db::dashboard::user::DBDashboardUser,
-    templates::dashboard::{
-        audit::AuditLogFilters,
-        user::{
-            events::{UserEventRole, UserEventsFilters},
-            groups::UserGroupsFilters,
-            purchases::PurchaseDocumentsFilters,
-            session_proposals::SessionProposalsFilters,
-            submissions::CfsSubmissionsFilters as UserCfsSubmissionsFilters,
-        },
-    },
     types::{
         community::CommunityRole,
+        dashboard::{
+            common::AuditLogFilters,
+            user::{
+                events::{UserEventRole, UserEventsFilters},
+                groups::UserGroupsFilters,
+                purchases::PurchaseDocumentsFilters,
+                session_proposals::SessionProposalsFilters,
+                submissions::CfsSubmissionsFilters as UserCfsSubmissionsFilters,
+            },
+        },
         event::{
             EventAdmissionOfferSource, EventAdmissionOfferStatus, EventEnrollmentStatus, EventKind,
         },

@@ -21,50 +21,46 @@ use crate::{
     activity_tracker::DynActivityTracker,
     auth::User as AuthUser,
     config::{
-        BadgeSigningKeyConfig, BadgesConfig, HttpServerConfig, MeetingsConfig, MeetingsZoomConfig,
-        PaymentsConfig, PaymentsStripeConfig,
+        BadgeSigningKeyConfig, BadgesConfig, HttpClientConfig, HttpServerConfig, MeetingsConfig,
+        MeetingsZoomConfig, PaymentsConfig, PaymentsStripeConfig,
     },
-    db::{
-        BBox, DynDB,
-        common::{SearchEventsOutput, SearchGroupsOutput},
-        dashboard::common::User as DashboardUser,
-        mock::MockDB,
-    },
-    handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
+    db::{DynDB, dashboard::common::User as DashboardUser, mock::MockDB},
+    handlers::auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
     services::{
+        blocking::BlockingExecutor,
+        enrollment::{DynEnrollmentManager, MockEnrollmentManager},
+        events::{DynEventsManager, MockEventsManager},
         images::{DynImageStorage, MockImageStorage},
         notifications::{DynNotificationsManager, MockNotificationsManager},
         payments::{DynPaymentsManager, MockPaymentsManager},
     },
-    templates::{
+    types::{
+        analytics::PageViewsStats,
+        community::{CommunityFull, CommunityRole, CommunityRoleSummary, CommunitySummary},
         dashboard::{
-            audit::{AuditLogRecord, AuditLogsOutput},
+            common::{AuditLogRecord, AuditLogsOutput},
             community::{
                 analytics::{
-                    AttendeesStats, CommunityDashboardStats, CommunityPageViewsStats, EventsStats,
-                    GroupsStats, MembersStats, PageViewsStats as CommunityPageViewsEntry,
+                    CommunityAttendeesStats, CommunityDashboardStats, CommunityMembersStats,
+                    CommunityPageViewsStats, EventsStats, GroupsStats,
                 },
-                groups::Group,
+                groups::GroupInput,
                 settings::CommunityUpdate,
                 team::CommunityTeamMember,
             },
             group::{
                 analytics::{
                     GroupAttendeesStats, GroupDashboardStats, GroupEventsStats, GroupMembersStats,
-                    GroupPageViewsStats, PageViewsStats as GroupPageViewsEntry,
+                    GroupPageViewsStats,
                 },
                 attendees::Attendee,
-                events::{CfsSubmissionStatus, Event as GroupEventForm, GroupEvents},
+                events::GroupEvents,
                 home::UserGroupsByCommunity,
                 invitation_requests::InvitationRequest,
                 members::GroupMember,
-                settings::GroupUpdate,
-                sponsors::Sponsor,
-                submissions::{
-                    CfsSessionProposal as GroupCfsSessionProposal,
-                    CfsSubmission as GroupCfsSubmission,
-                },
+                sponsors::SponsorInput,
+                submissions::CfsSubmission as GroupCfsSubmission,
                 team::GroupTeamMember,
                 waitlist::WaitlistEntry,
             },
@@ -74,31 +70,25 @@ use crate::{
                     PendingCoSpeakerInvitation, SessionProposal as UserSessionProposal,
                     SessionProposalLevel as UserSessionProposalLevel,
                 },
-                submissions::{
-                    CfsSessionProposal as UserCfsSessionProposal,
-                    CfsSubmission as UserCfsSubmission,
-                },
+                submissions::CfsSubmission as UserCfsSubmission,
             },
         },
-        event::SessionProposal as EventSessionProposal,
-    },
-    types::{
-        community::{CommunityFull, CommunityRole, CommunityRoleSummary, CommunitySummary},
         event::{
-            EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary,
+            CfsSessionProposal, EventCategory, EventKindSummary, SessionKindSummary,
+            SessionProposal as EventSessionProposal,
         },
-        group::{
-            GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupRoleSummary,
-            GroupSponsor, GroupSummary,
-        },
-        payments::{
-            EventPurchaseStatus, EventPurchaseSummary, GroupPaymentRecipient, PaymentMode,
-            PaymentProvider,
-        },
+        group::{GroupFull, GroupMinimal, GroupRole, GroupRoleSummary, GroupSponsor},
+        payments::{EventPurchaseStatus, EventPurchaseSummary, PaymentMode},
         permissions::{CommunityPermission, GroupPermission},
-        site::{SiteSettings, Theme},
+        search::{BBox, SearchEventsOutput, SearchGroupsOutput},
         user::{User as TemplateUser, UserSummary},
     },
+};
+
+pub(crate) use crate::types::tests::{
+    sample_community_summary, sample_event_form, sample_event_full, sample_event_summary,
+    sample_group_category, sample_group_payment_recipient, sample_group_region,
+    sample_group_summary, sample_site_settings,
 };
 
 // Helpers.
@@ -283,13 +273,6 @@ pub(crate) fn expect_group_permission(
         .returning(|_, _, _, _| Ok(true));
 }
 
-/// Expect a transaction to roll back without committing.
-pub(crate) fn expect_rolled_back_transaction(db: &mut MockDB, mut tx: MockDB) {
-    tx.expect_commit().never();
-    tx.expect_rollback().times(1).returning(|| Ok(()));
-    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
-}
-
 /// Expect a transaction to commit without rolling back.
 pub(crate) fn expect_successful_transaction(db: &mut MockDB, mut tx: MockDB) {
     tx.expect_commit().times(1).returning(|| Ok(()));
@@ -309,7 +292,7 @@ pub(crate) fn sample_attendee() -> Attendee {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         email: "attendee@example.test".to_string(),
         enrollment_status:
-            crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed,
+            crate::types::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed,
         manually_invited: false,
         user: sample_dashboard_user_profile(
             user_id,
@@ -408,21 +391,6 @@ pub(crate) fn sample_community_full(community_id: Uuid) -> CommunityFull {
     }
 }
 
-/// Sample community summary used across tests.
-pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
-    CommunitySummary {
-        banner_mobile_url: "https://example.test/banner_mobile.png".to_string(),
-        banner_url: "https://example.test/banner.png".to_string(),
-        community_id,
-        display_name: "Test".to_string(),
-        logo_url: "/static/images/placeholder_cncf.png".to_string(),
-        name: "test".to_string(),
-        ad_banner_link_url: None,
-        ad_banner_url: None,
-        og_image_url: None,
-    }
-}
-
 /// Sample community invitation for dashboard user tests.
 pub(crate) fn sample_community_invitation(community_id: Uuid) -> CommunityTeamInvitation {
     CommunityTeamInvitation {
@@ -459,7 +427,7 @@ pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMembe
 /// Sample community stats used in analytics tests.
 pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
     CommunityDashboardStats {
-        attendees: AttendeesStats {
+        attendees: CommunityAttendeesStats {
             per_month: vec![("2024-01".to_string(), 5)],
             per_month_by_event_category: HashMap::from([(
                 "meetup".to_string(),
@@ -507,7 +475,7 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
             total_by_category: vec![("dev".to_string(), 2)],
             total_by_region: vec![],
         },
-        members: MembersStats {
+        members: CommunityMembersStats {
             per_month: vec![("2024-01".to_string(), 8)],
             per_month_by_category: HashMap::new(),
             per_month_by_region: HashMap::new(),
@@ -519,22 +487,22 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
             total_by_region: vec![],
         },
         page_views: CommunityPageViewsStats {
-            community: CommunityPageViewsEntry {
+            community: PageViewsStats {
                 per_day_views: vec![("2024-01-10".to_string(), 2), ("2024-01-20".to_string(), 2)],
                 per_month_views: vec![("2024-01".to_string(), 4)],
                 total_views: 4,
             },
-            events: CommunityPageViewsEntry {
+            events: PageViewsStats {
                 per_day_views: vec![("2024-01-11".to_string(), 5), ("2024-01-21".to_string(), 7)],
                 per_month_views: vec![("2024-01".to_string(), 12)],
                 total_views: 12,
             },
-            groups: CommunityPageViewsEntry {
+            groups: PageViewsStats {
                 per_day_views: vec![("2024-01-12".to_string(), 4), ("2024-01-22".to_string(), 5)],
                 per_month_views: vec![("2024-01".to_string(), 9)],
                 total_views: 9,
             },
-            total: CommunityPageViewsEntry {
+            total: PageViewsStats {
                 per_day_views: vec![
                     ("2024-01-10".to_string(), 2),
                     ("2024-01-11".to_string(), 5),
@@ -643,67 +611,6 @@ pub(crate) fn sample_event_cfs_session_proposal(session_proposal_id: Uuid) -> Ev
     }
 }
 
-/// Sample event form payload submitted from the dashboard.
-pub(crate) fn sample_event_form() -> GroupEventForm {
-    GroupEventForm {
-        category_id: Uuid::new_v4(),
-        description: "Event description".to_string(),
-        kind_id: "virtual".to_string(),
-        name: "Sample Event".to_string(),
-        timezone: "UTC".to_string(),
-
-        banner_url: Some("https://example.test/banner.png".to_string()),
-        capacity: Some(100),
-        description_short: Some("Short".to_string()),
-        waitlist_enabled: Some(false),
-        ..Default::default()
-    }
-}
-
-/// Sample full event with hosts, sponsors, and schedule.
-pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uuid) -> EventFull {
-    let starts_at = Utc::now() + chrono::Duration::hours(1);
-    let mut sessions = BTreeMap::new();
-    sessions.insert(starts_at.date_naive(), Vec::new());
-
-    EventFull {
-        canceled: false,
-        category_name: "Cloud Native".to_string(),
-        community: sample_community_summary(community_id),
-        created_at: Utc::now(),
-        description: "A detailed event description".to_string(),
-        event_id,
-        group: sample_group_summary(group_id),
-        hosts: vec![sample_template_user()],
-        kind: EventKind::InPerson,
-        logo_url: "https://example.test/logo.png".to_string(),
-        name: "Test Event".to_string(),
-        organizers: vec![sample_template_user()],
-        published: true,
-        sessions,
-        slug: "abc1234".to_string(),
-        timezone: UTC,
-
-        banner_url: Some("https://example.test/banner.png".to_string()),
-        capacity: Some(100),
-        description_short: Some("A test event".to_string()),
-        ends_at: Some(starts_at + chrono::Duration::hours(1)),
-        latitude: Some(37.0),
-        longitude: Some(-122.0),
-        starts_at: Some(starts_at),
-        venue_address: Some("123 Main St".to_string()),
-        venue_city: Some("San Francisco".to_string()),
-        venue_country_code: Some("US".to_string()),
-        venue_country_name: Some("United States".to_string()),
-        venue_name: Some("Main Venue".to_string()),
-        venue_state_code: Some("CA".to_string()),
-        venue_state_name: Some("California".to_string()),
-        waitlist_count: 0,
-        waitlist_enabled: false,
-        ..Default::default()
-    }
-}
-
 /// Sample event invitation used in dashboard user invitation tests.
 pub(crate) fn sample_event_invitation(event_id: Uuid) -> EventInvitation {
     EventInvitation {
@@ -740,85 +647,14 @@ pub(crate) fn sample_event_kind_summary() -> EventKindSummary {
     }
 }
 
-/// Sample event summary used in listings.
-pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSummary {
-    let starts_at = Utc::now() + chrono::Duration::hours(1);
-    EventSummary {
-        attendee_approval_required: false,
-        canceled: false,
-        community_display_name: "Test Community".to_string(),
-        community_name: "test-community".to_string(),
-        event_id,
-        group_category_name: "Meetup".to_string(),
-        group_name: "Test Group".to_string(),
-        group_slug: "def5678".to_string(),
-        has_external_payment: false,
-        has_registration_questions: false,
-        has_related_events: false,
-        kind: EventKind::Virtual,
-        logo_url: "https://example.test/logo.png".to_string(),
-        name: "Sample Event".to_string(),
-        published: true,
-        slug: "ghi9abc".to_string(),
-        test_event: false,
-        timezone: UTC,
-
-        attendee_count: None,
-        capacity: None,
-        created_by_display_name: None,
-        created_by_username: None,
-        delete_eligibility: None,
-        description_short: Some("A brief summary of the sample event".to_string()),
-        ends_at: Some(starts_at + chrono::Duration::hours(2)),
-        event_series_id: None,
-        group_slug_pretty: None,
-        latitude: Some(42.3601),
-        longitude: Some(-71.0589),
-        meeting_join_instructions: None,
-        meeting_join_url: Some("https://example.test/meeting".to_string()),
-        meeting_password: None,
-        meeting_provider: None,
-        payment_currency_code: None,
-        popover_html: None,
-        registration_ends_at: None,
-        registration_starts_at: None,
-        remaining_capacity: None,
-        starts_at: Some(starts_at),
-        ticket_types: None,
-        venue_address: Some("456 Sample Rd".to_string()),
-        venue_city: Some("Boston".to_string()),
-        venue_country_code: Some("US".to_string()),
-        venue_country_name: Some("United States".to_string()),
-        venue_name: Some("Sample Venue".to_string()),
-        venue_state_code: Some("MA".to_string()),
-        venue_state_name: Some("Massachusetts".to_string()),
-        waitlist_count: 0,
-        waitlist_enabled: false,
-        zip_code: Some("02101".to_string()),
-    }
-}
-
 /// Sample filters options for explore page tests.
-pub(crate) fn sample_filters_options() -> crate::templates::site::explore::FiltersOptions {
-    crate::templates::site::explore::FiltersOptions::default()
-}
-
-/// Sample group category reused across tests.
-pub(crate) fn sample_group_category() -> GroupCategory {
-    GroupCategory {
-        groups_count: Some(0),
-        group_category_id: Uuid::new_v4(),
-        name: "Meetup".to_string(),
-        normalized_name: "meetup".to_string(),
-        order: Some(1),
-    }
+pub(crate) fn sample_filters_options() -> crate::types::site::explore::FiltersOptions {
+    crate::types::site::explore::FiltersOptions::default()
 }
 
 /// Sample CFS session proposal used in group dashboard tests.
-pub(crate) fn sample_group_cfs_session_proposal(
-    session_proposal_id: Uuid,
-) -> GroupCfsSessionProposal {
-    GroupCfsSessionProposal {
+pub(crate) fn sample_group_cfs_session_proposal(session_proposal_id: Uuid) -> CfsSessionProposal {
+    CfsSessionProposal {
         session_proposal_id,
         title: "Proposal title".to_string(),
 
@@ -855,26 +691,15 @@ pub(crate) fn sample_group_cfs_submission(
     }
 }
 
-/// Sample CFS submission status used in group dashboard tests.
-pub(crate) fn sample_group_cfs_submission_status(
-    status_id: &str,
-    display_name: &str,
-) -> CfsSubmissionStatus {
-    CfsSubmissionStatus {
-        cfs_submission_status_id: status_id.to_string(),
-        display_name: display_name.to_string(),
-    }
-}
-
 /// Sample group events aggregation for dashboard pages.
 pub(crate) fn sample_group_events(event_id: Uuid, group_id: Uuid) -> GroupEvents {
     let summary = sample_event_summary(event_id, group_id);
     GroupEvents {
-        past: crate::templates::dashboard::group::events::PaginatedEvents {
+        past: crate::types::dashboard::group::events::PaginatedEvents {
             events: vec![summary.clone()],
             total: 1,
         },
-        upcoming: crate::templates::dashboard::group::events::PaginatedEvents {
+        upcoming: crate::types::dashboard::group::events::PaginatedEvents {
             events: vec![summary],
             total: 1,
         },
@@ -882,8 +707,8 @@ pub(crate) fn sample_group_events(event_id: Uuid, group_id: Uuid) -> GroupEvents
 }
 
 /// Sample group form payload for community dashboard tests.
-pub(crate) fn sample_group_form(category_id: Uuid) -> Group {
-    Group {
+pub(crate) fn sample_group_form(category_id: Uuid) -> GroupInput {
+    GroupInput {
         category_id,
         description: "Group description".to_string(),
         name: "Test Group".to_string(),
@@ -951,27 +776,6 @@ pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
     }
 }
 
-/// Sample Stripe payment recipient used in group dashboard tests.
-pub(crate) fn sample_group_payment_recipient() -> GroupPaymentRecipient {
-    GroupPaymentRecipient {
-        provider: PaymentProvider::Stripe,
-        recipient_id: "acct_test".to_string(),
-        seller_display_name: "Test Fiscal Sponsor".to_string(),
-    }
-}
-
-/// Sample group region definition reused across tests.
-pub(crate) fn sample_group_region() -> GroupRegion {
-    GroupRegion {
-        name: "North America".to_string(),
-        normalized_name: "north-america".to_string(),
-        region_id: Uuid::new_v4(),
-
-        groups_count: Some(0),
-        order: Some(1),
-    }
-}
-
 /// Sample group stats used in analytics tests.
 pub(crate) fn sample_group_stats() -> GroupDashboardStats {
     GroupDashboardStats {
@@ -991,17 +795,17 @@ pub(crate) fn sample_group_stats() -> GroupDashboardStats {
             total: 2,
         },
         page_views: GroupPageViewsStats {
-            events: GroupPageViewsEntry {
+            events: PageViewsStats {
                 per_day_views: vec![("2024-01-10".to_string(), 3), ("2024-01-20".to_string(), 4)],
                 per_month_views: vec![("2024-01".to_string(), 7)],
                 total_views: 7,
             },
-            group: GroupPageViewsEntry {
+            group: PageViewsStats {
                 per_day_views: vec![("2024-01-11".to_string(), 1), ("2024-01-21".to_string(), 3)],
                 per_month_views: vec![("2024-01".to_string(), 4)],
                 total_views: 4,
             },
-            total: GroupPageViewsEntry {
+            total: PageViewsStats {
                 per_day_views: vec![
                     ("2024-01-10".to_string(), 3),
                     ("2024-01-11".to_string(), 1),
@@ -1036,38 +840,9 @@ pub(crate) fn sample_group_sponsor() -> GroupSponsor {
     }
 }
 
-/// Sample group summary used by multiple fixtures.
-pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
-    GroupSummary {
-        active: true,
-        category: sample_group_category(),
-        community_display_name: "Test Community".to_string(),
-        community_name: "test-community".to_string(),
-        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-        group_id,
-        logo_url: "https://example.test/logo.png".to_string(),
-        name: "Test Group".to_string(),
-        slug: "npq6789".to_string(),
-
-        banner_mobile_url: Some("https://example.test/banner_mobile.png".to_string()),
-        banner_url: Some("https://example.test/banner.png".to_string()),
-        city: Some("San Francisco".to_string()),
-        country_code: Some("US".to_string()),
-        country_name: Some("United States".to_string()),
-        description_short: Some("An example summary for the sample group".to_string()),
-        latitude: Some(37.0),
-        longitude: Some(-122.0),
-        og_image_url: None,
-        popover_html: None,
-        region: Some(sample_group_region()),
-        slug_pretty: None,
-        state: Some("CA".to_string()),
-    }
-}
-
 /// Sample group update payload for dashboard group settings.
-pub(crate) fn sample_group_update() -> GroupUpdate {
-    GroupUpdate {
+pub(crate) fn sample_group_update() -> GroupInput {
+    GroupInput {
         category_id: Uuid::new_v4(),
         description: "Updated description".to_string(),
         name: "Updated Group".to_string(),
@@ -1127,6 +902,7 @@ pub(crate) fn sample_payments_cfg() -> PaymentsConfig {
         ticket_tax_api_version: "2026-07-29.preview".to_string(),
         webhook_secret: "whsec_test".to_string(),
 
+        http_client: HttpClientConfig::default(),
         platform_fee_bps: 0,
     })
 }
@@ -1272,39 +1048,25 @@ pub(crate) fn sample_site_home_stats() -> crate::types::site::SiteHomeStats {
     crate::types::site::SiteHomeStats::default()
 }
 
-/// Sample site settings used across tests.
-pub(crate) fn sample_site_settings() -> SiteSettings {
-    SiteSettings {
-        description: "Test site".to_string(),
-        site_id: Uuid::new_v4(),
-        theme: Theme {
-            palette: BTreeMap::new(),
-            primary_color: "#000000".to_string(),
-        },
-        title: "Test Site".to_string(),
-        ..Default::default()
-    }
-}
-
 /// Sample site stats for stats page tests.
-pub(crate) fn sample_site_stats() -> crate::templates::site::stats::SiteStats {
-    crate::templates::site::stats::SiteStats {
-        attendees: crate::templates::site::stats::SiteStatsSection {
+pub(crate) fn sample_site_stats() -> crate::types::site::stats::SiteStats {
+    crate::types::site::stats::SiteStats {
+        attendees: crate::types::site::stats::SiteStatsSection {
             per_month: vec![],
             running_total: vec![],
             total: 0,
         },
-        events: crate::templates::site::stats::SiteStatsSection {
+        events: crate::types::site::stats::SiteStatsSection {
             per_month: vec![],
             running_total: vec![],
             total: 0,
         },
-        groups: crate::templates::site::stats::SiteStatsSection {
+        groups: crate::types::site::stats::SiteStatsSection {
             per_month: vec![],
             running_total: vec![],
             total: 0,
         },
-        members: crate::templates::site::stats::SiteStatsSection {
+        members: crate::types::site::stats::SiteStatsSection {
             per_month: vec![],
             running_total: vec![],
             total: 0,
@@ -1313,8 +1075,8 @@ pub(crate) fn sample_site_stats() -> crate::templates::site::stats::SiteStats {
 }
 
 /// Sample sponsor form payload used by dashboard group sponsors tests.
-pub(crate) fn sample_sponsor_form() -> Sponsor {
-    Sponsor {
+pub(crate) fn sample_sponsor_form() -> SponsorInput {
+    SponsorInput {
         featured: true,
         logo_url: "https://example.test/logo.png".to_string(),
         name: "Example".to_string(),
@@ -1338,47 +1100,6 @@ pub(crate) fn sample_team_member(accepted: bool) -> GroupTeamMember {
     }
 }
 
-/// Sample template user used in event fixtures.
-pub(crate) fn sample_template_user() -> TemplateUser {
-    TemplateUser {
-        user_id: Uuid::new_v4(),
-        username: "organizer".to_string(),
-
-        name: Some("Organizer".to_string()),
-        ..Default::default()
-    }
-}
-
-/// Sample template user with a specific user ID.
-pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
-    TemplateUser {
-        user_id,
-        username: "speaker".to_string(),
-
-        name: Some("Speaker".to_string()),
-        ..Default::default()
-    }
-}
-
-/// Sample paid event payload for dashboard group event form tests.
-pub(crate) fn sample_paid_event_body() -> String {
-    let event_form = sample_event_form();
-
-    format!(
-        concat!(
-            "{}",
-            "&payment_currency_code=USD",
-            "&ticket_types_present=true",
-            "&ticket_types[0][active]=true",
-            "&ticket_types[0][order]=1",
-            "&ticket_types[0][price_windows][0][amount_minor]=1500",
-            "&ticket_types[0][seats_total]=25",
-            "&ticket_types[0][title]=General%20admission"
-        ),
-        serde_qs::to_string(&event_form).unwrap(),
-    )
-}
-
 /// Sample server configuration for testing `track_view` handlers.
 pub(crate) fn sample_tracking_server_cfg() -> HttpServerConfig {
     HttpServerConfig {
@@ -1388,10 +1109,8 @@ pub(crate) fn sample_tracking_server_cfg() -> HttpServerConfig {
 }
 
 /// Sample CFS session proposal used in user dashboard tests.
-pub(crate) fn sample_user_cfs_session_proposal(
-    session_proposal_id: Uuid,
-) -> UserCfsSessionProposal {
-    UserCfsSessionProposal {
+pub(crate) fn sample_user_cfs_session_proposal(session_proposal_id: Uuid) -> CfsSessionProposal {
+    CfsSessionProposal {
         session_proposal_id,
         title: "Proposal title".to_string(),
 
@@ -1510,6 +1229,8 @@ pub(crate) fn sample_zoom_meetings_cfg(secret: &str) -> MeetingsConfig {
             max_participants: 100,
             max_simultaneous_meetings_per_host: 1,
             webhook_secret_token: secret.to_string(),
+
+            http_client: HttpClientConfig::default(),
         }),
     }
 }
@@ -1551,11 +1272,14 @@ pub(crate) fn test_state_with_server_cfg(
     let badges_config = server_cfg.badges.as_ref().unwrap_or(&TEST_BADGES_CONFIG);
     router::State {
         activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
-        badges_manager: Arc::new(crate::services::badges::BadgesManager::new(
+        badges_manager: Arc::new(crate::services::badges::SsiBadgesManager::new(
             &server_cfg.base_url,
             badges_config,
         )),
+        blocking_executor: BlockingExecutor::new(server_cfg.max_blocking_concurrency()),
         db,
+        enrollment_manager: Arc::new(MockEnrollmentManager::new()),
+        events_manager: Arc::new(MockEventsManager::new()),
         image_storage,
         meetings_cfg: None,
         notifications_manager,
@@ -1570,6 +1294,8 @@ pub(crate) fn test_state_with_server_cfg(
 pub(crate) struct TestRouterBuilder {
     activity_tracker: Option<crate::activity_tracker::MockActivityTracker>,
     db: Box<MockDB>,
+    enrollment_manager: Option<MockEnrollmentManager>,
+    events_manager: Option<MockEventsManager>,
     image_storage: Option<MockImageStorage>,
     meetings_cfg: Option<crate::config::MeetingsConfig>,
     nm: MockNotificationsManager,
@@ -1584,6 +1310,8 @@ impl TestRouterBuilder {
         Self {
             activity_tracker: None,
             db: Box::new(db),
+            enrollment_manager: None,
+            events_manager: None,
             image_storage: None,
             meetings_cfg: None,
             nm,
@@ -1614,10 +1342,15 @@ impl TestRouterBuilder {
             payments_manager
         });
         let payments_manager = Arc::new(payments_manager) as DynPaymentsManager;
+        let enrollment_manager =
+            Arc::new(self.enrollment_manager.unwrap_or_default()) as DynEnrollmentManager;
+        let events_manager = Arc::new(self.events_manager.unwrap_or_default()) as DynEventsManager;
 
         router::setup(
             activity_tracker,
             db,
+            enrollment_manager,
+            events_manager,
             is,
             self.meetings_cfg,
             self.payments_cfg,
@@ -1635,6 +1368,21 @@ impl TestRouterBuilder {
         activity_tracker: crate::activity_tracker::MockActivityTracker,
     ) -> Self {
         self.activity_tracker = Some(activity_tracker);
+        self
+    }
+
+    /// Sets a custom enrollment manager.
+    pub(crate) fn with_enrollment_manager(
+        mut self,
+        enrollment_manager: MockEnrollmentManager,
+    ) -> Self {
+        self.enrollment_manager = Some(enrollment_manager);
+        self
+    }
+
+    /// Sets a custom events manager.
+    pub(crate) fn with_events_manager(mut self, events_manager: MockEventsManager) -> Self {
+        self.events_manager = Some(events_manager);
         self
     }
 

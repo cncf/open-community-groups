@@ -20,15 +20,16 @@ mod workers;
 
 pub(crate) use manager::{
     ApproveRefundRequestInput, CompleteRefundRecoveryInput, DynPaymentsManager, HandleWebhookError,
-    PgPaymentsManager, RejectRefundRequestInput, RequestRefundInput,
+    PaymentJobRecovery, PaymentsError, PgPaymentsManager, PrepareCheckoutOutcome,
+    RejectRefundRequestInput, RequestRefundInput,
 };
 pub(crate) use provider::{
     ApplicationFeeAdjustmentInput, AutomaticTaxReadiness, AutomaticTaxReadinessError,
-    CheckoutSession, CreateCheckoutSessionInput, CreditNoteInput, DynPaymentsProvider,
-    FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
-    FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput, GetFinancialDocumentInput,
-    ListTaxRatesInput, PaymentsWebhookEvent, PerformanceLocationInput, RefundPaymentInput,
-    RefundPaymentResult, RefundPaymentStatus, ValidateTaxRatesInput, build_payments_provider,
+    CreateCheckoutSessionInput, CreditNoteInput, DynPaymentsProvider, FinancialDocumentKind,
+    FindRefundInput, FiscalSponsorReadinessError, FiscalSponsorReadinessInput,
+    GetCheckoutFinancialContextInput, GetFinancialDocumentInput, ListTaxRatesInput,
+    PaymentsWebhookEvent, PerformanceLocationInput, RefundPaymentInput, RefundPaymentResult,
+    RefundPaymentStatus, ValidateTaxRatesInput, build_payments_provider,
 };
 
 #[cfg(test)]

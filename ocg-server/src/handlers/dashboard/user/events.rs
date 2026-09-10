@@ -6,21 +6,19 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    config::{HttpServerConfig, PaymentsConfig},
     db::{DBExt, DynDB},
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, ValidatedForm},
+        extractors::{CurrentUser, ValidatedForm, ValidatedQuery},
     },
-    router::serde_qs_config,
-    services::notifications::enqueue::enqueue_event_attendance_cancellation_notifications,
+    services::enrollment::{DynEnrollmentManager, LeaveEventInput},
     templates::dashboard::user::events,
     types::{
+        dashboard::user::events::UserEventsFilters,
         event::EventEnrollmentStatus,
         pagination::{self, NavigationLinks},
         questionnaire::RequiredQuestionnaireAnswersForm,
@@ -63,8 +61,7 @@ pub(crate) async fn list_page(
 pub(crate) async fn cancel_attendance(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
-    State(server_cfg): State<HttpServerConfig>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((community_name, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Resolve the community from the dashboard route
@@ -76,33 +73,17 @@ pub(crate) async fn cancel_attendance(
     // Validate the row still represents cancelable attendance
     let enrollment = db.get_event_enrollment(community_id, event_id, user.user_id).await?;
     if enrollment.status != EventEnrollmentStatus::Attendee {
-        return Err(
-            anyhow::anyhow!("only attendee attendance can be canceled from My Events").into(),
-        );
+        return Err(HandlerError::Rejected(
+            "only attendee attendance can be canceled from My Events".to_string(),
+        ));
     }
 
-    // Cancel attendance and enqueue required notifications
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-    let required_notification_server_cfg = server_cfg.clone();
-    db.as_ref()
-        .transaction(|tx| {
-            Box::pin(async move {
-                // Cancel attendance
-                tx.leave_event(community_id, event_id, user.user_id, payment_provider)
-                    .await?;
-
-                // Enqueue required cancellation notifications before committing
-                enqueue_event_attendance_cancellation_notifications(
-                    tx,
-                    &required_notification_server_cfg,
-                    community_id,
-                    event_id,
-                    user.user_id,
-                )
-                .await?;
-
-                Ok(())
-            })
+    // Cancel attendance with its required notifications
+    enrollment_manager
+        .leave_event(&LeaveEventInput {
+            community_id,
+            event_id,
+            user_id: user.user_id,
         })
         .await?;
 
@@ -158,10 +139,9 @@ pub(crate) async fn prepare_list_page(
     db: &DynDB,
     user_id: Uuid,
     raw_query: &str,
-) -> Result<(events::UserEventsFilters, events::ListPage), HandlerError> {
+) -> Result<(UserEventsFilters, events::ListPage), HandlerError> {
     // Fetch upcoming events
-    let filters: events::UserEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: UserEventsFilters = ValidatedQuery::parse(raw_query)?;
     let results = db.list_user_events(user_id, &filters).await?;
 
     // Prepare template
@@ -171,7 +151,6 @@ pub(crate) async fn prepare_list_page(
         events: results.events,
         navigation_links,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

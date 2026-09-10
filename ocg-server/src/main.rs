@@ -26,18 +26,18 @@ use crate::{
     db::{DynDB, PgDB, payments::DBPayments, pool as db_pool},
     services::{
         badges::start_badge_award_workers,
-        enrollment::start_enrollment_workers,
+        enrollment::{DynEnrollmentManager, PgEnrollmentManager, start_enrollment_workers},
+        events::{DynEventsManager, PgEventsManager},
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
-        meetings::{
-            DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider,
-        },
+        meetings::{DynMeetingsProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
         payments::{
             DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider,
             start_payment_workers,
         },
-        workers::BackgroundTasks,
+        workers::{BackgroundTasks, queue_health},
     },
+    types::meetings::MeetingProvider,
 };
 
 /// Activity tracking.
@@ -50,6 +50,9 @@ mod config;
 mod db;
 /// HTTP request handlers.
 mod handlers;
+/// Layer dependency rules enforced at test time.
+#[cfg(test)]
+mod layers;
 /// HTTP router configuration and setup.
 mod router;
 /// Background services and workers.
@@ -83,7 +86,7 @@ async fn main() -> Result<()> {
     );
 
     // Setup shared worker coordination and core infrastructure
-    let background_tasks = BackgroundTasks::new();
+    let background_tasks = BackgroundTasks::new(cfg.server.shutdown_grace_period());
     let db = setup_db(&cfg)?;
     let image_storage = setup_image_storage(&cfg, db.clone());
 
@@ -94,11 +97,12 @@ async fn main() -> Result<()> {
 
     // Configure background services that depend on the database
     let workers_db = db.clone() as DynDB;
-    start_badge_award_workers(&workers_db, &background_tasks);
-    start_meetings_workers(cfg.meetings.as_ref(), db.clone(), &background_tasks);
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
+    queue_health::start(&workers_db, background_tasks.registry(), &background_tasks);
+    start_badge_award_workers(&workers_db, &background_tasks);
+    start_meetings_workers(cfg.meetings.as_ref(), db.clone(), &background_tasks)?;
     let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;
-    let payments_provider = build_payments_provider(cfg.payments.as_ref());
+    let payments_provider = build_payments_provider(cfg.payments.as_ref())?;
     start_enrollment_workers(
         &workers_db,
         cfg.payments.as_ref().map(PaymentsConfig::provider),
@@ -115,6 +119,22 @@ async fn main() -> Result<()> {
         db.clone(),
         notifications_manager.clone(),
         payments_provider,
+        cfg.payments
+            .as_ref()
+            .map(PaymentsConfig::platform_fee_bps)
+            .map_or(0, i32::from),
+        &cfg.server,
+    );
+    let enrollment_manager = setup_enrollment_manager(
+        db.clone(),
+        notifications_manager.clone(),
+        payments_manager.clone(),
+        &cfg.server,
+    );
+    let events_manager = setup_events_manager(
+        db.clone(),
+        cfg.meetings.as_ref(),
+        payments_manager.clone(),
         &cfg.server,
     );
 
@@ -122,6 +142,8 @@ async fn main() -> Result<()> {
     run_server(
         activity_tracker,
         db,
+        enrollment_manager,
+        events_manager,
         image_storage,
         cfg.meetings.clone(),
         cfg.payments.clone(),
@@ -142,6 +164,8 @@ async fn main() -> Result<()> {
 async fn run_server(
     activity_tracker: Arc<ActivityTrackerDB>,
     db: Arc<PgDB>,
+    enrollment_manager: DynEnrollmentManager,
+    events_manager: DynEventsManager,
     image_storage: DynImageStorage,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
@@ -153,6 +177,8 @@ async fn run_server(
     let router = router::setup(
         activity_tracker,
         db,
+        enrollment_manager,
+        events_manager,
         image_storage,
         meetings_cfg,
         payments_cfg,
@@ -207,6 +233,36 @@ fn setup_db(cfg: &Config) -> Result<Arc<PgDB>> {
     Ok(db)
 }
 
+/// Configure the enrollment manager.
+fn setup_enrollment_manager(
+    db: Arc<PgDB>,
+    notifications_manager: Arc<PgNotificationsManager>,
+    payments_manager: DynPaymentsManager,
+    server_cfg: &HttpServerConfig,
+) -> DynEnrollmentManager {
+    Arc::new(PgEnrollmentManager::new(
+        db,
+        notifications_manager,
+        payments_manager,
+        server_cfg.clone(),
+    ))
+}
+
+/// Configure the events manager.
+fn setup_events_manager(
+    db: Arc<PgDB>,
+    meetings_cfg: Option<&MeetingsConfig>,
+    payments_manager: DynPaymentsManager,
+    server_cfg: &HttpServerConfig,
+) -> DynEventsManager {
+    Arc::new(PgEventsManager::new(
+        db,
+        meetings_cfg,
+        payments_manager,
+        server_cfg.clone(),
+    ))
+}
+
 /// Configure the image storage implementation.
 fn setup_image_storage(cfg: &Config, db: Arc<PgDB>) -> DynImageStorage {
     match &cfg.images {
@@ -238,12 +294,14 @@ fn setup_payments_manager(
     db: Arc<PgDB>,
     notifications_manager: Arc<PgNotificationsManager>,
     payments_provider: Option<DynPaymentsProvider>,
+    platform_fee_bps: i32,
     server_cfg: &HttpServerConfig,
 ) -> DynPaymentsManager {
     Arc::new(PgPaymentsManager::new(
         db,
         notifications_manager,
         payments_provider,
+        platform_fee_bps,
         server_cfg.clone(),
     ))
 }
@@ -253,7 +311,7 @@ fn start_meetings_workers(
     meetings_cfg: Option<&MeetingsConfig>,
     db: Arc<PgDB>,
     background_tasks: &BackgroundTasks,
-) {
+) -> Result<()> {
     // Collect the meetings providers enabled in the configuration
     let mut meetings_providers = HashMap::new();
 
@@ -263,7 +321,7 @@ fn start_meetings_workers(
     {
         meetings_providers.insert(
             MeetingProvider::Zoom,
-            Arc::new(ZoomMeetingsProvider::new(zoom_cfg)) as DynMeetingsProvider,
+            Arc::new(ZoomMeetingsProvider::new(zoom_cfg)?) as DynMeetingsProvider,
         );
     }
 
@@ -276,4 +334,6 @@ fn start_meetings_workers(
             background_tasks,
         );
     }
+
+    Ok(())
 }

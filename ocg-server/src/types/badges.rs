@@ -314,3 +314,25 @@ pub(crate) struct UserBadgeIdentity {
     /// Salt appended to the bound lowercased email before hashing.
     pub identity_salt: String,
 }
+
+/// Successful verification of a badge credential against its durable award.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct VerifiedBadge {
+    /// Immutable badge description.
+    pub description: String,
+    /// Public badge image URL.
+    pub image_url: String,
+    /// Stable issuer URL.
+    pub issuer: String,
+    /// Immutable badge name.
+    pub name: String,
+    /// Whether the credential is permanently revoked.
+    pub revoked: bool,
+    /// Whether a newer export supersedes the verified representation.
+    pub superseded: bool,
+    /// Credential award timestamp.
+    pub valid_from: DateTime<Utc>,
+
+    /// Current local recipient display name, when the account remains associated.
+    pub recipient_name: Option<String>,
+}

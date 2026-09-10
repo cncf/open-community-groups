@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -13,10 +12,11 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::{dashboard::group::members::GroupCustomNotification, tests::*},
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
-    templates::notifications::GroupCustom,
-    types::permissions::GroupPermission,
+    services::notifications::MockNotificationsManager,
+    types::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT, notifications::NotificationKind,
+        permissions::GroupPermission,
+    },
 };
 
 #[tokio::test]
@@ -26,49 +26,30 @@ async fn test_list_page_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let member = sample_group_member();
     let group = sample_group_summary(group_id);
-    let output = crate::templates::dashboard::group::members::GroupMembersOutput {
+    let output = crate::types::dashboard::group::members::GroupMembersOutput {
         members: vec![member.clone()],
         total: 1,
     };
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::MembersWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::MembersWrite,
+    );
     db.expect_list_group_members()
         .times(1)
         .withf(move |id, filters| {
@@ -115,49 +96,30 @@ async fn test_list_page_with_pagination_params() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let member = sample_group_member();
     let group = sample_group_summary(group_id);
-    let output = crate::templates::dashboard::group::members::GroupMembersOutput {
+    let output = crate::types::dashboard::group::members::GroupMembersOutput {
         members: vec![member.clone()],
         total: 1,
     };
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::MembersWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::MembersWrite,
+    );
     db.expect_list_group_members()
         .times(1)
         .withf(move |id, filters| {
@@ -193,83 +155,6 @@ async fn test_list_page_with_pagination_params() {
     assert!(!bytes.is_empty());
 }
 
-#[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-    let group = sample_group_summary(group_id);
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::MembersWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_list_group_members()
-        .times(1)
-        .withf(move |id, filters| {
-            *id == group_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
-        })
-        .returning(move |_, _| Err(anyhow!("db error")));
-    db.expect_get_group_summary()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group.clone()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/members")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
 #[allow(clippy::too_many_lines)]
 #[tokio::test]
 async fn test_send_group_custom_notification_success() {
@@ -281,25 +166,8 @@ async fn test_send_group_custom_notification_success() {
     let team_member_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
-    let mut group_summary = sample_group_summary(group_id);
-    group_summary.slug_pretty = Some("pretty-group".to_string());
-    let expected_link = format!(
-        "/{}/group/{}",
-        group_summary.community_name,
-        group_summary.public_slug()
-    );
-    let group_for_notifications = group_summary.clone();
-    let group_for_db = group_summary.clone();
+    let group_summary = sample_group_summary(group_id);
     let notification_body = "Hello, group members!";
     let notification_subject = "Important Update";
     let mut expected_recipients = vec![member_id1, member_id2, team_member_id];
@@ -318,23 +186,14 @@ async fn test_send_group_custom_notification_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::MembersWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::MembersWrite,
+    );
     db.expect_list_group_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
@@ -349,22 +208,12 @@ async fn test_send_group_custom_notification_success() {
     db.expect_get_group_summary()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group_for_db.clone()));
+        .returning(move |_, _| Ok(group_summary.clone()));
     db.expect_enqueue_tracked_custom_notification()
         .times(1)
         .withf(move |notification, tracking| {
             matches!(notification.kind, NotificationKind::GroupCustom)
                 && notification.recipients == expected_recipients
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<GroupCustom>(value.clone()).is_ok_and(|template| {
-                        template.subject == notification_subject
-                            && template.body == notification_body
-                            && template.group.name == group_for_notifications.name
-                            && template.link == expected_link
-                            && template.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
-                })
                 && tracking.created_by == track_user_id
                 && tracking.event_id.is_none()
                 && tracking.group_id == Some(track_group_id)
@@ -399,18 +248,9 @@ async fn test_send_group_custom_notification_success() {
 async fn test_send_group_custom_notification_no_members() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
-    let group_for_db = sample_group_summary(group_id);
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let form_data = serde_qs::to_string(&GroupCustomNotification {
         body: "Body".to_string(),
         subject: "Subject".to_string(),
@@ -419,27 +259,15 @@ async fn test_send_group_custom_notification_no_members() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::MembersWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_group_summary()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group_for_db.clone()));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::MembersWrite,
+    );
+    db.expect_get_group_summary().never();
     db.expect_list_group_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
@@ -448,9 +276,8 @@ async fn test_send_group_custom_notification_no_members() {
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    db.expect_get_site_settings().never();
+    db.expect_enqueue_tracked_custom_notification().never();
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

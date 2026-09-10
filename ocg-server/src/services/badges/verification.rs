@@ -4,7 +4,25 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
 
-use super::{BadgesManagerError, Result};
+use crate::{
+    db::DBOperations,
+    types::badges::{UserBadge, VerifiedBadge},
+};
+
+use super::{BadgesManagerError, DynBadgesManager, Result, badge_image_url, png};
+
+// Types.
+
+/// Expected invalid input or an operational verification failure.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum VerificationError {
+    /// Server or database state prevented verification from completing.
+    #[error(transparent)]
+    Internal(anyhow::Error),
+    /// User-supplied input is malformed, unknown, or cryptographically invalid.
+    #[error("invalid badge credential")]
+    Invalid,
+}
 
 /// Verified portable credential fields bound to local identifiers by handlers.
 pub(crate) struct VerifiedCredential {
@@ -36,6 +54,129 @@ pub(crate) struct VerifiedEmailIdentity {
     /// Salt appended to the bound lowercased email before hashing.
     pub salt: String,
 }
+
+// Submission verification.
+
+/// Resolves and verifies one supported verification submission.
+///
+/// An uploaded Open Badges PNG is verified cryptographically and bound to its
+/// persisted award; a local identifier or credential URL is resolved directly
+/// from durable award state. Nothing is dereferenced from arbitrary URLs.
+pub(crate) async fn verify_submission(
+    badges_manager: &DynBadgesManager,
+    db: &dyn DBOperations,
+    credential_reference: Option<&str>,
+    png_bytes: Option<&[u8]>,
+) -> std::result::Result<VerifiedBadge, VerificationError> {
+    // Prefer the uploaded portable credential over a local reference
+    if let Some(png_bytes) = png_bytes {
+        return verify_portable_credential(badges_manager, db, png_bytes).await;
+    }
+
+    resolve_credential_reference(badges_manager, db, credential_reference).await
+}
+
+/// Loads the durable award behind a verified or referenced local identifier.
+async fn load_award(
+    db: &dyn DBOperations,
+    user_badge_id: Uuid,
+) -> std::result::Result<UserBadge, VerificationError> {
+    db.get_public_user_badge(user_badge_id)
+        .await
+        .map_err(VerificationError::Internal)?
+        .ok_or(VerificationError::Invalid)
+}
+
+/// Classifies proof and profile failures without hiding server configuration faults.
+fn map_verification_validation_error(error: BadgesManagerError) -> VerificationError {
+    match error {
+        error @ (BadgesManagerError::InvalidContext | BadgesManagerError::InvalidKey) => {
+            VerificationError::Internal(error.into())
+        }
+        _ => VerificationError::Invalid,
+    }
+}
+
+/// Prefers a public name while retaining the public username fallback.
+fn recipient_display_name(name: Option<String>, username: Option<String>) -> Option<String> {
+    name.or(username)
+}
+
+/// Resolves a local identifier or credential URL directly from durable award state.
+async fn resolve_credential_reference(
+    badges_manager: &DynBadgesManager,
+    db: &dyn DBOperations,
+    credential_reference: Option<&str>,
+) -> std::result::Result<VerifiedBadge, VerificationError> {
+    // Accept a bare award identifier or an allowlisted local credential URL
+    let reference = credential_reference
+        .map(str::trim)
+        .filter(|reference| !reference.is_empty())
+        .ok_or(VerificationError::Invalid)?;
+    let user_badge_id = Uuid::parse_str(reference)
+        .or_else(|_| badges_manager.parse_credential_url(reference))
+        .map_err(|_| VerificationError::Invalid)?;
+
+    // Describe the award from its persisted snapshot and status
+    let award = load_award(db, user_badge_id).await?;
+    Ok(VerifiedBadge {
+        description: award.snapshot.description,
+        image_url: badge_image_url(&award.snapshot.image_file_name),
+        issuer: badges_manager.issuer_url(award.group_id),
+        name: award.snapshot.name,
+        revoked: award.revoked_at.is_some(),
+        superseded: false,
+        valid_from: award.awarded_at,
+
+        recipient_name: recipient_display_name(award.recipient_name, award.recipient_username),
+    })
+}
+
+/// Verifies an uploaded Open Badges PNG and binds it to its persisted award.
+async fn verify_portable_credential(
+    badges_manager: &DynBadgesManager,
+    db: &dyn DBOperations,
+    png_bytes: &[u8],
+) -> std::result::Result<VerifiedBadge, VerificationError> {
+    // Extract and cryptographically verify the baked credential
+    let credential = png::extract(png_bytes).map_err(|_| VerificationError::Invalid)?;
+    let credential =
+        serde_json::from_slice::<Value>(&credential).map_err(|_| VerificationError::Invalid)?;
+    let verified = badges_manager
+        .verify_credential(&credential)
+        .await
+        .map_err(map_verification_validation_error)?;
+
+    // Bind the verified claims to the durable award they reference
+    let award = load_award(db, verified.user_badge_id).await?;
+    if award.badge_status_list_id != verified.status_list_id
+        || award.group_id != verified.group_id
+        || award.status_list_index != verified.status_list_index
+    {
+        return Err(VerificationError::Invalid);
+    }
+
+    // Flag exports whose identity no longer matches the durable binding
+    let superseded = verified.email_identity.as_ref().is_some_and(|identity| {
+        award.identity_hash.as_deref() != Some(identity.identity_hash.as_str())
+            || award.identity_salt.as_deref() != Some(identity.salt.as_str())
+    });
+
+    // Describe the award from the verified credential and its persisted status
+    Ok(VerifiedBadge {
+        description: verified.description,
+        image_url: badge_image_url(&award.snapshot.image_file_name),
+        issuer: verified.issuer,
+        name: verified.name,
+        revoked: award.revoked_at.is_some(),
+        superseded,
+        valid_from: verified.valid_from,
+
+        recipient_name: recipient_display_name(award.recipient_name, award.recipient_username),
+    })
+}
+
+// Credential profile helpers.
 
 /// Returns whether an uploaded credential carries unsupported identifier claims.
 ///
@@ -118,18 +259,7 @@ fn is_valid_identity_hash(hash: &str) -> bool {
 mod tests {
     use serde_json::{Value, json};
 
-    use super::{contains_unsupported_identifier, single_proof};
-
-    /// Well-formed OCG-exported hashed email identity entry.
-    fn email_identity_entry() -> Value {
-        json!({
-            "type": "IdentityObject",
-            "hashed": true,
-            "identityHash": format!("sha256${}", "a".repeat(64)),
-            "identityType": "emailAddress",
-            "salt": "0123456789abcdef0123456789abcdef"
-        })
-    }
+    use super::{contains_unsupported_identifier, recipient_display_name, single_proof};
 
     #[test]
     fn test_contains_unsupported_identifier_accepts_credential_without_identifier_claims() {
@@ -204,6 +334,17 @@ mod tests {
     }
 
     #[test]
+    fn test_recipient_display_name_falls_back_to_username() {
+        // Resolve the public recipient label with and without a profile name
+        let named = recipient_display_name(Some("Ada".to_string()), Some("ada".to_string()));
+        let username_only = recipient_display_name(None, Some("ada".to_string()));
+
+        // Check verification always has the available public identity label
+        assert_eq!(named.as_deref(), Some("Ada"));
+        assert_eq!(username_only.as_deref(), Some("ada"));
+    }
+
+    #[test]
     fn test_single_proof_accepts_one_object_in_array() {
         let credential = json!({"proof": [{"type": "DataIntegrityProof"}]});
 
@@ -223,5 +364,18 @@ mod tests {
         ] {
             assert!(single_proof(&credential).is_err());
         }
+    }
+
+    // Helpers.
+
+    /// Well-formed OCG-exported hashed email identity entry.
+    fn email_identity_entry() -> Value {
+        json!({
+            "type": "IdentityObject",
+            "hashed": true,
+            "identityHash": format!("sha256${}", "a".repeat(64)),
+            "identityType": "emailAddress",
+            "salt": "0123456789abcdef0123456789abcdef"
+        })
     }
 }

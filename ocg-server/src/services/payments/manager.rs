@@ -12,12 +12,19 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::{DynDB, payments::CompleteEventPurchaseRefundRecoveryInput},
+    db::{
+        DynDB,
+        payments::{
+            AttachCheckoutSessionInput, CompleteEventPurchaseRefundRecoveryInput,
+            CompletePaymentJobRecoveryInput, PrepareEventCheckoutPurchaseInput,
+            PrepareEventCheckoutPurchaseResult,
+        },
+    },
     services::notifications::DynNotificationsManager,
     types::payments::{
-        GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxBehavior,
-        TicketTaxCalculationMode, TicketTaxJurisdiction, TicketTaxRate, TicketVenue,
-        TicketVenueField,
+        CheckoutInput, GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout,
+        TicketTaxBehavior, TicketTaxCalculationMode, TicketTaxJurisdiction, TicketTaxRate,
+        TicketVenue, TicketVenueField,
     },
 };
 
@@ -57,6 +64,9 @@ pub(crate) trait PaymentsManager {
         event_purchase_id: Uuid,
         user_id: Uuid,
     ) -> Result<()>;
+
+    /// Completes exhausted payment job work resolved outside OCG.
+    async fn complete_payment_job_recovery(&self, input: &PaymentJobRecovery) -> Result<()>;
 
     /// Completes an externally resolved terminal provider refund.
     async fn complete_refund_recovery(&self, input: &CompleteRefundRecoveryInput) -> Result<()>;
@@ -107,6 +117,15 @@ pub(crate) trait PaymentsManager {
         body: &str,
     ) -> std::result::Result<(), HandleWebhookError>;
 
+    /// Creates or reuses the attendee's checkout hold for the selected ticket.
+    async fn prepare_checkout(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+        input: &CheckoutInput,
+    ) -> std::result::Result<PrepareCheckoutOutcome, PaymentsError>;
+
     /// Rejects a pending refund request and notifies the attendee.
     async fn reject_refund_request(&self, input: &RejectRefundRequestInput) -> Result<()>;
 
@@ -142,6 +161,8 @@ pub(crate) struct PgPaymentsManager {
     notification_composer: PaymentsNotificationComposer,
     /// Provider adapter used for payment operations.
     payments_provider: Option<DynPaymentsProvider>,
+    /// Platform fee in basis points snapshotted on new purchases.
+    platform_fee_bps: i32,
     /// Server configuration used to build links and attachments.
     server_cfg: HttpServerConfig,
 }
@@ -152,6 +173,7 @@ impl PgPaymentsManager {
         db: DynDB,
         notifications_manager: DynNotificationsManager,
         payments_provider: Option<DynPaymentsProvider>,
+        platform_fee_bps: i32,
         server_cfg: HttpServerConfig,
     ) -> Self {
         // Build the shared notification helper once for reuse across payments flows
@@ -165,6 +187,7 @@ impl PgPaymentsManager {
             db,
             notification_composer,
             payments_provider,
+            platform_fee_bps,
             server_cfg,
         }
     }
@@ -312,6 +335,20 @@ impl PaymentsManager for PgPaymentsManager {
             .await;
 
         Ok(())
+    }
+
+    /// [`PaymentsManager::complete_payment_job_recovery`].
+    async fn complete_payment_job_recovery(&self, input: &PaymentJobRecovery) -> Result<()> {
+        self.db
+            .complete_payment_job_recovery(&CompletePaymentJobRecoveryInput {
+                actor_user_id: input.actor_user_id,
+                group_id: input.group_id,
+                payment_job_id: input.payment_job_id,
+                provider_object_id: input.provider_object_id.clone(),
+                recovery_note: input.recovery_note.clone(),
+                recovery_reference: input.recovery_reference.clone(),
+            })
+            .await
     }
 
     /// [`PaymentsManager::complete_refund_recovery`].
@@ -552,11 +589,17 @@ impl PaymentsManager for PgPaymentsManager {
 
         // Persist the canonical checkout session used for webhook reconciliation
         self.db
-            .attach_checkout_session_to_event_purchase(
-                prepared_checkout.purchase.event_purchase_id,
-                payments_provider.provider(),
-                &checkout_session,
-            )
+            .attach_checkout_session_to_event_purchase(&AttachCheckoutSessionInput {
+                event_purchase_id: prepared_checkout.purchase.event_purchase_id,
+                payment_provider: payments_provider.provider(),
+                provider_object_account_id: checkout_session.provider_object_account_id,
+                provider_session_id: checkout_session.provider_session_id,
+                redirect_url: checkout_session.redirect_url,
+                performance_location_fingerprint: checkout_session.performance_location_fingerprint,
+                product_fingerprint: checkout_session.product_fingerprint,
+                provider_tax_location_id: checkout_session.provider_tax_location_id,
+                provider_tax_product_id: checkout_session.provider_tax_product_id,
+            })
             .await?;
 
         // Reload the purchase so concurrent requests return the canonical
@@ -653,6 +696,48 @@ impl PaymentsManager for PgPaymentsManager {
                 tax_behavior,
             })
             .await
+    }
+
+    /// [`PaymentsManager::prepare_checkout`].
+    async fn prepare_checkout(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+        input: &CheckoutInput,
+    ) -> std::result::Result<PrepareCheckoutOutcome, PaymentsError> {
+        // Require an explicit ticket selection before opening checkout
+        let event_ticket_type_id = input
+            .event_ticket_type_id
+            .ok_or_else(|| PaymentsError::Rejected("ticket type is required".to_string()))?;
+
+        // Prepare the attendee's current checkout purchase state
+        let result = self
+            .db
+            .prepare_event_checkout_purchase(
+                community_id,
+                &PrepareEventCheckoutPurchaseInput {
+                    event_id,
+                    event_ticket_type_id,
+                    platform_fee_bps: self.platform_fee_bps,
+                    user_id,
+
+                    admission_offer_id: input.admission_offer_id,
+                    discount_code: input.discount_code.clone(),
+                    payment_provider: self.configured_provider(),
+                    registration_answers: input.registration_answers.registration_answers.clone(),
+                },
+            )
+            .await?;
+
+        Ok(match result {
+            PrepareEventCheckoutPurchaseResult::Conflict(conflict) => {
+                PrepareCheckoutOutcome::Conflict(conflict.to_string())
+            }
+            PrepareEventCheckoutPurchaseResult::Prepared(checkout) => {
+                PrepareCheckoutOutcome::Prepared(checkout)
+            }
+        })
     }
 
     /// [`PaymentsManager::reject_refund_request`].
@@ -790,6 +875,43 @@ pub(crate) enum HandleWebhookError {
     PaymentsNotConfigured,
     /// An unexpected error occurred while handling the webhook.
     Unexpected(anyhow::Error),
+}
+
+/// Parameters used to complete exhausted payment job work resolved outside OCG.
+#[derive(Clone, Debug)]
+pub(crate) struct PaymentJobRecovery {
+    /// Operator completing the recovery.
+    pub actor_user_id: Uuid,
+    /// Group that owns the purchase.
+    pub group_id: Uuid,
+    /// Durable payment job identifier.
+    pub payment_job_id: Uuid,
+    /// Provider object created outside OCG.
+    pub provider_object_id: String,
+    /// Operator note describing the recovery evidence.
+    pub recovery_note: String,
+    /// External reference proving the recovery.
+    pub recovery_reference: String,
+}
+
+/// Errors returned by payments workflows that can reject user input.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum PaymentsError {
+    /// Internal failure, including database and provider errors.
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+    /// User-facing business rejection decided by the manager.
+    #[error("{0}")]
+    Rejected(String),
+}
+
+/// Outcome of preparing an attendee checkout hold.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum PrepareCheckoutOutcome {
+    /// The selected ticket cannot be reserved; carries the stable conflict code.
+    Conflict(String),
+    /// The checkout purchase was created or reused.
+    Prepared(Box<PreparedEventCheckout>),
 }
 
 /// Parameters used to request an attendee refund.

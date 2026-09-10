@@ -1,7 +1,5 @@
 //! User dashboard badge listing, ordering, revocation, and export handlers.
 
-use std::sync::Arc;
-
 use anyhow::Result;
 use askama::Template;
 use axum::{
@@ -22,7 +20,7 @@ use crate::{
     handlers::{badges::USER_PROFILE_BADGES_LIMIT, error::HandlerError, extractors::CurrentUser},
     router::CACHE_CONTROL_NO_STORE,
     services::{
-        badges::{BadgesManager, BadgesManagerError, png},
+        badges::{BadgesManagerError, DynBadgesManager, png},
         images::DynImageStorage,
     },
     templates::dashboard::user::badges::ListPage,
@@ -37,7 +35,7 @@ mod tests;
 #[instrument(skip_all, err)]
 pub(crate) async fn export(
     CurrentUser(user): CurrentUser,
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
     State(image_storage): State<DynImageStorage>,
     Path(user_badge_id): Path<Uuid>,

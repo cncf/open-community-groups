@@ -12,7 +12,7 @@ use serde_with::skip_serializing_none;
 use tokio::{sync::Mutex, time::sleep};
 use tracing::{instrument, trace};
 
-use crate::{config::MeetingsZoomConfig, services::meetings::Meeting};
+use crate::{config::MeetingsZoomConfig, types::meetings::Meeting, util::build_http_client};
 
 use super::MeetingProviderError;
 
@@ -25,8 +25,8 @@ const BASE_URL: &str = "https://api.zoom.us/v2";
 /// Default retry delay when Zoom doesn't provide Retry-After header.
 const DEFAULT_RATE_LIMIT_RETRY: Duration = Duration::from_mins(1);
 
-/// Timeout for HTTP requests to Zoom API.
-const HTTP_TIMEOUT: Duration = Duration::from_secs(20);
+/// Number of meetings requested per page when listing a host's meetings.
+const LIST_MEETINGS_PAGE_SIZE: u16 = 300;
 
 /// Maximum meeting duration in minutes.
 const MAX_DURATION_MINUTES: i64 = 720;
@@ -45,10 +45,16 @@ const ZOOM_TOKEN_URL: &str = "https://zoom.us/oauth/token";
 
 /// Zoom client for meeting CRUD operations.
 pub(crate) struct ZoomClient {
+    /// Zoom API base URL.
+    pub(super) api_base_url: String,
     /// Zoom provider configuration.
     cfg: MeetingsZoomConfig,
     /// HTTP client used for Zoom API calls.
     http_client: HttpClient,
+    /// Minimum delay between Zoom HTTP requests.
+    pub(super) request_interval: Duration,
+    /// Zoom OAuth token endpoint.
+    pub(super) token_url: String,
 
     /// Earliest time when the next API request may start.
     next_request_at: Mutex<Option<Instant>>,
@@ -57,19 +63,19 @@ pub(crate) struct ZoomClient {
 }
 
 impl ZoomClient {
-    /// Create a new Zoom client.
-    pub(crate) fn new(cfg: MeetingsZoomConfig) -> Self {
-        let http_client = HttpClient::builder()
-            .timeout(HTTP_TIMEOUT)
-            .build()
-            .expect("failed to build http client");
+    /// Create a new Zoom client with the configured request deadlines.
+    pub(crate) fn new(cfg: MeetingsZoomConfig) -> Result<Self> {
+        let http_client = build_http_client(&cfg.http_client)?;
 
-        Self {
+        Ok(Self {
+            api_base_url: BASE_URL.to_string(),
             cfg,
             http_client,
+            request_interval: ZOOM_REQUEST_INTERVAL,
+            token_url: ZOOM_TOKEN_URL.to_string(),
             next_request_at: Mutex::new(None),
             token: Mutex::new(None),
-        }
+        })
     }
 
     /// Create a new meeting.
@@ -81,12 +87,18 @@ impl ZoomClient {
     ) -> Result<ZoomMeeting, ZoomClientError> {
         trace!("zoom client: create meeting");
 
+        // Get access token and build the request URL
         let token = self
             .get_token()
             .await
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
         let encoded_host_user_id = utf8_percent_encode(host_user_id, NON_ALPHANUMERIC).to_string();
-        let url = format!("{BASE_URL}/users/{encoded_host_user_id}/meetings");
+        let url = format!(
+            "{}/users/{encoded_host_user_id}/meetings",
+            self.api_base_url
+        );
+
+        // Send the request once a request slot is available
         self.wait_for_request_slot().await;
         let response = self
             .http_client
@@ -100,6 +112,7 @@ impl ZoomClient {
             return Err(ZoomClientError::from_response(response).await);
         }
 
+        // Parse the created meeting
         response
             .json()
             .await
@@ -111,11 +124,14 @@ impl ZoomClient {
     pub(crate) async fn delete_meeting(&self, meeting_id: i64) -> Result<(), ZoomClientError> {
         trace!("zoom client: delete meeting");
 
+        // Get access token and build the request URL
         let token = self
             .get_token()
             .await
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
-        let url = format!("{BASE_URL}/meetings/{meeting_id}");
+        let url = format!("{}/meetings/{meeting_id}", self.api_base_url);
+
+        // Send the request once a request slot is available
         self.wait_for_request_slot().await;
         let response = self
             .http_client
@@ -136,12 +152,15 @@ impl ZoomClient {
     pub(crate) async fn end_meeting(&self, meeting_id: i64) -> Result<(), ZoomClientError> {
         trace!("zoom client: end meeting");
 
+        // Get access token and build the status transition request
         let token = self
             .get_token()
             .await
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
-        let url = format!("{BASE_URL}/meetings/{meeting_id}/status");
+        let url = format!("{}/meetings/{meeting_id}/status", self.api_base_url);
         let req = UpdateMeetingStatusRequest { action: "end" };
+
+        // Send the request once a request slot is available
         self.wait_for_request_slot().await;
         let response = self
             .http_client
@@ -166,11 +185,14 @@ impl ZoomClient {
     ) -> Result<ZoomMeeting, ZoomClientError> {
         trace!("zoom client: get meeting");
 
+        // Get access token and build the request URL
         let token = self
             .get_token()
             .await
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
-        let url = format!("{BASE_URL}/meetings/{meeting_id}");
+        let url = format!("{}/meetings/{meeting_id}", self.api_base_url);
+
+        // Send the request once a request slot is available
         self.wait_for_request_slot().await;
         let response = self
             .http_client
@@ -183,6 +205,58 @@ impl ZoomClient {
             return Err(ZoomClientError::from_response(response).await);
         }
 
+        // Parse the meeting
+        response
+            .json()
+            .await
+            .map_err(|e| ZoomClientError::Network(e.to_string()))
+    }
+
+    /// List one page of a host user's scheduled meetings.
+    #[instrument(skip(self, host_user_id, next_page_token), err)]
+    pub(crate) async fn list_meetings(
+        &self,
+        host_user_id: &str,
+        next_page_token: Option<&str>,
+    ) -> Result<ListMeetingsResponse, ZoomClientError> {
+        trace!("zoom client: list meetings");
+
+        // Get access token
+        let token = self
+            .get_token()
+            .await
+            .map_err(|e| ZoomClientError::Token(e.to_string()))?;
+
+        // Build the request URL with pagination query parameters
+        let encoded_host_user_id = utf8_percent_encode(host_user_id, NON_ALPHANUMERIC).to_string();
+        let mut query = vec![
+            ("page_size", LIST_MEETINGS_PAGE_SIZE.to_string()),
+            ("type", "scheduled".to_string()),
+        ];
+        if let Some(next_page_token) = next_page_token {
+            query.push(("next_page_token", next_page_token.to_string()));
+        }
+        let query = serde_urlencoded::to_string(&query)
+            .expect("string pairs always serialize as a query string");
+        let url = format!(
+            "{}/users/{encoded_host_user_id}/meetings?{query}",
+            self.api_base_url
+        );
+
+        // Send the request once a request slot is available
+        self.wait_for_request_slot().await;
+        let response = self
+            .http_client
+            .get(&url)
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(|e| ZoomClientError::Network(e.to_string()))?;
+        if !response.status().is_success() {
+            return Err(ZoomClientError::from_response(response).await);
+        }
+
+        // Parse the meetings page
         response
             .json()
             .await
@@ -198,11 +272,14 @@ impl ZoomClient {
     ) -> Result<(), ZoomClientError> {
         trace!("zoom client: update meeting");
 
+        // Get access token and build the request URL
         let token = self
             .get_token()
             .await
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
-        let url = format!("{BASE_URL}/meetings/{meeting_id}");
+        let url = format!("{}/meetings/{meeting_id}", self.api_base_url);
+
+        // Send the request once a request slot is available
         self.wait_for_request_slot().await;
         let response = self
             .http_client
@@ -232,7 +309,7 @@ impl ZoomClient {
         self.wait_for_request_slot().await;
         let response = self
             .http_client
-            .post(ZOOM_TOKEN_URL)
+            .post(&self.token_url)
             .header("Authorization", format!("Basic {encoded}"))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(format!(
@@ -292,7 +369,7 @@ impl ZoomClient {
         }
 
         // Reserve the following slot before releasing the lock
-        *next_request_at = Some(Instant::now() + ZOOM_REQUEST_INTERVAL);
+        *next_request_at = Some(Instant::now() + self.request_interval);
     }
 }
 
@@ -314,6 +391,8 @@ pub(crate) struct CreateMeetingRequest {
     /// Meeting topic.
     pub topic: String,
 
+    /// Meeting description, stamped with the owning event or session reference.
+    pub agenda: Option<String>,
     /// Whether Zoom should generate the default password.
     pub default_password: Option<bool>,
     /// Meeting duration in minutes.
@@ -334,6 +413,7 @@ impl TryFrom<&Meeting> for CreateMeetingRequest {
             meeting_type: 2, // Scheduled meeting
             topic: m.topic.clone().unwrap_or_default(),
 
+            agenda: m.provider_reference(),
             default_password: Some(true),
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
             settings: Some(default_meeting_settings(m.recording_requested)),
@@ -341,6 +421,16 @@ impl TryFrom<&Meeting> for CreateMeetingRequest {
             timezone: m.timezone.clone(),
         })
     }
+}
+
+/// One page of a host user's meetings.
+#[derive(Debug, Deserialize)]
+pub(crate) struct ListMeetingsResponse {
+    /// Meetings in this page.
+    #[serde(default)]
+    pub meetings: Vec<ZoomMeetingSummary>,
+    /// Token for the next page, empty or absent on the last page.
+    pub next_page_token: Option<String>,
 }
 
 /// Meeting settings configuration.
@@ -390,6 +480,8 @@ struct TokenResponse {
 #[skip_serializing_none]
 #[derive(Debug, Default, Serialize)]
 pub(crate) struct UpdateMeetingRequest {
+    /// Meeting description, stamped with the owning event or session reference.
+    pub agenda: Option<String>,
     /// Meeting duration in minutes.
     pub duration: Option<Minutes>,
     /// Provider meeting settings.
@@ -407,6 +499,7 @@ impl TryFrom<&Meeting> for UpdateMeetingRequest {
 
     fn try_from(m: &Meeting) -> Result<Self, Self::Error> {
         Ok(Self {
+            agenda: m.provider_reference(),
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
             settings: Some(default_meeting_settings(m.recording_requested)),
             start_time: m.starts_at,
@@ -549,6 +642,16 @@ pub(crate) struct ZoomMeeting {
     pub status: Option<String>,
 }
 
+/// Meeting entry returned when listing a host user's meetings.
+#[derive(Debug, Deserialize)]
+pub(crate) struct ZoomMeetingSummary {
+    /// Provider-assigned meeting identifier.
+    pub id: i64,
+
+    /// Meeting description, truncated by Zoom to 250 characters in listings.
+    pub agenda: Option<String>,
+}
+
 /// Returns the default settings applied to all meetings.
 fn default_meeting_settings(recording_requested: Option<bool>) -> MeetingSettings {
     MeetingSettings {
@@ -569,7 +672,7 @@ fn default_meeting_settings(recording_requested: Option<bool>) -> MeetingSetting
 mod tests {
     use serde_json::json;
 
-    use crate::services::meetings::Meeting;
+    use crate::types::meetings::Meeting;
 
     use super::{CreateMeetingRequest, UpdateMeetingRequest};
 

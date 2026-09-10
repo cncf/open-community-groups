@@ -10,7 +10,7 @@ use crate::templates::filters;
 // Pages templates.
 
 /// Event preview modal template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/group/event_preview.html")]
 pub(crate) struct Page {
     /// Prepared event preview data rendered in the modal.
@@ -20,7 +20,7 @@ pub(crate) struct Page {
 // Types.
 
 /// Prepared view model for rendering the event preview.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct Event {
     /// Banner image URL selected for the preview.
     pub banner_url: Option<String>,
@@ -46,8 +46,6 @@ pub(crate) struct Event {
     pub speakers: Vec<ContextPerson>,
     /// Event sponsors.
     pub sponsors: Vec<ContextSponsor>,
-    /// Configured public URL, when the event already has one.
-    pub public_url: Option<String>,
     /// Venue or location label.
     pub venue_label: Option<String>,
 }
@@ -195,7 +193,6 @@ impl From<Input> for Event {
                 .as_ref()
                 .and_then(|community| community.logo_url.as_deref()),
         ]);
-        let public_url = normalize_text(context.public_url.clone());
 
         // Normalize submitted collections for rendering
         let photos = input
@@ -226,7 +223,6 @@ impl From<Input> for Event {
             logo_url,
             missing_fields,
             photos,
-            public_url,
             sessions,
             speakers: context.speakers.clone(),
             sponsors: context.sponsors.clone(),
@@ -236,13 +232,10 @@ impl From<Input> for Event {
 }
 
 /// Prepared preview session data.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct Session {
     /// Session description.
     pub description: Option<String>,
-    /// Session date label.
-    pub date_label: String,
     /// Session kind label.
     pub kind_label: Option<String>,
     /// Session location label.
@@ -399,8 +392,6 @@ pub(crate) struct Context {
     pub hosts: Vec<ContextPerson>,
     /// Event type display label selected in the editor.
     pub kind_label: Option<String>,
-    /// Public event URL when an existing event has one.
-    pub public_url: Option<String>,
     /// Event sessions with display-only speaker data.
     #[serde(default)]
     pub sessions: Vec<ContextSession>,
@@ -647,7 +638,6 @@ fn build_sessions(
             let online_label = build_session_online_label(&input);
 
             Some(Session {
-                date_label: session_date_label(input.starts_at.as_deref()),
                 description: normalize_text(input.description),
                 kind_label,
                 location: normalize_text(input.location),
@@ -700,14 +690,6 @@ fn parse_datetime(value: Option<&str>) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S")
         .or_else(|_| NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M"))
         .ok()
-}
-
-/// Formats a date label for preview datetime strings.
-fn session_date_label(value: Option<&str>) -> String {
-    parse_datetime(value).map_or_else(
-        || "Missing start date".to_string(),
-        |date| date.format("%B %-e, %Y").to_string(),
-    )
 }
 
 /// Returns true when a submitted session should be rendered.
