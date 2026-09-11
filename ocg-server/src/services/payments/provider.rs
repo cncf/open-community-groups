@@ -212,11 +212,13 @@ pub(crate) struct PerformanceLocationInput {
 /// Request used to return part or all of an application fee to a seller.
 #[derive(Clone, Debug)]
 pub(crate) struct ApplicationFeeAdjustmentInput {
-    /// Amount returned to the seller, in minor units.
+    /// Amount returned to the seller in the purchase currency, in minor units; sent to the
+    /// provider unchanged.
     pub amount_minor: i64,
     /// Connected seller that received the original application fee deduction.
     pub connected_seller_id: String,
-    /// Currency of the adjustment amount, matching the purchase currency.
+    /// Purchase currency of the adjustment; the provider verifies the fee is denominated in it
+    /// before refunding.
     pub currency_code: String,
     /// Durable purchase identifier used in provider metadata.
     pub event_purchase_id: Uuid,
