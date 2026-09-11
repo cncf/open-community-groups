@@ -371,6 +371,7 @@ async fn test_process_next_payment_job_processes_application_fee_adjustment() {
                 && input.currency_code == "USD"
                 && input.event_purchase_id == purchase_id
                 && input.idempotency_key == format!("event-purchase-refund-{purchase_id}")
+                && input.kind == "tax-reconciliation"
                 && input.provider_application_fee_id == "fee_worker"
         })
         .times(1)
@@ -591,6 +592,8 @@ async fn test_process_next_payment_job_records_failure_after_application_fee_err
         })
         .times(1)
         .return_once(|_, _, _| Ok(()));
+    db.expect_record_event_purchase_application_fee_adjustment_succeeded()
+        .never();
     let mut provider = MockPaymentsProvider::new();
     provider
         .expect_provider()
