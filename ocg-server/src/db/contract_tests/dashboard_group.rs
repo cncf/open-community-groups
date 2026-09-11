@@ -3,15 +3,16 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use tokio_postgres::{
     error::{DbError, SqlState},
     types::{Json, ToSql},
 };
+use uuid::Uuid;
 
 use crate::{
     db::{
-        DB, USER_FACING_DB_ERROR_CODE,
+        DB, DBUnitOfWork, PgExecutor, PgUnitOfWork, USER_FACING_DB_ERROR_CODE,
         common::DBCommon,
         dashboard::{
             group::{
@@ -35,7 +36,10 @@ use crate::{
                     AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
                 },
                 check_in::CheckInOutcome,
-                events::{EventInput, EventsListFilters},
+                events::{
+                    DiscountCodeInput, EventInput, EventsListFilters, TicketPriceWindowInput,
+                    TicketTypeInput,
+                },
                 invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
                 members::GroupMembersFilters,
                 refunds::{FinancialRecoveryKind, GroupRefundStatus, RefundsFilters, RefundsView},
@@ -47,7 +51,7 @@ use crate::{
         },
         event::{
             EventAdmissionOfferSource, EventAdmissionOfferStatus, EventDeleteEligibility,
-            EventInvitationRequestStatus, EventKind,
+            EventFull, EventInvitationRequestStatus, EventKind,
         },
         group::GroupRole,
         payments::{EventPurchaseChargeModel, PaymentProvider},
@@ -66,10 +70,10 @@ use super::helpers::{
     group_lock_first_event_id, group_lock_second_event_id, group_sponsor_id, invitation_offer_id,
     invitation_ticket_type_id, invite_event_id, invitee_id, mutation_event_id, mutation_offer_id,
     organizer_id, paid_cancellation_purchase_id, paid_cancellation_user_id, paid_event_id,
-    parse_uuid, pre_registered_id, queue_invite_event_id, queue_invitee_id, refund_reject_buyer_id,
-    refund_reject_purchase_id, request_event_id, requester_id, revoked_user_badge_id,
-    session_proposal_id, status_canceled_user_id, status_declined_user_id, status_event_id,
-    status_expired_user_id, subgroup_id, waitlist_id,
+    paid_ticket_price_window_id, parse_uuid, pre_registered_id, queue_invite_event_id,
+    queue_invitee_id, refund_reject_buyer_id, refund_reject_purchase_id, request_event_id,
+    requester_id, revoked_user_badge_id, session_proposal_id, status_canceled_user_id,
+    status_declined_user_id, status_event_id, status_expired_user_id, subgroup_id, waitlist_id,
 };
 
 #[tokio::test]
@@ -644,6 +648,115 @@ async fn db_contracts_event_ticketing_configuration_changed_deserializes() -> Re
         )
         .await?;
     assert!(!unchanged);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_event_ticketing_configuration_changed_ignores_dated_editor_roundtrip()
+-> Result<()> {
+    // Setup a unit of work under a non-UTC session time zone
+    let pool = contract_tests_pool()?;
+    let client = pool.get().await?;
+    client.batch_execute("begin").await?;
+    let uow = PgUnitOfWork {
+        client: Some(client),
+    };
+    uow.execute("set local time zone 'Europe/Madrid'", &[]).await?;
+
+    // Date the paid price window and add discount codes with live inventory
+    uow.execute(
+        "
+        update event_ticket_price_window
+        set
+            ends_at = '2030-06-01 10:00:00+00',
+            starts_at = '2030-01-01 10:00:00+00'
+        where event_ticket_price_window_id = $1::uuid
+        ",
+        &[&paid_ticket_price_window_id()],
+    )
+    .await?;
+    uow.execute(
+        "
+        insert into event_discount_code (
+            event_discount_code_id, code, event_id, kind, title, amount_minor, available,
+            available_override_active, ends_at, percentage, starts_at, total_available
+        ) values
+            (
+                $1::uuid, 'BETA', $3::uuid, 'percentage', 'beta', null, 3,
+                true, '2030-06-01 10:00:00+00', 10, '2030-01-01 10:00:00+00', 10
+            ),
+            (
+                $2::uuid, 'ALPHA', $3::uuid, 'fixed_amount', 'Alpha', 500, null,
+                false, null, null, null, null
+            )
+        ",
+        &[&Uuid::new_v4(), &Uuid::new_v4(), &paid_event_id()],
+    )
+    .await?;
+
+    // Echo the stored configuration the way the dashboard editors submit it
+    let event_full = uow
+        .get_event_full(community_id(), group_id(), paid_event_id())
+        .await?;
+    let event = dated_editor_event_input(&event_full);
+    let payload = event.to_db_payload()?;
+    let window_starts_at = payload["ticket_types"][0]["price_windows"][0]["starts_at"]
+        .as_str()
+        .context("dated price window should serialize its start")?;
+    assert!(window_starts_at.ends_with('Z'));
+    let discount_starts_at = payload["discount_codes"][0]["starts_at"]
+        .as_str()
+        .context("dated discount code should serialize its start")?;
+    assert!(discount_starts_at.ends_with('Z'));
+    assert!(payload["discount_codes"][0].get("available").is_none());
+
+    // Check the unchanged echo is not reported as a configuration change
+    let changed = uow
+        .event_ticketing_configuration_changed(
+            community_id(),
+            group_id(),
+            paid_event_id(),
+            &payload,
+        )
+        .await?;
+    assert!(!changed);
+
+    // Check shifting the dated window by one hour is reported as a change
+    let mut shifted = event.clone();
+    let shifted_window = &mut shifted
+        .ticket_types
+        .as_mut()
+        .context("editor input should carry ticket types")?[0]
+        .price_windows[0];
+    shifted_window.starts_at = shifted_window
+        .starts_at
+        .map(|starts_at| starts_at + Duration::hours(1));
+    let changed = uow
+        .event_ticketing_configuration_changed(
+            community_id(),
+            group_id(),
+            paid_event_id(),
+            &shifted.to_db_payload()?,
+        )
+        .await?;
+    assert!(changed);
+
+    // Check the unchanged echo also compares equal under UTC
+    uow.execute("set local time zone 'UTC'", &[]).await?;
+    let changed = uow
+        .event_ticketing_configuration_changed(
+            community_id(),
+            group_id(),
+            paid_event_id(),
+            &payload,
+        )
+        .await?;
+    assert!(!changed);
+
+    // Roll back the fixture changes
+    Box::new(uow).rollback().await?;
 
     Ok(())
 }
@@ -1833,4 +1946,84 @@ async fn db_contracts_update_event_serializes_same_group_mutations() -> Result<(
     assert!(!updated.get::<_, bool>(0));
 
     Ok(())
+}
+
+// Helpers.
+
+/// Builds the dashboard editor input that echoes a stored paid event: dated
+/// windows as `DateTime<Utc>`, discount codes in reversed order without their
+/// live inventory count, and the seeded venue and tax context.
+fn dated_editor_event_input(event: &EventFull) -> EventInput {
+    let mut discount_codes: Vec<DiscountCodeInput> = event
+        .discount_codes
+        .iter()
+        .flatten()
+        .map(|discount_code| DiscountCodeInput {
+            active: discount_code.active,
+            code: discount_code.code.clone(),
+            kind: discount_code.kind,
+            title: discount_code.title.clone(),
+
+            available: None,
+            available_override_active: Some(discount_code.available_override_active),
+            available_cleared: None,
+            amount_minor: discount_code.amount_minor,
+            ends_at: discount_code.ends_at,
+            event_discount_code_id: Some(discount_code.event_discount_code_id),
+            percentage: discount_code.percentage,
+            starts_at: discount_code.starts_at,
+            total_available: discount_code.total_available,
+        })
+        .collect();
+    discount_codes.reverse();
+
+    let ticket_types = event
+        .ticket_types
+        .iter()
+        .flatten()
+        .map(|ticket_type| TicketTypeInput {
+            active: ticket_type.active,
+            availability: ticket_type.availability,
+            order: ticket_type.order,
+            price_windows: ticket_type
+                .price_windows
+                .iter()
+                .map(|price_window| TicketPriceWindowInput {
+                    amount_minor: price_window.amount_minor,
+
+                    ends_at: price_window.ends_at,
+                    event_ticket_price_window_id: Some(price_window.event_ticket_price_window_id),
+                    starts_at: price_window.starts_at,
+                })
+                .collect(),
+            title: ticket_type.title.clone(),
+
+            description: ticket_type.description.clone(),
+            event_ticket_type_id: Some(ticket_type.event_ticket_type_id),
+            seats_total: ticket_type.seats_total,
+        })
+        .collect();
+
+    EventInput {
+        category_id: event_category_id(),
+        description: "Unrelated description edit".to_string(),
+        kind_id: "in-person".to_string(),
+        name: event.name.clone(),
+        timezone: event.timezone.to_string(),
+
+        discount_codes: Some(discount_codes),
+        discount_codes_present: Some(true),
+        payment_currency_code: event.payment_currency_code.clone(),
+        ticket_types: Some(ticket_types),
+        ticket_types_present: Some(true),
+        venue_address: event.venue_address.clone(),
+        venue_city: event.venue_city.clone(),
+        venue_country_code: event.venue_country_code.clone(),
+        venue_country_name: event.venue_country_name.clone(),
+        venue_name: event.venue_name.clone(),
+        venue_state_code: event.venue_state_code.clone(),
+        venue_state_name: event.venue_state_name.clone(),
+        venue_zip_code: event.venue_zip_code.clone(),
+        ..EventInput::default()
+    }
 }

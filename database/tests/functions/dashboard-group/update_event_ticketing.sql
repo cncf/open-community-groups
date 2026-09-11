@@ -5,13 +5,17 @@
 -- ============================================================================
 
 begin;
-select plan(32);
+select plan(39);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 \set category1ID '3a3c0000-0000-0000-0000-000000000001'
 \set community1ID '3a3c0000-0000-0000-0000-000000000002'
+\set datedDiscountCodeID '3a3c0000-0000-0000-0000-00000000006b'
+\set datedEventID '3a3c0000-0000-0000-0000-00000000006c'
+\set datedPriceWindowID '3a3c0000-0000-0000-0000-00000000006d'
+\set datedTicketTypeID '3a3c0000-0000-0000-0000-00000000006e'
 \set event13ID '3a3c0000-0000-0000-0000-000000000003'
 \set event14ID '3a3c0000-0000-0000-0000-000000000004'
 \set event15ID '3a3c0000-0000-0000-0000-000000000005'
@@ -240,6 +244,24 @@ select fx_event('3a3c0000-0000-0000-0000-000000000032'::uuid, :'group1ID', :'cat
     'payment_currency_code', 'USD'
 ));
 
+-- Paid in-person event without tax whose tier and discount code carry dated windows
+select fx_event(:'datedEventID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 10,
+    'description', 'Dated event used for unrelated edit checks',
+    'name', 'Dated Paid Event',
+    'payment_currency_code', 'USD',
+    'tax_behavior', 'inclusive',
+    'tax_calculation_mode', 'none',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Community Hall',
+    'venue_state_code', 'CA',
+    'venue_state_name', 'California',
+    'venue_zip_code', '94105'
+));
+
 -- Paid in-person event used for event-kind transition checks
 select fx_event(:'eventPaidTransitionID', :'group1ID', :'category1ID', jsonb_build_object(
     'capacity', 10,
@@ -301,6 +323,48 @@ insert into event_discount_code (
     :'event19ID',
     'fixed_amount',
     'Launch'
+);
+
+-- Dated tier of the dated paid event
+select fx_event_ticket_type(:'datedTicketTypeID', :'datedEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General'
+));
+
+-- Bounded dated price window of the dated tier
+select fx_event_ticket_price_window(:'datedPriceWindowID', :'datedTicketTypeID', jsonb_build_object(
+    'amount_minor', 2500,
+    'ends_at', '2030-06-01 10:00:00+00',
+    'starts_at', '2030-01-01 10:00:00+00'
+));
+
+-- Override-on dated discount code of the dated paid event with live inventory
+insert into event_discount_code (
+    event_discount_code_id,
+    active,
+    code,
+    event_id,
+    kind,
+    title,
+    available,
+    available_override_active,
+    ends_at,
+    percentage,
+    starts_at,
+    total_available
+) values (
+    :'datedDiscountCodeID',
+    true,
+    'DATED10',
+    :'datedEventID',
+    'percentage',
+    'Dated',
+    4,
+    true,
+    '2030-06-01 10:00:00+00',
+    10,
+    '2030-01-01 10:00:00+00',
+    10
 );
 
 -- Protected ticket type referenced by a completed purchase
@@ -873,6 +937,249 @@ select throws_ok(
     'OCG01',
     'payments are not configured on this server',
     'Should reject unrelated edits after payment setup is lost'
+);
+
+-- Should accept an unrelated edit echoing a dated configuration without a validation snapshot
+select lives_ok(
+    $$
+        select update_event(
+            null::uuid,
+            '3a3c0000-0000-0000-0000-000000000018'::uuid,
+            '3a3c0000-0000-0000-0000-00000000006c'::uuid,
+            '{
+                "name": "Dated Paid Event",
+                "description": "Unrelated description edit",
+                "timezone": "UTC",
+                "category_id": "3a3c0000-0000-0000-0000-000000000001",
+                "kind_id": "in-person",
+                "meeting_requested": false,
+                "payment_currency_code": "USD",
+                "tax_behavior": "inclusive",
+                "tax_calculation_mode": "none",
+                "discount_codes": [
+                    {
+                        "active": true,
+                        "available_override_active": true,
+                        "code": "DATED10",
+                        "ends_at": "2030-06-01T10:00:00.000Z",
+                        "event_discount_code_id": "3a3c0000-0000-0000-0000-00000000006b",
+                        "kind": "percentage",
+                        "percentage": 10,
+                        "starts_at": "2030-01-01T10:00:00.000Z",
+                        "title": "Dated",
+                        "total_available": 10
+                    }
+                ],
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "3a3c0000-0000-0000-0000-00000000006e",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "ends_at": "2030-06-01T10:00:00.000Z",
+                                "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-00000000006d",
+                                "starts_at": "2030-01-01T10:00:00.000Z"
+                            }
+                        ],
+                        "seats_total": 10,
+                        "title": "General"
+                    }
+                ],
+                "venue_address": "123 Main St",
+                "venue_city": "San Francisco",
+                "venue_country_code": "US",
+                "venue_country_name": "United States",
+                "venue_name": "Community Hall",
+                "venue_state_code": "CA",
+                "venue_state_name": "California",
+                "venue_zip_code": "94105"
+            }'::jsonb,
+            null,
+            'stripe'
+        )
+    $$,
+    'Should accept an unrelated edit echoing a dated configuration without a validation snapshot'
+);
+select is(
+    (select description from event where event_id = :'datedEventID'::uuid),
+    'Unrelated description edit',
+    'Should persist the unrelated edit of the dated event'
+);
+select is(
+    (
+        select jsonb_build_object(
+            'ends_at', etpw.ends_at,
+            'starts_at', etpw.starts_at
+        )
+        from event_ticket_price_window etpw
+        where etpw.event_ticket_price_window_id = :'datedPriceWindowID'::uuid
+    ),
+    jsonb_build_object(
+        'ends_at', '2030-06-01 10:00:00+00'::timestamptz,
+        'starts_at', '2030-01-01 10:00:00+00'::timestamptz
+    ),
+    'Should preserve the dated price window instants after the unrelated edit'
+);
+select is(
+    (
+        select jsonb_build_object(
+            'available', edc.available,
+            'available_override_active', edc.available_override_active
+        )
+        from event_discount_code edc
+        where edc.event_discount_code_id = :'datedDiscountCodeID'::uuid
+    ),
+    jsonb_build_object(
+        'available', 4,
+        'available_override_active', true
+    ),
+    'Should preserve the live discount inventory after the unrelated edit'
+);
+
+-- Should accept the same unrelated edit under a non-UTC session time zone
+set local time zone 'Europe/Madrid';
+select lives_ok(
+    $$
+        select update_event(
+            null::uuid,
+            '3a3c0000-0000-0000-0000-000000000018'::uuid,
+            '3a3c0000-0000-0000-0000-00000000006c'::uuid,
+            '{
+                "name": "Dated Paid Event",
+                "description": "Unrelated description edit under Madrid",
+                "timezone": "UTC",
+                "category_id": "3a3c0000-0000-0000-0000-000000000001",
+                "kind_id": "in-person",
+                "meeting_requested": false,
+                "payment_currency_code": "USD",
+                "tax_behavior": "inclusive",
+                "tax_calculation_mode": "none",
+                "discount_codes": [
+                    {
+                        "active": true,
+                        "available_override_active": true,
+                        "code": "DATED10",
+                        "ends_at": "2030-06-01T10:00:00.000Z",
+                        "event_discount_code_id": "3a3c0000-0000-0000-0000-00000000006b",
+                        "kind": "percentage",
+                        "percentage": 10,
+                        "starts_at": "2030-01-01T10:00:00.000Z",
+                        "title": "Dated",
+                        "total_available": 10
+                    }
+                ],
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "3a3c0000-0000-0000-0000-00000000006e",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "ends_at": "2030-06-01T10:00:00.000Z",
+                                "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-00000000006d",
+                                "starts_at": "2030-01-01T10:00:00.000Z"
+                            }
+                        ],
+                        "seats_total": 10,
+                        "title": "General"
+                    }
+                ],
+                "venue_address": "123 Main St",
+                "venue_city": "San Francisco",
+                "venue_country_code": "US",
+                "venue_country_name": "United States",
+                "venue_name": "Community Hall",
+                "venue_state_code": "CA",
+                "venue_state_name": "California",
+                "venue_zip_code": "94105"
+            }'::jsonb,
+            null,
+            'stripe'
+        )
+    $$,
+    'Should accept the same unrelated edit under a non-UTC session time zone'
+);
+set local time zone default;
+
+-- Should reject a shifted dated price window without a validation snapshot
+select throws_ok(
+    $$
+        select update_event(
+            null::uuid,
+            '3a3c0000-0000-0000-0000-000000000018'::uuid,
+            '3a3c0000-0000-0000-0000-00000000006c'::uuid,
+            '{
+                "name": "Dated Paid Event",
+                "description": "Shifted window edit",
+                "timezone": "UTC",
+                "category_id": "3a3c0000-0000-0000-0000-000000000001",
+                "kind_id": "in-person",
+                "meeting_requested": false,
+                "payment_currency_code": "USD",
+                "tax_behavior": "inclusive",
+                "tax_calculation_mode": "none",
+                "discount_codes": [
+                    {
+                        "active": true,
+                        "available_override_active": true,
+                        "code": "DATED10",
+                        "ends_at": "2030-06-01T10:00:00.000Z",
+                        "event_discount_code_id": "3a3c0000-0000-0000-0000-00000000006b",
+                        "kind": "percentage",
+                        "percentage": 10,
+                        "starts_at": "2030-01-01T10:00:00.000Z",
+                        "title": "Dated",
+                        "total_available": 10
+                    }
+                ],
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "3a3c0000-0000-0000-0000-00000000006e",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "ends_at": "2030-06-01T10:00:00.000Z",
+                                "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-00000000006d",
+                                "starts_at": "2030-01-01T11:00:00.000Z"
+                            }
+                        ],
+                        "seats_total": 10,
+                        "title": "General"
+                    }
+                ],
+                "venue_address": "123 Main St",
+                "venue_city": "San Francisco",
+                "venue_country_code": "US",
+                "venue_country_name": "United States",
+                "venue_name": "Community Hall",
+                "venue_state_code": "CA",
+                "venue_state_name": "California",
+                "venue_zip_code": "94105"
+            }'::jsonb,
+            null,
+            'stripe'
+        )
+    $$,
+    'OCG01',
+    'payment configuration changed during provider validation',
+    'Should reject a shifted dated price window without a validation snapshot'
+);
+select is(
+    (
+        select etpw.starts_at
+        from event_ticket_price_window etpw
+        where etpw.event_ticket_price_window_id = :'datedPriceWindowID'::uuid
+    ),
+    '2030-01-01 10:00:00+00'::timestamptz,
+    'Should keep the stored dated price window after the rejected shift'
 );
 
 -- Should reject removing every ticket type

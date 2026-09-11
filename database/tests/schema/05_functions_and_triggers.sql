@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(460);
+select plan(464);
 
 -- ============================================================================
 -- VARIABLES
@@ -226,6 +226,7 @@ select has_function('enqueue_tracked_custom_notification', array['text', 'jsonb'
 select has_function('ensure_event_is_active', array['uuid', 'uuid']::name[]);
 select has_function('epoch_seconds', array['timestamp with time zone']::name[]);
 select has_function('escape_ilike_pattern', array['text']::name[]);
+select has_function('event_discount_codes_configuration', array['jsonb', 'jsonb']::name[]);
 select has_function('event_effective_ends_at', array['event']::name[]);
 select has_function('event_has_pending_refund_recovery', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('event_purchase_holds_seat', array['text']::name[]);
@@ -235,6 +236,7 @@ select has_function(
     array['event_purchase_refund', 'payment_job']::name[]
 );
 select has_function('event_ticket_type_current_price', array['uuid']::name[]);
+select has_function('event_ticket_types_configuration', array['jsonb']::name[]);
 select has_function('event_ticketing_configuration_changed', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function(
     'expire_event_purchase_for_checkout_session',
@@ -412,6 +414,7 @@ select has_function(
 select has_function('mark_stale_meeting_auto_end_checks_unknown', array['bigint']::name[]);
 select has_function('mark_stale_meeting_syncs_unknown', array['bigint']::name[]);
 select has_function('mark_stale_processing_notifications_unknown', array['bigint']::name[]);
+select has_function('normalize_ticketing_schedule', array['jsonb']::name[]);
 select has_function('parse_search_filters', array['jsonb']::name[]);
 select has_function('payment_job_is_exhausted', array['payment_job']::name[]);
 select has_function('payment_job_is_ready', array['payment_job']::name[]);
@@ -547,6 +550,7 @@ select hasnt_function('requeue_stale_event_purchase_credit_note_claims', '{}'::n
 select hasnt_function('requeue_stale_event_purchase_refund_claims', '{}'::name[]);
 select has_function('requeue_stale_payment_job_claims', '{}'::name[]);
 select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
+select has_function('resolve_event_discount_code_available_override', array['jsonb', 'boolean']::name[]);
 select has_function('resolve_event_payload', array['jsonb', 'event', 'boolean']::name[]);
 select has_function('resolve_event_payment_rail', array['event', 'jsonb', 'boolean']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
