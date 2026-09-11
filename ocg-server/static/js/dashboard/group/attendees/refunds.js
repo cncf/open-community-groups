@@ -1,5 +1,5 @@
 import { closestElementWithinRoot, getElementById, markDatasetReady } from "/static/js/common/dom.js";
-import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
+import { isSuccessfulXHR } from "/static/js/common/utils.js";
 import {
   applyExternalRefundReviewCopy,
   bindScopedModalEscape,
@@ -72,7 +72,7 @@ export const initializeRefundReviewModal = (root = document) => {
     const config = refundReviewConfigs.find(
       (reviewConfig) => event.target === getElementById(root, reviewConfig.formId),
     );
-    if (config && isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
+    if (config && isSuccessfulXHR(event.detail?.xhr)) {
       closeRefundReviewModal(config, root);
     }
   });

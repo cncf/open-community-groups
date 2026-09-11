@@ -8,6 +8,7 @@ import {
   DIRTY_DEPLOYMENT_NOTICE_MESSAGE,
   HTMX_REFRESH_HEADER,
   initializeDeploymentRefreshRetry,
+  initializeDeploymentReloadState,
   isDeploymentReloadRequested,
   REFRESH_HEADER,
   reloadIfDeploymentChanged,
@@ -76,6 +77,20 @@ describe("deployment version", () => {
     );
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
+  });
+
+  it("releases the pending reload guard when the page is restored from the back/forward cache", () => {
+    // Request a reload, then simulate the browser restoring the cached page.
+    setDeploymentReloadHandler(() => {});
+    reloadIfDeploymentChanged(new Headers({ [REFRESH_HEADER]: "true" }));
+    const target = new EventTarget();
+    initializeDeploymentReloadState(target);
+
+    // A regular pageshow keeps the guard, a persisted one clears it.
+    target.dispatchEvent(Object.assign(new Event("pageshow"), { persisted: false }));
+    expect(isDeploymentReloadRequested()).to.equal(true);
+    target.dispatchEvent(Object.assign(new Event("pageshow"), { persisted: true }));
+    expect(isDeploymentReloadRequested()).to.equal(false);
   });
 
   it("notifies once and leaves a dirty form in place when a response comes from a newer commit", () => {

@@ -1,4 +1,8 @@
 import {
+  addLoadedDashboardContextHeaders,
+  reloadIfDashboardContextStale,
+} from "/static/js/common/dashboard-context.js";
+import {
   addLoadedCommitShaHeader,
   isDeploymentReloadRequested,
   reloadIfDeploymentChanged,
@@ -16,6 +20,7 @@ export const ocgFetch = async (input, init = {}) => {
   if (isSameOriginRequest(input)) {
     headers.set("X-OCG-Fetch", "true");
     addLoadedCommitShaHeader(headers);
+    addLoadedDashboardContextHeaders(headers);
   }
 
   const response = await fetch(input, {
@@ -24,9 +29,14 @@ export const ocgFetch = async (input, init = {}) => {
   });
   if (reloadIfDeploymentChanged(response.headers)) {
     if (isDeploymentReloadRequested()) {
-      return waitForDeploymentReload();
+      return waitForPageReload();
     }
     return createBlockedDeploymentRefreshResponse(response);
+  }
+
+  // The handler never ran for a stale dashboard context, so callers must not render any outcome
+  if (reloadIfDashboardContextStale(response.headers)) {
+    return waitForPageReload();
   }
 
   const redirectUrl = response.headers?.get?.("X-OCG-Redirect");
@@ -61,7 +71,7 @@ const isSameOriginRequest = (input) => {
  * Keeps caller catch/finally handlers from rendering stale UI during reload.
  * @returns {Promise<void>} Promise that stays pending until navigation replaces the page.
  */
-const waitForDeploymentReload = () => new Promise(() => {});
+const waitForPageReload = () => new Promise(() => {});
 
 /**
  * Converts a dirty-form forced-refresh intercept into a non-success response.

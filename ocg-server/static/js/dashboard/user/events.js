@@ -13,7 +13,7 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
-import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
+import { isSuccessfulXHR } from "/static/js/common/utils.js";
 
 const DATA_KEY = "userEventsReady";
 const REFUND_ACTION_SELECTOR = "[data-user-event-refund-action]";
@@ -83,7 +83,7 @@ const handleAfterRequest = (event) => {
   const target = event.target;
   if (closestElement(target, "[data-user-event-checkout-cancel]")) {
     // Shared confirmation handling owns feedback for this action.
-    if (isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
+    if (isSuccessfulXHR(event.detail?.xhr)) {
       window.htmx?.trigger?.("#dashboard-content", "refresh-user-dashboard-content");
     }
     return;
@@ -99,7 +99,7 @@ const handleAfterRequest = (event) => {
     successMessage: "Registration answers saved.",
     errorMessage: "Something went wrong saving your answers. Please try again later.",
   });
-  if (ok || isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
+  if (ok || isSuccessfulXHR(event.detail?.xhr)) {
     closeModal(form.closest("[data-user-event-questions-modal]"));
   }
 };

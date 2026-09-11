@@ -20,6 +20,28 @@ pub(crate) const SELECTED_COMMUNITY_ID_KEY: &str = "selected_community_id";
 /// Key used to store the selected group ID in the session.
 pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
 
+/// Readable community dashboard context together with the outcome of the
+/// requested permission check.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct ResolvedCommunityContext {
+    /// Community the dashboard operates on.
+    pub community_id: Uuid,
+    /// Whether the user holds the permission the route requires.
+    pub has_requested_permission: bool,
+}
+
+/// Readable group dashboard context together with the outcome of the
+/// requested permission check.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct ResolvedGroupContext {
+    /// Community containing the group.
+    pub community_id: Uuid,
+    /// Group the dashboard operates on.
+    pub group_id: Uuid,
+    /// Whether the user holds the permission the route requires.
+    pub has_requested_permission: bool,
+}
+
 /// Defines whether syncing a community selection requires a group selection.
 pub(crate) enum SelectedGroupPolicy {
     /// Group selection may be absent.
@@ -28,13 +50,18 @@ pub(crate) enum SelectedGroupPolicy {
     Required,
 }
 
-/// Resolves community dashboard context and repairs stale selection.
+/// Resolves readable community dashboard context, repairing stale selection,
+/// and reports whether the requested permission holds on it.
+///
+/// A missing write permission is reported rather than returned as an error so
+/// the caller can compare the resolved context with the client's before
+/// denying the request.
 pub(super) async fn resolve_community_dashboard_context(
     db: &DynDB,
     session: &Session,
     user_id: &Uuid,
     permission: CommunityPermission,
-) -> Result<Option<Uuid>, HandlerError> {
+) -> Result<Option<ResolvedCommunityContext>, HandlerError> {
     // Preserve the existing fast path for valid selected context
     let selected_community_id = session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await?;
     if let Some(community_id) = selected_community_id {
@@ -42,7 +69,10 @@ pub(super) async fn resolve_community_dashboard_context(
             .user_has_community_permission(&community_id, user_id, permission)
             .await?;
         if has_permission {
-            return Ok(Some(community_id));
+            return Ok(Some(ResolvedCommunityContext {
+                community_id,
+                has_requested_permission: true,
+            }));
         }
 
         // Missing write permission is a normal denial while base access remains valid
@@ -51,34 +81,43 @@ pub(super) async fn resolve_community_dashboard_context(
                 .user_has_community_permission(&community_id, user_id, CommunityPermission::Read)
                 .await?;
             if has_read_permission {
-                return Err(HandlerError::Forbidden);
+                return Ok(Some(ResolvedCommunityContext {
+                    community_id,
+                    has_requested_permission: false,
+                }));
             }
         }
     }
 
     // Repair missing or unreadable context before applying stronger permissions
-    let repaired_community_id = repair_community_dashboard_context(db, session, user_id).await?;
-    if let Some(community_id) = repaired_community_id
-        && permission != CommunityPermission::Read
-    {
-        let has_permission = db
-            .user_has_community_permission(&community_id, user_id, permission)
-            .await?;
-        if !has_permission {
-            return Err(HandlerError::Forbidden);
-        }
-    }
+    let Some(community_id) = repair_community_dashboard_context(db, session, user_id).await? else {
+        return Ok(None);
+    };
+    let has_requested_permission = if permission == CommunityPermission::Read {
+        true
+    } else {
+        db.user_has_community_permission(&community_id, user_id, permission)
+            .await?
+    };
 
-    Ok(repaired_community_id)
+    Ok(Some(ResolvedCommunityContext {
+        community_id,
+        has_requested_permission,
+    }))
 }
 
-/// Resolves group dashboard context and repairs stale selection.
+/// Resolves readable group dashboard context, repairing stale selection, and
+/// reports whether the requested permission holds on it.
+///
+/// A missing write permission is reported rather than returned as an error so
+/// the caller can compare the resolved context with the client's before
+/// denying the request.
 pub(super) async fn resolve_group_dashboard_context(
     db: &DynDB,
     session: &Session,
     user_id: &Uuid,
     permission: GroupPermission,
-) -> Result<Option<(Uuid, Uuid)>, HandlerError> {
+) -> Result<Option<ResolvedGroupContext>, HandlerError> {
     // Preserve the existing fast path for valid selected context
     let selected_community_id = session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await?;
     let selected_group_id = session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
@@ -87,7 +126,11 @@ pub(super) async fn resolve_group_dashboard_context(
             .user_has_group_permission(&community_id, &group_id, user_id, permission)
             .await?;
         if has_permission {
-            return Ok(Some((community_id, group_id)));
+            return Ok(Some(ResolvedGroupContext {
+                community_id,
+                group_id,
+                has_requested_permission: true,
+            }));
         }
 
         // Missing write permission is a normal denial while base access remains valid
@@ -96,32 +139,39 @@ pub(super) async fn resolve_group_dashboard_context(
                 .user_has_group_permission(&community_id, &group_id, user_id, GroupPermission::Read)
                 .await?;
             if has_read_permission {
-                return Err(HandlerError::Forbidden);
+                return Ok(Some(ResolvedGroupContext {
+                    community_id,
+                    group_id,
+                    has_requested_permission: false,
+                }));
             }
         }
     }
 
     // Repair missing or unreadable context before applying stronger permissions
-    let repaired_ids = repair_group_dashboard_context(
+    let Some((community_id, group_id)) = repair_group_dashboard_context(
         db,
         session,
         user_id,
         selected_community_id,
         selected_group_id.is_some(),
     )
-    .await?;
-    if let Some((community_id, group_id)) = repaired_ids
-        && permission != GroupPermission::Read
-    {
-        let has_permission = db
-            .user_has_group_permission(&community_id, &group_id, user_id, permission)
-            .await?;
-        if !has_permission {
-            return Err(HandlerError::Forbidden);
-        }
-    }
+    .await?
+    else {
+        return Ok(None);
+    };
+    let has_requested_permission = if permission == GroupPermission::Read {
+        true
+    } else {
+        db.user_has_group_permission(&community_id, &group_id, user_id, permission)
+            .await?
+    };
 
-    Ok(repaired_ids)
+    Ok(Some(ResolvedGroupContext {
+        community_id,
+        group_id,
+        has_requested_permission,
+    }))
 }
 
 /// Selects the first available community and group for the user in the session.

@@ -10,7 +10,7 @@ import {
 } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
-import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
+import { isSuccessfulXHR } from "/static/js/common/utils.js";
 import { applyExternalRefundReviewCopy } from "/static/js/dashboard/group/attendees/shared.js";
 
 const FINANCIAL_RECOVERY_MODAL_ID = "financial-recovery-modal";
@@ -124,7 +124,7 @@ export const initializeRefundRecovery = (root) => {
   });
 
   root.addEventListener("htmx:afterRequest", (event) => {
-    const requestSucceeded = isSuccessfulXHRStatus(event.detail?.xhr?.status);
+    const requestSucceeded = isSuccessfulXHR(event.detail?.xhr);
     if (event.target === getElementById(root, "financial-recovery-form") && requestSucceeded) {
       root.dataset[REFUND_FOCUS_TARGET_DATA_KEY] = REFUND_SEARCH_ID;
       setRefundModalVisible(root, FINANCIAL_RECOVERY_MODAL_ID, false);

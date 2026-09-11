@@ -1,4 +1,8 @@
+import { STALE_DASHBOARD_CONTEXT_HEADER } from "/static/js/common/dashboard-context.js";
 import { getElementById } from "/static/js/common/dom.js";
+
+// Response headers marking an intercept where the server never ran the handler.
+const INTERCEPTED_XHR_HEADERS = ["HX-Refresh", "X-OCG-Refresh", STALE_DASHBOARD_CONTEXT_HEADER];
 
 /**
  * Checks if the provided value is a string.
@@ -205,10 +209,33 @@ const isObjectEmpty = (obj) => {
  */
 const isSuccessfulXHRStatus = (status) => status >= 200 && status < 300;
 
+/**
+ * Checks if an HTMX response is a client refresh intercept.
+ * Those 2xx responses never ran the handler and must not count as success.
+ * @param {XMLHttpRequest|undefined|null} xhr HTMX response XHR
+ * @returns {boolean} True when the server asked the client to refresh instead
+ */
+const isInterceptedXHR = (xhr) => {
+  if (!xhr || typeof xhr.getResponseHeader !== "function") {
+    return false;
+  }
+
+  return INTERCEPTED_XHR_HEADERS.some((name) => xhr.getResponseHeader(name) === "true");
+};
+
+/**
+ * Checks if an HTMX response is a successful handler result.
+ * @param {XMLHttpRequest|undefined|null} xhr HTMX response XHR
+ * @returns {boolean} True for a 2xx response that is not a refresh intercept
+ */
+const isSuccessfulXHR = (xhr) => Boolean(xhr) && isSuccessfulXHRStatus(xhr.status) && !isInterceptedXHR(xhr);
+
 export {
   debounce,
+  isInterceptedXHR,
   isString,
   isObjectEmpty,
+  isSuccessfulXHR,
   isSuccessfulXHRStatus,
   normalizeUsers,
   parseJsonAttribute,

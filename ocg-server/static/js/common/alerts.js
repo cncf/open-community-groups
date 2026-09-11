@@ -6,11 +6,11 @@ import {
 } from "/static/js/common/dom.js";
 import { getHtmxTriggerNames } from "/static/js/common/htmx-triggers.js";
 import { escapeHtml } from "/static/js/common/trusted-html.js";
+import { isInterceptedXHR } from "/static/js/common/utils.js";
 
 const PAGE_ALERT_SELECTOR = "[data-page-alert]";
 const PAGE_ALERT_READY_KEY = "pageAlertReady";
 const BACKEND_FLASH_REFRESH_TRIGGERS = new Set(["refresh-user-dashboard-content"]);
-const FORCED_REFRESH_HEADERS = ["HX-Refresh", "X-OCG-Refresh"];
 const REFRESH_BODY_EVENT = "refresh-body";
 
 /**
@@ -228,20 +228,6 @@ const refreshBodyAfterHtmxSettle = () => {
 };
 
 /**
- * Returns whether an HTMX response is a stale-client refresh intercept.
- * Those 2xx bodies never ran the handler and must not count as success.
- * @param {XMLHttpRequest|undefined|null} xhr HTMX response XHR.
- * @returns {boolean} Whether the response asked the client to refresh.
- */
-const xhrHasForcedRefresh = (xhr) => {
-  if (!xhr || typeof xhr.getResponseHeader !== "function") {
-    return false;
-  }
-
-  return FORCED_REFRESH_HEADERS.some((name) => xhr.getResponseHeader(name) === "true");
-};
-
-/**
  * Handles common HTMX response patterns and displays alerts.
  * Returns true on success (2xx), false otherwise.
  * Forced-refresh intercepts are 2xx but are not successful mutations.
@@ -258,7 +244,7 @@ export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
   }
 
   if (xhr.status >= 200 && xhr.status < 300) {
-    if (xhrHasForcedRefresh(xhr)) {
+    if (isInterceptedXHR(xhr)) {
       return false;
     }
 

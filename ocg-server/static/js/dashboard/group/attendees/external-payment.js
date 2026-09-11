@@ -2,7 +2,7 @@ import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { localizeCurrencyLabel } from "/static/js/common/currency.js";
 import { closestElementWithinRoot, getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
-import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
+import { isSuccessfulXHR } from "/static/js/common/utils.js";
 import {
   bindScopedModalEscape,
   closeScopedModalFromEvent,
@@ -83,7 +83,7 @@ export const initializeExternalPaymentModal = (root = document) => {
       return;
     }
 
-    if (isSuccessfulXHRStatus(xhr?.status)) {
+    if (isSuccessfulXHR(xhr)) {
       closeExternalPaymentModal(root);
       return;
     }

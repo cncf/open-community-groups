@@ -187,6 +187,41 @@ async fn approve_refund_request_propagates_queue_failure() {
 }
 
 #[tokio::test]
+async fn approve_refund_request_rejects_external_purchase_outside_group() {
+    // Setup an external purchase that does not belong to the acting group
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    db.expect_get_event_purchase_charge_model()
+        .withf(move |purchase| *purchase == event_purchase_id)
+        .times(1)
+        .returning(|_| Ok(EventPurchaseChargeModel::External));
+    db.expect_get_event_purchase_notification_context()
+        .withf(move |group, purchase| *group == group_id && *purchase == event_purchase_id)
+        .times(1)
+        .returning(|_, _| Ok(None));
+    db.expect_approve_external_event_refund_request().times(0);
+    db.expect_queue_event_refund_request_approval().times(0);
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+
+    // Attempt to approve the request
+    let err = manager
+        .approve_refund_request(&ApproveRefundRequestInput {
+            actor_user_id: Uuid::new_v4(),
+            event_purchase_id,
+            group_id,
+            review_note: None,
+        })
+        .await
+        .expect_err("missing purchase to be rejected");
+
+    // Check the rejection is user-facing and nothing was written
+    assert!(
+        matches!(err, PaymentsError::Rejected(ref message) if message == "refund request not found")
+    );
+}
+
+#[tokio::test]
 async fn complete_external_checkout_enqueues_welcome_when_transitioned() {
     // Setup identifiers and the first-transition completion
     let actor_user_id = Uuid::new_v4();
@@ -253,6 +288,29 @@ async fn complete_external_checkout_enqueues_welcome_when_transitioned() {
         )
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn complete_external_checkout_rejects_purchase_outside_group() {
+    // Setup a purchase lookup scoped to a group that does not own it
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    db.expect_get_event_purchase_notification_context()
+        .withf(move |group, purchase| *group == group_id && *purchase == event_purchase_id)
+        .times(1)
+        .returning(|_, _| Ok(None));
+    db.expect_complete_external_event_purchase().times(0);
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+
+    // Attempt to complete the external checkout
+    let err = manager
+        .complete_external_checkout(Uuid::new_v4(), group_id, event_purchase_id, None)
+        .await
+        .expect_err("missing purchase to be rejected");
+
+    // Check the rejection is user-facing and nothing was written
+    assert!(matches!(err, PaymentsError::Rejected(ref message) if message == "purchase not found"));
 }
 
 #[tokio::test]

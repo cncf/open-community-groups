@@ -45,7 +45,10 @@ mod tests;
 #[cfg_attr(test, automock)]
 pub(crate) trait PaymentsManager {
     /// Approves a pending refund request and queues the provider refund.
-    async fn approve_refund_request(&self, input: &ApproveRefundRequestInput) -> Result<()>;
+    async fn approve_refund_request(
+        &self,
+        input: &ApproveRefundRequestInput,
+    ) -> std::result::Result<(), PaymentsError>;
 
     /// Completes an external purchase after an organizer marks it paid.
     async fn complete_external_checkout(
@@ -54,7 +57,7 @@ pub(crate) trait PaymentsManager {
         group_id: Uuid,
         event_purchase_id: Uuid,
         details: Option<String>,
-    ) -> Result<()>;
+    ) -> std::result::Result<(), PaymentsError>;
 
     /// Completes a free checkout and enqueues the attendee welcome notification.
     async fn complete_free_checkout(
@@ -242,7 +245,10 @@ impl PgPaymentsManager {
 #[async_trait]
 impl PaymentsManager for PgPaymentsManager {
     /// [`PaymentsManager::approve_refund_request`].
-    async fn approve_refund_request(&self, input: &ApproveRefundRequestInput) -> Result<()> {
+    async fn approve_refund_request(
+        &self,
+        input: &ApproveRefundRequestInput,
+    ) -> std::result::Result<(), PaymentsError> {
         // Load the purchase rail before choosing local or provider approval
         let charge_model = self
             .db
@@ -256,7 +262,7 @@ impl PaymentsManager for PgPaymentsManager {
                 .db
                 .get_event_purchase_notification_context(input.group_id, input.event_purchase_id)
                 .await?
-                .ok_or_else(|| anyhow::anyhow!("refund request not found"))?;
+                .ok_or_else(|| PaymentsError::Rejected("refund request not found".to_string()))?;
             let notification_template_data = self
                 .notification_composer
                 .build_refund_approval_template_data(context.community_id, context.event_id, true)
@@ -283,7 +289,9 @@ impl PaymentsManager for PgPaymentsManager {
                 input.event_purchase_id,
                 input.review_note.clone(),
             )
-            .await
+            .await?;
+
+        Ok(())
     }
 
     /// [`PaymentsManager::complete_external_checkout`].
@@ -293,13 +301,13 @@ impl PaymentsManager for PgPaymentsManager {
         group_id: Uuid,
         event_purchase_id: Uuid,
         details: Option<String>,
-    ) -> Result<()> {
-        // Load identifiers before composing the in-transaction notification
+    ) -> std::result::Result<(), PaymentsError> {
+        // Reject a purchase outside the selected group before composing notifications
         let context = self
             .db
             .get_event_purchase_notification_context(group_id, event_purchase_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("purchase not found"))?;
+            .ok_or_else(|| PaymentsError::Rejected("purchase not found".to_string()))?;
         let (notification_template_data, notification_attachments) = self
             .notification_composer
             .build_event_welcome_notification_payload(context.community_id, context.event_id)

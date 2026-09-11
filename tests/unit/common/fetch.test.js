@@ -2,6 +2,13 @@ import { expect } from "@open-wc/testing";
 
 import { ocgFetch } from "/static/js/common/fetch.js";
 import {
+  resetDashboardContextReloadState,
+  SELECTED_COMMUNITY_ID_HEADER,
+  SELECTED_GROUP_ID_HEADER,
+  setDashboardContextReloadHandler,
+  STALE_DASHBOARD_CONTEXT_HEADER,
+} from "/static/js/common/dashboard-context.js";
+import {
   COMMIT_SHA_HEADER,
   isDeploymentReloadRequested,
   REFRESH_HEADER,
@@ -43,6 +50,7 @@ describe("ocgFetch", () => {
     document.head.innerHTML = "";
     document.body.innerHTML = "";
     fetchMock.restore();
+    resetDashboardContextReloadState();
     resetDeploymentReloadState();
   });
 
@@ -138,6 +146,50 @@ describe("ocgFetch", () => {
     const settledState = await getSettledStateAfterCurrentTask(ocgFetch("/test"));
 
     // Deployment refresh responses reload and leave callers pending.
+    expect(settledState).to.equal("pending");
+    expect(reloads).to.equal(1);
+  });
+
+  it("adds the loaded dashboard context headers for same-origin requests", async () => {
+    // Render the group dashboard layout marker.
+    document.body.innerHTML =
+      '<div id="dashboard-layout" data-ocg-selected-community-id="community-1" data-ocg-selected-group-id="group-1"></div>';
+    fetchMock.setImpl(async (_url, options) => {
+      // Same-origin requests declare the loaded dashboard context.
+      expect(options.headers.get(SELECTED_COMMUNITY_ID_HEADER)).to.equal("community-1");
+      expect(options.headers.get(SELECTED_GROUP_ID_HEADER)).to.equal("group-1");
+
+      // Return the value used by the assertion.
+      return {
+        headers: new Headers(),
+        ok: true,
+        status: 200,
+      };
+    });
+
+    // Execute the OCG fetch helper.
+    await ocgFetch("/test");
+
+    // The request uses the expected endpoint and options.
+    expect(fetchMock.calls).to.have.length(1);
+  });
+
+  it("reloads and leaves callers pending when the server reports a stale dashboard context", async () => {
+    // Mock the stale dashboard context intercept.
+    let reloads = 0;
+    setDashboardContextReloadHandler(() => {
+      reloads += 1;
+    });
+    fetchMock.setImpl(async () => ({
+      headers: new Headers({ [STALE_DASHBOARD_CONTEXT_HEADER]: "true" }),
+      ok: true,
+      status: 204,
+    }));
+
+    // Capture the async result.
+    const settledState = await getSettledStateAfterCurrentTask(ocgFetch("/test"));
+
+    // Stale context responses reload and leave callers pending.
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
   });
