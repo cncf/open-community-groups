@@ -254,9 +254,21 @@ payload column exists.
   claim counts toward `payment_job_max_attempts()` (10), including refund
   finalization attempts; `record_event_purchase_refund_succeeded` resets the
   count so finalization gets a fresh budget once the provider confirms.
+  `requeue_stale_payment_job_claims` releases an expired claim as `failed` and
+  keeps `attempt_count`, so abandoned claims spend the budget and the job
+  reaches exhaustion; only `record_event_purchase_refund_succeeded` and the
+  operator retry (`requeue_payment_job`) reset it.
 - Success paths write the typed outcome first
   (`apply_event_purchase_*_outcome`, the refund `finalized_at`) and then call
-  `complete_payment_job(job, claim)`. Two trigger functions keep the
+  `complete_payment_job(job, claim)`. A successful replay must either
+  establish that the job is already `completed` or complete the outstanding
+  bookkeeping through `complete_payment_job` under its claim rules; it never
+  repeats the domain side effects. The credit-note and fee-adjustment
+  recorders check the job status; `finalize_event_purchase_refund` checks
+  `status = 'finalized'` on the refund (not `finalized_at`, which a terminal
+  provider failure keeps as history) and completes the job from that branch,
+  as `record_event_purchase_refund_succeeded` does when `finalized_at` is
+  set. Two trigger functions keep the
   invariant "a `completed` job has its outcome on the domain row" in both
   directions: `check_payment_job_completion_outcome` runs before a job is
   updated to `completed` and, as a deferred constraint trigger, after a

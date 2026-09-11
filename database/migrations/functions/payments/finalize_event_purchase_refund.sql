@@ -83,8 +83,9 @@ begin
     from event_purchase_refund epr
     where epr.event_purchase_refund_id = p_event_purchase_refund_id;
 
-    -- Treat a repeated finalization as an idempotent replay
+    -- Treat a repeated finalization as an idempotent replay that still closes its job
     if v_refund.status = 'finalized' then
+        perform complete_payment_job(v_refund.payment_job_id, p_claim_id);
         return;
     end if;
 

@@ -143,14 +143,14 @@ select is(
 -- Should leave recent and non-processing payment jobs unchanged
 select results_eq(
     format($$
-        select payment_job_id, claim_id, failure_message, status
+        select payment_job_id, attempt_count, claim_id, failure_message, status
         from payment_job
         where payment_job_id in (%L::uuid, %L::uuid)
         order by payment_job_id
     $$, :'failedJobID', :'recentJobID'),
     format($$ values
-        (%L::uuid, null::uuid, 'retry later'::text, 'failed'::text),
-        (%L::uuid, %L::uuid, null::text, 'processing'::text)
+        (%L::uuid, 2, null::uuid, 'retry later'::text, 'failed'::text),
+        (%L::uuid, 2, %L::uuid, null::text, 'processing'::text)
     $$, :'failedJobID', :'recentJobID', :'recentClaimID'),
     'Should leave recent and non-processing payment jobs unchanged'
 );
@@ -158,12 +158,13 @@ select results_eq(
 -- Should preserve an existing failure below the attempt limit
 select results_eq(
     format($$
-        select claim_id, claimed_at, failure_message,
+        select attempt_count, claim_id, claimed_at, failure_message,
             next_attempt_at = current_timestamp, status
         from payment_job
         where payment_job_id = %L::uuid
     $$, :'priorJobID'),
     $$ values (
+        3,
         null::uuid,
         null::timestamptz,
         'provider unavailable'::text,
@@ -176,11 +177,14 @@ select results_eq(
 -- Should preserve final-attempt schedule while appending recovery notice
 select results_eq(
     format($$
-        select claim_id, claimed_at, failure_message, next_attempt_at, status
-        from payment_job
-        where payment_job_id = %L::uuid
+        select pj.attempt_count, payment_job_is_exhausted(pj), pj.claim_id,
+            pj.claimed_at, pj.failure_message, pj.next_attempt_at, pj.status
+        from payment_job pj
+        where pj.payment_job_id = %L::uuid
     $$, :'cappedJobID'),
     $$ values (
+        10,
+        true,
         null::uuid,
         null::timestamptz,
         E'provider timed out\npayment job claim expired after the final automatic attempt; provider outcome is unknown'::text,
@@ -193,12 +197,13 @@ select results_eq(
 -- Should record worker expiration below the attempt limit
 select results_eq(
     format($$
-        select claim_id, claimed_at, failure_message,
+        select attempt_count, claim_id, claimed_at, failure_message,
             next_attempt_at = current_timestamp, status
         from payment_job
         where payment_job_id = %L::uuid
     $$, :'staleJobID'),
     $$ values (
+        2,
         null::uuid,
         null::timestamptz,
         'payment job claim expired'::text,

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -41,6 +41,11 @@ select plan(18);
 \set rejectedRefundID '79020000-0000-0000-0000-000000000030'
 \set rejectedRequestID '79020000-0000-0000-0000-000000000031'
 \set rejectedUserID '79020000-0000-0000-0000-000000000032'
+\set reopenedClaimID '79020000-0000-0000-0000-000000000047'
+\set reopenedJobID '79020000-0000-0000-0000-000000000048'
+\set reopenedPurchaseID '79020000-0000-0000-0000-000000000049'
+\set reopenedRefundID '79020000-0000-0000-0000-000000000050'
+\set reopenedUserID '79020000-0000-0000-0000-000000000051'
 \set replacementClaimID '79020000-0000-0000-0000-000000000035'
 \set replacementJobID '79020000-0000-0000-0000-000000000045'
 \set replacementOfferID '79020000-0000-0000-0000-000000000040'
@@ -73,10 +78,11 @@ select fx_user(:'staleUserID');
 -- Group owning the finalization event
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_finalize", "seller_display_name": "Finalize Refund Fiscal Sponsor"}'::jsonb));
 
--- Users covering attendee-request, automatic, rejected and waitlist claims
+-- Users covering attendee-request, automatic, rejected, reopened and waitlist claims
 select fx_user(:'happyUserID', jsonb_build_object('username', 'happy'));
 select fx_user(:'questionsUserID', jsonb_build_object('username', 'questions'));
 select fx_user(:'rejectedUserID', jsonb_build_object('username', 'rejected-finalize-event-purchase-refund'));
+select fx_user(:'reopenedUserID', jsonb_build_object('username', 'reopened-finalize-event-purchase-refund'));
 select fx_user(:'replacementUserID', jsonb_build_object('username', 'replacement'));
 select fx_user(:'waitlistUserID', jsonb_build_object('username', 'waitlist-finalize-event-purchase-refund'));
 
@@ -313,11 +319,72 @@ from (values
     user_id
 );
 
--- Attendee rows removed from active capacity only after successful finalization
+-- Already refunded purchase whose finalized refund job was re-claimed by a worker
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+
+    payment_provider_id,
+    provider_payment_reference,
+    refunded_at,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+) values (
+    2500,
+    'USD',
+    :'eventID',
+    :'reopenedPurchaseID',
+    :'ticketTypeID',
+    'refunded',
+    'General admission',
+    :'reopenedUserID',
+
+    'stripe',
+    'pi_reopened_finalize_event_purchase_refund',
+    '2024-01-01 00:00:00+00',
+
+    'direct-charge',
+    'acct_refunds',
+    0,
+    'ch_' || :'reopenedPurchaseID',
+    'cs_' || :'reopenedPurchaseID',
+    'acct_refunds',
+    2500,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+);
+
+-- Attendee rows removed from active capacity only after successful finalization,
+-- plus a still-confirmed attendee that a finalized-refund replay must leave untouched
 insert into event_attendee (checked_in, checked_in_at, event_id, status, user_id) values
     (true, current_timestamp, :'eventID', 'confirmed', :'happyUserID'),
     (false, null, :'eventID', 'confirmed', :'incompleteUserID'),
     (false, null, :'eventID', 'registration-questions-pending', :'questionsUserID'),
+    (false, null, :'eventID', 'confirmed', :'reopenedUserID'),
     (true, current_timestamp, :'eventID', 'confirmed', :'replacementUserID'),
     (false, null, :'eventID', 'confirmed', :'staleUserID');
 
@@ -365,6 +432,19 @@ insert into payment_job (
     (:'replacementJobID', 1, :'replacementRefundedPurchaseID', 'refund-replaced-finalize-event-purchase-refund', 'event-purchase-refund', 'stripe', 'processing', :'replacementClaimID', current_timestamp),
     (:'staleJobID', 1, :'stalePurchaseID', 'refund-stale-finalize-event-purchase-refund', 'event-purchase-refund', 'stripe', 'processing', :'staleClaimID', current_timestamp);
 
+-- Re-claimed processing job left open after a stale sweep although its refund is already finalized
+insert into payment_job (
+    payment_job_id, attempt_count, event_purchase_id, idempotency_key,
+    kind, next_attempt_at, payment_provider_id, status,
+
+    claim_id, claimed_at, failure_message
+) values (
+    :'reopenedJobID', 3, :'reopenedPurchaseID', 'refund-reopened-finalize-event-purchase-refund',
+    'event-purchase-refund', '2024-01-01 00:00:00+00', 'stripe', 'processing',
+
+    :'reopenedClaimID', current_timestamp, 'payment job claim expired'
+);
+
 -- Claimed refund rows covering complete, incomplete, automatic, rejected, and stale claims
 insert into event_purchase_refund (
     amount_minor,
@@ -388,6 +468,37 @@ insert into event_purchase_refund (
     (2500, 'USD', :'rejectedPurchaseID', :'rejectedRefundID', :'actorID', 'event-cancellation', :'rejectedJobID', 'stripe', null, 'provider-succeeded', :'rejectedRequestID', 're_rejected', current_timestamp),
     (2500, 'USD', :'replacementRefundedPurchaseID', :'replacementRefundID', null, 'automatic-unfulfillable-checkout', :'replacementJobID', 'stripe', null, 'provider-succeeded', null, 're_replaced', current_timestamp),
     (2500, 'USD', :'stalePurchaseID', :'staleRefundID', :'actorID', 'event-cancellation', :'staleJobID', 'stripe', null, 'provider-succeeded', null, 're_stale_finalize_event_purchase_refund', current_timestamp);
+
+-- Finalized refund whose job was re-opened and re-claimed without un-finalizing it
+insert into event_purchase_refund (
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    initiated_by_user_id,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status,
+
+    finalized_at,
+    provider_refund_id,
+    provider_refunded_at
+) values (
+    2500,
+    'USD',
+    :'reopenedPurchaseID',
+    :'reopenedRefundID',
+    :'actorID',
+    'event-cancellation',
+    :'reopenedJobID',
+    'stripe',
+    'finalized',
+
+    '2024-01-01 00:00:00+00',
+    're_reopened_finalize_event_purchase_refund',
+    '2024-01-01 00:00:00+00'
+);
 
 -- FIFO waitlist entry offered the seat released by successful finalization
 insert into event_waitlist (
@@ -642,6 +753,95 @@ select results_eq(
     $$,
     $$ values (1, 1) $$,
     'Should keep one audit and notification entry after an idempotent replay'
+);
+
+-- Should reject a stale claim replaying a finalized refund with an open job
+select throws_ok(
+    format(
+        'select finalize_event_purchase_refund(%L::uuid, %L::uuid, %L::jsonb)',
+        :'reopenedRefundID', :'wrongClaimID', '{}'
+    ),
+    'payment job claim is stale',
+    'Should reject a stale claim replaying a finalized refund with an open job'
+);
+
+-- Should complete the open job when replaying an already finalized refund
+select lives_ok(
+    format(
+        $$
+            select finalize_event_purchase_refund(
+                %L::uuid,
+                %L::uuid,
+                jsonb_build_object('scenario', 'reopened')
+            )
+        $$,
+        :'reopenedRefundID',
+        :'reopenedClaimID'
+    ),
+    'Should complete the open job when replaying an already finalized refund'
+);
+
+-- Should close the job without repeating finalization side effects
+select results_eq(
+    format($$
+        select
+            pj.attempt_count,
+            pj.claim_id,
+            pj.claimed_at,
+            pj.completed_at is not null,
+            pj.failure_message,
+            pj.idempotency_key,
+            pj.next_attempt_at,
+            pj.status,
+            epr.finalized_at,
+            epr.provider_refunded_at,
+            epr.status,
+            ep.refunded_at,
+            ep.status,
+            ea.attendance_canceled_at,
+            ea.status,
+            (
+                select count(*)::int
+                from audit_log al
+                where al.action = 'event_refunded'
+                and al.details->>'event_purchase_id' = ep.event_purchase_id::text
+            ),
+            (
+                select count(*)::int
+                from notification n
+                where n.kind = 'event-refund-approved'
+                and n.user_id = ep.user_id
+            )
+        from payment_job pj
+        join event_purchase_refund epr
+            on epr.payment_job_id = pj.payment_job_id
+        join event_purchase ep
+            on ep.event_purchase_id = epr.event_purchase_id
+        join event_attendee ea
+            on ea.event_id = ep.event_id
+            and ea.user_id = ep.user_id
+        where pj.payment_job_id = %L::uuid
+    $$, :'reopenedJobID'),
+    $$ values (
+        3,
+        null::uuid,
+        null::timestamptz,
+        true,
+        null::text,
+        'refund-reopened-finalize-event-purchase-refund'::text,
+        '2024-01-01 00:00:00+00'::timestamptz,
+        'completed'::text,
+        '2024-01-01 00:00:00+00'::timestamptz,
+        '2024-01-01 00:00:00+00'::timestamptz,
+        'finalized'::text,
+        '2024-01-01 00:00:00+00'::timestamptz,
+        'refunded'::text,
+        null::timestamptz,
+        'confirmed'::text,
+        0,
+        0
+    ) $$,
+    'Should close the job without repeating finalization side effects'
 );
 
 -- Should finalize a pending-questions attendee without an initiating actor
