@@ -1,6 +1,24 @@
 //! This module defines the authorization middleware that guards the
 //! dashboard routes, together with the redirect responses it produces for
 //! page, HTMX, and OCG fetch requests.
+//!
+//! The selected-context middlewares resolve the community and group stored in
+//! the session on every request. A selection that still grants `Read` is used
+//! as is; one that no longer does (revoked membership, deleted group) is
+//! repaired to the first readable candidate and persisted, or the request is
+//! redirected to the user dashboard invitations tab when none is left. After
+//! resolution, the middleware compares the result with the context the client
+//! declares in [`SELECTED_COMMUNITY_ID_HEADER`] and
+//! [`SELECTED_GROUP_ID_HEADER`]; dashboard pages embed those ids and the
+//! dashboard JavaScript adds them to every HTMX request and `ocgFetch` call.
+//! A missing header skips the check, so full page loads keep the repair
+//! behavior. A header that is unparsable or differs from the resolved id
+//! means the page was rendered for another context: the middleware answers
+//! `204 No Content` with `Cache-Control: no-store` and
+//! [`STALE_DASHBOARD_CONTEXT_HEADER`] without running the handler, and the
+//! client navigates to the dashboard root. Body-level swaps that adopt a new
+//! server-side selection send no context headers. The path-scoped middlewares
+//! authorize the `/select` routes and take no part in this check.
 
 use axum::{
     extract::{Path, Request, State},

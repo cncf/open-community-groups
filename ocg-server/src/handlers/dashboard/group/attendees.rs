@@ -57,7 +57,11 @@ mod tests;
 /// Maximum number of confirmed attendees the CSV exports support.
 ///
 /// The export loads every exported row and builds the file in memory; events
-/// above this size are rejected instead of streamed.
+/// above this size are rejected instead of streamed. Measured at this bound
+/// with long names, companies, payment details, and registration answers, the
+/// database JSON payload is about 13.5 MB, the CSV about 1.9 MB, and process
+/// RSS grows by about 38 MB while the export is built. Raising the bound or
+/// adding an export needs a new measurement at the supported size.
 pub(crate) const MAX_ATTENDEES_EXPORT_ROWS: usize = 10_000;
 
 // Pages handlers.

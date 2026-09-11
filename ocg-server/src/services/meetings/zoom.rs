@@ -1,4 +1,13 @@
 //! Zoom-backed meetings provider implementation.
+//!
+//! Zoom meeting creation has no idempotency key, so a request that times out
+//! after Zoom accepted it could leave a meeting the caller does not know
+//! about. To make retries safe, every meeting is created with its `agenda`
+//! set to the provider reference (`ocg:event:<id>` or `ocg:session:<id>`) and
+//! a creation first lists the scheduled meetings of every host in
+//! `meetings.zoom.host_pool_users` looking for that marker; a match is adopted
+//! and updated instead of creating a second meeting. Updates and deletes are
+//! idempotent on Zoom's side.
 
 use anyhow::Result;
 use async_trait::async_trait;
