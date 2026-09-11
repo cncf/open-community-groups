@@ -267,6 +267,14 @@ Every `Result`-returning handler carries `#[instrument(skip_all, err)]`.
 Extractors keep `#[instrument(skip_all, err(Debug))]` because their rejection
 type is a tuple.
 
+`db/` methods carry `#[instrument(skip(self, ...), err)]`. Because `err`
+writes every span field on failure, including the `OCG01` rejections that end
+as a 422, span fields are limited to stable identifiers (UUIDs, provider
+object ids, enums, amounts). Payloads (JSON, attachments, template data),
+free text (notes, details, reasons), binary data, bulk vectors, and `input`
+structs are skipped; a `fields(entries = data.len())` keeps a size signal
+when the skipped argument is a batch.
+
 Pure domain logic (recurrence expansion, eligibility predicates) lives in
 `services/` or `types/`, not under `handlers/`.
 

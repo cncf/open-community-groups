@@ -38,19 +38,19 @@ impl<T> DBActivityTracker for T
 where
     T: PgExecutor + Send + Sync,
 {
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self, data), fields(entries = data.len()), err)]
     async fn update_community_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()> {
         self.execute("select update_community_views($1::jsonb)", &[&Json(&data)])
             .await
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self, data), fields(entries = data.len()), err)]
     async fn update_event_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()> {
         self.execute("select update_event_views($1::jsonb)", &[&Json(&data)])
             .await
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self, data), fields(entries = data.len()), err)]
     async fn update_group_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()> {
         self.execute("select update_group_views($1::jsonb)", &[&Json(&data)])
             .await
