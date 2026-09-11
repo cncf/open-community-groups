@@ -1,5 +1,4 @@
 import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
-import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 import {
   closestElement,
   getElementById,
@@ -7,7 +6,7 @@ import {
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
-import { parseJsonText } from "/static/js/common/utils.js";
+import { isSuccessfulXHR, parseJsonText } from "/static/js/common/utils.js";
 
 const MEMBERSHIP_CONTAINER_SELECTOR = "#membership-container";
 const GROUP_ACTIONS_MENU_SELECTOR = "[data-group-actions-menu]";
@@ -73,7 +72,7 @@ const handleMembershipCheckResponse = (event) => {
 
   const xhr = event.detail?.xhr;
 
-  if (isSuccessfulXHRStatus(xhr?.status)) {
+  if (isSuccessfulXHR(xhr)) {
     const response = parseJsonText(xhr.responseText, null);
     if (!response) {
       setElementHidden(signinButton, false);

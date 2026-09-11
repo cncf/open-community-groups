@@ -1,4 +1,4 @@
-import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
+import { isSuccessfulXHR } from "/static/js/common/utils.js";
 import { getAttendanceMeta } from "/static/js/event/attendance-dom.js";
 import {
   showAdmissionOfferState,
@@ -29,7 +29,7 @@ export const renderAttendanceCheckResponse = (container, event) => {
   const meta = getAttendanceMeta(container);
   const xhr = event.detail?.xhr;
 
-  if (!isSuccessfulXHRStatus(xhr?.status)) {
+  if (!isSuccessfulXHR(xhr)) {
     showSignedOutFallback(container, meta);
     return;
   }

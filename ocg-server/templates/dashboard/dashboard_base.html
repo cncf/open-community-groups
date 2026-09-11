@@ -39,7 +39,9 @@
 
   {# Main Content -#}
   <div id="dashboard-layout"
-       class="flex max-md:grow max-md:px-4 max-md:pb-4">
+       class="flex max-md:grow max-md:px-4 max-md:pb-4"
+       {% block dashboard_context_attributes -%}
+       {% endblock dashboard_context_attributes -%}>
     {# Sticky menu -#}
     <aside id="dashboard-menu-drawer"
            class="fixed top-0 left-0 z-[1100] h-dvh w-80 shrink-0 -translate-x-full bg-stone-100 border-r border-stone-200 shadow-lg transition-transform md:sticky md:z-auto md:w-[225px] md:translate-x-0 md:bg-transparent md:border-r-0 md:shadow-none lg:w-[300px]"

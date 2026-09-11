@@ -24,7 +24,7 @@ use crate::{
     services::{
         enrollment::{AdmissionAllocationOutcome, EnrollmentError, MockEnrollmentManager},
         notifications::MockNotificationsManager,
-        payments::MockPaymentsManager,
+        payments::{MockPaymentsManager, PaymentsError},
     },
     types::{
         dashboard::{
@@ -269,7 +269,7 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
                 && input.group_id == group_id
                 && input.review_note.is_none()
         })
-        .returning(|_| Box::pin(async { Err(anyhow!("payments error")) }));
+        .returning(|_| Box::pin(async { Err(anyhow!("payments error").into()) }));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1543,6 +1543,62 @@ async fn test_manual_check_in_success() {
 
     // Check response matches expectations
     assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn test_mark_external_payment_rejects_purchase_outside_selected_group() {
+    // Setup authenticated organizer context
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup authentication and authorization expectations
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+
+    // Reject the purchase from the payments manager
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_complete_external_checkout()
+        .times(1)
+        .withf(move |actor_uid, gid, purchase_id, _details| {
+            *actor_uid == user_id && *gid == group_id && *purchase_id == event_purchase_id
+        })
+        .returning(|_, _, _, _| {
+            Box::pin(async { Err(PaymentsError::Rejected("purchase not found".to_string())) })
+        });
+
+    // Submit the mark-paid form
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/purchases/{event_purchase_id}/external-payment"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from("details=wire+123"))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the rejection is returned as a user-facing error
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(bytes, "purchase not found");
 }
 
 #[tokio::test]

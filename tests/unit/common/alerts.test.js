@@ -239,8 +239,18 @@ describe("alerts", () => {
         errorMessage: "Failed",
       }),
     ).to.equal(false);
+    expect(
+      handleHtmxResponse({
+        xhr: {
+          status: 204,
+          getResponseHeader: (name) => (name === "X-OCG-Stale-Dashboard-Context" ? "true" : null),
+        },
+        successMessage: "Updated",
+        errorMessage: "Failed",
+      }),
+    ).to.equal(false);
 
-    // No success or error alert: the dirty-form notice owns this path.
+    // No success or error alert: the refresh flows own this path.
     expect(env.current.swal.calls).to.have.length(0);
   });
 

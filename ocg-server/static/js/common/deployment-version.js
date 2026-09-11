@@ -150,6 +150,20 @@ export const setDeploymentReloadHandler = (handler) => {
 };
 
 /**
+ * Clears the pending reload guard when the browser restores this page from
+ * the back/forward cache, so restored pages keep handling responses.
+ * @param {Window} target Window receiving page lifecycle events.
+ * @returns {void}
+ */
+export const initializeDeploymentReloadState = (target = window) => {
+  target.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      reloadRequested = false;
+    }
+  });
+};
+
+/**
  * Resumes a pending deployment refresh retry when cached HTML is still loaded.
  * @param {Document} root Document used to read the loaded commit SHA.
  * @returns {boolean} Whether a refresh retry is pending.

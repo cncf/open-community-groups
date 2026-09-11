@@ -398,6 +398,55 @@ multi-step workflow is behind a manager. Response-only concerns stay in the
 handler: HTMX headers, the `AutomaticTaxReadiness*` JSON contract, the
 check-in scanner error envelope, and the "exactly one invite target" `400`.
 
+### Dashboard context
+
+The community and group dashboards act on the community and group selected
+in the session (`SELECTED_COMMUNITY_ID_KEY`, `SELECTED_GROUP_ID_KEY` in
+`handlers/auth/session_context.rs`). The selected-context middlewares in
+`handlers/auth/middleware.rs` (`user_has_community_dashboard_permission`,
+`user_has_selected_community_permission`,
+`user_has_selected_group_permission`) resolve that selection on every request
+and expose it through `SelectedCommunityId` and `SelectedGroupId`:
+
+- A selection that still grants `Read` is used as is; a missing write
+  permission on it is a `403`, decided only after the loaded-context check
+  below so a stale page is refreshed rather than told it lacks a permission
+  it never asked about. `resolve_*_dashboard_context` therefore returns the
+  readable context together with `has_requested_permission` instead of an
+  error.
+- A selection that no longer grants `Read` (revoked membership, deleted
+  group) is repaired to the first readable candidate, preferring the selected
+  community, and the repaired ids are persisted in the session. With no
+  candidate left, the request is redirected to the user dashboard
+  invitations tab (`Location`, `HX-Redirect`, or `X-OCG-Redirect` depending
+  on the client).
+- After resolution, the middleware compares the result with the context the
+  client declares in `X-OCG-Selected-Community-Id` and, for group routes,
+  `X-OCG-Selected-Group-Id`. Dashboard pages embed those ids on
+  `#dashboard-layout` (`data-ocg-selected-community-id`,
+  `data-ocg-selected-group-id`) and `static/js/common/dashboard-context.js`
+  adds them to every HTMX request and `ocgFetch` call. A header that is
+  absent skips the check, so full page loads and other clients keep the
+  repair behavior. A header that is unparsable or differs from the resolved
+  id means the page was rendered for another context (repair above, or a
+  selection changed in another tab): the middleware answers
+  `204 No Content` with `Cache-Control: no-store` and
+  `X-OCG-Stale-Dashboard-Context: true` without running the handler. The
+  client navigates to the dashboard root (the previous tab may be forbidden
+  in the new context) and shows a one-shot notice; a persisted `pageshow`
+  (back/forward cache) releases the pending-reload guard so the restored page
+  keeps handling responses. Client code classifies
+  that `204` as unsuccessful through `isInterceptedXHR` / `isSuccessfulXHR`
+  in `static/js/common/utils.js`, alongside the deployment refresh
+  intercepts.
+- Body-level swaps (`refresh-body`, the selector flows that swap `body`)
+  exist to adopt the new server-side selection and therefore send no context
+  headers.
+
+The path-scoped middlewares (`user_has_path_community_permission`,
+`user_has_path_group_permission`) authorize the `/select` routes that change
+the selection and do not take part in this check.
+
 ## Test layering
 
 Each behavior is proven at the cheapest layer able to prove it. The mock

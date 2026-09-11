@@ -2,6 +2,11 @@
 {% import "macros/feedback.html" as feedback -%}
 {% import "macros/dashboard.html" as dashboard -%}
 
+{% block dashboard_context_attributes -%}
+  data-ocg-selected-community-id="{{ selected_community_id }}"
+  data-ocg-selected-group-id="{{ selected_group_id }}"
+{% endblock dashboard_context_attributes -%}
+
 {% block dashboard_main_classes -%}
   {% if content.is_check_in() || is_check_in_fallback %}block{% else %}hidden md:block{% endif %}
 {% endblock dashboard_main_classes -%}

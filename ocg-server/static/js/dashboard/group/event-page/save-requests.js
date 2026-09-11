@@ -1,5 +1,6 @@
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
 import { convertDateTimeLocalToISO } from "/static/js/common/datetime.js";
+import { isInterceptedXHR } from "/static/js/common/utils.js";
 import {
   consumeStashedActiveEventSection,
   stashActiveEventSection,
@@ -64,6 +65,10 @@ const isEventEditorFollowUpGet = (event) => {
  * @returns {boolean}
  */
 const isSuccessfulHtmxRequest = (event) => {
+  // Refresh intercepts never ran the handler even though HTMX reports a 2xx
+  if (isInterceptedXHR(event.detail?.xhr)) {
+    return false;
+  }
   if (typeof event.detail?.successful === "boolean") {
     return event.detail.successful;
   }

@@ -1,7 +1,9 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  isInterceptedXHR,
   isString,
+  isSuccessfulXHR,
   normalizeUsers,
   parseJsonAttribute,
   parseJsonText,
@@ -34,6 +36,28 @@ describe("common utils", () => {
     expect(toTrimmedString(null)).to.equal("");
     expect(toOptionalString(42)).to.equal("42");
     expect(toOptionalString(undefined)).to.equal("");
+  });
+
+  it("classifies refresh intercepts as unsuccessful responses", () => {
+    // Build a 2xx response for each intercept header and a regular one.
+    const interceptedBy = (header) => ({
+      status: 204,
+      getResponseHeader: (name) => (name === header ? "true" : null),
+    });
+    const regular = { status: 204, getResponseHeader: () => null };
+
+    // Intercepts are detected regardless of which header carries them.
+    expect(isInterceptedXHR(interceptedBy("HX-Refresh"))).to.equal(true);
+    expect(isInterceptedXHR(interceptedBy("X-OCG-Refresh"))).to.equal(true);
+    expect(isInterceptedXHR(interceptedBy("X-OCG-Stale-Dashboard-Context"))).to.equal(true);
+    expect(isInterceptedXHR(regular)).to.equal(false);
+    expect(isInterceptedXHR(null)).to.equal(false);
+
+    // Only a non-intercepted 2xx counts as a successful handler result.
+    expect(isSuccessfulXHR(regular)).to.equal(true);
+    expect(isSuccessfulXHR(interceptedBy("X-OCG-Stale-Dashboard-Context"))).to.equal(false);
+    expect(isSuccessfulXHR({ status: 422, getResponseHeader: () => null })).to.equal(false);
+    expect(isSuccessfulXHR(undefined)).to.equal(false);
   });
 
   it("parses JSON attributes safely and normalizes booleans", () => {

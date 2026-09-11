@@ -1,5 +1,10 @@
 import { handleHtmxResponse, showSuccessAlert } from "/static/js/common/alerts.js";
 import {
+  addLoadedDashboardContextHeaders,
+  isDashboardContextReloadRequested,
+  reloadIfDashboardContextStale,
+} from "/static/js/common/dashboard-context.js";
+import {
   addLoadedCommitShaHeader,
   isDeploymentReloadRequested,
   reloadIfDeploymentChanged,
@@ -187,6 +192,55 @@ export const handleCommitShaConfigRequest = (event, root = document) => {
 };
 
 /**
+ * Reloads the page before HTMX processes a stale dashboard context intercept.
+ * Cancelling the event stops HTMX response handling; stopping propagation keeps
+ * later declarative response handlers from reading the 204 as a success.
+ * @param {CustomEvent} event HTMX beforeOnLoad event.
+ * @returns {void}
+ */
+export const handleDashboardContextBeforeOnLoad = (event) => {
+  if (!event.detail) {
+    return;
+  }
+
+  if (reloadIfDashboardContextStale(event.detail.xhr)) {
+    event.preventDefault();
+    event.stopImmediatePropagation?.();
+  }
+};
+
+/**
+ * Prevents fragments from a stale dashboard context from being swapped into the page.
+ * @param {CustomEvent} event HTMX beforeSwap event.
+ * @returns {void}
+ */
+export const handleDashboardContextBeforeSwap = (event) => {
+  if (!event.detail) {
+    return;
+  }
+
+  if (isDashboardContextReloadRequested() || reloadIfDashboardContextStale(event.detail.xhr)) {
+    event.detail.shouldSwap = false;
+  }
+};
+
+/**
+ * Adds the loaded dashboard context to HTMX requests.
+ * Body-level swaps adopt the server-side selection, so they declare no context.
+ * @param {CustomEvent} event HTMX configRequest event.
+ * @param {Document} root Document used to read the loaded dashboard context.
+ * @returns {void}
+ */
+export const handleDashboardContextConfigRequest = (event, root = document) => {
+  if (!event.detail || event.detail.target === root.body) {
+    return;
+  }
+
+  event.detail.headers = event.detail.headers || {};
+  addLoadedDashboardContextHeaders(event.detail.headers, root);
+};
+
+/**
  * Applies OCG's selector-based custom hx-exclude request parameter filtering.
  * @param {CustomEvent} event HTMX configRequest event.
  * @returns {void}
@@ -354,10 +408,13 @@ export const registerHtmxResponseHandlers = (root = document) => {
   }
 
   eventRoot.addEventListener("htmx:configRequest", handleCommitShaConfigRequest);
+  eventRoot.addEventListener("htmx:configRequest", handleDashboardContextConfigRequest);
   eventRoot.addEventListener("htmx:configRequest", handleHtmxExcludeConfigRequest);
   eventRoot.addEventListener("htmx:beforeOnLoad", handleCommitShaBeforeOnLoad);
+  eventRoot.addEventListener("htmx:beforeOnLoad", handleDashboardContextBeforeOnLoad);
   eventRoot.addEventListener("htmx:beforeOnLoad", handleDeclarativeHtmxResponse);
   eventRoot.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);
+  eventRoot.addEventListener("htmx:beforeSwap", handleDashboardContextBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleDeclarativeHtmxResponse);
   eventRoot.addEventListener("htmx:afterRequest", handleDeclarativeHtmxResponse);

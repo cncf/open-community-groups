@@ -5,7 +5,7 @@ import { hasHtmxTrigger } from "/static/js/common/htmx-triggers.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { toggleModalVisibility, trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
-import { isSuccessfulXHRStatus, parseJsonText } from "/static/js/common/utils.js";
+import { isSuccessfulXHR, parseJsonText } from "/static/js/common/utils.js";
 
 // Maps recoverable server conflict codes to actionable offer-claim guidance.
 const CLAIM_CONFLICT_MESSAGES = {
@@ -72,7 +72,7 @@ const handleAfterRequest = (event) => {
     const xhr = event.detail?.xhr;
     const response = parseJsonText(xhr?.responseText, {});
     const conflictMessage = CLAIM_CONFLICT_MESSAGES[response?.conflict];
-    if (!isSuccessfulXHRStatus(xhr?.status) && conflictMessage) {
+    if (!isSuccessfulXHR(xhr) && conflictMessage) {
       if (response.conflict === "admission-offer-unavailable") {
         // Remove an unavailable offer immediately so it cannot be submitted again.
         closeModal(target.closest("[data-user-event-offer-dialog]"));
@@ -123,7 +123,7 @@ const handleAfterRequest = (event) => {
 
   if (closestElement(target, "[data-user-event-offer-checkout-cancel]")) {
     // The shared confirmation handler owns errors for confirmation-gated actions.
-    if (!isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
+    if (!isSuccessfulXHR(event.detail?.xhr)) {
       return;
     }
 
