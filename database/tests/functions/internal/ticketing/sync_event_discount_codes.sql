@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(23);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,8 +13,10 @@ select plan(21);
 \set discountCode1ID '3a320000-0000-0000-0000-000000000002'
 \set discountCode2ID '3a320000-0000-0000-0000-000000000003'
 \set discountCode3ID '3a320000-0000-0000-0000-000000000004'
+\set discountCodeClearedID '3a320000-0000-0000-0000-000000000013'
 \set discountCodeOtherID '3a320000-0000-0000-0000-000000000005'
 \set eventCategoryID '3a320000-0000-0000-0000-000000000006'
+\set eventClearedID '3a320000-0000-0000-0000-000000000014'
 \set eventID '3a320000-0000-0000-0000-000000000007'
 \set eventProtectedID '3a320000-0000-0000-0000-000000000008'
 \set groupCategoryID '3a320000-0000-0000-0000-000000000009'
@@ -36,6 +38,7 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 -- Events
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 select fx_event(:'eventProtectedID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'eventClearedID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Event discount codes
 insert into event_discount_code (
@@ -56,6 +59,29 @@ insert into event_discount_code (
         'fixed_amount',
         'Protected discount'
     );
+
+-- Override-on discount code cleared by the explicit clearing scenario
+insert into event_discount_code (
+    event_discount_code_id,
+    code,
+    event_id,
+    kind,
+    title,
+    available,
+    available_override_active,
+    percentage,
+    total_available
+) values (
+    :'discountCodeClearedID',
+    'CLEAR5',
+    :'eventClearedID',
+    'percentage',
+    'Cleared discount',
+    5,
+    true,
+    5,
+    10
+);
 
 -- Protected ticket type and purchase
 select fx_event_ticket_type(:'protectedTicketTypeID', :'eventProtectedID', jsonb_build_object(
@@ -301,6 +327,48 @@ select is(
         'available_override_active', false
     ),
     'Should store an auto-managed discount after clearing the manual override'
+);
+
+-- Should clear the manual override when the payload clears Uses remaining despite an explicit override flag
+select lives_ok(
+    format(
+        $$select sync_event_discount_codes(
+            '%s'::uuid,
+            '[
+                {
+                    "event_discount_code_id": "%s",
+                    "active": true,
+                    "available_cleared": true,
+                    "available_override_active": true,
+                    "code": "CLEAR5",
+                    "kind": "percentage",
+                    "percentage": 5,
+                    "title": "Cleared discount",
+                    "total_available": 10
+                }
+            ]'::jsonb
+        )$$,
+        :'eventClearedID',
+        :'discountCodeClearedID'
+    ),
+    'Should clear the manual override when the payload clears Uses remaining despite an explicit override flag'
+);
+
+-- Should store an auto-managed discount after the clear command wins over the override flag
+select is(
+    (
+        select jsonb_build_object(
+            'available', available,
+            'available_override_active', available_override_active
+        )
+        from event_discount_code
+        where event_discount_code_id = :'discountCodeClearedID'::uuid
+    ),
+    jsonb_build_object(
+        'available', null,
+        'available_override_active', false
+    ),
+    'Should store an auto-managed discount after the clear command wins over the override flag'
 );
 
 -- Simulate an auto-managed limited code before lowering the cap

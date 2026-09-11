@@ -106,7 +106,11 @@
 {{ template "internal/text/generate_slug.sql" }}
 {{ template "internal/text/generate_slug_from_source.sql" }}
 
+{{ template "internal/ticketing/normalize_ticketing_schedule.sql" }} -- Dependency for event_discount_codes_configuration and event_ticket_types_configuration
+{{ template "internal/ticketing/resolve_event_discount_code_available_override.sql" }} -- Dependency for event_discount_codes_configuration
+{{ template "internal/ticketing/event_discount_codes_configuration.sql" }}
 {{ template "internal/ticketing/event_ticket_type_current_price.sql" }}
+{{ template "internal/ticketing/event_ticket_types_configuration.sql" }}
 {{ template "internal/ticketing/get_event_ticket_capacity.sql" }}
 {{ template "internal/ticketing/get_event_ticket_type_allocated_seat_count.sql" }}
 {{ template "internal/enrollment/admission_offer_capacity_conflict.sql" }} -- Depends on get_event_ticket_type_allocated_seat_count

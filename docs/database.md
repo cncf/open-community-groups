@@ -327,7 +327,10 @@ The rule-owning helpers are:
   `search_*` and `list_*` functions. Callers keep their defaults, sort
   allow-lists and function-specific keys.
 - Projections and encodings: `epoch_seconds(timestamptz)` (whole seconds,
-  truncated; the only timestamp encoding in JSON results),
+  truncated; the encoding of every event and enrollment timestamp read by
+  Rust — the exception is `list_event_ticket_types` and
+  `list_event_discount_codes`, which emit `timestamptz` strings (RFC 3339
+  with offset) consumed by `DateTime<Utc>` DTOs and the ticketing editors),
   `public_user_summary("user")`, `event_venue_snapshot(event)`,
   `event_purchase_refund_to_json(event_purchase_refund, payment_job)`,
   `payment_job_to_json(payment_job)` and
@@ -348,6 +351,20 @@ The rule-owning helpers are:
   `update_event` (locked prior row), delegating rail selection to
   `resolve_event_payment_rail`; `validate_event_payment_validation` binds the
   server's provider validation snapshot to the locked group recipient.
+- Ticketing configuration comparison:
+  `event_ticket_types_configuration(p_ticket_types)` and
+  `event_discount_codes_configuration(p_discount_codes,
+  p_stored_discount_codes)` are the comparison-only projections
+  `event_ticketing_configuration_changed` applies to both the stored and the
+  submitted collections (read-model fields dropped, discount codes resolved
+  against the stored code with the same identifier and ordered by identifier,
+  live inventory kept only where the persisted rule keeps it, schedules
+  re-encoded through `normalize_ticketing_schedule(p_schedule)` as
+  `epoch_seconds`). `resolve_event_discount_code_available_override(
+  p_discount_code, p_previous_override_active)` is the manual Uses remaining
+  precedence rule (clear command, explicit flag, submitted count, prior
+  state) shared by that projection and `sync_event_discount_codes`. None of
+  the projections is written back or returned to callers.
 - Organizer offers: `resolve_organizer_offer_expiry(event)`,
   `validate_admission_offer_payment_readiness(event, "group", amount,
   provider)` and `admission_offer_capacity_conflict(event_ticket_type,
@@ -390,7 +407,16 @@ shorter.
   (`is_event_meeting_in_sync`, `is_session_meeting_in_sync`,
   `validate_update_event_dates`) truncate the stored value with
   `date_trunc('second', ...)`, the precision `epoch_seconds` gives the
-  dashboard, so a round-tripped value never reads as a change.
+  dashboard, so a round-tripped value never reads as a change. JSON
+  collections that carry timestamps (ticket price windows, discount codes)
+  are never compared as raw `jsonb`: the same instant is spelled
+  `…T10:00:00+02:00` by `jsonb_build_object` over a `timestamptz` and
+  `…T08:00:00Z` by chrono, so both sides go through the configuration
+  projections above (`normalize_ticketing_schedule` re-encodes the schedule
+  as `epoch_seconds`) before structural equality. Whole-second comparison is
+  an accepted limitation: `DateTime<Utc>` inputs and `sync_event_*` accept
+  and persist fractional seconds, so a sub-second-only change is written
+  without being detected as a change.
 - **Composites use `returns table`.** No named composite types exist; a
   helper returning several values declares `returns table (...)` and callers
   `select * into v_record` and copy composite columns into `%rowtype` locals

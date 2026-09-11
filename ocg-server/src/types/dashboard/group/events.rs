@@ -747,6 +747,7 @@ pub(crate) struct TicketTypeInput {
 
 #[cfg(test)]
 mod tests {
+    use chrono::{DateTime, Utc};
     use serde_json::Value;
 
     use crate::types::payments::{
@@ -926,6 +927,71 @@ timezone=UTC",
         let payload = event.to_db_payload().unwrap();
 
         assert_eq!(payload["registration_questions"], Value::Array(Vec::new()));
+    }
+
+    #[test]
+    fn to_db_payload_serializes_dated_ticketing_timestamps_as_utc_z() {
+        // Setup a dated discount code and price window without a live inventory count
+        let starts_at = "2030-01-01T10:00:00Z".parse::<DateTime<Utc>>().unwrap();
+        let ends_at = "2030-06-01T10:00:00Z".parse::<DateTime<Utc>>().unwrap();
+        let mut event = sample_event();
+        event.discount_codes = Some(vec![DiscountCodeInput {
+            active: true,
+            code: "DATED10".to_string(),
+            kind: EventDiscountType::Percentage,
+            title: "Dated".to_string(),
+
+            available: None,
+            available_override_active: Some(true),
+            available_cleared: None,
+            amount_minor: None,
+            ends_at: Some(ends_at),
+            event_discount_code_id: Some(uuid::Uuid::new_v4()),
+            percentage: Some(10),
+            starts_at: Some(starts_at),
+            total_available: Some(10),
+        }]);
+        event.discount_codes_present = Some(true);
+        event.ticket_types = Some(vec![TicketTypeInput {
+            active: true,
+            availability: EventTicketTypeAvailability::Public,
+            order: 1,
+            price_windows: vec![TicketPriceWindowInput {
+                amount_minor: 2500,
+
+                ends_at: Some(ends_at),
+                event_ticket_price_window_id: Some(uuid::Uuid::new_v4()),
+                starts_at: Some(starts_at),
+            }],
+            title: "General".to_string(),
+
+            description: None,
+            event_ticket_type_id: Some(uuid::Uuid::new_v4()),
+            seats_total: Some(10),
+        }]);
+        event.ticket_types_present = Some(true);
+
+        // Serialize the payload
+        let payload = event.to_db_payload().unwrap();
+
+        // Check timestamps use the Z spelling and the omitted count stays absent
+        assert_eq!(
+            payload["discount_codes"][0]["ends_at"],
+            "2030-06-01T10:00:00Z"
+        );
+        assert_eq!(
+            payload["discount_codes"][0]["starts_at"],
+            "2030-01-01T10:00:00Z"
+        );
+        assert!(payload["discount_codes"][0].get("available").is_none());
+        assert_eq!(
+            payload["ticket_types"][0]["price_windows"][0]["ends_at"],
+            "2030-06-01T10:00:00Z"
+        );
+        assert_eq!(
+            payload["ticket_types"][0]["price_windows"][0]["starts_at"],
+            "2030-01-01T10:00:00Z"
+        );
     }
 
     #[test]

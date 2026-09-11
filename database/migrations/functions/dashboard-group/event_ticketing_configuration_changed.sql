@@ -2,7 +2,11 @@
 -- ticket readiness (pricing, tax policy, external payment settings, taxable
 -- performance context or the event becoming purchasable). The prior state is
 -- read from the event row and its stored ticket types and discount codes;
--- payload keys the dashboard may omit fall back to the stored values.
+-- payload keys the dashboard may omit fall back to the stored values. Ticket
+-- types and discount codes are compared on their configuration projections
+-- (event_ticket_types_configuration, event_discount_codes_configuration) so
+-- read-model fields, live inventory, ordering and timestamp spellings never
+-- register as changes.
 create or replace function event_ticketing_configuration_changed(
     p_community_id uuid,
     p_group_id uuid,
@@ -24,8 +28,6 @@ declare
     v_tax_configuration_changed boolean;
     v_ticket_types jsonb;
     v_ticket_types_before jsonb;
-    v_ticket_types_before_configuration jsonb;
-    v_ticket_types_configuration jsonb;
     v_timezone text;
     v_was_payment_active boolean;
     v_will_payment_active boolean;
@@ -98,30 +100,6 @@ begin
         );
     v_payment_became_active := not v_was_payment_active and v_will_payment_active;
 
-    -- Ignore read-model-only ticket fields when comparing stored configuration
-    select coalesce(
-        jsonb_agg(
-            ticket_type - 'current_price' - 'remaining_seats' - 'sold_out'
-            order by ordinality
-        ),
-        '[]'::jsonb
-    )
-    into v_ticket_types_before_configuration
-    from jsonb_array_elements(coalesce(v_ticket_types_before, '[]'::jsonb))
-        with ordinality as ticket_types(ticket_type, ordinality);
-
-    -- Ignore read-model-only ticket fields in the proposed configuration
-    select coalesce(
-        jsonb_agg(
-            ticket_type - 'current_price' - 'remaining_seats' - 'sold_out'
-            order by ordinality
-        ),
-        '[]'::jsonb
-    )
-    into v_ticket_types_configuration
-    from jsonb_array_elements(coalesce(v_ticket_types, '[]'::jsonb))
-        with ordinality as ticket_types(ticket_type, ordinality);
-
     -- Compare the taxable performance context
     v_performance_context_changed :=
         p_event->>'kind_id' is distinct from v_before.event_kind_id
@@ -147,11 +125,18 @@ begin
         or nullif(btrim(p_event->>'venue_zip_code'), '')
             is distinct from nullif(btrim(v_before.venue_zip_code), '');
 
-    -- Compare ticket inventory and pricing inputs
+    -- Compare pricing inputs on their configuration projections so read-model
+    -- fields, live inventory, ordering and timestamp spellings never register
+    -- as changes
     v_pricing_configuration_changed :=
-        v_discount_codes is distinct from v_discount_codes_before
+        event_discount_codes_configuration(v_discount_codes, v_discount_codes_before)
+            is distinct from event_discount_codes_configuration(
+                v_discount_codes_before,
+                v_discount_codes_before
+            )
         or v_payment_currency_code is distinct from nullif(v_before.payment_currency_code, '')
-        or v_ticket_types_configuration is distinct from v_ticket_types_before_configuration;
+        or event_ticket_types_configuration(v_ticket_types)
+            is distinct from event_ticket_types_configuration(v_ticket_types_before);
 
     -- Compare tax policy inputs
     v_tax_configuration_changed :=
