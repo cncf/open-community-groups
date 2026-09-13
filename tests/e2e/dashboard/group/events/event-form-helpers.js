@@ -2,7 +2,7 @@ import { expect } from "../../../fixtures.js";
 
 import { openPaymentsSection } from "./helpers.js";
 
-/** Add a ticket type through the ticketing modal and save it. */
+/** Adds a ticket type through the ticketing modal and saves it. */
 export const addTicketType = async (page, values) => {
   await page.locator("#add-ticket-type-button").click();
 
@@ -24,23 +24,15 @@ export const addTicketType = async (page, values) => {
       await modal.locator('[data-ticketing-action="add-price-window"]').click();
     }
 
-    const amountField = modal
-      .locator('[data-ticket-window-field="amount"]')
-      .nth(index);
+    const amountField = modal.locator('[data-ticket-window-field="amount"]').nth(index);
     await amountField.fill(priceWindow.amount);
 
     if (priceWindow.startsAt) {
-      await modal
-        .locator('[data-ticket-window-field="starts_at"]')
-        .nth(index)
-        .fill(priceWindow.startsAt);
+      await modal.locator('[data-ticket-window-field="starts_at"]').nth(index).fill(priceWindow.startsAt);
     }
 
     if (priceWindow.endsAt) {
-      await modal
-        .locator('[data-ticket-window-field="ends_at"]')
-        .nth(index)
-        .fill(priceWindow.endsAt);
+      await modal.locator('[data-ticket-window-field="ends_at"]').nth(index).fill(priceWindow.endsAt);
     }
   }
 
@@ -48,7 +40,7 @@ export const addTicketType = async (page, values) => {
   await expect(modal).toBeHidden();
 };
 
-/** Edit an existing ticket type through the ticketing modal and save it. */
+/** Edits an existing ticket type through the ticketing modal and saves it. */
 export const editTicketType = async (page, currentTitle, values) => {
   const ticketRow = page
     .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
@@ -64,31 +56,25 @@ export const editTicketType = async (page, currentTitle, values) => {
   await expect(modal).toBeHidden();
 };
 
-/** Select automatic meeting creation and assert the hidden request value. */
+/** Selects automatic meeting creation and asserts the hidden request value. */
 export const enableAutomaticMeetingCreation = async (page) => {
   const onlineEventDetails = page.locator("online-event-details");
-  const automaticModeInput = onlineEventDetails.locator(
-    'input[type="radio"][value="automatic"]',
-  );
+  const automaticModeInput = onlineEventDetails.locator('input[type="radio"][value="automatic"]');
 
   await expectAutomaticMeetingControls(page);
   await expect(automaticModeInput).toBeEnabled();
 
   await automaticModeInput.check({ force: true });
 
-  await expect(
-    onlineEventDetails.locator(
-      'input[type="hidden"][name="meeting_requested"]',
-    ),
-  ).toHaveValue("true");
+  await expect(onlineEventDetails.locator('input[type="hidden"][name="meeting_requested"]')).toHaveValue(
+    "true",
+  );
 };
 
-/** Verify automatic meeting controls are visible in the online details form. */
+/** Verifies automatic meeting controls are visible in the online details form. */
 export const expectAutomaticMeetingControls = async (page) => {
   const onlineEventDetails = page.locator("online-event-details");
-  const automaticModeCard = onlineEventDetails.locator(
-    'input[type="radio"][value="automatic"] + div',
-  );
+  const automaticModeCard = onlineEventDetails.locator('input[type="radio"][value="automatic"] + div');
 
   await expect(onlineEventDetails).toBeVisible();
   await expect(automaticModeCard).toBeVisible();
@@ -99,13 +85,13 @@ export const expectAutomaticMeetingControls = async (page) => {
   ).toBeVisible();
 };
 
-/** Verify manual meeting URL fields are visible in the event form. */
+/** Verifies manual meeting URL fields are visible in the event form. */
 export const expectManualMeetingFields = async (page) => {
   await expect(page.locator("#meeting_join_url")).toBeVisible();
   await expect(page.locator("#meeting_recording_url")).toBeVisible();
 };
 
-/** Open the event details section and wait until it is active. */
+/** Opens the event details section and waits until it is active. */
 export const openDetailsSection = async (page) => {
   const detailsSectionButton = page.locator('button[data-section="details"]');
 
@@ -114,7 +100,7 @@ export const openDetailsSection = async (page) => {
   await expect(detailsSectionButton).toHaveAttribute("data-active", "true");
 };
 
-/** Remove a discount code from the ticketing summary. */
+/** Removes a discount code from the ticketing summary. */
 export const removeDiscountCode = async (page, code) => {
   const discountRow = page
     .locator('#discount-codes-ui [data-ticketing-role="table-body"] tr')
@@ -123,7 +109,7 @@ export const removeDiscountCode = async (page, code) => {
   await expect(discountRow).toHaveCount(0);
 };
 
-/** Keep automatic meeting coverage within the configured provider capacity. */
+/** Keeps automatic meeting coverage within the configured provider capacity. */
 export const setAutomaticMeetingCapacity = async (page) => {
   await openPaymentsSection(page);
   await editTicketType(page, "General Admission", {
@@ -134,7 +120,7 @@ export const setAutomaticMeetingCapacity = async (page) => {
   await openDetailsSection(page);
 };
 
-/** Set CFS label names through the editor component API and assert inputs. */
+/** Sets CFS label names through the editor component API and asserts inputs. */
 export const setCfsLabels = async (page, labels) => {
   const editor = page.locator("cfs-labels-editor");
 
@@ -151,21 +137,17 @@ export const setCfsLabels = async (page, labels) => {
   }, labels);
 
   // Verify the editor rendered one submitted input for each label.
-  await expect(
-    editor.locator('input[name^="cfs_labels"][name$="[name]"]'),
-  ).toHaveCount(labels.length);
+  await expect(editor.locator('input[name^="cfs_labels"][name$="[name]"]')).toHaveCount(labels.length);
 };
 
-/** Set event hosts and speakers through selector APIs and assert submitted inputs. */
+/** Sets event hosts and speakers through selector APIs and asserts submitted inputs. */
 export const setEventPeople = async (page, values) => {
-  await page
-    .locator('user-search-selector[field-name="hosts"]')
-    .evaluate(async (element, hosts) => {
-      const hostSelector = element;
+  await page.locator('user-search-selector[field-name="hosts"]').evaluate(async (element, hosts) => {
+    const hostSelector = element;
 
-      hostSelector.selectedUsers = hosts;
-      await hostSelector.updateComplete;
-    }, values.hosts);
+    hostSelector.selectedUsers = hosts;
+    await hostSelector.updateComplete;
+  }, values.hosts);
   await page
     .locator('speakers-selector[field-name-prefix="speakers"]')
     .evaluate(async (element, speakers) => {
@@ -175,11 +157,9 @@ export const setEventPeople = async (page, values) => {
       await speakersSelector.updateComplete;
     }, values.speakers);
 
-  await expect(
-    page.locator(
-      'user-search-selector[field-name="hosts"] input[name="hosts[]"]',
-    ),
-  ).toHaveCount(values.hosts.length);
+  await expect(page.locator('user-search-selector[field-name="hosts"] input[name="hosts[]"]')).toHaveCount(
+    values.hosts.length,
+  );
   await expect(
     page.locator(
       'speakers-selector[field-name-prefix="speakers"] input[name^="speakers"][name$="[user_id]"]',
@@ -187,7 +167,7 @@ export const setEventPeople = async (page, values) => {
   ).toHaveCount(values.speakers.length);
 };
 
-/** Set registration questions through the editor API and assert submitted inputs. */
+/** Sets registration questions through the editor API and asserts submitted inputs. */
 export const setRegistrationQuestions = async (page, questions) => {
   const editor = page.locator("questions-editor");
 
@@ -198,7 +178,7 @@ export const setRegistrationQuestions = async (page, questions) => {
     await questionsEditor.updateComplete;
   }, questions);
 
-  await expect(
-    editor.locator('input[name^="registration_questions"][name$="[prompt]"]'),
-  ).toHaveCount(questions.length);
+  await expect(editor.locator('input[name^="registration_questions"][name$="[prompt]"]')).toHaveCount(
+    questions.length,
+  );
 };

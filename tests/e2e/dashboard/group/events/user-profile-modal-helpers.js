@@ -2,8 +2,8 @@ import { expect } from "../../../fixtures.js";
 
 /**
  * Verifies a dashboard table reserves enough width for its user column.
- * @param {import("@playwright/test").Locator} table Table locator.
- * @param {string} headerName Accessible column header name.
+ * @param {import("@playwright/test").Locator} table - Table locator.
+ * @param {string} headerName - Accessible column header name.
  */
 export const expectUserColumnHasRoom = async (table, headerName) => {
   const [tableWidth, userColumnWidth] = await Promise.all([
@@ -16,6 +16,7 @@ export const expectUserColumnHasRoom = async (table, headerName) => {
   expect(userColumnWidth / tableWidth).toBeGreaterThanOrEqual(0.29);
 };
 
+/** Opens the profile modal from a dashboard row, verifies its contents and closes it. */
 export const expectUserProfileModalFromRow = async (
   page,
   row,

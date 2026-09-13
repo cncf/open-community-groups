@@ -1,29 +1,20 @@
 import { expect, test } from "../../../fixtures.js";
-
+import { queryE2eDatabase } from "../../../database.js";
+import { cleanupCredential, setupRevocableCredential } from "../../../data-graphs/badges.js";
+import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
 import { buildE2eUrl, navigateToPath, waitForActionResponse } from "../../../utils.js";
 
 const HOST_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada06";
-const VOLUNTEER_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada08";
-
-const setListingValue = (toggle, isListed) =>
-  toggle.evaluate((control, checked) => {
-    control.checked = checked;
-    control.dispatchEvent(new Event("change", { bubbles: true }));
-  }, isListed);
 
 test.describe("user dashboard badges", () => {
-  test("empty state explains where awarded badges will appear", async ({
-    emptyUserPage,
-  }) => {
+  test("empty state explains where awarded badges will appear", async ({ emptyUserPage }) => {
     // Load badges for the dedicated user without awarded credentials.
     await navigateToPath(emptyUserPage, "/dashboard/user?tab=badges");
     const emptyState = emptyUserPage.locator("[data-user-badges-empty]");
 
     // Verify the empty card names the state and its source of future content.
     await expect(emptyState).toContainText("No active badges yet");
-    await expect(emptyState).toContainText(
-      "Badges awarded by your groups will appear here.",
-    );
+    await expect(emptyState).toContainText("Badges awarded by your groups will appear here.");
   });
 
   test("shows labelled credential actions", async ({ member1Page }) => {
@@ -140,9 +131,11 @@ test.describe("user dashboard badges", () => {
     });
     const badgeList = member1Page.locator("[data-badge-order-list]");
 
+    // Verify the seeded credential is ready and visible on the profile.
     await expect(badgeList).toHaveAttribute("data-badge-controls-ready", "true");
     await expect(listingToggle).toBeChecked();
     try {
+      // Hide the Host credential from the public profile.
       await waitForActionResponse(member1Page, () => setListingValue(listingToggle, false), {
         method: "PUT",
         urlEndsWith: `/badges/${HOST_CREDENTIAL_ID}/listing`,
@@ -158,12 +151,12 @@ test.describe("user dashboard badges", () => {
       ).not.toBeChecked();
       const profileResponse = await member1Page.request.get(buildE2eUrl("/users/e2e-member-1/badges"));
       const profileBadges = await profileResponse.json();
-
       expect(profileResponse.ok()).toBeTruthy();
       expect(profileBadges).not.toEqual(
         expect.arrayContaining([expect.objectContaining({ user_badge_id: HOST_CREDENTIAL_ID })]),
       );
     } finally {
+      // Restore the Host credential to the public profile when needed.
       if (!member1Page.isClosed()) {
         const currentToggle = member1Page
           .locator(`[data-user-badge-id="${HOST_CREDENTIAL_ID}"]`)
@@ -187,8 +180,10 @@ test.describe("user dashboard badges", () => {
       name: "Reorder Host",
     });
 
+    // Verify the seeded badge order before moving it.
     await expect(badgeList.locator("[data-user-badge-id]").first()).toContainText("Speaker");
     try {
+      // Move the Host badge above Speaker.
       await waitForActionResponse(member1Page, () => hostHandle.press("ArrowUp"), {
         method: "PUT",
         urlEndsWith: "/dashboard/user/badges/order",
@@ -201,6 +196,7 @@ test.describe("user dashboard badges", () => {
         "Host",
       );
     } finally {
+      // Restore the Host badge to its seeded order when needed.
       if (!member1Page.isClosed()) {
         const restoredHostHandle = member1Page.getByRole("button", {
           name: "Reorder Host",
@@ -233,29 +229,54 @@ test.describe("user dashboard badges", () => {
   });
 
   test("user can permanently revoke an owned credential", async ({ member2Page }) => {
-    // Open the disposable credential and confirm the destructive action.
-    await navigateToPath(member2Page, "/dashboard/user?tab=badges");
-    const volunteerBadge = member2Page.locator(`[data-user-badge-id="${VOLUNTEER_CREDENTIAL_ID}"]`);
+    const credential = setupRevocableCredential({
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      userId: TEST_USER_IDS.member2,
+    });
 
-    await expect(volunteerBadge).toContainText("Volunteer");
-    await volunteerBadge.getByRole("button", { name: "Revoke Volunteer badge" }).click();
-    await expect(
-      member2Page.getByRole("heading", {
-        name: "Permanently revoke Volunteer?",
-      }),
-    ).toBeVisible();
-    await waitForActionResponse(
-      member2Page,
-      () => member2Page.getByRole("button", { name: "Permanently revoke" }).click(),
-      {
-        method: "DELETE",
-        urlEndsWith: `/dashboard/user/badges/${VOLUNTEER_CREDENTIAL_ID}`,
-      },
-    );
+    try {
+      // Open the disposable credential and confirm the destructive action.
+      await navigateToPath(member2Page, "/dashboard/user?tab=badges");
+      const ownedBadge = member2Page.locator(`[data-user-badge-id="${credential.userBadgeId}"]`);
 
-    // Verify it leaves the active dashboard but retains its public history.
-    await expect(volunteerBadge).toHaveCount(0);
-    await navigateToPath(member2Page, `/badges/credentials/${VOLUNTEER_CREDENTIAL_ID}`);
-    await expect(member2Page.getByText("Permanently revoked", { exact: true })).toBeVisible();
+      // Confirm the revocation for the disposable credential.
+      await expect(ownedBadge).toContainText(credential.badgeName);
+      await ownedBadge.getByRole("button", { name: `Revoke ${credential.badgeName} badge` }).click();
+      await expect(
+        member2Page.getByRole("heading", {
+          name: `Permanently revoke ${credential.badgeName}?`,
+        }),
+      ).toBeVisible();
+      await waitForActionResponse(
+        member2Page,
+        () => member2Page.getByRole("button", { name: "Permanently revoke" }).click(),
+        {
+          method: "DELETE",
+          urlEndsWith: `/dashboard/user/badges/${credential.userBadgeId}`,
+        },
+      );
+
+      // Verify it leaves the active dashboard but retains its public history and reason.
+      await expect(ownedBadge).toHaveCount(0);
+      expect(
+        queryE2eDatabase(`
+          select revocation_reason
+          from user_badge
+          where user_badge_id = '${credential.userBadgeId}'::uuid
+        `),
+      ).toBe("recipient revoked badge");
+      await navigateToPath(member2Page, `/badges/credentials/${credential.userBadgeId}`);
+      await expect(member2Page.getByText("Permanently revoked", { exact: true })).toBeVisible();
+    } finally {
+      // Remove the disposable credential record.
+      cleanupCredential(credential);
+    }
   });
 });
+
+/** Sets the listing toggle value and dispatches its change event. */
+const setListingValue = (toggle, isListed) =>
+  toggle.evaluate((control, checked) => {
+    control.checked = checked;
+    control.dispatchEvent(new Event("change", { bubbles: true }));
+  }, isListed);

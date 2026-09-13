@@ -1,0 +1,61 @@
+# E2E server configuration.
+#
+# The database section is intentionally absent: `just e2e-server` (and the E2E
+# workflow) inject it from the `OCG_E2E_DB_*` contract as `OCG_DB__*`
+# environment variables so the server, tern, and psql always target the same
+# database. Provider credentials are fake; the suite never reaches Stripe, Zoom,
+# or an SMTP server. Keep the webhook secrets in sync with the `justfile`.
+email:
+  from_address: noreply@test.com
+  from_name: Test
+  smtp:
+    host: localhost
+    port: 1025
+    username: ""
+    password: ""
+external_payments:
+  allowed_countries:
+    - US
+  default_payment_window_hours: 72
+  max_payment_window_hours: 336
+images:
+  provider: db
+meetings:
+  zoom:
+    account_id: account-id
+    client_id: client-id
+    client_secret: client-secret
+    enabled: true
+    host_pool_users:
+      - host@example.com
+    max_participants: 100
+    max_simultaneous_meetings_per_host: 1
+    webhook_secret_token: whsec_zoom_e2e
+payments:
+  provider: stripe
+  mode: test
+  connected_webhook_secret: whsec_connect_e2e
+  secret_key: sk_test_e2e
+  ticket_tax_api_version: 2026-07-29.preview
+  webhook_secret: whsec_e2e
+server:
+  addr: 127.0.0.1:9001
+  allow_image_hotlinking: false
+  badges:
+    signing_key:
+      key_id: e2e-key
+      private_jwk:
+        crv: Ed25519
+        d: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc
+        kty: OKP
+        x: 6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw
+    verification_keys: []
+  base_url: http://127.0.0.1:9001
+  cookie:
+    secure: false
+  login:
+    email: true
+    github: false
+    linuxfoundation: false
+  oauth2: {}
+  oidc: {}

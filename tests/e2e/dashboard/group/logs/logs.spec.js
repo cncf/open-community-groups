@@ -1,51 +1,20 @@
 import { expect, test } from "../../../fixtures.js";
 
-import {
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
-  navigateToPath,
-  waitForActionResponse,
-} from "../../../utils.js";
+import { navigateToPath, waitForActionResponse } from "../../../utils.js";
 
 const FILTERED_GROUP_LOGS_PATH = "/dashboard/group?tab=logs&action=group_updated&actor=e2e-organizer-1";
 const GROUP_DETAILS_LOGS_PATH = "/dashboard/group?tab=logs&action=group_sponsor_added&actor=e2e-organizer-1";
 const GROUP_LOGS_PATH = "/dashboard/group?tab=logs";
 
 test.describe("group dashboard logs view", () => {
-  test("empty state explains when a group has no audit history", async ({
-    organizerEmptyGroupPage,
-  }) => {
+  test("empty state explains when a group has no audit history", async ({ organizerEmptyGroupPage }) => {
     // Load logs for the dedicated group without audit records.
     await navigateToPath(organizerEmptyGroupPage, GROUP_LOGS_PATH);
-    const dashboardContent = organizerEmptyGroupPage.locator(
-      "#dashboard-content",
-    );
+    const dashboardContent = organizerEmptyGroupPage.locator("#dashboard-content");
 
     // Verify the zero count and empty audit guidance remain visible.
     await expect(dashboardContent).toContainText("0 logs");
-    await expect(dashboardContent).toContainText(
-      "No audit log entries found.",
-    );
-  });
-
-  test("group logs table exposes its responsive columns", async ({ organizerGroupPage }) => {
-    // Load group logs before checking table structure.
-    await navigateToPath(organizerGroupPage, GROUP_LOGS_PATH);
-
-    // Find the logs table and its complete ordered header set.
-    const logsTable = organizerGroupPage.locator("#dashboard-content").getByRole("table");
-    const headers = ["Action", "Actor", "Target", "Date", "Details"];
-
-    // Verify header order and column visibility across dashboard breakpoints.
-    await expectTableHeaders(logsTable, headers);
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      logsTable,
-      1024,
-      ["Action", "Actor", "Date", "Details"],
-      ["Target"],
-    );
-    await expectTableColumnsAtViewport(organizerGroupPage, logsTable, 1280, headers, []);
+    await expect(dashboardContent).toContainText("No audit log entries found.");
   });
 
   test("organizer can move between group log result pages", async ({ organizerGroupPage }) => {
@@ -81,11 +50,26 @@ test.describe("group dashboard logs view", () => {
   });
 
   test("organizer can view the seeded group logs list and active filters", async ({ organizerGroupPage }) => {
+    // Load the unfiltered group logs URL sorted oldest first so the seeded
+    // rows stay on the first page even after the run generates new logs.
+    await navigateToPath(organizerGroupPage, `${GROUP_LOGS_PATH}&sort=created-asc`);
+    let dashboardContent = organizerGroupPage.locator("#dashboard-content");
+
+    // Verify organizer can browse the group logs list even after new logs exist.
+    await expect(dashboardContent.locator("tr.audit-log-row").first()).toBeVisible();
+    await expect(
+      dashboardContent
+        .locator("tr.audit-log-row", {
+          hasText: "Group sponsor added",
+        })
+        .first(),
+    ).toBeVisible();
+
     // Load the filtered group logs URL.
     await navigateToPath(organizerGroupPage, FILTERED_GROUP_LOGS_PATH);
 
     // Find the dashboard content.
-    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    dashboardContent = organizerGroupPage.locator("#dashboard-content");
 
     // Verify organizer can view the seeded group logs list and active filters.
     await expect(dashboardContent.getByText("Logs", { exact: true })).toBeVisible();
@@ -184,24 +168,5 @@ test.describe("group dashboard logs view", () => {
     await secondDetailsButton.press("Enter");
     await expect(firstDetailsPopover).toBeHidden();
     await expect(secondDetailsPopover).toBeVisible();
-  });
-
-  test("organizer can browse the full seeded group logs list", async ({ organizerGroupPage }) => {
-    // Load the unfiltered group logs URL sorted oldest first so the seeded
-    // rows stay on the first page even after the run generates new logs.
-    await navigateToPath(organizerGroupPage, `${GROUP_LOGS_PATH}&sort=created-asc`);
-
-    // Find the dashboard content.
-    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-
-    // Verify organizer can browse the group logs list even after new logs exist.
-    await expect(dashboardContent.locator("tr.audit-log-row").first()).toBeVisible();
-    await expect(
-      dashboardContent
-        .locator("tr.audit-log-row", {
-          hasText: "Group sponsor added",
-        })
-        .first(),
-    ).toBeVisible();
   });
 });

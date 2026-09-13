@@ -1,7 +1,13 @@
 import { expect, test } from "../../../fixtures.js";
 
 import {
-  TEST_USER_IDS,
+  deleteNotifications,
+  expectNewNotifications,
+  snapshotNotifications,
+} from "../../../notifications.js";
+import { cleanupCommunityTeamInvitation } from "../../../data-graphs/invitations.js";
+import { TEST_COMMUNITY_IDS, TEST_USER_IDS } from "../../../seed.js";
+import {
   expectPaginationNavigation,
   expectTableColumnsAtViewport,
   expectTableHeaders,
@@ -90,67 +96,96 @@ test.describe("community dashboard team view", () => {
   });
 
   test("admin can invite and remove a pending community team member", async ({ adminCommunityPage }) => {
-    // Load the community team tab before inviting a temporary member.
-    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
+    let notificationIds = [];
 
-    // Find the dashboard content.
-    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    try {
+      // Clear any leftover pending invitation before inviting the member.
+      cleanupCommunityTeamInvitation({
+        communityId: TEST_COMMUNITY_IDS.community1,
+        userId: TEST_USER_IDS.pending2,
+      });
 
-    // Verify admin can invite and remove a pending community team member.
-    await expect(dashboardContent.getByText("Community Team", { exact: true })).toBeVisible();
+      // Load the community team tab before inviting a temporary member.
+      await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
 
-    // Click Add member.
-    await dashboardContent.getByRole("button", { name: "Add member" }).click();
+      // Find the dashboard content.
+      const dashboardContent = adminCommunityPage.locator("#dashboard-content");
 
-    // Find the add member form.
-    const addMemberForm = adminCommunityPage.locator("#team-add-form");
-    await expect(addMemberForm).toBeVisible();
+      // Verify admin can invite and remove a pending community team member.
+      await expect(dashboardContent.getByText("Community Team", { exact: true })).toBeVisible();
 
-    // Find the search input.
-    const searchInput = addMemberForm.locator("#search-input");
-    await waitForActionResponse(adminCommunityPage, () => searchInput.fill("e2e-pending-2"), {
-      method: "GET",
-      urlIncludes: "/dashboard/community/users/search?q=e2e-pending-2",
-    });
+      // Click Add member.
+      await dashboardContent.getByRole("button", { name: "Add member" }).click();
 
-    // Click E2E Pending Two.
-    await addMemberForm.getByText("E2E Pending Two", { exact: true }).click();
-    await addMemberForm.locator("#team-add-role").selectOption("viewer");
+      // Find the add member form.
+      const addMemberForm = adminCommunityPage.locator("#team-add-form");
+      await expect(addMemberForm).toBeVisible();
 
-    // Submit and wait for the server response.
-    await waitForActionResponse(adminCommunityPage, () => addMemberForm.locator("#team-add-submit").click(), {
-      method: "POST",
-      status: 201,
-      urlIncludes: "/dashboard/community/team/add",
-    });
+      // Find the search input.
+      const searchInput = addMemberForm.locator("#search-input");
+      await waitForActionResponse(adminCommunityPage, () => searchInput.fill("e2e-pending-2"), {
+        method: "GET",
+        urlIncludes: "/dashboard/community/users/search?q=e2e-pending-2",
+      });
 
-    // Find the pending row.
-    const pendingRow = dashboardContent.locator("tr", {
-      hasText: "E2E Pending Two",
-    });
-    await expect(pendingRow).toBeVisible();
-    await expect(pendingRow).toContainText("Invitation sent");
-    await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
+      // Click E2E Pending Two.
+      await addMemberForm.getByText("E2E Pending Two", { exact: true }).click();
+      await addMemberForm.locator("#team-add-role").selectOption("viewer");
 
-    // Find the remove button.
-    const removeButton = pendingRow.locator(`#remove-member-${TEST_USER_IDS.pending2}`);
-    await removeButton.click();
-    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you would like to delete this team member?",
-    );
+      // Submit and assert the invitation notification recipient.
+      const snapshot = snapshotNotifications();
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => addMemberForm.locator("#team-add-submit").click(),
+        {
+          method: "POST",
+          status: 201,
+          urlIncludes: "/dashboard/community/team/add",
+        },
+      );
+      notificationIds = expectNewNotifications(snapshot, [
+        {
+          kind: "community-team-invitation",
+          templateDataContains: { community_name: "Platform Engineering Community" },
+          userIds: [TEST_USER_IDS.pending2],
+        },
+      ]);
 
-    // Click Yes.
-    await waitForActionResponse(
-      adminCommunityPage,
-      () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-      {
-        method: "DELETE",
-        urlIncludes: `/dashboard/community/team/${TEST_USER_IDS.pending2}/delete`,
-      },
-    );
+      // Find the pending row.
+      const pendingRow = dashboardContent.locator("tr", {
+        hasText: "E2E Pending Two",
+      });
+      await expect(pendingRow).toBeVisible();
+      await expect(pendingRow).toContainText("Invitation sent");
+      await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
 
-    // Assert how many matching elements are shown.
-    await expect(dashboardContent.locator("tr", { hasText: "E2E Pending Two" })).toHaveCount(0);
+      // Find the remove button.
+      const removeButton = pendingRow.locator(`#remove-member-${TEST_USER_IDS.pending2}`);
+      await removeButton.click();
+      await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you would like to delete this team member?",
+      );
+
+      // Click Yes.
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlIncludes: `/dashboard/community/team/${TEST_USER_IDS.pending2}/delete`,
+        },
+      );
+
+      // Assert how many matching elements are shown.
+      await expect(dashboardContent.locator("tr", { hasText: "E2E Pending Two" })).toHaveCount(0);
+    } finally {
+      // Remove notifications and invitation state created by the test.
+      deleteNotifications(notificationIds);
+      cleanupCommunityTeamInvitation({
+        communityId: TEST_COMMUNITY_IDS.community1,
+        userId: TEST_USER_IDS.pending2,
+      });
+    }
   });
 
   test("admin can update and restore a community team member role", async ({ adminCommunityPage }) => {
@@ -161,8 +196,8 @@ test.describe("community dashboard team view", () => {
     // Give the member group manager permissions.
     await ensureCommunityGroupsManagerRole(seededRole, adminCommunityPage);
 
-    // Restore the changed permissions after this check.
     try {
+      // Open the team tab before changing the seeded role.
       await navigateToPath(adminCommunityPage, teamTabPath);
 
       // Find the dashboard content.
@@ -186,6 +221,7 @@ test.describe("community dashboard team view", () => {
       // Assert the field value was updated.
       await expect(currentRoleSelect).toHaveValue("viewer");
     } finally {
+      // Restore the seeded team member role.
       await ensureCommunityGroupsManagerRole(seededRole, adminCommunityPage);
     }
   });

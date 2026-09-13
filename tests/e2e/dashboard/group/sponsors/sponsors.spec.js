@@ -1,43 +1,39 @@
 import { expect, test } from "../../../fixtures.js";
-
+import { queryE2eDatabase } from "../../../database.js";
 import {
   expectPaginationNavigation,
   expectTableColumnsAtViewport,
   expectTableHeaders,
   navigateToPath,
+  uniqueName,
   waitForActionResponse,
 } from "../../../utils.js";
 import { TEST_UPLOAD_ASSET_PATHS, setImageFieldValue, uploadImageField } from "../../form-helpers.js";
 
 const TECH_CORP_SPONSOR_ID = "66666666-6666-6666-6666-666666666601";
+
 const ORIGINAL_SPONSOR_NAME = "Tech Corp";
+
 const UPDATED_SPONSOR_NAME = "Tech Corp Updated";
+
 const ORIGINAL_SPONSOR_WEBSITE = "https://techcorp.example.com";
+
 const UPDATED_SPONSOR_WEBSITE = "https://updated-techcorp.example.com";
+
 const ORIGINAL_SPONSOR_LOGO_URL = "/static/images/e2e/sponsor-logo.svg";
+
 const UPDATED_SPONSOR_LOGO_URL = "/static/images/e2e/community-secondary-logo.svg";
 
 test.describe("group dashboard sponsors view", () => {
-  test("empty state explains when a group has no sponsors", async ({
-    organizerEmptyGroupPage,
-  }) => {
+  test("empty state explains when a group has no sponsors", async ({ organizerEmptyGroupPage }) => {
     // Load sponsors for the dedicated group without sponsor records.
-    await navigateToPath(
-      organizerEmptyGroupPage,
-      "/dashboard/group?tab=sponsors",
-    );
-    const dashboardContent = organizerEmptyGroupPage.locator(
-      "#dashboard-content",
-    );
+    await navigateToPath(organizerEmptyGroupPage, "/dashboard/group?tab=sponsors");
+    const dashboardContent = organizerEmptyGroupPage.locator("#dashboard-content");
 
     // Verify the result count and creation guidance remain visible.
     await expect(dashboardContent).toContainText("0 sponsors");
-    await expect(dashboardContent).toContainText(
-      "This group does not have any sponsors yet.",
-    );
-    await expect(
-      dashboardContent.getByRole("button", { name: "Add Sponsor" }),
-    ).toBeVisible();
+    await expect(dashboardContent).toContainText("This group does not have any sponsors yet.");
+    await expect(dashboardContent.getByRole("button", { name: "Add Sponsor" })).toBeVisible();
   });
 
   test("sponsors table exposes its responsive columns", async ({ organizerGroupPage }) => {
@@ -187,71 +183,76 @@ test.describe("group dashboard sponsors view", () => {
 
   test("organizer can add and delete a sponsor", async ({ organizerGroupPage }) => {
     // Create unique sponsor values for the temporary sponsor flow.
-    const sponsorName = `E2E Sponsor ${Date.now()}`;
+    const sponsorName = uniqueName("sponsor");
     const sponsorWebsite = "https://e2e-sponsor.example.com";
 
-    // Open the sponsors dashboard.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
+    try {
+      // Open the sponsors dashboard.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
 
-    // Find the dashboard content.
-    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+      // Find the dashboard content.
+      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
 
-    // Verify organizer can add and delete a sponsor.
-    await expect(dashboardContent.getByText("Sponsors", { exact: true })).toBeVisible();
+      // Verify organizer can add and delete a sponsor.
+      await expect(dashboardContent.getByText("Sponsors", { exact: true })).toBeVisible();
 
-    // Click Add Sponsor.
-    await organizerGroupPage.getByRole("button", { name: "Add Sponsor" }).click();
-    await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
-    await expect(organizerGroupPage.getByText("Visible on group page", { exact: true })).toBeVisible();
-    const sponsorVisibilityLegend = organizerGroupPage.locator("#sponsor-form .form-legend").filter({
-      hasText: "Only featured sponsors appear in the public group page",
-    });
-    await expect(sponsorVisibilityLegend).toContainText(
-      "Only featured sponsors appear in the public group page sponsors section.",
-    );
-    await expect(sponsorVisibilityLegend).toContainText("All sponsors remain available for events.");
+      // Click Add Sponsor.
+      await organizerGroupPage.getByRole("button", { name: "Add Sponsor" }).click();
+      await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
+      await expect(organizerGroupPage.getByText("Visible on group page", { exact: true })).toBeVisible();
+      const sponsorVisibilityLegend = organizerGroupPage.locator("#sponsor-form .form-legend").filter({
+        hasText: "Only featured sponsors appear in the public group page",
+      });
+      await expect(sponsorVisibilityLegend).toContainText(
+        "Only featured sponsors appear in the public group page sponsors section.",
+      );
+      await expect(sponsorVisibilityLegend).toContainText("All sponsors remain available for events.");
 
-    // Fill Name.
-    await organizerGroupPage.getByLabel("Name").fill(sponsorName);
-    await organizerGroupPage.getByLabel("Website").fill(sponsorWebsite);
+      // Fill Name.
+      await organizerGroupPage.getByLabel("Name").fill(sponsorName);
+      await organizerGroupPage.getByLabel("Website").fill(sponsorWebsite);
 
-    // Upload the sponsor logo fixture.
-    await uploadImageField(organizerGroupPage, "logo_url", TEST_UPLOAD_ASSET_PATHS.logo);
+      // Upload the sponsor logo fixture.
+      await uploadImageField(organizerGroupPage, "logo_url", TEST_UPLOAD_ASSET_PATHS.logo);
 
-    // Click Add Sponsor.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.getByRole("button", { name: "Add Sponsor" }).click(),
-      {
-        method: "POST",
-        urlIncludes: "/dashboard/group/sponsors/add",
-        status: 201,
-      },
-    );
+      // Click Add Sponsor.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Add Sponsor" }).click(),
+        {
+          method: "POST",
+          urlIncludes: "/dashboard/group/sponsors/add",
+          status: 201,
+        },
+      );
 
-    // Find the sponsor row.
-    const sponsorRow = dashboardContent.locator("tr", { hasText: sponsorName });
-    await expect(sponsorRow).toBeVisible();
-    await expect(sponsorRow).toContainText(sponsorWebsite);
+      // Find the sponsor row.
+      const sponsorRow = dashboardContent.locator("tr", { hasText: sponsorName });
+      await expect(sponsorRow).toBeVisible();
+      await expect(sponsorRow).toContainText(sponsorWebsite);
 
-    // Delete the sponsor from its row action.
-    await sponsorRow.getByRole("button", { name: `Delete sponsor: ${sponsorName}` }).click();
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you would like to delete this sponsor?",
-    );
+      // Delete the sponsor from its row action.
+      await sponsorRow.getByRole("button", { name: `Delete sponsor: ${sponsorName}` }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you would like to delete this sponsor?",
+      );
 
-    // Click Yes.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
-      {
-        method: "DELETE",
-        urlIncludes: "/dashboard/group/sponsors/",
-      },
-    );
+      // Click Yes.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlIncludes: "/dashboard/group/sponsors/",
+        },
+      );
 
-    // Assert how many matching elements are shown.
-    await expect(dashboardContent.locator("tr", { hasText: sponsorName })).toHaveCount(0);
+      // Assert how many matching elements are shown.
+      await expect(dashboardContent.locator("tr", { hasText: sponsorName })).toHaveCount(0);
+    } finally {
+      // Delete the temporary sponsor if UI cleanup did not finish.
+      deleteSponsorByName(sponsorName);
+    }
   });
 
   test("organizer can update a sponsor and restore the original values", async ({ organizerGroupPage }) => {
@@ -354,3 +355,10 @@ test.describe("group dashboard sponsors view", () => {
     );
   });
 });
+
+/** Deletes a named sponsor from the group_sponsor table. */
+const deleteSponsorByName = (sponsorName) => {
+  const escapedName = sponsorName.replace(/'/g, "''");
+
+  queryE2eDatabase(`delete from group_sponsor where name = '${escapedName}'`);
+};

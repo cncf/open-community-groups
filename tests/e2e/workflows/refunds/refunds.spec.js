@@ -1,65 +1,13 @@
 import { expect, test } from "../../fixtures.js";
-
 import { queryE2eDatabase } from "../../database.js";
-import { E2E_PAYMENTS_ENABLED, TEST_PAYMENT_EVENT_NAMES, navigateToPath } from "../../utils.js";
+import { TEST_PAYMENT_EVENT_NAMES } from "../../seed.js";
+import { navigateToPath } from "../../utils.js";
 
 const REFUND_REQUEST_ID = "60555555-5555-5555-5555-555555555529";
+
 const REFUND_REQUEST_PURCHASE_ID = "59555555-5555-5555-5555-555555555529";
 
-// Find the refund row that belongs to the given attendee name.
-const getRefundRow = (dashboardContent, attendeeName) =>
-  dashboardContent.locator("tbody tr", {
-    hasText: attendeeName,
-  });
-
-// Open the refunds dashboard and return its loaded content container.
-const openRefundsDashboard = async (page, path = "/dashboard/group?tab=refunds") => {
-  await navigateToPath(page, path);
-
-  const dashboardContent = page.locator("#dashboard-content");
-  await expect(dashboardContent.getByRole("table", { name: "Refunds list" })).toBeVisible();
-
-  return dashboardContent;
-};
-
-// Wait for the refunds list refresh triggered by a review action.
-const waitForRefundsResponse = (page) =>
-  page.waitForResponse((response) => {
-    const requestUrl = new URL(response.url());
-
-    return (
-      response.request().method() === "GET" &&
-      requestUrl.pathname === "/dashboard/group/refunds" &&
-      response.ok()
-    );
-  });
-
-const restorePendingRefundRequest = () => {
-  const restoredRefundRequestId = queryE2eDatabase(`
-    with restored_purchase as (
-      update event_purchase
-      set status = 'refund-requested', updated_at = current_timestamp
-      where event_purchase_id = '${REFUND_REQUEST_PURCHASE_ID}'
-      returning event_purchase_id
-    )
-    update event_refund_request
-    set
-      status = 'pending',
-      review_note = null,
-      reviewed_at = null,
-      reviewed_by_user_id = null,
-      updated_at = current_timestamp
-    where event_refund_request_id = '${REFUND_REQUEST_ID}'
-    and exists (select 1 from restored_purchase)
-    returning event_refund_request_id
-  `);
-
-  expect(restoredRefundRequestId).toBe(REFUND_REQUEST_ID);
-};
-
 test.describe("refund rejection workflow", () => {
-  test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
-
   test.beforeEach(() => {
     restorePendingRefundRequest();
   });
@@ -114,7 +62,60 @@ test.describe("refund rejection workflow", () => {
     await expect(rejectedEventRow).toBeVisible();
     await refundStatusButton.focus();
     await expect(rejectionReason).toBeVisible();
+    await expect(rejectionReason.getByText("Refund request", { exact: true })).toBeVisible();
     await expect(rejectionReason.getByText("Reason", { exact: true })).toBeVisible();
     await expect(rejectionReason.getByText("Duplicate purchase", { exact: true })).toBeVisible();
   });
 });
+
+/** Finds the refund row that belongs to the given attendee name. */
+const getRefundRow = (dashboardContent, attendeeName) =>
+  dashboardContent.locator("tbody tr", {
+    hasText: attendeeName,
+  });
+
+/** Opens the refunds dashboard and returns its loaded content container. */
+const openRefundsDashboard = async (page, path = "/dashboard/group?tab=refunds") => {
+  await navigateToPath(page, path);
+
+  const dashboardContent = page.locator("#dashboard-content");
+  await expect(dashboardContent.getByRole("table", { name: "Refunds list" })).toBeVisible();
+
+  return dashboardContent;
+};
+
+/** Restores event_purchase and event_refund_request rows to pending state. */
+const restorePendingRefundRequest = () => {
+  const restoredRefundRequestId = queryE2eDatabase(`
+    with restored_purchase as (
+      update event_purchase
+      set status = 'refund-requested', updated_at = current_timestamp
+      where event_purchase_id = '${REFUND_REQUEST_PURCHASE_ID}'
+      returning event_purchase_id
+    )
+    update event_refund_request
+    set
+      status = 'pending',
+      review_note = null,
+      reviewed_at = null,
+      reviewed_by_user_id = null,
+      updated_at = current_timestamp
+    where event_refund_request_id = '${REFUND_REQUEST_ID}'
+    and exists (select 1 from restored_purchase)
+    returning event_refund_request_id
+  `);
+
+  expect(restoredRefundRequestId).toBe(REFUND_REQUEST_ID);
+};
+
+/** Waits for the refunds list refresh triggered by a review action. */
+const waitForRefundsResponse = (page) =>
+  page.waitForResponse((response) => {
+    const requestUrl = new URL(response.url());
+
+    return (
+      response.request().method() === "GET" &&
+      requestUrl.pathname === "/dashboard/group/refunds" &&
+      response.ok()
+    );
+  });

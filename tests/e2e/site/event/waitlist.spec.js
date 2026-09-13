@@ -1,16 +1,14 @@
 import { expect, test } from "../../fixtures.js";
 
+import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
+import { TEST_COMMUNITY_NAME, TEST_EVENT_IDS, TEST_GROUP_SLUGS, TEST_USER_IDS } from "../../seed.js";
 import {
-  TEST_COMMUNITY_NAME,
-  TEST_EVENT_IDS,
-  TEST_GROUP_SLUGS,
   getAttendButton,
   getLeaveButton,
-  navigateToEvent,
   restoreSeededWaitlistEvent,
-  waitForActionResponse,
   waitForAttendanceState,
-} from "../../utils.js";
+} from "./helpers.js";
+import { navigateToEvent, waitForActionResponse } from "../../utils.js";
 
 const WAITLIST_EVENT_NAME = "Full Event With Waitlist";
 const WAITLIST_EVENT_SLUG = "alpha-waitlist-lab";
@@ -25,6 +23,8 @@ test.describe("event waitlist", () => {
   });
 
   test("member can join and leave the waitlist from the public event page", async ({ member2Page }) => {
+    let notificationIds = [];
+
     // Load the full event where members can join the waitlist.
     await navigateToEvent(
       member2Page,
@@ -41,10 +41,21 @@ test.describe("event waitlist", () => {
     await expect(getAttendButton(member2Page)).toContainText("Join waiting list");
 
     // Join the waitlist and wait for the attendance record to be created.
-    await waitForActionResponse(member2Page, () => getAttendButton(member2Page).click(), {
-      method: "POST",
-      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`,
-    });
+    const joinedSnapshot = snapshotNotifications();
+    try {
+      // Submit the waitlist join and record its notification.
+      await waitForActionResponse(member2Page, () => getAttendButton(member2Page).click(), {
+        method: "POST",
+        urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`,
+      });
+      notificationIds = expectNewNotifications(joinedSnapshot, [
+        { kind: "event-waitlist-joined", userIds: [TEST_USER_IDS.member2] },
+      ]);
+    } finally {
+      // Remove notifications created while joining the waitlist.
+      deleteNotifications(notificationIds);
+    }
+    notificationIds = [];
 
     // Verify the member is now waitlisted.
     await expect(getLeaveButton(member2Page)).toContainText("Leave waiting list");
@@ -54,22 +65,30 @@ test.describe("event waitlist", () => {
     await expect(member2Page.getByRole("button", { name: "Yes" })).toBeVisible();
 
     // Confirm waitlist removal and wait for the leave response.
-    await waitForActionResponse(
-      member2Page,
-      () => member2Page.getByRole("button", { name: "Yes" }).click(),
-      {
-        method: "DELETE",
-        urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
-      },
-    );
+    const leftSnapshot = snapshotNotifications();
+    try {
+      // Confirm waitlist removal and record its notification.
+      await waitForActionResponse(
+        member2Page,
+        () => member2Page.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
+        },
+      );
+      notificationIds = expectNewNotifications(leftSnapshot, [
+        { kind: "event-waitlist-left", userIds: [TEST_USER_IDS.member2] },
+      ]);
+    } finally {
+      // Remove notifications created while leaving the waitlist.
+      deleteNotifications(notificationIds);
+    }
 
     // Assert the expected text is rendered.
     await expect(getAttendButton(member2Page)).toContainText("Join waiting list");
   });
 
-  test("failed waitlist join restores the same action for retry", async ({
-    member2Page,
-  }) => {
+  test("failed waitlist join restores the same action for retry", async ({ member2Page }) => {
     // Load the full event and wait for its waitlist action.
     await navigateToEvent(
       member2Page,
@@ -81,8 +100,8 @@ test.describe("event waitlist", () => {
     const attendButton = getAttendButton(member2Page);
     await expect(attendButton).toContainText("Join waiting list");
 
-    const attendPath =
-      `**/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`;
+    // Prepare the failed waitlist join route.
+    const attendPath = `**/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`;
     try {
       // Return a local server failure without creating a waitlist record.
       await member2Page.route(attendPath, (route) =>
@@ -106,6 +125,7 @@ test.describe("event waitlist", () => {
       await expect(attendButton).toBeEnabled();
       await expect(getLeaveButton(member2Page)).toBeHidden();
     } finally {
+      // Restore the real waitlist join endpoint and dismiss any error.
       await member2Page.unroute(attendPath);
       const errorConfirmation = member2Page.getByRole("button", {
         name: "OK",

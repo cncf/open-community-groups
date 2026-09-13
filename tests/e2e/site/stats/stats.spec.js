@@ -1,18 +1,5 @@
 import { expect, test } from "@playwright/test";
-
 import { navigateToPath } from "../../utils.js";
-
-const expectChartSettled = async (page, selector) => {
-  const chart = page.locator(selector);
-
-  if ((await chart.count()) === 0) {
-    await expect(page.locator(".chart-empty-state").first()).toBeVisible();
-    return;
-  }
-
-  await expect(chart).toBeVisible();
-  await expect(chart.locator("svg-spinner")).toHaveCount(0);
-};
 
 const PUBLIC_STATS_CHART_IDS = [
   "groups-running-chart",
@@ -101,6 +88,7 @@ test.describe("site stats page", () => {
       .poll(async () => (await renderedCharts.count()) + (await emptyCharts.count()))
       .toBe(PUBLIC_STATS_CHART_IDS.length);
 
+    // Verify each rendered chart is visible and settled.
     for (const chartId of PUBLIC_STATS_CHART_IDS) {
       const chart = mainContent.locator(`#${chartId}`);
       if ((await chart.count()) > 0) {
@@ -133,3 +121,16 @@ test.describe("site stats page", () => {
     );
   });
 });
+
+/** Waits for a stats chart or its empty state to settle. */
+const expectChartSettled = async (page, selector) => {
+  const chart = page.locator(selector);
+
+  if ((await chart.count()) === 0) {
+    await expect(page.locator(".chart-empty-state").first()).toBeVisible();
+    return;
+  }
+
+  await expect(chart).toBeVisible();
+  await expect(chart.locator("svg-spinner")).toHaveCount(0);
+};

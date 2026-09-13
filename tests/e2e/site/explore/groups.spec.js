@@ -1,12 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  TEST_COMMUNITY_NAME,
-  TEST_GROUP_NAMES,
-  TEST_GROUP_SLUGS,
-  expectPaginationNavigation,
-  navigateToPath,
-} from "../../utils.js";
+import { TEST_COMMUNITY_NAME, TEST_GROUP_NAMES, TEST_GROUP_SLUGS } from "../../seed.js";
+import { expectPaginationNavigation, navigateToPath } from "../../utils.js";
 
 test.describe("site explore groups page", () => {
   test("moves between group result pages and restores the first card", async ({ page }) => {
@@ -59,7 +54,6 @@ test.describe("site explore groups page", () => {
 
     // Switch to date sorting and wait for the group list to refresh.
     await expect(page.locator("#sort_selector")).toHaveValue("name");
-    // Switch to events and verify the existing search value is preserved.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -72,6 +66,7 @@ test.describe("site explore groups page", () => {
     ]);
     await expect(page.locator("#sort_selector")).toHaveValue("date");
 
+    // Switch to events and verify the existing search value is preserved.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -105,9 +100,7 @@ test.describe("site explore groups page", () => {
     await expect(backdrop).toHaveClass(/hidden/);
   });
 
-  test("filters move between the drawer and the sidebar at the lg breakpoint", async ({
-    page,
-  }) => {
+  test("filters move between the drawer and the sidebar at the lg breakpoint", async ({ page }) => {
     // Load community groups right below the lg breakpoint.
     await page.setViewportSize({ width: 1023, height: 900 });
     await navigateToPath(page, `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`);
@@ -187,18 +180,12 @@ test.describe("site explore groups page", () => {
     await expect(page.locator("#sort_selector")).toHaveCount(0);
 
     // Verify the filtered group marker exposes its card and public destination.
-    const groupMarker = page.locator(
-      `.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.gamma}`,
-    );
+    const groupMarker = page.locator(`.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.gamma}`);
     await expect(groupMarker).toBeVisible();
     await groupMarker.hover();
     await expect(page.locator(".maplibregl-popup.explore-map-tooltip")).toContainText(TEST_GROUP_NAMES.gamma);
     await Promise.all([
-      page.waitForURL(
-        new RegExp(
-          `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.gamma}$`,
-        ),
-      ),
+      page.waitForURL(new RegExp(`/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.gamma}$`)),
       groupMarker.click(),
     ]);
     await expect(

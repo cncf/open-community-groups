@@ -1,11 +1,5 @@
 import { expect, test } from "@playwright/test";
-
 import {
-  getEventAboutSection,
-  getEventInfoSection,
-  getEventLogo,
-  getAttendButton,
-  getIntroSection,
   TEST_CANCELED_PUBLIC_EVENT,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAME,
@@ -14,13 +8,19 @@ import {
   TEST_GROUP_NAME,
   TEST_GROUP_SLUG,
   TEST_MULTI_DAY_EVENT,
-  buildE2eUrl,
-  navigateToEvent,
+} from "../../seed.js";
+import {
+  getAttendButton,
+  getEventAboutSection,
+  getEventInfoSection,
+  getEventLogo,
   waitForAttendanceState,
-} from "../../utils.js";
+} from "./helpers.js";
+import { buildE2eUrl, getIntroSection, navigateToEvent } from "../../utils.js";
 
-const isPrimaryEvent = TEST_EVENT_SLUG === "alpha-event-1";
 const OPEN_GRAPH_IMAGE_FILE_NAME = "7744970faed216a0b2d3be30ffef5aeb1bd6b65c5407ccc4f3dd824d132f1656.png";
+
+const PRIMARY_EVENT_LOCATION = "Tech Conference Center, 123 Main Street, New York, NY, United States";
 
 test.describe("event page", () => {
   test.beforeEach(async ({ page }) => {
@@ -56,16 +56,10 @@ test.describe("event page", () => {
 
   test("event share action uses the canonical event title and URL", async ({ page }) => {
     // Open the event actions menu and inspect its page-specific share contract.
-    await page
-      .locator('[data-attendance-role="actions-menu"] summary')
-      .click();
+    await page.locator('[data-attendance-role="actions-menu"] summary').click();
     const shareModal = page.locator('share-modal[trigger-variant="menu-item"]');
-    const expectedEventPath =
-      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}`;
-    await expect(shareModal).toHaveAttribute(
-      "title",
-      `${TEST_GROUP_NAME} · ${TEST_EVENT_NAME}`,
-    );
+    const expectedEventPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}`;
+    await expect(shareModal).toHaveAttribute("title", `${TEST_GROUP_NAME} · ${TEST_EVENT_NAME}`);
     await expect(shareModal).toHaveAttribute("url", expectedEventPath);
 
     // Verify the rendered dialog resolves the relative path to its public URL.
@@ -96,8 +90,6 @@ test.describe("event page", () => {
   });
 
   test("availability refreshes capacity and remaining spots", async ({ page }) => {
-    test.skip(!isPrimaryEvent, "Requires Upcoming In-Person Event seed data");
-
     // Let the initial availability fetch settle so the watcher only matches the reload's
     // response, whose body stays readable after navigation.
     await expect(page.locator('[data-availability-url][data-availability-hydrated="true"]')).toBeAttached();
@@ -107,8 +99,7 @@ test.describe("event page", () => {
     const availabilityResponsePromise = page
       .waitForResponse(
         (response) =>
-          response.request().method() === "GET" &&
-          new URL(response.url()).pathname === availabilityPath,
+          response.request().method() === "GET" && new URL(response.url()).pathname === availabilityPath,
       )
       .then(async (response) => ({
         availability: await response.json(),
@@ -181,25 +172,15 @@ test.describe("event page", () => {
     await expect(page.getByText("Event date", { exact: true })).toBeVisible();
   });
 
-  test("event date displays a formatted date or TBD", async ({ page }) => {
-    // Read the event date section text for date fallback coverage.
+  test("event date displays the alpha event formatted date", async ({ page }) => {
+    // Resolve the expected alpha event date from the page's seeded event data.
     const eventDateSection = getEventInfoSection(page, "Event date");
-    const eventDateText = (await eventDateSection.textContent()) || "";
-    const hasFormattedDate =
-      /(Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|September|Oct|October|Nov|November|Dec|December)\s+\d{1,2},\s+\d{4}/.test(
-        eventDateText,
-      );
-    const hasTbdDate = /\bTBD\b/.test(eventDateText);
+    const expectedDate = await getPrimaryEventDateParts(page);
 
-    // Verify the date section shows either a formatted date or TBD.
-    expect(hasFormattedDate || hasTbdDate).toBeTruthy();
-
-    // Only check the formatted date when event data includes one.
-    if (hasFormattedDate) {
-      expect(eventDateText).toMatch(/\d{1,2}:\d{2}\s?(AM|PM)/);
-    } else {
-      await expect(eventDateSection.getByText("TBD", { exact: true })).toBeVisible();
-    }
+    // Verify the alpha event renders its exact date and time range.
+    await expect(eventDateSection.getByText(expectedDate.date, { exact: true })).toBeVisible();
+    await expect(eventDateSection.getByText(expectedDate.timeRange, { exact: true })).toBeVisible();
+    await expect(eventDateSection.getByText("TBD", { exact: true })).toHaveCount(0);
   });
 
   test("location section renders with heading", async ({ page }) => {
@@ -207,33 +188,21 @@ test.describe("event page", () => {
     await expect(page.getByText("Location", { exact: true })).toBeVisible();
   });
 
-  test("location section shows map or fallback text", async ({ page }) => {
-    // Read the location section text and map controls.
+  test("location section displays the alpha event venue", async ({ page }) => {
+    // Target the alpha event location section and map control.
     const locationSection = getEventInfoSection(page, "Location");
-    const locationText = ((await locationSection.textContent()) || "").replace(/\s+/g, " ").trim();
-    const hasMapButton =
-      (await locationSection.getByRole("button", { name: "Open full map view" }).count()) > 0;
-    const hasFallbackText = /Virtual event|Location not provided/.test(locationText);
-    const hasLocationDetails = locationText !== "Location" && locationText !== "" && /,/.test(locationText);
+    const mapButton = locationSection.getByRole("button", {
+      name: "Open full map view",
+    });
 
-    // Verify the location section has either map, fallback, or details.
-    expect(hasMapButton || hasFallbackText || hasLocationDetails).toBeTruthy();
-
-    // Only test the map modal when the venue has a map button.
-    if (hasMapButton) {
-      // Verify the map action is visible when map data is available.
-      await expect(locationSection.getByRole("button", { name: "Open full map view" }).first()).toBeVisible();
-    } else if (hasFallbackText) {
-      // Verify virtual or missing locations show fallback copy.
-      await expect(locationSection).toContainText(/Virtual event|Location not provided/);
-    } else {
-      expect(hasLocationDetails).toBeTruthy();
-    }
+    // Verify the alpha event renders its exact venue and map trigger.
+    await expect(locationSection.getByText(PRIMARY_EVENT_LOCATION, { exact: true }).first()).toBeVisible();
+    await expect(mapButton.first()).toBeVisible();
+    await expect(locationSection.getByText("Virtual event", { exact: true })).toHaveCount(0);
+    await expect(locationSection.getByText("Location not provided", { exact: true })).toHaveCount(0);
   });
 
   test.describe("primary event seed data", () => {
-    test.skip(!isPrimaryEvent, "Requires Upcoming In-Person Event seed data");
-
     test("capacity displays when set", async ({ page }) => {
       // Verify the event capacity label is rendered.
       await expect(page.getByText(/Capacity:\s*100/)).toBeVisible();
@@ -445,8 +414,7 @@ test.describe("event page - sold-out availability", () => {
     const availabilityResponsePromise = page
       .waitForResponse(
         (response) =>
-          response.request().method() === "GET" &&
-          new URL(response.url()).pathname === availabilityPath,
+          response.request().method() === "GET" && new URL(response.url()).pathname === availabilityPath,
       )
       .then(async (response) => ({
         availability: await response.json(),
@@ -505,9 +473,7 @@ test.describe("event page - responsive", () => {
     await expect(getEventAboutSection(page)).toBeVisible();
   });
 
-  test("social links swap between mobile and desktop variants at the md breakpoint", async ({
-    page,
-  }) => {
+  test("social links swap between mobile and desktop variants at the md breakpoint", async ({ page }) => {
     // Load the primary event that carries a seeded Meetup link.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
 
@@ -527,8 +493,6 @@ test.describe("event page - responsive", () => {
 });
 
 test.describe("event page - alpha event logo", () => {
-  test.skip(!isPrimaryEvent, "Requires Upcoming In-Person Event seed data");
-
   test("event logo is visible on desktop", async ({ page }) => {
     // Load the primary event page before checking the desktop logo.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
@@ -609,20 +573,12 @@ test.describe("event page - virtual event with recording", () => {
 
   test("past event exposes its recording and suppresses attendance actions", async ({ page }) => {
     // Load a past virtual event with a public recording configured.
-    await navigateToEvent(
-      page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUG,
-      "alpha-past-roundup",
-    );
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, "alpha-past-roundup");
 
     // Verify the recording replaces live meeting and attendance actions.
     const recordingLink = page.getByRole("link", { name: "View recording" });
     await expect(page.getByText("Use the link below to watch the recording.")).toBeVisible();
-    await expect(recordingLink).toHaveAttribute(
-      "href",
-      "https://recordings.example.test/alpha-past-roundup",
-    );
+    await expect(recordingLink).toHaveAttribute("href", "https://recordings.example.test/alpha-past-roundup");
     await expect(page.locator("[data-join-link], [data-join-link-always]")).toHaveCount(0);
     await expect(getAttendButton(page)).toBeHidden();
   });
@@ -656,3 +612,35 @@ test.describe("event page - test event badge", () => {
     await expect(testBadge).toHaveClass(/custom-badge/);
   });
 });
+
+/** Formats a UTC date for public event page assertions. */
+const formatUtcDate = (date) =>
+  new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(date);
+
+/** Formats a UTC time for public event page assertions. */
+const formatUtcTime = (date) =>
+  new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    hour12: true,
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(date);
+
+/** Returns the primary event date text expected from data-starts. */
+const getPrimaryEventDateParts = async (page) => {
+  const startsAt = await page.locator("[data-attendance-container]").first().getAttribute("data-starts");
+  expect(startsAt).toBeTruthy();
+
+  const startDate = new Date(startsAt);
+  const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+
+  return {
+    date: formatUtcDate(startDate),
+    timeRange: `${formatUtcTime(startDate)} - ${formatUtcTime(endDate)} UTC`,
+  };
+};

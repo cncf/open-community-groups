@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { TEST_USER_CREDENTIALS } from "../../../seed.js";
 import {
-  TEST_USER_CREDENTIALS,
   logInWithSeededUser,
   navigateToPath,
   selectTimezone,
@@ -250,8 +250,8 @@ test.describe("user dashboard profile view", () => {
     // Log in before continuing the scenario.
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);
 
-    // Restore the page state after the check.
     try {
+      // Save updated profile details and verify persistence.
       await saveProfileDetails(UPDATED_DETAILS);
       await expectProfileDetails(UPDATED_DETAILS);
 
@@ -259,13 +259,12 @@ test.describe("user dashboard profile view", () => {
       await saveProfileDetails(BASELINE_DETAILS);
       await expectProfileDetails(BASELINE_DETAILS);
     } finally {
+      // Restore the baseline profile details if the main flow failed early.
       await saveProfileDetails(BASELINE_DETAILS);
     }
   });
 
-  test("failed profile save preserves the entered details for retry", async ({
-    page,
-  }) => {
+  test("failed profile save preserves the entered details for retry", async ({ page }) => {
     // Load the account form before intercepting its update request.
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);
     await navigateToPath(page, ACCOUNT_PATH);
@@ -298,6 +297,7 @@ test.describe("user dashboard profile view", () => {
       await expect(companyInput).toHaveValue(retryValue);
       await expect(saveButton).toBeEnabled();
     } finally {
+      // Remove the local failure route.
       await page.unroute(updatePath);
     }
   });
@@ -329,8 +329,6 @@ test.describe("user dashboard profile view", () => {
       },
     );
 
-    // Click Save.
-
     // Wait for the password update response.
     await updatePasswordResponse;
     await expect(page).toHaveURL(/\/dashboard\/user\?tab=account$/);
@@ -359,9 +357,7 @@ test.describe("user dashboard profile view", () => {
     await expect(page).toHaveURL(/\/dashboard\/user\?tab=account$/);
   });
 
-  test("user can replace the password and is logged out from the current session", async ({
-    page,
-  }) => {
+  test("user can replace the password and is logged out from the current session", async ({ page }) => {
     // Use a temporary replacement and track whether cleanup must restore it.
     const originalCredentials = TEST_USER_CREDENTIALS.admin2;
     const temporaryCredentials = {
@@ -395,14 +391,13 @@ test.describe("user dashboard profile view", () => {
     const submitLogin = async (credentials) => {
       await navigateToPath(page, "/log-in");
       await page.getByLabel("Username").fill(credentials.username);
-      await page
-        .getByRole("textbox", { name: "Password required" })
-        .fill(credentials.password);
+      await page.getByRole("textbox", { name: "Password required" }).fill(credentials.password);
       await page.getByRole("button", { name: "Sign In" }).click();
     };
 
     // Restore the seeded password after exercising both authentication outcomes.
     try {
+      // Replace the seeded password with a temporary password.
       await logInWithSeededUser(page, originalCredentials);
       await replacePassword(originalCredentials.password, temporaryCredentials.password);
       passwordChanged = true;
@@ -428,6 +423,7 @@ test.describe("user dashboard profile view", () => {
       await logInWithSeededUser(page, originalCredentials);
       await expect(page).not.toHaveURL(/\/log-in/);
     } finally {
+      // Restore the seeded password if the replacement is still active.
       if (passwordChanged && !page.isClosed()) {
         await logInWithSeededUser(page, temporaryCredentials);
         await replacePassword(temporaryCredentials.password, originalCredentials.password);

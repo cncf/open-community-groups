@@ -1,32 +1,24 @@
 import { expect, test } from "../../../fixtures.js";
-
+import { queryE2eDatabase } from "../../../database.js";
+import { TEST_USER_IDS } from "../../../seed.js";
 import {
   expectPaginationNavigation,
   expectTableColumnsAtViewport,
   expectTableHeaders,
+  uniqueName,
   waitForActionResponse,
 } from "../../../utils.js";
-
 import { createSessionProposal, openUserDashboardPath } from "../helpers.js";
 
 test.describe("user dashboard session proposals view", () => {
-  test("empty state guides a user without session proposals", async ({
-    emptyUserPage,
-  }) => {
+  test("empty state guides a user without session proposals", async ({ emptyUserPage }) => {
     // Load session proposals for the dedicated user without proposal records.
-    await openUserDashboardPath(
-      "/dashboard/user?tab=session-proposals",
-      emptyUserPage,
-    );
+    await openUserDashboardPath("/dashboard/user?tab=session-proposals", emptyUserPage);
     const dashboardContent = emptyUserPage.locator("#dashboard-content");
 
     // Verify the empty guidance keeps the proposal creation action available.
-    await expect(dashboardContent).toContainText(
-      "You don't have any session proposals yet.",
-    );
-    await expect(
-      dashboardContent.getByRole("button", { name: "New proposal" }),
-    ).toBeVisible();
+    await expect(dashboardContent).toContainText("You don't have any session proposals yet.");
+    await expect(dashboardContent.getByRole("button", { name: "New proposal" })).toBeVisible();
   });
 
   test("session proposals table exposes every user-facing column", async ({ member1Page }) => {
@@ -116,83 +108,93 @@ test.describe("user dashboard session proposals view", () => {
 
   test("user can create, update, and delete a session proposal", async ({ pending1Page }) => {
     // Create a unique proposal title for the temporary proposal flow.
-    const proposalTitle = `Pending1 reusable proposal ${Date.now()}`;
+    const proposalTitle = uniqueName("pending1 reusable proposal");
     const updatedProposalTitle = `${proposalTitle} updated`;
-    const dashboardContent = await createSessionProposal(pending1Page, proposalTitle);
 
-    // Find the proposal row.
-    let proposalRow = dashboardContent.locator("tr", {
-      hasText: proposalTitle,
-    });
+    try {
+      // Create the temporary proposal used by the update and delete flow.
+      const dashboardContent = await createSessionProposal(pending1Page, proposalTitle);
 
-    // Verify user can create, update, and delete a session proposal.
-    await expect(proposalRow).toContainText("Ready for submission");
+      // Find the proposal row.
+      let proposalRow = dashboardContent.locator("tr", {
+        hasText: proposalTitle,
+      });
 
-    // Dismiss the creation feedback before opening the delete confirmation.
-    const creationAlert = pending1Page.locator(".swal2-popup");
-    await expect(creationAlert).toContainText("Session proposal added.");
-    await creationAlert.getByRole("button", { name: "OK" }).click();
+      // Verify user can create, update, and delete a session proposal.
+      await expect(proposalRow).toContainText("Ready for submission");
 
-    // Open the proposal editor and persist an updated title.
-    await proposalRow.getByTitle("Edit proposal").click();
-    const editModal = pending1Page.getByRole("dialog", {
-      name: "Edit session proposal",
-    });
-    await expect(editModal.getByLabel("Title")).toHaveValue(proposalTitle);
-    await expect(editModal.getByLabel("Level")).toHaveValue("intermediate");
-    await expect(editModal.getByLabel("Duration (minutes)")).toHaveValue("45");
-    await editModal.getByLabel("Title").fill(updatedProposalTitle);
-    await waitForActionResponse(
-      pending1Page,
-      () => editModal.getByRole("button", { name: "Update" }).click(),
-      {
-        method: "PUT",
-        urlIncludes: "/dashboard/user/session-proposals/",
-      },
-    );
-    await expect(editModal).toBeHidden();
-    proposalRow = dashboardContent.locator("tr", {
-      hasText: updatedProposalTitle,
-    });
-    await expect(proposalRow).toContainText("Ready for submission");
+      // Dismiss the creation feedback before opening the delete confirmation.
+      const creationAlert = pending1Page.locator(".swal2-popup");
+      await expect(creationAlert).toContainText("Session proposal added.");
+      await creationAlert.getByRole("button", { name: "OK" }).click();
 
-    // Dismiss the update feedback before opening the delete confirmation.
-    const updateAlert = pending1Page.locator(".swal2-popup");
-    await expect(updateAlert).toContainText("Session proposal updated.");
-    await updateAlert.getByRole("button", { name: "OK" }).click();
+      // Open the proposal editor and persist an updated title.
+      await proposalRow.getByTitle("Edit proposal").click();
+      const editModal = pending1Page.getByRole("dialog", {
+        name: "Edit session proposal",
+      });
+      await expect(editModal.getByLabel("Title")).toHaveValue(proposalTitle);
+      await expect(editModal.getByLabel("Level")).toHaveValue("intermediate");
+      await expect(editModal.getByLabel("Duration (minutes)")).toHaveValue("45");
+      await editModal.getByLabel("Title").fill(updatedProposalTitle);
+      await waitForActionResponse(
+        pending1Page,
+        () => editModal.getByRole("button", { name: "Update" }).click(),
+        {
+          method: "PUT",
+          urlIncludes: "/dashboard/user/session-proposals/",
+        },
+      );
+      await expect(editModal).toBeHidden();
+      proposalRow = dashboardContent.locator("tr", {
+        hasText: updatedProposalTitle,
+      });
+      await expect(proposalRow).toContainText("Ready for submission");
 
-    // Find the delete proposal button.
-    const deleteProposalButton = proposalRow.getByTitle("Delete proposal");
-    await expect(deleteProposalButton).toBeVisible();
+      // Dismiss the update feedback before opening the delete confirmation.
+      const updateAlert = pending1Page.locator(".swal2-popup");
+      await expect(updateAlert).toContainText("Session proposal updated.");
+      await updateAlert.getByRole("button", { name: "OK" }).click();
 
-    // Click the delete proposal button.
-    await deleteProposalButton.click();
-    const deleteConfirmation = pending1Page.locator(".swal2-popup");
-    await expect(deleteConfirmation).toContainText("Are you sure you want to delete this session proposal?");
-    // Click Delete.
-    await waitForActionResponse(
-      pending1Page,
-      () => deleteConfirmation.getByRole("button", { name: "Delete", exact: true }).click(),
-      {
-        method: "DELETE",
-        urlIncludes: "/dashboard/user/session-proposals/",
-      },
-    );
+      // Find the delete proposal button.
+      const deleteProposalButton = proposalRow.getByTitle("Delete proposal");
+      await expect(deleteProposalButton).toBeVisible();
 
-    // Assert how many matching elements are shown.
-    await expect(dashboardContent.locator("tr", { hasText: updatedProposalTitle })).toHaveCount(0);
+      // Click the delete proposal button.
+      await deleteProposalButton.click();
+      const deleteConfirmation = pending1Page.locator(".swal2-popup");
+      await expect(deleteConfirmation).toContainText(
+        "Are you sure you want to delete this session proposal?",
+      );
+
+      // Click Delete.
+      await waitForActionResponse(
+        pending1Page,
+        () => deleteConfirmation.getByRole("button", { name: "Delete", exact: true }).click(),
+        {
+          method: "DELETE",
+          urlIncludes: "/dashboard/user/session-proposals/",
+        },
+      );
+
+      // Assert how many matching elements are shown.
+      await expect(dashboardContent.locator("tr", { hasText: updatedProposalTitle })).toHaveCount(0);
+    } finally {
+      // Remove any proposal rows left by the temporary flow.
+      deleteSessionProposalsByTitle(TEST_USER_IDS.pending1, [proposalTitle, updatedProposalTitle]);
+    }
   });
 
-  test("empty proposal forms and cancelled deletions leave proposals untouched", async ({
-    member1Page,
-  }) => {
+  test("empty proposal forms and cancelled deletions leave proposals untouched", async ({ member1Page }) => {
     // Load the session proposals tab before exercising the negative paths.
     await openUserDashboardPath("/dashboard/user?tab=session-proposals", member1Page);
 
     // Open the new proposal modal and submit the untouched form.
     const dashboardContent = member1Page.locator("#dashboard-content");
     await member1Page.getByRole("button", { name: "New proposal" }).click();
-    const proposalModal = member1Page.getByRole("dialog", { name: "New session proposal" });
+    const proposalModal = member1Page.getByRole("dialog", {
+      name: "New session proposal",
+    });
     await expect(proposalModal).toBeVisible();
     await proposalModal.getByRole("button", { name: "Save" }).click();
 
@@ -238,3 +240,18 @@ test.describe("user dashboard session proposals view", () => {
     await expect(invitationRow.getByTitle("Decline invitation")).toBeVisible();
   });
 });
+
+/** Deletes matching session_proposal rows for the user from the database. */
+const deleteSessionProposalsByTitle = (userId, proposalTitles) => {
+  if (proposalTitles.length === 0) {
+    return;
+  }
+
+  const titleList = proposalTitles.map((title) => `'${title.replace(/'/g, "''")}'`).join(", ");
+
+  queryE2eDatabase(`
+    delete from session_proposal
+    where user_id = '${userId}'
+    and title in (${titleList});
+  `);
+};

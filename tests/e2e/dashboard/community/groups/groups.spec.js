@@ -1,16 +1,19 @@
 import { expect, test } from "../../../fixtures.js";
-
+import { queryE2eDatabase } from "../../../database.js";
 import {
   TEST_COMMUNITY_IDS,
   TEST_COMMUNITY_NAME,
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
+} from "../../../seed.js";
+import {
   expectPaginationNavigation,
   expectTableColumnsAtViewport,
   expectTableHeaders,
   navigateToPath,
   selectGroupContext,
+  uniqueName,
   waitForActionResponse,
 } from "../../../utils.js";
 import {
@@ -24,25 +27,14 @@ import {
 } from "../../form-helpers.js";
 
 test.describe("community dashboard groups view", () => {
-  test("empty state guides the first community group", async ({
-    adminEmptyCommunityPage,
-  }) => {
+  test("empty state guides the first community group", async ({ adminEmptyCommunityPage }) => {
     // Load groups for the dedicated community without group records.
-    await navigateToPath(
-      adminEmptyCommunityPage,
-      "/dashboard/community?tab=groups",
-    );
-    const dashboardContent = adminEmptyCommunityPage.locator(
-      "#dashboard-content",
-    );
+    await navigateToPath(adminEmptyCommunityPage, "/dashboard/community?tab=groups");
+    const dashboardContent = adminEmptyCommunityPage.locator("#dashboard-content");
 
     // Verify first-use guidance and the creation action remain available.
-    await expect(dashboardContent).toContainText(
-      "It looks like you haven't created any groups yet.",
-    );
-    await expect(
-      dashboardContent.getByRole("button", { name: "Add Group" }),
-    ).toBeVisible();
+    await expect(dashboardContent).toContainText("It looks like you haven't created any groups yet.");
+    await expect(dashboardContent.getByRole("button", { name: "Add Group" })).toBeVisible();
   });
 
   test("groups table exposes every column at its responsive breakpoint", async ({ adminCommunityPage }) => {
@@ -170,96 +162,54 @@ test.describe("community dashboard groups view", () => {
 
   test("admin can add and delete a community group", async ({ adminCommunityPage }) => {
     // Create a unique group name for the temporary group flow.
-    const groupName = `E2E Community Group ${Date.now()}`;
+    const groupName = uniqueName("community group");
 
-    // Load the groups list before creating a temporary group.
-    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
-
-    // Target the dashboard content after the HTMX tab loads.
-    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
-
-    // Open the group form from the dashboard list.
-    await dashboardContent.getByRole("button", { name: "Add Group" }).click();
-    await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
-
-    // Fill the required group details for creation.
-    await adminCommunityPage.getByLabel("Name").fill(groupName);
-    await adminCommunityPage.getByLabel("Category").selectOption("22222222-2222-2222-2222-222222222221");
-    await adminCommunityPage.getByLabel("Region").selectOption("22222222-2222-2222-2222-222222222301");
-    await adminCommunityPage.getByLabel("Short Description").fill("A short e2e-created community group.");
-    await fillMarkdownEditor(
-      adminCommunityPage,
-      "description",
-      "A community group created and removed by the e2e suite.",
-    );
-
-    // Create the temporary group and wait for the POST response.
-    await waitForActionResponse(
-      adminCommunityPage,
-      () => adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
-      {
-        method: "POST",
-        status: 201,
-        urlIncludes: "/dashboard/community/groups/add",
-      },
-    );
-
-    // Verify the newly-created group appears in the dashboard list.
-    const groupRow = dashboardContent.locator("tr", { hasText: groupName });
-    await expect(groupRow).toBeVisible();
-
-    // Open the actions menu before deleting the temporary group.
-    await groupRow
-      .getByRole("button", {
-        name: `Open actions menu for group ${groupName}`,
-      })
-      .click();
-
-    // Open the delete confirmation for the temporary group.
-    const deleteButton = groupRow.locator('button[id^="delete-group-"]');
-    await expect(deleteButton).toBeVisible();
-    await deleteButton.click();
-    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to delete this group?",
-    );
-
-    // Confirm deletion and wait for the server response.
-    await waitForActionResponse(
-      adminCommunityPage,
-      () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-      {
-        method: "DELETE",
-        urlEndsWith: "/delete",
-        urlIncludes: "/dashboard/community/groups/",
-      },
-    );
-
-    // Verify the deleted group is removed from the dashboard list.
-    await expect(dashboardContent.locator("tr", { hasText: groupName })).toHaveCount(0);
-  });
-
-  test("admin can create and remove a subgroup relationship", async ({ adminCommunityPage }) => {
-    // Create a unique group name for the temporary subgroup flow.
-    const groupName = `E2E Child Community Group ${Date.now()}`;
-    let groupWasCreated = false;
-
-    const deleteTemporaryGroup = async () => {
+    try {
+      // Load the groups list before creating a temporary group.
       await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
+      // Target the dashboard content after the HTMX tab loads.
       const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+      await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
+
+      // Open the group form from the dashboard list.
+      await dashboardContent.getByRole("button", { name: "Add Group" }).click();
+      await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
+
+      // Fill the required group details for creation.
+      await adminCommunityPage.getByLabel("Name").fill(groupName);
+      await adminCommunityPage.getByLabel("Category").selectOption("22222222-2222-2222-2222-222222222221");
+      await adminCommunityPage.getByLabel("Region").selectOption("22222222-2222-2222-2222-222222222301");
+      await adminCommunityPage.getByLabel("Short Description").fill("A short e2e-created community group.");
+      await fillMarkdownEditor(
+        adminCommunityPage,
+        "description",
+        "A community group created and removed by the e2e suite.",
+      );
+
+      // Create the temporary group and wait for the POST response.
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
+        {
+          method: "POST",
+          status: 201,
+          urlIncludes: "/dashboard/community/groups/add",
+        },
+      );
+
+      // Verify the newly-created group appears in the dashboard list.
       const groupRow = dashboardContent.locator("tr", { hasText: groupName });
+      await expect(groupRow).toBeVisible();
 
-      if ((await groupRow.count()) === 0) {
-        return;
-      }
-
+      // Open the actions menu before deleting the temporary group.
       await groupRow
         .getByRole("button", {
           name: `Open actions menu for group ${groupName}`,
         })
         .click();
 
+      // Open the delete confirmation for the temporary group.
       const deleteButton = groupRow.locator('button[id^="delete-group-"]');
       await expect(deleteButton).toBeVisible();
       await deleteButton.click();
@@ -267,6 +217,58 @@ test.describe("community dashboard groups view", () => {
         "Are you sure you wish to delete this group?",
       );
 
+      // Confirm deletion and wait for the server response.
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlEndsWith: "/delete",
+          urlIncludes: "/dashboard/community/groups/",
+        },
+      );
+
+      // Verify the deleted group is removed from the dashboard list.
+      await expect(dashboardContent.locator("tr", { hasText: groupName })).toHaveCount(0);
+    } finally {
+      // Clean up the temporary group if deletion failed.
+      cleanupGroupByName(groupName);
+    }
+  });
+
+  test("admin can create and remove a subgroup relationship", async ({ adminCommunityPage }) => {
+    // Create a unique group name for the temporary subgroup flow.
+    const groupName = uniqueName("child community group");
+    let groupWasCreated = false;
+
+    // Define cleanup that deletes the temporary child group through the UI.
+    const deleteTemporaryGroup = async () => {
+      // Return to the groups list and target the temporary child group.
+      await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+      const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+      const groupRow = dashboardContent.locator("tr", { hasText: groupName });
+
+      // Skip UI cleanup when the temporary child group is already absent.
+      if ((await groupRow.count()) === 0) {
+        return;
+      }
+
+      // Open the child group actions menu.
+      await groupRow
+        .getByRole("button", {
+          name: `Open actions menu for group ${groupName}`,
+        })
+        .click();
+
+      // Open the delete confirmation for the child group.
+      const deleteButton = groupRow.locator('button[id^="delete-group-"]');
+      await expect(deleteButton).toBeVisible();
+      await deleteButton.click();
+      await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you wish to delete this group?",
+      );
+
+      // Confirm deletion and wait for the server response.
       await waitForActionResponse(
         adminCommunityPage,
         () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
@@ -279,14 +281,16 @@ test.describe("community dashboard groups view", () => {
     };
 
     try {
+      // Load the groups list and verify the dashboard is ready.
       await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
-
       const dashboardContent = adminCommunityPage.locator("#dashboard-content");
       await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
 
+      // Open the group form for the temporary child group.
       await dashboardContent.getByRole("button", { name: "Add Group" }).click();
       await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
 
+      // Fill required child group details and select its parent.
       await adminCommunityPage.getByLabel("Name").fill(groupName);
       await adminCommunityPage.getByLabel("Category").selectOption("22222222-2222-2222-2222-222222222221");
       await adminCommunityPage.getByLabel("Region").selectOption("22222222-2222-2222-2222-222222222301");
@@ -300,6 +304,7 @@ test.describe("community dashboard groups view", () => {
         "A child group used to verify parent group relationships.",
       );
 
+      // Create the child group and wait for the server response.
       await waitForActionResponse(
         adminCommunityPage,
         () => adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
@@ -311,19 +316,21 @@ test.describe("community dashboard groups view", () => {
       );
       groupWasCreated = true;
 
+      // Verify the child group appears in the dashboard list.
       const groupRow = dashboardContent.locator("tr", { hasText: groupName });
       await expect(groupRow).toBeVisible();
 
+      // Read the child group public path from its row link.
       const viewGroupLink = groupRow.getByRole("link", {
         name: `View group page: ${groupName}`,
       });
       await expect(viewGroupLink).toBeVisible();
-
       const viewGroupHref = await viewGroupLink.getAttribute("href");
       expect(viewGroupHref).toBeTruthy();
       const childGroupPath = new URL(viewGroupHref, "http://127.0.0.1").pathname;
       const childGroupSlug = childGroupPath.split("/").at(-1);
 
+      // Open the parent public page and verify it lists the child group.
       await navigateToPath(
         adminCommunityPage,
         `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}`,
@@ -331,10 +338,10 @@ test.describe("community dashboard groups view", () => {
       await expect(adminCommunityPage.getByText("Subgroups", { exact: true })).toBeVisible();
       await expect(adminCommunityPage.getByRole("link", { name: groupName, exact: true })).toBeVisible();
 
+      // Verify parent event links include both parent and child group filters.
       const seeAllEventsHrefs = await adminCommunityPage
         .getByRole("link", { name: "See all events" })
         .evaluateAll((links) => links.map((link) => decodeURIComponent(link.getAttribute("href") || "")));
-
       expect(
         seeAllEventsHrefs.some(
           (href) =>
@@ -343,6 +350,7 @@ test.describe("community dashboard groups view", () => {
         ),
       ).toBeTruthy();
 
+      // Open the child public page and verify it links back to the parent group.
       await navigateToPath(adminCommunityPage, childGroupPath);
       await expect(adminCommunityPage.getByText("Parent group", { exact: true })).toBeVisible();
       await expect(
@@ -352,28 +360,33 @@ test.describe("community dashboard groups view", () => {
         }),
       ).toBeVisible();
 
+      // Open parent group settings and verify parent selection is locked while subgroups exist.
       await selectGroupContext(
         adminCommunityPage,
         TEST_COMMUNITY_IDS.community1,
         TEST_GROUP_IDS.community1.alpha,
       );
       await navigateToPath(adminCommunityPage, "/dashboard/group?tab=settings");
-
       const parentGroupSelect = adminCommunityPage.locator("#parent_group_id");
       await expect(parentGroupSelect).toBeDisabled();
       await expect(parentGroupSelect).toContainText("Unavailable while this group has subgroups");
       await expect(parentGroupSelect).toHaveCSS("cursor", "not-allowed");
       await expect(parentGroupSelect).toHaveCSS("opacity", "1");
     } finally {
+      // Delete the temporary child group and mark any leftover rows deleted.
       if (groupWasCreated) {
         await deleteTemporaryGroup();
       }
+      cleanupGroupByName(groupName);
     }
   });
 
   test("admin can create, update, and delete a community group with images and rich fields", async ({
     adminCommunityPage,
   }) => {
+    const initialGroupName = uniqueName("rich community group");
+    const updatedGroupName = uniqueName("rich community group updated");
+
     // Define rich group values for the create and update flow.
     const initialValues = {
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
@@ -398,7 +411,7 @@ test.describe("community dashboard groups view", () => {
       linkedinUrl: "https://linkedin.com/company/e2e-community-group-initial",
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       longitude: "2.1686",
-      name: `E2E Rich Community Group ${Date.now()}`,
+      name: initialGroupName,
       regionId: "22222222-2222-2222-2222-222222222301",
       slackUrl: "https://e2e-community-group-initial.slack.com",
       state: "Catalonia",
@@ -431,10 +444,10 @@ test.describe("community dashboard groups view", () => {
       linkedinUrl: "https://linkedin.com/company/e2e-community-group-updated",
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       longitude: "-3.7038",
-      name: `E2E Rich Community Group Updated ${Date.now()}`,
+      name: updatedGroupName,
       regionId: "22222222-2222-2222-2222-222222222301",
       slackUrl: "https://e2e-community-group-updated.slack.com",
-      slugPretty: `e2e-rich-community-group-${Date.now()}`,
+      slugPretty: updatedGroupName.toLowerCase().replace(/\s+/g, "-"),
       state: "Community of Madrid",
       tags: ["cloud", "devex"],
       twitterUrl: "https://x.com/e2e_group_updated",
@@ -497,130 +510,138 @@ test.describe("community dashboard groups view", () => {
       });
     };
 
-    // Load the groups list before opening the rich group form.
-    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+    try {
+      // Load the groups list before opening the rich group form.
+      await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
-    // Target the dashboard content after the HTMX tab loads.
-    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
+      // Target the dashboard content after the HTMX tab loads.
+      const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+      await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
 
-    // Open the group form from the dashboard list.
-    await dashboardContent.getByRole("button", { name: "Add Group" }).click();
-    await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
+      // Open the group form from the dashboard list.
+      await dashboardContent.getByRole("button", { name: "Add Group" }).click();
+      await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
 
-    // Fill the form with the initial rich values.
-    await fillGroupForm(initialValues);
+      // Fill the form with the initial rich values.
+      await fillGroupForm(initialValues);
 
-    // Submit the group and wait for the created response.
-    await waitForActionResponse(
-      adminCommunityPage,
-      () => adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
-      {
-        method: "POST",
-        status: 201,
-        urlIncludes: "/dashboard/community/groups/add",
-      },
-    );
+      // Submit the group and wait for the created response.
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
+        {
+          method: "POST",
+          status: 201,
+          urlIncludes: "/dashboard/community/groups/add",
+        },
+      );
 
-    // Verify the initial temporary group appears in the dashboard list.
-    let groupRow = dashboardContent.locator("tr", {
-      hasText: initialValues.name,
-    });
-    await expect(groupRow).toBeVisible();
+      // Verify the initial temporary group appears in the dashboard list.
+      let groupRow = dashboardContent.locator("tr", {
+        hasText: initialValues.name,
+      });
+      await expect(groupRow).toBeVisible();
 
-    // Update the group with the second set of rich values.
-    await openGroupUpdateForm(groupRow);
-    await fillGroupForm(updatedValues);
+      // Update the group with the second set of rich values.
+      await openGroupUpdateForm(groupRow);
+      await fillGroupForm(updatedValues);
 
-    // Submit the update and wait for the server response.
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.url().includes("/dashboard/community/groups/") &&
-          response.url().includes("/update") &&
-          response.ok(),
-      ),
-      adminCommunityPage.getByRole("button", { name: "Update Group" }).click(),
-    ]);
+      // Submit the update and wait for the server response.
+      await Promise.all([
+        adminCommunityPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes("/dashboard/community/groups/") &&
+            response.url().includes("/update") &&
+            response.ok(),
+        ),
+        adminCommunityPage.getByRole("button", { name: "Update Group" }).click(),
+      ]);
 
-    // Verify the updated group name appears in the dashboard list.
-    groupRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
-    await expect(groupRow).toBeVisible();
+      // Verify the updated group name appears in the dashboard list.
+      groupRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
+      await expect(groupRow).toBeVisible();
 
-    // Reopen the form and verify the rich values persisted.
-    await openGroupUpdateForm(groupRow);
-    await expect(adminCommunityPage.locator("#name")).toHaveValue(updatedValues.name);
-    await expect(adminCommunityPage.locator("#slug_pretty")).toHaveValue(updatedValues.slugPretty);
-    await expect(adminCommunityPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
-    await expect(adminCommunityPage.locator("#region_id")).toHaveValue(updatedValues.regionId);
-    await expect(adminCommunityPage.locator("#group-location-search-city")).toHaveValue(updatedValues.city);
-    await expect(adminCommunityPage.locator("#group-location-search-state")).toHaveValue(updatedValues.state);
-    await expect(adminCommunityPage.locator("#group-location-search-country_name")).toHaveValue(
-      updatedValues.countryName,
-    );
-    await expect(adminCommunityPage.locator("#website_url")).toHaveValue(updatedValues.websiteUrl);
-    await expect(adminCommunityPage.locator("#bluesky_url")).toHaveValue(updatedValues.blueskyUrl);
-    await expect(adminCommunityPage.locator("#github_url")).toHaveValue(updatedValues.githubUrl);
-    await expect(
-      adminCommunityPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
-    ).toHaveValue(/\/images\//);
-    await expect(
-      adminCommunityPage.locator('image-field[name="banner_url"] input[name="banner_url"]'),
-    ).toHaveValue(/\/images\//);
-    await expect(
-      adminCommunityPage.locator('image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]'),
-    ).toHaveValue(/\/images\//);
-    await expect(
-      adminCommunityPage.locator('multiple-inputs[field-name="tags"] input[name="tags[]"]'),
-    ).toHaveCount(updatedValues.tags.length);
-    await expect(
-      adminCommunityPage.locator('gallery-field[field-name="photos_urls"] input[name="photos_urls[]"]'),
-    ).toHaveCount(initialValues.galleryPaths.length + updatedValues.galleryPaths.length);
-    await expect(
-      adminCommunityPage.locator(
-        `key-value-inputs[field-name="extra_links"] input[name="extra_links[${updatedValues.extraLinks[0].key}]"]`,
-      ),
-    ).toHaveValue(updatedValues.extraLinks[0].value);
+      // Reopen the form and verify the rich values persisted.
+      await openGroupUpdateForm(groupRow);
+      await expect(adminCommunityPage.locator("#name")).toHaveValue(updatedValues.name);
+      await expect(adminCommunityPage.locator("#slug_pretty")).toHaveValue(updatedValues.slugPretty);
+      await expect(adminCommunityPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
+      await expect(adminCommunityPage.locator("#region_id")).toHaveValue(updatedValues.regionId);
+      await expect(adminCommunityPage.locator("#group-location-search-city")).toHaveValue(updatedValues.city);
+      await expect(adminCommunityPage.locator("#group-location-search-state")).toHaveValue(
+        updatedValues.state,
+      );
+      await expect(adminCommunityPage.locator("#group-location-search-country_name")).toHaveValue(
+        updatedValues.countryName,
+      );
+      await expect(adminCommunityPage.locator("#website_url")).toHaveValue(updatedValues.websiteUrl);
+      await expect(adminCommunityPage.locator("#bluesky_url")).toHaveValue(updatedValues.blueskyUrl);
+      await expect(adminCommunityPage.locator("#github_url")).toHaveValue(updatedValues.githubUrl);
+      await expect(
+        adminCommunityPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
+      ).toHaveValue(/\/images\//);
+      await expect(
+        adminCommunityPage.locator('image-field[name="banner_url"] input[name="banner_url"]'),
+      ).toHaveValue(/\/images\//);
+      await expect(
+        adminCommunityPage.locator('image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]'),
+      ).toHaveValue(/\/images\//);
+      await expect(
+        adminCommunityPage.locator('multiple-inputs[field-name="tags"] input[name="tags[]"]'),
+      ).toHaveCount(updatedValues.tags.length);
+      await expect(
+        adminCommunityPage.locator('gallery-field[field-name="photos_urls"] input[name="photos_urls[]"]'),
+      ).toHaveCount(initialValues.galleryPaths.length + updatedValues.galleryPaths.length);
+      await expect(
+        adminCommunityPage.locator(
+          `key-value-inputs[field-name="extra_links"] input[name="extra_links[${updatedValues.extraLinks[0].key}]"]`,
+        ),
+      ).toHaveValue(updatedValues.extraLinks[0].value);
 
-    // Return to the groups list before deleting the temporary group.
-    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
-    groupRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
-    await expect(groupRow).toBeVisible();
-    await expect(
-      groupRow.getByRole("link", {
-        name: `View group page: ${updatedValues.name}`,
-      }),
-    ).toHaveAttribute("href", new RegExp(`/group/${updatedValues.slugPretty}$`));
+      // Return to the groups list before deleting the temporary group.
+      await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+      groupRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
+      await expect(groupRow).toBeVisible();
+      await expect(
+        groupRow.getByRole("link", {
+          name: `View group page: ${updatedValues.name}`,
+        }),
+      ).toHaveAttribute("href", new RegExp(`/group/${updatedValues.slugPretty}$`));
 
-    // Open the actions menu for the updated temporary group.
-    await groupRow
-      .getByRole("button", {
-        name: `Open actions menu for group ${updatedValues.name}`,
-      })
-      .click();
+      // Open the actions menu for the updated temporary group.
+      await groupRow
+        .getByRole("button", {
+          name: `Open actions menu for group ${updatedValues.name}`,
+        })
+        .click();
 
-    // Open the delete confirmation for the temporary group.
-    const deleteButton = groupRow.locator('button[id^="delete-group-"]');
-    await expect(deleteButton).toBeVisible();
-    await deleteButton.click();
-    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to delete this group?",
-    );
+      // Open the delete confirmation for the temporary group.
+      const deleteButton = groupRow.locator('button[id^="delete-group-"]');
+      await expect(deleteButton).toBeVisible();
+      await deleteButton.click();
+      await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you wish to delete this group?",
+      );
 
-    // Confirm deletion and wait for the server response.
-    await waitForActionResponse(
-      adminCommunityPage,
-      () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-      {
-        method: "DELETE",
-        urlEndsWith: "/delete",
-        urlIncludes: "/dashboard/community/groups/",
-      },
-    );
+      // Confirm deletion and wait for the server response.
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlEndsWith: "/delete",
+          urlIncludes: "/dashboard/community/groups/",
+        },
+      );
 
-    // Verify the deleted group is removed from the dashboard list.
-    await expect(dashboardContent.locator("tr", { hasText: updatedValues.name })).toHaveCount(0);
+      // Verify the deleted group is removed from the dashboard list.
+      await expect(dashboardContent.locator("tr", { hasText: updatedValues.name })).toHaveCount(0);
+    } finally {
+      // Clean up the temporary rich groups if UI deletion did not remove them.
+      cleanupGroupByName(initialValues.name);
+      cleanupGroupByName(updatedValues.name);
+    }
   });
 
   test("admin can search community groups and clear the filter", async ({ adminCommunityPage }) => {
@@ -773,3 +794,19 @@ test.describe("community dashboard groups view", () => {
     );
   });
 });
+
+/** Marks the named group deleted in the group table for cleanup. */
+const cleanupGroupByName = (groupName) => {
+  const escapedName = groupName.replace(/'/g, "''");
+
+  queryE2eDatabase(`
+    update "group"
+    set
+      active = false,
+      deleted = true,
+      deleted_at = current_timestamp,
+      parent_group_id = null
+    where community_id = '${TEST_COMMUNITY_IDS.community1}'
+    and name = '${escapedName}';
+  `);
+};

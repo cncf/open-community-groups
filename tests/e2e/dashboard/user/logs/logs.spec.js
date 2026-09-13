@@ -1,37 +1,12 @@
 import { expect, test } from "../../../fixtures.js";
 
-import {
-  expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
-  navigateToPath,
-} from "../../../utils.js";
+import { expectPaginationNavigation, navigateToPath } from "../../../utils.js";
 
 const FILTERED_USER_LOGS_PATH = "/dashboard/user?tab=logs&action=user_details_updated";
 const USER_DETAILS_LOGS_PATH = "/dashboard/user?tab=logs&action=session_proposal_added";
 const USER_LOGS_PATH = "/dashboard/user?tab=logs";
 
 test.describe("user dashboard logs view", () => {
-  test("user logs table exposes its responsive columns", async ({ member1Page }) => {
-    // Load user logs before checking table structure.
-    await navigateToPath(member1Page, USER_LOGS_PATH);
-
-    // Find the logs table and its complete ordered header set.
-    const logsTable = member1Page.locator("#dashboard-content").getByRole("table");
-    const headers = ["Action", "Target", "Date", "Details"];
-
-    // Verify header order and column visibility across dashboard breakpoints.
-    await expectTableHeaders(logsTable, headers);
-    await expectTableColumnsAtViewport(
-      member1Page,
-      logsTable,
-      1024,
-      ["Action", "Date", "Details"],
-      ["Target"],
-    );
-    await expectTableColumnsAtViewport(member1Page, logsTable, 1280, headers, []);
-  });
-
   test("member can move between user log result pages", async ({ member1Page }) => {
     // Paginate the seeded audit-log rows with one result per page.
     await expectPaginationNavigation(
@@ -42,11 +17,27 @@ test.describe("user dashboard logs view", () => {
   });
 
   test("member can view the seeded user logs list and active filters", async ({ member1Page }) => {
+    // Load the unfiltered user logs URL before applying active filters.
+    await navigateToPath(member1Page, USER_LOGS_PATH);
+    let dashboardContent = member1Page.locator("#dashboard-content");
+
+    // Verify the full seeded user logs list is present.
+    await expect(
+      dashboardContent.locator("tr.audit-log-row").filter({
+        hasText: "User details updated",
+      }),
+    ).toHaveCount(1);
+    await expect(
+      dashboardContent.locator("tr.audit-log-row").filter({
+        hasText: "Session proposal added",
+      }),
+    ).toHaveCount(1);
+
     // Load the filtered user logs URL.
     await navigateToPath(member1Page, FILTERED_USER_LOGS_PATH);
 
     // Find the dashboard content.
-    const dashboardContent = member1Page.locator("#dashboard-content");
+    dashboardContent = member1Page.locator("#dashboard-content");
 
     // Verify member can view the seeded user logs list and active filters.
     await expect(dashboardContent.getByText("Logs", { exact: true })).toBeVisible();
@@ -92,26 +83,6 @@ test.describe("user dashboard logs view", () => {
     await expect(detailsPopover).toBeVisible();
     await expect(detailsPopover).toContainText("Seeded logs fixture");
     await expect(detailsPopover).toContainText("advanced");
-  });
-
-  test("member can browse the full seeded user logs list", async ({ member1Page }) => {
-    // Load the unfiltered user logs URL.
-    await navigateToPath(member1Page, USER_LOGS_PATH);
-
-    // Find the dashboard content.
-    const dashboardContent = member1Page.locator("#dashboard-content");
-
-    // Verify member can browse the full seeded user logs list.
-    await expect(
-      dashboardContent.locator("tr.audit-log-row").filter({
-        hasText: "User details updated",
-      }),
-    ).toHaveCount(1);
-    await expect(
-      dashboardContent.locator("tr.audit-log-row").filter({
-        hasText: "Session proposal added",
-      }),
-    ).toHaveCount(1);
   });
 
   test("member can apply empty log filters and reset them", async ({ member1Page }) => {

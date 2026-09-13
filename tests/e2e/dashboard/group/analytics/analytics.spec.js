@@ -1,34 +1,28 @@
 import { expect, test } from "../../../fixtures.js";
-
 import { navigateToPath } from "../../../utils.js";
 
-const expectChartSettled = async (page, selector) => {
-  const chart = page.locator(selector);
+const GROUP_EMPTY_CHART_COUNT = 12;
 
-  if ((await chart.count()) === 0) {
-    await expect(page.locator(".chart-empty-state").first()).toBeVisible();
-    return;
-  }
-
-  await expect(chart).toBeVisible();
-  await expect(chart.locator("svg-spinner")).toHaveCount(0);
-};
+const GROUP_SEEDED_CHART_IDS = [
+  "members-running-chart",
+  "members-monthly-chart",
+  "events-running-chart",
+  "events-monthly-chart",
+  "attendees-running-chart",
+  "attendees-monthly-chart",
+];
 
 test.describe("group dashboard analytics view", () => {
-  test("empty group analytics settles every chart slot", async ({
-    organizerEmptyGroupPage,
-  }) => {
+  test("empty group analytics settles every chart slot", async ({ organizerEmptyGroupPage }) => {
     // Load analytics for the dedicated group without activity records.
-    await navigateToPath(
-      organizerEmptyGroupPage,
-      "/dashboard/group?tab=analytics",
-    );
-    const dashboardContent = organizerEmptyGroupPage.locator(
-      "#dashboard-content",
-    );
+    await navigateToPath(organizerEmptyGroupPage, "/dashboard/group?tab=analytics");
+    const dashboardContent = organizerEmptyGroupPage.locator("#dashboard-content");
 
     // Verify each chart resolves to an explicit empty visualization state.
-    await expect(dashboardContent.locator(".chart-empty-state")).toHaveCount(12);
+    await expect(dashboardContent.locator(".chart-empty-state")).toHaveCount(GROUP_EMPTY_CHART_COUNT);
+    await expect(dashboardContent.locator(".chart-empty-state")).toHaveText(
+      Array(GROUP_EMPTY_CHART_COUNT).fill("No data available yet"),
+    );
     await expect(dashboardContent.locator("[id$='-chart']")).toHaveCount(0);
   });
 
@@ -89,13 +83,15 @@ test.describe("group dashboard analytics view", () => {
       pageViewsSection.locator(".chart-empty-state, #group-views-monthly-chart").first(),
     ).toBeVisible();
 
-    // Verify representative charts finish rendering or show the empty state.
-    await expectChartSettled(organizerGroupPage, "#members-running-chart");
-    await expectChartSettled(organizerGroupPage, "#events-running-chart");
-    await expectChartSettled(organizerGroupPage, "#attendees-running-chart");
+    // Verify seeded metric charts finish rendering real chart roots.
+    for (const chartId of GROUP_SEEDED_CHART_IDS) {
+      await expectChartRendered(dashboardContent, chartId);
+    }
 
     // Verify all chart slots and summary card descriptions are rendered.
-    await expect(dashboardContent.locator(".chart-empty-state, [id$='-chart']")).toHaveCount(12);
+    await expect(dashboardContent.locator(".chart-empty-state, [id$='-chart']")).toHaveCount(
+      GROUP_EMPTY_CHART_COUNT,
+    );
     for (const summaryCopy of [
       "People in this group",
       "Published and past events",
@@ -143,3 +139,13 @@ test.describe("group dashboard analytics view", () => {
     ).toBeVisible();
   });
 });
+
+/** Verifies the chart slot has rendered a non-empty chart. */
+const expectChartRendered = async (container, chartId) => {
+  const chart = container.locator(`#${chartId}`);
+
+  await expect(chart).toBeVisible();
+  await expect(chart).not.toHaveClass(/chart-empty-state/u);
+  await expect(chart.locator("svg-spinner")).toHaveCount(0);
+  await expect.poll(async () => chart.locator("canvas, svg").count()).toBeGreaterThan(0);
+};

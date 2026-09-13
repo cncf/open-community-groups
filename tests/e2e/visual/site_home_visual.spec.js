@@ -1,11 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  expectRegionScreenshot,
-  getHomeJumbotronContent,
-  navigateToSiteHome,
-  TEST_SITE_TITLE,
-} from "../utils.js";
+import { TEST_SITE_TITLE } from "../seed.js";
+import { expectRegionScreenshot, getHomeJumbotronContent } from "./helpers.js";
+import { navigateToSiteHome } from "../utils.js";
 
 test.describe("site home page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {
@@ -13,17 +10,10 @@ test.describe("site home page visual regression @visual", () => {
     await navigateToSiteHome(page);
 
     // Verify desktop home content is ready.
-    await expect(
-      page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE })).toBeVisible();
 
     // Capture the desktop jumbotron snapshot.
-    await expectRegionScreenshot(
-      page,
-      getHomeJumbotronContent(page),
-      "site-home-desktop.png",
-      { testInfo },
-    );
+    await expectRegionScreenshot(page, getHomeJumbotronContent(page), "site-home-desktop.png", { testInfo });
   });
 
   test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
@@ -31,16 +21,12 @@ test.describe("site home page visual regression @visual", () => {
     await navigateToSiteHome(page);
 
     // Verify mobile home content is ready.
-    await expect(
-      page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE })).toBeVisible();
 
     // Capture the mobile jumbotron snapshot.
-    await expectRegionScreenshot(
-      page,
-      getHomeJumbotronContent(page),
-      "site-home-mobile.png",
-      { testInfo, useClippedPageScreenshot: true },
-    );
+    await expectRegionScreenshot(page, getHomeJumbotronContent(page), "site-home-mobile.png", {
+      testInfo,
+      useClippedPageScreenshot: true,
+    });
   });
 });

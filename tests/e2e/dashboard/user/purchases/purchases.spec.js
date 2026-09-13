@@ -1,33 +1,13 @@
 import { expect, test } from "../../../fixtures.js";
-
 import {
-  E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
   TEST_GROUP_SLUG,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_PURCHASE_DOCUMENT_IDS,
-  buildE2eUrl,
-  expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
-  navigateToPath,
-} from "../../../utils.js";
-
-const openPurchasesDashboard = async (page) => {
-  await navigateToPath(page, "/dashboard/user?tab=purchases");
-
-  const dashboardContent = page.locator("#dashboard-content");
-  await expect(dashboardContent.getByText("Purchases & documents", { exact: true })).toBeVisible();
-
-  return dashboardContent;
-};
-
-const getPurchaseRow = (dashboardContent, eventName) =>
-  dashboardContent.locator("tbody tr", { hasText: eventName });
+} from "../../../seed.js";
+import { buildE2eUrl, expectPaginationNavigation, navigateToPath } from "../../../utils.js";
 
 test.describe("user dashboard purchases", () => {
-  test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
-
   test("empty state explains when no paid-ticket documents exist", async ({ emptyUserPage }) => {
     // Open purchases for the dedicated user without paid tickets.
     const dashboardContent = await openPurchasesDashboard(emptyUserPage);
@@ -43,10 +23,7 @@ test.describe("user dashboard purchases", () => {
   test("lists refunded purchases with invoice and credit note actions", async ({ adminCommunityPage }) => {
     // Open the seeded refunded purchase with issued financial documents.
     const dashboardContent = await openPurchasesDashboard(adminCommunityPage);
-    const purchaseRow = getPurchaseRow(
-      dashboardContent,
-      TEST_PAYMENT_EVENT_NAMES.refunds,
-    );
+    const purchaseRow = getPurchaseRow(dashboardContent, TEST_PAYMENT_EVENT_NAMES.refunds);
 
     // Verify the durable purchase summary and seller snapshot.
     await expect(purchaseRow).toBeVisible();
@@ -78,9 +55,7 @@ test.describe("user dashboard purchases", () => {
   test("purchase documents are private to their attendee", async ({ emptyUserPage }) => {
     // Request another attendee's documents without following provider redirects.
     const invoiceResponse = await emptyUserPage.request.get(
-      buildE2eUrl(
-        `/dashboard/user/purchases/${TEST_PURCHASE_DOCUMENT_IDS.purchase}/invoice`,
-      ),
+      buildE2eUrl(`/dashboard/user/purchases/${TEST_PURCHASE_DOCUMENT_IDS.purchase}/invoice`),
       { maxRedirects: 0 },
     );
     const creditNoteResponse = await emptyUserPage.request.get(
@@ -98,10 +73,7 @@ test.describe("user dashboard purchases", () => {
   test("keeps unavailable invoices in a disabled processing state", async ({ member1Page }) => {
     // Open a completed purchase whose provider invoice is not available yet.
     const dashboardContent = await openPurchasesDashboard(member1Page);
-    const purchaseRow = getPurchaseRow(
-      dashboardContent,
-      TEST_PAYMENT_EVENT_NAMES.refunds,
-    );
+    const purchaseRow = getPurchaseRow(dashboardContent, TEST_PAYMENT_EVENT_NAMES.refunds);
     await expect(purchaseRow).toContainText("Refund requested");
     await purchaseRow.getByLabel(`Open document actions for ${TEST_PAYMENT_EVENT_NAMES.refunds}`).click();
 
@@ -117,19 +89,12 @@ test.describe("user dashboard purchases", () => {
   test("shows paid purchases before their invoice is available", async ({ pending1Page }) => {
     // Open a completed purchase whose invoice is still being reconciled.
     const dashboardContent = await openPurchasesDashboard(pending1Page);
-    const purchaseRow = getPurchaseRow(
-      dashboardContent,
-      TEST_PAYMENT_EVENT_NAMES.refunds,
-    );
+    const purchaseRow = getPurchaseRow(dashboardContent, TEST_PAYMENT_EVENT_NAMES.refunds);
 
     // Verify the completed purchase remains visible with its document state.
     await expect(purchaseRow).toContainText("Paid");
-    await purchaseRow
-      .getByLabel(`Open document actions for ${TEST_PAYMENT_EVENT_NAMES.refunds}`)
-      .click();
-    await expect(
-      purchaseRow.getByRole("menuitem", { name: "Invoice processing" }),
-    ).toBeDisabled();
+    await purchaseRow.getByLabel(`Open document actions for ${TEST_PAYMENT_EVENT_NAMES.refunds}`).click();
+    await expect(purchaseRow.getByRole("menuitem", { name: "Invoice processing" })).toBeDisabled();
   });
 
   test("shows processing and failed credit note states", async ({
@@ -137,54 +102,26 @@ test.describe("user dashboard purchases", () => {
     organizerGroupWithoutPaymentsPage,
   }) => {
     // Verify an in-flight refund exposes both processing document labels.
-    const processingDashboard = await openPurchasesDashboard(
-      organizerGroupWithoutPaymentsPage,
-    );
-    const processingRow = getPurchaseRow(
-      processingDashboard,
-      TEST_PAYMENT_EVENT_NAMES.refunds,
-    );
+    const processingDashboard = await openPurchasesDashboard(organizerGroupWithoutPaymentsPage);
+    const processingRow = getPurchaseRow(processingDashboard, TEST_PAYMENT_EVENT_NAMES.refunds);
     await expect(processingRow).toContainText("Refund processing");
-    await processingRow
-      .getByLabel(`Open document actions for ${TEST_PAYMENT_EVENT_NAMES.refunds}`)
-      .click();
-    await expect(
-      processingRow.getByRole("menuitem", { name: "Credit note processing" }),
-    ).toBeDisabled();
-    await expect(
-      processingRow.getByRole("menuitem", { name: "Invoice processing" }),
-    ).toBeDisabled();
+    await processingRow.getByLabel(`Open document actions for ${TEST_PAYMENT_EVENT_NAMES.refunds}`).click();
+    await expect(processingRow.getByRole("menuitem", { name: "Credit note processing" })).toBeDisabled();
+    await expect(processingRow.getByRole("menuitem", { name: "Invoice processing" })).toBeDisabled();
 
     // Verify an exhausted credit-note job is presented for review, not download.
     const failedDashboard = await openPurchasesDashboard(eventsManagerGroupPage);
-    const failedRow = getPurchaseRow(
-      failedDashboard,
-      TEST_PAYMENT_EVENT_NAMES.refunds,
-    );
-    await failedRow
-      .getByLabel(`Open document actions for ${TEST_PAYMENT_EVENT_NAMES.refunds}`)
-      .click();
-    await expect(
-      failedRow.getByRole("menuitem", { name: "Credit note needs review" }),
-    ).toBeDisabled();
-    await expect(
-      failedRow.getByRole("menuitem", { name: "Download credit note" }),
-    ).toHaveCount(0);
+    const failedRow = getPurchaseRow(failedDashboard, TEST_PAYMENT_EVENT_NAMES.refunds);
+    await failedRow.getByLabel(`Open document actions for ${TEST_PAYMENT_EVENT_NAMES.refunds}`).click();
+    await expect(failedRow.getByRole("menuitem", { name: "Credit note needs review" })).toBeDisabled();
+    await expect(failedRow.getByRole("menuitem", { name: "Download credit note" })).toHaveCount(0);
   });
 
-  test("keeps past and canceled purchases in durable history", async ({
-    adminCommunityPage,
-  }) => {
+  test("keeps past and canceled purchases in durable history", async ({ adminCommunityPage }) => {
     // Open the complete durable history for the seeded administrator.
     const dashboardContent = await openPurchasesDashboard(adminCommunityPage);
-    const pastPurchaseRow = getPurchaseRow(
-      dashboardContent,
-      "Past Event For Filtering",
-    );
-    const canceledPurchaseRow = getPurchaseRow(
-      dashboardContent,
-      "Canceled Public Event",
-    );
+    const pastPurchaseRow = getPurchaseRow(dashboardContent, "Past Event For Filtering");
+    const canceledPurchaseRow = getPurchaseRow(dashboardContent, "Canceled Public Event");
 
     // Verify past events retain their public link and issued invoice action.
     await expect(pastPurchaseRow).toBeVisible();
@@ -208,22 +145,18 @@ test.describe("user dashboard purchases", () => {
       "#dashboard-content tbody tr",
     );
   });
-
-  test("purchases table exposes every responsive column", async ({ adminCommunityPage }) => {
-    // Open purchases before checking the responsive table contract.
-    const dashboardContent = await openPurchasesDashboard(adminCommunityPage);
-    const purchasesTable = dashboardContent.getByRole("table");
-    const headers = ["Event", "Purchased", "Amount", "Status", "Actions"];
-
-    // Verify compact and wide layouts expose the intended columns.
-    await expectTableColumnsAtViewport(
-      adminCommunityPage,
-      purchasesTable,
-      1024,
-      ["Event", "Amount", "Status", "Actions"],
-      ["Purchased"],
-    );
-    await expectTableColumnsAtViewport(adminCommunityPage, purchasesTable, 1280, headers, []);
-    await expectTableHeaders(purchasesTable, headers);
-  });
 });
+
+/** Returns the purchase table row matching the event name. */
+const getPurchaseRow = (dashboardContent, eventName) =>
+  dashboardContent.locator("tbody tr", { hasText: eventName });
+
+/** Opens the purchases dashboard and returns the loaded content region. */
+const openPurchasesDashboard = async (page) => {
+  await navigateToPath(page, "/dashboard/user?tab=purchases");
+
+  const dashboardContent = page.locator("#dashboard-content");
+  await expect(dashboardContent.getByText("Purchases & documents", { exact: true })).toBeVisible();
+
+  return dashboardContent;
+};

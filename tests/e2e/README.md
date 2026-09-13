@@ -1,146 +1,130 @@
 # E2E Tests
 
-End-to-end tests for Open Community Groups using Playwright.
+Playwright end-to-end tests for Open Community Groups. They run against a real
+server and a dedicated PostgreSQL database seeded with fixed test data.
 
 ## Prerequisites
 
 - Node.js 22+
 - PostgreSQL 17+ with `pgcrypto` and `postgis`
 - Rust toolchain
-- `tailwindcss` on `PATH`
-- `tern` on `PATH`
-- `just`
+- `tailwindcss`, `tern` (2.3.0+) and `just` on `PATH`
 
-`just e2e-install` installs Playwright and browsers, but it does not install
-`tailwindcss` or `tern`.
-
-## Quick Start
+## Running the Suite
 
 ```sh
-# Install e2e dependencies from tests/e2e/package.json
+# Install Playwright and browsers
 just e2e-install
 
-# Recreate and migrate the e2e test database
-just db-recreate-tests-e2e
+# Drop, create, migrate and seed the e2e database
+just e2e-db-reset
 
-# Load the e2e seed data into the e2e test database
-just db-load-tests-e2e-data
-
-# Start the e2e server in another terminal
+# Start the e2e server (keep it running in another terminal)
 just e2e-server
 
-# Run the Playwright suite
+# Run all tests
 just e2e-tests
 ```
 
-`just db-load-tests-e2e-data` also normalizes the seeded `e2e-*` user
-passwords to the credentials expected by the Playwright suite.
+Seeded `e2e-*` users log in with the password `Password123!`.
 
-## Common Commands
+Other useful commands:
 
 ```sh
-# Recreate and migrate the e2e test database
-just db-recreate-tests-e2e
+# One spec file (path relative to tests/e2e), extra flags go to Playwright
+just e2e-tests-file dashboard/common/session.spec.js --project=chromium-deep
 
-# Load the e2e seed data into the e2e test database
-just db-load-tests-e2e-data
+# One project
+just e2e-tests --project=chromium-smoke
 
-# Start the e2e server
-just e2e-server
-
-# Start the e2e server with auto-reload
-just e2e-server-watch
-
-# Run the full Playwright suite
-just e2e-tests
+# Playwright UI / headed browser
+just e2e-tests --ui
+just e2e-tests --headed
 
 # Update visual snapshots
 just e2e-update-snapshots
 
-# Run a specific Playwright project
-cd tests/e2e; npx playwright test --config playwright.config.js --project=chromium-smoke
-
-# Open the Playwright UI
-cd tests/e2e; npx playwright test --config playwright.config.js --ui
-
-# Run with a visible browser
-cd tests/e2e; npx playwright test --config playwright.config.js --headed
+# Server with auto-reload, and a psql session on the e2e database
+just e2e-server-watch
+just db-client-tests-e2e
 ```
+
+Format the suite with `just frontend-fmt-and-lint`.
 
 ## Configuration
 
-Most runs only need:
+All recipes, the server, tern, psql and Playwright share these variables,
+exported by the `justfile`:
 
-- `OCG_E2E_BASE_URL`
-  Base URL used by Playwright. Default: `http://localhost:9001`.
-- `OCG_E2E_MEETINGS_ENABLED`
-  Enables automatic meeting coverage and assertions. `just e2e-tests` sets this
-  to `true` by default. Use `false` to disable it for a custom run.
-- `OCG_E2E_PAYMENTS_ENABLED`
-  Enables payment-specific coverage and assertions. `just e2e-tests` sets this
-  to `true` by default. Use `false` to disable it for a custom run.
+| Variable              | Default                 |
+| --------------------- | ----------------------- |
+| `OCG_E2E_DB_HOST`     | `OCG_DB_HOST`           |
+| `OCG_E2E_DB_PORT`     | `OCG_DB_PORT`           |
+| `OCG_E2E_DB_USER`     | `OCG_DB_USER`           |
+| `OCG_E2E_DB_PASSWORD` | `OCG_DB_PASSWORD`       |
+| `OCG_E2E_DB_NAME`     | `ocg_tests_e2e`         |
+| `OCG_E2E_BASE_URL`    | `http://127.0.0.1:9001` |
 
-Useful test data overrides:
+`OCG_PG_BIN` optionally points at a PostgreSQL `bin` directory (default:
+Homebrew PostgreSQL 17). The `justfile` prepends it to `PATH` for psql and
+Playwright recipes; `tests/e2e/database.js` reads it directly when Playwright
+runs outside `just`.
 
-- `OCG_E2E_COMMUNITY_NAME`
-- `OCG_E2E_GROUP_SLUG`
-- `OCG_E2E_EVENT_SLUG`
+`OCG_E2E_DB_NAME` must end in `_e2e`; destructive recipes and
+`tests/e2e/database.js` refuse any other name. The server profile is
+`config/server.yml` (fake Stripe and Zoom credentials) and the tern
+configuration is `config/tern.conf`.
 
-Playwright server management:
+Before the first test, `preflight.js` checks `/health-check` and compares a
+marker written by `just e2e-db-reset` with the one the server renders. If
+they differ, the server and psql point at different databases.
 
-- `OCG_E2E_START_SERVER`
-- `OCG_E2E_SERVER_CMD`
-- `OCG_E2E_SERVER_TIMEOUT`
-- `OCG_E2E_REUSE_SERVER`
-  Opt in to attaching to an already running app when `OCG_E2E_START_SERVER=true`
+## Projects
 
-Database settings come from the usual `OCG_DB_*` variables and the e2e server
-config. The default e2e test database name is configured by
-`OCG_DB_NAME_TESTS_E2E`.
+- `chromium-smoke`, `firefox-smoke`, `webkit-smoke`: the smoke specs listed
+  in `playwright.config.js`.
+- `chromium-deep`: every other spec on desktop Chromium.
+- `chromium-mobile-deep`: tests tagged `@mobile` on a mobile device.
 
-The e2e server uses `server-tests-e2e.yml` from `OCG_CONFIG` by default. This
-config should point at the e2e database and listen on a different port from the
-main local server, for example `127.0.0.1:9001` with base URL
-`http://127.0.0.1:9001`.
+Visual tests are tagged `@visual`; snapshots live next to their spec in
+`*.spec.js-snapshots/`.
 
-When `OCG_DB_*` variables are not set, the email verification test reads DB
-settings from `server-tests-e2e.yml`.
-
-## Notes
-
-- The committed e2e Node manifest lives at
-  [`tests/e2e/package.json`](package.json).
-- Keep [`tests/e2e/package-lock.json`](package-lock.json)
-  committed and use `npm ci` so Playwright and its browser stack stay pinned for
-  visual snapshots.
-- Seeded e2e users use the password `Password123!` after
-  `just db-load-tests-e2e-data`.
-- Firefox and WebKit only run the smoke suite.
-
-## CI Layout
-
-The `E2E` workflow builds the server binary once and runs the suite as
-parallel jobs, each with its own database and server instance:
-
-- `Smoke chromium`, `Smoke firefox`, `Smoke webkit`: one smoke project each.
-- `Functional 1/6` to `6/6`: the `chromium-deep` and `chromium-mobile-deep`
-  projects without `@visual` tests, sharded by spec file with `--shard`.
-- `Visual`: only the `@visual` tests on the deep projects.
-
-To reproduce a single functional shard locally:
+CI runs the same recipes: one job per smoke browser, six functional shards
+(`--grep-invert @visual --shard=N/6`) and one visual job. To reproduce a shard:
 
 ```sh
-cd tests/e2e; npx playwright test --config playwright.config.js \
-  --project=chromium-deep --project=chromium-mobile-deep \
+just e2e-tests --project=chromium-deep --project=chromium-mobile-deep \
   --grep-invert @visual --shard=1/6
 ```
 
+## Writing Tests
+
+- Folders: `site/` (public pages), `dashboard/` (dashboard tabs), `workflows/`
+  (flows across roles or surfaces) and `visual/` (screenshots).
+- Shared helpers: `utils.js` (navigation, `uniqueName`, `futureDate`),
+  `seed.js` (seeded IDs and credentials), `database.js` (psql queries),
+  `notifications.js`, `webhooks.js`, `data-graphs/` (disposable data graphs) and
+  per-folder `helpers.js`.
+- Seeded rows are read-only. A test that mutates data owns the rows it creates
+  or changes and restores them by ID in `finally`, so any spec passes with
+  `--repeat-each=5 --retries=0` without reseeding.
+- Rows created through the browser use `uniqueName()` and `futureDate()`;
+  do not use `Date.now()`.
+- Worker-owned transitions (payments, badges) are awaited with `expect.poll`
+  and include the job row status in the failure message.
+- Notification checks snapshot the `notification` table, act, assert the new
+  rows by kind and recipient, and delete them. Email delivery is not asserted.
+- Stripe and Zoom are covered through signed webhooks only; flows that need the
+  real providers (for example `checkout.session.completed`) are out of scope.
+
 ## Troubleshooting
 
-- If navigation fails, verify the server is reachable at
-  `<OCG_E2E_BASE_URL>/health-check`.
-- If the database is missing seed data, rerun `just db-recreate-tests-e2e` and
-  `just db-load-tests-e2e-data`.
-- If port `9001` is busy, update `server-tests-e2e.yml` and run with a matching
-  `OCG_E2E_BASE_URL`, for example
-  `OCG_E2E_BASE_URL=http://localhost:9002 just e2e-tests`.
+- Preflight failure: run `just e2e-db-reset`, restart `just e2e-server` and
+  make sure both use the same `OCG_E2E_*` values.
+- Navigation errors: check `<OCG_E2E_BASE_URL>/health-check` responds.
+- Port `9001` busy: start the server with `OCG_SERVER__ADDR=127.0.0.1:9002`
+  and set `OCG_E2E_BASE_URL` to match.
+- `OCG_E2E_START_SERVER=true` lets Playwright start the server itself
+  (`OCG_E2E_SERVER_CMD`, `OCG_E2E_SERVER_TIMEOUT`, `OCG_E2E_REUSE_SERVER`).
+- Keep `package-lock.json` committed and use `npm ci` so browser versions stay
+  pinned for visual snapshots.

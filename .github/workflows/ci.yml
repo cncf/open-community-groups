@@ -58,6 +58,7 @@ jobs:
               - '.cargo/audit.toml'
             javascript:
               - '.github/workflows/ci.yml'
+              - 'tests/e2e/**'
               - 'tests/unit/**'
               - 'ocg-server/static/js/**'
               - 'ocg-server/static/js/.prettierrc.yaml'
@@ -111,7 +112,7 @@ jobs:
         with:
           dry: true
           prettier_version: 3.9.4
-          prettier_options: --check ocg-server/static/js/**/*.js --config ocg-server/static/js/.prettierrc.yaml
+          prettier_options: --check ocg-server/static/js/**/*.js tests/e2e/**/*.js --config ocg-server/static/js/.prettierrc.yaml
 
   lint-server:
     needs: changes

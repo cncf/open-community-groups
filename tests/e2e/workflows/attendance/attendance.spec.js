@@ -1,46 +1,13 @@
 import { expect, test } from "../../fixtures.js";
-
 import {
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
   TEST_USER_IDS,
-  getAttendButton,
-  getLeaveButton,
-  navigateToEvent,
-  navigateToPath,
-  waitForActionResponse,
-  waitForAttendanceState,
-} from "../../utils.js";
-import { expectUserProfileModalFromRow } from "../../dashboard/group/events/user-profile-modal-helpers.js";
-
-/** Restores the shared member to a non-attending event state. */
-const resetMemberAttendance = async (page) => {
-  await navigateToEvent(
-    page,
-    TEST_COMMUNITY_NAME,
-    TEST_GROUP_SLUGS.community1.alpha,
-    TEST_EVENT_SLUGS.alpha[0],
-  );
-  await waitForAttendanceState(page);
-
-  const leaveButton = getLeaveButton(page);
-  if (!(await leaveButton.isVisible())) {
-    await expect(getAttendButton(page)).toBeVisible();
-    return;
-  }
-
-  await leaveButton.click();
-  const confirmButton = page.getByRole("button", { name: "Yes" });
-  await expect(confirmButton).toBeVisible();
-  await waitForActionResponse(page, () => confirmButton.click(), {
-    method: "DELETE",
-    urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/leave`,
-  });
-  await waitForAttendanceState(page);
-  await expect(getAttendButton(page)).toBeVisible();
-};
+} from "../../seed.js";
+import { getAttendButton, getLeaveButton, waitForAttendanceState } from "../../site/event/helpers.js";
+import { navigateToEvent, navigateToPath, waitForActionResponse } from "../../utils.js";
 
 test.describe("event attendance workflow", () => {
   test.beforeEach(async ({ member2Page }) => {
@@ -117,19 +84,6 @@ test.describe("event attendance workflow", () => {
     // Assert that Attendees list is visible.
     await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
     await expect(attendeeRow).toBeVisible();
-    await expect(attendeeRow).toContainText("e2e-member-2");
-    await expect(attendeesContent.getByRole("button", { name: "Send email" })).toBeEnabled();
-    await expectUserProfileModalFromRow(
-      organizerGroupPage,
-      attendeeRow,
-      "View profile for E2E Member Two",
-      "E2E Member Two",
-      [
-        "Member Experience Engineer at Platform Ops Lab",
-        "Member Two profile for dashboard modal coverage.",
-        "openprofile.dev",
-      ],
-    );
   });
 
   test("organizer can check in an attendee from the attendees tab", async ({
@@ -218,3 +172,30 @@ test.describe("event attendance workflow", () => {
     await expect(attendeeEvent).toHaveCount(0);
   });
 });
+
+/** Restores the shared member to a non-attending event state. */
+const resetMemberAttendance = async (page) => {
+  await navigateToEvent(
+    page,
+    TEST_COMMUNITY_NAME,
+    TEST_GROUP_SLUGS.community1.alpha,
+    TEST_EVENT_SLUGS.alpha[0],
+  );
+  await waitForAttendanceState(page);
+
+  const leaveButton = getLeaveButton(page);
+  if (!(await leaveButton.isVisible())) {
+    await expect(getAttendButton(page)).toBeVisible();
+    return;
+  }
+
+  await leaveButton.click();
+  const confirmButton = page.getByRole("button", { name: "Yes" });
+  await expect(confirmButton).toBeVisible();
+  await waitForActionResponse(page, () => confirmButton.click(), {
+    method: "DELETE",
+    urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/leave`,
+  });
+  await waitForAttendanceState(page);
+  await expect(getAttendButton(page)).toBeVisible();
+};

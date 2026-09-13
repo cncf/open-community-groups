@@ -1,14 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 
-import {
-  E2E_PAYMENTS_ENABLED,
-  TEST_EVENT_NAME,
-  TEST_GROUP_IDS,
-  TEST_GROUP_NAMES,
-  TEST_GROUP_SLUGS,
-  navigateToPath,
-  waitForActionResponse,
-} from "../../../utils.js";
+import { TEST_EVENT_NAME, TEST_GROUP_IDS, TEST_GROUP_NAMES, TEST_GROUP_SLUGS } from "../../../seed.js";
+import { navigateToPath, waitForActionResponse } from "../../../utils.js";
 
 test.describe("group dashboard navigation", () => {
   test("leaving Check-In keeps the page header mounted", async ({ organizerGroupPage }) => {
@@ -33,6 +26,7 @@ test.describe("group dashboard navigation", () => {
   });
 
   test("closes confirmation alerts across dashboard and page navigation", async ({ organizerGroupPage }) => {
+    // Define a helper that opens the event cancellation confirmation.
     const openCancellationAlert = async () => {
       const eventRow = organizerGroupPage.locator("#dashboard-content tbody tr", {
         hasText: TEST_EVENT_NAME,
@@ -83,11 +77,9 @@ test.describe("group dashboard navigation", () => {
       "Events",
     );
     await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=check-in"]')).toBeHidden();
-    if (E2E_PAYMENTS_ENABLED) {
-      await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=refunds"]')).toContainText(
-        "Refunds",
-      );
-    }
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=refunds"]')).toContainText(
+      "Refunds",
+    );
     await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=badges"]')).toContainText(
       "Badges",
     );

@@ -1,55 +1,96 @@
 import { test as base, expect } from "@playwright/test";
 
-import {
-  buildE2eUrl,
-  TEST_COMMUNITY_IDS,
-  TEST_GROUP_IDS,
-  TEST_USER_CREDENTIALS,
-  logInWithSeededUser,
-  selectCommunityContext,
-  selectGroupContext,
-} from "./utils.js";
+import { TEST_COMMUNITY_IDS, TEST_GROUP_IDS, TEST_USER_CREDENTIALS } from "./seed.js";
+import { buildE2eUrl, logInWithSeededUser, selectCommunityContext, selectGroupContext } from "./utils.js";
 
+// Authenticated page fixtures: seeded credentials plus the dashboard context they select.
+const AUTHENTICATED_PAGE_FIXTURES = {
+  adminCommunityPage: {
+    credentials: TEST_USER_CREDENTIALS.admin1,
+    preparePage: (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
+  },
+  adminEmptyCommunityPage: {
+    credentials: TEST_USER_CREDENTIALS.admin1,
+    preparePage: (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.empty),
+  },
+  adminSecondaryCommunityPage: {
+    credentials: TEST_USER_CREDENTIALS.admin2,
+    preparePage: (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community2),
+  },
+  checkInManagerGroupPage: {
+    credentials: TEST_USER_CREDENTIALS.checkInManager1,
+    preparePage: (page) =>
+      selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
+  },
+  communityViewerPage: {
+    credentials: TEST_USER_CREDENTIALS.communityViewer1,
+    preparePage: (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
+  },
+  emptyUserPage: { credentials: TEST_USER_CREDENTIALS.empty },
+  eventsManagerGroupPage: {
+    credentials: TEST_USER_CREDENTIALS.eventsManager1,
+    preparePage: (page) =>
+      selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
+  },
+  groupViewerPage: {
+    credentials: TEST_USER_CREDENTIALS.groupViewer1,
+    preparePage: (page) =>
+      selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
+  },
+  groupsManagerPage: { credentials: TEST_USER_CREDENTIALS.groupsManager1 },
+  member1Page: { credentials: TEST_USER_CREDENTIALS.member1 },
+  member2Page: { credentials: TEST_USER_CREDENTIALS.member2 },
+  organizerEmptyGroupPage: {
+    credentials: TEST_USER_CREDENTIALS.organizer1,
+    preparePage: (page) =>
+      selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.empty),
+  },
+  organizerExternalGroupPage: {
+    credentials: TEST_USER_CREDENTIALS.organizer1,
+    preparePage: (page) =>
+      selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.externalPayments),
+  },
+  organizerGroupPage: {
+    credentials: TEST_USER_CREDENTIALS.organizer1,
+    preparePage: (page) =>
+      selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
+  },
+  organizerGroupWithoutPaymentsPage: {
+    credentials: TEST_USER_CREDENTIALS.organizer2,
+    preparePage: (page) =>
+      selectGroupContext(page, TEST_COMMUNITY_IDS.community2, TEST_GROUP_IDS.community2.delta),
+  },
+  pending1Page: { credentials: TEST_USER_CREDENTIALS.pending1 },
+  pending2Page: { credentials: TEST_USER_CREDENTIALS.pending2 },
+};
+
+// Storage state is cached per fixture name so fixtures sharing a user never share a context.
 const storageStateCache = new Map();
 
-/** Returns true when the cached storage state still has an authenticated session. */
-const hasValidSession = async (page) => {
-  const response = await page.request.get(buildE2eUrl("/dashboard/user"));
+/** Builds a reusable page fixture for an authenticated seeded user. */
+const authenticatedPageFixture = (fixtureName, { credentials, preparePage }) => {
+  return async ({ browser }, use) => {
+    const preparedPage = await createPreparedPage(browser, fixtureName, credentials, preparePage);
 
-  return response.ok();
+    try {
+      await use(preparedPage.page);
+    } finally {
+      await preparedPage.close();
+    }
+  };
 };
 
-/** Returns a cached authenticated storage state for a seeded E2E user. */
-const getStorageState = async (browser, credentials) => {
-  const cachedState = storageStateCache.get(credentials.username);
-
-  if (cachedState) {
-    return cachedState;
-  }
-
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
-  await logInWithSeededUser(page, credentials);
-
-  const storageState = await context.storageState();
-  storageStateCache.set(credentials.username, storageState);
-  await context.close();
-
-  return storageState;
-};
-
-/** Creates an authenticated page and applies optional dashboard context setup. */
-const createPreparedPage = async (browser, credentials, preparePage) => {
-  let storageState = await getStorageState(browser, credentials);
+/** Creates an authenticated page, re-logging in when the cached session is no longer valid. */
+const createPreparedPage = async (browser, fixtureName, credentials, preparePage) => {
+  let storageState = await getStorageState(browser, fixtureName, credentials);
   let context = await browser.newContext({ storageState });
   let page = await context.newPage();
 
   if (!(await hasValidSession(page))) {
-    storageStateCache.delete(credentials.username);
+    storageStateCache.delete(fixtureName);
     await context.close();
 
-    storageState = await getStorageState(browser, credentials);
+    storageState = await getStorageState(browser, fixtureName, credentials);
     context = await browser.newContext({ storageState });
     page = await context.newPage();
   }
@@ -64,59 +105,43 @@ const createPreparedPage = async (browser, credentials, preparePage) => {
   };
 };
 
-/** Builds a reusable page fixture for an authenticated seeded user. */
-const authenticatedPageFixture =
-  (credentials, preparePage) =>
-  async ({ browser }, use) => {
-    const preparedPage = await createPreparedPage(browser, credentials, preparePage);
+/** Returns a cached authenticated storage state for a fixture, logging in on first use. */
+const getStorageState = async (browser, fixtureName, credentials) => {
+  const cachedState = storageStateCache.get(fixtureName);
 
-    try {
-      await use(preparedPage.page);
-    } finally {
-      await preparedPage.close();
-    }
-  };
+  if (cachedState) {
+    return cachedState;
+  }
 
-export const test = base.extend({
-  adminCommunityPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.admin1, (page) =>
-    selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await logInWithSeededUser(page, credentials);
+
+  const storageState = await context.storageState();
+  storageStateCache.set(fixtureName, storageState);
+  await context.close();
+
+  return storageState;
+};
+
+/**
+ * Returns true only when the dashboard answers 200 directly. Redirects are not followed so an expired session
+ * (302 to /log-in) is detected instead of being mistaken for a valid one.
+ */
+const hasValidSession = async (page) => {
+  const response = await page.request.get(buildE2eUrl("/dashboard/user"), { maxRedirects: 0 });
+
+  return response.status() === 200;
+};
+
+export const test = base.extend(
+  Object.fromEntries(
+    Object.entries(AUTHENTICATED_PAGE_FIXTURES).map(([fixtureName, definition]) => [
+      fixtureName,
+      authenticatedPageFixture(fixtureName, definition),
+    ]),
   ),
-  adminEmptyCommunityPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.admin1, (page) =>
-    selectCommunityContext(page, TEST_COMMUNITY_IDS.empty),
-  ),
-  adminSecondaryCommunityPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.admin2, (page) =>
-    selectCommunityContext(page, TEST_COMMUNITY_IDS.community2),
-  ),
-  checkInManagerGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.checkInManager1, (page) =>
-    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
-  ),
-  communityViewerPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.communityViewer1, (page) =>
-    selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
-  ),
-  organizerGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer1, (page) =>
-    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
-  ),
-  organizerEmptyGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer1, (page) =>
-    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.empty),
-  ),
-  organizerExternalGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer1, (page) =>
-    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.externalPayments),
-  ),
-  organizerGroupWithoutPaymentsPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer2, (page) =>
-    selectGroupContext(page, TEST_COMMUNITY_IDS.community2, TEST_GROUP_IDS.community2.delta),
-  ),
-  eventsManagerGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.eventsManager1, (page) =>
-    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
-  ),
-  groupViewerPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.groupViewer1, (page) =>
-    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
-  ),
-  groupsManagerPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.groupsManager1),
-  emptyUserPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.empty),
-  member1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member1),
-  member2Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member2),
-  pending1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.pending1),
-  pending2Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.pending2),
-});
+);
 
 export { expect };

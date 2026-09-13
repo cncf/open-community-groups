@@ -1,5 +1,7 @@
 import { loadScriptOnce } from "/static/js/common/dom.js";
 
+// Keep locations on the edge of the initial bounds inside the viewport so their pins render.
+const BOUNDS_PADDING_PX = 40;
 const MAPLIBRE_SCRIPT_SRC = "/static/vendor/js/maplibre-gl.v5.24.0.min.js";
 // Keep opposite map edges distinct when MapLibre wraps longitude coordinates.
 const MAX_LONGITUDE = 180 - 1e-10;
@@ -10,7 +12,7 @@ const MAX_LONGITUDE = 180 - 1e-10;
  * @param {number} lat Latitude of the map center.
  * @param {number} lng Longitude of the map center.
  * @param {object} options Map options.
- * @param {number[][]} [options.bounds] Initial longitude/latitude bounds.
+ * @param {number[][]} [options.bounds] Initial longitude/latitude bounds, fitted with padding.
  * @returns {Promise<object|null>} MapLibre instance, or null if its container is gone.
  */
 export const loadMap = async (divId, lat, lng, options = {}) => {
@@ -23,6 +25,7 @@ export const loadMap = async (divId, lat, lng, options = {}) => {
     container: divId,
     style: "https://tiles.openfreemap.org/styles/bright",
     bounds: options.bounds,
+    fitBoundsOptions: { padding: BOUNDS_PADDING_PX },
     center: [lng, lat],
     zoom: options.zoom ?? 13,
     minZoom: options.minZoom ?? 2,
