@@ -22,27 +22,12 @@ async fn test_search_user_success() {
     let session_id = session::Id::default();
     let session_user_id = Uuid::new_v4();
     let search_user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        session_user_id,
-        &auth_hash,
-        Some(community_id),
-        None,
-    );
     let expected_users = vec![sample_dashboard_user(search_user_id)];
     let expected_body = to_value(&expected_users).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == session_user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(session_user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, session_user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -88,25 +73,10 @@ async fn test_search_user_missing_query() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let session_user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        session_user_id,
-        &auth_hash,
-        Some(community_id),
-        None,
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == session_user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(session_user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, session_user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {

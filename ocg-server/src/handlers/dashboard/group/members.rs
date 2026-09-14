@@ -14,22 +14,21 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::{DynDB, notifications::CustomNotificationTracking},
+    db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
+        },
     },
-    router::serde_qs_config,
-    services::notifications::{NewNotification, NotificationKind},
-    templates::{
-        dashboard::group::members::{self, GroupMembersFilters},
-        notifications::GroupCustom,
-    },
+    services::notifications::enqueue::enqueue_tracked_group_custom_notification,
+    templates::dashboard::group::members,
     types::{
+        dashboard::group::members::GroupMembersFilters,
+        notifications::GroupCustomNotificationInput,
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
-    util::base_url_without_trailing_slash,
     validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
 };
 
@@ -80,10 +79,8 @@ pub(crate) async fn send_group_custom_notification(
     State(server_cfg): State<HttpServerConfig>,
     ValidatedForm(notification): ValidatedForm<GroupCustomNotification>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get group data and site settings
-    let (site_settings, group, group_members_ids, team_member_ids) = tokio::try_join!(
-        db.get_site_settings(),
-        db.get_group_summary(community_id, group_id),
+    // Get group members and team members
+    let (group_members_ids, team_member_ids) = tokio::try_join!(
         db.list_group_members_ids(group_id),
         db.list_group_team_members_ids(group_id),
     )?;
@@ -99,36 +96,17 @@ pub(crate) async fn send_group_custom_notification(
         return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
-    // Build and enqueue the custom notification with its audit entry
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    let link = format!(
-        "{}/{}/group/{}",
-        base_url,
-        group.community_name,
-        group.public_slug()
-    );
-    let template_data = GroupCustom {
-        body: notification.body.clone(),
-        group,
-        link,
-        subject: notification.subject.clone(),
-        theme: site_settings.theme,
-    };
-    let new_notification = NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::GroupCustom,
-        recipients,
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
-    db.enqueue_tracked_custom_notification(
-        &new_notification,
-        CustomNotificationTracking {
-            body: notification.body.clone(),
-            created_by: user.user_id,
-            event_id: None,
-            group_id: Some(group_id),
-            recipient_count: new_notification.recipients.len(),
-            subject: notification.subject.clone(),
+    // Enqueue the custom notification with its audit entry
+    enqueue_tracked_group_custom_notification(
+        db.as_ref(),
+        &server_cfg,
+        &GroupCustomNotificationInput {
+            actor_user_id: user.user_id,
+            body: notification.body,
+            community_id,
+            group_id,
+            recipients,
+            subject: notification.subject,
         },
     )
     .await?;
@@ -161,8 +139,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(GroupMembersFilters, members::ListPage), HandlerError> {
     // Fetch group members
-    let filters: GroupMembersFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: GroupMembersFilters = ValidatedQuery::parse(raw_query)?;
     let (can_manage_members, group, results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -183,7 +160,6 @@ pub(crate) async fn prepare_list_page(
         members: results.members,
         navigation_links,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

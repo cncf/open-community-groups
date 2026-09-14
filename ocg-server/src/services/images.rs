@@ -2,6 +2,7 @@
 
 pub(crate) mod db;
 pub(crate) mod s3;
+pub(crate) mod validation;
 
 use std::sync::Arc;
 
@@ -10,6 +11,8 @@ use async_trait::async_trait;
 #[cfg(test)]
 use mockall::automock;
 use uuid::Uuid;
+
+use crate::types::images::Image;
 
 pub(crate) use db::DbImageStorage;
 pub(crate) use s3::S3ImageStorage;
@@ -33,15 +36,6 @@ pub(crate) trait ImageStorage {
 
 /// Trait object type for image storage providers.
 pub(crate) type DynImageStorage = Arc<dyn ImageStorage + Send + Sync>;
-
-/// Image returned from a storage provider.
-#[derive(Debug, Clone)]
-pub(crate) struct Image {
-    /// Image contents.
-    pub bytes: Vec<u8>,
-    /// MIME type set when the image was retrieved.
-    pub content_type: String,
-}
 
 /// Image to be uploaded to a storage provider.
 pub(crate) struct NewImage<'a> {

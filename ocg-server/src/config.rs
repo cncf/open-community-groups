@@ -10,6 +10,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt,
     path::PathBuf,
+    time::Duration,
 };
 
 use anyhow::{Result, bail};
@@ -25,13 +26,25 @@ use ssi_verification_methods::ed25519_dalek::{SigningKey, VerifyingKey};
 use strum::AsRefStr;
 use tracing::instrument;
 
-use crate::types::payments::{PaymentMode, PaymentProvider};
+use crate::types::{
+    meetings::MeetingProvider,
+    payments::{PaymentMode, PaymentProvider},
+};
+
+/// Default connection deadline in seconds for outbound clients.
+const DEFAULT_CONNECT_TIMEOUT_SECS: u64 = 10;
 
 /// Default organizer-confirmation window in hours for external payments.
 const DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS: i32 = 72;
 
 /// Default maximum organizer-confirmation window in hours for external payments.
 const DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS: i32 = 336;
+
+/// Default total-operation deadline in seconds for outbound clients.
+const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
+
+/// Default grace period in seconds granted to background workers on shutdown.
+const DEFAULT_SHUTDOWN_GRACE_PERIOD_SECS: u64 = 30;
 
 /// Maximum platform fee expressed in basis points (99.99% of the amount).
 const MAX_PLATFORM_FEE_BPS: u16 = 9_999;
@@ -94,6 +107,10 @@ impl Config {
     fn validate(&self) -> Result<()> {
         // Validate database transport security before starting dependent services
         self.db.validate()?;
+
+        // Validate operational bounds owned by the server and email sections
+        self.server.validate()?;
+        self.email.smtp.validate()?;
 
         // Require badge signing because public credentials and status lists are always mounted
         let badges_cfg = self
@@ -265,6 +282,15 @@ pub(crate) struct MeetingsConfig {
 }
 
 impl MeetingsConfig {
+    /// Returns the maximum meeting participants configured per provider.
+    pub(crate) fn max_participants_by_provider(&self) -> HashMap<MeetingProvider, i32> {
+        let mut max_participants = HashMap::new();
+        if let Some(zoom) = &self.zoom {
+            max_participants.insert(MeetingProvider::Zoom, zoom.max_participants);
+        }
+        max_participants
+    }
+
     /// Check if at least one meetings provider is enabled.
     pub(crate) fn meetings_enabled(&self) -> bool {
         self.zoom.as_ref().is_some_and(|z| z.enabled)
@@ -290,6 +316,10 @@ pub(crate) struct MeetingsZoomConfig {
     pub max_simultaneous_meetings_per_host: i32,
     /// Webhook secret token for signature verification.
     pub webhook_secret_token: String,
+
+    /// Deadlines applied to Zoom API requests.
+    #[serde(default)]
+    pub http_client: HttpClientConfig,
 }
 
 impl fmt::Debug for MeetingsZoomConfig {
@@ -306,6 +336,7 @@ impl fmt::Debug for MeetingsZoomConfig {
                 &self.max_simultaneous_meetings_per_host,
             )
             .field("webhook_secret_token", &REDACTED_CONFIG_VALUE)
+            .field("http_client", &self.http_client)
             .finish()
     }
 }
@@ -317,6 +348,9 @@ impl MeetingsZoomConfig {
         if !self.enabled {
             return Ok(());
         }
+
+        // Validate the deadlines applied to Zoom API requests
+        self.http_client.validate("meetings.zoom.http_client")?;
 
         // Validate max overlapping meetings allowed for each host
         if self.max_simultaneous_meetings_per_host < 1 {
@@ -395,6 +429,9 @@ pub(crate) struct PaymentsStripeConfig {
     /// Stripe webhook secret used for signature verification.
     pub webhook_secret: String,
 
+    /// Deadlines applied to Stripe API requests.
+    #[serde(default)]
+    pub http_client: HttpClientConfig,
     /// Platform fee in basis points deducted from the group's proceeds on
     /// each paid purchase (e.g. 250 = 2.5%). Defaults to 0 (no fee).
     #[serde(default)]
@@ -409,6 +446,7 @@ impl fmt::Debug for PaymentsStripeConfig {
             .field("secret_key", &REDACTED_CONFIG_VALUE)
             .field("ticket_tax_api_version", &self.ticket_tax_api_version)
             .field("webhook_secret", &REDACTED_CONFIG_VALUE)
+            .field("http_client", &self.http_client)
             .field("platform_fee_bps", &self.platform_fee_bps)
             .finish()
     }
@@ -417,6 +455,9 @@ impl fmt::Debug for PaymentsStripeConfig {
 impl PaymentsStripeConfig {
     /// Validate Stripe payments configuration.
     fn validate(&self) -> Result<()> {
+        // Validate the deadlines applied to Stripe API requests
+        self.http_client.validate("payments.http_client")?;
+
         if self.platform_fee_bps > MAX_PLATFORM_FEE_BPS {
             bail!("payments.platform_fee_bps cannot exceed {MAX_PLATFORM_FEE_BPS}");
         }
@@ -452,6 +493,13 @@ pub(crate) struct SmtpConfig {
     pub port: u16,
     /// SMTP username.
     pub username: String,
+
+    /// Deadline in seconds for establishing the SMTP connection.
+    #[serde(default = "default_connect_timeout_secs")]
+    pub connect_timeout_secs: u64,
+    /// Deadline in seconds for one complete delivery attempt.
+    #[serde(default = "default_request_timeout_secs")]
+    pub send_timeout_secs: u64,
 }
 
 impl fmt::Debug for SmtpConfig {
@@ -461,7 +509,34 @@ impl fmt::Debug for SmtpConfig {
             .field("password", &REDACTED_CONFIG_VALUE)
             .field("port", &self.port)
             .field("username", &self.username)
+            .field("connect_timeout_secs", &self.connect_timeout_secs)
+            .field("send_timeout_secs", &self.send_timeout_secs)
             .finish()
+    }
+}
+
+impl SmtpConfig {
+    /// Returns the deadline for establishing the SMTP connection.
+    pub(crate) fn connect_timeout(&self) -> Duration {
+        Duration::from_secs(self.connect_timeout_secs)
+    }
+
+    /// Returns the deadline for one complete delivery attempt.
+    pub(crate) fn send_timeout(&self) -> Duration {
+        Duration::from_secs(self.send_timeout_secs)
+    }
+
+    /// Validate SMTP delivery deadlines.
+    fn validate(&self) -> Result<()> {
+        if self.connect_timeout_secs == 0 {
+            bail!("email.smtp.connect_timeout_secs must be >= 1");
+        }
+
+        if self.send_timeout_secs == 0 {
+            bail!("email.smtp.send_timeout_secs must be >= 1");
+        }
+
+        Ok(())
     }
 }
 
@@ -486,8 +561,90 @@ pub(crate) struct HttpServerConfig {
     pub badges: Option<BadgesConfig>,
     /// Optional cookie configuration.
     pub cookie: Option<CookieConfig>,
+    /// Deadlines applied to login provider requests (`OAuth2`, OIDC, GitHub).
+    #[serde(default)]
+    pub http_client: HttpClientConfig,
+    /// Maximum CPU-heavy tasks (password hashing) running at once.
+    ///
+    /// Defaults to the available parallelism of the host.
+    pub max_blocking_concurrency: Option<usize>,
     /// Optional list of hostnames that should redirect to `base_url`.
     pub redirect_hosts: Option<Vec<String>>,
+    /// Grace period in seconds granted to background workers on shutdown.
+    #[serde(default = "default_shutdown_grace_period_secs")]
+    pub shutdown_grace_period_secs: u64,
+}
+
+impl HttpServerConfig {
+    /// Returns the maximum number of CPU-heavy tasks allowed to run at once.
+    pub(crate) fn max_blocking_concurrency(&self) -> usize {
+        self.max_blocking_concurrency.unwrap_or_else(|| {
+            std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
+        })
+    }
+
+    /// Returns the grace period granted to background workers on shutdown.
+    pub(crate) fn shutdown_grace_period(&self) -> Duration {
+        Duration::from_secs(self.shutdown_grace_period_secs)
+    }
+
+    /// Validate server-owned operational bounds.
+    fn validate(&self) -> Result<()> {
+        // Validate the deadlines applied to login provider requests
+        self.http_client.validate("server.http_client")?;
+
+        // Reject a bound that would never let CPU-heavy work run
+        if self.max_blocking_concurrency == Some(0) {
+            bail!("server.max_blocking_concurrency must be >= 1");
+        }
+
+        Ok(())
+    }
+}
+
+/// Deadlines applied to an outbound HTTP client.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct HttpClientConfig {
+    /// Deadline in seconds for establishing a connection.
+    #[serde(default = "default_connect_timeout_secs")]
+    pub connect_timeout_secs: u64,
+    /// Deadline in seconds for one complete request, including the response body.
+    #[serde(default = "default_request_timeout_secs")]
+    pub request_timeout_secs: u64,
+}
+
+impl HttpClientConfig {
+    /// Returns the deadline for establishing a connection.
+    pub(crate) fn connect_timeout(&self) -> Duration {
+        Duration::from_secs(self.connect_timeout_secs)
+    }
+
+    /// Returns the deadline for one complete request.
+    pub(crate) fn request_timeout(&self) -> Duration {
+        Duration::from_secs(self.request_timeout_secs)
+    }
+
+    /// Validate the deadlines under the named configuration section.
+    fn validate(&self, section: &str) -> Result<()> {
+        if self.connect_timeout_secs == 0 {
+            bail!("{section}.connect_timeout_secs must be >= 1");
+        }
+
+        if self.request_timeout_secs == 0 {
+            bail!("{section}.request_timeout_secs must be >= 1");
+        }
+
+        Ok(())
+    }
+}
+
+impl Default for HttpClientConfig {
+    fn default() -> Self {
+        Self {
+            connect_timeout_secs: DEFAULT_CONNECT_TIMEOUT_SECS,
+            request_timeout_secs: DEFAULT_REQUEST_TIMEOUT_SECS,
+        }
+    }
 }
 
 /// Badge credential signing and verification configuration.
@@ -671,6 +828,11 @@ impl fmt::Debug for OidcProviderConfig {
 
 // Helpers.
 
+/// Default connection deadline used when the config omits it.
+fn default_connect_timeout_secs() -> u64 {
+    DEFAULT_CONNECT_TIMEOUT_SECS
+}
+
 /// Default organizer-confirmation window used when the config omits it.
 fn default_external_payment_window_hours() -> i32 {
     DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS
@@ -679,6 +841,16 @@ fn default_external_payment_window_hours() -> i32 {
 /// Default maximum organizer-confirmation window used when the config omits it.
 fn default_max_external_payment_window_hours() -> i32 {
     DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS
+}
+
+/// Default total-operation deadline used when the config omits it.
+fn default_request_timeout_secs() -> u64 {
+    DEFAULT_REQUEST_TIMEOUT_SECS
+}
+
+/// Default shutdown grace period used when the config omits it.
+fn default_shutdown_grace_period_secs() -> u64 {
+    DEFAULT_SHUTDOWN_GRACE_PERIOD_SECS
 }
 
 /// Validate a stable badge verification key identifier.
@@ -973,11 +1145,76 @@ mod tests {
     }
 
     #[test]
+    fn test_http_client_config_defaults_deadlines() {
+        // Setup a section that omits every deadline
+        let cfg: HttpClientConfig = serde_json::from_value(serde_json::json!({})).unwrap();
+
+        // Check the documented defaults apply
+        assert_eq!(cfg.connect_timeout(), Duration::from_secs(10));
+        assert_eq!(cfg.request_timeout(), Duration::from_secs(30));
+    }
+
+    #[test]
+    fn test_http_client_config_rejects_zero_connect_timeout() {
+        // Setup a section with a zero connection deadline
+        let cfg = HttpClientConfig {
+            connect_timeout_secs: 0,
+            request_timeout_secs: 30,
+        };
+
+        // Check the section name is carried in the rejection
+        assert_eq!(
+            cfg.validate("payments.http_client").unwrap_err().to_string(),
+            "payments.http_client.connect_timeout_secs must be >= 1"
+        );
+    }
+
+    #[test]
+    fn test_http_client_config_rejects_zero_request_timeout() {
+        // Setup a section with a zero request deadline
+        let cfg = HttpClientConfig {
+            connect_timeout_secs: 10,
+            request_timeout_secs: 0,
+        };
+
+        // Check the section name is carried in the rejection
+        assert_eq!(
+            cfg.validate("server.http_client").unwrap_err().to_string(),
+            "server.http_client.request_timeout_secs must be >= 1"
+        );
+    }
+
+    #[test]
+    fn test_http_server_config_defaults_deadlines_and_grace_period() {
+        // Setup a server section that omits the outbound client and shutdown settings
+        let cfg: HttpServerConfig =
+            serde_json::from_value(sample_http_server_config_value()).unwrap();
+
+        // Check the documented defaults apply
+        assert_eq!(cfg.http_client, HttpClientConfig::default());
+        assert_eq!(cfg.shutdown_grace_period(), Duration::from_secs(30));
+    }
+
+    #[test]
     fn test_http_server_config_defaults_image_hotlinking_to_false() {
         let cfg: HttpServerConfig =
             serde_json::from_value(sample_http_server_config_value()).unwrap();
 
         assert!(!cfg.allow_image_hotlinking);
+    }
+
+    #[test]
+    fn test_http_server_config_defaults_max_blocking_concurrency_to_parallelism() {
+        // Setup a server section that omits the blocking bound
+        let cfg: HttpServerConfig =
+            serde_json::from_value(sample_http_server_config_value()).unwrap();
+
+        // Check the bound follows the host parallelism and is never zero
+        assert_eq!(
+            cfg.max_blocking_concurrency(),
+            std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
+        );
+        assert!(cfg.max_blocking_concurrency() >= 1);
     }
 
     #[test]
@@ -988,6 +1225,19 @@ mod tests {
         let cfg: HttpServerConfig = serde_json::from_value(value).unwrap();
 
         assert!(!cfg.allow_image_hotlinking);
+    }
+
+    #[test]
+    fn test_http_server_config_rejects_zero_max_blocking_concurrency() {
+        // Setup a server section with a zero blocking bound
+        let mut cfg = sample_config().server;
+        cfg.max_blocking_concurrency = Some(0);
+
+        // Check the server section rejects the bound
+        assert_eq!(
+            cfg.validate().unwrap_err().to_string(),
+            "server.max_blocking_concurrency must be >= 1"
+        );
     }
 
     #[test]
@@ -1030,6 +1280,21 @@ mod tests {
 
         // Check the platform fee defaults to zero (no fee)
         assert_eq!(cfg.platform_fee_bps(), 0);
+    }
+
+    #[test]
+    fn test_payments_config_rejects_zero_http_client_deadline() {
+        // Setup a Stripe configuration with a zero request deadline
+        let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
+            unreachable!();
+        };
+        cfg.http_client.request_timeout_secs = 0;
+
+        // Check the Stripe section rejects the deadline
+        assert_eq!(
+            cfg.validate().unwrap_err().to_string(),
+            "payments.http_client.request_timeout_secs must be >= 1"
+        );
     }
 
     #[test]
@@ -1116,6 +1381,35 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[test]
+    fn test_smtp_config_defaults_deadlines() {
+        // Setup an SMTP section that omits both deadlines
+        let cfg: SmtpConfig = serde_json::from_value(serde_json::json!({
+            "host": "smtp.example.test",
+            "password": "smtp-sensitive-value",
+            "port": 587,
+            "username": "smtp-user",
+        }))
+        .unwrap();
+
+        // Check the documented defaults apply
+        assert_eq!(cfg.connect_timeout(), Duration::from_secs(10));
+        assert_eq!(cfg.send_timeout(), Duration::from_secs(30));
+    }
+
+    #[test]
+    fn test_smtp_config_rejects_zero_send_timeout() {
+        // Setup an SMTP section with a zero delivery deadline
+        let mut cfg = sample_config().email.smtp;
+        cfg.send_timeout_secs = 0;
+
+        // Check the email section rejects the deadline
+        assert_eq!(
+            cfg.validate().unwrap_err().to_string(),
+            "email.smtp.send_timeout_secs must be >= 1"
+        );
+    }
+
     // Helpers.
 
     fn sample_config() -> Config {
@@ -1155,6 +1449,9 @@ mod tests {
                     password: "smtp-sensitive-value".to_string(),
                     port: 587,
                     username: "smtp-user".to_string(),
+
+                    connect_timeout_secs: DEFAULT_CONNECT_TIMEOUT_SECS,
+                    send_timeout_secs: DEFAULT_REQUEST_TIMEOUT_SECS,
                 },
                 rcpts_whitelist: None,
             },
@@ -1189,7 +1486,10 @@ mod tests {
                     verification_keys: vec![],
                 }),
                 cookie: None,
+                http_client: HttpClientConfig::default(),
+                max_blocking_concurrency: None,
                 redirect_hosts: None,
+                shutdown_grace_period_secs: DEFAULT_SHUTDOWN_GRACE_PERIOD_SECS,
             },
             external_payments: None,
             meetings: Some(MeetingsConfig {
@@ -1202,6 +1502,8 @@ mod tests {
                     max_participants: 100,
                     max_simultaneous_meetings_per_host: 2,
                     webhook_secret_token: "zoom-webhook-sensitive-value".to_string(),
+
+                    http_client: HttpClientConfig::default(),
                 }),
             }),
             payments: Some(PaymentsConfig::Stripe(PaymentsStripeConfig {
@@ -1211,6 +1513,7 @@ mod tests {
                 ticket_tax_api_version: "2026-07-29.preview".to_string(),
                 webhook_secret: "stripe-webhook-sensitive-value".to_string(),
 
+                http_client: HttpClientConfig::default(),
                 platform_fee_bps: 250,
             })),
         }

@@ -7,16 +7,20 @@ use axum::{
     http::HeaderName,
     response::{Html, IntoResponse},
 };
-use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CurrentUser},
-    router::serde_qs_config,
-    templates::dashboard::audit::{AuditLogFilters, AuditScope, ListPage},
-    types::pagination::{self, NavigationLinks},
+    handlers::{
+        error::HandlerError,
+        extractors::{CurrentUser, ValidatedQuery},
+    },
+    templates::dashboard::audit::{AuditScope, ListPage},
+    types::{
+        dashboard::common::AuditLogFilters,
+        pagination::{self, NavigationLinks},
+    },
 };
 
 #[cfg(test)]
@@ -55,8 +59,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(AuditLogFilters, ListPage), HandlerError> {
     // Fetch audit log rows
-    let filters: AuditLogFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: AuditLogFilters = ValidatedQuery::parse(raw_query)?;
     let results = db.list_user_audit_logs(user_id, &filters).await?;
 
     // Prepare template

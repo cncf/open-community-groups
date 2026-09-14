@@ -8,13 +8,15 @@ use tracing::instrument;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    templates::site::explore::{Entity, FiltersOptions},
-    templates::site::stats::SiteStats,
     types::{
         community::CommunitySummary,
         event::{EventKind, EventSummary},
         group::GroupSummary,
-        site::{SiteHomeStats, SiteSettings},
+        site::{
+            SiteHomeStats, SiteSettings,
+            explore::{Entity, FiltersOptions},
+            stats::SiteStats,
+        },
     },
 };
 

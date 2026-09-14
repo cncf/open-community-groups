@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     db::PgExecutor,
-    services::meetings::{Meeting, MeetingAutoEndCheckOutcome, MeetingProvider},
+    types::meetings::{Meeting, MeetingAutoEndCheckOutcome, MeetingProvider},
 };
 
 /// Trait that defines database operations used to manage meetings.

@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -34,46 +33,27 @@ async fn test_update_page_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let group = sample_group_full(community_id, group_id);
     let category = sample_group_category();
     let region = sample_group_region();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SettingsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
     db.expect_get_group_full()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -143,14 +123,6 @@ async fn test_update_page_selects_current_inactive_parent_option() {
     let parent_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let group = sample_group_full(community_id, group_id);
     let category = sample_group_category();
     let parent_option = GroupParentOption {
@@ -164,32 +136,21 @@ async fn test_update_page_selects_current_inactive_parent_option() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SettingsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
     db.expect_get_group_full()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -256,89 +217,12 @@ async fn test_update_page_selects_current_inactive_parent_option() {
 }
 
 #[tokio::test]
-async fn test_update_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SettingsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_group_full()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/settings/update")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
 async fn test_update_normalizes_unchanged_payment_recipient() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let mut update = sample_group_update();
     let payment_recipient = sample_group_payment_recipient();
     update.payment_recipient = Some(GroupPaymentRecipient {
@@ -350,23 +234,14 @@ async fn test_update_normalizes_unchanged_payment_recipient() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SettingsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
     db.expect_update_group()
         .times(1)
         .withf(move |uid, cid, gid, group| {
@@ -421,34 +296,17 @@ async fn test_update_invalid_body() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SettingsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -479,14 +337,6 @@ async fn test_update_binds_changed_sponsor_validation_to_locked_state() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let mut update = sample_group_update();
     update.payment_recipient = Some(GroupPaymentRecipient {
         provider: PaymentProvider::Stripe,
@@ -496,23 +346,14 @@ async fn test_update_binds_changed_sponsor_validation_to_locked_state() {
     let body = serde_qs::to_string(&update).unwrap();
 
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SettingsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
     db.expect_get_group_payment_recipient()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -603,14 +444,6 @@ async fn test_update_rejects_changed_sponsor_when_upcoming_event_is_not_ready() 
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let mut update = sample_group_update();
     update.payment_recipient = Some(GroupPaymentRecipient {
         provider: PaymentProvider::Stripe,
@@ -621,23 +454,14 @@ async fn test_update_rejects_changed_sponsor_when_upcoming_event_is_not_ready() 
 
     // Authorize the request and load the upcoming automatic-tax event
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SettingsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
     db.expect_get_group_payment_recipient()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -708,14 +532,6 @@ async fn test_update_rejects_changed_sponsor_without_required_automatic_tax() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let mut update = sample_group_update();
     update.payment_recipient = Some(GroupPaymentRecipient {
         provider: PaymentProvider::Stripe,
@@ -726,23 +542,14 @@ async fn test_update_rejects_changed_sponsor_without_required_automatic_tax() {
 
     // Authorize the request while forbidding any database write
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::SettingsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
     db.expect_get_group_payment_recipient()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)

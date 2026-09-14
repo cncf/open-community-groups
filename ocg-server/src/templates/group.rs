@@ -3,12 +3,11 @@
 use std::fmt::Write;
 
 use askama::Template;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         filters,
         helpers::{self, user_initials},
     },
@@ -40,7 +39,7 @@ pub(crate) struct Page {
     /// List of upcoming events for this group.
     pub upcoming_events: Vec<UpcomingEventCard>,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 impl Page {
@@ -114,7 +113,7 @@ impl Page {
 // Types
 
 /// Event card template for past events using summary information.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "group/event_card.html")]
 pub(crate) struct PastEventCard {
     /// Event data
@@ -122,7 +121,7 @@ pub(crate) struct PastEventCard {
 }
 
 /// Event card template for upcoming events using detailed information.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "group/event_card.html")]
 pub(crate) struct UpcomingEventCard {
     /// Event data

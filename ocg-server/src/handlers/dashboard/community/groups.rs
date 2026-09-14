@@ -7,7 +7,6 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use garde::Validate;
 use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
@@ -15,13 +14,13 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
-        auth::SELECTED_GROUP_ID_KEY,
+        auth::session_context::SELECTED_GROUP_ID_KEY,
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs, ValidatedQuery},
     },
-    router::serde_qs_config,
-    templates::dashboard::community::groups::{self, CommunityGroupsFilters, Group},
+    templates::dashboard::community::groups,
     types::{
+        dashboard::community::groups::{CommunityGroupsFilters, GroupInput},
         pagination::{self, NavigationLinks},
         permissions::CommunityPermission,
         search::SearchGroupsFilters,
@@ -70,18 +69,12 @@ pub(crate) async fn add_page(
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (can_manage_groups, categories, parent_options, regions) = tokio::try_join!(
-        db.user_has_community_permission(
-            &community_id,
-            &user.user_id,
-            CommunityPermission::GroupsWrite
-        ),
+    let (categories, parent_options, regions) = tokio::try_join!(
         db.list_group_categories(community_id),
         db.list_group_parent_options(community_id, user.user_id, None),
         db.list_regions(community_id)
     )?;
     let template = groups::AddPage {
-        can_manage_groups,
         categories,
         parent_options,
         regions,
@@ -149,7 +142,7 @@ pub(crate) async fn add(
     session: Session,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
-    ValidatedFormQs(group): ValidatedFormQs<Group>,
+    ValidatedFormQs(group): ValidatedFormQs<GroupInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add group to database
     let group_id = db.add_group(user.user_id, community_id, &group).await?;
@@ -225,7 +218,7 @@ pub(crate) async fn update(
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
-    ValidatedFormQs(group): ValidatedFormQs<Group>,
+    ValidatedFormQs(group): ValidatedFormQs<GroupInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update group in database
     db.update_group(user.user_id, community_id, group_id, &group).await?;
@@ -258,8 +251,7 @@ pub(crate) async fn prepare_list_page(
     };
 
     // Fetch groups
-    let filters: CommunityGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: CommunityGroupsFilters = ValidatedQuery::parse(raw_query)?;
     let search_filters = SearchGroupsFilters {
         community: vec![community_name],
         include_inactive: Some(true),
@@ -282,7 +274,6 @@ pub(crate) async fn prepare_list_page(
         groups: results.groups,
         navigation_links,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
         ts_query: filters.ts_query.clone(),
     };

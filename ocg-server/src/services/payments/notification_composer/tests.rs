@@ -6,12 +6,13 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::{mock::MockDB, payments::CompletedEventPurchase},
-    services::notifications::{MockNotificationsManager, NotificationKind},
+    services::notifications::MockNotificationsManager,
     templates::notifications::{
         EventRefundApproved, EventRefundRejected, EventRefundRequested, EventWelcome,
     },
     types::{
         event::{EventKind, EventSummary},
+        notifications::NotificationKind,
         site::SiteSettings,
     },
 };

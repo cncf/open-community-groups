@@ -13,15 +13,17 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{DynDB, payments::CompletePaymentJobRecoveryInput},
+    db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
+        },
     },
-    router::serde_qs_config,
-    services::payments::{CompleteRefundRecoveryInput, DynPaymentsManager},
-    templates::dashboard::group::refunds::{self, RefundsFilters, RefundsView, RefundsViewOption},
+    services::payments::{CompleteRefundRecoveryInput, DynPaymentsManager, PaymentJobRecovery},
+    templates::dashboard::group::refunds,
     types::{
+        dashboard::group::refunds::RefundsFilters,
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
@@ -70,21 +72,20 @@ pub(crate) async fn list_page(
 pub(crate) async fn complete_payment_job_recovery(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
+    State(payments_manager): State<DynPaymentsManager>,
     ValidatedForm(input): ValidatedForm<PaymentJobRecoveryInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Compose the durable recovery evidence
-    let recovery = CompletePaymentJobRecoveryInput {
-        actor_user_id: user.user_id,
-        group_id,
-        payment_job_id: input.payment_job_id,
-        provider_object_id: input.provider_object_id,
-        recovery_note: input.recovery_note,
-        recovery_reference: input.recovery_reference,
-    };
-
-    // Complete the selected provider operation
-    db.complete_payment_job_recovery(&recovery).await?;
+    // Complete the selected provider operation with the recovery evidence
+    payments_manager
+        .complete_payment_job_recovery(&PaymentJobRecovery {
+            actor_user_id: user.user_id,
+            group_id,
+            payment_job_id: input.payment_job_id,
+            provider_object_id: input.provider_object_id,
+            recovery_note: input.recovery_note,
+            recovery_reference: input.recovery_reference,
+        })
+        .await?;
 
     // Refresh the operator's current refund view
     Ok((
@@ -155,8 +156,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(RefundsFilters, refunds::ListPage), HandlerError> {
     // Parse and validate list filters
-    let filters: RefundsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: RefundsFilters = ValidatedQuery::parse(raw_query)?;
 
     // Load refund data and action permissions
     let (can_manage_events, results) = tokio::try_join!(
@@ -169,19 +169,10 @@ pub(crate) async fn prepare_list_page(
         db.list_group_refunds(group_id, &filters)
     )?;
 
-    // Build pagination and operational view links
+    // Build pagination links
     let navigation_links =
         NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;
     let refresh_url = pagination::build_url(PARTIAL_URL, &filters)?;
-    let views = [
-        (RefundsView::Active, "Active"),
-        (RefundsView::Attention, "Needs attention"),
-        (RefundsView::Completed, "Completed"),
-        (RefundsView::All, "All"),
-    ]
-    .into_iter()
-    .map(|(view, label)| build_view_option(&filters, view, label))
-    .collect::<Result<Vec<_>>>()?;
     let template = refunds::ListPage {
         can_manage_events,
         events: results.events,
@@ -191,9 +182,7 @@ pub(crate) async fn prepare_list_page(
         refunds: results.refunds,
         total: results.total,
         view: filters.view,
-        views,
         event_id: filters.event_id,
-        limit: filters.limit,
         offset: filters.offset,
         ts_query: filters.ts_query.clone(),
     };
@@ -232,23 +221,4 @@ pub(crate) struct RefundRecoveryInput {
     /// Reference for the external refund.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub recovery_reference: String,
-}
-
-/// Builds a dashboard and partial link for one operational refund view.
-fn build_view_option(
-    filters: &RefundsFilters,
-    view: RefundsView,
-    label: &str,
-) -> Result<RefundsViewOption> {
-    // Reset pagination when moving between operational views
-    let mut view_filters = filters.clone();
-    view_filters.offset = Some(0);
-    view_filters.view = view;
-
-    Ok(RefundsViewOption {
-        dashboard_url: pagination::build_url(DASHBOARD_URL, &view_filters)?,
-        is_selected: filters.view == view,
-        label: label.to_string(),
-        partial_url: pagination::build_url(PARTIAL_URL, &view_filters)?,
-    })
 }

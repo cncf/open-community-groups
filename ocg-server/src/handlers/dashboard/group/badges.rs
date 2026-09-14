@@ -11,7 +11,6 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use chrono::{NaiveDate, TimeDelta, Utc};
-use garde::Validate;
 use image::{GenericImageView, ImageFormat, ImageReader, Limits};
 use serde::Deserialize;
 use tracing::instrument;
@@ -21,18 +20,17 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedQuery},
     },
-    router::serde_qs_config,
-    services::images::{DynImageStorage, Image},
-    templates::dashboard::group::badges::{
-        ArtworkPage, AwardsFilters, AwardsPage, BadgesFilters, BadgesPage,
-    },
+    services::images::DynImageStorage,
+    templates::dashboard::group::badges::{ArtworkPage, AwardsPage, BadgesPage},
     types::{
         badges::{
             AwardedBadgesFilters, BADGE_CRITERIA_MAX_CHARS, BADGE_DESCRIPTION_MAX_CHARS,
             BADGE_NAME_MAX_CHARS, BadgeAwardInput, BadgeFilters, BadgeInput,
         },
+        dashboard::group::badges::{AwardsFilters, BadgesFilters},
+        images::Image,
         pagination::{self, NavigationLinks},
     },
 };
@@ -184,14 +182,14 @@ pub(crate) async fn add_artwork(
     // Validate the stored basename and image before adding the gallery reference
     let file_name = input.file_name.trim();
     if !is_safe_artwork_file_name(file_name) {
-        return Err(HandlerError::Deserialization(
+        return Err(HandlerError::Rejected(
             "artwork filename is invalid".to_string(),
         ));
     }
     let image = image_storage
         .get(file_name)
         .await?
-        .ok_or_else(|| HandlerError::Deserialization("badge artwork was not found".to_string()))?;
+        .ok_or_else(|| HandlerError::Rejected("badge artwork was not found".to_string()))?;
     validate_badge_artwork(file_name, &image)?;
 
     // Register the artwork in the group's gallery
@@ -215,7 +213,7 @@ pub(crate) async fn award(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Reject empty recipient sets before entering the audited database mutation
     if input.user_ids.is_empty() {
-        return Err(HandlerError::Deserialization(
+        return Err(HandlerError::Rejected(
             "badge recipients cannot be empty".to_string(),
         ));
     }
@@ -417,11 +415,10 @@ pub(crate) async fn prepare_awards_page(
     raw_query: &str,
 ) -> Result<(AwardsFilters, AwardsPage), HandlerError> {
     // Parse and validate the award-history filters
-    let filters: AwardsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: AwardsFilters = ValidatedQuery::parse(raw_query)?;
     let offset = filters.awards_offset.unwrap_or(0);
     if offset > MAX_DATABASE_OFFSET {
-        return Err(HandlerError::Deserialization(
+        return Err(HandlerError::Rejected(
             "award history offset is too large".to_string(),
         ));
     }
@@ -479,11 +476,10 @@ pub(crate) async fn prepare_badges_page(
     raw_query: &str,
 ) -> Result<(BadgesFilters, BadgesPage), HandlerError> {
     // Parse and validate the badge-definition filters
-    let filters: BadgesFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: BadgesFilters = ValidatedQuery::parse(raw_query)?;
     let offset = filters.badges_offset.unwrap_or(0);
     if offset > MAX_DATABASE_OFFSET {
-        return Err(HandlerError::Deserialization(
+        return Err(HandlerError::Rejected(
             "badge definition offset is too large".to_string(),
         ));
     }
@@ -541,10 +537,10 @@ fn parse_date_filter(
     }
 
     let date = NaiveDate::parse_from_str(value, "%Y-%m-%d")
-        .map_err(|_| HandlerError::Deserialization(format!("{field_name} date is invalid")))?;
+        .map_err(|_| HandlerError::Rejected(format!("{field_name} date is invalid")))?;
     let date = date
         .and_hms_opt(0, 0, 0)
-        .ok_or_else(|| HandlerError::Deserialization(format!("{field_name} date is invalid")))?;
+        .ok_or_else(|| HandlerError::Rejected(format!("{field_name} date is invalid")))?;
     Ok(Some(date.and_utc()))
 }
 
@@ -553,7 +549,7 @@ fn parse_to_date_filter(value: &str) -> Result<Option<chrono::DateTime<Utc>>, Ha
     parse_date_filter("to", value)?
         .map(|date| {
             date.checked_add_signed(TimeDelta::days(1))
-                .ok_or_else(|| HandlerError::Deserialization("to date is invalid".to_string()))
+                .ok_or_else(|| HandlerError::Rejected("to date is invalid".to_string()))
         })
         .transpose()
 }
@@ -561,7 +557,7 @@ fn parse_to_date_filter(value: &str) -> Result<Option<chrono::DateTime<Utc>>, Ha
 /// Require a bounded 512×512 PNG, JPEG, or WebP stored image.
 fn validate_badge_artwork(file_name: &str, image: &Image) -> Result<(), HandlerError> {
     let invalid = || {
-        HandlerError::Deserialization(
+        HandlerError::Rejected(
             "badge artwork must be a 512x512 PNG, JPEG, or WebP image".to_string(),
         )
     };
@@ -618,7 +614,7 @@ fn validate_badge_input(input: &BadgeInput) -> Result<(), HandlerError> {
     if required_fields.iter().any(|value| value.trim().is_empty())
         || !is_safe_artwork_file_name(input.image_file_name.trim())
     {
-        return Err(HandlerError::Deserialization(
+        return Err(HandlerError::Rejected(
             "all badge fields are required".to_string(),
         ));
     }
@@ -626,7 +622,7 @@ fn validate_badge_input(input: &BadgeInput) -> Result<(), HandlerError> {
         || input.description.chars().count() > BADGE_DESCRIPTION_MAX_CHARS
         || input.name.chars().count() > BADGE_NAME_MAX_CHARS
     {
-        return Err(HandlerError::Deserialization(
+        return Err(HandlerError::Rejected(
             "badge text exceeds the allowed length".to_string(),
         ));
     }

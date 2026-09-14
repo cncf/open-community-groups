@@ -16,22 +16,23 @@ use axum::{
 use tracing::instrument;
 
 use crate::{
-    db::{
-        DynDB,
-        common::{SearchEventsOutput, SearchGroupsOutput},
-    },
+    db::DynDB,
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
     router::CACHE_CONTROL_NO_STORE,
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         site::explore::{
             self, render_calendar_event_popover, render_event_popover, render_group_popover,
         },
     },
     types::{
         pagination::{self, NavigationLinks},
-        search::{SearchEventsFilters, SearchGroupsFilters, ViewMode},
+        search::{
+            SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters, SearchGroupsOutput,
+            ViewMode,
+        },
+        site::explore::Entity,
     },
 };
 
@@ -51,25 +52,25 @@ pub(crate) async fn page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let site_settings = db.get_site_settings().await?;
-    let entity: explore::Entity = query.get("entity").map(String::as_str).into();
+    let entity: Entity = query.get("entity").map(String::as_str).into();
     let mut template = explore::Page {
         entity: entity.clone(),
         page_id: PageId::SiteExplore,
         path: uri.path().to_string(),
         site_settings,
-        user: User::default(),
+        user: UserMenuState::default(),
         events_section: None,
         groups_section: None,
     };
 
     // Attach events or groups section template to the page template
     match entity {
-        explore::Entity::Events => {
+        Entity::Events => {
             let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
             let events_section = prepare_events_section(&db, &filters).await?;
             template.events_section = Some(events_section);
         }
-        explore::Entity::Groups => {
+        Entity::Groups => {
             let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
             let groups_section = prepare_groups_section(&db, &filters).await?;
             template.groups_section = Some(groups_section);
@@ -78,11 +79,11 @@ pub(crate) async fn page(
 
     // Prepare response headers after the active section has resolved its filters
     let headers = search_response_headers(match &entity {
-        explore::Entity::Events => template
+        Entity::Events => template
             .events_section
             .as_ref()
             .is_some_and(|section| section.filters.uses_viewer_location()),
-        explore::Entity::Groups => template
+        Entity::Groups => template
             .groups_section
             .as_ref()
             .is_some_and(|section| section.filters.uses_viewer_location()),
@@ -176,7 +177,7 @@ pub(crate) async fn groups_section(
 }
 
 /// Prepares the events result section template.
-#[instrument(skip(db), err)]
+#[instrument(skip_all, err)]
 async fn prepare_events_result_section(
     db: &DynDB,
     filters: &SearchEventsFilters,
@@ -217,7 +218,7 @@ async fn prepare_events_result_section(
 }
 
 /// Prepares the events section template.
-#[instrument(skip(db), err)]
+#[instrument(skip_all, err)]
 async fn prepare_events_section(
     db: &DynDB,
     filters: &SearchEventsFilters,
@@ -231,7 +232,7 @@ async fn prepare_events_section(
 
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(community_name, Some(explore::Entity::Events)),
+        db.get_filters_options(community_name, Some(Entity::Events)),
         prepare_events_result_section(db, filters)
     )?;
 
@@ -243,7 +244,7 @@ async fn prepare_events_section(
 }
 
 /// Prepares the groups result section template.
-#[instrument(skip(db), err)]
+#[instrument(skip_all, err)]
 async fn prepare_groups_result_section(
     db: &DynDB,
     filters: &SearchGroupsFilters,
@@ -280,7 +281,7 @@ async fn prepare_groups_result_section(
 }
 
 /// Prepares groups section template.
-#[instrument(skip(db), err)]
+#[instrument(skip_all, err)]
 async fn prepare_groups_section(
     db: &DynDB,
     filters: &SearchGroupsFilters,
@@ -294,7 +295,7 @@ async fn prepare_groups_section(
 
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(community_name, Some(explore::Entity::Groups)),
+        db.get_filters_options(community_name, Some(Entity::Groups)),
         prepare_groups_result_section(db, filters)
     )?;
 

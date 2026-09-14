@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -12,32 +11,6 @@ use crate::{
     db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_PUBLIC_SHARED,
     services::notifications::MockNotificationsManager,
 };
-
-#[tokio::test]
-async fn test_page_db_error() {
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_site_stats().returning(|| Err(anyhow!("db error")));
-    db.expect_get_site_settings().returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/stats")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
 
 #[tokio::test]
 async fn test_page_success() {

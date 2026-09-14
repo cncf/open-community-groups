@@ -1,7 +1,5 @@
 //! Public Open Badges credential, issuer, status, and verification handlers.
 
-use std::sync::Arc;
-
 use askama::Template;
 use axum::{
     Json,
@@ -14,7 +12,7 @@ use axum::{
 };
 use chrono::Utc;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::json;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -23,10 +21,12 @@ use crate::{
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
     router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
     services::badges::{
-        BadgesManager, BadgesManagerError, CID_CONTEXT_URL, MULTIKEY_CONTEXT_URL,
-        OPEN_BADGES_CONTEXT_URL, png,
+        BadgesManagerError, CID_CONTEXT_URL, DynBadgesManager, MULTIKEY_CONTEXT_URL,
+        OPEN_BADGES_CONTEXT_URL, VerificationError, badge_image_url, issuer_name,
+        verify_submission,
     },
-    templates::badges::{CredentialPage, VerifiedBadgeView, VerifyPage},
+    templates::badges::{CredentialPage, VerifyPage},
+    types::badges::VerifiedBadge,
 };
 
 #[cfg(test)]
@@ -53,7 +53,7 @@ pub(super) const USER_PROFILE_BADGES_LIMIT: usize = 50;
 /// Serve the public credential page or signed JSON-LD representation.
 #[instrument(skip_all, err)]
 pub(crate) async fn credential(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
     Path(user_badge_id): Path<Uuid>,
     headers: HeaderMap,
@@ -116,7 +116,7 @@ pub(crate) async fn verify_page(
 /// Publish a stable group issuer profile.
 #[instrument(skip_all, err)]
 pub(crate) async fn issuer(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Derive every retained verification method for this issuer controller
@@ -136,7 +136,7 @@ pub(crate) async fn issuer(
             "@context": [CID_CONTEXT_URL, OPEN_BADGES_CONTEXT_URL],
             "id": badges_manager.issuer_url(group_id),
             "type": ["Profile"],
-            "name": BadgesManager::issuer_name(group_id),
+            "name": issuer_name(group_id),
             "assertionMethod": assertion_methods,
             "verificationMethod": verification_methods
         })),
@@ -146,7 +146,7 @@ pub(crate) async fn issuer(
 /// Publish one retained issuer verification key as a Multikey document.
 #[instrument(skip_all, err)]
 pub(crate) async fn issuer_key(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     Path((group_id, key_multibase)): Path<(Uuid, String)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Resolve the retained verification method addressed by this key
@@ -173,7 +173,7 @@ pub(crate) async fn issuer_key(
 /// Publish a signed revocation-only Bitstring Status List credential.
 #[instrument(skip_all, err)]
 pub(crate) async fn status_list(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
     Path(badge_status_list_id): Path<Uuid>,
 ) -> Result<Response, HandlerError> {
@@ -213,7 +213,7 @@ pub(crate) async fn user_profile_badges(
     let limit = query.limit.unwrap_or(USER_PROFILE_BADGES_LIMIT);
     let offset = query.offset.unwrap_or_default();
     if limit == 0 || limit > USER_PROFILE_BADGES_LIMIT || i32::try_from(offset).is_err() {
-        return Err(HandlerError::Deserialization(
+        return Err(HandlerError::Rejected(
             "badge pagination is outside the supported range".to_string(),
         ));
     }
@@ -229,7 +229,7 @@ pub(crate) async fn user_profile_badges(
 /// Verify one ID, credential URL, or bounded Open Badges PNG.
 #[instrument(skip_all, err)]
 pub(crate) async fn verify(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
     uri: Uri,
     mut multipart: Multipart,
@@ -266,7 +266,7 @@ pub(crate) async fn verify(
     // Verify the local credential and preserve operational error classes
     let result = verify_submission(
         &badges_manager,
-        &db,
+        db.as_ref(),
         credential_reference.as_deref(),
         png_bytes.as_deref(),
     )
@@ -282,7 +282,7 @@ pub(crate) async fn verify(
             )
             .await
         }
-        Err(VerificationError::Internal(error)) => Err(HandlerError::Other(error)),
+        Err(VerificationError::Internal(error)) => Err(HandlerError::from(error)),
     }
 }
 
@@ -295,17 +295,6 @@ pub(crate) struct UserProfileBadgesQuery {
     limit: Option<usize>,
     /// Requested result offset.
     offset: Option<usize>,
-}
-
-/// Expected invalid input or an operational verification failure.
-#[derive(Debug, thiserror::Error)]
-enum VerificationError {
-    /// User-supplied input is malformed, unknown, or cryptographically invalid.
-    #[error("invalid badge credential")]
-    Invalid,
-    /// Server or database state prevented verification from completing.
-    #[error(transparent)]
-    Internal(anyhow::Error),
 }
 
 // Helpers.
@@ -330,31 +319,11 @@ fn accepts_credential(headers: &HeaderMap) -> bool {
         })
 }
 
-/// Builds the public URL for stored badge artwork.
-fn badge_image_url(image_file_name: &str) -> String {
-    format!("/images/badges/{image_file_name}")
-}
-
-/// Classify proof/profile failures without hiding server configuration faults.
-fn map_verification_validation_error(error: BadgesManagerError) -> VerificationError {
-    match error {
-        error @ (BadgesManagerError::InvalidContext | BadgesManagerError::InvalidKey) => {
-            VerificationError::Internal(error.into())
-        }
-        _ => VerificationError::Invalid,
-    }
-}
-
-/// Prefer a public name while retaining the public username fallback.
-fn recipient_display_name(name: Option<String>, username: Option<String>) -> Option<String> {
-    name.or(username)
-}
-
 /// Render the verification page with an optional result.
 async fn render_verify_page(
     db: &DynDB,
     path: &str,
-    verified: Option<VerifiedBadgeView>,
+    verified: Option<VerifiedBadge>,
     error: Option<String>,
 ) -> Result<Response, HandlerError> {
     // Render an uncached result because recipient information may be present
@@ -370,78 +339,4 @@ async fn render_verify_page(
         Html(page.render()?),
     )
         .into_response())
-}
-
-/// Resolve and verify one supported form submission without arbitrary dereferencing.
-async fn verify_submission(
-    badges_manager: &BadgesManager,
-    db: &DynDB,
-    credential_reference: Option<&str>,
-    png_bytes: Option<&[u8]>,
-) -> Result<VerifiedBadgeView, VerificationError> {
-    // Verify and bind an uploaded portable credential to its persisted award
-    if let Some(png_bytes) = png_bytes {
-        let credential = png::extract(png_bytes).map_err(|_| VerificationError::Invalid)?;
-        let credential =
-            serde_json::from_slice::<Value>(&credential).map_err(|_| VerificationError::Invalid)?;
-        let verified = badges_manager
-            .verify_credential(&credential)
-            .await
-            .map_err(map_verification_validation_error)?;
-        let award = db
-            .get_public_user_badge(verified.user_badge_id)
-            .await
-            .map_err(VerificationError::Internal)?
-            .ok_or(VerificationError::Invalid)?;
-        if award.badge_status_list_id != verified.status_list_id
-            || award.group_id != verified.group_id
-            || award.status_list_index != verified.status_list_index
-        {
-            return Err(VerificationError::Invalid);
-        }
-
-        // Flag exports whose identity no longer matches the durable binding
-        let superseded = verified.email_identity.as_ref().is_some_and(|identity| {
-            award.identity_hash.as_deref() != Some(identity.identity_hash.as_str())
-                || award.identity_salt.as_deref() != Some(identity.salt.as_str())
-        });
-
-        return Ok(VerifiedBadgeView {
-            description: verified.description,
-            image_url: badge_image_url(&award.snapshot.image_file_name),
-            issuer: verified.issuer,
-            name: verified.name,
-            revoked: award.revoked_at.is_some(),
-            superseded,
-            valid_from: verified.valid_from,
-
-            recipient_name: recipient_display_name(award.recipient_name, award.recipient_username),
-        });
-    }
-
-    // Resolve a local reference directly from durable award state
-    let reference = credential_reference
-        .map(str::trim)
-        .filter(|reference| !reference.is_empty())
-        .ok_or(VerificationError::Invalid)?;
-    let user_badge_id = Uuid::parse_str(reference)
-        .or_else(|_| badges_manager.parse_credential_url(reference))
-        .map_err(|_| VerificationError::Invalid)?;
-    let award = db
-        .get_public_user_badge(user_badge_id)
-        .await
-        .map_err(VerificationError::Internal)?
-        .ok_or(VerificationError::Invalid)?;
-
-    Ok(VerifiedBadgeView {
-        description: award.snapshot.description,
-        image_url: badge_image_url(&award.snapshot.image_file_name),
-        issuer: badges_manager.issuer_url(award.group_id),
-        name: award.snapshot.name,
-        revoked: award.revoked_at.is_some(),
-        superseded: false,
-        valid_from: award.awarded_at,
-
-        recipient_name: recipient_display_name(award.recipient_name, award.recipient_username),
-    })
 }

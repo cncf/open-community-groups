@@ -93,7 +93,15 @@ meetings:
     max_participants: 100
     max_simultaneous_meetings_per_host: 1
     webhook_secret_token: "{YOUR_ZOOM_WEBHOOK_SECRET_TOKEN}"
+    http_client:
+      connect_timeout_secs: 10
+      request_timeout_secs: 30
 ```
+
+`http_client` is optional and bounds every request OCG makes to the Zoom API:
+`connect_timeout_secs` is the deadline for establishing the connection and
+`request_timeout_secs` is the deadline for the whole request, including the
+response body. Both default to the values shown and must be at least `1`.
 
 The current server validates that:
 
@@ -102,6 +110,8 @@ The current server validates that:
 - `host_pool_users` does not contain duplicates.
 - `max_simultaneous_meetings_per_host` is at least `1`.
   Higher values depend on your Zoom plan and any purchased add-ons.
+- `http_client.connect_timeout_secs` and `http_client.request_timeout_secs`
+  are at least `1`.
 
 ## Zoom App Setup
 
@@ -258,6 +268,14 @@ When OCG creates or updates a Zoom meeting, it currently applies these values:
 - Mute upon entry enabled
 - Participant video disabled
 - Waiting room disabled
+- Agenda set to `ocg:event:<event_id>` or `ocg:session:<session_id>`
+
+The agenda value identifies the OCG event or session that owns the meeting. Before creating a
+meeting, OCG lists the scheduled meetings of every host in `hostPoolUsers` and, when one already
+carries that agenda, updates and reuses it instead of creating a second one. This covers a creation
+whose response never reached OCG. Do not edit the agenda of OCG-managed meetings in Zoom, and keep
+every host in the pool listable by the OAuth app: a host that cannot be listed blocks new meeting
+creation until it is fixed or removed from the pool.
 
 ### Automatic Meeting Constraints
 

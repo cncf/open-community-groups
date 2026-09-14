@@ -1,6 +1,5 @@
 //! HTTP handlers for organizer attendee check-in scanning.
 
-use anyhow::Error;
 use askama::Template;
 use axum::{
     Json,
@@ -19,11 +18,9 @@ use crate::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
     },
+    services::check_in::{CheckInScanRejection, classify_scan_error, parse_credential},
     templates::dashboard::group::check_in::ListPage,
 };
-
-/// Maximum accepted serialized credential length.
-const MAX_CREDENTIAL_LEN: usize = 160;
 
 #[cfg(test)]
 mod tests;
@@ -62,14 +59,14 @@ pub(crate) async fn scan(
             "This QR code is not a valid check-in credential.",
         ));
     };
-    let Ok((credential_event_id, check_in_code)) = parse_credential(&input.credential) else {
+    let Ok(credential) = parse_credential(&input.credential) else {
         return Ok(scan_error_response(
             StatusCode::BAD_REQUEST,
             "malformed-credential",
             "This QR code is not a valid check-in credential.",
         ));
     };
-    if credential_event_id != event_id {
+    if credential.event_id != event_id {
         return Ok(scan_error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "wrong-event",
@@ -81,7 +78,7 @@ pub(crate) async fn scan(
     let result = match db
         .check_in_attendee_by_code(
             user.user_id,
-            check_in_code,
+            credential.check_in_code,
             community_id,
             event_id,
             group_id,
@@ -90,13 +87,10 @@ pub(crate) async fn scan(
     {
         Ok(result) => result,
         Err(err) => {
-            let Some(message) = database_error_message(&err) else {
-                return Err(HandlerError::Other(err));
+            let Some(rejection) = classify_scan_error(&err) else {
+                return Err(HandlerError::from(err));
             };
-            let Some(response) = scan_database_error_response(message) else {
-                return Err(HandlerError::Other(err));
-            };
-            return Ok(response);
+            return Ok(scan_rejection_response(rejection));
         }
     };
 
@@ -123,50 +117,24 @@ pub(super) async fn prepare_list_page(db: &DynDB, group_id: Uuid) -> anyhow::Res
     Ok(ListPage { events })
 }
 
-/// Returns the database exception message when `PostgreSQL` raised a domain error.
-fn database_error_message(err: &Error) -> Option<&str> {
-    err.downcast_ref::<tokio_postgres::Error>()?
-        .as_db_error()
-        .map(tokio_postgres::error::DbError::message)
-}
-
-/// Parses a versioned attendee credential into event and code identifiers.
-fn parse_credential(credential: &str) -> Result<(Uuid, Uuid), ()> {
-    if credential.len() > MAX_CREDENTIAL_LEN {
-        return Err(());
-    }
-
-    let payload = credential.strip_prefix("ocg-check-in:v1:").ok_or(())?;
-    let (event_id, check_in_code) = payload.split_once(':').ok_or(())?;
-    if check_in_code.contains(':') {
-        return Err(());
-    }
-
-    Ok((
-        event_id.parse().map_err(|_| ())?,
-        check_in_code.parse().map_err(|_| ())?,
-    ))
-}
-
-/// Maps known database domain errors to typed scanner responses.
-fn scan_database_error_response(message: &str) -> Option<Response> {
-    match message {
-        "attendance is not confirmed" => Some(scan_error_response(
+/// Maps a stable scanner rejection to its typed response.
+fn scan_rejection_response(rejection: CheckInScanRejection) -> Response {
+    match rejection {
+        CheckInScanRejection::NonConfirmedAttendance => scan_error_response(
             StatusCode::CONFLICT,
             "non-confirmed-attendance",
             "This attendee no longer has confirmed attendance.",
-        )),
-        "check-in credential not found" => Some(scan_error_response(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "unknown-code",
-            "This check-in credential is not recognized.",
-        )),
-        "event unavailable for check-in" => Some(scan_error_response(
+        ),
+        CheckInScanRejection::UnavailableEvent => scan_error_response(
             StatusCode::CONFLICT,
             "unavailable-event",
             "This event is not available for check-in.",
-        )),
-        _ => None,
+        ),
+        CheckInScanRejection::UnknownCode => scan_error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "unknown-code",
+            "This check-in credential is not recognized.",
+        ),
     }
 }
 

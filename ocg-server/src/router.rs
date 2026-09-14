@@ -26,8 +26,12 @@ use axum_login::login_required;
 use axum_messages::MessagesManagerLayer;
 use rust_embed::Embed;
 use tower::ServiceBuilder;
-use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
-use tracing::{error, instrument};
+use tower_http::{
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    set_header::SetResponseHeaderLayer,
+    trace::TraceLayer,
+};
+use tracing::{error, info_span, instrument};
 
 use crate::{
     activity_tracker::DynActivityTracker,
@@ -40,7 +44,12 @@ use crate::{
         request_headers_match_site_origin, site,
     },
     services::{
-        badges::BadgesManager, images::DynImageStorage, notifications::DynNotificationsManager,
+        badges::{DynBadgesManager, SsiBadgesManager},
+        blocking::BlockingExecutor,
+        enrollment::DynEnrollmentManager,
+        events::DynEventsManager,
+        images::DynImageStorage,
+        notifications::DynNotificationsManager,
         payments::DynPaymentsManager,
     },
 };
@@ -110,9 +119,15 @@ pub(crate) struct State {
     /// Activity tracker handle.
     pub activity_tracker: DynActivityTracker,
     /// Open Badges credential manager.
-    pub badges_manager: Arc<BadgesManager>,
+    pub badges_manager: DynBadgesManager,
+    /// Bounded executor for CPU-heavy work such as password hashing.
+    pub blocking_executor: BlockingExecutor,
     /// Database handle.
     pub db: DynDB,
+    /// Enrollment manager handle.
+    pub enrollment_manager: DynEnrollmentManager,
+    /// Events manager handle.
+    pub events_manager: DynEventsManager,
     /// Image storage provider handle.
     pub image_storage: DynImageStorage,
     /// Meetings configuration.
@@ -139,6 +154,8 @@ pub(crate) struct State {
 pub(crate) async fn setup(
     activity_tracker: DynActivityTracker,
     db: DynDB,
+    enrollment_manager: DynEnrollmentManager,
+    events_manager: DynEventsManager,
     image_storage: DynImageStorage,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
@@ -161,11 +178,15 @@ pub(crate) async fn setup(
         .as_ref()
         .expect("server badge configuration to be validated before router setup");
 
-    // Setup router state
+    // Setup router state, sharing one blocking bound between handlers and the auth backend
+    let blocking_executor = BlockingExecutor::new(server_cfg.max_blocking_concurrency());
     let state = State {
         activity_tracker,
-        badges_manager: Arc::new(BadgesManager::new(&server_cfg.base_url, badges_config)),
+        badges_manager: Arc::new(SsiBadgesManager::new(&server_cfg.base_url, badges_config)),
+        blocking_executor: blocking_executor.clone(),
         db: db.clone(),
+        enrollment_manager,
+        events_manager,
         image_storage,
         meetings_cfg,
         notifications_manager,
@@ -176,7 +197,7 @@ pub(crate) async fn setup(
     };
 
     // Setup authentication layer
-    let auth_layer = crate::auth::setup_layer(server_cfg, db).await?;
+    let auth_layer = crate::auth::setup_layer(server_cfg, blocking_executor, db).await?;
 
     // Setup sub-routers
     let community_dashboard_router = dashboard::setup_community_dashboard_router(&state);
@@ -367,7 +388,13 @@ pub(crate) async fn setup(
     router = router
         .layer(MessagesManagerLayer)
         .layer(auth_layer)
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
+        .layer(
+            // Assign a request id, open the request span carrying it, and echo it in the response
+            ServiceBuilder::new()
+                .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+                .layer(TraceLayer::new_for_http().make_span_with(make_request_span))
+                .layer(PropagateRequestIdLayer::x_request_id()),
+        )
         .route("/static/{*file}", get(static_handler))
         .layer(SetResponseHeaderLayer::if_not_present(
             CACHE_CONTROL,
@@ -605,4 +632,21 @@ fn stale_client_refresh_response(is_htmx: bool, is_ocg_fetch: bool) -> axum::res
 /// Returns the `serde_qs` configuration for query string parsing.
 pub(crate) fn serde_qs_config() -> serde_qs::Config {
     serde_qs::Config::new().max_depth(6).use_form_encoding(true)
+}
+
+/// Opens the request span, carrying the request id so downstream log lines can be correlated.
+fn make_request_span(request: &Request) -> tracing::Span {
+    let request_id = request
+        .headers()
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+
+    info_span!(
+        "request",
+        method = %request.method(),
+        uri = %request.uri(),
+        version = ?request.version(),
+        request_id,
+    )
 }

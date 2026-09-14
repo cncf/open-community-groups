@@ -6,31 +6,41 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use tokio_postgres::error::SqlState;
+use tracing::warn;
 
-use crate::{services::payments::FiscalSponsorReadinessError, types::search::FilterError};
+use crate::{
+    db::USER_FACING_DB_ERROR_CODE,
+    services::{
+        enrollment::EnrollmentError,
+        events::EventsError,
+        payments::{AutomaticTaxReadinessError, FiscalSponsorReadinessError, PaymentsError},
+    },
+    types::search::FilterError,
+};
 
 #[cfg(test)]
 mod tests;
 
-/// SQLSTATE raised by database functions for user-facing rejections.
-///
-/// Database functions raise `using errcode = 'OCG01'` when the message is safe
-/// to show to the user. Any other database error, including the default
-/// `P0001` of `raise exception`, is an internal failure.
-pub(crate) const USER_FACING_DB_ERROR_CODE: &str = "OCG01";
+/// Body returned for every request payload that cannot be deserialized.
+pub(crate) const INVALID_REQUEST_PAYLOAD: &str = "invalid request payload";
 
 /// Represents all possible errors that can occur in a handler.
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum HandlerError {
-    /// Error related to authentication, contains a message.
+    /// Error related to authentication.
     #[error("authentication error")]
-    Auth(String),
+    Auth,
 
-    /// Database error with user-facing message.
+    /// User-facing rejection raised by SQL with the `OCG01` SQLSTATE.
+    ///
+    /// Only `From<anyhow::Error>` constructs this variant; application-side
+    /// rejections use [`HandlerError::Rejected`].
     #[error("database error: {0}")]
     Database(String),
 
-    /// Error during form deserialization.
+    /// Error during request payload deserialization, contains the detail.
+    ///
+    /// The detail is logged and never returned to the client.
     #[error("deserialization error: {0}")]
     Deserialization(String),
 
@@ -45,6 +55,10 @@ pub(crate) enum HandlerError {
     /// Any other error, wrapped in `anyhow::Error` for flexibility.
     #[error(transparent)]
     Other(anyhow::Error),
+
+    /// User-facing business rejection raised by application code.
+    #[error("rejected: {0}")]
+    Rejected(String),
 
     /// Error during JSON serialization or deserialization.
     #[error("serde json error: {0}")]
@@ -67,9 +81,14 @@ pub(crate) enum HandlerError {
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         match self {
-            HandlerError::Auth(_) => StatusCode::UNAUTHORIZED.into_response(),
-            HandlerError::Database(msg) | HandlerError::Deserialization(msg) => {
+            HandlerError::Auth => StatusCode::UNAUTHORIZED.into_response(),
+            HandlerError::Database(msg) | HandlerError::Rejected(msg) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response()
+            }
+            HandlerError::Deserialization(detail) => {
+                // Keep parser output out of the response body
+                warn!(%detail, "invalid request payload");
+                (StatusCode::UNPROCESSABLE_ENTITY, INVALID_REQUEST_PAYLOAD).into_response()
             }
             HandlerError::Forbidden => StatusCode::FORBIDDEN.into_response(),
             HandlerError::NotFound => StatusCode::NOT_FOUND.into_response(),
@@ -95,6 +114,33 @@ impl From<anyhow::Error> for HandlerError {
     }
 }
 
+impl From<AutomaticTaxReadinessError> for HandlerError {
+    fn from(err: AutomaticTaxReadinessError) -> Self {
+        match err {
+            AutomaticTaxReadinessError::Unexpected(err) => HandlerError::from(err),
+            err => HandlerError::Rejected(err.to_string()),
+        }
+    }
+}
+
+impl From<EnrollmentError> for HandlerError {
+    fn from(err: EnrollmentError) -> Self {
+        match err {
+            EnrollmentError::Other(err) => HandlerError::from(err),
+            EnrollmentError::Rejected(message) => HandlerError::Rejected(message),
+        }
+    }
+}
+
+impl From<EventsError> for HandlerError {
+    fn from(err: EventsError) -> Self {
+        match err {
+            EventsError::Other(err) => HandlerError::from(err),
+            EventsError::Rejected(message) => HandlerError::Rejected(message),
+        }
+    }
+}
+
 impl From<FilterError> for HandlerError {
     fn from(err: FilterError) -> Self {
         match err {
@@ -107,8 +153,17 @@ impl From<FilterError> for HandlerError {
 impl From<FiscalSponsorReadinessError> for HandlerError {
     fn from(err: FiscalSponsorReadinessError) -> Self {
         match err {
-            FiscalSponsorReadinessError::NotReady(message) => HandlerError::Database(message),
-            FiscalSponsorReadinessError::Unexpected(err) => HandlerError::Other(err),
+            FiscalSponsorReadinessError::NotReady(message) => HandlerError::Rejected(message),
+            FiscalSponsorReadinessError::Unexpected(err) => HandlerError::from(err),
+        }
+    }
+}
+
+impl From<PaymentsError> for HandlerError {
+    fn from(err: PaymentsError) -> Self {
+        match err {
+            PaymentsError::Other(err) => HandlerError::from(err),
+            PaymentsError::Rejected(message) => HandlerError::Rejected(message),
         }
     }
 }

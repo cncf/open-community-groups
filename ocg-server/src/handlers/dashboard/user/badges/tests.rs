@@ -20,11 +20,14 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::{TestRouterBuilder, assert_empty_response, expect_authenticated_session},
     services::{
-        badges::{BadgesManager, png},
-        images::{Image, MockImageStorage},
+        badges::{BadgesManager, SsiBadgesManager, png},
+        images::MockImageStorage,
         notifications::MockNotificationsManager,
     },
-    types::badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge, UserBadgeIdentity},
+    types::{
+        badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge, UserBadgeIdentity},
+        images::Image,
+    },
     util::compute_hash,
 };
 
@@ -113,7 +116,7 @@ async fn test_export_success() {
     // Setup an authenticated owner, active award, signing key, and valid artwork
     let config = badge_config();
     let base_url = "https://badges.example.test";
-    let verification_manager = BadgesManager::new(base_url, &config);
+    let verification_manager = SsiBadgesManager::new(base_url, &config);
     let session_id = session::Id::default();
     let user_badge_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();

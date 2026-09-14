@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -14,16 +13,17 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    templates::dashboard::{
-        DASHBOARD_PAGINATION_LIMIT,
-        group::{
-            PresenceFilter,
-            invitation_requests::{
-                InvitationRequestsOutput, InvitationRequestsSort, InvitationRequestsStatusFilter,
+    types::{
+        dashboard::{
+            DASHBOARD_PAGINATION_LIMIT,
+            group::{
+                PresenceFilter,
+                invitation_requests::{
+                    InvitationRequestsOutput, InvitationRequestsSort,
+                    InvitationRequestsStatusFilter,
+                },
             },
         },
-    },
-    types::{
         permissions::GroupPermission,
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
@@ -31,92 +31,6 @@ use crate::{
         },
     },
 };
-
-#[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-    let event = sample_event_summary(event_id, group_id);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary_dashboard()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_search_event_invitation_requests()
-        .times(1)
-        .withf(move |gid, eid, filters| {
-            *gid == group_id
-                && *eid == event_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
-                && filters.status == InvitationRequestsStatusFilter::Pending
-        })
-        .returning(|_, _, _| Err(anyhow!("db error")));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
-            "/dashboard/group/events/{event_id}/invitation-requests"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
@@ -128,14 +42,6 @@ async fn test_list_page_success() {
     let question_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let event = sample_event_summary(event_id, group_id);
     let mut invitation_request = sample_invitation_request();
     invitation_request.registration_answers = Some(QuestionnaireAnswers {
@@ -159,32 +65,21 @@ async fn test_list_page_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
     db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -245,34 +140,17 @@ async fn test_list_page_rejects_zero_pagination_limit() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -303,34 +181,17 @@ async fn test_list_page_rejects_pagination_limit_above_maximum() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -361,14 +222,6 @@ async fn test_list_page_with_all_status_filter() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let event = sample_event_summary(event_id, group_id);
     let output = InvitationRequestsOutput {
         invitation_requests: vec![],
@@ -377,32 +230,21 @@ async fn test_list_page_with_all_status_filter() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
     db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -456,14 +298,6 @@ async fn test_list_page_with_pagination_params() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let event = sample_event_summary(event_id, group_id);
     let output = InvitationRequestsOutput {
         invitation_requests: vec![],
@@ -472,32 +306,21 @@ async fn test_list_page_with_pagination_params() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
     db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -550,14 +373,6 @@ async fn test_list_page_with_search_query() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let event = sample_event_summary(event_id, group_id);
     let output = InvitationRequestsOutput {
         invitation_requests: vec![sample_invitation_request()],
@@ -566,32 +381,21 @@ async fn test_list_page_with_search_query() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
     db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)

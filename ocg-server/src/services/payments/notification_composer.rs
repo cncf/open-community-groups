@@ -11,13 +11,14 @@ use crate::{
         DynDB, notifications::serialize_notification_attachments, payments::CompletedEventPurchase,
     },
     services::notifications::{
-        DynNotificationsManager, NewNotification, load_event_notification_context,
+        DynNotificationsManager, load_event_notification_context,
         payloads::{
             build_event_refund_approved_template_data, build_event_refund_rejected_notification,
             build_event_welcome_notification,
         },
     },
     templates::notifications::EventRefundRequested,
+    types::notifications::NewNotification,
     util::base_url_without_trailing_slash,
 };
 

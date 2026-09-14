@@ -4,7 +4,7 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     Json,
-    extract::{Path, RawQuery, State},
+    extract::{Path, State},
     http::{
         StatusCode,
         header::{CONTENT_DISPOSITION, CONTENT_TYPE},
@@ -20,43 +20,31 @@ use uuid::Uuid;
 
 use crate::{
     config::{HttpServerConfig, PaymentsConfig},
-    db::{
-        DBExt, DynDB,
-        dashboard::group::{
-            EventAdmissionAllocationResult, EventAttendeeCancellationStatus,
-            EventAttendeeInvitationInput,
-        },
-        notifications::CustomNotificationTracking,
-    },
+    db::DynDB,
     handlers::{
         error::HandlerError,
         extractors::{
             CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedFormQs,
+            ValidatedQuery,
         },
     },
-    router::serde_qs_config,
     services::{
-        notifications::{
-            NewNotification, NotificationKind,
-            enqueue::enqueue_event_attendance_cancellation_notifications,
-            load_event_notification_context,
+        enrollment::{
+            AcceptInvitationRequestInput, AdmissionAllocationOutcome, DynEnrollmentManager,
+            InviteAttendeeInput, OrganizerCancellationInput,
         },
+        notifications::enqueue::enqueue_tracked_event_custom_notification,
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
-    templates::{
-        dashboard::group::attendees::{
-            self, Attendee, AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter,
-            AttendeesFilters,
-        },
-        notifications::EventCustom,
-    },
+    templates::dashboard::group::attendees,
     types::{
+        dashboard::group::attendees::{Attendee, AttendeeEnrollmentStatusFilter, AttendeesFilters},
+        notifications::EventCustomNotificationInput,
         pagination::{self, NavigationLinks},
         payments::EventPurchaseChargeModel,
         permissions::GroupPermission,
         questionnaire::QuestionnaireQuestion,
     },
-    util::base_url_without_trailing_slash,
     validation::{
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, blank_string_as_none,
         trimmed_non_empty, trimmed_non_empty_opt,
@@ -65,6 +53,12 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
+
+/// Maximum number of confirmed attendees the CSV exports support.
+///
+/// The export loads every exported row and builds the file in memory; events
+/// above this size are rejected instead of streamed.
+pub(crate) const MAX_ATTENDEES_EXPORT_ROWS: usize = 10_000;
 
 // Pages handlers.
 
@@ -76,13 +70,8 @@ pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
-    RawQuery(raw_query): RawQuery,
+    ValidatedQuery(filters): ValidatedQuery<AttendeesFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Parse and validate attendee filters
-    let filters: AttendeesFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    filters.validate()?;
-
     // Load permissions and attendee context concurrently
     let (
         can_manage_check_ins,
@@ -153,30 +142,27 @@ pub(crate) async fn list_page(
 
 /// Accepts an event invitation request.
 #[instrument(skip_all, err)]
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn accept_invitation_request(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(_community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
     ValidatedForm(acceptance): ValidatedForm<EventInvitationRequestAcceptance>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Accept the request and allocate event admission
-    let allocation = db
-        .accept_event_invitation_request(
-            user.user_id,
-            group_id,
+    let outcome = enrollment_manager
+        .accept_invitation_request(&AcceptInvitationRequestInput {
+            actor_user_id: user.user_id,
             event_id,
+            group_id,
             user_id,
-            acceptance.event_ticket_type_id,
-            payments_cfg.as_ref().map(PaymentsConfig::provider),
-        )
+
+            event_ticket_type_id: acceptance.event_ticket_type_id,
+        })
         .await?;
 
-    Ok(event_admission_allocation_response(
-        &allocation,
+    Ok(admission_allocation_response(
+        outcome,
         StatusCode::NO_CONTENT,
         "refresh-event-attendees, refresh-event-invitation-requests",
     ))
@@ -243,53 +229,25 @@ pub(crate) async fn cancel_event_admission_offer(
 
 /// Cancels free attendance or queues a paid attendance refund.
 #[instrument(skip_all, err)]
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn cancel_event_attendee_attendance(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
-    State(server_cfg): State<HttpServerConfig>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Apply the cancellation workflow and any immediate notification atomically
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-    let required_notification_server_cfg = server_cfg.clone();
-    db.as_ref()
-        .transaction(|tx| {
-            Box::pin(async move {
-                // Cancel free attendance or queue a paid refund
-                let outcome = tx
-                    .cancel_event_attendee_attendance(
-                        user.user_id,
-                        group_id,
-                        event_id,
-                        user_id,
-                        payment_provider,
-                    )
-                    .await?;
-
-                // Notify only after attendance is removed immediately
-                if outcome.cancellation_status
-                    == EventAttendeeCancellationStatus::AttendanceCanceled
-                {
-                    enqueue_event_attendance_cancellation_notifications(
-                        tx,
-                        &required_notification_server_cfg,
-                        community_id,
-                        event_id,
-                        user_id,
-                    )
-                    .await?;
-                }
-
-                Ok(())
-            })
+    // Apply the cancellation workflow and any immediate notification
+    enrollment_manager
+        .cancel_attendance_as_organizer(&OrganizerCancellationInput {
+            actor_user_id: user.user_id,
+            community_id,
+            event_id,
+            group_id,
+            user_id,
         })
         .await?;
 
-    // Refresh attendee and refund views after the transaction commits
+    // Refresh attendee and refund views after the cancellation commits
     Ok((
         StatusCode::NO_CONTENT,
         [(
@@ -302,13 +260,10 @@ pub(crate) async fn cancel_event_attendee_attendance(
 
 /// Invites a user to attend an event.
 #[instrument(skip_all, err)]
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn invite_event_attendee(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(_community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
+    State(enrollment_manager): State<DynEnrollmentManager>,
     Path(event_id): Path<Uuid>,
     ValidatedForm(invitation): ValidatedForm<EventAttendeeInvitation>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -320,24 +275,20 @@ pub(crate) async fn invite_event_attendee(
     }
 
     // Allocate the organizer invitation
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-    let invitation = EventAttendeeInvitationInput {
-        email: invitation.email,
-        event_ticket_type_id: invitation.event_ticket_type_id,
-        user_id: invitation.user_id,
-    };
-    let allocation = db
-        .invite_event_attendee(
-            user.user_id,
-            group_id,
+    let outcome = enrollment_manager
+        .invite_event_attendee(&InviteAttendeeInput {
+            actor_user_id: user.user_id,
             event_id,
-            &invitation,
-            payment_provider,
-        )
+            group_id,
+
+            email: invitation.email,
+            event_ticket_type_id: invitation.event_ticket_type_id,
+            user_id: invitation.user_id,
+        })
         .await?;
 
-    Ok(event_admission_allocation_response(
-        &allocation,
+    Ok(admission_allocation_response(
+        outcome,
         StatusCode::CREATED,
         "refresh-event-attendees, refresh-event-waitlist",
     ))
@@ -460,16 +411,15 @@ pub(crate) async fn send_event_custom_notification(
         }
     };
 
-    // Get event data and site settings
-    let ((event, site_settings), event_attendees_ids) = tokio::try_join!(
-        load_event_notification_context(db.as_ref(), community_id, event_id),
-        db.resolve_event_custom_notification_recipient_ids(
+    // Resolve the eligible recipients before composing the notification
+    let event_attendees_ids = db
+        .resolve_event_custom_notification_recipient_ids(
             group_id,
             event_id,
             notification.recipient_scope.as_ref(),
-            requested_user_ids
-        ),
-    )?;
+            requested_user_ids,
+        )
+        .await?;
 
     // Reject empty recipient sets so stale pages cannot report a false success
     if event_attendees_ids.is_empty() {
@@ -484,37 +434,18 @@ pub(crate) async fn send_event_custom_notification(
         return Ok((StatusCode::BAD_REQUEST, message).into_response());
     }
 
-    // Build and enqueue the custom notification with its audit entry
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    let link = format!(
-        "{}/{}/group/{}/event/{}",
-        base_url,
-        event.community_name,
-        event.public_group_slug(),
-        event.slug
-    );
-    let template_data = EventCustom {
-        body: notification.body.clone(),
-        event,
-        link,
-        subject: notification.subject.clone(),
-        theme: site_settings.theme,
-    };
-    let new_notification = NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::EventCustom,
-        recipients: event_attendees_ids,
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
-    db.enqueue_tracked_custom_notification(
-        &new_notification,
-        CustomNotificationTracking {
-            body: notification.body.clone(),
-            created_by: user.user_id,
-            event_id: Some(event_id),
-            group_id: Some(group_id),
-            recipient_count: new_notification.recipients.len(),
-            subject: notification.subject.clone(),
+    // Enqueue the custom notification with its audit entry
+    enqueue_tracked_event_custom_notification(
+        db.as_ref(),
+        &server_cfg,
+        &EventCustomNotificationInput {
+            actor_user_id: user.user_id,
+            body: notification.body,
+            community_id,
+            event_id,
+            group_id,
+            recipients: event_attendees_ids,
+            subject: notification.subject,
         },
     )
     .await?;
@@ -532,12 +463,13 @@ pub(crate) async fn download_csv(
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event summary and all attendee rows
-    let filters = AttendeesFilters::default();
+    // Fetch event summary and the confirmed attendee rows within the export bound
+    let filters = attendees_export_filters();
     let (event, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
         db.search_event_attendees(group_id, event_id, &filters)
     )?;
+    reject_oversized_export(search_attendees_results.total)?;
 
     // Build CSV payload without registration question answers
     let csv = build_attendees_csv(&search_attendees_results.attendees, None)?;
@@ -563,13 +495,14 @@ pub(crate) async fn download_csv_with_answers(
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event summary, registration questions, and all attendee rows
-    let filters = AttendeesFilters::default();
+    // Fetch event summary, registration questions, and the confirmed attendee rows within the export bound
+    let filters = attendees_export_filters();
     let (event, registration_questions, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
         db.get_event_registration_questions(community_id, event_id),
         db.search_event_attendees(group_id, event_id, &filters)
     )?;
+    reject_oversized_export(search_attendees_results.total)?;
 
     // Build CSV payload that also includes registration question answers
     let csv = build_attendees_csv(
@@ -674,8 +607,43 @@ pub(crate) struct RefundRejectionInput {
 
 // Helpers.
 
-/// Builds the CSV payload for confirmed attendees, optionally appending one
+/// Converts an admission allocation outcome into the stable HTTP contract.
+fn admission_allocation_response(
+    outcome: AdmissionAllocationOutcome,
+    success_status: StatusCode,
+    success_trigger: &'static str,
+) -> Response {
+    match outcome {
+        AdmissionAllocationOutcome::Allocated => {
+            (success_status, [("HX-Trigger", success_trigger)]).into_response()
+        }
+        AdmissionAllocationOutcome::Conflict(conflict) => (
+            StatusCode::CONFLICT,
+            Json(json!({
+                "conflict": conflict,
+            })),
+        )
+            .into_response(),
+    }
+}
+
+/// Returns the filters used by the attendee CSV exports.
+///
+/// Only confirmed attendees are exported, and the database returns at most
+/// [`MAX_ATTENDEES_EXPORT_ROWS`] of them so the in-memory file stays bounded.
+fn attendees_export_filters() -> AttendeesFilters {
+    AttendeesFilters {
+        limit: Some(MAX_ATTENDEES_EXPORT_ROWS),
+        status: Some(AttendeeEnrollmentStatusFilter::Confirmed),
+        ..AttendeesFilters::default()
+    }
+}
+
+/// Builds the CSV payload for the given attendees, optionally appending one
 /// column per registration question with the attendee's answer.
+///
+/// Callers are expected to pass only confirmed attendees (see
+/// [`attendees_export_filters`]).
 fn build_attendees_csv(
     attendees: &[Attendee],
     registration_questions: Option<&[QuestionnaireQuestion]>,
@@ -702,11 +670,8 @@ fn build_attendees_csv(
     }
     writer.write_record(headers).map_err(anyhow::Error::from)?;
 
-    // Write one row per confirmed attendee
-    for attendee in attendees
-        .iter()
-        .filter(|attendee| attendee.enrollment_status == AttendeeEnrollmentStatus::Confirmed)
-    {
+    // Write one row per attendee
+    for attendee in attendees {
         let mut row = vec![
             attendee
                 .user
@@ -765,22 +730,13 @@ fn csv_payment_method(attendee: &Attendee) -> &'static str {
     }
 }
 
-/// Converts an organizer allocation result into the stable HTTP contract.
-fn event_admission_allocation_response(
-    allocation: &EventAdmissionAllocationResult,
-    success_status: StatusCode,
-    success_trigger: &'static str,
-) -> Response {
-    match allocation {
-        EventAdmissionAllocationResult::Conflict(conflict) => (
-            StatusCode::CONFLICT,
-            Json(json!({
-                "conflict": conflict,
-            })),
-        )
-            .into_response(),
-        EventAdmissionAllocationResult::Success(_) => {
-            (success_status, [("HX-Trigger", success_trigger)]).into_response()
-        }
+/// Rejects an export whose confirmed attendee count exceeds the supported size.
+fn reject_oversized_export(total: usize) -> Result<(), HandlerError> {
+    if total > MAX_ATTENDEES_EXPORT_ROWS {
+        return Err(HandlerError::Rejected(format!(
+            "attendee export supports up to {MAX_ATTENDEES_EXPORT_ROWS} confirmed attendees; this event has {total}"
+        )));
     }
+
+    Ok(())
 }

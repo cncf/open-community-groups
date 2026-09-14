@@ -1,10 +1,9 @@
 //! Templates for the global site home page.
 
 use askama::Template;
-use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::{PageId, auth::User, filters, helpers::user_initials},
+    templates::{PageId, auth::UserMenuState, filters, helpers::user_initials},
     types::{
         community::CommunitySummary,
         event::{EventKind, EventSummary},
@@ -16,7 +15,7 @@ use crate::{
 // Pages and sections templates.
 
 /// Template for rendering the global site home page.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/home/page.html")]
 pub struct Page {
     /// List of communities to display.
@@ -36,11 +35,11 @@ pub struct Page {
     /// List of upcoming virtual events across all communities.
     pub upcoming_virtual_events: Vec<EventCard>,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 /// Event card template for home page display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/home/event_card.html")]
 pub struct EventCard {
     /// Event data.
@@ -48,7 +47,7 @@ pub struct EventCard {
 }
 
 /// Group card template for home page display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/home/group_card.html")]
 pub struct GroupCard {
     /// Group data.

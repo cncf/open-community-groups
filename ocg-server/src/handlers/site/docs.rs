@@ -12,7 +12,7 @@ use crate::{
     db::DynDB,
     handlers::error::HandlerError,
     router::PUBLIC_SHARED_CACHE_HEADERS,
-    templates::{PageId, auth::User, site::docs},
+    templates::{PageId, auth::UserMenuState, site::docs},
 };
 
 #[cfg(test)]
@@ -32,7 +32,7 @@ pub(crate) async fn page(
         page_id: PageId::SiteDocs,
         path: uri.path().to_string(),
         site_settings,
-        user: User::default(),
+        user: UserMenuState::default(),
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)))

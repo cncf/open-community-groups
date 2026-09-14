@@ -308,6 +308,22 @@ insert into "user" (
         'contract-cancelee'
     ),
     (
+        'contract_hash_lifecycle_cancelee',
+        'lifecycle-cancelee.contract@example.com',
+        true,
+        'Contract Lifecycle Cancelee',
+        '00000000-0000-0000-0000-00000000c1f0',
+        'contract-lifecycle-cancelee'
+    ),
+    (
+        'contract_hash_lifecycle_rollback_cancelee',
+        'lifecycle-rollback-cancelee.contract@example.com',
+        true,
+        'Contract Lifecycle Rollback Cancelee',
+        '00000000-0000-0000-0000-00000000c1f1',
+        'contract-lifecycle-rollback-cancelee'
+    ),
+    (
         'contract_hash_invitee',
         'invitee.contract@example.com',
         true,
@@ -2210,13 +2226,15 @@ insert into event (
     'UTC'
 );
 
--- Confirmed attendees used by event mutation contracts
+-- Confirmed attendees used by event mutation and manager lifecycle contracts
 insert into event_attendee (
     event_id,
     user_id
 ) values
     ('00000000-0000-0000-0000-00000000c0d5', '00000000-0000-0000-0000-00000000c0e8'),
-    ('00000000-0000-0000-0000-00000000c0d5', '00000000-0000-0000-0000-00000000c0e9');
+    ('00000000-0000-0000-0000-00000000c0d5', '00000000-0000-0000-0000-00000000c0e9'),
+    ('00000000-0000-0000-0000-00000000c0d5', '00000000-0000-0000-0000-00000000c1f0'),
+    ('00000000-0000-0000-0000-00000000c0d5', '00000000-0000-0000-0000-00000000c1f1');
 
 insert into event_purchase (
     amount_minor,

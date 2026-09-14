@@ -3,19 +3,21 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::cached;
-use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{BBox, PgClient, PgExecutor, Total},
+    db::{PgClient, PgExecutor},
     types::{
         badges::{BadgeStatusList, PublicUserBadge, UserBadge},
         community::{CommunityFull, CommunitySummary},
         event::{EventCfsLabel, EventFull, EventSummary},
         group::{GroupFull, GroupSummary},
-        search::{SearchEventsFilters, SearchGroupsFilters},
+        search::{
+            SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters, SearchGroupsOutput,
+        },
+        workers::WorkerQueueHealth,
     },
 };
 
@@ -58,6 +60,9 @@ pub(crate) trait DBCommon {
 
     /// Retrieves one durable public badge credential record.
     async fn get_public_user_badge(&self, user_badge_id: Uuid) -> Result<Option<UserBadge>>;
+
+    /// Retrieves backlog signals for the worker queues.
+    async fn get_worker_queue_health(&self) -> Result<WorkerQueueHealth>;
 
     /// Lists labels configured for an event.
     async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>>;
@@ -169,6 +174,12 @@ where
             .await
     }
 
+    /// [`DBCommon::get_worker_queue_health`].
+    #[instrument(skip(self), err)]
+    async fn get_worker_queue_health(&self) -> Result<WorkerQueueHealth> {
+        self.fetch_json_one("select get_worker_queue_health()", &[]).await
+    }
+
     /// [`DBCommon::list_event_cfs_labels`]
     #[instrument(skip(self), err)]
     async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>> {
@@ -239,28 +250,4 @@ where
         self.fetch_json_one("select search_groups($1::jsonb)", &[&Json(filters)])
             .await
     }
-}
-
-/// Output structure for events search operations.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct SearchEventsOutput {
-    /// Events on the current result page.
-    pub events: Vec<EventSummary>,
-    /// Total matching event count.
-    pub total: Total,
-
-    /// Optional geographic bounds covering the results.
-    pub bbox: Option<BBox>,
-}
-
-/// Output structure for groups search operations.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct SearchGroupsOutput {
-    /// Groups on the current result page.
-    pub groups: Vec<GroupSummary>,
-    /// Total matching group count.
-    pub total: Total,
-
-    /// Optional geographic bounds covering the results.
-    pub bbox: Option<BBox>,
 }

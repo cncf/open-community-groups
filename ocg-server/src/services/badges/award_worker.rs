@@ -50,7 +50,7 @@ pub(crate) fn start_badge_award_workers(db: &DynDB, background_tasks: &Backgroun
             cancellation_token: background_tasks.cancellation_token(),
             db: db.clone(),
         };
-        background_tasks.spawn(async move {
+        background_tasks.spawn("badges-award", async move {
             worker.run().await;
         });
     }
@@ -61,7 +61,7 @@ pub(crate) fn start_badge_award_workers(db: &DynDB, background_tasks: &Backgroun
             cancellation_token: background_tasks.cancellation_token(),
             db: db.clone(),
         };
-        background_tasks.spawn(async move {
+        background_tasks.spawn("badges-award-recovery", async move {
             worker.run().await;
         });
     }

@@ -15,7 +15,7 @@ use crate::{
     config::PaymentsConfig,
     db::DynDB,
     handlers::{
-        auth::{SELECTED_COMMUNITY_ID_KEY, select_first_community_and_group},
+        auth::session_context::{SELECTED_COMMUNITY_ID_KEY, select_first_community_and_group},
         error::HandlerError,
         extractors::CurrentUser,
     },

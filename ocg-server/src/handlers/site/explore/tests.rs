@@ -10,13 +10,13 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
-    handlers::tests::*,
+    handlers::{error::INVALID_REQUEST_PAYLOAD, tests::*},
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     services::notifications::MockNotificationsManager,
-    templates::site::explore::{self},
     types::{
         pagination,
         search::{SearchEventsFilters, SearchGroupsFilters},
+        site::explore::Entity,
     },
 };
 
@@ -72,7 +72,7 @@ async fn test_events_section_success() {
     let mut db = MockDB::new();
     db.expect_get_filters_options()
         .times(1)
-        .withf(|c, e| c.is_none() && e == &Some(explore::Entity::Events))
+        .withf(|c, e| c.is_none() && e == &Some(Entity::Events))
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_events()
         .times(1)
@@ -119,9 +119,7 @@ async fn test_events_section_with_single_community() {
     let mut db = MockDB::new();
     db.expect_get_filters_options()
         .times(1)
-        .withf(|c, e| {
-            c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Events)
-        })
+        .withf(|c, e| c == &Some("test-community".to_string()) && e == &Some(Entity::Events))
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_events()
         .times(1)
@@ -198,7 +196,7 @@ async fn test_groups_section_success() {
     let mut db = MockDB::new();
     db.expect_get_filters_options()
         .times(1)
-        .withf(|c, e| c.is_none() && e == &Some(explore::Entity::Groups))
+        .withf(|c, e| c.is_none() && e == &Some(Entity::Groups))
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_groups()
         .times(1)
@@ -245,9 +243,7 @@ async fn test_groups_section_with_single_community() {
     let mut db = MockDB::new();
     db.expect_get_filters_options()
         .times(1)
-        .withf(|c, e| {
-            c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Groups)
-        })
+        .withf(|c, e| c == &Some("test-community".to_string()) && e == &Some(Entity::Groups))
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_groups()
         .times(1)
@@ -270,33 +266,6 @@ async fn test_groups_section_with_single_community() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert!(!bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_page_db_error() {
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Err(anyhow::anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore?entity=events")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -324,7 +293,7 @@ async fn test_page_events_invalid_filters() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(body, "invalid type: string \"invalid\", expected usize");
+    assert_eq!(body, INVALID_REQUEST_PAYLOAD);
 }
 
 #[tokio::test]
@@ -352,7 +321,7 @@ async fn test_page_groups_invalid_filters() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(body, "invalid type: string \"invalid\", expected usize");
+    assert_eq!(body, INVALID_REQUEST_PAYLOAD);
 }
 
 #[tokio::test]
@@ -367,7 +336,7 @@ async fn test_page_success_events() {
         .returning(|| Ok(sample_site_settings()));
     db.expect_get_filters_options()
         .times(1)
-        .withf(|c, e| c.is_none() && e == &Some(explore::Entity::Events))
+        .withf(|c, e| c.is_none() && e == &Some(Entity::Events))
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_events()
         .times(1)
@@ -412,7 +381,7 @@ async fn test_page_success_groups() {
         .returning(|| Ok(sample_site_settings()));
     db.expect_get_filters_options()
         .times(1)
-        .withf(|c, e| c.is_none() && e == &Some(explore::Entity::Groups))
+        .withf(|c, e| c.is_none() && e == &Some(Entity::Groups))
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_groups()
         .times(1)

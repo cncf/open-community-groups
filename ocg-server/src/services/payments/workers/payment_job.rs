@@ -54,7 +54,7 @@ pub(in crate::services::payments) fn start(
             notification_composer: notification_composer.clone(),
             payments_provider: payments_provider.cloned(),
         };
-        background_tasks.spawn(async move {
+        background_tasks.spawn("payments-jobs", async move {
             worker.run().await;
         });
     }
@@ -167,13 +167,26 @@ impl Worker {
     }
 
     /// Releases the current claim without hiding the processing error.
+    ///
+    /// The failure is logged with the `payment_job_id` so it can be correlated
+    /// with the request that enqueued the job.
     async fn release_claim(&self, job: &ClaimedPaymentJob, err: &anyhow::Error) {
+        warn!(
+            payment_job_id = %job.payment_job_id,
+            attempt_count = job.attempt_count,
+            error = %err,
+            "payment job failed; claim released for retry"
+        );
         if let Err(record_err) = self
             .db
             .record_payment_job_failure(job.payment_job_id, job.claim_id, err.to_string())
             .await
         {
-            warn!(error = %record_err, "failed to release payment job claim");
+            warn!(
+                payment_job_id = %job.payment_job_id,
+                error = %record_err,
+                "failed to release payment job claim"
+            );
         }
     }
 }

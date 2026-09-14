@@ -596,11 +596,13 @@ pub(crate) struct ValidateTaxRatesInput {
 }
 
 /// Builds a payments provider from configuration.
-pub(crate) fn build_payments_provider(cfg: Option<&PaymentsConfig>) -> Option<DynPaymentsProvider> {
+pub(crate) fn build_payments_provider(
+    cfg: Option<&PaymentsConfig>,
+) -> Result<Option<DynPaymentsProvider>> {
     match cfg {
         Some(PaymentsConfig::Stripe(stripe_cfg)) => {
-            Some(Arc::new(StripeProvider::new(stripe_cfg.clone())))
+            Ok(Some(Arc::new(StripeProvider::new(stripe_cfg.clone())?)))
         }
-        None => None,
+        None => Ok(None),
     }
 }

@@ -1,16 +1,40 @@
 //! Payments-related types.
 
 use chrono::{DateTime, Utc};
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
+
+use crate::{
+    types::questionnaire::OptionalQuestionnaireAnswersForm,
+    validation::{MAX_LEN_S, trimmed_non_empty_opt},
+};
 
 /// ISO currency codes displayed without fractional units.
 const ZERO_DECIMAL_CURRENCY_CODES: [&str; 16] = [
     "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV",
     "XAF", "XOF", "XPF",
 ];
+
+/// Ticket checkout form data.
+#[derive(Debug, Clone, Default, Deserialize, Validate)]
+pub(crate) struct CheckoutInput {
+    /// Admission offer being claimed by the attendee.
+    #[garde(skip)]
+    pub admission_offer_id: Option<Uuid>,
+    /// Optional discount code entered by the attendee.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    pub discount_code: Option<String>,
+    /// Ticket type selected by the attendee.
+    #[garde(skip)]
+    pub event_ticket_type_id: Option<Uuid>,
+    /// Questionnaire answers encoded as JSON.
+    #[serde(default, flatten)]
+    #[garde(dive)]
+    pub registration_answers: OptionalQuestionnaireAnswersForm,
+}
 
 /// Discount type supported by event admission tiers.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]

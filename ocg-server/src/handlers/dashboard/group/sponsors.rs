@@ -16,11 +16,13 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
+        },
     },
-    router::serde_qs_config,
-    templates::dashboard::group::sponsors::{self, GroupSponsorsFilters, Sponsor},
+    templates::dashboard::group::sponsors,
     types::{
+        dashboard::group::sponsors::{GroupSponsorsFilters, SponsorInput},
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
@@ -37,25 +39,9 @@ const PARTIAL_URL: &str = "/dashboard/group/sponsors";
 
 /// Displays the page to add a new sponsor.
 #[instrument(skip_all, err)]
-pub(crate) async fn add_page(
-    CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
-    SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-) -> Result<impl IntoResponse, HandlerError> {
+pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let can_manage_sponsors = db
-        .user_has_group_permission(
-            &community_id,
-            &group_id,
-            &user.user_id,
-            GroupPermission::SponsorsWrite,
-        )
-        .await?;
-    let template = sponsors::AddPage {
-        can_manage_sponsors,
-        group_id,
-    };
+    let template = sponsors::AddPage;
 
     Ok(Html(template.render()?))
 }
@@ -107,7 +93,6 @@ pub(crate) async fn update_page(
     )?;
     let template = sponsors::UpdatePage {
         can_manage_sponsors,
-        group_id,
         sponsor,
     };
 
@@ -122,7 +107,7 @@ pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    ValidatedForm(sponsor): ValidatedForm<Sponsor>,
+    ValidatedForm(sponsor): ValidatedForm<SponsorInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add sponsor to database
     db.add_group_sponsor(user.user_id, group_id, &sponsor).await?;
@@ -159,7 +144,7 @@ pub(crate) async fn update(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(group_sponsor_id): Path<Uuid>,
-    ValidatedForm(sponsor): ValidatedForm<Sponsor>,
+    ValidatedForm(sponsor): ValidatedForm<SponsorInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update sponsor in database
     db.update_group_sponsor(user.user_id, group_id, group_sponsor_id, &sponsor)
@@ -212,8 +197,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(GroupSponsorsFilters, sponsors::ListPage), HandlerError> {
     // Fetch sponsors
-    let filters: GroupSponsorsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: GroupSponsorsFilters = ValidatedQuery::parse(raw_query)?;
     let (can_manage_sponsors, results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -232,7 +216,6 @@ pub(crate) async fn prepare_list_page(
         navigation_links,
         sponsors: results.sponsors,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

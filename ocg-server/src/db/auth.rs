@@ -8,11 +8,12 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::{User, UserSummary},
+    auth::{ExternalUserProfile, User},
     db::PgExecutor,
-    templates::{auth::UserDetails, notifications::EmailVerification},
-    types::permissions::{CommunityPermission, GroupPermission},
-    types::user::UserProvider,
+    types::{
+        permissions::{CommunityPermission, GroupPermission},
+        user::{UserDetailsInput, UserProvider},
+    },
 };
 
 /// Trait for database operations related to authentication and authorization.
@@ -21,7 +22,7 @@ pub(crate) trait DBAuth {
     /// Activates a pre-registered user using password signup details.
     async fn activate_pre_registered_user_email_password(
         &self,
-        user_summary: &UserSummary,
+        profile: &ExternalUserProfile,
         verification: &EmailVerificationNotification,
     ) -> Result<Option<(User, Uuid)>>;
 
@@ -29,7 +30,7 @@ pub(crate) trait DBAuth {
     async fn activate_pre_registered_user_external_provider(
         &self,
         user_id: &Uuid,
-        user_summary: &UserSummary,
+        profile: &ExternalUserProfile,
     ) -> Result<User>;
 
     /// Creates a new session in the database.
@@ -70,7 +71,7 @@ pub(crate) trait DBAuth {
     /// Registers a new user in the database.
     async fn sign_up_user(
         &self,
-        user_summary: &UserSummary,
+        profile: &ExternalUserProfile,
         email_verified: bool,
         verification: Option<EmailVerificationNotification>,
     ) -> Result<(User, Option<Uuid>)>;
@@ -79,13 +80,17 @@ pub(crate) trait DBAuth {
     async fn update_session(&self, record: &session::Record) -> Result<()>;
 
     /// Updates user details in the database.
-    async fn update_user_details(&self, actor_user_id: &Uuid, user: &UserDetails) -> Result<()>;
+    async fn update_user_details(
+        &self,
+        actor_user_id: &Uuid,
+        user: &UserDetailsInput,
+    ) -> Result<()>;
 
     /// Updates verified external-auth identity details for a registered user.
     async fn update_user_external_auth(
         &self,
         user_id: &Uuid,
-        user_summary: &UserSummary,
+        profile: &ExternalUserProfile,
     ) -> Result<User>;
 
     /// Updates a user's password in the database.
@@ -120,13 +125,12 @@ impl<T> DBAuth for T
 where
     T: PgExecutor + Send + Sync,
 {
-    #[instrument(skip(self, user_summary, verification), err)]
+    #[instrument(skip(self, profile, verification), err)]
     async fn activate_pre_registered_user_email_password(
         &self,
-        user_summary: &UserSummary,
+        profile: &ExternalUserProfile,
         verification: &EmailVerificationNotification,
     ) -> Result<Option<(User, Uuid)>> {
-        let template_data = serde_json::to_value(&verification.template_data)?;
         let db = self.client().await?;
         let row = db
             .query_opt(
@@ -138,7 +142,11 @@ where
                     $3::jsonb
                 );
                 ",
-                &[&Json(user_summary), &verification.code, &template_data],
+                &[
+                    &Json(profile),
+                    &verification.code,
+                    &verification.template_data,
+                ],
             )
             .await?;
 
@@ -152,15 +160,15 @@ where
         Ok(Some((user, verification_code)))
     }
 
-    #[instrument(skip(self, user_summary), err)]
+    #[instrument(skip(self, profile), err)]
     async fn activate_pre_registered_user_external_provider(
         &self,
         user_id: &Uuid,
-        user_summary: &UserSummary,
+        profile: &ExternalUserProfile,
     ) -> Result<User> {
         self.fetch_json_one(
             "select activate_pre_registered_user_external_provider($1::uuid, $2::jsonb);",
-            &[user_id, &Json(user_summary)],
+            &[user_id, &Json(profile)],
         )
         .await
     }
@@ -275,18 +283,16 @@ where
         .await
     }
 
-    #[instrument(skip(self, user_summary, verification), err)]
+    #[instrument(skip(self, profile, verification), err)]
     async fn sign_up_user(
         &self,
-        user_summary: &UserSummary,
+        profile: &ExternalUserProfile,
         email_verified: bool,
         verification: Option<EmailVerificationNotification>,
     ) -> Result<(User, Option<Uuid>)> {
         let verification_code = verification.as_ref().map(|verification| verification.code);
-        let verification_template_data = verification
-            .as_ref()
-            .map(|verification| serde_json::to_value(&verification.template_data))
-            .transpose()?;
+        let verification_template_data =
+            verification.as_ref().map(|verification| &verification.template_data);
 
         let db = self.client().await?;
         let row = db
@@ -301,7 +307,7 @@ where
                 );
                 ",
                 &[
-                    &Json(user_summary),
+                    &Json(profile),
                     &email_verified,
                     &verification_code,
                     &verification_template_data,
@@ -335,7 +341,11 @@ where
     }
 
     #[instrument(skip(self, user), err)]
-    async fn update_user_details(&self, actor_user_id: &Uuid, user: &UserDetails) -> Result<()> {
+    async fn update_user_details(
+        &self,
+        actor_user_id: &Uuid,
+        user: &UserDetailsInput,
+    ) -> Result<()> {
         self.execute(
             "select update_user_details($1::uuid, $2::jsonb);",
             &[actor_user_id, &Json(user)],
@@ -343,15 +353,15 @@ where
         .await
     }
 
-    #[instrument(skip(self, user_summary), err)]
+    #[instrument(skip(self, profile), err)]
     async fn update_user_external_auth(
         &self,
         user_id: &Uuid,
-        user_summary: &UserSummary,
+        profile: &ExternalUserProfile,
     ) -> Result<User> {
         self.fetch_json_one(
             "select update_user_external_auth($1::uuid, $2::jsonb);",
-            &[user_id, &Json(user_summary)],
+            &[user_id, &Json(profile)],
         )
         .await
     }
@@ -414,6 +424,6 @@ where
 pub(crate) struct EmailVerificationNotification {
     /// Verification code stored in the database and sent to the user.
     pub(crate) code: Uuid,
-    /// Typed notification template data serialized for enqueueing.
-    pub(crate) template_data: EmailVerification,
+    /// Serialized `EmailVerification` template data for enqueueing.
+    pub(crate) template_data: serde_json::Value,
 }

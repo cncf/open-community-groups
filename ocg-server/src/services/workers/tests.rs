@@ -7,19 +7,42 @@ use std::{
     time::Duration,
 };
 
-use tokio::{sync::Notify, time::timeout};
+use tokio::{
+    sync::Notify,
+    time::{sleep, timeout},
+};
 use tokio_util::sync::CancellationToken;
 
-use super::{BackgroundTasks, WorkerIteration, run_worker};
+use super::{BackgroundTasks, WorkerExit, WorkerIteration, WorkerStatus, run_worker};
+
+#[tokio::test(start_paused = true)]
+async fn test_background_tasks_shutdown_aborts_stalled_worker_after_grace_period() {
+    // Setup a worker that ignores cancellation and never finishes on its own
+    let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
+    let worker_completed = Arc::new(AtomicBool::new(false));
+    let worker_completed_for_worker = worker_completed.clone();
+    background_tasks.spawn("stalled", async move {
+        sleep(Duration::from_secs(3600)).await;
+        worker_completed_for_worker.store(true, Ordering::SeqCst);
+    });
+
+    // Request shutdown and measure how long it takes with paused time
+    let started_at = tokio::time::Instant::now();
+    background_tasks.shutdown().await;
+
+    // Check shutdown completed at the grace period boundary without the worker finishing
+    assert_eq!(started_at.elapsed(), Duration::from_secs(5));
+    assert!(!worker_completed.load(Ordering::SeqCst));
+}
 
 #[tokio::test]
 async fn test_background_tasks_shutdown_cancels_and_waits() {
     // Setup tracked work that completes only after cancellation
-    let background_tasks = BackgroundTasks::new();
+    let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
     let cancellation_token = background_tasks.cancellation_token();
     let task_completed = Arc::new(AtomicBool::new(false));
     let task_completed_for_worker = task_completed.clone();
-    background_tasks.spawn(async move {
+    background_tasks.spawn("cooperative", async move {
         cancellation_token.cancelled().await;
         task_completed_for_worker.store(true, Ordering::SeqCst);
     });
@@ -31,6 +54,102 @@ async fn test_background_tasks_shutdown_cancels_and_waits() {
 
     // Check cancellation completed the tracked worker before shutdown returned
     assert!(task_completed.load(Ordering::SeqCst));
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_background_tasks_shutdown_returns_immediately_when_idle() {
+    // Setup a worker that stops as soon as cancellation is requested
+    let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
+    let cancellation_token = background_tasks.cancellation_token();
+    background_tasks.spawn("idle", async move {
+        cancellation_token.cancelled().await;
+    });
+
+    // Request shutdown and measure how long it takes with paused time
+    let started_at = tokio::time::Instant::now();
+    background_tasks.shutdown().await;
+
+    // Check shutdown did not consume the grace period
+    assert_eq!(started_at.elapsed(), Duration::ZERO);
+}
+
+#[tokio::test]
+async fn test_worker_registry_records_early_return() {
+    // Setup a worker that returns immediately
+    let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
+    background_tasks.spawn("optional", async {});
+    let registry = background_tasks.registry();
+    wait_until(|| registry.snapshot()["optional"].running == 0).await;
+
+    // Check the early return is recorded as an unexpected exit
+    assert_eq!(
+        registry.snapshot()["optional"],
+        WorkerStatus {
+            running: 0,
+            unexpected_exits: vec![WorkerExit::ReturnedEarly],
+        }
+    );
+}
+
+#[tokio::test]
+async fn test_worker_registry_records_panic_with_message() {
+    // Setup a worker that panics and a healthy sibling instance
+    let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
+    background_tasks.spawn("delivery", async {
+        panic!("delivery worker exploded");
+    });
+    let cancellation_token = background_tasks.cancellation_token();
+    background_tasks.spawn("delivery", async move {
+        cancellation_token.cancelled().await;
+    });
+    let registry = background_tasks.registry();
+    wait_until(|| !registry.snapshot()["delivery"].unexpected_exits.is_empty()).await;
+
+    // Check the panic is recorded with its message while the sibling keeps running
+    assert_eq!(
+        registry.snapshot()["delivery"],
+        WorkerStatus {
+            running: 1,
+            unexpected_exits: vec![WorkerExit::Panicked("delivery worker exploded".to_string())],
+        }
+    );
+
+    // Check shutdown still completes with the healthy instance stopping cooperatively
+    background_tasks.shutdown().await;
+}
+
+#[tokio::test]
+async fn test_worker_registry_tracks_running_instances_and_expected_stops() {
+    // Setup two cooperative workers under one name and another under a second name
+    let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
+    for _ in 0..2 {
+        let cancellation_token = background_tasks.cancellation_token();
+        background_tasks.spawn("delivery", async move {
+            cancellation_token.cancelled().await;
+        });
+    }
+    let cancellation_token = background_tasks.cancellation_token();
+    background_tasks.spawn("recovery", async move {
+        cancellation_token.cancelled().await;
+    });
+
+    // Check the snapshot while every worker is running
+    let snapshot = background_tasks.registry().snapshot();
+    assert_eq!(
+        snapshot["delivery"],
+        WorkerStatus {
+            running: 2,
+            unexpected_exits: vec![],
+        }
+    );
+    assert_eq!(snapshot["recovery"].running, 1);
+
+    // Stop the workers and check an expected stop records no unexpected exit
+    let registry = background_tasks.registry();
+    background_tasks.shutdown().await;
+    let snapshot = registry.snapshot();
+    assert_eq!(snapshot["delivery"].running, 0);
+    assert!(snapshot["delivery"].unexpected_exits.is_empty());
 }
 
 #[tokio::test]
@@ -210,4 +329,17 @@ async fn test_run_worker_pause_waits_for_complete_duration() {
     tokio::time::advance(Duration::from_secs(1)).await;
     worker_task.await.expect("worker driver to stop cleanly");
     assert_eq!(call_count.load(Ordering::SeqCst), 2);
+}
+
+// Helpers.
+
+/// Polls `condition` until it holds, failing the test after five seconds.
+async fn wait_until(condition: impl Fn() -> bool) {
+    timeout(Duration::from_secs(5), async {
+        while !condition() {
+            sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("condition to hold within the wait budget");
 }

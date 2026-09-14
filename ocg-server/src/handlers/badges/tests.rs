@@ -20,7 +20,7 @@ use crate::{
     handlers::tests::{TestRouterBuilder, sample_site_settings},
     router::CACHE_CONTROL_PUBLIC_SHARED,
     services::{
-        badges::{CredentialInput, EmailIdentity},
+        badges::{CredentialInput, EmailIdentity, SsiBadgesManager, png},
         notifications::MockNotificationsManager,
     },
     types::badges::{
@@ -304,17 +304,6 @@ async fn test_issuer_returns_stable_public_profile() {
     assert!(parts.headers.get("cache-control").is_some());
 }
 
-#[test]
-fn test_recipient_display_name_falls_back_to_username() {
-    // Resolve the public recipient label with and without a profile name
-    let named = recipient_display_name(Some("Ada".to_string()), Some("ada".to_string()));
-    let username_only = recipient_display_name(None, Some("ada".to_string()));
-
-    // Check verification always has the available public identity label
-    assert_eq!(named.as_deref(), Some("Ada"));
-    assert_eq!(username_only.as_deref(), Some("ada"));
-}
-
 #[tokio::test]
 async fn test_status_list_returns_signed_current_state() {
     // Setup one current status list and active signing configuration
@@ -487,7 +476,7 @@ async fn test_verify_post_flags_stale_email_bound_award_as_superseded() {
     let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
     let badges_manager =
-        BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,
@@ -602,7 +591,7 @@ async fn test_verify_post_returns_uploaded_award() {
     let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
     let badges_manager =
-        BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,
@@ -672,7 +661,7 @@ async fn test_verify_post_returns_uploaded_email_bound_award_without_rendering_i
     let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
     let badges_manager =
-        BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,

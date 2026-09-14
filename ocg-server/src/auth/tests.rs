@@ -10,10 +10,11 @@ use uuid::Uuid;
 
 use crate::{
     config::{
-        OAuth2Config, OAuth2Provider, OAuth2ProviderConfig, OidcConfig, OidcProvider,
-        OidcProviderConfig,
+        HttpClientConfig, OAuth2Config, OAuth2Provider, OAuth2ProviderConfig, OidcConfig,
+        OidcProvider, OidcProviderConfig,
     },
     db::{DynDB, mock::MockDB},
+    services::blocking::BlockingExecutor,
     types::user::{GitHubUserProvider, LinuxFoundationUserProvider, UserProvider},
 };
 
@@ -279,14 +280,14 @@ async fn authenticate_password_returns_user_without_password_when_valid() {
 }
 
 #[test]
-fn from_user_to_user_summary_drops_password() {
+fn from_user_to_external_user_profile_drops_password() {
     // Setup input user
     let mut user = sample_user();
     user.has_password = Some(true);
     user.password = Some("super-secret-password".to_string());
 
     // Execute conversion
-    let summary = UserSummary::from(user);
+    let summary = ExternalUserProfile::from(user);
 
     // Check result
     assert!(summary.has_password.unwrap());
@@ -301,7 +302,7 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
     let existing_user = sample_user();
     let existing_user_id = existing_user.user_id;
     let incoming_provider = sample_linuxfoundation_user_provider();
-    let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
+    let profile = sample_external_user_profile(Some(incoming_provider.clone()));
 
     db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
         .times(1)
@@ -324,7 +325,7 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
 
     // Execute helper
     let backend = authn_backend(db).await;
-    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+    let user = backend.get_or_sign_up_external_user(&profile).await.unwrap();
 
     // Check result
     assert_eq!(
@@ -358,7 +359,7 @@ async fn get_or_sign_up_external_user_rejects_linuxfoundation_identity_relink() 
         provider: Some(existing_provider),
         ..sample_user()
     };
-    let user_summary = sample_external_user_summary(Some(sample_linuxfoundation_user_provider()));
+    let profile = sample_external_user_profile(Some(sample_linuxfoundation_user_provider()));
 
     db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
         .times(1)
@@ -376,7 +377,7 @@ async fn get_or_sign_up_external_user_rejects_linuxfoundation_identity_relink() 
 
     // Execute helper
     let backend = authn_backend(db).await;
-    let error = backend.get_or_sign_up_external_user(&user_summary).await.unwrap_err();
+    let error = backend.get_or_sign_up_external_user(&profile).await.unwrap_err();
 
     // Check result
     assert!(error.to_string().contains(EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR));
@@ -394,7 +395,7 @@ async fn get_or_sign_up_external_user_ignores_linuxfoundation_username_mismatch_
     };
     let existing_user_id = existing_user.user_id;
     let incoming_provider = sample_linuxfoundation_user_provider();
-    let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
+    let profile = sample_external_user_profile(Some(incoming_provider.clone()));
 
     db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
         .times(1)
@@ -417,7 +418,7 @@ async fn get_or_sign_up_external_user_ignores_linuxfoundation_username_mismatch_
 
     // Execute helper
     let backend = authn_backend(db).await;
-    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+    let user = backend.get_or_sign_up_external_user(&profile).await.unwrap();
 
     // Check result
     assert_eq!(user.provider, Some(sample_linuxfoundation_user_provider()));
@@ -435,10 +436,9 @@ async fn get_or_sign_up_external_user_reconciles_linuxfoundation_identity_before
     let mut updated_user = existing_user.clone();
     updated_user.email = "new@example.com".to_string();
     updated_user.name = "New Test User".to_string();
-    let mut user_summary =
-        sample_external_user_summary(Some(sample_linuxfoundation_user_provider()));
-    user_summary.email = "new@example.com".to_string();
-    user_summary.name = "New Test User".to_string();
+    let mut profile = sample_external_user_profile(Some(sample_linuxfoundation_user_provider()));
+    profile.email = "new@example.com".to_string();
+    profile.name = "New Test User".to_string();
 
     db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
         .times(1)
@@ -462,7 +462,7 @@ async fn get_or_sign_up_external_user_reconciles_linuxfoundation_identity_before
 
     // Execute helper
     let backend = authn_backend(db).await;
-    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+    let user = backend.get_or_sign_up_external_user(&profile).await.unwrap();
 
     // Check result
     assert_eq!(user.email, "new@example.com");
@@ -477,7 +477,7 @@ async fn get_or_sign_up_external_user_sets_provider_for_existing_user_without_pr
     let existing_user = sample_user_without_provider();
     let existing_user_id = existing_user.user_id;
     let incoming_provider = sample_user_provider();
-    let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
+    let profile = sample_external_user_profile(Some(incoming_provider.clone()));
 
     db.expect_get_user_by_email_for_external_auth()
         .times(1)
@@ -494,7 +494,7 @@ async fn get_or_sign_up_external_user_sets_provider_for_existing_user_without_pr
 
     // Execute helper
     let backend = authn_backend(db).await;
-    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+    let user = backend.get_or_sign_up_external_user(&profile).await.unwrap();
 
     // Check result
     assert_eq!(user.provider, Some(sample_user_provider()));
@@ -505,7 +505,7 @@ async fn get_or_sign_up_external_user_skips_provider_update_when_unchanged() {
     // Setup database mock
     let mut db = MockDB::new();
     let existing_user = sample_user();
-    let user_summary = sample_external_user_summary(Some(sample_user_provider()));
+    let profile = sample_external_user_profile(Some(sample_user_provider()));
 
     db.expect_get_user_by_email_for_external_auth()
         .times(1)
@@ -517,7 +517,7 @@ async fn get_or_sign_up_external_user_skips_provider_update_when_unchanged() {
 
     // Execute helper
     let backend = authn_backend(db).await;
-    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+    let user = backend.get_or_sign_up_external_user(&profile).await.unwrap();
 
     // Check result
     assert_eq!(user.provider, Some(sample_user_provider()));
@@ -528,7 +528,7 @@ async fn get_or_sign_up_external_user_signs_up_new_user() {
     // Setup database mock
     let mut db = MockDB::new();
     let provider = sample_user_provider();
-    let user_summary = sample_external_user_summary(Some(provider.clone()));
+    let profile = sample_external_user_profile(Some(provider.clone()));
     let signed_up_user = sample_user();
 
     db.expect_get_user_by_email_for_external_auth()
@@ -551,7 +551,7 @@ async fn get_or_sign_up_external_user_signs_up_new_user() {
 
     // Execute helper
     let backend = authn_backend(db).await;
-    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+    let user = backend.get_or_sign_up_external_user(&profile).await.unwrap();
 
     // Check result
     assert_eq!(user.provider, Some(sample_user_provider()));
@@ -565,7 +565,7 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
     pre_registered_user.registration_status = "pre-registered".to_string();
     let pre_registered_user_id = pre_registered_user.user_id;
     let activated_user = sample_user();
-    let user_summary = sample_external_user_summary(Some(sample_linuxfoundation_user_provider()));
+    let profile = sample_external_user_profile(Some(sample_linuxfoundation_user_provider()));
 
     db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
         .times(1)
@@ -591,7 +591,7 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
 
     // Execute helper
     let backend = authn_backend(db).await;
-    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+    let user = backend.get_or_sign_up_external_user(&profile).await.unwrap();
 
     // Check result
     assert_eq!(user.registration_status, "registered");
@@ -602,7 +602,7 @@ async fn get_or_sign_up_external_user_skips_provider_update_when_missing() {
     // Setup database mock
     let mut db = MockDB::new();
     let existing_user = sample_user();
-    let user_summary = sample_external_user_summary(None);
+    let profile = sample_external_user_profile(None);
 
     db.expect_get_user_by_email_for_external_auth()
         .times(1)
@@ -614,7 +614,7 @@ async fn get_or_sign_up_external_user_skips_provider_update_when_missing() {
 
     // Execute helper
     let backend = authn_backend(db).await;
-    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+    let user = backend.get_or_sign_up_external_user(&profile).await.unwrap();
 
     // Check result
     assert_eq!(user.provider, Some(sample_user_provider()));
@@ -815,9 +815,9 @@ fn user_is_profile_complete_returns_true_when_required_fields_are_present() {
 }
 
 #[test]
-fn user_summary_debug_does_not_expose_password() {
+fn external_user_profile_debug_does_not_expose_password() {
     // Setup input summary
-    let summary = UserSummary {
+    let summary = ExternalUserProfile {
         email: "user@example.com".to_string(),
         name: "Test User".to_string(),
         username: "test-user".to_string(),
@@ -830,12 +830,12 @@ fn user_summary_debug_does_not_expose_password() {
     let output = format!("{summary:?}");
 
     // Check result
-    assert!(output.contains("UserSummary"));
+    assert!(output.contains("ExternalUserProfile"));
     assert!(!output.contains("private-password-hash"));
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_extracts_verified_user() {
+fn external_user_profile_from_oidc_id_token_claims_extracts_verified_user() {
     // Setup valid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -845,7 +845,7 @@ fn user_summary_from_oidc_id_token_claims_extracts_verified_user() {
     );
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims).unwrap();
+    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims).unwrap();
 
     // Check result
     assert_eq!(result.email, "user@example.com");
@@ -868,12 +868,12 @@ fn user_summary_from_oidc_id_token_claims_extracts_verified_user() {
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_rejects_missing_email() {
+fn external_user_profile_from_oidc_id_token_claims_rejects_missing_email() {
     // Setup invalid claims
     let claims = sample_oidc_claims(None, Some(true), Some("Test User"), Some("test-user"));
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
+    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
 
     // Check result
     assert!(result.is_err());
@@ -881,7 +881,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_email() {
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_rejects_missing_name() {
+fn external_user_profile_from_oidc_id_token_claims_rejects_missing_name() {
     // Setup invalid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -891,7 +891,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_name() {
     );
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
+    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
 
     // Check result
     assert!(result.is_err());
@@ -899,7 +899,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_name() {
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_rejects_missing_nickname() {
+fn external_user_profile_from_oidc_id_token_claims_rejects_missing_nickname() {
     // Setup invalid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -909,7 +909,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_nickname() {
     );
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
+    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
 
     // Check result
     assert!(result.is_err());
@@ -917,7 +917,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_nickname() {
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_rejects_missing_email_verified() {
+fn external_user_profile_from_oidc_id_token_claims_rejects_missing_email_verified() {
     // Setup invalid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -927,7 +927,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_email_verified() {
     );
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
+    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
 
     // Check result
     assert!(result.is_err());
@@ -935,7 +935,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_email_verified() {
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_rejects_unverified_email() {
+fn external_user_profile_from_oidc_id_token_claims_rejects_unverified_email() {
     // Setup invalid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -945,7 +945,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_unverified_email() {
     );
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
+    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
 
     // Check result
     assert!(result.is_err());
@@ -968,9 +968,18 @@ fn user_session_auth_hash_matches_auth_hash_bytes() {
 // Helpers.
 
 async fn authn_backend(db: DynDB) -> AuthnBackend {
+    let http_client_cfg = HttpClientConfig::default();
     let oidc_cfg: OidcConfig = HashMap::new();
     let oauth2_cfg: OAuth2Config = HashMap::new();
-    AuthnBackend::new(db, &oauth2_cfg, &oidc_cfg).await.unwrap()
+    AuthnBackend::new(
+        BlockingExecutor::new(1),
+        db,
+        &http_client_cfg,
+        &oauth2_cfg,
+        &oidc_cfg,
+    )
+    .await
+    .unwrap()
 }
 
 fn sample_oauth2_provider_config() -> OAuth2ProviderConfig {
@@ -1050,8 +1059,8 @@ fn sample_user_without_provider() -> User {
     }
 }
 
-fn sample_external_user_summary(provider: Option<UserProvider>) -> UserSummary {
-    UserSummary {
+fn sample_external_user_profile(provider: Option<UserProvider>) -> ExternalUserProfile {
+    ExternalUserProfile {
         email: "user@example.com".to_string(),
         name: "Test User".to_string(),
         username: "test-user".to_string(),

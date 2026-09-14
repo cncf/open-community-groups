@@ -564,7 +564,9 @@ This tab supports delivery-day execution. From here you can:
   type.
 - Award badges to all attendees, checked-in attendees, selected attendees, or one attendee.
 - Send all-attendee or selected-attendee operational emails.
-- Download the attendee list or attendee answers as CSV.
+- Download the attendee list or attendee answers as CSV. Exports include
+  confirmed attendees only and support events with up to 10,000 confirmed
+  attendees; larger events are rejected with a message stating both counts.
 
 Use [Check-In](/dashboard/group?tab=check-in ':ignore') for the primary event-day workflow. Select
 the community and group above the event list when working on mobile, then select an event, allow

@@ -9,7 +9,7 @@ use axum::{
 };
 use garde::Validate;
 use serde::{Deserialize, Serialize};
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -17,20 +17,20 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
-        auth::log_out_for_stale_dashboard_context,
+        auth::middleware::log_out_for_stale_dashboard_context,
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
+        extractors::{CurrentUser, SelectedCommunityId, ValidatedForm, ValidatedQuery},
     },
-    router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::dashboard::community::team::{self, CommunityTeamFilters},
-    templates::notifications::CommunityTeamInvitation,
+    services::notifications::{
+        DynNotificationsManager, best_effort::enqueue_community_team_invitation_best_effort,
+    },
+    templates::dashboard::community::team,
     types::{
         community::CommunityRole,
+        dashboard::community::team::CommunityTeamFilters,
         pagination::{self, NavigationLinks},
         permissions::CommunityPermission,
     },
-    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -83,36 +83,14 @@ pub(crate) async fn add(
         .await?;
 
     // Enqueue invitation email notification best-effort
-    if let Err(err) = async {
-        let (community, site_settings) = tokio::try_join!(
-            db.get_community_summary(community_id),
-            db.get_site_settings()
-        )?;
-        let template_data = CommunityTeamInvitation {
-            community_name: community.display_name,
-            link: format!(
-                "{}/dashboard/user?tab=invitations",
-                base_url_without_trailing_slash(&server_cfg.base_url)
-            ),
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::CommunityTeamInvitation,
-            recipients: vec![member.user_id],
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await
-    }
-    .await
-    {
-        warn!(
-            error = %err,
-            %community_id,
-            user_id = %member.user_id,
-            "failed to enqueue community team invitation notification"
-        );
-    }
+    enqueue_community_team_invitation_best_effort(
+        db.as_ref(),
+        &notifications_manager,
+        &server_cfg,
+        community_id,
+        member.user_id,
+    )
+    .await;
 
     Ok((
         StatusCode::CREATED,
@@ -131,7 +109,7 @@ pub(crate) async fn delete(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let Some(user) = auth_session.user.clone() else {
-        return Err(HandlerError::Auth("user not logged in".to_string()));
+        return Err(HandlerError::Auth);
     };
 
     // Remove team member from database
@@ -200,8 +178,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(CommunityTeamFilters, team::ListPage), HandlerError> {
     // Fetch team members
-    let filters: CommunityTeamFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: CommunityTeamFilters = ValidatedQuery::parse(raw_query)?;
     let (results, roles, can_manage_team) = tokio::try_join!(
         db.list_community_team_members(community_id, &filters),
         db.list_community_roles(),
@@ -217,9 +194,7 @@ pub(crate) async fn prepare_list_page(
         navigation_links,
         roles,
         total: results.total,
-        total_accepted: results.total_accepted,
         total_admins_accepted: results.total_admins_accepted,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

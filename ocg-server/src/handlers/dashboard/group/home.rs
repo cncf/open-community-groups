@@ -21,7 +21,7 @@ use crate::{
     },
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         dashboard::group::{
             analytics,
             home::{Content, Page, Tab},
@@ -252,7 +252,7 @@ pub(crate) async fn page(
         selected_community_id: community_id,
         selected_group_id: group_id,
         site_settings,
-        user: User::from_session(auth_session).await?,
+        user: UserMenuState::from_session(auth_session).await?,
     };
 
     let html = Html(page.render()?);

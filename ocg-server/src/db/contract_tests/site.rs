@@ -2,7 +2,10 @@
 
 use anyhow::Result;
 
-use crate::{db::site::DBSite, templates::site::explore::Entity, types::event::EventKind};
+use crate::{
+    db::site::DBSite,
+    types::{event::EventKind, site::explore::Entity},
+};
 
 use super::helpers::{community_id, contract_tests_db, event_id, group_id, site_id, subgroup_id};
 

@@ -17,9 +17,10 @@ use crate::{
     handlers::{error::HandlerError, extractors::CurrentUser},
     templates::{
         PageId,
-        auth::{self, User, UserDetails},
+        auth::{self, UserMenuState},
         dashboard::user::home::{Content, Page, Tab},
     },
+    types::user::UserDetailsInput,
 };
 
 use super::{
@@ -58,7 +59,7 @@ pub(crate) async fn page(
             Content::Account(Box::new(auth::UpdateUserPage {
                 has_password: user.has_password.unwrap_or(false),
                 timezones,
-                user: UserDetails::from(user),
+                user: UserDetailsInput::from(user),
             }))
         }
         Tab::Badges => Content::Badges(badges::prepare_list_page(&db, user.user_id).await?),
@@ -101,7 +102,7 @@ pub(crate) async fn page(
         page_id: PageId::UserDashboard,
         path: "/dashboard/user".to_string(),
         site_settings,
-        user: User::from_session(auth_session).await?,
+        user: UserMenuState::from_session(auth_session).await?,
     };
 
     let html = Html(page.render()?);

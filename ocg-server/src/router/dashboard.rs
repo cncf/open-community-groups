@@ -22,19 +22,19 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
     let check_path_community_permission = |permission| {
         middleware::from_fn_with_state(
             (state.db.clone(), permission),
-            auth::user_has_path_community_permission,
+            auth::middleware::user_has_path_community_permission,
         )
     };
     let check_selected_community_permission = |permission| {
         middleware::from_fn_with_state(
             (state.db.clone(), permission),
-            auth::user_has_selected_community_permission,
+            auth::middleware::user_has_selected_community_permission,
         )
     };
     let check_community_dashboard_permission = || {
         middleware::from_fn_with_state(
             state.db.clone(),
-            auth::user_has_community_dashboard_permission,
+            auth::middleware::user_has_community_dashboard_permission,
         )
     };
 
@@ -201,13 +201,13 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     let check_path_group_permission = |permission| {
         middleware::from_fn_with_state(
             (state.db.clone(), permission),
-            auth::user_has_path_group_permission,
+            auth::middleware::user_has_path_group_permission,
         )
     };
     let check_selected_group_permission = |permission| {
         middleware::from_fn_with_state(
             (state.db.clone(), permission),
-            auth::user_has_selected_group_permission,
+            auth::middleware::user_has_selected_group_permission,
         )
     };
 

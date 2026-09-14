@@ -17,11 +17,12 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     services::payments::{AutomaticTaxReadinessError, DynPaymentsManager},
-    templates::dashboard::group::settings::{self, GroupUpdate},
-    types::{payments::PaymentConfigurationValidation, permissions::GroupPermission},
+    templates::dashboard::group::settings,
+    types::{
+        dashboard::community::groups::GroupInput, payments::PaymentConfigurationValidation,
+        permissions::GroupPermission,
+    },
 };
-
-use super::events::{automatic_tax_handler_error, event_venue};
 
 #[cfg(test)]
 mod tests;
@@ -76,7 +77,7 @@ pub(crate) async fn update(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(payments_manager): State<DynPaymentsManager>,
-    ValidatedFormQs(mut group_update): ValidatedFormQs<GroupUpdate>,
+    ValidatedFormQs(mut group_update): ValidatedFormQs<GroupInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Normalize provider account fields before comparison, validation, and persistence
     if let Some(recipient) = group_update.payment_recipient.as_mut() {
@@ -109,7 +110,7 @@ pub(crate) async fn update(
                 for event_id in event_ids {
                     let event = db.get_event_full(community_id, group_id, event_id).await?;
                     payments_manager
-                        .ensure_automatic_tax_readiness(recipient, &event_venue(&event))
+                        .ensure_automatic_tax_readiness(recipient, &event.ticket_venue())
                         .await
                         .map_err(|error| upcoming_event_automatic_tax_error(&event.name, error))?;
                 }
@@ -141,8 +142,8 @@ fn upcoming_event_automatic_tax_error(
     event_name: &str,
     error: AutomaticTaxReadinessError,
 ) -> HandlerError {
-    match automatic_tax_handler_error(error) {
-        HandlerError::Database(message) => HandlerError::Database(format!(
+    match HandlerError::from(error) {
+        HandlerError::Rejected(message) => HandlerError::Rejected(format!(
             "cannot update fiscal sponsor: upcoming event \"{event_name}\" is not ready for payments: {message}"
         )),
         other => other,

@@ -7,9 +7,25 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    templates::filters,
+    templates::{filters, helpers},
     types::{event::EventSummary, group::GroupSummary, payments::format_amount_minor, site::Theme},
 };
+
+/// Behavior every email template provides to the delivery worker.
+///
+/// The template struct is the `template_data` contract persisted with the
+/// notification, so the subject and any deployment-specific URL completion
+/// live next to the fields they read.
+pub(crate) trait NotificationTemplate {
+    /// Completes deployment-specific URLs immediately before rendering.
+    ///
+    /// Templates whose links are stored as root-relative paths override this;
+    /// the default leaves the template unchanged.
+    fn complete_urls(&mut self, _base_url: &str) {}
+
+    /// Returns the email subject for the notification.
+    fn subject(&self) -> String;
+}
 
 // Emails templates.
 
@@ -40,6 +56,22 @@ impl BadgeAwarded {
     }
 }
 
+impl NotificationTemplate for BadgeAwarded {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+        self.base_url = base_url.to_string();
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.badge.issuer.group_name,
+            &format!("You earned the {} badge", self.badge.name),
+        )
+    }
+}
+
 /// Template for a permanently revoked badge notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/badge_revoked.html")]
@@ -52,6 +84,21 @@ pub(crate) struct BadgeRevoked {
     pub group_name: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for BadgeRevoked {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.group_name,
+            &format!("Your {} badge was revoked", self.badge_name),
+        )
+    }
 }
 
 /// Template for CFS submission update notification.
@@ -71,6 +118,16 @@ pub(crate) struct CfsSubmissionUpdated {
     pub action_required_message: Option<String>,
 }
 
+impl NotificationTemplate for CfsSubmissionUpdated {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.event.group_name,
+            &format!("Submission update: {}", self.event.name),
+        )
+    }
+}
+
 /// Template for community team invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/community_team_invitation.html")]
@@ -83,6 +140,16 @@ pub(crate) struct CommunityTeamInvitation {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for CommunityTeamInvitation {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.community_name,
+            "You have been invited to join a community team",
+        )
+    }
+}
+
 /// Template for email verification notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/email_verification.html")]
@@ -91,6 +158,13 @@ pub(crate) struct EmailVerification {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for EmailVerification {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        "Verify your email address".to_string()
+    }
 }
 
 /// Template for a canceled event admission offer notification.
@@ -108,6 +182,18 @@ pub(crate) struct EventAdmissionOfferCanceled {
 
     /// Assigned ticket title.
     pub ticket_title: Option<String>,
+}
+
+impl NotificationTemplate for EventAdmissionOfferCanceled {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "Your event offer was canceled")
+    }
 }
 
 /// Template for a newly created organizer admission offer notification.
@@ -149,6 +235,18 @@ impl EventAdmissionOfferCreated {
     }
 }
 
+impl NotificationTemplate for EventAdmissionOfferCreated {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "You have a new event offer")
+    }
+}
+
 /// Template for an organizer notification that an offer was declined.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_admission_offer_declined.html")]
@@ -168,6 +266,18 @@ pub(crate) struct EventAdmissionOfferDeclined {
     pub ticket_title: Option<String>,
 }
 
+impl NotificationTemplate for EventAdmissionOfferDeclined {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "Event offer declined")
+    }
+}
+
 /// Template for event attendance canceled notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_attendance_canceled.html")]
@@ -182,6 +292,13 @@ pub(crate) struct EventAttendanceCanceled {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for EventAttendanceCanceled {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "Attendance canceled")
+    }
+}
+
 /// Template for event canceled notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_canceled.html")]
@@ -192,6 +309,13 @@ pub(crate) struct EventCanceled {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for EventCanceled {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "Event canceled")
+    }
 }
 
 /// Template for event custom notification.
@@ -209,6 +333,13 @@ pub(crate) struct EventCustom {
     pub subject: String,
     /// Theme configuration for the notification.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for EventCustom {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        self.subject.clone()
+    }
 }
 
 /// Template for an expired external payment window.
@@ -243,6 +374,25 @@ pub(crate) struct EventExternalPaymentExpired {
     pub ticket_title: Option<String>,
     /// Event timezone used to display the deadline.
     pub timezone: Option<Tz>,
+}
+
+impl NotificationTemplate for EventExternalPaymentExpired {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.group_name,
+            if self.do_not_pay {
+                "Do not send payment for this event"
+            } else {
+                "Your payment window expired"
+            },
+        )
+    }
 }
 
 /// Template for pending external payment instructions.
@@ -281,6 +431,18 @@ impl EventExternalPaymentPending {
     /// Formats the amount due for display.
     pub(crate) fn price_label(&self) -> String {
         format_offer_price(Some(self.amount_minor), self.currency_code.as_deref())
+    }
+}
+
+impl NotificationTemplate for EventExternalPaymentPending {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "Complete your event payment")
     }
 }
 
@@ -323,6 +485,18 @@ impl EventExternalPaymentReminder {
     }
 }
 
+impl NotificationTemplate for EventExternalPaymentReminder {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "Your payment window is closing")
+    }
+}
+
 /// Template for event invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_invitation.html")]
@@ -335,6 +509,13 @@ pub(crate) struct EventInvitation {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for EventInvitation {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "You have been invited to an event")
+    }
 }
 
 /// Template for paid event configuration notifications to community admins.
@@ -351,6 +532,20 @@ pub(crate) struct EventPaidConfigured {
     pub group_name: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for EventPaidConfigured {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.group_name,
+            if self.event_count == 1 {
+                "Paid event configured"
+            } else {
+                "Paid events configured"
+            },
+        )
+    }
 }
 
 /// Event item included in a paid event configuration notification.
@@ -383,6 +578,13 @@ pub(crate) struct EventPublished {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for EventPublished {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "New event published")
+    }
+}
+
 /// Template event item for aggregate event series notifications.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventSeriesNotificationItem {
@@ -407,6 +609,13 @@ pub(crate) struct EventRefundApproved {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for EventRefundApproved {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "Refund approved")
+    }
+}
+
 /// Template for attendee refund rejection notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_refund_rejected.html")]
@@ -421,6 +630,13 @@ pub(crate) struct EventRefundRejected {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for EventRefundRejected {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "Refund request update")
+    }
+}
+
 /// Template for organizer refund request notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_refund_requested.html")]
@@ -431,6 +647,13 @@ pub(crate) struct EventRefundRequested {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for EventRefundRequested {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "Refund requested")
+    }
 }
 
 /// Template for event reminder notification.
@@ -451,6 +674,16 @@ pub(crate) struct EventReminder {
     pub dashboard_link: Option<String>,
 }
 
+impl NotificationTemplate for EventReminder {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.event.group_name,
+            &format!("Reminder: {} starts in 24 hours", self.event.name),
+        )
+    }
+}
+
 /// Template for event rescheduled notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_rescheduled.html")]
@@ -461,6 +694,13 @@ pub(crate) struct EventRescheduled {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for EventRescheduled {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "Event rescheduled")
+    }
 }
 
 /// Template for aggregate event series canceled notification.
@@ -477,6 +717,13 @@ pub(crate) struct EventSeriesCanceled {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for EventSeriesCanceled {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "Events canceled")
+    }
+}
+
 /// Template for aggregate event series published notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_series_published.html")]
@@ -491,6 +738,13 @@ pub(crate) struct EventSeriesPublished {
     pub group_name: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for EventSeriesPublished {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "New events published")
+    }
 }
 
 /// Template for an approved ticket request notification.
@@ -526,6 +780,18 @@ impl EventTicketRequestApproved {
     /// Formats the current displayed offer price.
     pub(crate) fn price_label(&self) -> String {
         format_offer_price(Some(self.amount_minor), self.currency_code.as_deref())
+    }
+}
+
+impl NotificationTemplate for EventTicketRequestApproved {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "Your event request was approved")
     }
 }
 
@@ -565,6 +831,18 @@ impl EventTicketWaitlistOffer {
     }
 }
 
+impl NotificationTemplate for EventTicketWaitlistOffer {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.dashboard_url, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "A place is available for you")
+    }
+}
+
 /// Template for event waitlist joined notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_waitlist_joined.html")]
@@ -577,6 +855,13 @@ pub(crate) struct EventWaitlistJoined {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for EventWaitlistJoined {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "You joined the waiting list")
+    }
+}
+
 /// Template for event waitlist left notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_waitlist_left.html")]
@@ -587,6 +872,13 @@ pub(crate) struct EventWaitlistLeft {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for EventWaitlistLeft {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "You left the waiting list")
+    }
 }
 
 /// Template for event waitlist promotion notification.
@@ -607,6 +899,13 @@ pub(crate) struct EventWaitlistPromoted {
     pub dashboard_link: Option<String>,
 }
 
+impl NotificationTemplate for EventWaitlistPromoted {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "You moved off the waiting list")
+    }
+}
+
 /// Template for event welcome notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_welcome.html")]
@@ -621,6 +920,13 @@ pub(crate) struct EventWelcome {
     /// Link to the user dashboard events page.
     #[serde(default)]
     pub dashboard_link: Option<String>,
+}
+
+impl NotificationTemplate for EventWelcome {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "Welcome to the event")
+    }
 }
 
 /// Template for group custom notification.
@@ -640,6 +946,13 @@ pub(crate) struct GroupCustom {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for GroupCustom {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        self.subject.clone()
+    }
+}
+
 /// Template for group team invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/group_team_invitation.html")]
@@ -652,6 +965,16 @@ pub(crate) struct GroupTeamInvitation {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for GroupTeamInvitation {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.group.name,
+            "You have been invited to join a group team",
+        )
+    }
+}
+
 /// Template for group welcome notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/group_welcome.html")]
@@ -662,6 +985,13 @@ pub(crate) struct GroupWelcome {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for GroupWelcome {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group.name, "Welcome to the group")
+    }
 }
 
 /// Template for session proposal co-speaker invitation notification.
@@ -678,6 +1008,13 @@ pub(crate) struct SessionProposalCoSpeakerInvitation {
     pub theme: Theme,
 }
 
+impl NotificationTemplate for SessionProposalCoSpeakerInvitation {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        "Session proposal co-speaker invitation".to_string()
+    }
+}
+
 /// Template for speaker welcome notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/speaker_welcome.html")]
@@ -688,6 +1025,13 @@ pub(crate) struct SpeakerWelcome {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for SpeakerWelcome {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.event.group_name, "You're speaking at an event")
+    }
 }
 
 /// Template for aggregate speaker welcome notification.
@@ -702,6 +1046,29 @@ pub(crate) struct SpeakerSeriesWelcome {
     pub group_name: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+impl NotificationTemplate for SpeakerSeriesWelcome {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "You're speaking at upcoming events")
+    }
+}
+
+// Helpers.
+
+/// Completes a root-relative path with the deployment base URL.
+///
+/// Already-absolute URLs are left unchanged.
+pub(crate) fn complete_local_url(url: &mut String, base_url: &str) {
+    if url.starts_with('/') {
+        *url = helpers::absolute_url(base_url, url);
+    }
+}
+
+/// Builds an email subject prefixed with its community or group scope.
+pub(crate) fn scoped_subject(scope: &str, subject: &str) -> String {
+    format!("[{scope}] {subject}")
 }
 
 /// Formats the attendee-facing current price for an admission offer.

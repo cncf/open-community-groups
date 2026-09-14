@@ -20,7 +20,7 @@ use crate::{
         PaymentMode, PaymentProvider, TicketTaxBehavior, TicketTaxCalculationMode,
         TicketTaxJurisdiction, TicketTaxRate,
     },
-    util::base_url_without_trailing_slash,
+    util::{base_url_without_trailing_slash, build_http_client},
 };
 
 use super::{
@@ -70,13 +70,15 @@ pub(crate) struct StripeProvider {
 }
 
 impl StripeProvider {
-    /// Creates a new Stripe provider.
-    pub(crate) fn new(cfg: PaymentsStripeConfig) -> Self {
-        Self {
+    /// Creates a new Stripe provider with the configured request deadlines.
+    pub(crate) fn new(cfg: PaymentsStripeConfig) -> Result<Self> {
+        let client = build_http_client(&cfg.http_client)?;
+
+        Ok(Self {
             api_base_url: "https://api.stripe.com/v1".to_string(),
             cfg,
-            client: Client::new(),
-        }
+            client,
+        })
     }
 
     /// Returns the Stripe API base URL.

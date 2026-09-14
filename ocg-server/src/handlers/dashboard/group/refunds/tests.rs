@@ -14,11 +14,13 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::{notifications::MockNotificationsManager, payments::MockPaymentsManager},
-    templates::dashboard::group::refunds::{
-        FinancialRecoveryKind, GroupFinancialRecovery, GroupRefund, GroupRefundStatus, RefundEvent,
-        RefundsFilters, RefundsOutput, RefundsView,
+    types::{
+        dashboard::group::refunds::{
+            FinancialRecoveryKind, GroupFinancialRecovery, GroupRefund, GroupRefundStatus,
+            RefundEvent, RefundsFilters, RefundsOutput, RefundsView,
+        },
+        permissions::GroupPermission,
     },
-    types::permissions::GroupPermission,
 };
 
 #[tokio::test]
@@ -28,14 +30,6 @@ async fn test_list_page_renders_history_without_payments_setup() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     let output = RefundsOutput {
         events: vec![],
@@ -46,32 +40,23 @@ async fn test_list_page_renders_history_without_payments_setup() {
 
     // Setup authentication and historical refund-list expectations
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_list_group_refunds()
         .times(1)
         .withf(move |gid, filters| {
             *gid == group_id
-                && filters.limit == Some(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT)
+                && filters.limit == Some(crate::types::dashboard::DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
                 && filters.view == RefundsView::Active
         })
         .returning(move |_, _| Ok(output.clone()));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -116,14 +101,6 @@ async fn test_list_page_renders_filtered_refund_workflows() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let mut output = RefundsOutput {
         events: vec![RefundEvent {
             event_id,
@@ -175,32 +152,21 @@ async fn test_list_page_renders_filtered_refund_workflows() {
 
     // Setup authentication, authorization, and filtered database expectations
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
     db.expect_list_group_refunds()
         .times(1)
         .withf(move |gid, filters| {
@@ -265,34 +231,17 @@ async fn test_list_page_rejects_invalid_pagination_limit() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Expect invalid filters to fail before refund list work starts
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
 
     // Request a page size outside the validated dashboard range
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -321,25 +270,10 @@ async fn test_complete_payment_job_recovery_forbids_user_without_event_write_acc
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let payment_job_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Reject recovery before the payment job mutation can run
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -349,15 +283,13 @@ async fn test_complete_payment_job_recovery_forbids_user_without_event_write_acc
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_complete_payment_job_recovery().never();
 
     // Attempt recovery with otherwise valid evidence
@@ -389,35 +321,22 @@ async fn test_complete_payment_job_recovery_records_provider_evidence() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let payment_job_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
+
+    // Expect provider evidence to reach the payments manager
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
         user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
+        GroupPermission::EventsWrite,
     );
 
-    // Expect provider evidence to reach the unified database function
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_complete_payment_job_recovery()
+    // Setup payments manager mock
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_complete_payment_job_recovery()
         .times(1)
         .withf(move |input| {
             input.actor_user_id == user_id
@@ -427,10 +346,11 @@ async fn test_complete_payment_job_recovery_records_provider_evidence() {
                 && input.recovery_note == "Verified Stripe activity"
                 && input.recovery_reference == "ticket-456"
         })
-        .returning(|_| Ok(()));
+        .returning(|_| Box::pin(async { Ok(()) }));
 
     // Submit the payment job recovery evidence
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
         .build()
         .await;
     let request = Request::builder()
@@ -463,34 +383,19 @@ async fn test_complete_refund_recovery_allows_event_manager() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Expect the validated recovery evidence to reach the payments service
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+
+    // Setup payments manager mock
     let mut payments_manager = MockPaymentsManager::new();
     payments_manager
         .expect_complete_refund_recovery()
@@ -539,25 +444,10 @@ async fn test_complete_refund_recovery_forbids_user_without_event_write_access()
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Reject recovery before the payments service can run
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -567,15 +457,15 @@ async fn test_complete_refund_recovery_forbids_user_without_event_write_access()
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+
+    // Setup payments manager mock
     let mut payments_manager = MockPaymentsManager::new();
     payments_manager.expect_complete_refund_recovery().never();
 
@@ -609,25 +499,10 @@ async fn test_retry_payment_job_forbids_user_without_event_write_access() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let payment_job_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Reject retry before the payment job mutation can run
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -637,15 +512,13 @@ async fn test_retry_payment_job_forbids_user_without_event_write_access() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
     db.expect_requeue_payment_job().never();
 
     // Attempt a retry with otherwise valid input
@@ -676,34 +549,17 @@ async fn test_retry_payment_job_requeues_selected_job() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let payment_job_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Expect the selected payment job to be requeued
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
     db.expect_requeue_payment_job()
         .times(1)
         .withf(move |gid, id| *gid == group_id && *id == payment_job_id)

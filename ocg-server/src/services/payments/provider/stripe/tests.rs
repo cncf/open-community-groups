@@ -1,6 +1,7 @@
 use std::{
     collections::BTreeMap,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use axum::{
@@ -10,11 +11,11 @@ use axum::{
 };
 use chrono::{TimeDelta, Utc};
 use serde_json::json;
-use tokio::task::JoinHandle;
+use tokio::{task::JoinHandle, time::timeout};
 use uuid::Uuid;
 
 use crate::{
-    config::PaymentsStripeConfig,
+    config::{HttpClientConfig, PaymentsStripeConfig},
     services::payments::{
         ApplicationFeeAdjustmentInput, AutomaticTaxReadinessError, CreateCheckoutSessionInput,
         CreditNoteInput, FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
@@ -1682,6 +1683,35 @@ async fn reconcile_credit_note_previews_and_issues_the_full_connected_account_do
 }
 
 #[tokio::test]
+async fn refund_payment_fails_within_the_request_deadline_when_the_provider_stalls() {
+    // Setup a provider endpoint that accepts connections and never answers
+    let (api_base_url, server) = spawn_stalled_stripe_api().await;
+    let mut provider = sample_stripe_provider_with_deadlines(HttpClientConfig {
+        connect_timeout_secs: 1,
+        request_timeout_secs: 1,
+    });
+    provider.api_base_url = api_base_url;
+
+    // Create the refund against the stalled endpoint, bounding the test itself
+    let result = timeout(
+        Duration::from_secs(5),
+        provider.refund_payment(&sample_refund_payment_input()),
+    )
+    .await
+    .expect("refund call to return within the configured deadline");
+    server.abort();
+
+    // Check the failure is the client deadline rather than a provider response
+    let err = result.expect_err("stalled provider to fail the refund");
+    assert!(
+        err.chain().any(|cause| cause
+            .downcast_ref::<reqwest::Error>()
+            .is_some_and(reqwest::Error::is_timeout)),
+        "expected a request timeout, got: {err:#}"
+    );
+}
+
+#[tokio::test]
 async fn refund_payment_scopes_the_full_refund_to_the_connected_account() {
     // Setup the connected-account refund endpoint and capture its request
     let input = sample_refund_payment_input();
@@ -3163,8 +3193,13 @@ fn sample_stripe_account_response() -> serde_json::Value {
     })
 }
 
-/// Creates a sample Stripe provider.
+/// Creates a sample Stripe provider with the default request deadlines.
 fn sample_stripe_provider() -> StripeProvider {
+    sample_stripe_provider_with_deadlines(HttpClientConfig::default())
+}
+
+/// Creates a sample Stripe provider with the given request deadlines.
+fn sample_stripe_provider_with_deadlines(http_client: HttpClientConfig) -> StripeProvider {
     StripeProvider::new(PaymentsStripeConfig {
         connected_webhook_secret: "whsec_connect_test".to_string(),
         mode: PaymentMode::Test,
@@ -3172,8 +3207,10 @@ fn sample_stripe_provider() -> StripeProvider {
         ticket_tax_api_version: "2026-07-29.preview".to_string(),
         webhook_secret: "whsec_test".to_string(),
 
+        http_client,
         platform_fee_bps: 0,
     })
+    .expect("sample Stripe provider to build")
 }
 
 /// Creates a complete automatic-tax Product response.
@@ -3196,6 +3233,26 @@ fn sample_webhook_headers(signature_header: &str) -> HeaderMap {
         HeaderValue::from_str(signature_header).expect("Stripe signature header to be valid"),
     );
     headers
+}
+
+/// Spawns a listener that accepts connections and never responds, returning its base URL.
+async fn spawn_stalled_stripe_api() -> (String, JoinHandle<()>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("stalled Stripe API listener to bind");
+    let address = listener
+        .local_addr()
+        .expect("stalled Stripe API listener address to exist");
+    let server = tokio::spawn(async move {
+        // Keep every accepted connection open without writing a response
+        let mut connections = Vec::new();
+        loop {
+            let (stream, _) = listener.accept().await.expect("stalled Stripe API to accept");
+            connections.push(stream);
+        }
+    });
+
+    (format!("http://{address}/v1"), server)
 }
 
 /// Starts a local Stripe-shaped API for provider-boundary tests.

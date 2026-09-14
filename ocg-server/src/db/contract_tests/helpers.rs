@@ -10,9 +10,9 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::group::events::Event as EventUpdate,
     types::{
         badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge},
+        dashboard::group::events::EventInput,
         payments::{EventTicketType, EventTicketTypeAvailability},
     },
 };
@@ -26,6 +26,10 @@ const BADGE_AWARD_JOB_ID: &str = "00000000-0000-0000-0000-00000000c0bf";
 const BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0bb";
 const BADGE_STATUS_LIST_ID: &str = "00000000-0000-0000-0000-00000000c0bc";
 const CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c0e9";
+/// Confirmed attendee canceled by the enrollment manager lifecycle contract.
+const LIFECYCLE_CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c1f0";
+/// Confirmed attendee whose manager cancellation is rolled back by the lifecycle contract.
+const LIFECYCLE_ROLLBACK_CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c1f1";
 /// User fixture that races an RSVP against event cancellation.
 const CANCELLATION_LOCK_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c0ec";
 /// Event fixture used to verify cancellation lock ownership.
@@ -404,7 +408,7 @@ pub(super) fn co_speaker_proposal_id() -> Uuid {
 }
 
 /// Returns the community identifier used by the contract fixture.
-pub(super) fn community_id() -> Uuid {
+pub(crate) fn community_id() -> Uuid {
     parse_uuid(COMMUNITY_ID)
 }
 
@@ -433,12 +437,12 @@ pub(super) fn contract_tests_config() -> Result<DeadpoolDbConfig> {
 }
 
 /// Creates the typed database wrapper used by contract tests.
-pub(super) fn contract_tests_db() -> Result<PgDB> {
+pub(crate) fn contract_tests_db() -> Result<PgDB> {
     Ok(PgDB::new(contract_tests_pool()?))
 }
 
 /// Creates an independent `PostgreSQL` connection pool for concurrency tests.
-pub(super) fn contract_tests_pool() -> Result<Pool> {
+pub(crate) fn contract_tests_pool() -> Result<Pool> {
     Ok(contract_tests_config()?.create_pool(Some(Runtime::Tokio1), NoTls)?)
 }
 
@@ -543,12 +547,12 @@ pub(super) fn free_purchase_id() -> Uuid {
 }
 
 /// Returns the group identifier used by the contract fixture.
-pub(super) fn group_id() -> Uuid {
+pub(crate) fn group_id() -> Uuid {
     parse_uuid(GROUP_ID)
 }
 
 /// Returns an event update used by group-level lock contract tests.
-pub(super) fn group_lock_event_update(name: &str, day: u32) -> EventUpdate {
+pub(super) fn group_lock_event_update(name: &str, day: u32) -> EventInput {
     let starts_at = NaiveDate::from_ymd_opt(2099, 8, day)
         .expect("date should be valid")
         .and_hms_opt(10, 0, 0)
@@ -558,7 +562,7 @@ pub(super) fn group_lock_event_update(name: &str, day: u32) -> EventUpdate {
         .and_hms_opt(11, 0, 0)
         .expect("time should be valid");
 
-    EventUpdate {
+    EventInput {
         category_id: event_category_id(),
         description: "An event used by group lock contract tests".to_string(),
         kind_id: "virtual".to_string(),
@@ -614,8 +618,18 @@ pub(super) fn leaver_id() -> Uuid {
     parse_uuid(LEAVER_ID)
 }
 
+/// Returns the attendee canceled by the enrollment manager lifecycle contract.
+pub(crate) fn lifecycle_cancelee_id() -> Uuid {
+    parse_uuid(LIFECYCLE_CANCELEE_ID)
+}
+
+/// Returns the attendee whose manager cancellation is rolled back by the lifecycle contract.
+pub(crate) fn lifecycle_rollback_cancelee_id() -> Uuid {
+    parse_uuid(LIFECYCLE_ROLLBACK_CANCELEE_ID)
+}
+
 /// Returns the mutation event identifier used by the contract fixture.
-pub(super) fn mutation_event_id() -> Uuid {
+pub(crate) fn mutation_event_id() -> Uuid {
     parse_uuid(MUTATION_EVENT_ID)
 }
 
@@ -645,7 +659,7 @@ pub(super) fn offer_decliner_id() -> Uuid {
 }
 
 /// Returns the organizer identifier used by the contract fixture.
-pub(super) fn organizer_id() -> Uuid {
+pub(crate) fn organizer_id() -> Uuid {
     parse_uuid(ORGANIZER_ID)
 }
 

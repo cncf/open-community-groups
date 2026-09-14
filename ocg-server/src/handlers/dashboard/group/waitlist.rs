@@ -2,10 +2,9 @@
 
 use askama::Template;
 use axum::{
-    extract::{Path, RawQuery, State},
+    extract::{Path, State},
     response::{Html, IntoResponse},
 };
-use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -13,11 +12,11 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedQuery},
     },
-    router::serde_qs_config,
-    templates::dashboard::group::waitlist::{self, WaitlistFilters},
+    templates::dashboard::group::waitlist,
     types::{
+        dashboard::group::waitlist::WaitlistFilters,
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
@@ -36,12 +35,9 @@ pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
-    RawQuery(raw_query): RawQuery,
+    ValidatedQuery(filters): ValidatedQuery<WaitlistFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and waitlist
-    let filters: WaitlistFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    filters.validate()?;
     let (can_manage_events, event, search_waitlist_results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,

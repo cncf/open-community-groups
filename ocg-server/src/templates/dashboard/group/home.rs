@@ -5,10 +5,11 @@ use axum_messages::{Level, Message};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::types::dashboard::group::home::UserGroupsByCommunity;
 use crate::{
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         dashboard::{
             audit,
             group::{
@@ -51,7 +52,7 @@ pub(crate) struct Page {
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 impl Page {
@@ -86,7 +87,7 @@ impl Page {
 }
 
 /// Content section for the group dashboard home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub(crate) enum Content {
     /// Analytics page.
     Analytics(Box<analytics::Page>),
@@ -227,15 +228,4 @@ pub(crate) enum Tab {
     Sponsors,
     /// Team management tab.
     Team,
-}
-
-// Types.
-
-/// Groups organized by community, used for displaying user's groups in dashboard.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UserGroupsByCommunity {
-    /// Community information.
-    pub community: CommunitySummary,
-    /// Groups belonging to this community.
-    pub groups: Vec<GroupMinimal>,
 }

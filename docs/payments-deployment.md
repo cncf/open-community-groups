@@ -109,7 +109,19 @@ payments:
   ticket_tax_api_version: "2026-07-29.preview"
   webhook_secret: "whsec_..."
   platform_fee_bps: 0
+  http_client:
+    connect_timeout_secs: 10
+    request_timeout_secs: 30
 ```
+
+`http_client` is optional and bounds every request OCG makes to the Stripe
+API: `connect_timeout_secs` is the deadline for establishing the connection and
+`request_timeout_secs` is the deadline for the whole request, including the
+response body. Both default to the values shown and must be at least `1`. Every
+Stripe write OCG performs carries a deterministic idempotency key, so a request
+that hits the deadline is retried safely: durable payment jobs release their
+claim and are picked up again, and a checkout session retry reuses the same
+key.
 
 The server validates that both webhook secrets, the API key, and the ticket Tax
 API version are non-empty when Stripe payments are configured. Stripe rejects

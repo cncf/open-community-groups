@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 
-use crate::{auth::UserSummary, db::auth::DBAuth, types::user::UserProvider};
+use crate::{auth::ExternalUserProfile, db::auth::DBAuth, types::user::UserProvider};
 
 use super::helpers::{
     activation_id, attendee_id, contract_tests_db, external_lookup_id, external_update_id,
@@ -14,7 +14,7 @@ use super::helpers::{
 async fn db_contracts_activate_pre_registered_user_external_provider_deserializes() -> Result<()> {
     // Setup the activation identity and external profile
     let db = contract_tests_db()?;
-    let user_summary = UserSummary {
+    let profile = ExternalUserProfile {
         email: "activation.contract@example.com".to_string(),
         name: "Contract Activation".to_string(),
         username: "contract-activation".to_string(),
@@ -28,7 +28,7 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
 
     // Activate the pre-registered user through the Rust contract
     let user = db
-        .activate_pre_registered_user_external_provider(&activation_id(), &user_summary)
+        .activate_pre_registered_user_external_provider(&activation_id(), &profile)
         .await?;
 
     // Check the registered external user fields
@@ -136,7 +136,7 @@ async fn db_contracts_get_user_by_username_deserializes() -> Result<()> {
 async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
     // Setup the contract database and external profile update
     let db = contract_tests_db()?;
-    let user_summary = UserSummary {
+    let profile = ExternalUserProfile {
         email: "external-update-new.contract@example.com".to_string(),
         name: "Contract External Update".to_string(),
         username: "contract-external-update".to_string(),
@@ -151,9 +151,7 @@ async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
     };
 
     // Update external authentication through the Rust contract
-    let user = db
-        .update_user_external_auth(&external_update_id(), &user_summary)
-        .await?;
+    let user = db.update_user_external_auth(&external_update_id(), &profile).await?;
 
     // Check account identity and verification fields
     assert_eq!(user.email, "external-update-new.contract@example.com");

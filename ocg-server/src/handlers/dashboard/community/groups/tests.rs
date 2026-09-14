@@ -12,11 +12,13 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::{common::SearchGroupsOutput, mock::MockDB},
-    handlers::{auth::SELECTED_GROUP_ID_KEY, tests::*},
+    db::mock::MockDB,
+    handlers::{auth::session_context::SELECTED_GROUP_ID_KEY, tests::*},
     services::notifications::MockNotificationsManager,
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
-    types::{group::GroupParentOption, permissions::CommunityPermission},
+    types::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT, group::GroupParentOption,
+        permissions::CommunityPermission, search::SearchGroupsOutput,
+    },
 };
 
 #[tokio::test]
@@ -26,9 +28,6 @@ async fn test_list_page_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let ts_query = "rust".to_string();
     let groups_output = SearchGroupsOutput {
         groups: vec![sample_group_summary(group_id)],
@@ -37,20 +36,8 @@ async fn test_list_page_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -104,9 +91,6 @@ async fn test_list_page_allows_empty_search_query() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let groups_output = SearchGroupsOutput {
         groups: vec![sample_group_summary(group_id)],
         ..Default::default()
@@ -114,20 +98,8 @@ async fn test_list_page_allows_empty_search_query() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -172,108 +144,18 @@ async fn test_list_page_allows_empty_search_query() {
 }
 
 #[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::GroupsWrite
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_get_community_name_by_id()
-        .times(1)
-        .withf(move |id| *id == community_id)
-        .returning(|_| Ok(Some("test".to_string())));
-    db.expect_search_groups()
-        .times(1)
-        .withf(move |filters| {
-            filters.community == vec!["test".to_string()]
-                && filters.include_inactive == Some(true)
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-        })
-        .returning(move |_| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/community/groups")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
 async fn test_add_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let categories = vec![sample_group_category()];
     let regions = vec![sample_group_region()];
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::GroupsWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
     db.expect_list_group_categories()
         .times(1)
         .withf(move |cid| *cid == community_id)
@@ -308,94 +190,20 @@ async fn test_add_page_success() {
 }
 
 #[tokio::test]
-async fn test_add_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::GroupsWrite
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_list_group_categories()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/community/groups/add")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
 async fn test_update_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let categories = vec![sample_group_category()];
     let regions = vec![sample_group_region()];
     let group_full = sample_group_full(community_id, group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -455,9 +263,6 @@ async fn test_update_page_selects_current_inactive_parent_option() {
     let parent_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let categories = vec![sample_group_category()];
     let group_full = sample_group_full(community_id, group_id);
     let parent_option = GroupParentOption {
@@ -471,20 +276,8 @@ async fn test_update_page_selects_current_inactive_parent_option() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -547,66 +340,6 @@ async fn test_update_page_selects_current_inactive_parent_option() {
 }
 
 #[tokio::test]
-async fn test_update_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::GroupsWrite
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_get_group_full()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/community/groups/{group_id}/update"))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
 async fn test_add_success_auto_selects_group() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -614,21 +347,11 @@ async fn test_add_success_auto_selects_group() {
     let new_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -692,26 +415,17 @@ async fn test_add_success_keeps_existing_group_selection() {
     let existing_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(existing_group_id),
-    );
     let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(
+        &mut db,
+        session_id,
+        user_id,
+        community_id,
+        existing_group_id,
+    );
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -754,25 +468,64 @@ async fn test_add_success_keeps_existing_group_selection() {
 }
 
 #[tokio::test]
+async fn test_add_db_error() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let category_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
+
+    // Setup database mock with a failing write and no group selection write
+    let mut db = MockDB::new();
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    db.expect_user_has_community_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
+        })
+        .returning(|_, _, _| Ok(true));
+    db.expect_add_group()
+        .times(1)
+        .withf(move |uid, cid, group| {
+            *uid == user_id && *cid == community_id && group.category_id == category_id
+        })
+        .returning(move |_, _, _| Err(anyhow!("db error")));
+    db.expect_update_session().never();
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/community/groups/add")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
 async fn test_add_invalid_payload() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -804,64 +557,6 @@ async fn test_add_invalid_payload() {
 }
 
 #[tokio::test]
-async fn test_add_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let category_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-    let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::GroupsWrite
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_add_group()
-        .times(1)
-        .withf(move |uid, cid, group| {
-            *uid == user_id && *cid == community_id && group.category_id == category_id
-        })
-        .returning(move |_, _, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/dashboard/community/groups/add")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
 async fn test_update_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -869,21 +564,11 @@ async fn test_update_success() {
     let category_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -935,20 +620,10 @@ async fn test_update_invalid_payload() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -980,88 +655,16 @@ async fn test_update_invalid_payload() {
 }
 
 #[tokio::test]
-async fn test_update_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let category_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-    let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::GroupsWrite
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_update_group()
-        .times(1)
-        .withf(move |uid, cid, gid, group| {
-            *uid == user_id
-                && *cid == community_id
-                && *gid == group_id
-                && group.category_id == category_id
-        })
-        .returning(move |_, _, _, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!("/dashboard/community/groups/{group_id}/update"))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
 async fn test_activate_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -1107,20 +710,10 @@ async fn test_deactivate_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -1167,25 +760,10 @@ async fn test_delete_non_selected_group() {
     let other_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(other_group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, other_group_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -1232,24 +810,9 @@ async fn test_delete_selected_group_updates_selection() {
     let next_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -1309,25 +872,10 @@ async fn test_delete_selected_group_without_fallback_clears_selection() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {

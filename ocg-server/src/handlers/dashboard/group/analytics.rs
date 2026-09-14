@@ -14,6 +14,7 @@ use crate::{
         extractors::{SelectedCommunityId, SelectedGroupId},
     },
     templates::dashboard::group::analytics,
+    types::dashboard::group::analytics::AnalyticsQuery,
 };
 
 #[cfg(test)]
@@ -27,7 +28,7 @@ pub(crate) async fn page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    Query(query): Query<analytics::AnalyticsQuery>,
+    Query(query): Query<AnalyticsQuery>,
 ) -> Result<impl IntoResponse, HandlerError> {
     let include_subgroups = query.include_subgroups.unwrap_or(false);
     let (stats, has_subgroups) = tokio::try_join!(

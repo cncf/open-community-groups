@@ -8,9 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
-    handlers::tests::{
-        TestRouterBuilder, assert_html_response, sample_auth_user, sample_session_record,
-    },
+    handlers::tests::{TestRouterBuilder, assert_html_response, expect_authenticated_session},
     services::notifications::MockNotificationsManager,
 };
 
@@ -19,16 +17,9 @@ async fn test_list_page_returns_current_user_events() {
     // Setup an authenticated user and empty credential list
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_list_user_check_in_events()
         .times(1)
         .withf(move |uid| *uid == user_id)
@@ -59,16 +50,9 @@ async fn test_qr_code_returns_private_uncacheable_svg() {
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_user_check_in_code()
         .times(1)
         .withf(move |eid, uid| *eid == event_id && *uid == user_id)
@@ -101,16 +85,9 @@ async fn test_qr_code_returns_unavailable_for_non_confirmed_attendance() {
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_user_check_in_code()
         .times(1)
         .withf(move |eid, uid| *eid == event_id && *uid == user_id)

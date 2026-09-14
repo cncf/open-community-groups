@@ -13,7 +13,7 @@ use crate::{
         },
     },
     services::{
-        notifications::{MockNotificationsManager, NotificationKind},
+        notifications::MockNotificationsManager,
         payments::{
             PaymentsWebhookEvent, RefundPaymentResult, RefundPaymentStatus,
             notification_composer::PaymentsNotificationComposer,
@@ -22,6 +22,7 @@ use crate::{
     },
     types::{
         event::{EventKind, EventSummary},
+        notifications::NotificationKind,
         payments::{EventPurchaseStatus, EventPurchaseSummary, PaymentProvider},
         site::SiteSettings,
     },

@@ -12,7 +12,6 @@ use uuid::Uuid;
 
 use crate::{
     db::PgExecutor,
-    services::payments::CheckoutSession,
     types::{
         event::EventEnrollmentReconciliationOutcome,
         payments::{
@@ -49,9 +48,7 @@ pub(crate) trait DBPayments {
     /// Adds the provider checkout session details to a pending purchase.
     async fn attach_checkout_session_to_event_purchase(
         &self,
-        event_purchase_id: Uuid,
-        payment_provider: PaymentProvider,
-        checkout_session: &CheckoutSession,
+        input: &AttachCheckoutSessionInput,
     ) -> Result<()>;
 
     /// Adds a paid invoice and current provider URLs to its purchase.
@@ -350,12 +347,10 @@ where
     }
 
     /// [`DBPayments::attach_checkout_session_to_event_purchase`].
-    #[instrument(skip(self, checkout_session), err)]
+    #[instrument(skip(self, input), err)]
     async fn attach_checkout_session_to_event_purchase(
         &self,
-        event_purchase_id: Uuid,
-        payment_provider: PaymentProvider,
-        checkout_session: &CheckoutSession,
+        input: &AttachCheckoutSessionInput,
     ) -> Result<()> {
         self.execute(
             "
@@ -372,15 +367,15 @@ where
             )
             ",
             &[
-                &event_purchase_id,
-                &payment_provider.to_string(),
-                &checkout_session.provider_object_account_id,
-                &checkout_session.provider_session_id,
-                &checkout_session.redirect_url,
-                &checkout_session.provider_tax_location_id,
-                &checkout_session.performance_location_fingerprint,
-                &checkout_session.provider_tax_product_id,
-                &checkout_session.product_fingerprint,
+                &input.event_purchase_id,
+                &input.payment_provider.to_string(),
+                &input.provider_object_account_id,
+                &input.provider_session_id,
+                &input.redirect_url,
+                &input.provider_tax_location_id,
+                &input.performance_location_fingerprint,
+                &input.provider_tax_product_id,
+                &input.product_fingerprint,
             ],
         )
         .await
@@ -1074,6 +1069,30 @@ where
 
 // Types.
 
+/// Provider checkout session details attached to a pending purchase.
+#[derive(Debug, Clone)]
+pub(crate) struct AttachCheckoutSessionInput {
+    /// Purchase the checkout session belongs to.
+    pub event_purchase_id: Uuid,
+    /// Payment provider that created the session.
+    pub payment_provider: PaymentProvider,
+    /// Connected account that owns the checkout session.
+    pub provider_object_account_id: String,
+    /// Provider-specific checkout session identifier.
+    pub provider_session_id: String,
+    /// Redirect URL for the attendee.
+    pub redirect_url: String,
+
+    /// Fingerprint of the immutable performance location inputs.
+    pub performance_location_fingerprint: Option<String>,
+    /// Fingerprint of the immutable product inputs.
+    pub product_fingerprint: Option<String>,
+    /// Provider performance location identifier.
+    pub provider_tax_location_id: Option<String>,
+    /// Provider ticket product identifier.
+    pub provider_tax_product_id: Option<String>,
+}
+
 /// Claimed application-fee adjustment with immutable provider context.
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct ClaimedEventPurchaseApplicationFeeAdjustment {
@@ -1328,8 +1347,9 @@ pub(crate) enum EventPurchaseRefundStatus {
 }
 
 /// Conflict returned while preparing an attendee checkout.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub(crate) enum PrepareEventCheckoutPurchaseConflict {
     /// The selected admission offer cannot apply a new discount code.
     AdmissionOfferPriceLocked,

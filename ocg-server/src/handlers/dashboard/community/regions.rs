@@ -16,8 +16,8 @@ use crate::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },
-    templates::dashboard::community::regions::{self, RegionInput},
-    types::permissions::CommunityPermission,
+    templates::dashboard::community::regions,
+    types::{dashboard::community::regions::RegionInput, permissions::CommunityPermission},
 };
 
 #[cfg(test)]
@@ -51,22 +51,9 @@ pub(crate) async fn list_page(
 
 /// Displays the form to create a new region.
 #[instrument(skip_all, err)]
-pub(crate) async fn add_page(
-    CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
-    State(db): State<DynDB>,
-) -> Result<impl IntoResponse, HandlerError> {
+pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let can_manage_taxonomy = db
-        .user_has_community_permission(
-            &community_id,
-            &user.user_id,
-            CommunityPermission::TaxonomyWrite,
-        )
-        .await?;
-    let template = regions::AddPage {
-        can_manage_taxonomy,
-    };
+    let template = regions::AddPage;
 
     Ok(Html(template.render()?))
 }
@@ -89,7 +76,7 @@ pub(crate) async fn update_page(
         db.list_regions(community_id)
     )?;
     let Some(region) = regions.into_iter().find(|region| region.region_id == region_id) else {
-        return Err(HandlerError::Database("region not found".to_string()));
+        return Err(HandlerError::Rejected("region not found".to_string()));
     };
     let template = regions::UpdatePage {
         can_manage_taxonomy,
