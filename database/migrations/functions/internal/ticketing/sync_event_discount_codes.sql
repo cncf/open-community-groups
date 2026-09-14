@@ -76,14 +76,9 @@ begin
         select jsonb_array_elements(coalesce(p_discount_codes, '[]'::jsonb))
     loop
         -- Resolve whether Uses remaining should stay in manual override mode
-        v_available_override_active := case
-            when coalesce((v_discount_code->>'available_cleared')::boolean, false) then false
-            when (v_discount_code->>'available_override_active') is not null
-                then (v_discount_code->>'available_override_active')::boolean
-            when (v_discount_code->>'available') is not null then true
-            else false
-        end;
+        v_available_override_active := resolve_event_discount_code_available_override(v_discount_code);
 
+        -- Upsert the code, keeping the stored count when the override stays on
         insert into event_discount_code (
             event_discount_code_id,
             active,
@@ -117,22 +112,18 @@ begin
         set
             active = excluded.active,
             available = case
-                when case
-                    when coalesce((v_discount_code->>'available_cleared')::boolean, false) then false
-                    when (v_discount_code->>'available_override_active') is not null
-                        then (v_discount_code->>'available_override_active')::boolean
-                    when (v_discount_code->>'available') is not null then true
-                    else event_discount_code.available_override_active
-                end then coalesce(excluded.available, event_discount_code.available)
+                -- Keep or replace the manual count while the override stays on
+                when resolve_event_discount_code_available_override(
+                    v_discount_code,
+                    event_discount_code.available_override_active
+                ) then coalesce(excluded.available, event_discount_code.available)
+                -- Drop the manual count once the override is off
                 else null
             end,
-            available_override_active = case
-                when coalesce((v_discount_code->>'available_cleared')::boolean, false) then false
-                when (v_discount_code->>'available_override_active') is not null
-                    then (v_discount_code->>'available_override_active')::boolean
-                when (v_discount_code->>'available') is not null then true
-                else event_discount_code.available_override_active
-            end,
+            available_override_active = resolve_event_discount_code_available_override(
+                v_discount_code,
+                event_discount_code.available_override_active
+            ),
             amount_minor = excluded.amount_minor,
             code = excluded.code,
             ends_at = excluded.ends_at,
