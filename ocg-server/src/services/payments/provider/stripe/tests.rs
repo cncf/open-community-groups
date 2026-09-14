@@ -1,6 +1,9 @@
 use std::{
     collections::BTreeMap,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
+    },
     time::Duration,
 };
 
@@ -466,6 +469,44 @@ async fn automatic_tax_product_reuses_complete_cached_product() {
 }
 
 #[test]
+fn build_application_fee_refund_form_fields_records_request_identity() {
+    // Setup an adjustment with an upper-case purchase currency
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+
+    // Build the refund creation form
+    let form_fields = StripeProvider::build_application_fee_refund_form_fields(&input);
+
+    // Check the amount and every durable identity field are recorded
+    assert_eq!(form_fields.len(), 7);
+    assert_eq!(form_fields.get("amount"), Some(&"125".to_string()));
+    assert_eq!(
+        form_fields.get("metadata[connected_seller_id]"),
+        Some(&"acct_test_123".to_string())
+    );
+    assert_eq!(
+        form_fields.get("metadata[event_purchase_id]"),
+        Some(&purchase_id.to_string())
+    );
+    assert_eq!(
+        form_fields.get("metadata[idempotency_key]"),
+        Some(&"fee-adjustment-test".to_string())
+    );
+    assert_eq!(
+        form_fields.get("metadata[kind]"),
+        Some(&"tax-reconciliation".to_string())
+    );
+    assert_eq!(
+        form_fields.get("metadata[requested_amount_minor]"),
+        Some(&"125".to_string())
+    );
+    assert_eq!(
+        form_fields.get("metadata[requested_currency]"),
+        Some(&"usd".to_string())
+    );
+}
+
+#[test]
 fn build_checkout_session_form_fields_includes_platform_fee_when_configured() {
     // Setup a checkout with a snapshotted platform fee
     let provider = sample_stripe_provider();
@@ -790,32 +831,6 @@ fn find_matching_application_fee_refund_prefers_idempotency_key() {
 }
 
 #[test]
-fn find_matching_application_fee_refund_prefers_recorded_request_values() {
-    // Setup a keyed cross-currency refund carrying its recorded request values
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
-    refund.currency = "eur".to_string();
-    refund
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-    refund
-        .metadata
-        .insert("requested_amount_minor".to_string(), "125".to_string());
-    refund
-        .metadata
-        .insert("requested_currency".to_string(), "usd".to_string());
-
-    // Reuse the refund whose recorded request matches like-for-like
-    let matched = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect("application-fee refund lookup to parse")
-        .expect("recorded request match to be reused");
-
-    // Check the converted provider amount does not block the reuse
-    assert_eq!(matched.id, "fr_keyed_123");
-}
-
-#[test]
 fn find_matching_application_fee_refund_rejects_idempotency_key_amount_mismatch() {
     // Setup a keyed refund whose amount diverged, plus a later amount match
     let purchase_id = Uuid::new_v4();
@@ -837,6 +852,28 @@ fn find_matching_application_fee_refund_rejects_idempotency_key_amount_mismatch(
 }
 
 #[test]
+fn find_matching_application_fee_refund_rejects_keyed_currency_mismatch() {
+    // Setup a keyed refund whose provider currency diverges from the adjustment
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
+    refund.currency = "eur".to_string();
+    refund
+        .metadata
+        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
+
+    // Reject the durable identity instead of trusting unlike units
+    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
+        .expect_err("keyed currency mismatch to be rejected");
+
+    // Check the failure points operators at the existing refund
+    assert!(err.to_string().contains("fr_keyed_123"));
+    assert!(err.to_string().contains("105 eur"));
+    assert!(err.to_string().contains("125 usd"));
+    assert!(err.to_string().contains("financial recovery"));
+}
+
+#[test]
 fn find_matching_application_fee_refund_rejects_legacy_amount_mismatch() {
     // Setup a pre-identity leftover whose purchase and kind match the wrong amount
     let purchase_id = Uuid::new_v4();
@@ -851,6 +888,52 @@ fn find_matching_application_fee_refund_rejects_legacy_amount_mismatch() {
     assert!(err.to_string().contains("fr_wrong_123"));
     assert!(err.to_string().contains("10"));
     assert!(err.to_string().contains("125"));
+}
+
+#[test]
+fn find_matching_application_fee_refund_rejects_legacy_currency_mismatch() {
+    // Setup a pre-identity purchase-kind refund denominated in another currency
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let mut refund = sample_application_fee_refund(purchase_id, "fr_legacy_123", 125);
+    refund.currency = "eur".to_string();
+
+    // Reject the leftover instead of reusing an unlike denomination
+    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
+        .expect_err("legacy currency mismatch to be rejected");
+
+    // Check the divergent leftover remains actionable
+    assert!(err.to_string().contains("fr_legacy_123"));
+    assert!(err.to_string().contains("125 eur"));
+    assert!(err.to_string().contains("125 usd"));
+}
+
+#[test]
+fn find_matching_application_fee_refund_rejects_metadata_that_contradicts_provider_amount() {
+    // Setup a keyed refund whose recorded request disagrees with its provider fields
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
+    refund.currency = "eur".to_string();
+    refund
+        .metadata
+        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
+    refund
+        .metadata
+        .insert("requested_amount_minor".to_string(), "125".to_string());
+    refund
+        .metadata
+        .insert("requested_currency".to_string(), "usd".to_string());
+
+    // Reject the refund because provider fields are authoritative over metadata
+    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
+        .expect_err("contradicting recorded request to be rejected");
+
+    // Check the provider amount and recorded request both remain visible
+    assert!(err.to_string().contains("fr_keyed_123"));
+    assert!(err.to_string().contains("105 eur"));
+    assert!(err.to_string().contains("(recorded request 125 usd)"));
+    assert!(err.to_string().contains("125 usd ("));
 }
 
 #[test]
@@ -956,43 +1039,6 @@ fn find_matching_application_fee_refund_returns_none_when_unmatched() {
 
     // Check unmatched listings leave the caller free to create
     assert!(refund.is_none());
-}
-
-#[test]
-fn find_matching_application_fee_refund_reuses_cross_currency_keyed_refund() {
-    // Setup a keyed legacy refund Stripe settled in another currency
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
-    refund.currency = "eur".to_string();
-    refund
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-
-    // Reuse the durable identity without comparing unlike units
-    let matched = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect("application-fee refund lookup to parse")
-        .expect("cross-currency keyed refund to be reused");
-
-    // Check the converted amount does not strand the adjustment
-    assert_eq!(matched.id, "fr_keyed_123");
-}
-
-#[test]
-fn find_matching_application_fee_refund_reuses_cross_currency_legacy_refund() {
-    // Setup a pre-identity refund Stripe settled in another currency
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_legacy_123", 105);
-    refund.currency = "eur".to_string();
-
-    // Reuse the unique purchase-kind identity without comparing unlike units
-    let matched = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect("application-fee refund lookup to parse")
-        .expect("cross-currency legacy refund to be reused");
-
-    // Check the converted amount does not strand the adjustment
-    assert_eq!(matched.id, "fr_legacy_123");
 }
 
 #[test]
@@ -1352,16 +1398,213 @@ async fn list_tax_rates_propagates_provider_errors() {
 }
 
 #[tokio::test]
+async fn reconcile_application_fee_adjustment_accepts_fee_without_settlement_transaction() {
+    // Setup an empty lookup and a fee whose settlement transaction is null
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get(|| async {
+                Json(json!({
+                    "amount": 125,
+                    "amount_refunded": 0,
+                    "balance_transaction": null,
+                    "currency": "usd"
+                }))
+            }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(|| async { Json(json!({"data": [], "has_more": false})) }).post(
+                |body: String| async move {
+                    let form: BTreeMap<String, String> =
+                        serde_urlencoded::from_str(&body).expect("application-fee form to parse");
+                    assert_eq!(form.get("amount"), Some(&"125".to_string()));
+                    Json(sample_application_fee_refund_json(
+                        "fr_test_123",
+                        125,
+                        "usd",
+                    ))
+                },
+            ),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile the adjustment against a fee Stripe has not settled yet
+    let result = provider
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+            Uuid::new_v4(),
+        ))
+        .await
+        .expect("unsettled fee adjustment to be reconciled");
+    server.abort();
+
+    // Check the refund is created in the fee currency
+    assert_eq!(result.provider_application_fee_refund_id, "fr_test_123");
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_adopts_stale_claim_refund_after_remaining_rejection()
+{
+    // Setup a listing that gains the keyed refund after the first attempt and a fully refunded fee
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let listed_refunds = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+    let fee_retrievals = Arc::new(AtomicUsize::new(0));
+    let refund_creations = Arc::new(AtomicUsize::new(0));
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get({
+                let fee_retrievals = Arc::clone(&fee_retrievals);
+                move || {
+                    let fee_retrievals = Arc::clone(&fee_retrievals);
+                    async move {
+                        fee_retrievals.fetch_add(1, Ordering::SeqCst);
+                        Json(json!({"amount": 125, "amount_refunded": 125, "currency": "usd"}))
+                    }
+                }
+            }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get({
+                let listed_refunds = Arc::clone(&listed_refunds);
+                move || {
+                    let listed_refunds = Arc::clone(&listed_refunds);
+                    async move {
+                        let data = listed_refunds
+                            .lock()
+                            .expect("listed refunds lock to be available")
+                            .clone();
+                        Json(json!({"data": data, "has_more": false}))
+                    }
+                }
+            })
+            .post({
+                let refund_creations = Arc::clone(&refund_creations);
+                move || {
+                    let refund_creations = Arc::clone(&refund_creations);
+                    async move {
+                        refund_creations.fetch_add(1, Ordering::SeqCst);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "application-fee refund must not be created",
+                        )
+                    }
+                }
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile while the stale claim's refund is not listed yet
+    let err = provider
+        .reconcile_application_fee_adjustment(&input)
+        .await
+        .expect_err("insufficient remaining amount to be rejected");
+
+    // Check the attempt fails without creating another refund
+    assert!(err.to_string().contains("may already exist"));
+    assert_eq!(fee_retrievals.load(Ordering::SeqCst), 1);
+    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
+
+    // Surface the keyed refund the stale claim created and reconcile again
+    let mut keyed = sample_application_fee_refund_json("fr_stale_123", 125, "usd");
+    keyed["metadata"]["event_purchase_id"] = json!(purchase_id);
+    keyed["metadata"]["idempotency_key"] = json!(input.idempotency_key);
+    keyed["metadata"]["kind"] = json!(input.kind);
+    listed_refunds
+        .lock()
+        .expect("listed refunds lock to be available")
+        .push(keyed);
+    let result = provider
+        .reconcile_application_fee_adjustment(&input)
+        .await
+        .expect("keyed refund to be adopted");
+    server.abort();
+
+    // Check the existing refund is adopted without retrieving the fee or creating again
+    assert_eq!(result.provider_application_fee_refund_id, "fr_stale_123");
+    assert_eq!(fee_retrievals.load(Ordering::SeqCst), 1);
+    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_creates_refund_for_any_settlement_representation() {
+    // Exercise every way Stripe can represent the fee's settlement
+    let mut fees = vec![
+        json!({
+            "amount": 125,
+            "amount_refunded": 0,
+            "balance_transaction": {"amount": 105, "currency": "eur"},
+            "currency": "usd"
+        }),
+        json!({
+            "amount": 125,
+            "amount_refunded": 0,
+            "balance_transaction": "txn_test_123",
+            "currency": "usd"
+        }),
+        json!({"amount": 125, "amount_refunded": 0, "currency": "usd"}),
+    ];
+    for fee in fees.drain(..) {
+        // Setup an empty lookup, the fee, and the creation response
+        let router = Router::new()
+            .route(
+                "/v1/application_fees/fee_test_123",
+                get(move || {
+                    let fee = fee.clone();
+                    async move { Json(fee) }
+                }),
+            )
+            .route(
+                "/v1/application_fees/fee_test_123/refunds",
+                get(|| async { Json(json!({"data": [], "has_more": false})) }).post(
+                    |body: String| async move {
+                        let form: BTreeMap<String, String> = serde_urlencoded::from_str(&body)
+                            .expect("application-fee form to parse");
+                        assert_eq!(form.get("amount"), Some(&"125".to_string()));
+                        Json(sample_application_fee_refund_json(
+                            "fr_test_123",
+                            125,
+                            "usd",
+                        ))
+                    },
+                ),
+            );
+        let (api_base_url, server) = spawn_stripe_api(router).await;
+        let mut provider = sample_stripe_provider();
+        provider.api_base_url = api_base_url;
+
+        // Reconcile the adjustment against the fee's own denomination
+        let result = provider
+            .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+                Uuid::new_v4(),
+            ))
+            .await
+            .expect("fee adjustment to be reconciled regardless of settlement");
+        server.abort();
+
+        // Check the refund is created in the purchase currency
+        assert_eq!(result.provider_application_fee_refund_id, "fr_test_123");
+    }
+}
+
+#[tokio::test]
 async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_platform() {
-    // Setup an empty lookup, the settlement-currency guard, and the creation response
+    // Setup an empty lookup, the fee retrieval, and the creation response
+    let purchase_id = Uuid::new_v4();
     let router = Router::new()
         .route(
             "/v1/application_fees/fee_test_123",
             get(|headers: HeaderMap, uri: Uri| async move {
                 assert!(!headers.contains_key("stripe-account"));
                 assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
-                assert_eq!(uri.query(), Some("expand%5B%5D=balance_transaction"));
-                Json(json!({"balance_transaction": {"amount": 125, "currency": "usd"}}))
+                assert!(uri.query().is_none());
+                Json(json!({"amount": 125, "amount_refunded": 0, "currency": "usd"}))
             }),
         )
         .route(
@@ -1370,9 +1613,9 @@ async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_pl
                 assert!(!headers.contains_key("stripe-account"));
                 assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
                 assert_eq!(uri.query(), Some("limit=100"));
-                Json(json!({"data": []}))
+                Json(json!({"data": [], "has_more": false}))
             })
-            .post(|headers: HeaderMap, body: String| async move {
+            .post(move |headers: HeaderMap, body: String| async move {
                 assert!(!headers.contains_key("stripe-account"));
                 assert_eq!(headers["idempotency-key"], "fee-adjustment-test");
                 assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
@@ -1382,6 +1625,10 @@ async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_pl
                 assert_eq!(
                     form.get("metadata[connected_seller_id]"),
                     Some(&"acct_test_123".to_string())
+                );
+                assert_eq!(
+                    form.get("metadata[event_purchase_id]"),
+                    Some(&purchase_id.to_string())
                 );
                 assert_eq!(
                     form.get("metadata[idempotency_key]"),
@@ -1400,7 +1647,11 @@ async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_pl
                     Some(&"usd".to_string())
                 );
 
-                Json(json!({"id": "fr_test_123"}))
+                Json(sample_application_fee_refund_json(
+                    "fr_test_123",
+                    125,
+                    "usd",
+                ))
             }),
         );
     let (api_base_url, server) = spawn_stripe_api(router).await;
@@ -1409,15 +1660,7 @@ async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_pl
 
     // Reconcile the durable adjustment through lookup-before-create
     let result = provider
-        .reconcile_application_fee_adjustment(&ApplicationFeeAdjustmentInput {
-            amount_minor: 125,
-            connected_seller_id: "acct_test_123".to_string(),
-            currency_code: "USD".to_string(),
-            event_purchase_id: Uuid::new_v4(),
-            idempotency_key: "fee-adjustment-test".to_string(),
-            kind: "tax-reconciliation".to_string(),
-            provider_application_fee_id: "fee_test_123".to_string(),
-        })
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(purchase_id))
         .await
         .expect("application-fee adjustment to be reconciled");
     server.abort();
@@ -1427,94 +1670,331 @@ async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_pl
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_rejects_cross_currency_fee() {
-    // Setup an empty lookup and a fee Stripe settled in another currency
+async fn reconcile_application_fee_adjustment_refunds_exact_remaining_amount() {
+    // Setup an empty lookup and a fee whose unrefunded amount equals the adjustment
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get(|| async {
+                Json(json!({"amount": 200, "amount_refunded": 75, "currency": "usd"}))
+            }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(|| async { Json(json!({"data": [], "has_more": false})) }).post(
+                |body: String| async move {
+                    let form: BTreeMap<String, String> =
+                        serde_urlencoded::from_str(&body).expect("application-fee form to parse");
+                    assert_eq!(form.get("amount"), Some(&"125".to_string()));
+                    Json(sample_application_fee_refund_json(
+                        "fr_test_123",
+                        125,
+                        "usd",
+                    ))
+                },
+            ),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile an adjustment that consumes the whole remaining fee
+    let result = provider
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+            Uuid::new_v4(),
+        ))
+        .await
+        .expect("exact remaining amount to be refunded");
+    server.abort();
+
+    // Check the refund is created without clamping
+    assert_eq!(result.provider_application_fee_refund_id, "fr_test_123");
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_rejects_amount_above_remaining_fee() {
+    // Setup an empty lookup and a fee already partially refunded
+    let refund_creations = Arc::new(AtomicUsize::new(0));
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get(|| async {
+                Json(json!({"amount": 125, "amount_refunded": 25, "currency": "usd"}))
+            }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(|| async { Json(json!({"data": [], "has_more": false})) }).post({
+                let refund_creations = Arc::clone(&refund_creations);
+                move || {
+                    let refund_creations = Arc::clone(&refund_creations);
+                    async move {
+                        refund_creations.fetch_add(1, Ordering::SeqCst);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "oversized application-fee refund must not be created",
+                        )
+                    }
+                }
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile an adjustment larger than the unrefunded fee
+    let err = provider
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+            Uuid::new_v4(),
+        ))
+        .await
+        .expect_err("insufficient remaining amount to be rejected");
+    server.abort();
+
+    // Check the failure steers operators to retry before recording an external return
+    assert!(err.to_string().contains("fee_test_123"));
+    assert!(err.to_string().contains("100 usd"));
+    assert!(err.to_string().contains("125 usd"));
+    assert!(err.to_string().contains("may already exist"));
+    assert!(err.to_string().contains("retry"));
+    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_rejects_created_refund_with_unexpected_amount() {
+    // Setup an empty lookup, a matching fee, and a creation response in another denomination
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get(|| async { Json(json!({"amount": 125, "amount_refunded": 0, "currency": "usd"})) }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(|| async { Json(json!({"data": [], "has_more": false})) }).post(|| async {
+                Json(sample_application_fee_refund_json(
+                    "fr_test_123",
+                    105,
+                    "eur",
+                ))
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile an adjustment whose created refund diverges from the request
+    let err = provider
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+            Uuid::new_v4(),
+        ))
+        .await
+        .expect_err("unexpected created refund to be rejected");
+    server.abort();
+
+    // Check the failure names the created refund for operator inspection
+    assert!(err.to_string().contains("fr_test_123"));
+    assert!(err.to_string().contains("105 eur"));
+    assert!(err.to_string().contains("inspect"));
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_rejects_fee_currency_mismatch() {
+    // Setup an empty lookup and a fee denominated in another currency than the purchase
+    let refund_creations = Arc::new(AtomicUsize::new(0));
     let router = Router::new()
         .route(
             "/v1/application_fees/fee_test_123",
             get(|| async {
                 Json(json!({
-                    "amount": 125,
-                    "currency": "usd",
-                    "balance_transaction": {"amount": 105, "currency": "eur"}
+                    "amount": 105,
+                    "amount_refunded": 0,
+                    "balance_transaction": {"amount": 125, "currency": "usd"},
+                    "currency": "eur"
                 }))
             }),
         )
         .route(
             "/v1/application_fees/fee_test_123/refunds",
-            get(|| async { Json(json!({"data": []})) }).post(|| async {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "cross-currency application-fee refund must not be created",
-                )
+            get(|| async { Json(json!({"data": [], "has_more": false})) }).post({
+                let refund_creations = Arc::clone(&refund_creations);
+                move || {
+                    let refund_creations = Arc::clone(&refund_creations);
+                    async move {
+                        refund_creations.fetch_add(1, Ordering::SeqCst);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "cross-currency application-fee refund must not be created",
+                        )
+                    }
+                }
             }),
         );
     let (api_base_url, server) = spawn_stripe_api(router).await;
     let mut provider = sample_stripe_provider();
     provider.api_base_url = api_base_url;
 
-    // Reconcile an adjustment whose amount Stripe cannot interpret
+    // Reconcile an adjustment OCG cannot map onto the fee currency
     let err = provider
-        .reconcile_application_fee_adjustment(&ApplicationFeeAdjustmentInput {
-            amount_minor: 125,
-            connected_seller_id: "acct_test_123".to_string(),
-            currency_code: "USD".to_string(),
-            event_purchase_id: Uuid::new_v4(),
-            idempotency_key: "fee-adjustment-test".to_string(),
-            kind: "tax-reconciliation".to_string(),
-            provider_application_fee_id: "fee_test_123".to_string(),
-        })
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+            Uuid::new_v4(),
+        ))
         .await
-        .expect_err("cross-currency fee adjustment to fail fast");
+        .expect_err("fee currency mismatch to fail fast");
     server.abort();
 
     // Check the failure directs operators toward manual financial recovery
     assert!(err.to_string().contains("fee_test_123"));
-    assert!(err.to_string().contains("105 eur"));
+    assert!(err.to_string().contains("eur"));
     assert!(err.to_string().contains("125 usd"));
     assert!(err.to_string().contains("financial recovery"));
+    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_rejects_missing_settlement_currency() {
-    // Setup an empty lookup and a fee with no settlement transaction
+async fn reconcile_application_fee_adjustment_rejects_fully_refunded_fee() {
+    // Setup an empty lookup and a fee with nothing left to refund
+    let refund_creations = Arc::new(AtomicUsize::new(0));
     let router = Router::new()
         .route(
             "/v1/application_fees/fee_test_123",
-            get(|| async { Json(json!({"balance_transaction": null})) }),
+            get(|| async {
+                Json(json!({"amount": 125, "amount_refunded": 125, "currency": "usd"}))
+            }),
         )
         .route(
             "/v1/application_fees/fee_test_123/refunds",
-            get(|| async { Json(json!({"data": []})) }).post(|| async {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "unverified application-fee refund must not be created",
-                )
+            get(|| async { Json(json!({"data": [], "has_more": false})) }).post({
+                let refund_creations = Arc::clone(&refund_creations);
+                move || {
+                    let refund_creations = Arc::clone(&refund_creations);
+                    async move {
+                        refund_creations.fetch_add(1, Ordering::SeqCst);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "exhausted application-fee refund must not be created",
+                        )
+                    }
+                }
             }),
         );
     let (api_base_url, server) = spawn_stripe_api(router).await;
     let mut provider = sample_stripe_provider();
     provider.api_base_url = api_base_url;
 
-    // Reconcile an adjustment whose settlement currency cannot be verified
+    // Reconcile an adjustment against an exhausted fee
     let err = provider
-        .reconcile_application_fee_adjustment(&ApplicationFeeAdjustmentInput {
-            amount_minor: 125,
-            connected_seller_id: "acct_test_123".to_string(),
-            currency_code: "USD".to_string(),
-            event_purchase_id: Uuid::new_v4(),
-            idempotency_key: "fee-adjustment-test".to_string(),
-            kind: "tax-reconciliation".to_string(),
-            provider_application_fee_id: "fee_test_123".to_string(),
-        })
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+            Uuid::new_v4(),
+        ))
         .await
-        .expect_err("missing settlement currency to fail fast");
+        .expect_err("fully refunded fee to be rejected");
     server.abort();
 
-    // Check the failure directs operators toward manual financial recovery
+    // Check the failure reports no remaining amount and creates nothing
+    assert!(err.to_string().contains("0 usd"));
+    assert!(err.to_string().contains("may already exist"));
+    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_rejects_invalid_refunded_balance() {
+    // Setup an empty lookup and a fee reporting more refunded than collected
+    let refund_creations = Arc::new(AtomicUsize::new(0));
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get(|| async {
+                Json(json!({"amount": 125, "amount_refunded": 150, "currency": "usd"}))
+            }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(|| async { Json(json!({"data": [], "has_more": false})) }).post({
+                let refund_creations = Arc::clone(&refund_creations);
+                move || {
+                    let refund_creations = Arc::clone(&refund_creations);
+                    async move {
+                        refund_creations.fetch_add(1, Ordering::SeqCst);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "application-fee refund must not be created for malformed fee",
+                        )
+                    }
+                }
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile an adjustment against a fee whose balance fields are inconsistent
+    let err = provider
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+            Uuid::new_v4(),
+        ))
+        .await
+        .expect_err("invalid refunded balance to be rejected");
+    server.abort();
+
+    // Check the failure reports the malformed balance and creates nothing
     assert!(err.to_string().contains("fee_test_123"));
-    assert!(err.to_string().contains("no settlement currency"));
-    assert!(err.to_string().contains("financial recovery"));
+    assert!(err.to_string().contains("150 of 125"));
+    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_rejects_truncated_refund_listing() {
+    // Setup a truncated listing ahead of the fee retrieval and creation endpoints
+    let fee_retrievals = Arc::new(AtomicUsize::new(0));
+    let refund_creations = Arc::new(AtomicUsize::new(0));
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get({
+                let fee_retrievals = Arc::clone(&fee_retrievals);
+                move || {
+                    let fee_retrievals = Arc::clone(&fee_retrievals);
+                    async move {
+                        fee_retrievals.fetch_add(1, Ordering::SeqCst);
+                        Json(json!({"amount": 125, "amount_refunded": 0, "currency": "usd"}))
+                    }
+                }
+            }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(|| async { Json(json!({"data": [], "has_more": true})) }).post({
+                let refund_creations = Arc::clone(&refund_creations);
+                move || {
+                    let refund_creations = Arc::clone(&refund_creations);
+                    async move {
+                        refund_creations.fetch_add(1, Ordering::SeqCst);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "application-fee refund must not be created for truncated listing",
+                        )
+                    }
+                }
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile an adjustment whose existing refunds cannot be fully listed
+    let err = provider
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+            Uuid::new_v4(),
+        ))
+        .await
+        .expect_err("truncated listing to fail closed");
+    server.abort();
+
+    // Check the failure stops before retrieving the fee or creating a refund
+    assert!(err.to_string().contains("fee_test_123"));
+    assert!(err.to_string().contains("more than 100 refunds"));
+    assert_eq!(fee_retrievals.load(Ordering::SeqCst), 0);
+    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
 }
 
 #[tokio::test]
@@ -1547,7 +2027,8 @@ async fn reconcile_application_fee_adjustment_reuses_matching_listed_refund() {
                             "idempotency_key": "fee-adjustment-test",
                             "kind": "tax-reconciliation"
                         }
-                    }]
+                    }],
+                    "has_more": false
                 }))
             })
             .post(|| async {
@@ -1563,15 +2044,7 @@ async fn reconcile_application_fee_adjustment_reuses_matching_listed_refund() {
 
     // Reconcile the durable adjustment against the existing provider object
     let result = provider
-        .reconcile_application_fee_adjustment(&ApplicationFeeAdjustmentInput {
-            amount_minor: 125,
-            connected_seller_id: "acct_test_123".to_string(),
-            currency_code: "USD".to_string(),
-            event_purchase_id: purchase_id,
-            idempotency_key: "fee-adjustment-test".to_string(),
-            kind: "tax-reconciliation".to_string(),
-            provider_application_fee_id: "fee_test_123".to_string(),
-        })
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(purchase_id))
         .await
         .expect("application-fee adjustment to be reused");
     server.abort();
@@ -3071,6 +3544,23 @@ fn sample_application_fee_refund(
             ("kind".to_string(), "tax-reconciliation".to_string()),
         ]),
     }
+}
+
+/// Creates the JSON Stripe returns for an application-fee refund created by OCG.
+fn sample_application_fee_refund_json(
+    id: &str,
+    amount_minor: i64,
+    currency: &str,
+) -> serde_json::Value {
+    json!({
+        "amount": amount_minor,
+        "currency": currency,
+        "id": id,
+        "metadata": {
+            "requested_amount_minor": amount_minor.to_string(),
+            "requested_currency": currency
+        }
+    })
 }
 
 /// Creates sample performance-location input.

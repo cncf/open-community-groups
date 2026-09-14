@@ -234,12 +234,24 @@ How the fee behaves:
 - When a purchase is refunded through OCG, the remaining application fee is
   returned to the fiscal sponsor and a credit note is linked to the existing
   customer refund without creating another money movement.
-- Stripe settles application fees in the platform account's default currency.
-  When that currency differs from the purchase currency, automatic fee returns
-  fail with a diagnostic instead of moving an unverifiable amount; operators
-  return the fee in the Stripe Dashboard and record the reference through
-  manual financial recovery in the group's `Refunds` tab. Fee refunds that
-  already exist on Stripe are reused based on their durable identity.
+- Application fees and their refunds are denominated in the purchase
+  currency; OCG requires the Stripe fee to be denominated in that currency
+  and verifies it, together with the fee's remaining unrefunded amount and the
+  completeness of its refund listing, before creating a refund. A divergence
+  fails with a diagnostic; operators inspect the fee and its existing refunds
+  in the Stripe Dashboard and, when a return already exists or was arranged
+  externally, record its reference through manual financial recovery in the
+  group's `Refunds` tab instead of issuing another refund. Fee refunds that
+  already exist on Stripe are reused based on their durable identity and
+  provider amounts.
+- Stripe settles collected fees according to the platform account's
+  settlement configuration and may convert them to the platform's default
+  currency; a converted fee is still refunded in the purchase currency and
+  Stripe records the refund's own balance impact, so exchange-rate differences
+  are borne by the platform. Holding a settlement balance in the purchase
+  currency can avoid conversion where the account is eligible; see Stripe's
+  [FX for direct charges](https://docs.stripe.com/connect/currencies/fx-quotes-api)
+  and [settlement currencies](https://docs.stripe.com/payments/currencies/settlement-payouts).
 - Manual refund recovery records an externally arranged refund and does not
   call Stripe, so it does not return the collected application fee. Operators
   who want to return the fee for such refunds must reverse it directly in the
@@ -504,7 +516,15 @@ needing attention. An organizer with events write access can start another
 bounded retry cycle or record the operation as completed directly in Stripe.
 External completion captures the Stripe object ID, an independent recovery
 reference, and the evidence reviewed, then appends an event audit entry. Exact
-completion replays are idempotent; conflicting evidence is rejected.
+completion replays are idempotent; conflicting evidence is rejected. When the
+last attempt's diagnostic says a refund for the adjustment may already exist
+(the fee's remaining unrefunded amount is too small because an interrupted
+earlier claim completed on Stripe), start another bounded retry cycle first: it
+reuses the existing idempotency key and adopts the refund Stripe already
+created without moving money again. Use external completion only when the
+Stripe Dashboard shows the return was made outside OCG. Adjustments exhausted
+solely because the fee was settled in another currency than the purchase can
+be requeued the same way after upgrading.
 
 An abandoned application-fee adjustment or credit-note claim below ten
 attempts becomes retryable immediately with its existing idempotency key. It is
