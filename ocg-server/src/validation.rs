@@ -11,6 +11,7 @@
 
 use std::collections::BTreeMap;
 
+use chrono::{Datelike, NaiveDate};
 use garde::rules::email::parse_email;
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
@@ -225,6 +226,19 @@ pub fn url_map_values(value: &Option<BTreeMap<String, String>>, _ctx: &()) -> ga
 pub fn valid_cfs_label_color(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
     if !CFS_LABEL_COLORS.contains(&value.as_ref()) {
         return Err(garde::Error::new("invalid cfs label color"));
+    }
+    Ok(())
+}
+
+/// Validates that an optional date has a year PostgreSQL accepts as `YYYY`.
+///
+/// `chrono` parses signed and five-digit years that `::date` rejects, so filters
+/// forwarded to the database are limited to years 1 through 9999.
+pub fn valid_date_opt(value: &Option<NaiveDate>, _ctx: &()) -> garde::Result {
+    if let Some(date) = value
+        && !(1..=9999).contains(&date.year())
+    {
+        return Err(garde::Error::new("year must be between 1 and 9999"));
     }
     Ok(())
 }
@@ -638,6 +652,25 @@ mod tests {
         assert!(trimmed_non_empty(&"hello", &()).is_ok());
         assert!(trimmed_non_empty(&"  hello  ", &()).is_ok());
         assert!(trimmed_non_empty(&"a", &()).is_ok());
+    }
+
+    #[test]
+    fn test_valid_date_opt_invalid() {
+        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(0, 1, 1), &()).is_err());
+        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(-5000, 1, 1), &()).is_err());
+        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(10000, 1, 1), &()).is_err());
+    }
+
+    #[test]
+    fn test_valid_date_opt_none() {
+        assert!(valid_date_opt(&None, &()).is_ok());
+    }
+
+    #[test]
+    fn test_valid_date_opt_valid() {
+        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(1, 1, 1), &()).is_ok());
+        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(2026, 9, 11), &()).is_ok());
+        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(9999, 12, 31), &()).is_ok());
     }
 
     #[test]
