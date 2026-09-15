@@ -5,6 +5,9 @@ import {
   handleCommitShaBeforeOnLoad,
   handleCommitShaBeforeSwap,
   handleCommitShaConfigRequest,
+  handleDashboardContextBeforeOnLoad,
+  handleDashboardContextBeforeSwap,
+  handleDashboardContextConfigRequest,
   handleDeclarativeHtmxResponse,
   handleHtmxExcludeConfigRequest,
   handleNotFoundBeforeSwap,
@@ -14,6 +17,13 @@ import {
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
+import {
+  resetDashboardContextReloadState,
+  SELECTED_COMMUNITY_ID_HEADER,
+  SELECTED_GROUP_ID_HEADER,
+  setDashboardContextReloadHandler,
+  STALE_DASHBOARD_CONTEXT_HEADER,
+} from "/static/js/common/dashboard-context.js";
 import {
   COMMIT_SHA_HEADER,
   consumePendingDeploymentRefreshAlert,
@@ -46,6 +56,7 @@ describe("htmx extensions", () => {
     Date.now = originalDateNow;
     document.head.innerHTML = "";
     document.body.innerHTML = "";
+    resetDashboardContextReloadState();
     resetDeploymentReloadState();
   });
 
@@ -229,6 +240,104 @@ describe("htmx extensions", () => {
       Existing: "value",
       [COMMIT_SHA_HEADER]: "abc123",
     });
+  });
+
+  it("adds the loaded dashboard context to htmx request headers", () => {
+    // Render the group dashboard layout marker.
+    document.body.innerHTML =
+      '<div id="dashboard-layout" data-ocg-selected-community-id="community-1" data-ocg-selected-group-id="group-1"></div>';
+    const event = {
+      detail: {
+        headers: {
+          Existing: "value",
+        },
+        target: document.getElementById("dashboard-layout"),
+      },
+    };
+
+    // Attach the loaded context to outgoing HTMX headers.
+    handleDashboardContextConfigRequest(event);
+
+    // Existing headers stay intact and both context headers are added.
+    expect(event.detail.headers).to.deep.equal({
+      Existing: "value",
+      [SELECTED_COMMUNITY_ID_HEADER]: "community-1",
+      [SELECTED_GROUP_ID_HEADER]: "group-1",
+    });
+  });
+
+  it("skips dashboard context headers for body-level swaps", () => {
+    // Render the group dashboard layout marker and target the body.
+    document.body.innerHTML =
+      '<div id="dashboard-layout" data-ocg-selected-community-id="community-1" data-ocg-selected-group-id="group-1"></div>';
+    const event = {
+      detail: {
+        headers: {},
+        target: document.body,
+      },
+    };
+
+    // Configure a request that swaps the whole body.
+    handleDashboardContextConfigRequest(event);
+
+    // Body swaps adopt the server selection and declare no context.
+    expect(event.detail.headers).to.deep.equal({});
+  });
+
+  it("cancels the swap and reloads when an htmx response reports a stale dashboard context", () => {
+    // Capture reload requests instead of navigating.
+    let reloads = 0;
+    setDashboardContextReloadHandler(() => {
+      reloads += 1;
+    });
+    const xhr = {
+      getResponseHeader: (name) => (name === STALE_DASHBOARD_CONTEXT_HEADER ? "true" : null),
+    };
+    const beforeOnLoadEvent = {
+      detail: { xhr },
+      defaultPrevented: false,
+      propagationStopped: false,
+      preventDefault() {
+        this.defaultPrevented = true;
+      },
+      stopImmediatePropagation() {
+        this.propagationStopped = true;
+      },
+    };
+    const beforeSwapEvent = {
+      detail: { shouldSwap: true, xhr },
+    };
+
+    // Handle the stale intercept through both HTMX lifecycle hooks.
+    handleDashboardContextBeforeOnLoad(beforeOnLoadEvent);
+    handleDashboardContextBeforeSwap(beforeSwapEvent);
+
+    // HTMX processing and later listeners stop, the swap is cancelled, and a single reload is requested.
+    expect(beforeOnLoadEvent.defaultPrevented).to.equal(true);
+    expect(beforeOnLoadEvent.propagationStopped).to.equal(true);
+    expect(beforeSwapEvent.detail.shouldSwap).to.equal(false);
+    expect(reloads).to.equal(1);
+  });
+
+  it("keeps swapping regular htmx responses without a stale dashboard context", () => {
+    // Capture reload requests instead of navigating.
+    let reloads = 0;
+    setDashboardContextReloadHandler(() => {
+      reloads += 1;
+    });
+    const event = {
+      detail: {
+        shouldSwap: true,
+        xhr: { getResponseHeader: () => null },
+      },
+    };
+
+    // Handle a regular beforeSwap response.
+    handleDashboardContextBeforeSwap(event);
+
+    // The swap proceeds and no reload is requested.
+    expect(event.detail.shouldSwap).to.equal(true);
+    expect(reloads).to.equal(0);
   });
 
   it("excludes named parameters matching a custom hx-exclude selector", () => {
@@ -793,10 +902,13 @@ describe("htmx extensions", () => {
     // All shared response handlers are registered on the event root.
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
+      ["htmx:configRequest", handleDashboardContextConfigRequest],
       ["htmx:configRequest", handleHtmxExcludeConfigRequest],
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
+      ["htmx:beforeOnLoad", handleDashboardContextBeforeOnLoad],
       ["htmx:beforeOnLoad", handleDeclarativeHtmxResponse],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
+      ["htmx:beforeSwap", handleDashboardContextBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
       ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
       ["htmx:afterRequest", handleDeclarativeHtmxResponse],
@@ -817,10 +929,13 @@ describe("htmx extensions", () => {
     // The root receives one copy of each shared response handler.
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
+      ["htmx:configRequest", handleDashboardContextConfigRequest],
       ["htmx:configRequest", handleHtmxExcludeConfigRequest],
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
+      ["htmx:beforeOnLoad", handleDashboardContextBeforeOnLoad],
       ["htmx:beforeOnLoad", handleDeclarativeHtmxResponse],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
+      ["htmx:beforeSwap", handleDashboardContextBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
       ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
       ["htmx:afterRequest", handleDeclarativeHtmxResponse],

@@ -4,7 +4,7 @@
 
 use axum::{
     extract::{Path, Request, State},
-    http::{HeaderMap, StatusCode},
+    http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header::CACHE_CONTROL},
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
 };
@@ -26,11 +26,24 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedCommunityId, SelectedGroupId},
     },
+    router::CACHE_CONTROL_NO_STORE,
     types::permissions::{CommunityPermission, GroupPermission},
 };
 
 #[cfg(test)]
 mod tests;
+
+/// Request header carrying the community id the loaded dashboard page was
+/// rendered for.
+pub(crate) const SELECTED_COMMUNITY_ID_HEADER: &str = "x-ocg-selected-community-id";
+
+/// Request header carrying the group id the loaded dashboard page was
+/// rendered for.
+pub(crate) const SELECTED_GROUP_ID_HEADER: &str = "x-ocg-selected-group-id";
+
+/// Response header telling dynamic clients that the dashboard context they
+/// loaded no longer matches the selected one.
+pub(crate) const STALE_DASHBOARD_CONTEXT_HEADER: &str = "x-ocg-stale-dashboard-context";
 
 /// URL for user dashboard invitations tab.
 pub(crate) const USER_DASHBOARD_INVITATIONS_URL: &str = "/dashboard/user?tab=invitations";
@@ -53,7 +66,7 @@ pub(crate) async fn user_has_community_dashboard_permission(
     };
 
     // Resolve readable community context, repairing stale session state when possible
-    let community_id = match resolve_community_dashboard_context(
+    let context = match resolve_community_dashboard_context(
         &db,
         &session,
         &user_id,
@@ -61,14 +74,21 @@ pub(crate) async fn user_has_community_dashboard_permission(
     )
     .await
     {
-        Ok(Some(community_id)) => community_id,
+        Ok(Some(context)) => context,
         Ok(None) => return redirect_to_invitations_for_request(request.headers()),
         Err(error) => return error.into_response(),
     };
 
+    // Refuse requests issued from a page rendered for another community
+    if loaded_dashboard_context_is_stale(request.headers(), context.community_id, None) {
+        return stale_dashboard_context_response();
+    }
+
     // Store selected community context for downstream extractors
     let mut request = request;
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
+    request
+        .extensions_mut()
+        .insert(SelectedCommunityId(context.community_id));
 
     next.run(request).await.into_response()
 }
@@ -163,16 +183,29 @@ pub(crate) async fn user_has_selected_community_permission(
     };
 
     // Resolve readable community context, repairing stale session state when possible
-    let community_id =
+    let context =
         match resolve_community_dashboard_context(&db, &session, &user_id, permission).await {
-            Ok(Some(community_id)) => community_id,
+            Ok(Some(context)) => context,
             Ok(None) => return redirect_to_invitations_for_request(request.headers()),
             Err(error) => return error.into_response(),
         };
 
+    // Refuse requests issued from a page rendered for another community before
+    // judging permissions the client never saw
+    if loaded_dashboard_context_is_stale(request.headers(), context.community_id, None) {
+        return stale_dashboard_context_response();
+    }
+
+    // Deny the request when the readable context lacks the required permission
+    if !context.has_requested_permission {
+        return HandlerError::Forbidden.into_response();
+    }
+
     // Store selected community context for downstream extractors
     let mut request = request;
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
+    request
+        .extensions_mut()
+        .insert(SelectedCommunityId(context.community_id));
 
     next.run(request).await.into_response()
 }
@@ -192,17 +225,33 @@ pub(crate) async fn user_has_selected_group_permission(
     };
 
     // Resolve readable group context, repairing stale session state when possible
-    let (community_id, group_id) =
-        match resolve_group_dashboard_context(&db, &session, &user_id, permission).await {
-            Ok(Some(ids)) => ids,
-            Ok(None) => return redirect_to_invitations_for_request(request.headers()),
-            Err(error) => return error.into_response(),
-        };
+    let context = match resolve_group_dashboard_context(&db, &session, &user_id, permission).await {
+        Ok(Some(context)) => context,
+        Ok(None) => return redirect_to_invitations_for_request(request.headers()),
+        Err(error) => return error.into_response(),
+    };
+
+    // Refuse requests issued from a page rendered for another community or
+    // group before judging permissions the client never saw
+    if loaded_dashboard_context_is_stale(
+        request.headers(),
+        context.community_id,
+        Some(context.group_id),
+    ) {
+        return stale_dashboard_context_response();
+    }
+
+    // Deny the request when the readable context lacks the required permission
+    if !context.has_requested_permission {
+        return HandlerError::Forbidden.into_response();
+    }
 
     // Store selected community and group context for downstream extractors
     let mut request = request;
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
-    request.extensions_mut().insert(SelectedGroupId(group_id));
+    request
+        .extensions_mut()
+        .insert(SelectedCommunityId(context.community_id));
+    request.extensions_mut().insert(SelectedGroupId(context.group_id));
 
     next.run(request).await.into_response()
 }
@@ -231,6 +280,27 @@ fn is_ocg_fetch_request(headers: &HeaderMap) -> bool {
     headers
         .get("X-OCG-Fetch")
         .is_some_and(|value| value.as_bytes().eq_ignore_ascii_case(b"true"))
+}
+
+/// Returns whether the dashboard context declared by the client differs from
+/// the resolved one.
+///
+/// Requests without context headers (full page loads, non-dashboard clients)
+/// are never stale. A header that is present but unparsable counts as stale so
+/// the client reloads instead of acting on an unknown context.
+fn loaded_dashboard_context_is_stale(
+    headers: &HeaderMap,
+    community_id: Uuid,
+    group_id: Option<Uuid>,
+) -> bool {
+    let header_is_stale = |name: &str, expected: Uuid| {
+        headers.get(name).is_some_and(|value| {
+            value.to_str().ok().and_then(|v| v.parse::<Uuid>().ok()) != Some(expected)
+        })
+    };
+
+    header_is_stale(SELECTED_COMMUNITY_ID_HEADER, community_id)
+        || group_id.is_some_and(|group_id| header_is_stale(SELECTED_GROUP_ID_HEADER, group_id))
 }
 
 /// Builds the invitations redirect response expected by the request type.
@@ -271,4 +341,24 @@ fn redirect_to_log_in_for_request(headers: &HeaderMap) -> Response {
 
     // Normal page requests can use a standard redirect response
     Redirect::to(LOG_IN_URL).into_response()
+}
+
+/// Builds the response that makes a dynamic client reload a page rendered for
+/// a dashboard context that is no longer the selected one.
+fn stale_dashboard_context_response() -> Response {
+    // The handler never ran, so the response must not be cached or treated as a result
+    (
+        StatusCode::NO_CONTENT,
+        [
+            (
+                CACHE_CONTROL,
+                HeaderValue::from_static(CACHE_CONTROL_NO_STORE),
+            ),
+            (
+                HeaderName::from_static(STALE_DASHBOARD_CONTEXT_HEADER),
+                HeaderValue::from_static("true"),
+            ),
+        ],
+    )
+        .into_response()
 }

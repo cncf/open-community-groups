@@ -1,7 +1,7 @@
 import { expect } from "@open-wc/testing";
 
-const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/dashboard_base.html");
+const loadTemplate = async (path = "dashboard/dashboard_base.html") => {
+  const response = await fetch(`/ocg-server/templates/${path}`);
 
   expect(response.ok).to.equal(true);
 
@@ -61,10 +61,26 @@ describe("dashboard base template", () => {
 
     // Verify the shell stays mounted and only the unsupported main is hidden.
     expect(template).to.include(
-      '<div id="dashboard-layout" class="flex max-md:grow max-md:px-4 max-md:pb-4">',
+      '<div id="dashboard-layout" class="flex max-md:grow max-md:px-4 max-md:pb-4" {% block dashboard_context_attributes -%} {% endblock dashboard_context_attributes -%}>',
     );
     expect(template).to.include(
       "{% block dashboard_main_classes -%}hidden md:block{% endblock dashboard_main_classes -%}",
+    );
+  });
+
+  it("lets dashboards declare their loaded context on the layout", async () => {
+    // Load the dashboard pages that override the shared layout attributes.
+    const [communityTemplate, groupTemplate] = await Promise.all([
+      loadTemplate("dashboard/community/home.html"),
+      loadTemplate("dashboard/group/home.html"),
+    ]);
+
+    // Verify each dashboard exposes the ids its requests are scoped to.
+    expect(normalizeWhitespace(communityTemplate)).to.include(
+      '{% block dashboard_context_attributes -%} data-ocg-selected-community-id="{{ selected_community_id }}" {% endblock dashboard_context_attributes -%}',
+    );
+    expect(normalizeWhitespace(groupTemplate)).to.include(
+      '{% block dashboard_context_attributes -%} data-ocg-selected-community-id="{{ selected_community_id }}" data-ocg-selected-group-id="{{ selected_group_id }}" {% endblock dashboard_context_attributes -%}',
     );
   });
 });

@@ -78,7 +78,13 @@ async fn test_resolve_community_dashboard_context_skips_unreadable_candidate() {
     let persisted_community_id: Option<Uuid> =
         session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let persisted_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
-    assert_eq!(resolved, Some(accessible_community_id));
+    assert_eq!(
+        resolved,
+        Some(ResolvedCommunityContext {
+            community_id: accessible_community_id,
+            has_requested_permission: true,
+        })
+    );
     assert_eq!(persisted_community_id, Some(accessible_community_id));
     assert_eq!(persisted_group_id, None);
 }
@@ -140,7 +146,14 @@ async fn test_resolve_group_dashboard_context_prefers_selected_community() {
     let persisted_community_id: Option<Uuid> =
         session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let persisted_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
-    assert_eq!(resolved, Some((selected_community_id, selected_group_id)));
+    assert_eq!(
+        resolved,
+        Some(ResolvedGroupContext {
+            community_id: selected_community_id,
+            group_id: selected_group_id,
+            has_requested_permission: true,
+        })
+    );
     assert_eq!(persisted_community_id, Some(selected_community_id));
     assert_eq!(persisted_group_id, Some(selected_group_id));
 }
@@ -211,7 +224,14 @@ async fn test_resolve_group_dashboard_context_repairs_across_communities() {
     let persisted_community_id: Option<Uuid> =
         session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let persisted_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
-    assert_eq!(resolved, Some((fallback_community_id, fallback_group_id)));
+    assert_eq!(
+        resolved,
+        Some(ResolvedGroupContext {
+            community_id: fallback_community_id,
+            group_id: fallback_group_id,
+            has_requested_permission: true,
+        })
+    );
     assert_eq!(persisted_community_id, Some(fallback_community_id));
     assert_eq!(persisted_group_id, Some(fallback_group_id));
 }
@@ -278,7 +298,14 @@ async fn test_resolve_group_dashboard_context_skips_unreadable_candidate() {
     let persisted_community_id: Option<Uuid> =
         session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let persisted_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
-    assert_eq!(resolved, Some((community_id, accessible_group_id)));
+    assert_eq!(
+        resolved,
+        Some(ResolvedGroupContext {
+            community_id,
+            group_id: accessible_group_id,
+            has_requested_permission: true,
+        })
+    );
     assert_eq!(persisted_community_id, Some(community_id));
     assert_eq!(persisted_group_id, Some(accessible_group_id));
 }

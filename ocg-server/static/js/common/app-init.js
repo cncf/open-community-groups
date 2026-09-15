@@ -1,8 +1,14 @@
 import { showInfoAlert } from "/static/js/common/alerts.js";
 import { localizeCurrencyElements } from "/static/js/common/currency.js";
 import {
+  consumePendingDashboardContextRefreshAlert,
+  DASHBOARD_CONTEXT_REFRESH_MESSAGE,
+  initializeDashboardContextState,
+} from "/static/js/common/dashboard-context.js";
+import {
   consumePendingDeploymentRefreshAlert,
   DEPLOYMENT_REFRESH_MESSAGE,
+  initializeDeploymentReloadState,
 } from "/static/js/common/deployment-version.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import {
@@ -21,8 +27,15 @@ registerHtmxResponseHandlers(document);
 initializeOnReadyAndHtmxLoad(localizeCurrencyElements);
 // Clear transient dashboard state across HTMX and browser navigation.
 initializeNavigationState();
+// Release pending reload guards when a page comes back from the back/forward cache.
+initializeDashboardContextState();
+initializeDeploymentReloadState();
 
 // Show the one-shot notice queued before a deployment-triggered reload.
 if (consumePendingDeploymentRefreshAlert()) {
   showInfoAlert(DEPLOYMENT_REFRESH_MESSAGE);
+}
+// Show the one-shot notice queued before a dashboard context reload.
+if (consumePendingDashboardContextRefreshAlert()) {
+  showInfoAlert(DASHBOARD_CONTEXT_REFRESH_MESSAGE);
 }
