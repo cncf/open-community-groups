@@ -301,7 +301,7 @@ where
     T: PgExecutor + Send + Sync,
 {
     /// [`DBPayments::approve_external_event_refund_request`].
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self, review_note, notification_template_data), err)]
     async fn approve_external_event_refund_request(
         &self,
         actor_user_id: Uuid,
@@ -479,7 +479,10 @@ where
     }
 
     /// [`DBPayments::complete_external_event_purchase`].
-    #[instrument(skip(self), err)]
+    #[instrument(
+        skip(self, details, notification_attachments, notification_template_data),
+        err
+    )]
     async fn complete_external_event_purchase(
         &self,
         actor_user_id: Uuid,
