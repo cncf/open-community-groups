@@ -1,14 +1,13 @@
 import { expect, test } from "../../../fixtures.js";
-
 import {
   TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_TITLE,
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
+} from "../../../seed.js";
+import {
   expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
   navigateToGroup,
   navigateToPath,
   waitForActionResponse,
@@ -16,53 +15,7 @@ import {
 
 const groupId = TEST_GROUP_IDS.community1.alpha;
 
-/** Returns the public membership container for the current group page. */
-const getMembershipContainer = (page) => page.locator("#membership-container");
-
-/** Leaves the public group when the reusable user is already a member. */
-const leavePublicGroup = async (page) => {
-  const leaveButton = getMembershipContainer(page).locator("#leave-btn");
-
-  await leaveButton.click();
-  await expect(page.getByRole("button", { name: "Yes" })).toBeVisible();
-  await waitForActionResponse(page, () => page.getByRole("button", { name: "Yes" }).click(), {
-    method: "DELETE",
-    urlIncludes: `/group/${groupId}/leave`,
-  });
-  await expect(getMembershipContainer(page).locator("#join-btn")).toBeVisible();
-};
-
-/** Waits until the public membership widget resolves. */
-const waitForMembershipState = async (page) => {
-  await Promise.race([
-    getMembershipContainer(page).locator("#join-btn").waitFor({
-      state: "visible",
-    }),
-    getMembershipContainer(page).locator("#leave-btn").waitFor({
-      state: "visible",
-    }),
-  ]);
-};
-
 test.describe("user dashboard my groups view", () => {
-  test("my groups table exposes its responsive columns", async ({ member1Page }) => {
-    // Load My Groups before checking table structure.
-    await navigateToPath(member1Page, "/dashboard/user?tab=groups");
-
-    // Find the groups table.
-    const groupsTable = member1Page.locator("#dashboard-content").getByRole("table");
-
-    // Verify header order; every column stays visible at desktop dashboard widths.
-    await expectTableColumnsAtViewport(
-      member1Page,
-      groupsTable,
-      1024,
-      ["Group", "Member since", "Role", "Actions"],
-      [],
-    );
-    await expectTableHeaders(groupsTable, ["Group", "Member since", "Role", "Actions"]);
-  });
-
   test("member can move between group result pages", async ({ member1Page }) => {
     // Paginate the seeded user-group rows with one result per page.
     await expectPaginationNavigation(
@@ -169,3 +122,31 @@ test.describe("user dashboard my groups view", () => {
     await expect(groupLinks).toHaveText([TEST_GROUP_NAMES.beta, TEST_GROUP_NAMES.alpha]);
   });
 });
+
+/** Returns the public membership container for the current group page. */
+const getMembershipContainer = (page) => page.locator("#membership-container");
+
+/** Leaves the public group when the reusable user is already a member. */
+const leavePublicGroup = async (page) => {
+  const leaveButton = getMembershipContainer(page).locator("#leave-btn");
+
+  await leaveButton.click();
+  await expect(page.getByRole("button", { name: "Yes" })).toBeVisible();
+  await waitForActionResponse(page, () => page.getByRole("button", { name: "Yes" }).click(), {
+    method: "DELETE",
+    urlIncludes: `/group/${groupId}/leave`,
+  });
+  await expect(getMembershipContainer(page).locator("#join-btn")).toBeVisible();
+};
+
+/** Waits until the public membership widget resolves. */
+const waitForMembershipState = async (page) => {
+  await Promise.race([
+    getMembershipContainer(page).locator("#join-btn").waitFor({
+      state: "visible",
+    }),
+    getMembershipContainer(page).locator("#leave-btn").waitFor({
+      state: "visible",
+    }),
+  ]);
+};

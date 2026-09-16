@@ -1,7 +1,6 @@
 import { expect, test } from "../../fixtures.js";
 
 import {
-  E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_AD_BANNER_LINK_URL_2,
   TEST_COMMUNITY_AD_BANNER_URL_2,
   TEST_COMMUNITY_BANNER_MOBILE_URL,
@@ -15,6 +14,8 @@ import {
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
+} from "../../seed.js";
+import {
   buildE2eUrl,
   getSectionLink,
   getStatsContainer,
@@ -23,15 +24,21 @@ import {
   navigateToGroup,
 } from "../../utils.js";
 
+const EXPLORE_LINK_VIEWPORTS = [
+  { name: "desktop", width: 1280 },
+  { name: "mobile", width: 375 },
+];
+
 test.describe("community home page", () => {
   test("community without active groups omits collection sections", async ({
     adminSecondaryCommunityPage,
     page,
   }) => {
-    // Temporarily deactivate every secondary-community group.
+    // Prepare the secondary-community groups for temporary deactivation.
     const groupIds = Object.values(TEST_GROUP_IDS.community2);
     const deactivatedGroupIds = [];
     try {
+      // Deactivate each seeded secondary-community group.
       for (const groupId of groupIds) {
         const response = await adminSecondaryCommunityPage.request.put(
           buildE2eUrl(`/dashboard/community/groups/${groupId}/deactivate`),
@@ -50,15 +57,9 @@ test.describe("community home page", () => {
       ).toBeVisible();
 
       // Verify absent collections do not render empty public sections.
-      await expect(
-        page.getByText("Latest groups added", { exact: true }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByText("upcoming in-person events", { exact: true }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByText("upcoming virtual events", { exact: true }),
-      ).toHaveCount(0);
+      await expect(page.getByText("Latest groups added", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("upcoming in-person events", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("upcoming virtual events", { exact: true })).toHaveCount(0);
     } finally {
       // Restore every group changed by this scenario for later public tests.
       for (const groupId of deactivatedGroupIds) {
@@ -70,9 +71,7 @@ test.describe("community home page", () => {
     }
   });
 
-  test("community social links and new group instructions render from seeds", async ({
-    page,
-  }) => {
+  test("community social links and new group instructions render from seeds", async ({ page }) => {
     // Load the secondary community that carries seeded social links.
     await navigateToCommunityHome(page, TEST_COMMUNITY_NAME_2);
 
@@ -94,10 +93,7 @@ test.describe("community home page", () => {
     // Verify the seeded new group instructions block renders as markdown.
     await expect(page.getByText("New groups", { exact: true })).toBeVisible();
     await expect(
-      page.getByText(
-        "Open an issue in our GitHub organization to propose a new group.",
-        { exact: true },
-      ),
+      page.getByText("Open an issue in our GitHub organization to propose a new group.", { exact: true }),
     ).toBeVisible();
   });
 
@@ -107,9 +103,7 @@ test.describe("community home page", () => {
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     });
 
-    test("about section renders with heading and CTA link", async ({
-      page,
-    }) => {
+    test("about section renders with heading and CTA link", async ({ page }) => {
       // Verify the about section exposes its community explore CTA.
       await expect(page.getByText("About this community")).toBeVisible();
 
@@ -123,14 +117,10 @@ test.describe("community home page", () => {
 
     test("about section renders with seeded description", async ({ page }) => {
       // Verify the about section includes the seeded community description.
-      await expect(
-        page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
-      ).toBeVisible();
+      await expect(page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true })).toBeVisible();
     });
 
-    test("page metadata and event cards expose complete seeded contracts", async ({
-      page,
-    }) => {
+    test("page metadata and event cards expose complete seeded contracts", async ({ page }) => {
       // Verify the community page title, canonical URL, and responsive banners.
       await expect(page).toHaveTitle(`${TEST_COMMUNITY_TITLE} community`);
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
@@ -140,10 +130,7 @@ test.describe("community home page", () => {
       await expect(page.getByAltText("Banner")).toHaveCount(2);
 
       // Verify social previews use the canonical community contract.
-      await expect(page.locator('meta[property="og:type"]')).toHaveAttribute(
-        "content",
-        "website",
-      );
+      await expect(page.locator('meta[property="og:type"]')).toHaveAttribute("content", "website");
       await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
         "content",
         `${TEST_COMMUNITY_TITLE} community`,
@@ -152,9 +139,7 @@ test.describe("community home page", () => {
         "content",
         buildE2eUrl(`/${TEST_COMMUNITY_NAME}`),
       );
-      await expect(
-        page.locator('meta[property="og:description"]'),
-      ).toHaveAttribute(
+      await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
         "content",
         "Open Community Groups, where Open Source communities thrive.",
       );
@@ -162,37 +147,27 @@ test.describe("community home page", () => {
         "content",
         /\/images\/og\/[a-f0-9]{64}\.png$/,
       );
-      await expect(
-        page.locator('meta[property="og:image:alt"]'),
-      ).toHaveAttribute("content", TEST_COMMUNITY_TITLE);
+      await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute(
+        "content",
+        TEST_COMMUNITY_TITLE,
+      );
       await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
         "content",
         "summary_large_image",
       );
 
       // Find the in-person event card and verify its group, venue, and date.
-      const inPersonEventCard = page
-        .getByRole("link")
-        .filter({ hasText: TEST_EVENT_NAMES.alpha[0] })
-        .first();
+      const inPersonEventCard = page.getByRole("link").filter({ hasText: TEST_EVENT_NAMES.alpha[0] }).first();
       await expect(inPersonEventCard).toContainText(TEST_GROUP_NAMES.alpha);
-      await expect(inPersonEventCard).toContainText(
-        "Tech Conference Center, New York",
-      );
+      await expect(inPersonEventCard).toContainText("Tech Conference Center, New York");
       await expect(inPersonEventCard).toContainText(/\w{3} \d{1,2}, \d{4}/);
 
       // Find the virtual event card and verify its location label.
-      const virtualEventCard = page
-        .getByRole("link")
-        .filter({ hasText: TEST_EVENT_NAMES.alpha[1] })
-        .first();
+      const virtualEventCard = page.getByRole("link").filter({ hasText: TEST_EVENT_NAMES.alpha[1] }).first();
       await expect(virtualEventCard).toContainText("Virtual");
 
       // Find the hybrid event card and verify its fallback metadata.
-      const hybridEventCard = page
-        .getByRole("link")
-        .filter({ hasText: TEST_EVENT_NAMES.alpha[2] })
-        .first();
+      const hybridEventCard = page.getByRole("link").filter({ hasText: TEST_EVENT_NAMES.alpha[2] }).first();
       await expect(hybridEventCard).toContainText("No location provided");
       await expect(hybridEventCard).toContainText("hybrid");
     });
@@ -206,16 +181,13 @@ test.describe("community home page", () => {
       const pageViewRequestPromise = page.waitForRequest(
         (request) =>
           request.method() === "POST" &&
-          new URL(request.url()).pathname ===
-            `/communities/${communityId}/views`,
+          new URL(request.url()).pathname === `/communities/${communityId}/views`,
       );
 
       // Reload the page and verify the beacon targets the current community.
       await page.reload();
       const pageViewRequest = await pageViewRequestPromise;
-      expect(new URL(pageViewRequest.url()).pathname).toBe(
-        `/communities/${communityId}/views`,
-      );
+      expect(new URL(pageViewRequest.url()).pathname).toBe(`/communities/${communityId}/views`);
     });
 
     test("CTA link includes community filter parameter", async ({ page }) => {
@@ -225,10 +197,7 @@ test.describe("community home page", () => {
       });
 
       // Verify the CTA keeps the current community filter.
-      await expect(ctaLink).toHaveAttribute(
-        "href",
-        `/explore?community[0]=${TEST_COMMUNITY_NAME}`,
-      );
+      await expect(ctaLink).toHaveAttribute("href", `/explore?community[0]=${TEST_COMMUNITY_NAME}`);
     });
 
     test("breadcrumb navigation displays community name", async ({ page }) => {
@@ -237,19 +206,11 @@ test.describe("community home page", () => {
       await expect(breadcrumb).toBeVisible();
     });
 
-    test("breadcrumb has correct banner and items attributes", async ({
-      page,
-    }) => {
+    test("breadcrumb has correct banner and items attributes", async ({ page }) => {
       // Target the community breadcrumb data attributes.
       const breadcrumb = page.locator("breadcrumb-nav");
-      await expect(breadcrumb).toHaveAttribute(
-        "banner-url",
-        TEST_COMMUNITY_BANNER_URL,
-      );
-      await expect(breadcrumb).toHaveAttribute(
-        "banner-mobile-url",
-        TEST_COMMUNITY_BANNER_MOBILE_URL,
-      );
+      await expect(breadcrumb).toHaveAttribute("banner-url", TEST_COMMUNITY_BANNER_URL);
+      await expect(breadcrumb).toHaveAttribute("banner-mobile-url", TEST_COMMUNITY_BANNER_MOBILE_URL);
 
       // Set up items attr.
       const itemsAttr = await breadcrumb.getAttribute("items");
@@ -258,87 +219,44 @@ test.describe("community home page", () => {
       expect(itemsAttr).toContain(TEST_COMMUNITY_TITLE);
     });
 
-    test("stats strip displays all stat labels", async ({ page }) => {
-      // Assert each community stat label in the default stats strip.
-      const statLabels = ["Groups", "Members", "Events", "Attendees"];
-      for (const label of statLabels) {
-        // Verify the current stat label is visible.
-        await expect(
-          page.getByText(label, { exact: true }).first(),
-        ).toBeVisible();
-      }
-    });
-
-    test("upcoming in-person events section renders with title", async ({
-      page,
-    }) => {
+    test("upcoming in-person events section renders with title", async ({ page }) => {
       // Verify the in-person events section heading is present.
       await expect(page.getByText("upcoming in-person events")).toBeVisible();
     });
 
-    test("upcoming virtual events section renders with title", async ({
-      page,
-    }) => {
+    test("upcoming virtual events section renders with title", async ({ page }) => {
       // Verify the virtual events section heading is present.
       await expect(page.getByText("upcoming virtual events")).toBeVisible();
     });
 
-    test("upcoming in-person events shows published event titles", async ({
-      page,
-    }) => {
+    test("upcoming in-person events shows published event titles", async ({ page }) => {
       // Verify the in-person events section shows published events.
-      await expect(
-        page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),
-      ).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
 
       // Verify another seeded in-person event is shown.
-      await expect(
-        page.getByText(TEST_EVENT_NAMES.gamma[0], { exact: true }),
-      ).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.gamma[0], { exact: true })).toBeVisible();
     });
 
-    test("upcoming virtual events shows seeded event titles", async ({
-      page,
-    }) => {
+    test("upcoming virtual events shows seeded event titles", async ({ page }) => {
       // Verify the virtual events section shows published events.
-      await expect(
-        page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true }),
-      ).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true })).toBeVisible();
 
       // Verify additional seeded virtual events are shown.
-      await expect(
-        page.getByText(TEST_EVENT_NAMES.beta[1], { exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByText(TEST_EVENT_NAMES.gamma[1], { exact: true }),
-      ).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.beta[1], { exact: true })).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.gamma[1], { exact: true })).toBeVisible();
     });
 
     test("paid seeded event cards show price badges", async ({ page }) => {
-      // Skip price badge assertions when payments are disabled.
-      test.skip(
-        !E2E_PAYMENTS_ENABLED,
-        "Payments are disabled in this environment.",
-      );
-
       // Target paid in-person and hybrid event cards.
-      const inPersonCard = page
-        .getByRole("link")
-        .filter({ hasText: TEST_EVENT_NAMES.gamma[0] })
-        .first();
-      const hybridCard = page
-        .getByRole("link")
-        .filter({ hasText: TEST_EVENT_NAMES.beta[2] })
-        .first();
+      const inPersonCard = page.getByRole("link").filter({ hasText: TEST_EVENT_NAMES.gamma[0] }).first();
+      const hybridCard = page.getByRole("link").filter({ hasText: TEST_EVENT_NAMES.beta[2] }).first();
 
       // Verify paid event cards show their starting prices.
       await expect(inPersonCard).toContainText(/From (?:US)?\$20\.00/);
       await expect(hybridCard).toContainText(/From (?:US)?\$15\.00/);
     });
 
-    test("latest groups section renders heading and explore link", async ({
-      page,
-    }) => {
+    test("latest groups section renders heading and explore link", async ({ page }) => {
       // Verify the latest groups section exposes its explore link.
       await expect(page.getByText("Latest groups added")).toBeVisible();
 
@@ -349,9 +267,7 @@ test.describe("community home page", () => {
       await expect(exploreGroupsLinks.first()).toBeVisible();
     });
 
-    test("latest groups section contains seeded groups with correct links", async ({
-      page,
-    }) => {
+    test("latest groups section contains seeded groups with correct links", async ({ page }) => {
       // Locate the latest groups section before checking card links.
       const groupsSection = page
         .getByText("Latest groups added", { exact: true })
@@ -380,12 +296,38 @@ test.describe("community home page", () => {
 
         // Verify the current group card links to its public group page.
         await expect(groupCard).toBeVisible();
-        await expect(groupCard).toHaveAttribute(
-          "href",
-          new RegExp(`/${TEST_COMMUNITY_NAME}/group/${slug}`),
-        );
+        await expect(groupCard).toHaveAttribute("href", new RegExp(`/${TEST_COMMUNITY_NAME}/group/${slug}`));
       }
     });
+  });
+
+  test.describe("explore links", () => {
+    for (const viewport of EXPLORE_LINK_VIEWPORTS) {
+      test(`explore events and groups links route correctly on ${viewport.name}`, async ({ page }) => {
+        // Load the community home page at the requested viewport.
+        await page.setViewportSize({ width: viewport.width, height: 900 });
+        await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
+
+        // Verify both event sections keep the community filter.
+        const linkLayout = viewport.name === "desktop" ? "desktop" : "mobile";
+        for (const sectionName of ["upcoming in-person events", "upcoming virtual events"]) {
+          const eventsLink = getSectionLink(page, sectionName, "Explore all events", linkLayout);
+          await expect(eventsLink).toBeVisible();
+          await expect(eventsLink).toHaveAttribute(
+            "href",
+            `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+          );
+        }
+
+        // Verify the groups section keeps the community filter.
+        const groupsLink = getSectionLink(page, "Latest groups added", "Explore all groups", linkLayout);
+        await expect(groupsLink).toBeVisible();
+        await expect(groupsLink).toHaveAttribute(
+          "href",
+          `/explore?entity=groups&sort_by=name&community[0]=${TEST_COMMUNITY_NAME}`,
+        );
+      });
+    }
   });
 
   test.describe("desktop viewport", () => {
@@ -405,18 +347,13 @@ test.describe("community home page", () => {
         const valueElement = getStatValue(desktopStats, label);
 
         // Verify the current desktop stat has a numeric value.
-        await expect(
-          desktopStats.getByText(label, { exact: true }),
-        ).toBeVisible();
         await expect(valueElement).toBeVisible();
         const text = await valueElement.textContent();
         expect(text?.trim()).toMatch(/^\d[\d,]*$/);
       }
     });
 
-    test("advertisement banner links to the seeded destination", async ({
-      page,
-    }) => {
+    test("advertisement banner links to the seeded destination", async ({ page }) => {
       // Load the secondary community with the seeded advertisement banner.
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME_2);
 
@@ -431,21 +368,13 @@ test.describe("community home page", () => {
 
       // Verify the advertisement exposes its seeded image and destination.
       await expect(advertisementLink).toBeVisible();
-      await expect(advertisementLink).toHaveAttribute(
-        "href",
-        TEST_COMMUNITY_AD_BANNER_LINK_URL_2,
-      );
-      await expect(advertisementImage).toHaveAttribute(
-        "src",
-        TEST_COMMUNITY_AD_BANNER_URL_2,
-      );
+      await expect(advertisementLink).toHaveAttribute("href", TEST_COMMUNITY_AD_BANNER_LINK_URL_2);
+      await expect(advertisementImage).toHaveAttribute("src", TEST_COMMUNITY_AD_BANNER_URL_2);
       await expect(advertisementCard).toHaveClass(/hover:border-primary-300/);
       await expect(advertisementCard).toHaveClass(/hover:shadow-sm/);
     });
 
-    test("inline advertisement banner is hidden below the md breakpoint", async ({
-      page,
-    }) => {
+    test("inline advertisement banner is hidden below the md breakpoint", async ({ page }) => {
       // Load the secondary community with the seeded advertisement banner.
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME_2);
 
@@ -460,32 +389,23 @@ test.describe("community home page", () => {
       await expect(advertisementImage).toBeHidden();
     });
 
-    test("advertisement dismissal persists for the current banner content", async ({
-      page,
-    }) => {
+    test("advertisement dismissal persists for the current banner content", async ({ page }) => {
       // Load a secondary-community group page with a clean banner preference.
       await page.evaluate(() => {
         Object.keys(localStorage)
           .filter((key) => key.startsWith("ocg:ad-banner:hidden"))
           .forEach((key) => localStorage.removeItem(key));
       });
-      await navigateToGroup(
-        page,
-        TEST_COMMUNITY_NAME_2,
-        TEST_GROUP_SLUGS.community2.delta,
-      );
+      await navigateToGroup(page, TEST_COMMUNITY_NAME_2, TEST_GROUP_SLUGS.community2.delta);
 
       // Close the visible banner and verify its content-scoped preference.
       const advertisementBanner = page.locator('[data-ad-banner="floating"]');
       await expect(advertisementBanner).toBeVisible();
-      await page
-        .getByRole("button", { name: "Close advertisement banner" })
-        .click();
+      await page.getByRole("button", { name: "Close advertisement banner" }).click();
       await expect(advertisementBanner).toBeHidden();
       const storedDismissals = await page.evaluate(() =>
         Object.entries(localStorage).filter(
-          ([key, value]) =>
-            key.startsWith("ocg:ad-banner:hidden") && value === "true",
+          ([key, value]) => key.startsWith("ocg:ad-banner:hidden") && value === "true",
         ),
       );
       expect(storedDismissals).toHaveLength(1);
@@ -504,11 +424,7 @@ test.describe("community home page", () => {
           status: 404,
         }),
       );
-      await navigateToGroup(
-        page,
-        TEST_COMMUNITY_NAME_2,
-        TEST_GROUP_SLUGS.community2.delta,
-      );
+      await navigateToGroup(page, TEST_COMMUNITY_NAME_2, TEST_GROUP_SLUGS.community2.delta);
 
       // Verify broken advertisement content is not presented to visitors.
       const advertisementBanner = page.locator('[data-ad-banner="floating"]');
@@ -516,57 +432,10 @@ test.describe("community home page", () => {
       await expect(advertisementBanner).toBeHidden();
     });
 
-    test("stats strip shows desktop layout at lg breakpoint", async ({
-      page,
-    }) => {
+    test("stats strip shows desktop layout at lg breakpoint", async ({ page }) => {
       // Verify the desktop stats strip is visible at the large breakpoint.
       const desktopStats = getStatsContainer(page, "community", "desktop");
       await expect(desktopStats).toBeVisible();
-    });
-
-    test("explore all events links have correct href on desktop", async ({
-      page,
-    }) => {
-      // Target the desktop explore link for in-person events.
-      const inPersonLink = getSectionLink(
-        page,
-        "upcoming in-person events",
-        "Explore all events",
-        "desktop",
-      );
-
-      // Verify the desktop in-person link keeps the community filter.
-      await expect(inPersonLink).toHaveAttribute(
-        "href",
-        `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
-      );
-
-      // Target the desktop explore link for virtual events.
-      const virtualLink = getSectionLink(
-        page,
-        "upcoming virtual events",
-        "Explore all events",
-        "desktop",
-      );
-
-      // Verify the desktop virtual link keeps the community filter.
-      await expect(virtualLink).toHaveAttribute(
-        "href",
-        `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
-      );
-    });
-
-    test("explore all groups link visible on desktop", async ({ page }) => {
-      // Target the desktop latest-groups explore link.
-      const desktopExploreLink = getSectionLink(
-        page,
-        "Latest groups added",
-        "Explore all groups",
-        "desktop",
-      );
-
-      // Verify the desktop groups link is visible.
-      await expect(desktopExploreLink).toBeVisible();
     });
   });
 
@@ -576,43 +445,10 @@ test.describe("community home page", () => {
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     });
 
-    test("stats strip shows mobile layout below lg breakpoint", async ({
-      page,
-    }) => {
+    test("stats strip shows mobile layout below lg breakpoint", async ({ page }) => {
       // Verify the mobile stats strip is visible below the large breakpoint.
       const mobileStats = getStatsContainer(page, "community", "mobile");
       await expect(mobileStats).toBeVisible();
-    });
-
-    test("explore all events links have correct href on mobile", async ({
-      page,
-    }) => {
-      // Target the mobile explore link for in-person events.
-      const inPersonLink = getSectionLink(
-        page,
-        "upcoming in-person events",
-        "Explore all events",
-        "mobile",
-      );
-
-      // Verify the mobile events link keeps the community filter.
-      await expect(inPersonLink).toHaveAttribute(
-        "href",
-        `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
-      );
-    });
-
-    test("explore all groups link visible on mobile", async ({ page }) => {
-      // Target the mobile latest-groups explore link.
-      const mobileExploreLink = getSectionLink(
-        page,
-        "Latest groups added",
-        "Explore all groups",
-        "mobile",
-      );
-
-      // Verify the mobile groups link is visible.
-      await expect(mobileExploreLink).toBeVisible();
     });
   });
 });

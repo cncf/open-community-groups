@@ -261,6 +261,8 @@ export class UserSearchField extends LitWrapper {
 
   /**
    * Hides dropdown when clicking outside of the component.
+   * Focus stays on the element the user pointed at; refocusing the input here
+   * would scroll it into view mid-click and swallow the click elsewhere.
    * @param {Event} event - Pointer event
    * @private
    */
@@ -268,7 +270,7 @@ export class UserSearchField extends LitWrapper {
     if (this.disabled) return;
     if (this.contains(event.target)) return;
     if (this.persistQueryOnOutside) return;
-    this._clearSearch();
+    this._clearSearch({ refocus: false });
   }
 
   /**

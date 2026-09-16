@@ -34,6 +34,7 @@ export const TEST_UPLOAD_ASSET_PATHS = {
   sponsorLogo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/sponsor-logo.svg"),
 };
 
+/** Sets a markdown editor value and syncs its backing field. */
 export const fillMarkdownEditor = async (page, editorId, value) => {
   await page.locator(`markdown-editor#${editorId} .CodeMirror`).evaluate((element, nextValue) => {
     const codeMirror = element.CodeMirror;
@@ -44,6 +45,7 @@ export const fillMarkdownEditor = async (page, editorId, value) => {
   }, value);
 };
 
+/** Uploads an image field file and waits for the stored image URL. */
 export const uploadImageField = async (page, fieldName, filePath) => {
   const imageField = page.locator(`image-field[name="${fieldName}"]`);
   const cropper = imageField.locator("image-cropper");
@@ -79,6 +81,7 @@ export const uploadImageField = async (page, fieldName, filePath) => {
   await expect(imageField.locator(`input[name="${fieldName}"]`)).toHaveValue(/\/images\//);
 };
 
+/** Sets an image field value and dispatches its change events. */
 export const setImageFieldValue = async (page, fieldName, value) => {
   const imageField = page.locator(`image-field[name="${fieldName}"]`);
 
@@ -111,6 +114,7 @@ export const setImageFieldValue = async (page, fieldName, value) => {
   await expect(imageField.locator(`input[name="${fieldName}"]`)).toHaveValue(value);
 };
 
+/** Uploads gallery image files and waits for their hidden inputs. */
 export const uploadGalleryImages = async (page, fieldName, filePaths) => {
   const galleryField = page.locator(`gallery-field[field-name="${fieldName}"]`);
   const fileInput = galleryField.locator('input[type="file"]');
@@ -129,6 +133,7 @@ export const uploadGalleryImages = async (page, fieldName, filePaths) => {
   );
 };
 
+/** Fills a repeated input component with the supplied values. */
 export const fillMultipleInputs = async (component, values, label = "Tag") => {
   const addButton = component.getByRole("button", { name: `Add ${label}` });
 
@@ -142,6 +147,7 @@ export const fillMultipleInputs = async (component, values, label = "Tag") => {
   }
 };
 
+/** Fills a key-value input component with the supplied items. */
 export const fillKeyValueInputs = async (component, items) => {
   const addButton = component.getByRole("button", { name: "Add Link" });
 
@@ -156,6 +162,7 @@ export const fillKeyValueInputs = async (component, items) => {
   }
 };
 
+/** Fills the group location fields with deterministic values. */
 export const fillGroupLocation = async (page, values) => {
   await page.locator("#group-location-search-city").fill(values.city);
   await page.locator("#group-location-search-state").fill(values.state);
@@ -170,6 +177,7 @@ export const fillGroupLocation = async (page, values) => {
   }, values.countryCode);
 };
 
+/** Fills the event venue fields with deterministic values. */
 export const fillEventVenue = async (page, values) => {
   await page.locator("#location-search-venue_name").fill(values.name);
   await page.locator("#location-search-venue_address").fill(values.address);

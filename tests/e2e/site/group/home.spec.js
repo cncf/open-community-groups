@@ -1,17 +1,15 @@
 import { expect, test } from "../../fixtures.js";
 
+import { queryE2eDatabase } from "../../database.js";
 import {
   TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_TITLE,
   TEST_EVENT_NAMES,
-  TEST_EVENT_SLUGS,
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
-  buildE2eUrl,
-  getSectionLink,
-  navigateToGroup,
-} from "../../utils.js";
+} from "../../seed.js";
+import { buildE2eUrl, getSectionLink, navigateToGroup } from "../../utils.js";
 
 test.describe("group page", () => {
   test.beforeEach(async ({ page }) => {
@@ -27,10 +25,45 @@ test.describe("group page", () => {
     await expect(page.getByText(/\d+\s+members/, { exact: false })).toBeVisible();
 
     // Verify the next event link points to the first upcoming event.
+    const expectedNextEventSlug = queryE2eDatabase(`
+      with target_group as (
+        select group_id, community_id
+        from "group"
+        where group_id = '${TEST_GROUP_IDS.community1.alpha}'::uuid
+        and active = true
+        and deleted = false
+      ),
+      scoped_groups as (
+        select tg.group_id
+        from target_group tg
+
+        union all
+
+        select child.group_id
+        from "group" child
+        join target_group tg on child.parent_group_id = tg.group_id
+        where child.community_id = tg.community_id
+        and child.active = true
+        and child.deleted = false
+      )
+      select e.slug
+      from event e
+      join scoped_groups sg using (group_id)
+      where e.deleted = false
+      and e.published = true
+      and e.test_event = false
+      and e.event_kind_id = any(array['in-person', 'virtual', 'hybrid']::text[])
+      and e.starts_at is not null
+      and e.starts_at > now()
+      and e.canceled = false
+      order by e.starts_at asc, e.event_id asc
+      limit 1
+    `);
+    expect(expectedNextEventSlug).not.toBe("");
     await expect(page.getByText("Next event", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "See details" })).toHaveAttribute(
       "href",
-      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`,
+      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${expectedNextEventSlug}`,
     );
 
     // Verify the fallback location summary is shown.
@@ -50,26 +83,17 @@ test.describe("group page", () => {
     await expect(page.getByText("Past Event For Filtering", { exact: true })).toBeVisible();
   });
 
-  test("empty group page omits optional collection sections", async ({
-    adminCommunityPage,
-    page,
-  }) => {
+  test("empty group page omits optional collection sections", async ({ adminCommunityPage, page }) => {
     // Activate the dashboard-only empty group for the public-page assertion.
     const groupId = TEST_GROUP_IDS.community1.empty;
     const activatePath = `/dashboard/community/groups/${groupId}/activate`;
     const deactivatePath = `/dashboard/community/groups/${groupId}/deactivate`;
-    const activateResponse = await adminCommunityPage.request.put(
-      buildE2eUrl(activatePath),
-    );
+    const activateResponse = await adminCommunityPage.request.put(buildE2eUrl(activatePath));
     expect(activateResponse.ok()).toBeTruthy();
 
     try {
       // Load the temporary public group without events, members, or sponsors.
-      await navigateToGroup(
-        page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.empty,
-      );
+      await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.empty);
 
       // Verify the summary fallback and zero member copy remain explicit.
       await expect(
@@ -78,30 +102,21 @@ test.describe("group page", () => {
           name: TEST_GROUP_NAMES.empty,
         }),
       ).toBeVisible();
-      await expect(
-        page.getByText("No upcoming events scheduled", { exact: true }),
-      ).toBeVisible();
+      await expect(page.getByText("No upcoming events scheduled", { exact: true })).toBeVisible();
       await expect(page.getByText("0 members", { exact: true })).toBeVisible();
 
       // Verify absent collections do not render empty public sections.
-      await expect(
-        page.getByText("Upcoming Events", { exact: true }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByText("Past Events", { exact: true }),
-      ).toHaveCount(0);
+      await expect(page.getByText("Upcoming Events", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("Past Events", { exact: true })).toHaveCount(0);
       await expect(page.getByText("Sponsors", { exact: true })).toHaveCount(0);
     } finally {
-      const deactivateResponse = await adminCommunityPage.request.put(
-        buildE2eUrl(deactivatePath),
-      );
+      // Restore the empty group to dashboard-only visibility.
+      const deactivateResponse = await adminCommunityPage.request.put(buildE2eUrl(deactivatePath));
       expect(deactivateResponse.ok()).toBeTruthy();
     }
   });
 
-  test("social links swap between mobile and desktop variants at the md breakpoint", async ({
-    page,
-  }) => {
+  test("social links swap between mobile and desktop variants at the md breakpoint", async ({ page }) => {
     // Load the gamma group that carries seeded social links.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
 
@@ -111,10 +126,7 @@ test.describe("group page", () => {
 
     // Verify only the desktop variant shows from the md breakpoint up.
     await expect(desktopWebsiteLink).toBeVisible();
-    await expect(desktopWebsiteLink).toHaveAttribute(
-      "href",
-      "https://example.com/e2e-observability-guild",
-    );
+    await expect(desktopWebsiteLink).toHaveAttribute("href", "https://example.com/e2e-observability-guild");
     await expect(page.locator('div.hidden.md\\:flex a[title="Twitter"]')).toBeVisible();
     await expect(mobileWebsiteLink).toBeHidden();
 
@@ -161,10 +173,7 @@ test.describe("group page", () => {
       "href",
       buildE2eUrl(`/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}`),
     );
-    await expect(page.locator('meta[property="og:type"]')).toHaveAttribute(
-      "content",
-      "website",
-    );
+    await expect(page.locator('meta[property="og:type"]')).toHaveAttribute("content", "website");
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
       "content",
       TEST_GROUP_NAMES.alpha,
@@ -185,10 +194,7 @@ test.describe("group page", () => {
       "content",
       TEST_GROUP_NAMES.alpha,
     );
-    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
-      "content",
-      "summary_large_image",
-    );
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
 
     // Verify seeded description, membership date, and sponsor image metadata.
     await expect(

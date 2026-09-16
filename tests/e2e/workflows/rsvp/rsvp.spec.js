@@ -1,27 +1,17 @@
 import { expect, test } from "../../fixtures.js";
 
-import {
-  createApprovalRequiredEvent,
-  deleteEventFromList,
-} from "../../dashboard/group/events/helpers.js";
-import {
-  buildE2eUrl,
-  navigateToPath,
-  TEST_COMMUNITY_NAME,
-  TEST_USER_IDS,
-  waitForActionResponse,
-} from "../../utils.js";
+import { createApprovalRequiredEvent, deleteEventFromList } from "../../dashboard/group/events/helpers.js";
+import { TEST_COMMUNITY_NAME, TEST_USER_IDS } from "../../seed.js";
+import { buildE2eUrl, navigateToPath, uniqueName, waitForActionResponse } from "../../utils.js";
 
 test.describe("rsvp approval workflow", () => {
   test("approved RSVP requests are claimed through checkout", async ({
     organizerGroupPage,
     pending1Page,
   }) => {
-    const eventName = `E2E Approved RSVP Claim ${Date.now()}`;
-    const { eventId } = await createApprovalRequiredEvent(
-      organizerGroupPage,
-      eventName,
-    );
+    // Create an approval-required event for the claim flow.
+    const eventName = uniqueName("Approved RSVP Claim");
+    const { eventId } = await createApprovalRequiredEvent(organizerGroupPage, eventName);
 
     try {
       // Create and approve a tier-scoped RSVP request.
@@ -40,14 +30,10 @@ test.describe("rsvp approval workflow", () => {
 
       // Claim the approved RSVP offer through the unified checkout endpoint.
       await navigateToPath(pending1Page, "/dashboard/user?tab=invitations");
-      const approvedOfferRow = pending1Page
-        .locator("#dashboard-content tr")
-        .filter({ hasText: eventName });
+      const approvedOfferRow = pending1Page.locator("#dashboard-content tr").filter({ hasText: eventName });
       await expect(approvedOfferRow).toContainText("RSVP request approved");
       await approvedOfferRow.getByLabel(/Open offer actions/).click();
-      await approvedOfferRow
-        .getByRole("menuitem", { name: "Claim offer" })
-        .click();
+      await approvedOfferRow.getByRole("menuitem", { name: "Claim offer" }).click();
       const claimModal = pending1Page.getByRole("dialog", {
         name: "Claim offer",
       });
@@ -62,6 +48,7 @@ test.describe("rsvp approval workflow", () => {
       );
       await expect(approvedOfferRow).toHaveCount(0);
     } finally {
+      // Delete the temporary approval-required event.
       await deleteEventFromList(organizerGroupPage, eventId);
     }
   });

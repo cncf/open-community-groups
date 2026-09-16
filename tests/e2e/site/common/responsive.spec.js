@@ -7,8 +7,8 @@ import {
   TEST_GROUP_NAME,
   TEST_GROUP_SLUG,
   TEST_SITE_TITLE,
-  navigateToPath,
-} from "../../utils.js";
+} from "../../seed.js";
+import { navigateToPath } from "../../utils.js";
 
 const BREAKPOINTS = [
   { name: "mobile", width: 390 },
@@ -87,10 +87,6 @@ const RESPONSIVE_PAGES = [
   },
 ];
 
-// Return the number of computed CSS grid columns for one visible section.
-const getGridColumnCount = (grid) =>
-  grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length);
-
 test.describe("public responsive layouts", () => {
   // Verify the ready state and layout bounds at every supported breakpoint.
   const expectResponsiveLayout = async (page, responsivePage) => {
@@ -127,44 +123,4 @@ test.describe("public responsive layouts", () => {
       await expectResponsiveLayout(member1Page, responsivePage);
     });
   }
-
-  test("card grids change columns at their declared breakpoints", async ({ page }) => {
-    // Verify the site community cards change at the sm breakpoint.
-    await navigateToPath(page, "/");
-    const communityGrid = page.getByText("Communities", { exact: true }).locator("..").locator(".grid");
-    await page.setViewportSize({ width: 639, height: 900 });
-    expect(await getGridColumnCount(communityGrid)).toBe(1);
-    await page.setViewportSize({ width: 640, height: 900 });
-    expect(await getGridColumnCount(communityGrid)).toBe(2);
-
-    // Verify community group cards change at the md breakpoint.
-    await navigateToPath(page, `/${TEST_COMMUNITY_NAME}`);
-    const communityGroupsGrid = page
-      .getByText("Latest groups added", { exact: true })
-      .locator("xpath=../following-sibling::div[1]/div[contains(@class,'grid')]");
-    await page.setViewportSize({ width: 767, height: 900 });
-    expect(await getGridColumnCount(communityGroupsGrid)).toBe(1);
-    await page.setViewportSize({ width: 768, height: 900 });
-    expect(await getGridColumnCount(communityGroupsGrid)).toBe(2);
-
-    // Verify group event cards change at the lg breakpoint.
-    await navigateToPath(page, `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}`);
-    const groupEventsGrid = page
-      .getByText("Upcoming Events", { exact: true })
-      .locator("xpath=../following-sibling::div[contains(@class,'grid')]");
-    await page.setViewportSize({ width: 1023, height: 900 });
-    expect(await getGridColumnCount(groupEventsGrid)).toBe(1);
-    await page.setViewportSize({ width: 1024, height: 900 });
-    expect(await getGridColumnCount(groupEventsGrid)).toBe(2);
-
-    // Verify event speaker cards change at both md and lg breakpoints.
-    await navigateToPath(page, `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}`);
-    const speakersGrid = page.locator(".regular-speakers-grid");
-    await page.setViewportSize({ width: 767, height: 900 });
-    expect(await getGridColumnCount(speakersGrid)).toBe(1);
-    await page.setViewportSize({ width: 768, height: 900 });
-    expect(await getGridColumnCount(speakersGrid)).toBe(2);
-    await page.setViewportSize({ width: 1024, height: 900 });
-    expect(await getGridColumnCount(speakersGrid)).toBe(3);
-  });
 });

@@ -1,7 +1,12 @@
 import { expect, test } from "../../fixtures.js";
-
+import { queryE2eDatabase } from "../../database.js";
+import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
 import {
-  E2E_PAYMENTS_ENABLED,
+  cleanupOwnedPaymentPurchase,
+  setupOwnedCompletedRefundPurchase,
+  setupOwnedPendingCheckout,
+} from "../../data-graphs/payments.js";
+import {
   TEST_APPROVAL_REQUIRED_EVENT,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
@@ -14,79 +19,31 @@ import {
   TEST_PAYMENT_EVENT_SLUGS,
   TEST_REGISTRATION_QUESTIONS_EVENT,
   TEST_TICKETING_EVENTS,
-  buildE2eUrl,
+  TEST_USER_IDS,
+} from "../../seed.js";
+import {
   getAttendanceContainer,
   getAttendButton,
   getLeaveButton,
-  navigateToEvent,
-  navigateToPath,
-  waitForActionResponse,
   waitForAttendanceState,
-} from "../../utils.js";
+} from "./helpers.js";
+import { buildE2eUrl, navigateToEvent, navigateToPath, waitForActionResponse } from "../../utils.js";
 
-// Dismiss the optional profile completion prompt shown after successful attendance.
-const dismissProfileCompletionPrompt = async (page) => {
-  const maybeLaterButton = page.getByRole("button", { name: "Maybe later" });
-  if (await maybeLaterButton.isVisible()) {
-    await maybeLaterButton.click();
-    await expect(page.locator(".swal2-popup")).toBeHidden();
-  }
-};
+const EMPTY_USER_ID = "77777777-7777-7777-7777-777777777713";
 
-// Cancel attendance when the current user is already registered.
-const cancelAttendance = async (page, eventId) => {
-  await dismissProfileCompletionPrompt(page);
+const OWNED_CHECKOUT_CANCEL_URL = "https://example.test/checkout/e2e-owned-cancel";
 
-  const leaveButton = getLeaveButton(page);
-  await expect(leaveButton).toBeVisible();
+const OWNED_CHECKOUT_RESUME_URL = "https://example.test/checkout/e2e-owned-resume";
 
-  // Request attendance cancellation before confirming the dialog.
-  await leaveButton.click();
-  const confirmButton = page.getByRole("button", { name: "Yes" });
-  await expect(confirmButton).toBeVisible();
-
-  // Confirm cancellation and wait for the attendance record to be removed.
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "DELETE" &&
-        response.url().includes(`/event/${eventId}/leave`) &&
-        response.ok(),
-    ),
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.url().includes(`/event/${eventId}/enrollment`) &&
-        response.ok(),
-    ),
-    confirmButton.click(),
-  ]);
-
-  // Verify the attend action returns after cancellation.
-  await waitForAttendanceState(page);
-  await expect(getAttendButton(page)).toBeVisible();
-};
-
-// Return the ticket selection modal.
-const getTicketModal = (page) =>
-  page.locator('[data-attendance-role="ticket-modal"]');
-
-// Return the checkout action inside the ticket modal.
-const getCheckoutButton = (page) =>
-  page.locator('[data-attendance-role="checkout-btn"]');
-
-// Return the refund action for a paid attendee.
-const getRefundButton = (page) =>
-  page.locator('[data-attendance-role="refund-btn"]');
-
-// Return the sign-in action shown to anonymous users.
-const getSignInButton = (page) =>
-  page.locator('[data-attendance-role="signin-btn"]');
+const EVENT_REFUND_REQUESTED_RECIPIENT_IDS = [
+  "77777777-7777-7777-7777-777777777701",
+  TEST_USER_IDS.organizer1,
+  TEST_USER_IDS.communityGroupsManager1,
+  "77777777-7777-7777-7777-777777777711",
+];
 
 test.describe("event attendance", () => {
-  test("guest attendance action links to sign in with the event return URL", async ({
-    page,
-  }) => {
+  test("guest attendance action links to sign in with the event return URL", async ({ page }) => {
     // Load the public event as a guest.
     await navigateToEvent(
       page,
@@ -105,9 +62,9 @@ test.describe("event attendance", () => {
     );
   });
 
-  test("member can attend and cancel from the public event page", async ({
-    member2Page,
-  }) => {
+  test("member can attend and cancel from the public event page", async ({ member2Page }) => {
+    let notificationIds = [];
+
     // Load the event page before changing attendance state.
     await navigateToEvent(
       member2Page,
@@ -137,21 +94,31 @@ test.describe("event attendance", () => {
     await expect(attendButton).toBeVisible();
 
     // Attend the event and wait for attendance to be created.
-    await waitForActionResponse(member2Page, () => attendButton.click(), {
-      method: "POST",
-      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/attend`,
-    });
+    const snapshot = snapshotNotifications();
+    try {
+      // Submit the attendance request and record its notification.
+      await waitForActionResponse(member2Page, () => attendButton.click(), {
+        method: "POST",
+        urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/attend`,
+      });
+      notificationIds = expectNewNotifications(snapshot, [
+        { kind: "event-welcome", userIds: [TEST_USER_IDS.member2] },
+      ]);
+    } finally {
+      // Remove notifications created while attending.
+      deleteNotifications(notificationIds);
+    }
 
     // Verify the member can now cancel attendance.
     await expect(getLeaveButton(member2Page)).toBeVisible();
 
     // Restore the reusable attendance state.
+    const cancellationSnapshot = snapshotNotifications();
     await cancelAttendance(member2Page, TEST_EVENT_IDS.alpha.one);
+    deleteNotificationsSince(cancellationSnapshot, "event-attendance-canceled", [TEST_USER_IDS.member2]);
   });
 
-  test("failed attendance changes preserve the current action for retry", async ({
-    member2Page,
-  }) => {
+  test("failed attendance changes preserve the current action for retry", async ({ member2Page }) => {
     // Load a reusable event and restore the member to a non-attendee state.
     const attendPath = `**/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.one}/attend`;
     const leavePath = `**/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.one}/leave`;
@@ -205,9 +172,7 @@ test.describe("event attendance", () => {
         }),
       );
       await getLeaveButton(member2Page).click();
-      await expect(
-        member2Page.getByRole("button", { name: "Yes" }),
-      ).toBeVisible();
+      await expect(member2Page.getByRole("button", { name: "Yes" })).toBeVisible();
       await waitForActionResponse(
         member2Page,
         () => member2Page.getByRole("button", { name: "Yes" }).click(),
@@ -223,12 +188,10 @@ test.describe("event attendance", () => {
       await expect(getLeaveButton(member2Page)).toBeVisible();
       await expect(getLeaveButton(member2Page)).toBeEnabled();
     } finally {
+      // Remove failure routes and restore any durable attendance.
       await member2Page.unroute(attendPath);
       await member2Page.unroute(leavePath);
-      if (
-        !member2Page.isClosed() &&
-        (await getLeaveButton(member2Page).isVisible())
-      ) {
+      if (!member2Page.isClosed() && (await getLeaveButton(member2Page).isVisible())) {
         const confirmation = member2Page.getByRole("button", { name: "OK" });
         if (await confirmation.isVisible()) {
           await confirmation.click();
@@ -238,9 +201,7 @@ test.describe("event attendance", () => {
     }
   });
 
-  test("member answers registration questions before attending", async ({
-    pending2Page,
-  }) => {
+  test("member answers registration questions before attending", async ({ pending2Page }) => {
     // Load the event page before changing attendance state.
     await navigateToEvent(
       pending2Page,
@@ -262,33 +223,24 @@ test.describe("event attendance", () => {
 
     // Leave any existing attendance before continuing.
     if (await getLeaveButton(pending2Page).isVisible()) {
-      await cancelAttendance(
-        pending2Page,
-        TEST_REGISTRATION_QUESTIONS_EVENT.id,
-      );
+      await cancelAttendance(pending2Page, TEST_REGISTRATION_QUESTIONS_EVENT.id);
     }
 
     // Open the required registration questions modal.
     await getAttendButton(pending2Page).click();
 
     // Find the registration modal.
-    const registrationModal = pending2Page.locator(
-      '[data-attendance-role="registration-modal"]',
-    );
+    const registrationModal = pending2Page.locator('[data-attendance-role="registration-modal"]');
     await expect(registrationModal).toBeVisible();
     await expect(
       registrationModal.getByRole("heading", {
         name: "Registration questions",
       }),
     ).toBeVisible();
-    await expect(registrationModal).toContainText(
-      "What are you hoping to learn from this event?",
-    );
+    await expect(registrationModal).toContainText("What are you hoping to learn from this event?");
     await expect(registrationModal).toContainText("Preferred session format");
     await expect(registrationModal).toContainText("Topics you want covered");
-    await expect(registrationModal).toContainText(
-      "Anything the organizers should know?",
-    );
+    await expect(registrationModal).toContainText("Anything the organizers should know?");
 
     // Fill all question types before submitting the registration.
     await registrationModal
@@ -297,48 +249,35 @@ test.describe("event attendance", () => {
       })
       .locator("textarea")
       .fill("I want to compare live platform practices.");
-    await registrationModal
-      .locator("label", { hasText: "Panel discussion" })
-      .click();
-    await registrationModal
-      .locator("label", { hasText: "Developer experience" })
-      .click();
-    await registrationModal
-      .locator("label", { hasText: "Security and compliance" })
-      .click();
+    await registrationModal.locator("label", { hasText: "Panel discussion" }).click();
+    await registrationModal.locator("label", { hasText: "Developer experience" }).click();
+    await registrationModal.locator("label", { hasText: "Security and compliance" }).click();
     await registrationModal
       .locator("fieldset", {
         hasText: "Anything the organizers should know?",
       })
       .locator("textarea")
-      .fill("Please share slides afterward."      );
+      .fill("Please share slides afterward.");
 
-      // Submit the answers and wait for attendance to be created.
-      await waitForActionResponse(
-        pending2Page,
-        () =>
-          registrationModal
-            .locator('[data-attendance-role="registration-modal-submit"]')
-            .click(),
-        {
-          method: "POST",
-          urlIncludes: `/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`,
-        },
-      );
+    // Submit the answers and wait for attendance to be created.
+    await waitForActionResponse(
+      pending2Page,
+      () => registrationModal.locator('[data-attendance-role="registration-modal-submit"]').click(),
+      {
+        method: "POST",
+        urlIncludes: `/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`,
+      },
+    );
 
     // Verify the member can now cancel attendance.
     await expect(registrationModal).toBeHidden();
-    await expect(getLeaveButton(pending2Page)).toContainText(
-      "Cancel attendance",
-    );
+    await expect(getLeaveButton(pending2Page)).toContainText("Cancel attendance");
 
     // Restore the reusable attendance state.
     await cancelAttendance(pending2Page, TEST_REGISTRATION_QUESTIONS_EVENT.id);
   });
 
-  test("signed-out event calls to action match each enrollment model", async ({
-    page,
-  }) => {
+  test("signed-out event calls to action match each enrollment model", async ({ page }) => {
     // Simple public RSVP events invite guests to sign in and attend.
     await navigateToEvent(
       page,
@@ -358,31 +297,22 @@ test.describe("event attendance", () => {
     await expect(getSignInButton(page)).toContainText("Request invitation");
 
     // Sold-out RSVP events with a waiting list expose the waitlist action.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, "alpha-waitlist-lab");
+    await expect(getSignInButton(page)).toContainText("Join waiting list");
+
+    // Events with no public tiers stay informational rather than prompting login.
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
       TEST_GROUP_SLUGS.community1.alpha,
-      "alpha-waitlist-lab",
+      TEST_TICKETING_EVENTS.paidOffers.slug,
     );
-    await expect(getSignInButton(page)).toContainText("Join waiting list");
-
-    // Events with no public tiers stay informational rather than prompting login.
-    if (E2E_PAYMENTS_ENABLED) {
-      await navigateToEvent(
-        page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
-        TEST_TICKETING_EVENTS.paidOffers.slug,
-      );
-      await expect(getSignInButton(page)).toBeHidden();
-      await expect(getAttendButton(page)).toContainText("Invitation only");
-      await expect(getAttendButton(page)).toBeDisabled();
-    }
+    await expect(getSignInButton(page)).toBeHidden();
+    await expect(getAttendButton(page)).toContainText("Invitation only");
+    await expect(getAttendButton(page)).toBeDisabled();
   });
 
-  test("required registration questions block an empty submission", async ({
-    pending2Page,
-  }) => {
+  test("required registration questions block an empty submission", async ({ pending2Page }) => {
     // Load the event with required registration questions.
     await navigateToEvent(
       pending2Page,
@@ -394,10 +324,7 @@ test.describe("event attendance", () => {
 
     // Restore an unregistered state before opening the form.
     if (await getLeaveButton(pending2Page).isVisible()) {
-      await cancelAttendance(
-        pending2Page,
-        TEST_REGISTRATION_QUESTIONS_EVENT.id,
-      );
+      await cancelAttendance(pending2Page, TEST_REGISTRATION_QUESTIONS_EVENT.id);
     }
 
     // Track attendance requests so browser validation can be verified.
@@ -405,9 +332,7 @@ test.describe("event attendance", () => {
     pending2Page.on("request", (request) => {
       if (
         request.method() === "POST" &&
-        request
-          .url()
-          .includes(`/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`)
+        request.url().includes(`/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`)
       ) {
         attendanceRequests += 1;
       }
@@ -415,39 +340,29 @@ test.describe("event attendance", () => {
 
     // Open the questions modal and submit it without required answers.
     await getAttendButton(pending2Page).click();
-    const registrationModal = pending2Page.locator(
-      '[data-attendance-role="registration-modal"]',
-    );
+    const registrationModal = pending2Page.locator('[data-attendance-role="registration-modal"]');
     const requiredAnswer = registrationModal
       .locator("fieldset", {
         hasText: "What are you hoping to learn from this event?",
       })
       .locator("textarea");
-    await registrationModal
-      .locator('[data-attendance-role="registration-modal-submit"]')
-      .click();
+    await registrationModal.locator('[data-attendance-role="registration-modal-submit"]').click();
 
     // Verify the form remains open and no attendance request is sent.
     await expect(registrationModal).toBeVisible();
     // Native required validation blocks the submit before any request fires.
-    await expect
-      .poll(() => requiredAnswer.evaluate((input) => input.validity.valueMissing))
-      .toBe(true);
+    await expect.poll(() => requiredAnswer.evaluate((input) => input.validity.valueMissing)).toBe(true);
     await expect
       .poll(() => requiredAnswer.evaluate((input) => input.validationMessage.length))
       .toBeGreaterThan(0);
     expect(attendanceRequests).toBe(0);
 
     // Close the invalid form and verify the modal is dismissed.
-    await registrationModal
-      .locator('[data-attendance-role="registration-modal-cancel"]')
-      .click();
+    await registrationModal.locator('[data-attendance-role="registration-modal-cancel"]').click();
     await expect(registrationModal).toBeHidden();
   });
 
-  test("member can request and cancel approval-required attendance", async ({
-    pending1Page,
-  }) => {
+  test("member can request and cancel approval-required attendance", async ({ pending1Page }) => {
     // Load the seeded approval-required event and resolve the current state.
     await navigateToEvent(
       pending1Page,
@@ -482,14 +397,10 @@ test.describe("event attendance", () => {
 
     // Cancel the request and restore the reusable no-request fixture.
     await cancelAttendance(pending1Page, TEST_APPROVAL_REQUIRED_EVENT.id);
-    await expect(getAttendButton(pending1Page)).toContainText(
-      "Request invitation",
-    );
+    await expect(getAttendButton(pending1Page)).toContainText("Request invitation");
   });
 
-  test("rejected approval request remains disabled with recovery copy", async ({
-    pending2Page,
-  }) => {
+  test("rejected approval request remains disabled with recovery copy", async ({ pending2Page }) => {
     // Load the approval event with a seeded rejected request.
     await navigateToEvent(
       pending2Page,
@@ -503,15 +414,10 @@ test.describe("event attendance", () => {
     const rejectedRequestButton = getAttendButton(pending2Page);
     await expect(rejectedRequestButton).toContainText("Request rejected");
     await expect(rejectedRequestButton).toBeDisabled();
-    await expect(rejectedRequestButton).toHaveAttribute(
-      "title",
-      "Your invitation request was rejected.",
-    );
+    await expect(rejectedRequestButton).toHaveAttribute("title", "Your invitation request was rejected.");
   });
 
-  test("accepted approval request surfaces the offer claim state", async ({
-    member1Page,
-  }) => {
+  test("accepted approval request surfaces the offer claim state", async ({ member1Page }) => {
     // Load the approval event with a seeded accepted request and offer.
     await navigateToEvent(
       member1Page,
@@ -530,9 +436,7 @@ test.describe("event attendance", () => {
     );
   });
 
-  test("attendee sees the meeting link while the event is live", async ({
-    pending2Page,
-  }) => {
+  test("attendee sees the meeting link while the event is live", async ({ pending2Page }) => {
     // Load the live event where the user is a seeded attendee.
     await navigateToEvent(
       pending2Page,
@@ -543,14 +447,10 @@ test.describe("event attendance", () => {
     await waitForAttendanceState(pending2Page);
 
     // Verify the meeting details reveal the seeded join instructions.
-    const meetingDetails = pending2Page
-      .locator("[data-meeting-details]")
-      .first();
+    const meetingDetails = pending2Page.locator("[data-meeting-details]").first();
     await expect(meetingDetails).toBeVisible();
     await expect(
-      meetingDetails.getByText(
-        "Use the passcode shared with attendees to join the room.",
-      ),
+      meetingDetails.getByText("Use the passcode shared with attendees to join the room."),
     ).toBeVisible();
 
     // Verify the meeting link exposes the seeded join destination.
@@ -558,10 +458,7 @@ test.describe("event attendance", () => {
       name: "Meeting link",
     });
     await expect(meetingLink).toBeVisible();
-    await expect(meetingLink).toHaveAttribute(
-      "href",
-      "https://meet.example.com/e2e-open-check-in",
-    );
+    await expect(meetingLink).toHaveAttribute("href", "https://meet.example.com/e2e-open-check-in");
 
     // Verify the agenda session exposes its attendee-only join link.
     const sessionItem = pending2Page.locator("li", {
@@ -571,18 +468,10 @@ test.describe("event attendance", () => {
       name: "Join session",
     });
     await expect(sessionJoinLink).toBeVisible();
-    await expect(sessionJoinLink).toHaveAttribute(
-      "href",
-      "https://meet.example.com/e2e-live-briefing",
-    );
+    await expect(sessionJoinLink).toHaveAttribute("href", "https://meet.example.com/e2e-live-briefing");
   });
 
   test.describe("payment-enabled attendance flows", () => {
-    test.skip(
-      !E2E_PAYMENTS_ENABLED,
-      "Payments are disabled in this environment.",
-    );
-
     test("canceled payment returns keep the active checkout resumable and clean the URL", async ({
       pending2Page,
     }) => {
@@ -599,17 +488,11 @@ test.describe("event attendance", () => {
       await expect(pending2Page.locator(".swal2-popup")).toContainText(
         "Checkout was canceled. You can resume payment while your ticket hold is still active.",
       );
-      await expect(getAttendButton(pending2Page)).toContainText(
-        "Continue to checkout",
-      );
+      await expect(getAttendButton(pending2Page)).toContainText("Continue to checkout");
 
       // Keep unrelated URL state while removing the one-time payment outcome.
-      await expect
-        .poll(() => pending2Page.url())
-        .toContain("?source=e2e#attendance");
-      expect(new URL(pending2Page.url()).searchParams.has("payment")).toBe(
-        false,
-      );
+      await expect.poll(() => pending2Page.url()).toContain("?source=e2e#attendance");
+      expect(new URL(pending2Page.url()).searchParams.has("payment")).toBe(false);
     });
 
     test("confirmed payment returns show registration success and clean the URL", async ({
@@ -625,19 +508,11 @@ test.describe("event attendance", () => {
       );
 
       // Verify the terminal success state and registered attendee controls.
-      await expect(
-        eventsManagerGroupPage.locator(".swal2-popup"),
-      ).toContainText(
+      await expect(eventsManagerGroupPage.locator(".swal2-popup")).toContainText(
         "Your payment is complete. You're registered for this event.",
       );
-      await expect(getRefundButton(eventsManagerGroupPage)).toContainText(
-        "Request refund",
-      );
-      await expect
-        .poll(() =>
-          new URL(eventsManagerGroupPage.url()).searchParams.has("payment"),
-        )
-        .toBe(false);
+      await expect(getRefundButton(eventsManagerGroupPage)).toContainText("Request refund");
+      await expect.poll(() => new URL(eventsManagerGroupPage.url()).searchParams.has("payment")).toBe(false);
     });
 
     test("successful payment returns poll pending checkout until attendance is confirmed", async ({
@@ -652,15 +527,12 @@ test.describe("event attendance", () => {
 
       // Keep payment-return requests pending until the interim feedback is observable.
       await pending2Page.route(enrollmentUrl, async (route) => {
-        const isHtmxRequest =
-          route.request().headers()["hx-request"] === "true";
+        const isHtmxRequest = route.request().headers()["hx-request"] === "true";
         if (!isHtmxRequest) {
           paymentReturnRequests += 1;
         }
 
-        const status = allowAttendanceConfirmation
-          ? "attendee"
-          : "pending-payment";
+        const status = allowAttendanceConfirmation ? "attendee" : "pending-payment";
         await route.fulfill({
           body: JSON.stringify({ status }),
           contentType: "application/json",
@@ -686,10 +558,9 @@ test.describe("event attendance", () => {
           { timeout: 10_000 },
         );
         expect(paymentReturnRequests).toBeGreaterThanOrEqual(2);
-        await expect
-          .poll(() => new URL(pending2Page.url()).searchParams.has("payment"))
-          .toBe(false);
+        await expect.poll(() => new URL(pending2Page.url()).searchParams.has("payment")).toBe(false);
       } finally {
+        // Restore the real enrollment endpoint.
         await pending2Page.unroute(enrollmentUrl);
       }
     });
@@ -729,9 +600,7 @@ test.describe("event attendance", () => {
           event.slug,
         );
         await waitForAttendanceState(member1Page);
-        await expect(getAttendButton(member1Page)).toContainText(
-          "Request ticket",
-        );
+        await expect(getAttendButton(member1Page)).toContainText("Request ticket");
         await getAttendButton(member1Page).click();
 
         // Verify only the public requested tier appears in the attendee modal.
@@ -739,38 +608,25 @@ test.describe("event attendance", () => {
         await expect(ticketModal).toBeVisible();
         await expect(ticketModal).toContainText("Requested conference pass");
         await expect(ticketModal).not.toContainText("Private supporter pass");
-        await ticketModal
-          .locator("label", { hasText: "Requested conference pass" })
-          .click();
-        await ticketModal
-          .locator('[data-attendance-role="discount-code-input"]')
-          .evaluate((input) => {
-            input.disabled = false;
-            input.value = "OFFER25";
-          });
+        await ticketModal.locator("label", { hasText: "Requested conference pass" }).click();
+        await ticketModal.locator('[data-attendance-role="discount-code-input"]').evaluate((input) => {
+          input.disabled = false;
+          input.value = "OFFER25";
+        });
 
         // Continue through required registration questions before submitting.
         await getCheckoutButton(member1Page).click();
-        const registrationModal = member1Page.locator(
-          '[data-attendance-role="registration-modal"]',
-        );
+        const registrationModal = member1Page.locator('[data-attendance-role="registration-modal"]');
         await expect(registrationModal).toBeVisible();
-        await registrationModal
-          .getByRole("textbox")
-          .fill("I would like to join the attendee program.");
+        await registrationModal.getByRole("textbox").fill("I would like to join the attendee program.");
 
         // Submit the request and inspect the attendee-facing form contract.
         const requestPromise = member1Page.waitForRequest(
-          (request) =>
-            request.method() === "POST" &&
-            request.url().includes(`/event/${event.id}/attend`),
+          (request) => request.method() === "POST" && request.url().includes(`/event/${event.id}/attend`),
         );
         await waitForActionResponse(
           member1Page,
-          () =>
-            registrationModal
-              .locator('[data-attendance-role="registration-modal-submit"]')
-              .click(),
+          () => registrationModal.locator('[data-attendance-role="registration-modal-submit"]').click(),
           {
             method: "POST",
             urlIncludes: `/event/${event.id}/attend`,
@@ -778,30 +634,18 @@ test.describe("event attendance", () => {
         );
         const request = await requestPromise;
         const requestData = new URLSearchParams(request.postData() ?? "");
-        const answers = JSON.parse(
-          requestData.get("registration_answers") ?? "{}",
-        );
+        const answers = JSON.parse(requestData.get("registration_answers") ?? "{}");
 
         // Approval requests retain answers and the requested public tier only.
-        expect(requestData.get("event_ticket_type_id")).toBe(
-          "56555555-5555-5555-5555-555555555913",
-        );
+        expect(requestData.get("event_ticket_type_id")).toBe("56555555-5555-5555-5555-555555555913");
         expect(requestData.has("discount_code")).toBe(false);
-        expect(answers.answers?.[0]?.value).toBe(
-          "I would like to join the attendee program.",
-        );
-        await expect(getLeaveButton(member1Page)).toContainText(
-          "Request pending",
-        );
+        expect(answers.answers?.[0]?.value).toBe("I would like to join the attendee program.");
+        await expect(getLeaveButton(member1Page)).toContainText("Request pending");
         await dismissProfileCompletionPrompt(member1Page);
-        await expect(getLeaveButton(member1Page)).toHaveAccessibleName(
-          "Request pending – cancel request",
-        );
+        await expect(getLeaveButton(member1Page)).toHaveAccessibleName("Request pending – cancel request");
       } finally {
         // Restore the reusable member and request fixture.
-        await member1Page.request.delete(
-          buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${event.id}/leave`),
-        );
+        await member1Page.request.delete(buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${event.id}/leave`));
       }
     });
 
@@ -825,6 +669,7 @@ test.describe("event attendance", () => {
       });
 
       try {
+        // Open the paid questions checkout flow.
         await navigateToEvent(
           member1Page,
           TEST_COMMUNITY_NAME,
@@ -834,44 +679,28 @@ test.describe("event attendance", () => {
         await waitForAttendanceState(member1Page);
         await getAttendButton(member1Page).click();
         const ticketModal = getTicketModal(member1Page);
-        await ticketModal
-          .locator("label", { hasText: "Questions conference pass" })
-          .click();
+        await ticketModal.locator("label", { hasText: "Questions conference pass" }).click();
         await getCheckoutButton(member1Page).click();
 
-        const registrationModal = member1Page.locator(
-          '[data-attendance-role="registration-modal"]',
-        );
-        await registrationModal
-          .getByRole("textbox")
-          .fill("Please reserve captions for the paid workshop.");
+        // Submit registration answers and capture the checkout request.
+        const registrationModal = member1Page.locator('[data-attendance-role="registration-modal"]');
+        await registrationModal.getByRole("textbox").fill("Please reserve captions for the paid workshop.");
         const checkoutRequest = member1Page.waitForRequest(
-          (request) =>
-            request.method() === "POST" &&
-            request.url().includes(`/event/${event.id}/checkout`),
+          (request) => request.method() === "POST" && request.url().includes(`/event/${event.id}/checkout`),
         );
         await Promise.all([
           member1Page.waitForURL(/questions-checkout=redirected/u),
-          registrationModal
-            .locator('[data-attendance-role="registration-modal-submit"]')
-            .click(),
+          registrationModal.locator('[data-attendance-role="registration-modal-submit"]').click(),
         ]);
-        const requestData = new URLSearchParams(
-          (await checkoutRequest).postData() ?? "",
-        );
-        const answers = JSON.parse(
-          requestData.get("registration_answers") ?? "{}",
-        );
+        const requestData = new URLSearchParams((await checkoutRequest).postData() ?? "");
+        const answers = JSON.parse(requestData.get("registration_answers") ?? "{}");
 
         // Paid provider checkout keeps the selected tier and validated answers.
-        expect(requestData.get("event_ticket_type_id")).toBe(
-          "56555555-5555-5555-5555-555555555917",
-        );
+        expect(requestData.get("event_ticket_type_id")).toBe("56555555-5555-5555-5555-555555555917");
         expect(requestData.has("discount_code")).toBe(false);
-        expect(answers.answers?.[0]?.value).toBe(
-          "Please reserve captions for the paid workshop.",
-        );
+        expect(answers.answers?.[0]?.value).toBe("Please reserve captions for the paid workshop.");
       } finally {
+        // Restore the real checkout endpoint.
         await member1Page.unroute(checkoutUrl);
       }
     });
@@ -900,16 +729,11 @@ test.describe("event attendance", () => {
       const ticketModal = getTicketModal(member1Page);
       await expect(ticketModal).toBeVisible();
       await expect(getCheckoutButton(member1Page)).toBeDisabled();
-      await expect(getCheckoutButton(member1Page)).toHaveAttribute(
-        "title",
-        "Choose a ticket to continue.",
-      );
+      await expect(getCheckoutButton(member1Page)).toHaveAttribute("title", "Choose a ticket to continue.");
       await expect(ticketModal).not.toContainText("Backstage pass");
 
       // Close the ticket modal without registering.
-      await ticketModal
-        .locator('[data-attendance-role="ticket-modal-cancel"]')
-        .click();
+      await ticketModal.locator('[data-attendance-role="ticket-modal-cancel"]').click();
 
       // Verify closing the modal leaves the member unregistered.
       await expect(ticketModal).toBeHidden();
@@ -917,9 +741,7 @@ test.describe("event attendance", () => {
       await expect(getAttendButton(member1Page)).toContainText("Get ticket");
     });
 
-    test("member can complete a free ticket checkout without a discount code", async ({
-      member2Page,
-    }) => {
+    test("member can complete a free ticket checkout without a discount code", async ({ member2Page }) => {
       // Load the multi-tier event before selecting a free ticket.
       await navigateToEvent(
         member2Page,
@@ -935,17 +757,13 @@ test.describe("event attendance", () => {
       // Verify the free ticket can be selected for checkout.
       const ticketModal = getTicketModal(member2Page);
       await expect(ticketModal).toBeVisible();
-      await ticketModal
-        .locator("label", { hasText: "Community ticket" })
-        .click();
+      await ticketModal.locator("label", { hasText: "Community ticket" }).click();
 
       // Watch checkout request payload and response after submitting.
       const checkoutRequest = member2Page.waitForRequest(
         (request) =>
           request.method() === "POST" &&
-          request
-            .url()
-            .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`),
+          request.url().includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`),
       );
 
       // Submit checkout for the selected free ticket.
@@ -962,12 +780,8 @@ test.describe("event attendance", () => {
       expect(postData).not.toContain("discount_code=");
 
       // Verify successful checkout registers the member.
-      await expect(member2Page).toHaveURL(
-        new RegExp(TEST_PAYMENT_EVENT_SLUGS.draft),
-      );
-      await expect(getLeaveButton(member2Page)).toContainText(
-        "Cancel attendance",
-      );
+      await expect(member2Page).toHaveURL(new RegExp(TEST_PAYMENT_EVENT_SLUGS.draft));
+      await expect(getLeaveButton(member2Page)).toContainText("Cancel attendance");
       await expect(member2Page.locator(".swal2-popup")).toContainText(
         "You have successfully registered for this event.",
       );
@@ -976,9 +790,7 @@ test.describe("event attendance", () => {
       await cancelAttendance(member2Page, TEST_PAYMENT_EVENT_IDS.draft);
     });
 
-    test("sold-out waitlist submissions omit discounts and stale answers", async ({
-      pending1Page,
-    }) => {
+    test("sold-out waitlist submissions omit discounts and stale answers", async ({ pending1Page }) => {
       const event = TEST_TICKETING_EVENTS.soldOut;
 
       try {
@@ -990,31 +802,22 @@ test.describe("event attendance", () => {
           event.slug,
         );
         await waitForAttendanceState(pending1Page);
-        await expect(getAttendButton(pending1Page)).toContainText(
-          "Join waiting list",
-        );
+        await expect(getAttendButton(pending1Page)).toContainText("Join waiting list");
         await getAttendButton(pending1Page).click();
         const ticketModal = getTicketModal(pending1Page);
-        const soldOutCard = ticketModal.locator(
-          '[data-attendance-role="ticket-type-card"]',
-          {
-            hasText: "Limited conference pass",
-          },
-        );
+        const soldOutCard = ticketModal.locator('[data-attendance-role="ticket-type-card"]', {
+          hasText: "Limited conference pass",
+        });
         await expect(soldOutCard).toContainText("Sold out");
         await soldOutCard.click();
 
         // Seed stale client values that must not cross the waitlist boundary.
+        await ticketModal.locator('[data-attendance-role="discount-code-input"]').evaluate((input) => {
+          input.disabled = false;
+          input.value = "FULLCOMP";
+        });
         await ticketModal
-          .locator('[data-attendance-role="discount-code-input"]')
-          .evaluate((input) => {
-            input.disabled = false;
-            input.value = "FULLCOMP";
-          });
-        await ticketModal
-          .locator(
-            '[data-attendance-role="checkout-registration-answers-input"]',
-          )
+          .locator('[data-attendance-role="checkout-registration-answers-input"]')
           .evaluate((input) => {
             input.value = JSON.stringify({
               answers: [{ question_id: "stale", value: "stale answer" }],
@@ -1023,67 +826,47 @@ test.describe("event attendance", () => {
 
         // Join the waiting list and inspect the final request payload.
         const waitlistRequest = pending1Page.waitForRequest(
-          (request) =>
-            request.method() === "POST" &&
-            request.url().includes(`/event/${event.id}/attend`),
+          (request) => request.method() === "POST" && request.url().includes(`/event/${event.id}/attend`),
         );
         await waitForActionResponse(pending1Page, () => getCheckoutButton(pending1Page).click(), {
           method: "POST",
           urlIncludes: `/event/${event.id}/attend`,
         });
-        const requestData = new URLSearchParams(
-          (await waitlistRequest).postData() ?? "",
-        );
+        const requestData = new URLSearchParams((await waitlistRequest).postData() ?? "");
 
         // Waiting-list requests carry only their selected tier.
-        expect(requestData.get("event_ticket_type_id")).toBe(
-          "56555555-5555-5555-5555-555555555918",
-        );
+        expect(requestData.get("event_ticket_type_id")).toBe("56555555-5555-5555-5555-555555555918");
         expect(requestData.has("discount_code")).toBe(false);
         expect(requestData.has("registration_answers")).toBe(false);
-        await expect(getLeaveButton(pending1Page)).toContainText(
-          "Leave waiting list",
-        );
+        await expect(getLeaveButton(pending1Page)).toContainText("Leave waiting list");
       } finally {
-        await pending1Page.request.delete(
-          buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${event.id}/leave`),
-        );
+        // Remove the waitlist record created by the scenario.
+        await pending1Page.request.delete(buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${event.id}/leave`));
       }
     });
 
-    test("a finalized refund releases sold-out ticket capacity", async ({
-      pending1Page,
-    }) => {
+    test("a finalized refund releases sold-out ticket capacity", async ({ pending1Page }) => {
       const event = TEST_TICKETING_EVENTS.refundedCapacity;
 
-      await navigateToEvent(
-        pending1Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
-        event.slug,
-      );
+      // Load the refunded-capacity event before opening ticket choices.
+      await navigateToEvent(pending1Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, event.slug);
       await waitForAttendanceState(pending1Page);
 
       // The refunded purchase no longer occupies the event's only seat.
-      await expect(
-        pending1Page.locator("[data-availability-sold-out-ribbon]"),
-      ).toBeHidden();
+      await expect(pending1Page.locator("[data-availability-sold-out-ribbon]")).toBeHidden();
       await expect(getAttendButton(pending1Page)).toContainText("Get ticket");
       await getAttendButton(pending1Page).click();
 
+      // Verify the refunded tier is available for selection.
       const refundedTierCard = getTicketModal(pending1Page).locator(
         '[data-attendance-role="ticket-type-card"]',
         { hasText: "Refunded conference pass" },
       );
       await expect(refundedTierCard).toContainText("Available now");
-      await expect(
-        refundedTierCard.locator('[data-attendance-role="ticket-type-option"]'),
-      ).toBeEnabled();
+      await expect(refundedTierCard.locator('[data-attendance-role="ticket-type-option"]')).toBeEnabled();
     });
 
-    test("ticket cards show the not-on-sale state from refreshed availability", async ({
-      member1Page,
-    }) => {
+    test("ticket cards show the not-on-sale state from refreshed availability", async ({ member1Page }) => {
       const event = TEST_PAYMENT_EVENT_SLUGS.draft;
       const availabilityUrl = `**/event/${event}/availability`;
 
@@ -1133,12 +916,8 @@ test.describe("event attendance", () => {
       });
 
       try {
-        await navigateToEvent(
-          member1Page,
-          TEST_COMMUNITY_NAME,
-          TEST_GROUP_SLUGS.community1.alpha,
-          event,
-        );
+        // Open ticket choices from refreshed availability data.
+        await navigateToEvent(member1Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, event);
         await waitForAttendanceState(member1Page);
         await getAttendButton(member1Page).click();
         const unavailableCard = getTicketModal(member1Page).locator(
@@ -1146,19 +925,14 @@ test.describe("event attendance", () => {
           { hasText: "General admission" },
         );
         await expect(unavailableCard).toContainText("Not on sale");
-        await expect(
-          unavailableCard.locator(
-            '[data-attendance-role="ticket-type-option"]',
-          ),
-        ).toBeDisabled();
+        await expect(unavailableCard.locator('[data-attendance-role="ticket-type-option"]')).toBeDisabled();
       } finally {
+        // Restore the real availability endpoint.
         await member1Page.unroute(availabilityUrl);
       }
     });
 
-    test("member trims the discount code before a paid ticket checkout", async ({
-      pending1Page,
-    }) => {
+    test("member trims the discount code before a paid ticket checkout", async ({ pending1Page }) => {
       // Load the paid event before entering a spaced discount code.
       await navigateToEvent(
         pending1Page,
@@ -1174,12 +948,8 @@ test.describe("event attendance", () => {
       // Verify the discount code field accepts the spaced input for a paid tier.
       const ticketModal = getTicketModal(pending1Page);
       await expect(ticketModal).toBeVisible();
-      await ticketModal
-        .locator("label", { hasText: "General admission" })
-        .click();
-      await ticketModal
-        .locator('[data-attendance-role="discount-code-input"]')
-        .fill("  SAVE10  ");
+      await ticketModal.locator("label", { hasText: "General admission" }).click();
+      await ticketModal.locator('[data-attendance-role="discount-code-input"]').fill("  SAVE10  ");
 
       // Intercept checkout so request normalization is tested without calling Stripe.
       const checkoutUrl = `**/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`;
@@ -1193,9 +963,7 @@ test.describe("event attendance", () => {
       const checkoutRequest = pending1Page.waitForRequest(
         (request) =>
           request.method() === "POST" &&
-          request
-            .url()
-            .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`),
+          request.url().includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`),
       );
       try {
         // Submit checkout with the spaced discount code.
@@ -1209,13 +977,12 @@ test.describe("event attendance", () => {
         expect(postData).toContain("discount_code=SAVE10");
         expect(postData).not.toContain("discount_code=%20%20SAVE10%20%20");
       } finally {
+        // Restore the real checkout endpoint.
         await pending1Page.unroute(checkoutUrl);
       }
     });
 
-    test("member sees an error for expired discount codes during checkout", async ({
-      member1Page,
-    }) => {
+    test("member sees an error for expired discount codes during checkout", async ({ member1Page }) => {
       // Load the paid event before submitting an expired discount.
       await navigateToEvent(
         member1Page,
@@ -1232,12 +999,8 @@ test.describe("event attendance", () => {
       const ticketModal = getTicketModal(member1Page);
 
       // Select a ticket and enter an expired discount code.
-      await ticketModal
-        .locator("label", { hasText: "General admission" })
-        .click();
-      await ticketModal
-        .locator('[data-attendance-role="discount-code-input"]')
-        .fill("EXPIRED15");
+      await ticketModal.locator("label", { hasText: "General admission" }).click();
+      await ticketModal.locator('[data-attendance-role="discount-code-input"]').fill("EXPIRED15");
 
       // Submit checkout with an expired discount and wait for validation.
       await waitForActionResponse(member1Page, () => getCheckoutButton(member1Page).click(), {
@@ -1247,15 +1010,11 @@ test.describe("event attendance", () => {
       });
 
       // Verify the expired discount keeps the ticket modal open.
-      await expect(member1Page.locator(".swal2-popup")).toContainText(
-        "discount code is not available",
-      );
+      await expect(member1Page.locator(".swal2-popup")).toContainText("discount code is not available");
       await expect(ticketModal).toBeVisible();
     });
 
-    test("member sees an error for unavailable discount codes during checkout", async ({
-      member1Page,
-    }) => {
+    test("member sees an error for unavailable discount codes during checkout", async ({ member1Page }) => {
       // Load the paid event before submitting an unavailable discount.
       await navigateToEvent(
         member1Page,
@@ -1272,12 +1031,8 @@ test.describe("event attendance", () => {
       const ticketModal = getTicketModal(member1Page);
 
       // Select a ticket and enter an exhausted discount code.
-      await ticketModal
-        .locator("label", { hasText: "General admission" })
-        .click();
-      await ticketModal
-        .locator('[data-attendance-role="discount-code-input"]')
-        .fill("LIMIT5");
+      await ticketModal.locator("label", { hasText: "General admission" }).click();
+      await ticketModal.locator('[data-attendance-role="discount-code-input"]').fill("LIMIT5");
 
       // Submit checkout with an exhausted discount and wait for validation.
       await waitForActionResponse(member1Page, () => getCheckoutButton(member1Page).click(), {
@@ -1287,70 +1042,112 @@ test.describe("event attendance", () => {
       });
 
       // Verify the exhausted discount keeps the ticket modal open.
-      await expect(member1Page.locator(".swal2-popup")).toContainText(
-        "discount code is not available",
-      );
+      await expect(member1Page.locator(".swal2-popup")).toContainText("discount code is not available");
       await expect(ticketModal).toBeVisible();
     });
 
-    test("member can resume and cancel a pending checkout from the event page", async ({
-      pending2Page,
-    }) => {
-      // Allow enough time for the pending checkout resume and cancellation flow.
+    test("member can resume a pending checkout from the event page", async ({ emptyUserPage }) => {
+      // Allow enough time for the owned pending checkout state to hydrate.
       test.setTimeout(90_000);
 
-      // Load the paid event before starting checkout.
-      await navigateToEvent(
-        pending2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
-        TEST_PAYMENT_EVENT_SLUGS.draft,
-      );
+      // Create an owned active checkout hold before loading the paid event.
+      const purchase = setupOwnedPendingCheckout({
+        eventId: TEST_PAYMENT_EVENT_IDS.draft,
+        providerCheckoutSessionId: "cs_e2e_owned_resume_checkout",
+        providerCheckoutUrl: OWNED_CHECKOUT_RESUME_URL,
+        userId: EMPTY_USER_ID,
+      });
 
-      // Resolve the current ticket attendance state.
-      await waitForAttendanceState(pending2Page);
-      // Verify the seeded pending payment exposes resume controls.
-      await expect(getAttendButton(pending2Page)).toContainText(
-        "Continue to checkout",
-      );
-      const resumeCheckoutUrl =
-        await getAttendButton(pending2Page).getAttribute("data-resume-url");
-      if (resumeCheckoutUrl !== null) {
-        expect(resumeCheckoutUrl).not.toEqual("");
+      try {
+        // Resolve the current ticket attendance state.
+        await navigateToEvent(
+          emptyUserPage,
+          TEST_COMMUNITY_NAME,
+          TEST_GROUP_SLUGS.community1.alpha,
+          TEST_PAYMENT_EVENT_SLUGS.draft,
+        );
+        await waitForAttendanceState(emptyUserPage);
+
+        // Verify the owned pending payment exposes a non-empty provider resume URL.
+        const attendButton = getAttendButton(emptyUserPage);
+        await expect(attendButton).toContainText("Continue to checkout");
+        await expect(attendButton).toHaveAttribute("data-resume-url", OWNED_CHECKOUT_RESUME_URL);
+        const resumeCheckoutUrl = await attendButton.getAttribute("data-resume-url");
+        expect(resumeCheckoutUrl).toBe(OWNED_CHECKOUT_RESUME_URL);
+        expect(new URL(resumeCheckoutUrl).origin).toBe("https://example.test");
+      } finally {
+        // Remove the owned pending checkout fixture.
+        cleanupOwnedPaymentPurchase(purchase);
       }
-
-      // Open the event-page actions and cancel the active checkout hold.
-      const attendanceContainer = getAttendanceContainer(pending2Page);
-      const actionsMenu = attendanceContainer.locator(
-        '[data-attendance-role="actions-menu"]',
-      );
-      await expect(actionsMenu).toBeVisible();
-      await actionsMenu.locator("summary").click();
-      await attendanceContainer
-        .locator('[data-attendance-role="checkout-cancel-btn"]')
-        .click();
-      await expect(pending2Page.locator(".swal2-popup")).toContainText(
-        "Are you sure you want to cancel this checkout?",
-      );
-
-      // Confirm checkout cancellation and verify ticket selection is restored.
-      await waitForActionResponse(
-        pending2Page,
-        () => pending2Page.getByRole("button", { name: "Yes" }).click(),
-        {
-          method: "DELETE",
-          urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
-        },
-      );
-      await expect(pending2Page.locator(".swal2-popup")).toContainText(
-        "Your checkout has been canceled. You can choose a different ticket.",
-      );
-      await expect(getAttendButton(pending2Page)).toContainText("Get ticket");
     });
 
-    test("paid attendee sees a pending refund request on the event page", async ({
-      member1Page,
-    }) => {
+    test("member can cancel a pending checkout from the event page", async ({ emptyUserPage }) => {
+      // Allow enough time for checkout cancellation and follow-up state refresh.
+      test.setTimeout(90_000);
+
+      // Create an owned active checkout hold before loading the paid event.
+      const purchase = setupOwnedPendingCheckout({
+        eventId: TEST_PAYMENT_EVENT_IDS.draft,
+        providerCheckoutSessionId: "cs_e2e_owned_cancel_checkout",
+        providerCheckoutUrl: OWNED_CHECKOUT_CANCEL_URL,
+        userId: EMPTY_USER_ID,
+      });
+
+      try {
+        // Resolve the current ticket attendance state.
+        await navigateToEvent(
+          emptyUserPage,
+          TEST_COMMUNITY_NAME,
+          TEST_GROUP_SLUGS.community1.alpha,
+          TEST_PAYMENT_EVENT_SLUGS.draft,
+        );
+        await waitForAttendanceState(emptyUserPage);
+        await expect(getAttendButton(emptyUserPage)).toContainText("Continue to checkout");
+        expect(
+          queryE2eDatabase(`
+            select status
+            from event_purchase
+            where event_purchase_id = '${purchase.purchaseId}';
+          `),
+        ).toBe("pending");
+
+        // Open the event-page actions and cancel the active checkout hold.
+        const attendanceContainer = getAttendanceContainer(emptyUserPage);
+        const actionsMenu = attendanceContainer.locator('[data-attendance-role="actions-menu"]');
+        await expect(actionsMenu).toBeVisible();
+        await actionsMenu.locator("summary").click();
+        await attendanceContainer.locator('[data-attendance-role="checkout-cancel-btn"]').click();
+        await expect(emptyUserPage.locator(".swal2-popup")).toContainText(
+          "Are you sure you want to cancel this checkout?",
+        );
+
+        // Confirm checkout cancellation and verify the ticket hold is released.
+        await waitForActionResponse(
+          emptyUserPage,
+          () => emptyUserPage.getByRole("button", { name: "Yes" }).click(),
+          {
+            method: "DELETE",
+            urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
+          },
+        );
+        await expect(emptyUserPage.locator(".swal2-popup")).toContainText(
+          "Your checkout has been canceled. You can choose a different ticket.",
+        );
+        expect(
+          queryE2eDatabase(`
+            select status || '|' || (hold_expires_at <= current_timestamp)::text
+            from event_purchase
+            where event_purchase_id = '${purchase.purchaseId}';
+          `),
+        ).toBe("expired|true");
+        await expect(getAttendButton(emptyUserPage)).toContainText("Get ticket");
+      } finally {
+        // Remove the owned canceled checkout fixture.
+        cleanupOwnedPaymentPurchase(purchase);
+      }
+    });
+
+    test("paid attendee sees a pending refund request on the event page", async ({ member1Page }) => {
       // Load the refund-ready event with a pending request.
       await navigateToEvent(
         member1Page,
@@ -1369,9 +1166,7 @@ test.describe("event attendance", () => {
       await expect(getLeaveButton(member1Page)).toBeHidden();
     });
 
-    test("paid attendee sees refund processing on the event page", async ({
-      member2Page,
-    }) => {
+    test("paid attendee sees refund processing on the event page", async ({ member2Page }) => {
       // Load the refund-ready event with a processing refund.
       await navigateToEvent(
         member2Page,
@@ -1390,9 +1185,7 @@ test.describe("event attendance", () => {
       await expect(getLeaveButton(member2Page)).toBeHidden();
     });
 
-    test("paid attendee sees the reason when a refund request was rejected", async ({
-      pending1Page,
-    }) => {
+    test("paid attendee sees the reason when a refund request was rejected", async ({ pending1Page }) => {
       // Load the refund-ready event with a rejected refund.
       await navigateToEvent(
         pending1Page,
@@ -1403,77 +1196,151 @@ test.describe("event attendance", () => {
 
       // Set up refund button.
       const refundButton = getRefundButton(pending1Page);
-      const rejectionReason = pending1Page.locator(
-        '[data-attendance-role="refund-rejection-reason"]',
-      );
+      const rejectionReason = pending1Page.locator('[data-attendance-role="refund-rejection-reason"]');
 
       // Assert the rejected state and its persisted organizer reason.
       await expect(refundButton).toBeVisible();
       await expect(refundButton).toContainText("Refund rejected");
       await expect(refundButton).toBeDisabled();
-      await expect(rejectionReason).toHaveText(
-        "The request falls outside the refund policy window.",
-      );
+      await expect(rejectionReason).toHaveText("The request falls outside the refund policy window.");
       await expect(getLeaveButton(pending1Page)).toBeHidden();
     });
 
-    test("paid attendee can request a refund before the event starts", async ({
-      pending2Page,
-    }) => {
-      // Load the refund-ready event before requesting a refund.
-      await navigateToEvent(
-        pending2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
-        TEST_PAYMENT_EVENT_SLUGS.refunds,
-      );
-
-      // Set up refund button.
-      const refundButton = getRefundButton(pending2Page);
-
-      // Verify the attendee can request a refund instead of canceling.
-      await expect(refundButton).toBeVisible();
-      if ((await refundButton.innerText()).includes("Refund requested")) {
-        await expect(refundButton).toBeDisabled();
-        await expect(getLeaveButton(pending2Page)).toBeHidden();
-        return;
-      }
-      await expect(refundButton).toContainText("Request refund");
-      await expect(refundButton).toBeEnabled();
-      await expect(getLeaveButton(pending2Page)).toBeHidden();
-
-      // Open the refund request modal and provide an optional reason.
-      await refundButton.click();
-      const refundModal = pending2Page.getByRole("dialog", {
-        name: "Request a refund",
+    test("paid attendee can request a refund before the event starts", async ({ emptyUserPage }) => {
+      // Create an owned completed purchase so the request starts from an exact state.
+      const purchase = setupOwnedCompletedRefundPurchase({
+        eventId: TEST_PAYMENT_EVENT_IDS.refunds,
+        userId: EMPTY_USER_ID,
       });
-      await expect(refundModal).toBeVisible();
-      await refundModal
-        .getByRole("textbox", { name: "Reason (optional)" })
-        .fill("Unable to attend");
+      let notificationIds = [];
 
-      // Submit the request and verify the reason reaches the refund endpoint.
-      const refundResponse = await waitForActionResponse(
-        pending2Page,
-        () => refundModal.getByRole("button", { name: "Request refund" }).click(),
-        {
-          method: "POST",
-          urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.refunds}/refund-request`,
-        },
-      );
-      const refundRequestData = new URLSearchParams(
-        refundResponse.request().postData(),
-      );
-      expect(refundRequestData.get("requested_reason")).toBe(
-        "Unable to attend",
-      );
+      try {
+        // Load the refund-ready event before requesting a refund.
+        await navigateToEvent(
+          emptyUserPage,
+          TEST_COMMUNITY_NAME,
+          TEST_GROUP_SLUGS.community1.alpha,
+          TEST_PAYMENT_EVENT_SLUGS.refunds,
+        );
 
-      // Verify the event page updates to the pending refund request state.
-      await expect(pending2Page.locator(".swal2-popup")).toContainText(
-        "Your refund request has been sent to the organizers.",
-      );
-      await expect(refundButton).toContainText("Refund requested");
-      await expect(refundButton).toBeDisabled();
+        // Set up refund button.
+        const refundButton = getRefundButton(emptyUserPage);
+
+        // Verify the attendee can request a refund instead of canceling.
+        await expect(refundButton).toBeVisible();
+        await expect(refundButton).toContainText("Request refund");
+        await expect(refundButton).toBeEnabled();
+        await expect(getLeaveButton(emptyUserPage)).toBeHidden();
+
+        // Open the refund request modal and provide an optional reason.
+        await refundButton.click();
+        const refundModal = emptyUserPage.getByRole("dialog", {
+          name: "Request a refund",
+        });
+        await expect(refundModal).toBeVisible();
+        await refundModal.getByRole("textbox", { name: "Reason (optional)" }).fill("Unable to attend");
+
+        // Submit the request and verify the reason reaches the refund endpoint.
+        const snapshot = snapshotNotifications();
+        const refundResponse = await waitForActionResponse(
+          emptyUserPage,
+          () => refundModal.getByRole("button", { name: "Request refund" }).click(),
+          {
+            method: "POST",
+            urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.refunds}/refund-request`,
+          },
+        );
+        notificationIds = expectNewNotifications(snapshot, [
+          { kind: "event-refund-requested", userIds: EVENT_REFUND_REQUESTED_RECIPIENT_IDS },
+        ]);
+        const refundRequestData = new URLSearchParams(refundResponse.request().postData());
+        expect(refundRequestData.get("requested_reason")).toBe("Unable to attend");
+
+        // Verify exactly one durable refund request is created for the owned purchase.
+        expect(
+          queryE2eDatabase(`
+            select count(*) || '|' || max(status) || '|' || max(requested_reason)
+            from event_refund_request
+            where event_purchase_id = '${purchase.purchaseId}';
+          `),
+        ).toBe("1|pending|Unable to attend");
+
+        // Verify the event page updates to the pending refund request state.
+        await expect(emptyUserPage.locator(".swal2-popup")).toContainText(
+          "Your refund request has been sent to the organizers.",
+        );
+        await expect(refundButton).toContainText("Refund requested");
+        await expect(refundButton).toBeDisabled();
+      } finally {
+        // Remove notifications and the refund purchase fixture.
+        deleteNotifications(notificationIds);
+        cleanupOwnedPaymentPurchase(purchase);
+      }
     });
   });
 });
+
+/** Cancels attendance when the current user is already registered. */
+const cancelAttendance = async (page, eventId) => {
+  await dismissProfileCompletionPrompt(page);
+
+  const leaveButton = getLeaveButton(page);
+  await expect(leaveButton).toBeVisible();
+
+  // Request attendance cancellation before confirming the dialog.
+  await leaveButton.click();
+  const confirmButton = page.getByRole("button", { name: "Yes" });
+  await expect(confirmButton).toBeVisible();
+
+  // Confirm cancellation and wait for the attendance record to be removed.
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "DELETE" &&
+        response.url().includes(`/event/${eventId}/leave`) &&
+        response.ok(),
+    ),
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().includes(`/event/${eventId}/enrollment`) &&
+        response.ok(),
+    ),
+    confirmButton.click(),
+  ]);
+
+  // Verify the attend action returns after cancellation.
+  await waitForAttendanceState(page);
+  await expect(getAttendButton(page)).toBeVisible();
+};
+
+/** Deletes matching notification table rows created after the snapshot. */
+const deleteNotificationsSince = (snapshot, kind, userIds) => {
+  queryE2eDatabase(`
+    delete from notification
+    where created_at >= '${snapshot.createdAfter}'::timestamptz
+    and kind = '${kind}'
+    and user_id in (${userIds.map((userId) => `'${userId}'::uuid`).join(", ")});
+  `);
+};
+
+/** Dismiss the optional profile completion prompt shown after successful attendance. */
+const dismissProfileCompletionPrompt = async (page) => {
+  const maybeLaterButton = page.getByRole("button", { name: "Maybe later" });
+  if (await maybeLaterButton.isVisible()) {
+    await maybeLaterButton.click();
+    await expect(page.locator(".swal2-popup")).toBeHidden();
+  }
+};
+
+/** Returns the checkout action inside the ticket modal. */
+const getCheckoutButton = (page) => page.locator('[data-attendance-role="checkout-btn"]');
+
+/** Returns the refund action for a paid attendee. */
+const getRefundButton = (page) => page.locator('[data-attendance-role="refund-btn"]');
+
+/** Returns the sign-in action shown to anonymous users. */
+const getSignInButton = (page) => page.locator('[data-attendance-role="signin-btn"]');
+
+/** Returns the ticket selection modal. */
+const getTicketModal = (page) => page.locator('[data-attendance-role="ticket-modal"]');

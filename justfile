@@ -8,17 +8,24 @@
 #     OCG_DB_NAME                 - Main database name (default: ocg)
 #     OCG_DB_NAME_TESTS           - Test database name (default: ocg_tests)
 #     OCG_DB_NAME_TESTS_CONTRACT  - Contract test database name (default: ocg_tests_contract)
-#     OCG_DB_NAME_TESTS_E2E       - E2E test database name (default: ocg_tests_e2e)
 #     OCG_DB_NAME_TESTS_MIGRATION - Migration test database name (default: ocg_tests_migration)
 #     OCG_DB_PORT                 - Database port (default: 5432)
 #     OCG_DB_USER                 - Database user (default: postgres)
 #     OCG_PG_BIN                  - Path to PostgreSQL binaries (default: /opt/homebrew/opt/postgresql@17/bin)
 #     OCG_SERVER_CONFIG           - Server config path (default: $OCG_CONFIG/server.yml)
-#     OCG_SERVER_CONFIG_TESTS_E2E - E2E server config path (default: $OCG_CONFIG/server-tests-e2e.yml)
 #
-# Please don't forget to set up the tern config files (tern.conf, tern-e2e-tests.conf,
-# tern-tests.conf, and tern-tests-contract.conf) in the config directory (OCG_CONFIG). Make sure the database
-# connection settings match the environment variables set here.
+#   E2E contract (exported to tern, psql, the e2e server and Playwright):
+#     OCG_E2E_DB_HOST             - E2E database host (default: OCG_DB_HOST)
+#     OCG_E2E_DB_NAME             - E2E database name, must end in `_e2e` (default: ocg_tests_e2e)
+#     OCG_E2E_DB_PASSWORD         - E2E database password (default: OCG_DB_PASSWORD)
+#     OCG_E2E_DB_PORT             - E2E database port (default: OCG_DB_PORT)
+#     OCG_E2E_DB_USER             - E2E database user (default: OCG_DB_USER)
+#     OCG_E2E_BASE_URL            - E2E server base URL (default: http://127.0.0.1:9001)
+#
+# Please don't forget to set up the tern config files (tern.conf, tern-tests.conf, and
+# tern-tests-contract.conf) in the config directory (OCG_CONFIG). Make sure the database
+# connection settings match the environment variables set here. The e2e suite uses the
+# committed tests/e2e/config/{server.yml,tern.conf} instead.
 # Configuration
 
 config_dir := env("OCG_CONFIG", env_var("HOME") / ".config/ocg")
@@ -26,7 +33,6 @@ db_host := env("OCG_DB_HOST", "localhost")
 db_name := env("OCG_DB_NAME", "ocg")
 db_name_tests := env("OCG_DB_NAME_TESTS", "ocg_tests")
 db_name_tests_contract := env("OCG_DB_NAME_TESTS_CONTRACT", "ocg_tests_contract")
-db_name_tests_e2e := env("OCG_DB_NAME_TESTS_E2E", "ocg_tests_e2e")
 db_name_tests_migration := env("OCG_DB_NAME_TESTS_MIGRATION", "ocg_tests_migration")
 db_port := env("OCG_DB_PORT", "5432")
 db_user := env("OCG_DB_USER", "postgres")
@@ -35,13 +41,41 @@ pg_bin := env("OCG_PG_BIN", "/opt/homebrew/opt/postgresql@17/bin")
 pg_conn := "-h " + db_host + " -p " + db_port + " -U " + db_user
 db_server_host_opt := if db_host =~ '^/' { "-k " + db_host } else { "-h " + db_host }
 server_config := env("OCG_SERVER_CONFIG", config_dir / "server.yml")
-server_config_tests_e2e := env("OCG_SERVER_CONFIG_TESTS_E2E", config_dir / "server-tests-e2e.yml")
 source_dir := justfile_directory()
+
+# E2E contract: exported so tern (templated config), psql and Playwright share one target.
+
+export OCG_E2E_BASE_URL := env("OCG_E2E_BASE_URL", "http://127.0.0.1:9001")
+export OCG_E2E_DB_HOST := env("OCG_E2E_DB_HOST", db_host)
+export OCG_E2E_DB_NAME := env("OCG_E2E_DB_NAME", "ocg_tests_e2e")
+export OCG_E2E_DB_PASSWORD := env("OCG_E2E_DB_PASSWORD", db_password)
+export OCG_E2E_DB_PORT := env("OCG_E2E_DB_PORT", db_port)
+export OCG_E2E_DB_USER := env("OCG_E2E_DB_USER", db_user)
+
+# Fake provider webhook secrets; keep in sync with tests/e2e/config/server.yml.
+
+export OCG_E2E_STRIPE_CONNECTED_WEBHOOK_SECRET := "whsec_connect_e2e"
+export OCG_E2E_STRIPE_WEBHOOK_SECRET := "whsec_e2e"
+export OCG_E2E_ZOOM_WEBHOOK_SECRET := "whsec_zoom_e2e"
+e2e_pg_conn := "-h " + OCG_E2E_DB_HOST + " -p " + OCG_E2E_DB_PORT + " -U " + OCG_E2E_DB_USER
+e2e_seed_file := source_dir / "database/tests/data/e2e.sql"
+e2e_server_config := source_dir / "tests/e2e/config/server.yml"
+e2e_tern_config := source_dir / "tests/e2e/config/tern.conf"
 
 # Helper to run PostgreSQL commands with the configured binary path
 [private]
 pg command *args:
     PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" {{ command }} {{ args }}
+
+# Helper to run PostgreSQL commands against the e2e database contract.
+[private]
+e2e-pg command *args:
+    PGPASSWORD="{{ OCG_E2E_DB_PASSWORD }}" PATH="{{ pg_bin }}:$PATH" {{ command }} {{ args }}
+
+# Helper that refuses destructive e2e operations on databases not named `*_e2e`.
+[private]
+e2e-db-guard:
+    @case "{{ OCG_E2E_DB_NAME }}" in *_e2e) ;; *) echo "error: OCG_E2E_DB_NAME must end in _e2e (got '{{ OCG_E2E_DB_NAME }}')" >&2; exit 1 ;; esac
 
 # Common
 
@@ -71,7 +105,7 @@ db-client-tests-contract:
 
 # Connect to e2e test database.
 db-client-tests-e2e:
-    just pg psql {{ pg_conn }} {{ db_name_tests_e2e }}
+    just e2e-pg psql {{ e2e_pg_conn }} {{ OCG_E2E_DB_NAME }}
 
 # Connect to migration test database.
 db-client-tests-migration:
@@ -95,8 +129,8 @@ db-create-tests-contract:
     just pg createdb {{ pg_conn }} {{ db_name_tests_contract }}
 
 # Create e2e test database.
-db-create-tests-e2e:
-    just pg createdb {{ pg_conn }} {{ db_name_tests_e2e }}
+db-create-tests-e2e: e2e-db-guard
+    just e2e-pg createdb {{ e2e_pg_conn }} {{ OCG_E2E_DB_NAME }}
 
 # Create migration test database with pgTAP extension.
 db-create-tests-migration:
@@ -116,8 +150,8 @@ db-drop-tests-contract:
     just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_tests_contract }}
 
 # Drop e2e test database.
-db-drop-tests-e2e:
-    just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_tests_e2e }}
+db-drop-tests-e2e: e2e-db-guard
+    just e2e-pg dropdb {{ e2e_pg_conn }} --if-exists --force {{ OCG_E2E_DB_NAME }}
 
 # Drop migration test database.
 db-drop-tests-migration:
@@ -137,9 +171,8 @@ db-lint:
     sh "{{ source_dir }}/database/scripts/lint.sh"
 
 # Load e2e seed data into e2e test database.
-db-load-tests-e2e-data:
-    just pg psql {{ pg_conn }} {{ db_name_tests_e2e }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
-    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests_e2e }} -c 'update "user" set password = $$$argon2id$v=19$m=19456,t=2,p=1$q55jlxUx8bffhFM3xN36ZA$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g$$ where username like $$e2e-%$$'
+db-load-tests-e2e-data: e2e-db-guard
+    just e2e-pg psql {{ e2e_pg_conn }} {{ OCG_E2E_DB_NAME }} -X -q -v ON_ERROR_STOP=1 -f "{{ e2e_seed_file }}"
 
 # Load contract test seed data into contract test database.
 db-load-tests-contract-data:
@@ -158,8 +191,8 @@ db-migrate-tests-contract:
     @output=$(cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ config_dir }}/tern-tests-contract.conf" ./migrate.sh 2>&1); status=$?; if [ $status -ne 0 ]; then printf '%s\n' "$output"; fi; exit $status
 
 # Run migrations on e2e test database.
-db-migrate-tests-e2e:
-    @output=$(cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ config_dir }}/tern-e2e-tests.conf" ./migrate.sh 2>&1); status=$?; if [ $status -ne 0 ]; then printf '%s\n' "$output"; fi; exit $status
+db-migrate-tests-e2e: e2e-db-guard
+    @output=$(cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ e2e_tern_config }}" ./migrate.sh 2>&1); status=$?; if [ $status -ne 0 ]; then printf '%s\n' "$output"; fi; exit $status
 
 # Drop, create, and migrate main database.
 db-recreate: db-drop db-create db-migrate
@@ -249,7 +282,7 @@ server-watch:
 
 # Format and lint frontend code.
 frontend-fmt-and-lint:
-    prettier --config ocg-server/static/js/.prettierrc.yaml --write "ocg-server/static/js/**/*.js"
+    prettier --config ocg-server/static/js/.prettierrc.yaml --write "ocg-server/static/js/**/*.js" "tests/e2e/**/*.js"
     djlint --check --configuration ocg-server/templates/.djlintrc ocg-server/templates
 
 # Run frontend unit tests.
@@ -263,18 +296,38 @@ e2e-install:
     cd tests/e2e && npm ci
     cd tests/e2e && npx playwright install --with-deps
 
+# Stamp the e2e database with a per-reset marker used by the Playwright preflight.
+e2e-db-mark: e2e-db-guard
+    PGPASSWORD="{{ OCG_E2E_DB_PASSWORD }}" PATH="{{ pg_bin }}:$PATH" psql {{ e2e_pg_conn }} {{ OCG_E2E_DB_NAME }} -X -q -v ON_ERROR_STOP=1 -c "update \"group\" set description = 'E2E seed run ' || gen_random_uuid()::text where group_id = '44444444-4444-4444-4444-444444444448'"
+
+# Drop, create, migrate, seed and mark the e2e test database.
+e2e-db-reset: db-recreate-tests-e2e db-load-tests-e2e-data e2e-db-mark
+
 # Run the e2e server using cargo run (builds if needed).
 e2e-server:
-    cargo run -p ocg-server -- -c "{{ server_config_tests_e2e }}"
+    just e2e-server-env cargo run -p ocg-server -- -c "{{ e2e_server_config }}"
+
+# Run a prebuilt e2e server binary (used by CI after downloading the build artifact).
+e2e-server-binary binary="target/debug/ocg-server":
+    just e2e-server-env "{{ binary }}" -c "{{ e2e_server_config }}"
 
 # Run the e2e server with watchexec for auto-reload.
 e2e-server-watch:
-    watchexec -r -- cargo run -p ocg-server -- -c "{{ server_config_tests_e2e }}"
+    just e2e-server-env watchexec -r -- cargo run -p ocg-server -- -c "{{ e2e_server_config }}"
 
-# Run the Playwright e2e test suite.
-e2e-tests:
-    cd tests/e2e && OCG_E2E_MEETINGS_ENABLED=true OCG_E2E_PAYMENTS_ENABLED=true npx playwright test --config playwright.config.js
+# Helper that maps the e2e database contract onto the server environment.
+[private]
+e2e-server-env command *args:
+    OCG_DB__HOST="{{ OCG_E2E_DB_HOST }}" OCG_DB__PORT="{{ OCG_E2E_DB_PORT }}" OCG_DB__USER="{{ OCG_E2E_DB_USER }}" OCG_DB__PASSWORD="{{ OCG_E2E_DB_PASSWORD }}" OCG_DB__DBNAME="{{ OCG_E2E_DB_NAME }}" {{ command }} {{ args }}
+
+# Run the Playwright e2e test suite (extra arguments are forwarded to Playwright).
+e2e-tests *args:
+    cd tests/e2e && PATH="{{ pg_bin }}:$PATH" npx playwright test --config playwright.config.js {{ args }}
+
+# Run a single Playwright spec file (path relative to tests/e2e).
+e2e-tests-file spec *args:
+    cd tests/e2e && PATH="{{ pg_bin }}:$PATH" npx playwright test --config playwright.config.js "{{ spec }}" {{ args }}
 
 # Update Playwright visual snapshots for the e2e suite.
 e2e-update-snapshots:
-    cd tests/e2e && npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep @visual --update-snapshots
+    cd tests/e2e && PATH="{{ pg_bin }}:$PATH" npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep @visual --update-snapshots

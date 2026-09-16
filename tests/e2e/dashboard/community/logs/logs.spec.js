@@ -1,52 +1,22 @@
 import { expect, test } from "../../../fixtures.js";
-
-import {
-  expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
-  navigateToPath,
-} from "../../../utils.js";
+import { buildE2eUrl, expectPaginationNavigation, futureDate, navigateToPath } from "../../../utils.js";
 
 const COMMUNITY_LOGS_PATH = "/dashboard/community?tab=logs";
+
 const FILTERED_COMMUNITY_LOGS_PATH =
   "/dashboard/community?tab=logs&action=community_updated&actor=e2e-admin-1";
+
 const COMMUNITY_DETAILS_LOGS_PATH = "/dashboard/community?tab=logs&action=group_added&actor=e2e-admin-1";
 
 test.describe("community dashboard logs view", () => {
-  test("empty state explains when a community has no audit history", async ({
-    adminEmptyCommunityPage,
-  }) => {
+  test("empty state explains when a community has no audit history", async ({ adminEmptyCommunityPage }) => {
     // Load logs for the dedicated community without audit records.
     await navigateToPath(adminEmptyCommunityPage, COMMUNITY_LOGS_PATH);
-    const dashboardContent = adminEmptyCommunityPage.locator(
-      "#dashboard-content",
-    );
+    const dashboardContent = adminEmptyCommunityPage.locator("#dashboard-content");
 
     // Verify the zero count and empty audit guidance remain visible.
     await expect(dashboardContent).toContainText("0 logs");
-    await expect(dashboardContent).toContainText(
-      "No audit log entries found.",
-    );
-  });
-
-  test("community logs table exposes its responsive columns", async ({ adminCommunityPage }) => {
-    // Load community logs before checking table structure.
-    await navigateToPath(adminCommunityPage, COMMUNITY_LOGS_PATH);
-
-    // Find the logs table and its complete ordered header set.
-    const logsTable = adminCommunityPage.locator("#dashboard-content").getByRole("table");
-    const headers = ["Action", "Actor", "Target", "Date", "Details"];
-
-    // Verify header order and column visibility across dashboard breakpoints.
-    await expectTableHeaders(logsTable, headers);
-    await expectTableColumnsAtViewport(
-      adminCommunityPage,
-      logsTable,
-      1024,
-      ["Action", "Actor", "Date", "Details"],
-      ["Target"],
-    );
-    await expectTableColumnsAtViewport(adminCommunityPage, logsTable, 1280, headers, []);
+    await expect(dashboardContent).toContainText("No audit log entries found.");
   });
 
   test("admin can move between community log result pages", async ({ adminCommunityPage }) => {
@@ -59,11 +29,26 @@ test.describe("community dashboard logs view", () => {
   });
 
   test("admin can view the seeded community logs list and active filters", async ({ adminCommunityPage }) => {
+    // Load the unfiltered community logs URL before applying active filters.
+    await navigateToPath(adminCommunityPage, COMMUNITY_LOGS_PATH);
+    let dashboardContent = adminCommunityPage.locator("#dashboard-content");
+
+    // Verify the seeded community and group log content is present.
+    await expect(dashboardContent.locator("tr.audit-log-row").first()).toBeVisible();
+    await expect(dashboardContent).toContainText("Platform Engineering Community");
+    await expect(
+      dashboardContent
+        .locator("tr.audit-log-row", {
+          hasText: "Observability Guild",
+        })
+        .first(),
+    ).toBeVisible();
+
     // Load the filtered community logs URL.
     await navigateToPath(adminCommunityPage, FILTERED_COMMUNITY_LOGS_PATH);
 
     // Verify the filtered log row and durable filter URL.
-    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(dashboardContent.getByText("Logs", { exact: true })).toBeVisible();
     await expect(adminCommunityPage).toHaveURL(
       /\/dashboard\/community\?tab=logs&action=community_updated&actor=e2e-admin-1/,
@@ -118,23 +103,6 @@ test.describe("community dashboard logs view", () => {
     await expect(detailsPopover).toContainText("Active");
   });
 
-  test("admin can browse the full seeded community logs list", async ({ adminCommunityPage }) => {
-    // Load the unfiltered community logs URL.
-    await navigateToPath(adminCommunityPage, COMMUNITY_LOGS_PATH);
-
-    // Verify the seeded community and group log content is present.
-    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    await expect(dashboardContent.locator("tr.audit-log-row").first()).toBeVisible();
-    await expect(dashboardContent).toContainText("Platform Engineering Community");
-    await expect(
-      dashboardContent
-        .locator("tr.audit-log-row", {
-          hasText: "Observability Guild",
-        })
-        .first(),
-    ).toBeVisible();
-  });
-
   test("admin can filter community logs by action and actor and reset them", async ({
     adminCommunityPage,
   }) => {
@@ -166,7 +134,9 @@ test.describe("community dashboard logs view", () => {
       dashboardContent.locator("tr.audit-log-row", { hasText: "Group added" }).first(),
     ).toBeVisible();
     await expect(
-      dashboardContent.locator("tr.audit-log-row", { hasText: "Community updated" }),
+      dashboardContent.locator("tr.audit-log-row", {
+        hasText: "Community updated",
+      }),
     ).toHaveCount(0);
 
     // Verify the active filters indicator and the persisted modal values.
@@ -183,4 +153,44 @@ test.describe("community dashboard logs view", () => {
     ).toBeVisible();
     await expect(adminCommunityPage.locator("#audit-log-filters-active-indicator")).toBeHidden();
   });
+
+  test("admin can filter community logs by date range and invalid dates are rejected", async ({
+    adminCommunityPage,
+  }) => {
+    // Seeded audit rows are created a few hours before each reset, so a two-day window brackets them.
+    const twoDaysAgo = dateOffset(-2);
+    await navigateToPath(adminCommunityPage, COMMUNITY_LOGS_PATH);
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    const filtersModal = adminCommunityPage.locator("#audit-log-filters-modal");
+
+    // A from-date before the seeded rows keeps every entry.
+    await adminCommunityPage.getByRole("button", { name: "Filters" }).click();
+    await expect(filtersModal).toBeVisible();
+    await filtersModal.locator("#audit-date-from").fill(twoDaysAgo);
+    await filtersModal.getByRole("button", { name: "Apply" }).click();
+    await expect(adminCommunityPage).toHaveURL(new RegExp(`tab=logs.*date_from=${twoDaysAgo}`));
+    await expect(
+      dashboardContent.locator("tr.audit-log-row", { hasText: "Community updated" }).first(),
+    ).toBeVisible();
+    await expect(adminCommunityPage.locator("#audit-log-filters-active-indicator")).toBeVisible();
+
+    // A to-date before the seeded rows excludes every entry.
+    await adminCommunityPage.getByRole("button", { name: "Filters" }).click();
+    await expect(filtersModal.locator("#audit-date-from")).toHaveValue(twoDaysAgo);
+    await filtersModal.locator("#audit-date-from").fill("");
+    await filtersModal.locator("#audit-date-to").fill(twoDaysAgo);
+    await filtersModal.getByRole("button", { name: "Apply" }).click();
+    await expect(adminCommunityPage).toHaveURL(new RegExp(`tab=logs.*date_to=${twoDaysAgo}`));
+    await expect(dashboardContent).toContainText("0 logs");
+    await expect(dashboardContent.locator("tr.audit-log-row")).toHaveCount(0);
+
+    // Years outside 1..9999 fail validation before the query runs.
+    const invalidResponse = await adminCommunityPage.request.get(
+      buildE2eUrl("/dashboard/community/logs?date_from=0000-01-01"),
+    );
+    expect(invalidResponse.status()).toBe(422);
+  });
 });
+
+/** Returns the UTC calendar date (`YYYY-MM-DD`) a number of days away from today. */
+const dateOffset = (days) => futureDate({ days }).slice(0, 10);

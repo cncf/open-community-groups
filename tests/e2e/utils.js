@@ -1,389 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
 import { expect } from "@playwright/test";
 
-export const TEST_COMMUNITY_NAME = process.env.OCG_E2E_COMMUNITY_NAME || "e2e-test-community";
-export const TEST_COMMUNITY_NAME_2 = "e2e-second-community";
-export const TEST_COMMUNITY_IDS = {
-  community1: "11111111-1111-1111-1111-111111111111",
-  community2: "11111111-1111-1111-1111-111111111112",
-  empty: "11111111-1111-1111-1111-111111111113",
-};
-export const TEST_GROUP_SLUG = process.env.OCG_E2E_GROUP_SLUG || "test-group-alpha";
-export const TEST_EVENT_SLUG = process.env.OCG_E2E_EVENT_SLUG || "alpha-event-1";
-export const TEST_GROUP_NAME = "Platform Ops Meetup";
-export const TEST_EVENT_NAME = "Upcoming In-Person Event";
-export const TEST_CANCELED_PUBLIC_EVENT = {
-  id: "55555555-5555-5555-5555-555555555531",
-  name: "Canceled Public Event",
-  slug: "alpha-canceled-public-event",
-};
-export const TEST_APPROVAL_REQUIRED_EVENT = {
-  id: "55555555-5555-5555-5555-555555555530",
-  name: "Approval Required Attendance",
-  offerId: "62555555-5555-5555-5555-555555555530",
-  slug: "alpha-approval-required-attendance",
-};
-export const TEST_EVENT_PAGE_BADGE_EVENT = {
-  id: "55555555-5555-5555-5555-555555555524",
-  name: "Test Event Page Badge",
-  slug: "alpha-test-event-badge",
-};
-export const TEST_EVENT_CANCELLATION = {
-  id: "55555555-5555-5555-5555-555555555527",
-  name: "Event Cancellation Lifecycle",
-  slug: "alpha-event-cancellation-lifecycle",
-};
-export const TEST_CFS_WINDOW_EVENTS = {
-  closed: {
-    id: "55555555-5555-5555-5555-555555555534",
-    name: "Closed Call for Speakers Window",
-    slug: "alpha-cfs-closed",
-  },
-  upcoming: {
-    id: "55555555-5555-5555-5555-555555555533",
-    name: "Upcoming Call for Speakers Window",
-    slug: "alpha-cfs-upcoming",
-  },
-};
-export const TEST_INVITATION_CANCELLATION = {
-  id: "55555555-5555-5555-5555-555555555528",
-  name: "Canceled Invitation History",
-  slug: "alpha-canceled-invitation-history",
-};
-export const TEST_OPEN_CHECK_IN_EVENT = {
-  id: "55555555-5555-5555-5555-555555555529",
-  name: "Open Public Check-In",
-  slug: "alpha-open-public-check-in",
-};
-export const TEST_MULTI_DAY_EVENT = {
-  id: "55555555-5555-5555-5555-555555555535",
-  name: "Multi Day Summit",
-  slug: "alpha-multi-day-summit",
-};
-export const TEST_UNPUBLISHED_EVENT = {
-  id: "55555555-5555-5555-5555-555555555532",
-  name: "Unpublished Public Event",
-  slug: "alpha-unpublished-public-event",
-};
-export const TEST_REGISTRATION_QUESTIONS_EVENT = {
-  id: "55555555-5555-5555-5555-555555555525",
-  name: "Registration Answers Lab",
-  slug: "alpha-registration-answers-lab",
-};
-export const TEST_REGISTRATION_WINDOW_EVENTS = {
-  approvalClosed: {
-    id: "55555555-5555-5555-5555-555555555905",
-    name: "Registration Window Approval Closed",
-    slug: "alpha-registration-window-approval-closed",
-  },
-  approvalFuture: {
-    id: "55555555-5555-5555-5555-555555555922",
-    name: "Registration Window Approval Future",
-    slug: "alpha-registration-window-approval-future",
-  },
-  closeOnlyOpen: {
-    id: "55555555-5555-5555-5555-555555555907",
-    name: "Registration Window Close Only Open",
-    slug: "alpha-registration-window-close-only-open",
-  },
-  freeClosed: {
-    id: "55555555-5555-5555-5555-555555555904",
-    name: "Registration Window Free Closed",
-    slug: "alpha-registration-window-free-closed",
-  },
-  openOnlyClosed: {
-    id: "55555555-5555-5555-5555-555555555908",
-    name: "Registration Window Open Only Closed",
-    slug: "alpha-registration-window-open-only-closed",
-  },
-  pendingPaymentClosed: {
-    id: "55555555-5555-5555-5555-555555555911",
-    name: "Registration Window Pending Payment Closed",
-    slug: "alpha-registration-window-pending-payment-closed",
-  },
-  questionsClosed: {
-    id: "55555555-5555-5555-5555-555555555909",
-    name: "Registration Window Questions Closed",
-    slug: "alpha-registration-window-questions-closed",
-  },
-  questionsManualInviteClosed: {
-    id: "55555555-5555-5555-5555-555555555910",
-    name: "Registration Window Manual Invite Closed",
-    slug: "alpha-registration-window-manual-invite-closed",
-  },
-  paidClosed: {
-    id: "55555555-5555-5555-5555-555555555901",
-    name: "Registration Window Paid Closed",
-    slug: "alpha-registration-window-paid-closed",
-  },
-  paidFuture: {
-    id: "55555555-5555-5555-5555-555555555902",
-    name: "Registration Window Paid Future",
-    slug: "alpha-registration-window-paid-future",
-  },
-  paidOpen: {
-    id: "55555555-5555-5555-5555-555555555903",
-    name: "Registration Window Paid Open",
-    slug: "alpha-registration-window-paid-open",
-  },
-  priceEnded: {
-    id: "55555555-5555-5555-5555-555555555923",
-    name: "Registration Window Price Ended",
-    slug: "alpha-registration-window-price-ended",
-  },
-  waitlistClosed: {
-    id: "55555555-5555-5555-5555-555555555906",
-    name: "Registration Window Waitlist Closed",
-    slug: "alpha-registration-window-waitlist-closed",
-  },
-};
-export const TEST_SEARCH_QUERY = "Test";
-export const TEST_SITE_TITLE = "E2E Test Site";
-export const TEST_COMMUNITY_TITLE = "Platform Engineering Community";
-export const TEST_COMMUNITY_TITLE_2 = "Developer Experience Community";
-
-/** Community details for assertions. */
-export const TEST_COMMUNITY_DESCRIPTION = "Platform engineering community used for end-to-end coverage.";
-export const TEST_COMMUNITY_AD_BANNER_LINK_URL_2 = "https://example.com/e2e-advertisement";
-export const TEST_COMMUNITY_AD_BANNER_URL_2 = "/static/images/e2e/event-banner.svg";
-export const TEST_COMMUNITY_BANNER_URL = "/static/images/e2e/community-primary-banner.svg";
-export const TEST_COMMUNITY_BANNER_MOBILE_URL = "/static/images/e2e/community-primary-banner-mobile.svg";
-
-/** Group names organized by community. */
-export const TEST_GROUP_NAMES = {
-  alpha: "Platform Ops Meetup",
-  beta: "Inactive Local Chapter",
-  empty: "Empty Coverage Group",
-  externalPayments: "External Payments Lab",
-  gamma: "Observability Guild",
-};
-
-/** Event names organized by group. */
-export const TEST_EVENT_NAMES = {
-  alpha: ["Upcoming In-Person Event", "Upcoming Virtual Event", "Upcoming Hybrid Event"],
-  beta: ["Canceled In-Person Event", "Secondary Virtual Event", "Secondary Hybrid Event"],
-  gamma: ["Observability In-Person Event", "Observability Virtual Event", "Observability Hybrid Event"],
-};
-
-/** Group slugs organized by community. */
-export const TEST_GROUP_SLUGS = {
-  community1: {
-    alpha: "test-group-alpha",
-    beta: "test-group-beta",
-    empty: "empty-coverage-group",
-    externalPayments: "external-payments-lab",
-    gamma: "test-group-gamma",
-  },
-  community2: {
-    delta: "second-group-delta",
-    epsilon: "second-group-epsilon",
-    zeta: "second-group-zeta",
-  },
-};
-
-/** Group ids organized by community. */
-export const TEST_GROUP_IDS = {
-  community1: {
-    alpha: "44444444-4444-4444-4444-444444444441",
-    beta: "44444444-4444-4444-4444-444444444442",
-    empty: "44444444-4444-4444-4444-444444444447",
-    externalPayments: "44444444-4444-4444-4444-444444444448",
-    gamma: "44444444-4444-4444-4444-444444444443",
-  },
-  community2: {
-    delta: "44444444-4444-4444-4444-444444444444",
-    epsilon: "44444444-4444-4444-4444-444444444445",
-    zeta: "44444444-4444-4444-4444-444444444446",
-  },
-};
-
-/** Event ids organized by seeded coverage area. */
-export const TEST_EVENT_IDS = {
-  alpha: {
-    one: "55555555-5555-5555-5555-555555555501",
-    two: "55555555-5555-5555-5555-555555555502",
-    cfsSummit: "55555555-5555-5555-5555-555555555519",
-    pastFiltering: "55555555-5555-5555-5555-555555555520",
-    waitlistLab: "55555555-5555-5555-5555-555555555521",
-    dashboardWaitlist: "55555555-5555-5555-5555-555555555526",
-  },
-};
-
-/** Payment-specific event ids used by the future Playwright payment suite. */
-export const TEST_PAYMENT_EVENT_IDS = {
-  draft: "55555555-5555-5555-5555-555555555522",
-  refunds: "55555555-5555-5555-5555-555555555523",
-};
-
-/** Payment-specific event names used by the future Playwright payment suite. */
-export const TEST_PAYMENT_EVENT_NAMES = {
-  draft: "Paid Tier Draft Event",
-  refunds: "Paid Tier Refund Review Event",
-};
-
-/** Payment-specific event slugs used by the future Playwright payment suite. */
-export const TEST_PAYMENT_EVENT_SLUGS = {
-  draft: "alpha-payments-draft",
-  refunds: "alpha-payments-refunds",
-};
-
-/** Exhausted payment job identifiers used by refund dashboard coverage. */
-export const TEST_FINANCIAL_WORK_JOB_IDS = {
-  applicationFeeAdjustment: "64555555-5555-5555-5555-555555555531",
-  creditNote: "64555555-5555-5555-5555-555555555534",
-  exhaustedRefund: "64555555-5555-5555-5555-555555555527",
-};
-
-/** Seeded purchase document identifiers used by dashboard coverage. */
-export const TEST_PURCHASE_DOCUMENT_IDS = {
-  creditNote: "62555555-5555-5555-5555-555555555528",
-  purchase: "59555555-5555-5555-5555-555555555528",
-};
-
-/** Ticketing workflow events with isolated mutable state. */
-export const TEST_TICKETING_EVENTS = {
-  invitationRequests: {
-    id: "55555555-5555-5555-5555-555555555914",
-    name: "Invitation Request Lifecycle Lab",
-    slug: "alpha-invitation-request-lifecycle",
-  },
-  manualTaxUnavailable: {
-    id: "55555555-5555-5555-5555-555555555921",
-    name: "Unavailable Manual Tax Rate Lab",
-    slug: "alpha-manual-tax-unavailable",
-  },
-  migratedCapacity: {
-    id: "55555555-5555-5555-5555-555555555919",
-    name: "Migrated Unlimited Capacity Event",
-    slug: "alpha-migrated-unlimited-capacity",
-  },
-  noAssignableTier: {
-    id: "55555555-5555-5555-5555-555555555915",
-    name: "No Assignable Invitation Tier Lab",
-    slug: "alpha-no-assignable-invitation-tier",
-  },
-  paidOffers: {
-    id: "55555555-5555-5555-5555-555555555916",
-    name: "Paid Event Offers Lab",
-    slug: "alpha-paid-event-offers",
-  },
-  paidQuestions: {
-    id: "55555555-5555-5555-5555-555555555917",
-    name: "Paid Registration Questions Lab",
-    slug: "alpha-paid-registration-questions",
-  },
-  paymentReturn: {
-    id: "55555555-5555-5555-5555-555555555912",
-    name: "Payment Return States Lab",
-    slug: "alpha-payment-return-states",
-  },
-  refundedCapacity: {
-    id: "55555555-5555-5555-5555-555555555920",
-    name: "Refunded Capacity Release Lab",
-    slug: "alpha-refunded-capacity-release",
-  },
-  soldOut: {
-    id: "55555555-5555-5555-5555-555555555918",
-    name: "Sold Out Ticket States Lab",
-    slug: "alpha-sold-out-ticket-states",
-  },
-  ticketRequest: {
-    id: "55555555-5555-5555-5555-555555555913",
-    name: "Ticket Request Lab",
-    slug: "alpha-ticket-request-lab",
-  },
-};
-
-/** Isolated events used by the external payment E2E journeys. */
-export const TEST_EXTERNAL_PAYMENT_EVENTS = {
-  capacity: {
-    id: "55555555-5555-5555-5555-555555555925",
-    name: "External Payment Capacity Lab",
-    slug: "external-payment-capacity",
-    ticketTypeId: "56555555-5555-5555-5555-555555555925",
-  },
-  copyFree: {
-    id: "55555555-5555-5555-5555-555555555927",
-    name: "External Payment Free Ticket Lab",
-    slug: "external-payment-free-ticket-lab",
-  },
-  invitation: {
-    id: "55555555-5555-5555-5555-555555555926",
-    name: "External Payment Invitation Lab",
-    slug: "external-payment-invitation",
-    ticketTypeId: "56555555-5555-5555-5555-555555555926",
-  },
-  lifecycle: {
-    discountCode: "EXTERNALFREE",
-    id: "55555555-5555-5555-5555-555555555924",
-    name: "External Payment Lifecycle Lab",
-    slug: "external-payment-lifecycle",
-    ticketTypeId: "56555555-5555-5555-5555-555555555924",
-  },
-};
-
-/** Seeded Stripe recipient stored on the alpha group for payment-ready coverage. */
-export const TEST_PAYMENT_GROUP_RECIPIENT = "acct_e2e_alpha";
-export const E2E_PAYMENTS_ENABLED =
-  (process.env.OCG_E2E_PAYMENTS_ENABLED || "").trim().toLowerCase() === "true";
-export const E2E_MEETINGS_ENABLED =
-  (process.env.OCG_E2E_MEETINGS_ENABLED || "").trim().toLowerCase() === "true";
-
-/** Event slugs organized by group. */
-export const TEST_EVENT_SLUGS = {
-  alpha: ["alpha-event-1", "alpha-event-2", "alpha-event-3"],
-  beta: ["beta-event-1", "beta-event-2", "beta-event-3"],
-  gamma: ["gamma-event-1", "gamma-event-2", "gamma-event-3"],
-  delta: ["delta-event-1", "delta-event-2", "delta-event-3"],
-  epsilon: ["epsilon-event-1", "epsilon-event-2", "epsilon-event-3"],
-  zeta: ["zeta-event-1", "zeta-event-2", "zeta-event-3"],
-  alphaDashboard: ["alpha-cfs-summit", "alpha-past-roundup"],
-};
-
-/** Pre-seeded user ids for state resets and dashboard assertions. */
-export const TEST_USER_IDS = {
-  checkInManager1: "77777777-7777-7777-7777-777777777715",
-  communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
-  member1: "77777777-7777-7777-7777-777777777705",
-  member2: "77777777-7777-7777-7777-777777777706",
-  organizer1: "77777777-7777-7777-7777-777777777703",
-  pending1: "77777777-7777-7777-7777-777777777707",
-  pending2: "77777777-7777-7777-7777-777777777708",
-};
-
-/** Pre-seeded user credentials for e2e tests. */
-export const TEST_USER_CREDENTIALS = {
-  admin1: { username: "e2e-admin-1", password: "Password123!" },
-  admin2: { username: "e2e-admin-2", password: "Password123!" },
-  empty: { username: "e2e-empty", password: "Password123!" },
-  organizer1: { username: "e2e-organizer-1", password: "Password123!" },
-  organizer2: { username: "e2e-organizer-2", password: "Password123!" },
-  member1: { username: "e2e-member-1", password: "Password123!" },
-  member2: { username: "e2e-member-2", password: "Password123!" },
-  pending1: { username: "e2e-pending-1", password: "Password123!" },
-  pending2: { username: "e2e-pending-2", password: "Password123!" },
-  groupsManager1: {
-    username: "e2e-groups-manager-1",
-    password: "Password123!",
-  },
-  checkInManager1: {
-    username: "e2e-check-in-manager-1",
-    password: "Password123!",
-  },
-  communityViewer1: {
-    username: "e2e-community-viewer-1",
-    password: "Password123!",
-  },
-  eventsManager1: {
-    username: "e2e-events-manager-1",
-    password: "Password123!",
-  },
-  groupViewer1: {
-    username: "e2e-group-viewer-1",
-    password: "Password123!",
-  },
-};
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
 const LOGIN_NAVIGATION_TIMEOUT_MS = 5_000;
 const LOGIN_RETRY_ATTEMPTS = 3;
@@ -392,20 +9,18 @@ const NAVIGATION_ATTEMPT_TIMEOUT_MS = 15_000;
 const NAVIGATION_RETRY_ATTEMPTS = 12;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
 const HTMX_SETTLE_TIMEOUT_MS = 10_000;
+const ACTION_RESPONSE_BODY_PREVIEW_CHARS = 2_000;
 
+/** Builds an absolute E2E URL for a relative path. */
 const buildUrl = (path) => new URL(path, BASE_URL).toString();
 
-/**
- * Waits before retrying a navigation while the test server is starting.
- */
+/** Waits before retrying a navigation while the test server is starting. */
 const waitForNavigationRetry = () =>
   new Promise((resolve) => {
     setTimeout(resolve, NAVIGATION_RETRY_DELAY_MS);
   });
 
-/**
- * Waits for the shared stylesheet and HTMX runtime required by every page.
- */
+/** Waits for the shared stylesheet and HTMX runtime required by every page. */
 const waitForApplicationAssets = async (page) => {
   try {
     await page.waitForFunction(
@@ -424,9 +39,7 @@ const waitForApplicationAssets = async (page) => {
   }
 };
 
-/**
- * Checks whether a navigation error is caused by a temporarily missing server.
- */
+/** Checks whether a navigation error is caused by a temporarily missing server. */
 const isServerUnavailableNavigationError = (error) => {
   const message = String(error?.message || error);
   const isNavigationTimeout = error?.name === "TimeoutError" && message.includes("page.goto");
@@ -437,6 +50,7 @@ const isServerUnavailableNavigationError = (error) => {
     message.includes("Application assets did not load") ||
     message.includes("ERR_CONNECTION_RESET") ||
     message.includes("ERR_CONNECTION_REFUSED") ||
+    message.includes("ERR_NETWORK_IO_SUSPENDED") ||
     message.includes("Navigation completed without a server response") ||
     message.includes("NS_ERROR_NET_EMPTY_RESPONSE") ||
     message.includes("NS_ERROR_NET_RESET") ||
@@ -446,9 +60,7 @@ const isServerUnavailableNavigationError = (error) => {
   );
 };
 
-/**
- * Navigates to a URL and tolerates brief server restarts during E2E runs.
- */
+/** Navigates to a URL and tolerates brief server restarts during E2E runs. */
 const navigateToUrl = async (page, url) => {
   let lastError;
 
@@ -479,9 +91,7 @@ const navigateToUrl = async (page, url) => {
   throw lastError;
 };
 
-/**
- * Submits the login form and retries when navigation does not start.
- */
+/** Submits the login form and retries when navigation does not start. */
 const submitSeededLogin = async (page) => {
   let lastError;
 
@@ -507,110 +117,10 @@ const submitSeededLogin = async (page) => {
   throw lastError;
 };
 
-/** Waits for the page to finish the visual work needed before snapshotting. */
-const waitForVisualReady = async (page) => {
-  await page.waitForLoadState("networkidle");
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => resolve());
-      });
-    });
-  });
-};
-
-/**
- * Waits for image elements inside the snapshot target to settle.
- */
-const waitForVisualImages = async (region) => {
-  await region.locator("img").evaluateAll(async (elements) => {
-    await Promise.all(
-      elements.map(async (element) => {
-        const imageElement = element;
-        const settlePromise =
-          typeof imageElement.decode === "function"
-            ? imageElement.decode().catch(() => undefined)
-            : imageElement.complete
-              ? Promise.resolve()
-              : new Promise((resolve) => {
-                  imageElement.addEventListener("load", () => resolve(), {
-                    once: true,
-                  });
-                  imageElement.addEventListener("error", () => resolve(), {
-                    once: true,
-                  });
-                });
-
-        await Promise.race([
-          settlePromise,
-          new Promise((resolve) => {
-            window.setTimeout(resolve, 1500);
-          }),
-        ]);
-      }),
-    );
-  });
-};
-
-/**
- * Reads the dimensions from a PNG snapshot header.
- */
-const getPngDimensions = (filePath) => {
-  if (!existsSync(filePath)) {
-    return null;
-  }
-
-  const imageBuffer = readFileSync(filePath);
-
-  if (imageBuffer.length < 24 || imageBuffer.toString("ascii", 1, 4) !== "PNG") {
-    return null;
-  }
-
-  return {
-    width: imageBuffer.readUInt32BE(16),
-    height: imageBuffer.readUInt32BE(20),
-  };
-};
-
-/**
- * Checks whether a region is close enough to a snapshot for clipped capture.
- */
-const hasTinySnapshotDimensionDrift = (regionBox, snapshotDimensions) =>
-  Math.abs(snapshotDimensions.width - Math.round(regionBox.width)) <= 2 &&
-  Math.abs(snapshotDimensions.height - Math.round(regionBox.height)) <= 2;
-
-const getClippedScreenshotBox = async (page, regionBox, snapshotDimensions) => {
-  const viewportSize = page.viewportSize();
-  const documentSize = await page.evaluate(() => ({
-    height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
-    width: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth),
-  }));
-  const maxX = Math.max(
-    0,
-    Math.min(viewportSize?.width ?? documentSize.width, documentSize.width) - snapshotDimensions.width,
-  );
-  const maxY = Math.max(
-    0,
-    Math.min(viewportSize?.height ?? documentSize.height, documentSize.height) - snapshotDimensions.height,
-  );
-
-  return {
-    x: Math.min(Math.max(0, regionBox.x), maxX),
-    y: Math.min(Math.max(0, regionBox.y), maxY),
-    width: snapshotDimensions.width,
-    height: snapshotDimensions.height,
-  };
-};
-
-/**
- * Builds a fully-qualified URL.
- */
+/** Builds a fully-qualified URL. */
 export const buildE2eUrl = (path) => buildUrl(path);
 
-/**
- * Selects a site or community stats container.
- */
+/** Selects a site or community stats container. */
 export const getStatsContainer = (page, pageKind, viewport) => {
   const selector = viewport === "desktop" ? "div.hidden.lg\\:flex" : "div.grid.lg\\:hidden";
 
@@ -620,9 +130,7 @@ export const getStatsContainer = (page, pageKind, viewport) => {
     .first();
 };
 
-/**
- * Selects a stat value within a stats container.
- */
+/** Selects a stat value within a stats container. */
 export const getStatValue = (statsContainer, statLabel) => {
   const labelElement = statsContainer.getByText(statLabel, { exact: true });
   const statBlock = labelElement.locator("..");
@@ -630,15 +138,11 @@ export const getStatValue = (statsContainer, statLabel) => {
   return statBlock.locator(".lg\\:text-4xl");
 };
 
-/**
- * Selects a section container from its visible heading.
- */
+/** Selects a section container from its visible heading. */
 export const getSectionByHeading = (page, heading) =>
   page.getByText(heading, { exact: true }).locator("..").locator("..");
 
-/**
- * Selects a responsive link within a heading-based section.
- */
+/** Selects a responsive link within a heading-based section. */
 export const getSectionLink = (page, heading, linkName, viewport) => {
   const section = getSectionByHeading(page, heading);
 
@@ -647,96 +151,16 @@ export const getSectionLink = (page, heading, linkName, viewport) => {
     : section.locator("div.md\\:hidden").getByRole("link", { name: linkName });
 };
 
-/**
- * Selects a community banner on the site home page.
- */
+/** Selects a community banner on the site home page. */
 export const getCommunityBanner = (page, displayName) => page.getByAltText(`${displayName} banner`).first();
 
-/**
- * Selects the public attendance controls container.
- */
-export const getAttendanceContainer = (page) => page.locator("[data-attendance-container]").first();
-
-/**
- * Selects the public attend button.
- */
-export const getAttendButton = (page) =>
-  getAttendanceContainer(page).locator('[data-attendance-role="attend-btn"]');
-
-/**
- * Selects the public leave button.
- */
-export const getLeaveButton = (page) =>
-  getAttendanceContainer(page).locator('[data-attendance-role="leave-btn"]');
-
-/**
- * Waits until public attendance controls resolve to a stable state.
- */
-export const waitForAttendanceState = async (page) => {
-  const attendanceContainer = getAttendanceContainer(page);
-
-  await expect(attendanceContainer).toHaveAttribute("data-attendance-ready", "true");
-  await expect(attendanceContainer).toHaveAttribute("data-availability-hydrated", "true");
-  await Promise.race([
-    getAttendButton(page).waitFor({ state: "visible" }),
-    getLeaveButton(page).waitFor({ state: "visible" }),
-    attendanceContainer
-      .locator('[data-attendance-role="refund-btn"]')
-      .waitFor({ state: "visible" }),
-  ]);
-};
-
-/**
- * Selects an event detail card from its heading.
- */
-export const getEventInfoSection = (page, heading) =>
-  page.getByText(heading, { exact: true }).locator("..").locator("..");
-
-/**
- * Selects the event about section.
- */
-export const getEventAboutSection = (page) =>
-  page.getByText("About this event", { exact: true }).locator("..");
-
-/**
- * Selects the event logo in the page intro.
- */
-export const getEventLogo = (page) => getIntroSection(page).locator("img").first();
-
-/**
- * Selects the stable intro section used by community, group, and event pages.
- */
+/** Selects the stable intro section used by community, group, and event pages. */
 export const getIntroSection = (page) =>
   page
     .getByRole("heading", { level: 1 })
     .locator("xpath=ancestor::div[parent::div[contains(@class,'gap-y-6')]][1]");
 
-/**
- * Selects the community about block without including the following sections.
- */
-export const getCommunityAboutSection = (page) => page.locator(".community-description").locator("..");
-
-/**
- * Selects the stable home jumbotron content without outer container padding.
- */
-export const getHomeJumbotronContent = (page) =>
-  page.getByRole("heading", { level: 1 }).locator("xpath=ancestor::div[contains(@class,'text-center')][1]");
-
-/**
- * Selects the explore search row above the results list.
- */
-export const getExploreSearchRow = (page, searchPlaceholder) =>
-  page.getByPlaceholder(searchPlaceholder).locator("xpath=ancestor::div[contains(@class,'items-center')][1]");
-
-/**
- * Selects the explore controls row above the results list.
- */
-export const getExploreControlsRow = (page) =>
-  page.locator("#results").locator("xpath=ancestor::div[contains(@class,'justify-between')][1]");
-
-/**
- * Builds unique credentials for sign-up and login flows.
- */
+/** Builds unique credentials for sign-up and login flows. */
 export const buildAuthUser = () => {
   const suffix = randomUUID().replace(/-/g, "").slice(0, 8);
   const username = `e2e${suffix}`;
@@ -750,43 +174,52 @@ export const buildAuthUser = () => {
 };
 
 /**
- * Navigates to the site home page.
+ * Builds a unique, human-readable name for rows created through the browser.
+ * @param {string} prefix - Short spec-specific label, e.g. "sponsor".
+ * @returns {string} Name such as `E2E sponsor 3f9a1c2b`.
  */
+export const uniqueName = (prefix) => `E2E ${prefix} ${randomUUID().replace(/-/g, "").slice(0, 8)}`;
+
+/**
+ * Returns a `datetime-local` string a number of days in the future at a fixed hour.
+ * @param {{ days: number, hour?: number }} options - Offset from today and optional hour (default 10).
+ * @returns {string} Value such as `2031-05-10T10:00` accepted by `<input type="datetime-local">`.
+ */
+export const futureDate = ({ days, hour = 10 }) => {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${String(hour).padStart(2, "0")}:00`;
+};
+
+/** Navigates to the site home page. */
 export const navigateToSiteHome = async (page) => {
   await navigateToUrl(page, buildUrl("/"));
 };
 
-/**
- * Navigates to the site explore page.
- */
+/** Navigates to the site explore page. */
 export const navigateToSiteExplore = async (page) => {
   await navigateToUrl(page, buildUrl("/explore"));
 };
 
-/**
- * Navigates to a community home page.
- */
+/** Navigates to a community home page. */
 export const navigateToCommunityHome = async (page, communityName) => {
   await navigateToUrl(page, buildUrl(`/${communityName}`));
 };
 
-/**
- * Navigates to a specific group page within a community.
- */
+/** Navigates to a specific group page within a community. */
 export const navigateToGroup = async (page, communityName, groupSlug) => {
   await navigateToUrl(page, buildUrl(`/${communityName}/group/${groupSlug}`));
 };
 
-/**
- * Navigates to a specific event page within a community.
- */
+/** Navigates to a specific event page within a community. */
 export const navigateToEvent = async (page, communityName, groupSlug, eventSlug) => {
   await navigateToUrl(page, buildUrl(`/${communityName}/group/${groupSlug}/event/${eventSlug}`));
 };
 
-/**
- * Navigates to a specific path.
- */
+/** Navigates to a specific path. */
 export const navigateToPath = async (page, path) => {
   await navigateToUrl(page, buildUrl(path));
 };
@@ -805,8 +238,9 @@ export const waitForHtmxSettle = async (page) => {
 };
 
 /**
- * Runs an action and waits for a response matching method, URL, and status.
- * Status defaults to any successful response when not provided.
+ * Runs an action and waits for the response matching method and URL, then asserts its status.
+ * Matching on the request contract first makes a wrong status fail immediately with the
+ * response body instead of timing out. Status defaults to any successful response.
  */
 export const waitForActionResponse = async (page, action, { method, urlIncludes, urlEndsWith, status }) => {
   const [response] = await Promise.all([
@@ -814,47 +248,28 @@ export const waitForActionResponse = async (page, action, { method, urlIncludes,
       (candidate) =>
         candidate.request().method() === method &&
         (!urlIncludes || candidate.url().includes(urlIncludes)) &&
-        (!urlEndsWith || candidate.url().endsWith(urlEndsWith)) &&
-        (status === undefined ? candidate.ok() : candidate.status() === status),
+        (!urlEndsWith || candidate.url().endsWith(urlEndsWith)),
     ),
     action(),
   ]);
+
+  const statusMatches = status === undefined ? response.ok() : response.status() === status;
+
+  if (!statusMatches) {
+    const body = await response.text().catch(() => "<body unavailable>");
+
+    throw new Error(
+      `Expected ${method} ${response.url()} to respond with ${status ?? "a 2xx status"} but received ` +
+        `${response.status()}.\n${body.slice(0, ACTION_RESPONSE_BODY_PREVIEW_CHARS)}`,
+    );
+  }
+
   await waitForHtmxSettle(page);
 
   return response;
 };
 
-/**
- * Declines a pending offer for the shared waitlist lab event.
- */
-const clearSeededWaitlistOffer = async (memberPage) => {
-  await navigateToPath(memberPage, "/dashboard/user?tab=invitations");
-  const offerRow = memberPage.locator("#dashboard-content tr", {
-    hasText: "Full Event With Waitlist",
-  });
-  const actionsButton = offerRow.getByLabel(/Open offer actions/);
-
-  if (!(await actionsButton.isVisible())) {
-    return;
-  }
-
-  await actionsButton.click();
-  const declineButton = offerRow.getByRole("menuitem", {
-    name: "Decline offer",
-    exact: true,
-  });
-  await declineButton.click();
-  await expect(memberPage.getByRole("button", { name: "Yes" })).toBeVisible();
-  await waitForActionResponse(memberPage, () => memberPage.getByRole("button", { name: "Yes" }).click(), {
-    method: "PUT",
-    urlIncludes: "/dashboard/user/invitations/event-offers/",
-    urlEndsWith: "/decline",
-  });
-};
-
-/**
- * Verifies the ordered, user-facing column names for a table.
- */
+/** Verifies the ordered, user-facing column names for a table. */
 export const expectTableHeaders = async (table, expectedHeaders) => {
   const columnHeaders = table.locator("thead th");
 
@@ -865,9 +280,7 @@ export const expectTableHeaders = async (table, expectedHeaders) => {
   }
 };
 
-/**
- * Verifies responsive table-column visibility at one viewport width.
- */
+/** Verifies responsive table-column visibility at one viewport width. */
 export const expectTableColumnsAtViewport = async (
   page,
   table,
@@ -894,9 +307,7 @@ export const expectTableColumnsAtViewport = async (
   }
 };
 
-/**
- * Adds query parameters to the next matching browser request.
- */
+/** Adds query parameters to the next matching browser request. */
 export const routeNextRequestWithQuery = async (page, urlIncludes, query) => {
   const queryParameters = new URLSearchParams(query);
 
@@ -915,9 +326,7 @@ export const routeNextRequestWithQuery = async (page, urlIncludes, query) => {
   );
 };
 
-/**
- * Verifies loaded forward and backward pagination while preserving the first result.
- */
+/** Verifies loaded forward and backward pagination while preserving the first result. */
 export const expectCurrentPaginationNavigation = async (page, resultSelector) => {
   // Capture the first result and initial disabled boundary controls.
   const pagination = page.locator(".pagination");
@@ -973,137 +382,13 @@ export const expectCurrentPaginationNavigation = async (page, resultSelector) =>
   await expect.poll(async () => (await results.first().innerText()).trim()).toBe(initialResult);
 };
 
-/**
- * Loads a page and verifies forward and backward pagination.
- */
+/** Loads a page and verifies forward and backward pagination. */
 export const expectPaginationNavigation = async (page, path, resultSelector) => {
   await navigateToPath(page, path);
   await expectCurrentPaginationNavigation(page, resultSelector);
 };
 
-/**
- * Restores the shared waitlist lab event to its seeded full-event state.
- */
-export const restoreSeededWaitlistEvent = async (memberPage, organizerPage) => {
-  if (memberPage.isClosed() || organizerPage.isClosed()) {
-    return;
-  }
-
-  // Release any offer left behind by an interrupted promotion flow.
-  await clearSeededWaitlistOffer(memberPage);
-
-  // Remove member2 from the shared waitlist event before depending on capacity.
-  await navigateToEvent(
-    memberPage,
-    TEST_COMMUNITY_NAME,
-    TEST_GROUP_SLUGS.community1.alpha,
-    "alpha-waitlist-lab",
-  );
-  await waitForAttendanceState(memberPage);
-
-  if (await getLeaveButton(memberPage).isVisible()) {
-    await getLeaveButton(memberPage).click();
-    await expect(memberPage.getByRole("button", { name: "Yes" })).toBeVisible();
-    await waitForActionResponse(memberPage, () => memberPage.getByRole("button", { name: "Yes" }).click(), {
-      method: "DELETE",
-      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
-    });
-  }
-
-  // Restore organizer attendance so the one-seat event is full again.
-  await navigateToEvent(
-    organizerPage,
-    TEST_COMMUNITY_NAME,
-    TEST_GROUP_SLUGS.community1.alpha,
-    "alpha-waitlist-lab",
-  );
-  await waitForAttendanceState(organizerPage);
-
-  if (await getAttendButton(organizerPage).isVisible()) {
-    await expect(getAttendButton(organizerPage)).toContainText("Attend event");
-    await waitForActionResponse(organizerPage, () => getAttendButton(organizerPage).click(), {
-      method: "POST",
-      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`,
-    });
-    await expect(getLeaveButton(organizerPage)).toContainText("Cancel attendance");
-  }
-};
-
-/**
- * Waits for a page to settle before taking a visual snapshot.
- */
-export const expectPageScreenshot = async (page, screenshotName, screenshotOptions = {}) => {
-  await waitForVisualReady(page);
-  await waitForVisualImages(page.locator("body"));
-
-  await expect(page).toHaveScreenshot(screenshotName, {
-    animations: "disabled",
-    caret: "hide",
-    fullPage: true,
-    ...screenshotOptions,
-  });
-};
-
-/**
- * Waits for a stable region and snapshots only that locator.
- */
-export const expectRegionScreenshot = async (page, region, screenshotName, screenshotOptions = {}) => {
-  const {
-    mask,
-    maxDiffPixels,
-    maxDiffPixelRatio,
-    testInfo,
-    useClippedPageScreenshot = false,
-  } = screenshotOptions;
-  const clippedPageScreenshotDiffRatio = useClippedPageScreenshot ? 0.08 : undefined;
-  const snapshotDiffOptions = {
-    ...(maxDiffPixels === undefined ? {} : { maxDiffPixels }),
-    ...((maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio) === undefined
-      ? {}
-      : {
-          maxDiffPixelRatio: maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio,
-        }),
-  };
-
-  await waitForVisualReady(page);
-  await expect(region).toBeVisible();
-  await region.scrollIntoViewIfNeeded();
-  await waitForVisualImages(region);
-
-  if (testInfo) {
-    const snapshotDimensions = getPngDimensions(testInfo.snapshotPath(screenshotName));
-    const regionBox = await region.boundingBox();
-    const shouldUseClippedPageScreenshot =
-      useClippedPageScreenshot ||
-      (snapshotDimensions && regionBox && hasTinySnapshotDimensionDrift(regionBox, snapshotDimensions));
-
-    if (shouldUseClippedPageScreenshot && snapshotDimensions && regionBox) {
-      const clip = await getClippedScreenshotBox(page, regionBox, snapshotDimensions);
-
-      await expect(page).toHaveScreenshot(screenshotName, {
-        animations: "disabled",
-        caret: "hide",
-        mask,
-        clip,
-        scale: "css",
-        ...snapshotDiffOptions,
-      });
-
-      return;
-    }
-  }
-
-  await expect(region).toHaveScreenshot(screenshotName, {
-    animations: "disabled",
-    caret: "hide",
-    mask,
-    ...snapshotDiffOptions,
-  });
-};
-
-/**
- * Chooses a timezone from the custom timezone selector.
- */
+/** Chooses a timezone from the custom timezone selector. */
 export const selectTimezone = async (page, timezone) => {
   const timezoneSelector = page.locator('timezone-selector[name="timezone"]');
   await timezoneSelector.locator("#timezone-selector-button").click();
@@ -1122,9 +407,7 @@ export const selectTimezone = async (page, timezone) => {
   await expect(timezoneSelector.locator('input[name="timezone"]')).toHaveValue(timezone);
 };
 
-/**
- * Logs in with one of the pre-seeded e2e users.
- */
+/** Logs in with one of the pre-seeded e2e users. */
 export const logInWithSeededUser = async (page, credentials) => {
   await navigateToPath(page, "/log-in");
 
@@ -1135,18 +418,14 @@ export const logInWithSeededUser = async (page, credentials) => {
   await submitSeededLogin(page);
 };
 
-/**
- * Selects a community dashboard context for the logged-in user.
- */
+/** Selects a community dashboard context for the logged-in user. */
 export const selectCommunityContext = async (page, communityId) => {
   const response = await page.request.put(buildUrl(`/dashboard/community/${communityId}/select`));
 
   expect(response.ok()).toBeTruthy();
 };
 
-/**
- * Selects a group dashboard context for the logged-in user.
- */
+/** Selects a group dashboard context for the logged-in user. */
 export const selectGroupContext = async (page, communityId, groupId) => {
   const communityResponse = await page.request.put(
     buildUrl(`/dashboard/group/community/${communityId}/select`),

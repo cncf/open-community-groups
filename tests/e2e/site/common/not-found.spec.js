@@ -1,11 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  TEST_COMMUNITY_NAME,
-  TEST_GROUP_SLUGS,
-  TEST_UNPUBLISHED_EVENT,
-  navigateToPath,
-} from "../../utils.js";
+import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS, TEST_UNPUBLISHED_EVENT } from "../../seed.js";
+import { navigateToPath } from "../../utils.js";
 
 test.describe("site not found page", () => {
   test("explains the missing page and provides a working recovery path", async ({ page }) => {

@@ -1,13 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
-import {
-  TEST_CFS_WINDOW_EVENTS,
-  TEST_COMMUNITY_NAME,
-  TEST_EVENT_IDS,
-  TEST_GROUP_SLUGS,
-  navigateToEvent,
-  waitForActionResponse,
-} from "../../utils.js";
+import { TEST_CFS_WINDOW_EVENTS, TEST_COMMUNITY_NAME, TEST_EVENT_IDS, TEST_GROUP_SLUGS } from "../../seed.js";
+import { navigateToEvent, waitForActionResponse } from "../../utils.js";
 
 const CFS_EVENT_SLUG = "alpha-cfs-summit";
 
@@ -156,9 +150,7 @@ test.describe("event page call for speakers", () => {
     await expect(openModalButton).toBeVisible();
   });
 
-  test("failed proposal submission preserves the selection for retry", async ({
-    member1Page,
-  }) => {
+  test("failed proposal submission preserves the selection for retry", async ({ member1Page }) => {
     // Load the open CFS event before intercepting its submission endpoint.
     await navigateToEvent(
       member1Page,
@@ -166,9 +158,9 @@ test.describe("event page call for speakers", () => {
       TEST_GROUP_SLUGS.community1.alpha,
       CFS_EVENT_SLUG,
     );
-    const submissionPath =
-      `**/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.cfsSummit}/cfs-submissions`;
+    const submissionPath = `**/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.cfsSummit}/cfs-submissions`;
     try {
+      // Return a local server failure for proposal submission.
       await member1Page.route(submissionPath, (route) =>
         route.fulfill({
           body: "Temporary proposal failure",
@@ -178,9 +170,7 @@ test.describe("event page call for speakers", () => {
       );
 
       // Select an eligible proposal and submit the simulated failure.
-      await member1Page
-        .getByRole("button", { name: "Submit session proposal" })
-        .click();
+      await member1Page.getByRole("button", { name: "Submit session proposal" }).click();
       const modal = member1Page.getByRole("dialog", {
         name: "Submit a proposal",
       });
@@ -188,9 +178,7 @@ test.describe("event page call for speakers", () => {
       const submitButton = modal.getByRole("button", {
         name: "Submit proposal",
       });
-      await proposalSelect.selectOption(
-        "99999999-9999-9999-9999-999999999801",
-      );
+      await proposalSelect.selectOption("99999999-9999-9999-9999-999999999801");
       await waitForActionResponse(member1Page, () => submitButton.click(), {
         method: "POST",
         status: 500,
@@ -199,11 +187,10 @@ test.describe("event page call for speakers", () => {
 
       // Verify the modal keeps the user's choice and restores retry controls.
       await expect(modal).toBeVisible();
-      await expect(proposalSelect).toHaveValue(
-        "99999999-9999-9999-9999-999999999801",
-      );
+      await expect(proposalSelect).toHaveValue("99999999-9999-9999-9999-999999999801");
       await expect(submitButton).toBeEnabled();
     } finally {
+      // Restore the real proposal submission endpoint.
       await member1Page.unroute(submissionPath);
     }
   });

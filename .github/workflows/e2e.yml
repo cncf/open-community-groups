@@ -38,6 +38,7 @@ jobs:
               - 'database/**'
               - 'docs/**'
               - 'ocg-common/**'
+              - 'justfile'
               - 'ocg-server/**'
               - 'tests/e2e/**'
       - name: Mark manual run as e2e-relevant
@@ -102,43 +103,43 @@ jobs:
         include:
           - suite: Smoke chromium
             browsers: chromium
-            command: npx playwright test --config playwright.config.js --project=chromium-smoke
+            args: --project=chromium-smoke
             artifact_name: playwright-artifacts-smoke-chromium
           - suite: Smoke firefox
             browsers: firefox
-            command: npx playwright test --config playwright.config.js --project=firefox-smoke
+            args: --project=firefox-smoke
             artifact_name: playwright-artifacts-smoke-firefox
           - suite: Smoke webkit
             browsers: webkit
-            command: npx playwright test --config playwright.config.js --project=webkit-smoke
+            args: --project=webkit-smoke
             artifact_name: playwright-artifacts-smoke-webkit
           - suite: Functional 1/6
             browsers: chromium
-            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=1/6
+            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=1/6
             artifact_name: playwright-artifacts-functional-1
           - suite: Functional 2/6
             browsers: chromium
-            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=2/6
+            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=2/6
             artifact_name: playwright-artifacts-functional-2
           - suite: Functional 3/6
             browsers: chromium
-            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=3/6
+            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=3/6
             artifact_name: playwright-artifacts-functional-3
           - suite: Functional 4/6
             browsers: chromium
-            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=4/6
+            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=4/6
             artifact_name: playwright-artifacts-functional-4
           - suite: Functional 5/6
             browsers: chromium
-            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=5/6
+            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=5/6
             artifact_name: playwright-artifacts-functional-5
           - suite: Functional 6/6
             browsers: chromium
-            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=6/6
+            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=6/6
             artifact_name: playwright-artifacts-functional-6
           - suite: Visual
             browsers: chromium
-            command: npx playwright test --config playwright.config.js --grep @visual --project=chromium-deep --project=chromium-mobile-deep
+            args: --grep @visual --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-visual
     permissions:
       contents: read
@@ -157,14 +158,14 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      OCG_DB_HOST: 127.0.0.1
-      OCG_DB_NAME_TESTS_E2E: ocg_tests_e2e
-      OCG_DB_PASSWORD: postgres
+      # E2E contract consumed by the justfile recipes (tern, psql, server and Playwright).
       OCG_E2E_BASE_URL: http://127.0.0.1:9001
-      OCG_E2E_MEETINGS_ENABLED: "true"
-      OCG_E2E_PAYMENTS_ENABLED: "true"
+      OCG_E2E_DB_HOST: 127.0.0.1
+      OCG_E2E_DB_NAME: ocg_tests_e2e
+      OCG_E2E_DB_PASSWORD: postgres
+      OCG_E2E_DB_PORT: "5432"
+      OCG_E2E_DB_USER: postgres
       OCG_PG_BIN: /usr/bin
-      PGPASSWORD: postgres
 
     steps:
       - name: Checkout code
@@ -203,95 +204,11 @@ jobs:
       - name: Install tern
         uses: ./.github/actions/install-tern
 
-      - name: Create e2e tern config
-        run: |
-          cat <<EOF >/tmp/ocg-tern-e2e.conf
-          [database]
-          host = 127.0.0.1
-          port = 5432
-          database = ocg_tests_e2e
-          user = postgres
-          password = postgres
-          EOF
+      - name: Install just
+        uses: taiki-e/install-action@just
 
-      - name: Recreate and migrate e2e database
-        working-directory: database/migrations
-        run: |
-          dropdb -h 127.0.0.1 -p 5432 -U postgres --if-exists --force ocg_tests_e2e
-          createdb -h 127.0.0.1 -p 5432 -U postgres ocg_tests_e2e
-          psql -h 127.0.0.1 -p 5432 -U postgres ocg_tests_e2e -c "CREATE EXTENSION IF NOT EXISTS pgcrypto"
-          psql -h 127.0.0.1 -p 5432 -U postgres ocg_tests_e2e -c "CREATE EXTENSION IF NOT EXISTS postgis"
-          TERN_CONF=/tmp/ocg-tern-e2e.conf ./migrate.sh
-
-      - name: Load e2e seed data
-        run: |
-          psql -h 127.0.0.1 -p 5432 -U postgres ocg_tests_e2e -f database/tests/data/e2e.sql
-          psql -h 127.0.0.1 -p 5432 -U postgres ocg_tests_e2e -c "update \"user\" set password = '\$argon2id\$v=19\$m=19456,t=2,p=1\$q55jlxUx8bffhFM3xN36ZA\$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g' where username like 'e2e-%'"
-
-      - name: Create e2e server config
-        run: |
-          cat <<EOF >/tmp/ocg-e2e.yml
-          db:
-            host: 127.0.0.1
-            port: 5432
-            dbname: ocg_tests_e2e
-            user: postgres
-            password: "postgres"
-          email:
-            from_address: noreply@test.com
-            from_name: Test
-            smtp:
-              host: localhost
-              port: 1025
-              username: ""
-              password: ""
-          images:
-            provider: db
-          external_payments:
-            allowed_countries:
-              - US
-            default_payment_window_hours: 72
-            max_payment_window_hours: 336
-          payments:
-            provider: stripe
-            mode: test
-            connected_webhook_secret: whsec_connect_e2e
-            secret_key: sk_test_e2e
-            ticket_tax_api_version: 2026-07-29.preview
-            webhook_secret: whsec_e2e
-          meetings:
-            zoom:
-              account_id: account-id
-              client_id: client-id
-              client_secret: client-secret
-              enabled: true
-              host_pool_users:
-                - host@example.com
-              max_participants: 100
-              max_simultaneous_meetings_per_host: 1
-              webhook_secret_token: whsec_zoom_e2e
-          server:
-            addr: 127.0.0.1:9001
-            badges:
-              signing_key:
-                key_id: e2e-key
-                private_jwk:
-                  crv: Ed25519
-                  d: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc
-                  kty: OKP
-                  x: 6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw
-              verification_keys: []
-            base_url: http://127.0.0.1:9001
-            cookie:
-              secure: false
-            allow_image_hotlinking: false
-            login:
-              email: true
-              github: false
-              linuxfoundation: false
-            oauth2: {}
-            oidc: {}
-          EOF
+      - name: Reset e2e database (recreate, migrate, seed, mark)
+        run: just e2e-db-reset
 
       - name: Download e2e server binary
         uses: actions/download-artifact@v4
@@ -309,15 +226,14 @@ jobs:
       - name: Start server and wait for it to be ready
         uses: JarvusInnovations/background-action@v1
         with:
-          run: ./target/debug/ocg-server -c /tmp/ocg-e2e.yml &
-          wait-on: http://127.0.0.1:9001
+          run: just e2e-server-binary &
+          wait-on: http://127.0.0.1:9001/health-check
           tail: true
           log-output: "stdout,stderr"
           log-output-if: true
 
       - name: Run Playwright ${{ matrix.suite }} suite
-        working-directory: tests/e2e
-        run: ${{ matrix.command }}
+        run: just e2e-tests ${{ matrix.args }}
 
       - name: Upload Playwright artifacts
         if: failure()

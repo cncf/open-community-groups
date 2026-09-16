@@ -1,7 +1,13 @@
 import { expect, test } from "../../../fixtures.js";
 
 import {
-  TEST_USER_IDS,
+  deleteNotifications,
+  expectNewNotifications,
+  snapshotNotifications,
+} from "../../../notifications.js";
+import { cleanupGroupTeamInvitation } from "../../../data-graphs/invitations.js";
+import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
+import {
   expectPaginationNavigation,
   expectTableColumnsAtViewport,
   expectTableHeaders,
@@ -82,72 +88,97 @@ test.describe("group dashboard team view", () => {
   });
 
   test("organizer can invite and remove a pending group team member", async ({ organizerGroupPage }) => {
-    // Load the group team tab before inviting a temporary member.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
+    let notificationIds = [];
 
-    // Find the dashboard content.
-    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    try {
+      // Clear any leftover pending invitation before the invite flow.
+      cleanupGroupTeamInvitation({
+        groupId: TEST_GROUP_IDS.community1.alpha,
+        userId: TEST_USER_IDS.pending1,
+      });
 
-    // Verify organizer can invite and remove a pending group team member.
-    await expect(dashboardContent.getByText("Group Team", { exact: true })).toBeVisible();
+      // Load the group team tab before inviting a temporary member.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
 
-    // Click Add member.
-    await dashboardContent.getByRole("button", { name: "Add member" }).click();
+      // Find the dashboard content.
+      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
 
-    // Find the add member form.
-    const addMemberForm = organizerGroupPage.locator("#team-add-form");
-    await expect(addMemberForm).toBeVisible();
+      // Verify organizer can invite and remove a pending group team member.
+      await expect(dashboardContent.getByText("Group Team", { exact: true })).toBeVisible();
 
-    // Find the search input.
-    const searchInput = addMemberForm.locator("#search-input");
-    await waitForActionResponse(organizerGroupPage, () => searchInput.fill("e2e-pending-1"), {
-      method: "GET",
-      urlIncludes: "/dashboard/group/users/search?q=e2e-pending-1",
-    });
+      // Click Add member.
+      await dashboardContent.getByRole("button", { name: "Add member" }).click();
 
-    // Click E2E Pending One.
-    await addMemberForm.getByText("E2E Pending One", { exact: true }).click();
-    await addMemberForm.locator("#team-add-role").selectOption("viewer");
+      // Find the add member form.
+      const addMemberForm = organizerGroupPage.locator("#team-add-form");
+      await expect(addMemberForm).toBeVisible();
 
-    // Submit and wait for the server response.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => addMemberForm.locator("#team-add-submit").click(),
-      {
-        method: "POST",
-        urlIncludes: "/dashboard/group/team/add",
-        status: 201,
-      },
-    );
+      // Find the search input.
+      const searchInput = addMemberForm.locator("#search-input");
+      await waitForActionResponse(organizerGroupPage, () => searchInput.fill("e2e-pending-1"), {
+        method: "GET",
+        urlIncludes: "/dashboard/group/users/search?q=e2e-pending-1",
+      });
 
-    // Find the pending row.
-    const pendingRow = dashboardContent.locator("tr", {
-      hasText: "E2E Pending One",
-    });
-    await expect(pendingRow).toBeVisible();
-    await expect(pendingRow).toContainText("Invitation sent");
-    await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
+      // Click E2E Pending One.
+      await addMemberForm.getByText("E2E Pending One", { exact: true }).click();
+      await addMemberForm.locator("#team-add-role").selectOption("viewer");
 
-    // Find the remove button.
-    const removeButton = pendingRow.locator(`#remove-member-${TEST_USER_IDS.pending1}`);
-    await pendingRow.locator('summary[aria-label="Open team member actions for E2E Pending One"]').click();
-    await removeButton.click();
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you would like to delete this team member?",
-    );
+      // Submit and assert the invitation notification recipient.
+      const snapshot = snapshotNotifications();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => addMemberForm.locator("#team-add-submit").click(),
+        {
+          method: "POST",
+          urlIncludes: "/dashboard/group/team/add",
+          status: 201,
+        },
+      );
+      notificationIds = expectNewNotifications(snapshot, [
+        {
+          kind: "group-team-invitation",
+          templateDataContains: { group: { group_id: TEST_GROUP_IDS.community1.alpha } },
+          userIds: [TEST_USER_IDS.pending1],
+        },
+      ]);
 
-    // Click Yes.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
-      {
-        method: "DELETE",
-        urlIncludes: `/dashboard/group/team/${TEST_USER_IDS.pending1}/delete`,
-      },
-    );
+      // Find the pending row.
+      const pendingRow = dashboardContent.locator("tr", {
+        hasText: "E2E Pending One",
+      });
+      await expect(pendingRow).toBeVisible();
+      await expect(pendingRow).toContainText("Invitation sent");
+      await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
 
-    // Assert how many matching elements are shown.
-    await expect(dashboardContent.locator("tr", { hasText: "E2E Pending One" })).toHaveCount(0);
+      // Find the remove button.
+      const removeButton = pendingRow.locator(`#remove-member-${TEST_USER_IDS.pending1}`);
+      await pendingRow.locator('summary[aria-label="Open team member actions for E2E Pending One"]').click();
+      await removeButton.click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you would like to delete this team member?",
+      );
+
+      // Click Yes.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlIncludes: `/dashboard/group/team/${TEST_USER_IDS.pending1}/delete`,
+        },
+      );
+
+      // Assert how many matching elements are shown.
+      await expect(dashboardContent.locator("tr", { hasText: "E2E Pending One" })).toHaveCount(0);
+    } finally {
+      // Remove invitation notifications and reset pending team state.
+      deleteNotifications(notificationIds);
+      cleanupGroupTeamInvitation({
+        groupId: TEST_GROUP_IDS.community1.alpha,
+        userId: TEST_USER_IDS.pending1,
+      });
+    }
   });
 
   test("organizer can update and restore a group team member role", async ({ organizerGroupPage }) => {
@@ -161,6 +192,7 @@ test.describe("group dashboard team view", () => {
 
     // Restore the changed permissions after this check.
     try {
+      // Load the team tab and target the seeded viewer role.
       await navigateToPath(organizerGroupPage, teamTabPath);
 
       // Find the dashboard content.
@@ -174,19 +206,16 @@ test.describe("group dashboard team view", () => {
       await expect(currentRoleSelect).toHaveValue(seededRole);
 
       // Submit and wait for the server response.
-      await waitForActionResponse(
-        organizerGroupPage,
-        () => currentRoleSelect.selectOption(updatedRole),
-        {
-          method: "PUT",
-          urlIncludes: "/dashboard/group/team/",
-          urlEndsWith: "/role",
-        },
-      );
+      await waitForActionResponse(organizerGroupPage, () => currentRoleSelect.selectOption(updatedRole), {
+        method: "PUT",
+        urlIncludes: "/dashboard/group/team/",
+        urlEndsWith: "/role",
+      });
 
       // Assert the field value was updated.
       await expect(currentRoleSelect).toHaveValue(updatedRole);
     } finally {
+      // Restore the seeded viewer role for later tests.
       await ensureGroupViewerRole(organizerGroupPage, seededRole);
     }
   });

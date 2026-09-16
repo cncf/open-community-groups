@@ -270,6 +270,32 @@ describe("user-search-field", () => {
     expect(element._isSearching).to.equal(false);
   });
 
+  it("keeps focus on the outside target when clicking outside the component", async () => {
+    // Render a search field next to a focusable control the user points at.
+    const element = await mountLitComponent("user-search-field");
+    const outsideButton = document.createElement("button");
+    outsideButton.type = "button";
+    outsideButton.textContent = "Outside";
+    document.body.append(outsideButton);
+
+    try {
+      // Focus the outside control as a pointer press would, then clear from outside.
+      outsideButton.focus();
+      element._searchQuery = "ada";
+      element._handleOutsidePointer({
+        target: outsideButton,
+      });
+      await element.updateComplete;
+      await waitForMicrotask();
+
+      // The query clears without pulling focus back into the search input.
+      expect(element._searchQuery).to.equal("");
+      expect(document.activeElement).to.equal(outsideButton);
+    } finally {
+      outsideButton.remove();
+    }
+  });
+
   it("can keep the query when clicking outside the component", async () => {
     // Mount a search field that persists the query on outside clicks.
     const element = await mountLitComponent("user-search-field", {

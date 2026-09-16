@@ -1,7 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 
 import { TEST_UPLOAD_ASSET_PATHS, fillMarkdownEditor, setImageFieldValue } from "../../form-helpers.js";
-import { navigateToPath, waitForActionResponse } from "../../../utils.js";
+import { navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
 
 test.describe("community dashboard settings view", () => {
   test("settings form exposes every community configuration area", async ({ adminCommunityPage }) => {
@@ -74,6 +74,7 @@ test.describe("community dashboard settings view", () => {
     // Load the advertisement banner field.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
 
+    // Prepare advertisement banner controls and capture upload requests.
     const advertisementBannerField = adminCommunityPage.locator('image-field[name="ad_banner_url"]');
     const cropper = advertisementBannerField.locator("image-cropper");
     const fileInput = advertisementBannerField.locator('input[type="file"]');
@@ -260,7 +261,7 @@ test.describe("community dashboard settings view", () => {
       bannerMobileUrl: "/static/images/e2e/community-secondary-banner-mobile.svg",
       bannerUrl: "/static/images/e2e/community-secondary-banner.svg",
       description: "Updated platform engineering community details for settings coverage.",
-      displayName: `Platform Engineering Community ${Date.now()}`,
+      displayName: uniqueName("Platform Engineering Community"),
       logoUrl: "/static/images/e2e/community-secondary-logo.svg",
     };
 

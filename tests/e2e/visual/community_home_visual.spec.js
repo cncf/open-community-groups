@@ -1,12 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  expectRegionScreenshot,
-  getCommunityAboutSection,
-  navigateToCommunityHome,
-  TEST_COMMUNITY_DESCRIPTION,
-  TEST_COMMUNITY_NAME,
-} from "../utils.js";
+import { TEST_COMMUNITY_DESCRIPTION, TEST_COMMUNITY_NAME } from "../seed.js";
+import { expectRegionScreenshot, getCommunityAboutSection } from "./helpers.js";
+import { navigateToCommunityHome } from "../utils.js";
 
 test.describe("community home page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {
@@ -15,17 +11,12 @@ test.describe("community home page visual regression @visual", () => {
 
     // Verify desktop community content is ready.
     await expect(page.getByText("About this community")).toBeVisible();
-    await expect(
-      page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true })).toBeVisible();
 
     // Capture the desktop about section snapshot.
-    await expectRegionScreenshot(
-      page,
-      getCommunityAboutSection(page),
-      "community-home-desktop.png",
-      { testInfo },
-    );
+    await expectRegionScreenshot(page, getCommunityAboutSection(page), "community-home-desktop.png", {
+      testInfo,
+    });
   });
 
   test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
@@ -34,16 +25,12 @@ test.describe("community home page visual regression @visual", () => {
 
     // Verify mobile community content is ready.
     await expect(page.getByText("About this community")).toBeVisible();
-    await expect(
-      page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true })).toBeVisible();
 
     // Capture the mobile about section snapshot.
-    await expectRegionScreenshot(
-      page,
-      getCommunityAboutSection(page),
-      "community-home-mobile.png",
-      { testInfo, useClippedPageScreenshot: true },
-    );
+    await expectRegionScreenshot(page, getCommunityAboutSection(page), "community-home-mobile.png", {
+      testInfo,
+      useClippedPageScreenshot: true,
+    });
   });
 });

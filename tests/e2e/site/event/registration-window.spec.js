@@ -1,130 +1,47 @@
 import { expect, test } from "../../fixtures.js";
-
-import {
-  TEST_COMMUNITY_NAME,
-  TEST_GROUP_SLUGS,
-  TEST_REGISTRATION_WINDOW_EVENTS,
-  getAttendanceContainer,
-  getAttendButton,
-  navigateToEvent,
-  waitForAttendanceState,
-} from "../../utils.js";
-
-// Return the checkout action inside the ticket modal.
-const getCheckoutButton = (page) =>
-  page.locator('[data-attendance-role="checkout-btn"]');
-
-// Return the discount code field inside the ticket modal.
-const getDiscountCodeInput = (page) =>
-  page.locator('[data-attendance-role="discount-code-input"]');
-
-// Return the ticket selection modal.
-const getTicketModal = (page) =>
-  page.locator('[data-attendance-role="ticket-modal"]');
-
-// Return the first ticket type option in the modal.
-const getTicketOption = (page) =>
-  page.locator('[data-attendance-role="ticket-type-option"]').first();
-
-// Load a seeded registration-window event and wait for attendance controls.
-const navigateToRegistrationWindowEvent = async (page, event) => {
-  await navigateToEvent(
-    page,
-    TEST_COMMUNITY_NAME,
-    TEST_GROUP_SLUGS.community1.alpha,
-    event.slug,
-  );
-
-  await expect(
-    page.getByRole("heading", { level: 1, name: event.name }),
-  ).toBeVisible();
-  await waitForAttendanceState(page);
-};
-
-// Assert the durable registration-window state rendered by the event page.
-const expectRegistrationWindowState = async (page, open, messagePattern) => {
-  const container = getAttendanceContainer(page);
-
-  await expect(container).toHaveAttribute(
-    "data-registration-window-open",
-    String(open),
-  );
-  await expect(container).toHaveAttribute(
-    "data-registration-window-message",
-    messagePattern,
-  );
-};
+import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS, TEST_REGISTRATION_WINDOW_EVENTS } from "../../seed.js";
+import { getAttendanceContainer, getAttendButton, waitForAttendanceState } from "./helpers.js";
+import { navigateToEvent } from "../../utils.js";
 
 test.describe("event registration windows", () => {
-  test("paid events disable checkout until registration opens", async ({
-    member2Page,
-  }) => {
+  test("paid events disable checkout until registration opens", async ({ member2Page }) => {
     // Load the paid event before its registration window opens.
-    await navigateToRegistrationWindowEvent(
-      member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.paidFuture,
-    );
+    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.paidFuture);
 
     // Verify registration-window state blocks ticket checkout controls.
-    await expectRegistrationWindowState(
-      member2Page,
-      false,
-      /Registration opens/,
-    );
+    await expectRegistrationWindowState(member2Page, false, /Registration opens/);
     await expect(getAttendButton(member2Page)).toContainText("Get ticket");
     await expect(getAttendButton(member2Page)).toBeDisabled();
     await expect(getTicketOption(member2Page)).toBeDisabled();
     await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
     await expect(getCheckoutButton(member2Page)).toBeDisabled();
     await expect(
-      getTicketModal(member2Page).locator(
-        '[data-attendance-role="ticket-type-status-label"]',
-      ),
+      getTicketModal(member2Page).locator('[data-attendance-role="ticket-type-status-label"]'),
     ).toHaveText("Registration not open");
   });
 
-  test("paid events disable checkout after registration closes", async ({
-    member2Page,
-  }) => {
+  test("paid events disable checkout after registration closes", async ({ member2Page }) => {
     // Load the paid event after its registration window closes.
-    await navigateToRegistrationWindowEvent(
-      member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.paidClosed,
-    );
+    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.paidClosed);
 
     // Verify closed registration blocks ticket checkout controls.
-    await expectRegistrationWindowState(
-      member2Page,
-      false,
-      /Registration closed/,
-    );
+    await expectRegistrationWindowState(member2Page, false, /Registration closed/);
     await expect(getAttendButton(member2Page)).toContainText("Get ticket");
     await expect(getAttendButton(member2Page)).toBeDisabled();
     await expect(getTicketOption(member2Page)).toBeDisabled();
     await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
     await expect(getCheckoutButton(member2Page)).toBeDisabled();
     await expect(
-      getTicketModal(member2Page).locator(
-        '[data-attendance-role="ticket-type-status-label"]',
-      ),
+      getTicketModal(member2Page).locator('[data-attendance-role="ticket-type-status-label"]'),
     ).toHaveText("Registration not open");
   });
 
-  test("paid events allow checkout controls while registration is open", async ({
-    member2Page,
-  }) => {
+  test("paid events allow checkout controls while registration is open", async ({ member2Page }) => {
     // Load the paid event while registration is open.
-    await navigateToRegistrationWindowEvent(
-      member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.paidOpen,
-    );
+    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.paidOpen);
 
     // Verify the ticket purchase action is available.
-    await expectRegistrationWindowState(
-      member2Page,
-      true,
-      /Registration is open until/,
-    );
+    await expectRegistrationWindowState(member2Page, true, /Registration is open until/);
     await expect(getAttendButton(member2Page)).toContainText("Get ticket");
     await expect(getAttendButton(member2Page)).toBeEnabled();
 
@@ -136,35 +53,22 @@ test.describe("event registration windows", () => {
     await expect(getCheckoutButton(member2Page)).toBeDisabled();
 
     // Select a ticket and verify checkout becomes available.
-    await getTicketModal(member2Page)
-      .locator("label", { hasText: "Registration window pass" })
-      .click();
+    await getTicketModal(member2Page).locator("label", { hasText: "Registration window pass" }).click();
     await expect(getDiscountCodeInput(member2Page)).toBeEnabled();
     await expect(getCheckoutButton(member2Page)).toBeEnabled();
 
     // Close the ticket modal without creating a checkout.
-    await getTicketModal(member2Page)
-      .locator('[data-attendance-role="ticket-modal-cancel"]')
-      .click();
+    await getTicketModal(member2Page).locator('[data-attendance-role="ticket-modal-cancel"]').click();
     await expect(getTicketModal(member2Page)).toBeHidden();
   });
 
-  test("registration deadline is truncated on mobile @mobile", async ({
-    member2Page,
-  }) => {
+  test("registration deadline is truncated on mobile @mobile", async ({ member2Page }) => {
     // Load an event with a registration deadline on a mobile viewport.
-    await navigateToRegistrationWindowEvent(
-      member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.paidOpen,
-    );
+    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.paidOpen);
 
     // Verify the full deadline is truncated without widening the page.
-    const message = member2Page.locator(
-      "[data-registration-window-message-display]",
-    );
-    const icon = member2Page.locator(
-      "[data-registration-window-message-container] .icon-calendar",
-    );
+    const message = member2Page.locator("[data-registration-window-message-display]");
+    const icon = member2Page.locator("[data-registration-window-message-container] .icon-calendar");
     await expect(message).toBeVisible();
     await expect(icon).toBeHidden();
     const layout = await message.evaluate((node) => {
@@ -182,60 +86,36 @@ test.describe("event registration windows", () => {
       Math.max(document.body.scrollWidth, document.documentElement.scrollWidth),
     );
 
+    // Verify the truncated layout keeps the document within the viewport.
     expect(layout.overflow).toBe("hidden");
     expect(layout.textOverflow).toBe("ellipsis");
     expect(layout.whiteSpace).toBe("nowrap");
     expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
-    expect(documentWidth).toBeLessThanOrEqual(
-      member2Page.viewportSize()?.width ?? 0,
-    );
+    expect(documentWidth).toBeLessThanOrEqual(member2Page.viewportSize()?.width ?? 0);
   });
 
-  test("free registration actions respect closed and close-only windows", async ({
-    member2Page,
-  }) => {
+  test("free registration actions respect closed and close-only windows", async ({ member2Page }) => {
     // Load the free event after its registration window closes.
-    await navigateToRegistrationWindowEvent(
-      member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.freeClosed,
-    );
+    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.freeClosed);
 
     // Verify a closed registration window disables attendance.
-    await expectRegistrationWindowState(
-      member2Page,
-      false,
-      /Registration closed/,
-    );
+    await expectRegistrationWindowState(member2Page, false, /Registration closed/);
     await expect(getAttendButton(member2Page)).toContainText("Attend event");
     await expect(getAttendButton(member2Page)).toBeDisabled();
 
     // Load the free event with only a future registration close date.
-    await navigateToRegistrationWindowEvent(
-      member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.closeOnlyOpen,
-    );
+    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.closeOnlyOpen);
 
     // Verify close-only registration allows attendance before it closes.
-    await expectRegistrationWindowState(
-      member2Page,
-      true,
-      /Registration is open until/,
-    );
+    await expectRegistrationWindowState(member2Page, true, /Registration is open until/);
     await expect(getAttendButton(member2Page)).toContainText("Attend event");
     await expect(getAttendButton(member2Page)).toBeEnabled();
 
     // Load the free event after its implicit event-start close.
-    await navigateToRegistrationWindowEvent(
-      member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.openOnlyClosed,
-    );
+    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.openOnlyClosed);
 
     // Verify open-only registration closes when the event starts.
-    await expectRegistrationWindowState(
-      member2Page,
-      false,
-      /Registration closed/,
-    );
+    await expectRegistrationWindowState(member2Page, false, /Registration closed/);
     await expect(getAttendButton(member2Page)).toContainText("Attend event");
     await expect(getAttendButton(member2Page)).toBeDisabled();
   });
@@ -244,38 +124,47 @@ test.describe("event registration windows", () => {
     member2Page,
   }) => {
     // Load the approval-required event after registration closes.
-    await navigateToRegistrationWindowEvent(
-      member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.approvalClosed,
-    );
+    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.approvalClosed);
 
     // Verify invitation requests are blocked by the closed window.
-    await expectRegistrationWindowState(
-      member2Page,
-      false,
-      /Registration closed/,
-    );
-    await expect(getAttendButton(member2Page)).toContainText(
-      "Request invitation",
-    );
+    await expectRegistrationWindowState(member2Page, false, /Registration closed/);
+    await expect(getAttendButton(member2Page)).toContainText("Request invitation");
     await expect(getAttendButton(member2Page)).toBeDisabled();
 
     // Load the waitlist event after registration closes.
-    await navigateToRegistrationWindowEvent(
-      member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.waitlistClosed,
-    );
+    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.waitlistClosed);
 
     // Verify waitlist registration remains blocked while waitlist is enabled.
-    await expectRegistrationWindowState(
-      member2Page,
-      false,
-      /Registration closed/,
-    );
-    await expect(getAttendanceContainer(member2Page)).toHaveAttribute(
-      "data-waitlist-enabled",
-      "true",
-    );
+    await expectRegistrationWindowState(member2Page, false, /Registration closed/);
+    await expect(getAttendanceContainer(member2Page)).toHaveAttribute("data-waitlist-enabled", "true");
     await expect(getAttendButton(member2Page)).toBeDisabled();
   });
 });
+
+/** Asserts the durable registration-window state rendered by the event page. */
+const expectRegistrationWindowState = async (page, open, messagePattern) => {
+  const container = getAttendanceContainer(page);
+
+  await expect(container).toHaveAttribute("data-registration-window-open", String(open));
+  await expect(container).toHaveAttribute("data-registration-window-message", messagePattern);
+};
+
+/** Returns the checkout action inside the ticket modal. */
+const getCheckoutButton = (page) => page.locator('[data-attendance-role="checkout-btn"]');
+
+/** Returns the discount code field inside the ticket modal. */
+const getDiscountCodeInput = (page) => page.locator('[data-attendance-role="discount-code-input"]');
+
+/** Returns the ticket selection modal. */
+const getTicketModal = (page) => page.locator('[data-attendance-role="ticket-modal"]');
+
+/** Returns the first ticket type option in the modal. */
+const getTicketOption = (page) => page.locator('[data-attendance-role="ticket-type-option"]').first();
+
+/** Loads a seeded registration-window event and waits for attendance controls. */
+const navigateToRegistrationWindowEvent = async (page, event) => {
+  await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, event.slug);
+
+  await expect(page.getByRole("heading", { level: 1, name: event.name })).toBeVisible();
+  await waitForAttendanceState(page);
+};

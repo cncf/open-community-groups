@@ -1,82 +1,99 @@
 import { expect, test } from "../../../fixtures.js";
-
 import { navigateToPath } from "../../../utils.js";
 
 const ANALYTICS_TABS = [
   {
-    chartId: "groups-running-chart",
     chartCount: 8,
+    chartIds: [
+      "groups-category-chart",
+      "groups-region-chart",
+      "groups-running-chart",
+      "groups-running-category-chart",
+      "groups-running-region-chart",
+      "groups-monthly-chart",
+      "groups-monthly-category-chart",
+      "groups-monthly-region-chart",
+    ],
     key: "groups",
     label: "Groups",
     representativeText: "Running total",
   },
   {
-    chartId: "members-running-chart",
     chartCount: 8,
+    chartIds: [
+      "members-category-chart",
+      "members-region-chart",
+      "members-running-chart",
+      "members-running-category-chart",
+      "members-running-region-chart",
+      "members-monthly-chart",
+      "members-monthly-category-chart",
+      "members-monthly-region-chart",
+    ],
     key: "members",
     label: "Members",
     representativeText: "Running total",
   },
   {
-    chartId: "events-running-chart",
     chartCount: 11,
+    chartIds: [
+      "events-group-category-chart",
+      "events-region-chart",
+      "events-category-chart",
+      "events-running-chart",
+      "events-running-group-category-chart",
+      "events-running-group-region-chart",
+      "events-running-event-category-chart",
+      "events-monthly-chart",
+      "events-monthly-group-category-chart",
+      "events-monthly-group-region-chart",
+      "events-monthly-event-category-chart",
+    ],
     key: "events",
     label: "Events",
     representativeText: "Running total",
   },
   {
-    chartId: "attendees-running-chart",
     chartCount: 10,
+    chartIds: [
+      "attendees-category-chart",
+      "attendees-region-chart",
+      "attendees-running-chart",
+      "attendees-running-group-category-chart",
+      "attendees-running-group-region-chart",
+      "attendees-running-event-category-chart",
+      "attendees-monthly-chart",
+      "attendees-monthly-group-category-chart",
+      "attendees-monthly-group-region-chart",
+      "attendees-monthly-event-category-chart",
+    ],
     key: "attendees",
     label: "Attendees",
     representativeText: "Running total",
   },
   {
-    chartId: "total-views-monthly-chart",
     chartCount: 8,
+    chartIds: [],
     key: "page-views",
     label: "Page views",
     representativeText: "Community page",
   },
 ];
 
-const expectChartSettled = async (container, chartId) => {
-  const chart = container.locator(`#${chartId}`);
-
-  if ((await chart.count()) === 0) {
-    await expect(container.locator(".chart-empty-state").first()).toBeVisible();
-    return;
-  }
-
-  await expect(chart).toBeVisible();
-  await expect(chart.locator("svg-spinner")).toHaveCount(0);
-};
-
 test.describe("community dashboard analytics view", () => {
-  test("empty community analytics settles every tab", async ({
-    adminEmptyCommunityPage,
-  }) => {
+  test("empty community analytics settles every tab", async ({ adminEmptyCommunityPage }) => {
     // Load analytics for the dedicated community without activity records.
-    await navigateToPath(
-      adminEmptyCommunityPage,
-      "/dashboard/community?tab=analytics",
-    );
-    const dashboardContent = adminEmptyCommunityPage.locator(
-      "#dashboard-content",
-    );
+    await navigateToPath(adminEmptyCommunityPage, "/dashboard/community?tab=analytics");
+    const dashboardContent = adminEmptyCommunityPage.locator("#dashboard-content");
 
     // Verify every tab resolves each chart to an explicit empty state.
     for (const analyticsTab of ANALYTICS_TABS) {
-      await dashboardContent
-        .locator(`button[data-analytics-tab="${analyticsTab.key}"]`)
-        .first()
-        .click();
-      const tabContent = dashboardContent.locator(
-        `[data-analytics-content="${analyticsTab.key}"]`,
-      );
+      await dashboardContent.locator(`button[data-analytics-tab="${analyticsTab.key}"]`).first().click();
+      const tabContent = dashboardContent.locator(`[data-analytics-content="${analyticsTab.key}"]`);
       await expect(tabContent).toBeVisible();
-      await expect(tabContent.locator(".chart-empty-state")).toHaveCount(
-        analyticsTab.chartCount,
+      await expect(tabContent.locator(".chart-empty-state")).toHaveCount(analyticsTab.chartCount);
+      await expect(tabContent.locator(".chart-empty-state")).toHaveText(
+        Array(analyticsTab.chartCount).fill("No data available yet"),
       );
       await expect(tabContent.locator("[id$='-chart']")).toHaveCount(0);
     }
@@ -112,7 +129,9 @@ test.describe("community dashboard analytics view", () => {
       await expect(tabContent.locator(".chart-empty-state, [id$='-chart']")).toHaveCount(
         analyticsTab.chartCount,
       );
-      await expectChartSettled(tabContent, analyticsTab.chartId);
+      for (const chartId of analyticsTab.chartIds) {
+        await expectChartRendered(tabContent, chartId);
+      }
     }
   });
 
@@ -140,3 +159,13 @@ test.describe("community dashboard analytics view", () => {
     }
   });
 });
+
+/** Verifies the chart slot has rendered a non-empty chart. */
+const expectChartRendered = async (container, chartId) => {
+  const chart = container.locator(`#${chartId}`);
+
+  await expect(chart).toBeVisible();
+  await expect(chart).not.toHaveClass(/chart-empty-state/u);
+  await expect(chart.locator("svg-spinner")).toHaveCount(0);
+  await expect.poll(async () => chart.locator("canvas, svg").count()).toBeGreaterThan(0);
+};

@@ -1,44 +1,7 @@
 import { expect, test } from "../../fixtures.js";
-
-import {
-  TEST_COMMUNITY_IDS,
-  TEST_GROUP_IDS,
-  TEST_USER_IDS,
-  buildE2eUrl,
-  navigateToPath,
-  waitForActionResponse,
-} from "../../utils.js";
+import { TEST_COMMUNITY_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../../seed.js";
+import { buildE2eUrl, navigateToPath, waitForActionResponse } from "../../utils.js";
 import { openUserDashboardPath } from "../../dashboard/user/helpers.js";
-
-// Invite a user to the current dashboard team through the add member form.
-const inviteTeamMemberThroughForm = async (page, scope, username, fullName) => {
-  await navigateToPath(page, `/dashboard/${scope}?tab=team`);
-
-  // Open the add member form from the team tab.
-  const dashboardContent = page.locator("#dashboard-content");
-  await dashboardContent.getByRole("button", { name: "Add member" }).click();
-  const addMemberForm = page.locator("#team-add-form");
-  await expect(addMemberForm).toBeVisible();
-
-  // Search the invitee and pick the matching user suggestion.
-  await waitForActionResponse(page, () => addMemberForm.locator("#search-input").fill(username), {
-    method: "GET",
-    urlIncludes: `/dashboard/${scope}/users/search?q=${username}`,
-  });
-  await addMemberForm.getByText(fullName, { exact: true }).click();
-  await addMemberForm.locator("#team-add-role").selectOption("viewer");
-
-  // Submit the invitation and wait for it to be created.
-  await waitForActionResponse(page, () => addMemberForm.locator("#team-add-submit").click(), {
-    method: "POST",
-    urlIncludes: `/dashboard/${scope}/team/add`,
-    status: 201,
-  });
-
-  // Verify the invitee shows up as a pending team member.
-  const pendingRow = dashboardContent.locator("tr", { hasText: fullName });
-  await expect(pendingRow).toContainText("Invitation sent");
-};
 
 test.describe("team invitation workflow", () => {
   test("group team invitation is accepted end to end", async ({ organizerGroupPage, pending1Page }) => {
@@ -51,9 +14,7 @@ test.describe("team invitation workflow", () => {
       const inviteeContent = pending1Page.locator("#dashboard-content");
       // Event offer rows also mention the group name, so anchor the group
       // invitation row through its unique reject button id.
-      const groupRejectButton = pending1Page.locator(
-        `#reject-group-${TEST_GROUP_IDS.community1.alpha}`,
-      );
+      const groupRejectButton = pending1Page.locator(`#reject-group-${TEST_GROUP_IDS.community1.alpha}`);
       const groupInvitationRow = inviteeContent.locator("tr", { has: groupRejectButton });
       await expect(groupInvitationRow).toContainText("viewer");
       await waitForActionResponse(pending1Page, () => groupInvitationRow.getByTitle("Approve").click(), {
@@ -64,9 +25,7 @@ test.describe("team invitation workflow", () => {
 
       // Verify the accepted invitation leaves the invitations tab.
       await pending1Page.reload();
-      await expect(
-        pending1Page.locator(`#reject-group-${TEST_GROUP_IDS.community1.alpha}`),
-      ).toHaveCount(0);
+      await expect(pending1Page.locator(`#reject-group-${TEST_GROUP_IDS.community1.alpha}`)).toHaveCount(0);
 
       // Verify the organizer now sees the invitee as an accepted team member.
       await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
@@ -113,9 +72,7 @@ test.describe("team invitation workflow", () => {
 
       // Verify the rejected invitation leaves the invitations tab.
       await pending2Page.reload();
-      await expect(
-        pending2Page.locator(`#reject-community-${TEST_COMMUNITY_IDS.community1}`),
-      ).toHaveCount(0);
+      await expect(pending2Page.locator(`#reject-community-${TEST_COMMUNITY_IDS.community1}`)).toHaveCount(0);
 
       // Verify the admin no longer sees the invitee in the community team.
       await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
@@ -130,3 +87,33 @@ test.describe("team invitation workflow", () => {
     }
   });
 });
+
+/** Invites a user to the current dashboard team through the add member form. */
+const inviteTeamMemberThroughForm = async (page, scope, username, fullName) => {
+  await navigateToPath(page, `/dashboard/${scope}?tab=team`);
+
+  // Open the add member form from the team tab.
+  const dashboardContent = page.locator("#dashboard-content");
+  await dashboardContent.getByRole("button", { name: "Add member" }).click();
+  const addMemberForm = page.locator("#team-add-form");
+  await expect(addMemberForm).toBeVisible();
+
+  // Search the invitee and pick the matching user suggestion.
+  await waitForActionResponse(page, () => addMemberForm.locator("#search-input").fill(username), {
+    method: "GET",
+    urlIncludes: `/dashboard/${scope}/users/search?q=${username}`,
+  });
+  await addMemberForm.getByText(fullName, { exact: true }).click();
+  await addMemberForm.locator("#team-add-role").selectOption("viewer");
+
+  // Submit the invitation and wait for it to be created.
+  await waitForActionResponse(page, () => addMemberForm.locator("#team-add-submit").click(), {
+    method: "POST",
+    urlIncludes: `/dashboard/${scope}/team/add`,
+    status: 201,
+  });
+
+  // Verify the invitee shows up as a pending team member.
+  const pendingRow = dashboardContent.locator("tr", { hasText: fullName });
+  await expect(pendingRow).toContainText("Invitation sent");
+};

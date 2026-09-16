@@ -1,21 +1,21 @@
 import { expect } from "../../fixtures.js";
+import { TEST_COMMUNITY_IDS, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS } from "../../seed.js";
 import {
   buildE2eUrl,
-  TEST_COMMUNITY_NAME,
-  TEST_COMMUNITY_IDS,
-  TEST_GROUP_SLUGS,
-  navigateToPath,
   navigateToEvent,
+  navigateToPath,
   selectCommunityContext,
   selectGroupContext,
   waitForActionResponse,
 } from "../../utils.js";
 import { fillMarkdownEditor } from "../form-helpers.js";
 
+/** Opens a user dashboard path. */
 export const openUserDashboardPath = async (path, page) => {
   await navigateToPath(page, path);
 };
 
+/** Returns the session proposal payload embedded in the edit action. */
 const getSessionProposalPayload = async (page, proposalTitle) => {
   await openUserDashboardPath("/dashboard/user?tab=session-proposals", page);
 
@@ -30,11 +30,8 @@ const getSessionProposalPayload = async (page, proposalTitle) => {
   return JSON.parse(proposalJson ?? "{}");
 };
 
-export const restoreCoSpeakerInvitation = async (
-  page,
-  proposalTitle,
-  coSpeakerUserId,
-) => {
+/** Restores a co-speaker invitation through dashboard requests. */
+export const restoreCoSpeakerInvitation = async (page, proposalTitle, coSpeakerUserId) => {
   const proposal = await getSessionProposalPayload(page, proposalTitle);
   const baseForm = {
     description: proposal.description,
@@ -63,75 +60,62 @@ export const restoreCoSpeakerInvitation = async (
   expect(restoreInvitationResponse.ok()).toBeTruthy();
 };
 
+/** Resets a community team invitation through dashboard requests. */
 export const resetCommunityInvitation = async (page, userId, role) => {
   await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
 
-  await page.request.delete(
-    buildE2eUrl(`/dashboard/community/team/${userId}/delete`),
-  );
+  await page.request.delete(buildE2eUrl(`/dashboard/community/team/${userId}/delete`));
 
-  const addResponse = await page.request.post(
-    buildE2eUrl("/dashboard/community/team/add"),
-    {
-      form: {
-        role,
-        user_id: userId,
-      },
+  const addResponse = await page.request.post(buildE2eUrl("/dashboard/community/team/add"), {
+    form: {
+      role,
+      user_id: userId,
     },
-  );
+  });
   expect(addResponse.ok()).toBeTruthy();
 };
 
+/** Deletes a community team invitation through dashboard requests. */
 export const clearCommunityInvitation = async (page, userId) => {
   await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
 
-  await page.request.delete(
-    buildE2eUrl(`/dashboard/community/team/${userId}/delete`),
-  );
+  await page.request.delete(buildE2eUrl(`/dashboard/community/team/${userId}/delete`));
 };
 
+/** Resets a group team invitation through dashboard requests. */
 export const resetGroupInvitation = async (page, groupId, userId, role) => {
   await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
 
-  await page.request.delete(
-    buildE2eUrl(`/dashboard/group/team/${userId}/delete`),
-  );
+  await page.request.delete(buildE2eUrl(`/dashboard/group/team/${userId}/delete`));
 
-  const addResponse = await page.request.post(
-    buildE2eUrl("/dashboard/group/team/add"),
-    {
-      form: {
-        role,
-        user_id: userId,
-      },
+  const addResponse = await page.request.post(buildE2eUrl("/dashboard/group/team/add"), {
+    form: {
+      role,
+      user_id: userId,
     },
-  );
+  });
   expect(addResponse.ok()).toBeTruthy();
 };
 
+/** Creates a group team invitation if the request is accepted. */
 export const ensureGroupInvitation = async (page, groupId, userId, role) => {
   await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
 
-  const addResponse = await page.request.post(
-    buildE2eUrl("/dashboard/group/team/add"),
-    {
-      form: {
-        role,
-        user_id: userId,
-      },
+  const addResponse = await page.request.post(buildE2eUrl("/dashboard/group/team/add"), {
+    form: {
+      role,
+      user_id: userId,
     },
-  );
+  });
   expect(addResponse.status()).toBeLessThan(500);
 };
 
+/** Deletes event attendee state through the dashboard request API. */
 export const clearEventAttendeeState = async (page, eventId, userId) => {
-  await page.request.delete(
-    buildE2eUrl(
-      `/dashboard/group/events/${eventId}/attendees/${userId}/attendance`,
-    ),
-  );
+  await page.request.delete(buildE2eUrl(`/dashboard/group/events/${eventId}/attendees/${userId}/attendance`));
 };
 
+/** Creates an event invitation after clearing attendee state. */
 export const ensureEventInvitation = async (page, groupId, eventId, userId) => {
   await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
   await clearEventAttendeeState(page, eventId, userId);
@@ -147,13 +131,12 @@ export const ensureEventInvitation = async (page, groupId, eventId, userId) => {
   expect(inviteResponse.ok()).toBeTruthy();
 };
 
+/** Creates a reusable session proposal and returns the dashboard content. */
 export const createSessionProposal = async (page, title) => {
   await openUserDashboardPath("/dashboard/user?tab=session-proposals", page);
 
   const dashboardContent = page.locator("#dashboard-content");
-  await expect(
-    dashboardContent.getByText("Session proposals", { exact: true }),
-  ).toBeVisible();
+  await expect(dashboardContent.getByText("Session proposals", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "New proposal" }).click();
 
@@ -179,29 +162,21 @@ export const createSessionProposal = async (page, title) => {
   return dashboardContent;
 };
 
+/** Submits a session proposal to the open CFS event. */
 export const submitProposalToOpenCfsEvent = async (page, proposalTitle) => {
-  await navigateToEvent(
-    page,
-    TEST_COMMUNITY_NAME,
-    TEST_GROUP_SLUGS.community1.alpha,
-    "alpha-cfs-summit",
-  );
+  await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, "alpha-cfs-summit");
 
   await page.getByRole("button", { name: "Submit session proposal" }).click();
 
   const modal = page.getByRole("dialog", { name: "Submit a proposal" });
   await expect(modal).toBeVisible();
 
-  await modal
-    .locator("#session_proposal_id")
-    .selectOption({ label: proposalTitle });
+  await modal.locator("#session_proposal_id").selectOption({ label: proposalTitle });
 
   await waitForActionResponse(page, () => modal.getByRole("button", { name: "Submit proposal" }).click(), {
     method: "POST",
     urlIncludes: "/cfs-submissions",
   });
 
-  await expect(
-    modal.getByText("Submission received. We'll review it soon."),
-  ).toBeVisible();
+  await expect(modal.getByText("Submission received. We'll review it soon.")).toBeVisible();
 };

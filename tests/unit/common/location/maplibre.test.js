@@ -47,6 +47,20 @@ describe("shared MapLibre map", () => {
     expect(map.touchZoomRotate.rotationDisabled).to.equal(true);
   });
 
+  it("pads the initial bounds so locations on their edges stay inside the viewport", async () => {
+    // Initialize the shared map fitted to a result extent.
+    const bounds = [
+      [-122.3321, 40.7128],
+      [-74.006, 47.6062],
+    ];
+    const map = await loadMap("location-map", 0, 0, { bounds });
+
+    // Verify the extent is applied with padding on the first fit only.
+    expect(map.options.bounds).to.deep.equal(bounds);
+    expect(map.options.fitBoundsOptions.padding).to.be.greaterThan(0);
+    expect(map.fitBoundsCalls).to.deep.equal([]);
+  });
+
   it("opens a styled popup and exposes its interactive pin to assistive technology", async () => {
     // Load a map with a styled, initially open popup.
     await loadMap("location-map", 36.7213, -4.4214, {

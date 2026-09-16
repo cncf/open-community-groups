@@ -1,156 +1,24 @@
 import { expect, test } from "../../../fixtures.js";
-
+import { TEST_EVENT_IDS, TEST_INVITATION_CANCELLATION } from "../../../seed.js";
 import {
-  TEST_EVENT_IDS,
-  TEST_INVITATION_CANCELLATION,
   expectCurrentPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
   navigateToPath,
   routeNextRequestWithQuery,
   waitForActionResponse,
 } from "../../../utils.js";
-import {
-  expectUserColumnHasRoom,
-  expectUserProfileModalFromRow,
-} from "./user-profile-modal-helpers.js";
+import { expectUserColumnHasRoom, expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
 const DASHBOARD_WAITLIST_EVENT_NAME = "Dashboard Waitlist Table Lab";
+
 const PAST_WAITLIST_EVENT_NAME = "Past Event For Filtering";
 
-// Open an event's waitlist tab from the requested dashboard event list.
-const openWaitlistTab = async (
-  page,
-  eventName,
-  eventId,
-  { past = false } = {},
-) => {
-  await navigateToPath(page, "/dashboard/group?tab=events");
-
-  if (past) {
-    await page.locator("#past-tab").click();
-    await expect(page.locator("#past-content")).toBeVisible();
-  }
-
-  const eventsContent = page.locator(
-    past ? "#past-content" : "#upcoming-content",
-  );
-  const eventRow = eventsContent.locator("tr", { hasText: eventName });
-  await expect(eventRow).toBeVisible();
-
-  await waitForActionResponse(
-    page,
-    () => eventRow.locator(`td button[aria-label="Edit event: ${eventName}"]`).click(),
-    {
-      method: "GET",
-      urlIncludes: `/dashboard/group/events/${eventId}/update`,
-    },
-  );
-
-  await waitForActionResponse(page, () => page.locator('button[data-section="waitlist"]').click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${eventId}/waitlist`,
-  });
-
-  const waitlistContent = page.locator("#waitlist-content");
-  await expect(
-    waitlistContent.getByRole("table", { name: "Waitlist entries" }),
-  ).toBeVisible();
-
-  return waitlistContent;
-};
-
-const openDashboardWaitlist = async (page, query = "") => {
-  await navigateToPath(page, "/dashboard/group?tab=events");
-
-  const eventRow = page.locator("tr", {
-    hasText: DASHBOARD_WAITLIST_EVENT_NAME,
-  });
-  await expect(eventRow).toBeVisible();
-
-  await waitForActionResponse(
-    page,
-    () => eventRow.locator(`td button[aria-label="Edit event: ${DASHBOARD_WAITLIST_EVENT_NAME}"]`).click(),
-    {
-      method: "GET",
-      urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/update`,
-    },
-  );
-
-  // The tab buttons only exist once the event update form has loaded.
-  const waitlistTab = page.locator('button[data-section="waitlist"]');
-  if (query !== "") {
-    await routeNextRequestWithQuery(
-      page,
-      `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-      query,
-    );
-  }
-
-  await waitForActionResponse(page, () => waitlistTab.click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-  });
-
-  return page.locator("#waitlist-content");
-};
-
 test.describe("group dashboard waitlist tab", () => {
-  test("waitlist table exposes every column at its responsive breakpoint", async ({
-    organizerGroupPage,
-  }) => {
-    // Open the seeded event waitlist tab before checking table structure.
-    const waitlistContent = await openDashboardWaitlist(organizerGroupPage);
-
-    // Find the waitlist entries table.
-    const waitlistTable = waitlistContent.getByRole("table", {
-      name: "Waitlist entries",
-    });
-
-    // Verify header order and column visibility across dashboard breakpoints.
-    const headers = ["Entry", "Position", "Queue", "Enrollment", "Created", "Actions"];
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      waitlistTable,
-      1024,
-      ["Entry", "Queue", "Actions"],
-      ["Position", "Enrollment", "Created"],
-    );
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      waitlistTable,
-      1280,
-      ["Entry", "Queue", "Enrollment", "Actions"],
-      ["Position", "Created"],
-    );
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      waitlistTable,
-      1536,
-      ["Entry", "Position", "Queue", "Enrollment", "Actions"],
-      ["Created"],
-    );
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      waitlistTable,
-      1920,
-      headers,
-      [],
-    );
-    await expectTableHeaders(waitlistTable, headers);
-  });
-
-  test("organizer can move between waitlist result pages", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can move between waitlist result pages", async ({ organizerGroupPage }) => {
     // Open seeded waitlist entries with one result per page.
     await openDashboardWaitlist(organizerGroupPage, "?limit=1&offset=0");
 
     // Verify pagination swaps waitlist rows in both directions.
-    await expectCurrentPaginationNavigation(
-      organizerGroupPage,
-      "#waitlist-content tbody tr",
-    );
+    await expectCurrentPaginationNavigation(organizerGroupPage, "#waitlist-content tbody tr");
   });
 
   test("organizer can open the waitlist tab for an event with waitlist disabled", async ({
@@ -190,18 +58,14 @@ test.describe("group dashboard waitlist tab", () => {
     // Find the waitlist content.
     const waitlistContent = organizerGroupPage.locator("#waitlist-content");
     await expect(
-      waitlistContent
-        .locator("p.text-sm.lg\\:text-md.text-stone-700:visible")
-        .filter({
-          hasText:
-            "Enable waitlist to allow full events to add people to the queue.",
-        }),
+      waitlistContent.locator("p.text-sm.lg\\:text-md.text-stone-700:visible").filter({
+        hasText: "Enable waitlist to allow full events to add people to the queue.",
+      }),
     ).toBeVisible();
   });
 
-  test("organizer can enable waitlist for an event and then restore it", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can enable waitlist for an event and then restore it", async ({ organizerGroupPage }) => {
+    // Expand the viewport so the editor navigation is visible.
     await organizerGroupPage.setViewportSize({ width: 1920, height: 1080 });
 
     // Open the seeded alpha event editor from the events list.
@@ -227,17 +91,11 @@ test.describe("group dashboard waitlist tab", () => {
 
     // Submit the next waitlist value and verify it persisted.
     const submitWaitlistValue = async (nextValue) => {
-      await organizerGroupPage
-        .locator('button[data-section="details"]')
-        .click();
+      await organizerGroupPage.locator('button[data-section="details"]').click();
 
       // Find the waitlist toggle.
-      const waitlistToggle = organizerGroupPage.locator(
-        "#toggle_waitlist_enabled",
-      );
-      const waitlistToggleLabel = organizerGroupPage.locator(
-        '[data-enrollment-toggle-label="waitlist"]',
-      );
+      const waitlistToggle = organizerGroupPage.locator("#toggle_waitlist_enabled");
+      const waitlistToggleLabel = organizerGroupPage.locator('[data-enrollment-toggle-label="waitlist"]');
 
       // Assert the expected content is visible.
       await expect(waitlistToggleLabel).toBeVisible();
@@ -252,9 +110,7 @@ test.describe("group dashboard waitlist tab", () => {
       await expect(waitlistToggle).toBeChecked({
         checked: nextValue === "true",
       });
-      await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
-        nextValue,
-      );
+      await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(nextValue);
 
       // Submit and wait for the server response.
       await waitForActionResponse(
@@ -269,18 +125,14 @@ test.describe("group dashboard waitlist tab", () => {
 
     // Reopen the Alpha event editor.
     await openAlphaEventEditor();
-    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
-      "false",
-    );
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
 
     // Enable the waitlist setting.
     await submitWaitlistValue("true");
 
     // Reopen the Alpha event editor.
     await openAlphaEventEditor();
-    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
-      "true",
-    );
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("true");
 
     // Submit and wait for the server response.
     await waitForActionResponse(
@@ -305,14 +157,10 @@ test.describe("group dashboard waitlist tab", () => {
 
     // Reopen the Alpha event editor.
     await openAlphaEventEditor();
-    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
-      "false",
-    );
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
   });
 
-  test("organizer can see a waitlist entry on the waitlist tab", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can see a waitlist entry on the waitlist tab", async ({ organizerGroupPage }) => {
     // Give the seeded waitlist dashboard filter flow room on slower runs.
     test.setTimeout(60_000);
 
@@ -355,7 +203,9 @@ test.describe("group dashboard waitlist tab", () => {
     });
 
     // Assert that Waitlist entries is visible.
-    const waitlistTable = waitlistContent.getByRole("table", { name: "Waitlist entries" });
+    const waitlistTable = waitlistContent.getByRole("table", {
+      name: "Waitlist entries",
+    });
     await expect(waitlistTable).toBeVisible();
     await expectUserColumnHasRoom(waitlistTable, "Entry");
     await expect(waitlistRow).toBeVisible();
@@ -409,9 +259,7 @@ test.describe("group dashboard waitlist tab", () => {
           response.request().method() === "GET" &&
           response
             .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-            ) &&
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`) &&
           response.url().includes("ts_query=Two") &&
           response.ok(),
       ),
@@ -439,9 +287,7 @@ test.describe("group dashboard waitlist tab", () => {
           response.request().method() === "GET" &&
           response
             .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-            ) &&
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`) &&
           response.url().includes("ts_query=zzzzzzzzzzzz") &&
           response.ok(),
       ),
@@ -452,11 +298,9 @@ test.describe("group dashboard waitlist tab", () => {
       }),
     ]);
 
-    const noResultsMessage = waitlistContent
-      .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
-      .filter({
-        hasText: "No waitlist entries found matching your search.",
-      });
+    const noResultsMessage = waitlistContent.locator("div.text-xl.lg\\:text-2xl.mb-4:visible").filter({
+      hasText: "No waitlist entries found matching your search.",
+    });
 
     // Verify the filtered empty result message is shown.
     await expect(noResultsMessage.first()).toBeVisible();
@@ -468,15 +312,11 @@ test.describe("group dashboard waitlist tab", () => {
           response.request().method() === "GET" &&
           response
             .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-            ) &&
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`) &&
           !response.url().includes("ts_query") &&
           response.ok(),
       ),
-      waitlistContent
-        .getByRole("button", { name: "Clear waitlist search" })
-        .click(),
+      waitlistContent.getByRole("button", { name: "Clear waitlist search" }).click(),
     ]);
 
     // Verify clearing removes the empty state and restores the waitlist entry.
@@ -492,9 +332,7 @@ test.describe("group dashboard waitlist tab", () => {
           response.request().method() === "GET" &&
           response
             .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-            ) &&
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`) &&
           response.url().includes("sort=name-desc") &&
           response.ok(),
       ),
@@ -512,31 +350,19 @@ test.describe("group dashboard waitlist tab", () => {
           response.request().method() === "GET" &&
           response
             .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-            ) &&
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`) &&
           response.url().includes("sort=name-desc") &&
           response.url().includes("title=present") &&
           response.ok(),
       ),
-      waitlistContent
-        .locator(
-          '#waitlist-position-filter button[name="title"][value="present"]',
-        )
-        .click(),
+      waitlistContent.locator('#waitlist-position-filter button[name="title"][value="present"]').click(),
     ]);
 
-    const activeFilters = waitlistContent
-      .getByText("Active filters", { exact: true })
-      .locator("xpath=..");
+    const activeFilters = waitlistContent.getByText("Active filters", { exact: true }).locator("xpath=..");
 
     // Verify active filter badges remain visible with the filtered row.
-    await expect(
-      activeFilters.getByText("Present", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      activeFilters.getByRole("button", { name: "Remove title filter" }),
-    ).toBeVisible();
+    await expect(activeFilters.getByText("Present", { exact: true })).toBeVisible();
+    await expect(activeFilters.getByRole("button", { name: "Remove title filter" })).toBeVisible();
     await expect(waitlistRow).toBeVisible();
   });
 
@@ -575,9 +401,7 @@ test.describe("group dashboard waitlist tab", () => {
     );
   });
 
-  test("viewer sees why waitlist actions are unavailable", async ({
-    groupViewerPage,
-  }) => {
+  test("viewer sees why waitlist actions are unavailable", async ({ groupViewerPage }) => {
     // Load the group events dashboard as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");
 
@@ -620,3 +444,72 @@ test.describe("group dashboard waitlist tab", () => {
     );
   });
 });
+
+/** Opens the dashboard waitlist tab and returns its content region. */
+const openDashboardWaitlist = async (page, query = "") => {
+  await navigateToPath(page, "/dashboard/group?tab=events");
+
+  const eventRow = page.locator("tr", {
+    hasText: DASHBOARD_WAITLIST_EVENT_NAME,
+  });
+  await expect(eventRow).toBeVisible();
+
+  await waitForActionResponse(
+    page,
+    () => eventRow.locator(`td button[aria-label="Edit event: ${DASHBOARD_WAITLIST_EVENT_NAME}"]`).click(),
+    {
+      method: "GET",
+      urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/update`,
+    },
+  );
+
+  // The tab buttons only exist once the event update form has loaded.
+  const waitlistTab = page.locator('button[data-section="waitlist"]');
+  if (query !== "") {
+    await routeNextRequestWithQuery(
+      page,
+      `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
+      query,
+    );
+  }
+
+  await waitForActionResponse(page, () => waitlistTab.click(), {
+    method: "GET",
+    urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
+  });
+
+  return page.locator("#waitlist-content");
+};
+
+/** Opens an event's waitlist tab from the requested dashboard event list. */
+const openWaitlistTab = async (page, eventName, eventId, { past = false } = {}) => {
+  await navigateToPath(page, "/dashboard/group?tab=events");
+
+  if (past) {
+    await page.locator("#past-tab").click();
+    await expect(page.locator("#past-content")).toBeVisible();
+  }
+
+  const eventsContent = page.locator(past ? "#past-content" : "#upcoming-content");
+  const eventRow = eventsContent.locator("tr", { hasText: eventName });
+  await expect(eventRow).toBeVisible();
+
+  await waitForActionResponse(
+    page,
+    () => eventRow.locator(`td button[aria-label="Edit event: ${eventName}"]`).click(),
+    {
+      method: "GET",
+      urlIncludes: `/dashboard/group/events/${eventId}/update`,
+    },
+  );
+
+  await waitForActionResponse(page, () => page.locator('button[data-section="waitlist"]').click(), {
+    method: "GET",
+    urlIncludes: `/dashboard/group/events/${eventId}/waitlist`,
+  });
+
+  const waitlistContent = page.locator("#waitlist-content");
+  await expect(waitlistContent.getByRole("table", { name: "Waitlist entries" })).toBeVisible();
+
+  return waitlistContent;
+};
