@@ -5,6 +5,13 @@ import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
+// GIF89a header for a 2 × 2 screen with a two-entry global colour table.
+const ANIMATED_GIF_HEADER = [
+  0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 2, 0, 2, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255,
+];
+// Image descriptor covering the screen, minimum code size, one data sub-block, terminator.
+const GIF_FRAME = [0x2c, 0, 0, 0, 0, 2, 0, 2, 0, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00];
+
 describe("gallery-field", () => {
   useMountedElementsCleanup("gallery-field");
 
@@ -87,6 +94,41 @@ describe("gallery-field", () => {
     expect(fetchMock.calls).to.have.length(1);
     expect(fetchMock.calls[0][0]).to.equal("/images");
     expect(Array.from(fetchMock.calls[0][1].body.keys())).to.deep.equal(["file"]);
+  });
+
+  it("skips animated GIFs and reports them once per batch", async () => {
+    // Mock the upload endpoint response.
+    fetchMock.setImpl(async () => ({
+      status: 201,
+      async json() {
+        return { url: "https://example.com/gallery.png" };
+      },
+    }));
+
+    // Render the gallery-field fixture.
+    const element = await mountLitComponent("gallery-field", {
+      fieldName: "gallery",
+    });
+
+    // Two animated GIFs surround a static image in the same selection.
+    const animatedGif = () =>
+      new File([new Uint8Array([...ANIMATED_GIF_HEADER, ...GIF_FRAME, ...GIF_FRAME, 0x3b])], "clip.gif", {
+        type: "image/gif",
+      });
+    await element._handleIncomingFiles([
+      animatedGif(),
+      new File(["data"], "gallery.png", { type: "image/png" }),
+      animatedGif(),
+    ]);
+    await element.updateComplete;
+
+    // Only the static image is uploaded, and the user is told once why the others were skipped.
+    expect(fetchMock.calls).to.have.length(1);
+    expect(element.images).to.deep.equal(["https://example.com/gallery.png"]);
+    expect(element._isUploading).to.equal(false);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].icon).to.equal("error");
+    expect(swal.calls[0].text).to.equal("Animated GIF images are not supported. Choose a static image.");
   });
 
   it("shows escaped server messages when gallery uploads fail", async () => {

@@ -1,7 +1,8 @@
 import { html, nothing } from "lit";
-import { showErrorAlert } from "/static/js/common/alerts.js";
+import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { IMAGE_UPLOAD_MAX_SIZE_BYTES, isGifFile, isSvgFile } from "/static/js/common/media/image-upload.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
@@ -37,19 +38,22 @@ const CROPPER_TEMPLATE = `
     </cropper-selection>
   </cropper-canvas>
 `;
+const ASPECT_RATIO_TOLERANCE = 0.5;
 const CROP_BOUNDARY_TOLERANCE = 0.1;
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const IMAGE_TARGET_SIZES = Object.freeze({
   ad_banner: Object.freeze({ height: 300, width: 2400 }),
+  badge: Object.freeze({ height: 512, width: 512 }),
   banner: Object.freeze({ height: 192, width: 2428 }),
   banner_mobile: Object.freeze({ height: 192, width: 1220 }),
   logo: Object.freeze({ height: 360, width: 360 }),
   open_graph: Object.freeze({ height: 630, width: 1200 }),
 });
-const MAX_OUTPUT_SIZE_BYTES = 1_000_000;
 const OUTPUT_QUALITIES = [0.92, 0.82, 0.72, 0.62, 0.52];
 const OUTPUT_SIZE_ERROR_MESSAGE =
   "The cropped image is still larger than the 1MB limit. Try a different image.";
+const UNREADABLE_IMAGE_ERROR_MESSAGE =
+  "This image couldn't be opened. Choose a different image in a supported format.";
 const OUTPUT_TYPE_EXTENSIONS = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -153,7 +157,10 @@ export class ImageCropper extends LitWrapper {
       if (!this.isConnected || editToken !== this._editToken) {
         return null;
       }
-      return this._openEditor(file, { focusOrigin });
+      // The editor would only fail to decode it again, so reject it up front.
+      this._restoreFocus(focusOrigin);
+      showErrorAlert(UNREADABLE_IMAGE_ERROR_MESSAGE);
+      return null;
     }
 
     try {
@@ -162,12 +169,20 @@ export class ImageCropper extends LitWrapper {
       }
 
       const sourceSize = decodedImage.size;
+      const hasRequiredAspectRatio =
+        Math.abs(sourceSize.width * requiredSize.height - sourceSize.height * requiredSize.width) <
+        ASPECT_RATIO_TOLERANCE;
+
+      // Same-ratio SVGs scale losslessly, so upload them as-is when they fit the limit.
+      const isScalableSvg = isSvgFile(file) && hasRequiredAspectRatio;
+      if (isScalableSvg && file.size <= IMAGE_UPLOAD_MAX_SIZE_BYTES) {
+        return file;
+      }
+
       const requiresUpscaling =
-        sourceSize.width < requiredSize.width || sourceSize.height < requiredSize.height;
+        !isScalableSvg && (sourceSize.width < requiredSize.width || sourceSize.height < requiredSize.height);
       if (requiresUpscaling) {
-        if (focusOrigin instanceof HTMLElement && document.contains(focusOrigin)) {
-          focusOrigin.focus();
-        }
+        this._restoreFocus(focusOrigin);
         showErrorAlert(
           `The selected image (${sourceSize.width} × ${sourceSize.height} px) is smaller ` +
             `than the required size (${requiredSize.width} × ${requiredSize.height} px). ` +
@@ -178,21 +193,28 @@ export class ImageCropper extends LitWrapper {
 
       const hasRequiredDimensions =
         sourceSize.width === requiredSize.width && sourceSize.height === requiredSize.height;
+      // The canvas cannot write GIF, but an exact match (static, as the field
+      // already rejected animated GIFs) is uploaded untouched like other rasters.
       const canUploadWithoutProcessing =
         hasRequiredDimensions &&
-        file.size <= MAX_OUTPUT_SIZE_BYTES &&
-        Object.hasOwn(OUTPUT_TYPE_EXTENSIONS, file.type.toLowerCase());
+        file.size <= IMAGE_UPLOAD_MAX_SIZE_BYTES &&
+        (isGifFile(file) || Object.hasOwn(OUTPUT_TYPE_EXTENSIONS, file.type.toLowerCase()));
       if (canUploadWithoutProcessing) {
         return file;
       }
 
-      const hasRequiredAspectRatio =
-        sourceSize.width * requiredSize.height === sourceSize.height * requiredSize.width;
       if (hasRequiredAspectRatio) {
         try {
           const resizedFile = await this._resizeImage(decodedImage.image, file);
           if (!this.isConnected || editToken !== this._editToken) {
             return null;
+          }
+          if (isScalableSvg) {
+            showInfoAlert(
+              "The SVG was larger than 1MB, so it was converted to a " +
+                `${OUTPUT_TYPE_EXTENSIONS[resizedFile.type].toUpperCase()} image at ` +
+                `${requiredSize.width} × ${requiredSize.height} px.`,
+            );
           }
           return resizedFile;
         } catch {
@@ -207,6 +229,13 @@ export class ImageCropper extends LitWrapper {
       return null;
     }
     return this._openEditor(file, { focusOrigin });
+  }
+
+  /** Return focus to the control that opened the editor when a selection is rejected. */
+  _restoreFocus(focusOrigin) {
+    if (focusOrigin instanceof HTMLElement && document.contains(focusOrigin)) {
+      focusOrigin.focus();
+    }
   }
 
   /** Decode a source file for dimension checks and automatic resizing. */
@@ -233,9 +262,7 @@ export class ImageCropper extends LitWrapper {
 
   /** Read raster dimensions or an SVG's explicit dimensions and view box. */
   async _getSourceSize(file, image) {
-    const fileName = file.name.toLowerCase();
-    const fileType = file.type.toLowerCase();
-    if (fileType !== "image/svg+xml" && !fileName.endsWith(".svg")) {
+    if (!isSvgFile(file)) {
       return { height: image.naturalHeight, width: image.naturalWidth };
     }
 
@@ -294,6 +321,7 @@ export class ImageCropper extends LitWrapper {
     this.updateComplete.then(() => {
       this.querySelector("[data-image-cropper-stage]")?.focus();
     });
+    this.dispatchEvent(new CustomEvent("editor-open", { bubbles: true }));
 
     return result;
   }
@@ -404,6 +432,9 @@ export class ImageCropper extends LitWrapper {
       this._objectUrl = "";
     }
 
+    if (wasOpen) {
+      this.dispatchEvent(new CustomEvent("editor-close", { bubbles: true }));
+    }
     resolveEdit?.(result);
 
     if (wasOpen && restoreFocus && focusOrigin && document.contains(focusOrigin)) {
@@ -415,31 +446,43 @@ export class ImageCropper extends LitWrapper {
 
   /**
    * Build the upload file from the cropped canvas. Keeps the source type when
-   * supported and falls back to WEBP at decreasing qualities to fit the limit.
+   * supported, exports GIF sources as lossless PNG, and retries as WEBP at
+   * decreasing qualities to fit the limit. The name and type follow the format
+   * the browser actually produced, since browsers without a WEBP encoder
+   * silently return PNG.
    */
   async _createOutputFile(canvas, sourceFile) {
     const sourceType = sourceFile?.type.toLowerCase();
-    const preferredType = Object.hasOwn(OUTPUT_TYPE_EXTENSIONS, sourceType) ? sourceType : "image/webp";
-    let outputType = preferredType;
-    let blob = await this._canvasToBlob(canvas, outputType, OUTPUT_QUALITIES[0]);
+    let preferredType = "image/webp";
+    if (Object.hasOwn(OUTPUT_TYPE_EXTENSIONS, sourceType)) {
+      preferredType = sourceType;
+    } else if (sourceFile && isGifFile(sourceFile)) {
+      preferredType = "image/png";
+    }
+    let blob = await this._canvasToBlob(canvas, preferredType, OUTPUT_QUALITIES[0]);
 
-    if (blob.size > MAX_OUTPUT_SIZE_BYTES) {
-      outputType = "image/webp";
+    if (blob.size > IMAGE_UPLOAD_MAX_SIZE_BYTES) {
       for (const quality of OUTPUT_QUALITIES) {
-        blob = await this._canvasToBlob(canvas, outputType, quality);
-        if (blob.size <= MAX_OUTPUT_SIZE_BYTES) {
+        blob = await this._canvasToBlob(canvas, "image/webp", quality);
+        // Stop early when the browser cannot encode WEBP; further attempts are identical.
+        if (blob.size <= IMAGE_UPLOAD_MAX_SIZE_BYTES || blob.type !== "image/webp") {
           break;
         }
       }
     }
 
-    if (blob.size > MAX_OUTPUT_SIZE_BYTES) {
+    if (blob.size > IMAGE_UPLOAD_MAX_SIZE_BYTES) {
       throw new Error(OUTPUT_SIZE_ERROR_MESSAGE);
+    }
+
+    const outputType = blob.type.toLowerCase();
+    const extension = OUTPUT_TYPE_EXTENSIONS[outputType];
+    if (!extension) {
+      throw new Error("Image export failed");
     }
 
     const sourceName = sourceFile?.name || "image";
     const baseName = sourceName.replace(/\.[^.]+$/, "") || "image";
-    const extension = OUTPUT_TYPE_EXTENSIONS[outputType];
 
     return new File([blob], `${baseName}-cropped.${extension}`, {
       lastModified: Date.now(),
@@ -494,8 +537,7 @@ export class ImageCropper extends LitWrapper {
       return;
     }
 
-    this._errorMessage =
-      "This image couldn't be opened in the editor. Choose a different image in a supported format.";
+    this._errorMessage = UNREADABLE_IMAGE_ERROR_MESSAGE;
     this._status = STATUS.ERROR;
   }
 

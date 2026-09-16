@@ -6,6 +6,14 @@ import { waitForActionResponse } from "../utils.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const TEST_UPLOAD_ASSET_PATHS = {
+  animatedGifLogo: path.resolve(
+    __dirname,
+    "../../../ocg-server/static/images/e2e/community-logo-animated.gif",
+  ),
+  animatedGifLogoSource: path.resolve(
+    __dirname,
+    "../../../ocg-server/static/images/e2e/community-logo-animated-source.gif",
+  ),
   advertisementBanner: path.resolve(
     __dirname,
     "../../../ocg-server/static/images/e2e/community-secondary-ad-banner.svg",
@@ -23,6 +31,10 @@ export const TEST_UPLOAD_ASSET_PATHS = {
     "../../../ocg-server/static/images/e2e/community-secondary-logo.svg",
   ),
   badgeArtwork: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/badges/host.png"),
+  badgeArtworkSource: path.resolve(
+    __dirname,
+    "../../../ocg-server/static/images/e2e/badges/artwork-source.webp",
+  ),
   banner: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/community-primary-banner.svg"),
   bannerMobile: path.resolve(
     __dirname,
@@ -32,6 +44,15 @@ export const TEST_UPLOAD_ASSET_PATHS = {
   galleryTwo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/event-photo-2.svg"),
   logo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/community-primary-logo.svg"),
   sponsorLogo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/sponsor-logo.svg"),
+  staticGifLogo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/community-logo-static.gif"),
+  staticGifLogoSource: path.resolve(
+    __dirname,
+    "../../../ocg-server/static/images/e2e/community-logo-static-source.gif",
+  ),
+  webpLogoSource: path.resolve(
+    __dirname,
+    "../../../ocg-server/static/images/e2e/community-secondary-logo-source.webp",
+  ),
 };
 
 /** Sets a markdown editor value and syncs its backing field. */

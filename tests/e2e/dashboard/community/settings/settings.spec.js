@@ -169,6 +169,177 @@ test.describe("community dashboard settings view", () => {
     expect(uploadRequests).toHaveLength(1);
   });
 
+  test("admin can crop a WEBP logo and upload a same-ratio SVG logo as-is", async ({
+    adminCommunityPage,
+  }) => {
+    // Load the logo field and capture the files sent to the image endpoint.
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
+    const logoField = adminCommunityPage.locator('image-field[name="logo_url"]');
+    const cropper = logoField.locator("image-cropper");
+    const fileInput = logoField.locator('input[type="file"]');
+    const valueInput = logoField.locator('input[name="logo_url"]');
+    const preview = logoField.getByRole("img", { name: "Image preview" });
+    await adminCommunityPage.evaluate(() => {
+      const nativeFetch = window.fetch;
+      window.imageUploadMetadata = [];
+      window.fetch = (input, init) => {
+        if (input === "/images" && init?.body instanceof FormData) {
+          const uploadFile = init.body.get("file");
+          if (uploadFile instanceof File) {
+            window.imageUploadMetadata.push({ name: uploadFile.name, type: uploadFile.type });
+          }
+        }
+
+        return nativeFetch(input, init);
+      };
+    });
+
+    // Crop a real WEBP source whose aspect ratio does not match the square logo.
+    const webpUploadPromise = adminCommunityPage.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/images" &&
+        response.status() === 201,
+    );
+    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.webpLogoSource);
+    await expect(cropper.getByRole("dialog", { name: "Crop Logo" })).toBeVisible();
+    await expect(cropper.getByRole("button", { name: "Apply crop" })).toBeEnabled();
+    await cropper.getByRole("button", { name: "Apply crop" }).click();
+    await webpUploadPromise;
+
+    // The cropped WEBP keeps its format and lands at the required size.
+    await expect(valueInput).toHaveValue(/\/images\//);
+    await expect(preview).toHaveJSProperty("naturalWidth", 360);
+    await expect(preview).toHaveJSProperty("naturalHeight", 360);
+    const webpValue = await valueInput.inputValue();
+
+    // Upload a square SVG, which is scalable and skips the crop editor entirely.
+    const svgUploadPromise = adminCommunityPage.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/images" &&
+        response.status() === 201,
+    );
+    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.alternateLogo);
+    await svgUploadPromise;
+    await expect(cropper.getByRole("dialog")).toBeHidden();
+    await expect(valueInput).not.toHaveValue(webpValue);
+    await expect(valueInput).toHaveValue(/\/images\/.*\.svg$/);
+
+    // Both uploads sent the expected file names and types.
+    const uploadMetadata = await adminCommunityPage.evaluate(() => window.imageUploadMetadata);
+    expect(uploadMetadata).toEqual([
+      { name: "community-secondary-logo-source-cropped.webp", type: "image/webp" },
+      { name: "community-secondary-logo.svg", type: "image/svg+xml" },
+    ]);
+  });
+
+  test("admin can upload static GIF logos but not animated ones", async ({ adminCommunityPage }) => {
+    // Load the logo field and capture the files sent to the image endpoint.
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
+    const logoField = adminCommunityPage.locator('image-field[name="logo_url"]');
+    const cropper = logoField.locator("image-cropper");
+    const fileInput = logoField.locator('input[type="file"]');
+    const valueInput = logoField.locator('input[name="logo_url"]');
+    const preview = logoField.getByRole("img", { name: "Image preview" });
+    const initialValue = await valueInput.inputValue();
+    await adminCommunityPage.evaluate(() => {
+      const nativeFetch = window.fetch;
+      window.imageUploadMetadata = [];
+      window.fetch = (input, init) => {
+        if (input === "/images" && init?.body instanceof FormData) {
+          const uploadFile = init.body.get("file");
+          if (uploadFile instanceof File) {
+            window.imageUploadMetadata.push({ name: uploadFile.name, type: uploadFile.type });
+          }
+        }
+
+        return nativeFetch(input, init);
+      };
+    });
+    const waitForUpload = () =>
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname === "/images" &&
+          response.status() === 201,
+      );
+
+    // Animated GIFs are refused before anything is uploaded, whether they need cropping or not.
+    await expect(fileInput).toHaveAttribute("accept", ".svg,.png,.jpg,.jpeg,.gif,.webp");
+    const alert = adminCommunityPage.locator(".swal2-popup");
+    for (const animatedPath of [
+      TEST_UPLOAD_ASSET_PATHS.animatedGifLogoSource,
+      TEST_UPLOAD_ASSET_PATHS.animatedGifLogo,
+    ]) {
+      await fileInput.setInputFiles(animatedPath);
+      await expect(alert).toContainText("Animated GIF images are not supported. Choose a static image.");
+      await alert.locator(".swal2-confirm").click();
+      await expect(alert).toBeHidden();
+      await expect(cropper.getByRole("dialog")).toBeHidden();
+      await expect(fileInput).toHaveValue("");
+      await expect(valueInput).toHaveValue(initialValue);
+    }
+
+    // A static GIF that already has the logo size is uploaded byte-for-byte.
+    const staticExactUploadPromise = waitForUpload();
+    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.staticGifLogo);
+    await staticExactUploadPromise;
+    await expect(cropper.getByRole("dialog")).toBeHidden();
+    await expect(valueInput).toHaveValue(/\/images\/.*\.gif$/);
+    await expect(preview).toHaveJSProperty("naturalWidth", 360);
+    await expect(preview).toHaveJSProperty("naturalHeight", 360);
+    const staticExactValue = await valueInput.inputValue();
+
+    // A static GIF with a different aspect ratio opens the editor and is saved as PNG.
+    const staticUploadPromise = waitForUpload();
+    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.staticGifLogoSource);
+    await expect(cropper.getByRole("dialog", { name: "Crop Logo" })).toBeVisible();
+    await expect(cropper.getByRole("button", { name: "Apply crop" })).toBeEnabled();
+    await cropper.getByRole("button", { name: "Apply crop" }).click();
+    await staticUploadPromise;
+    await expect(valueInput).not.toHaveValue(staticExactValue);
+    await expect(valueInput).toHaveValue(/\/images\/.*\.png$/);
+    await expect(preview).toHaveJSProperty("naturalWidth", 360);
+    await expect(preview).toHaveJSProperty("naturalHeight", 360);
+
+    // Only the two accepted files reached the server, with the expected names and types.
+    const uploadMetadata = await adminCommunityPage.evaluate(() => window.imageUploadMetadata);
+    expect(uploadMetadata).toEqual([
+      { name: "community-logo-static.gif", type: "image/gif" },
+      { name: "community-logo-static-source-cropped.png", type: "image/png" },
+    ]);
+  });
+
+  test("admin cannot upload an SVG as the Open Graph image", async ({ adminCommunityPage }) => {
+    // Load the Open Graph field and track upload requests.
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
+    const openGraphField = adminCommunityPage.locator('image-field[name="og_image_url"]');
+    const fileInput = openGraphField.locator('input[type="file"]');
+    const valueInput = openGraphField.locator('input[name="og_image_url"]');
+    const initialValue = await valueInput.inputValue();
+    const uploadRequests = [];
+    adminCommunityPage.on("request", (request) => {
+      if (request.method() === "POST" && new URL(request.url()).pathname === "/images") {
+        uploadRequests.push(request);
+      }
+    });
+
+    // Link previews need raster images, so SVG sources are refused client-side.
+    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.banner);
+    const alert = adminCommunityPage.locator(".swal2-popup");
+    await expect(alert).toContainText("SVG images are not supported for this field.");
+    await expect(alert).toContainText("Choose a PNG, JPEG or WEBP image.");
+    await alert.locator(".swal2-confirm").click();
+    await expect(alert).toBeHidden();
+
+    // Verify the selection was cleared and the saved value was kept.
+    await expect(openGraphField.locator("image-cropper").getByRole("dialog")).toBeHidden();
+    await expect(fileInput).toHaveValue("");
+    await expect(valueInput).toHaveValue(initialValue);
+    expect(uploadRequests).toHaveLength(0);
+  });
+
   test("admin can update and restore community settings", async ({ adminCommunityPage }) => {
     // Define the settings URL used by the read and submit helpers.
     const settingsPath = "/dashboard/community?tab=settings";

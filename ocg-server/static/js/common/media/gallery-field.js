@@ -4,8 +4,10 @@ import { getElementById } from "/static/js/common/dom.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import {
+  ANIMATED_GIF_ERROR_MESSAGE,
   DEFAULT_IMAGE_ACCEPTED_FORMATS,
   getImageUploadErrorMessage,
+  isAnimatedGif,
   uploadImageFile,
 } from "/static/js/common/media/image-upload.js";
 import "/static/js/common/svg-spinner.js";
@@ -223,9 +225,18 @@ export class GalleryField extends LitWrapper {
     this.requestUpdate();
 
     let createdCount = 0;
+    let animatedGifRejected = false;
 
     for (const file of filesToUpload) {
       try {
+        if (await isAnimatedGif(file)) {
+          // Report once per batch and keep uploading the remaining static images.
+          if (!animatedGifRejected) {
+            showErrorAlert(ANIMATED_GIF_ERROR_MESSAGE);
+            animatedGifRejected = true;
+          }
+          continue;
+        }
         const url = await this._uploadFile(file);
         if (url) {
           createdCount += 1;

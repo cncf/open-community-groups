@@ -5,6 +5,23 @@ import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
+/** Builds a decodable SVG whose 5000 × 1000 ratio matches no target, so the editor opens. */
+const createEditorSourceFile = (name = "editor-source.svg") => {
+  const source = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="5000" height="1000">
+      <rect width="5000" height="1000" fill="#0094ff" />
+    </svg>
+  `;
+  return new File([source], name, { type: "image/svg+xml" });
+};
+
+/** Builds a two-frame 2 × 2 GIF, the smallest file the animation scanner rejects. */
+const createAnimatedGifFile = (name = "clip.gif") => {
+  const header = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 2, 0, 2, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255];
+  const frame = [0x2c, 0, 0, 0, 0, 2, 0, 2, 0, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00];
+  return new File([new Uint8Array([...header, ...frame, ...frame, 0x3b])], name, { type: "image/gif" });
+};
+
 describe("image-field", () => {
   const env = useDashboardTestEnv({ withSwal: true, withScroll: true });
   useMountedElementsCleanup("image-field");
@@ -192,20 +209,107 @@ describe("image-field", () => {
     expect(uploadButton.getAttribute("aria-disabled")).to.equal("false");
   });
 
-  it("rejects GIF files before mandatory cropping", async () => {
-    // Drag-and-drop can bypass the file picker's accepted-format filter.
+  it("hands static GIF files to the cropper for targets that accept them", async () => {
+    // The server accepts exact-size GIFs for banners, so the cropper decides what to do with them.
     const element = await mountLitComponent("image-field", {
       target: "banner",
     });
+    const gifFile = new File(["gif"], "static.gif", { type: "image/gif" });
+    const editedFiles = [];
+    element.querySelector("image-cropper").edit = async (file) => {
+      editedFiles.push(file);
+      return null;
+    };
     let resetCalls = 0;
-    await element._processFile(new File(["gif"], "animated.gif", { type: "image/gif" }), () => {
+
+    await element._processFile(gifFile, () => {
       resetCalls += 1;
     });
 
-    // GIF animation is never silently flattened into the cropper's static output.
+    // The field does not reject the GIF itself and respects the cropper's decision.
+    expect(editedFiles).to.deep.equal([gifFile]);
     expect(fetchMock.calls).to.have.length(0);
     expect(resetCalls).to.equal(1);
-    expect(env.current.swal.calls.at(-1).html).to.include("animation would be lost");
+    expect(env.current.swal.calls).to.have.length(0);
+  });
+
+  it("rejects animated GIFs for every target before the cropper runs", async () => {
+    // The field refuses animation regardless of size, so the cropper never sees the file.
+    const element = await mountLitComponent("image-field", {
+      target: "logo",
+    });
+    const gifFile = createAnimatedGifFile("community-logo.gif");
+    let editCalls = 0;
+    element.querySelector("image-cropper").edit = async () => {
+      editCalls += 1;
+      return null;
+    };
+    let resetCalls = 0;
+
+    await element._processFile(gifFile, () => {
+      resetCalls += 1;
+    });
+
+    expect(editCalls).to.equal(0);
+    expect(fetchMock.calls).to.have.length(0);
+    expect(resetCalls).to.equal(1);
+    expect(element._isPreparing).to.equal(false);
+    expect(env.current.swal.calls.at(-1).icon).to.equal("error");
+    expect(env.current.swal.calls.at(-1).text).to.equal(
+      "Animated GIF images are not supported. Choose a static image.",
+    );
+  });
+
+  it("rejects SVG and GIF files for targets that require PNG, JPEG or WEBP", async () => {
+    // Drag-and-drop can bypass the picker filter, and the server rejects these formats.
+    const openGraphField = await mountLitComponent("image-field", {
+      target: "open_graph",
+    });
+    const badgeField = await mountLitComponent("image-field", {
+      target: "badge",
+    });
+    const svgFile = new File(["<svg xmlns='http://www.w3.org/2000/svg'/>"], "artwork.svg", {
+      type: "image/svg+xml",
+    });
+    const gifFile = new File(["gif"], "artwork.gif", { type: "image/gif" });
+    let resetCalls = 0;
+    const resetCallback = () => {
+      resetCalls += 1;
+    };
+
+    await openGraphField._processFile(svgFile, resetCallback);
+    await badgeField._processFile(svgFile, resetCallback);
+    await badgeField._processFile(gifFile, resetCallback);
+
+    // Every attempt explains the format rule without opening the cropper or uploading.
+    expect(fetchMock.calls).to.have.length(0);
+    expect(resetCalls).to.equal(3);
+    expect(env.current.swal.calls).to.have.length(3);
+    expect(env.current.swal.calls.at(-2).text).to.include("SVG images are not supported for this field.");
+    expect(env.current.swal.calls.at(-1).text).to.include("GIF images are not supported for this field.");
+    expect(env.current.swal.calls.at(-1).text).to.include("PNG, JPEG or WEBP");
+    expect(openGraphField.querySelector("image-cropper")._isOpen).to.equal(false);
+    expect(badgeField.querySelector("image-cropper")._isOpen).to.equal(false);
+  });
+
+  it("rejects prepared files larger than the upload limit before uploading", async () => {
+    // Return an oversized file from the cropper so the size guard is exercised alone.
+    const element = await mountLitComponent("image-field", {
+      target: "logo",
+    });
+    element.querySelector("image-cropper").edit = async () =>
+      new File([new Uint8Array(1024 * 1024 + 1)], "logo-cropped.png", { type: "image/png" });
+    let resetCalls = 0;
+
+    await element._processFile(new File(["source"], "logo.png", { type: "image/png" }), () => {
+      resetCalls += 1;
+    });
+
+    // The size error is shown with the field's format guidance and nothing is sent.
+    expect(fetchMock.calls).to.have.length(0);
+    expect(resetCalls).to.equal(1);
+    expect(env.current.swal.calls.at(-1).html).to.include("larger than the 1MB limit");
+    expect(env.current.swal.calls.at(-1).html).to.include("Maximum size: 1MB.");
   });
 
   it("discards a retained retry when another file begins preparation", async () => {
@@ -345,7 +449,7 @@ describe("image-field", () => {
     );
     const fileInput = element.querySelector('input[type="file"]');
     const selectedFiles = new DataTransfer();
-    selectedFiles.items.add(new File(["source"], "banner.png", { type: "image/png" }));
+    selectedFiles.items.add(createEditorSourceFile("banner.svg"));
     uploadButton.focus();
     expect(uploadButton.getAttribute("aria-label")).to.equal("Upload image for Banner");
     uploadButton.click();
@@ -359,6 +463,36 @@ describe("image-field", () => {
     await waitUntil(() => document.activeElement === uploadButton, "the upload control should regain focus");
 
     expect(fileInput.value).to.equal("");
+  });
+
+  it("hides the busy overlay while the crop editor is open", async () => {
+    // Open the real crop editor with a source whose ratio needs a manual decision.
+    const element = await mountLitComponent("image-field", {
+      label: "Banner",
+      name: "banner_url",
+      target: "banner",
+    });
+    const cropper = element.querySelector("image-cropper");
+    const overlay = element.querySelector("svg-spinner").parentElement;
+    const preview = element.querySelector("[data-image-upload-preview]");
+    const preparationPromise = element._processFile(createEditorSourceFile("banner.svg"));
+    await waitUntil(() => cropper._isOpen, "the crop editor should open");
+    await element.updateComplete;
+
+    // The dialog owns the feedback, so the field stays busy but shows no spinner.
+    expect(element._isPreparing).to.equal(true);
+    expect(preview.getAttribute("aria-busy")).to.equal("true");
+    expect(overlay.getAttribute("aria-hidden")).to.equal("true");
+    expect(overlay.classList.contains("opacity-0")).to.equal(true);
+
+    // Closing the editor clears the pending state without flashing the spinner.
+    [...cropper.querySelectorAll("button")].find((button) => button.textContent.trim() === "Cancel").click();
+    await preparationPromise;
+    await element.updateComplete;
+    expect(element._isEditorOpen).to.equal(false);
+    expect(element._isPreparing).to.equal(false);
+    expect(preview.getAttribute("aria-busy")).to.equal("false");
+    expect(overlay.getAttribute("aria-hidden")).to.equal("true");
   });
 
   it("restores focus to the preview after keyboard picker activation", async () => {
@@ -404,7 +538,7 @@ describe("image-field", () => {
     const preview = element.querySelector("[data-image-upload-preview]");
     const fileInput = element.querySelector('input[type="file"]');
     const selectedFiles = new DataTransfer();
-    selectedFiles.items.add(new File(["source"], "logo.png", { type: "image/png" }));
+    selectedFiles.items.add(createEditorSourceFile("logo.svg"));
 
     // A picker change without a recorded trigger falls back to the visible preview.
     fileInput.files = selectedFiles.files;
@@ -417,16 +551,17 @@ describe("image-field", () => {
 
   it("renders the cropper only for targets with mandatory dimensions", async () => {
     // Render mandatory and unrestricted image targets.
-    const bannerField = await mountLitComponent("image-field", {
-      target: "banner_mobile",
-    });
     const badgeField = await mountLitComponent("image-field", {
       target: "badge",
     });
+    const galleryField = await mountLitComponent("image-field", {
+      name: "photo_url",
+    });
 
     // Mandatory dimensions opt in while other upload flows stay unchanged.
-    expect(bannerField.querySelector("image-cropper")).to.not.equal(null);
-    expect(badgeField.querySelector("image-cropper")).to.equal(null);
+    expect(badgeField.querySelector("image-cropper")).to.not.equal(null);
+    expect(badgeField.querySelector('input[type="file"]').accept).to.equal(".png,.jpg,.jpeg,.webp");
+    expect(galleryField.querySelector("image-cropper")).to.equal(null);
   });
 
   it("clears the image value when remove is triggered", async () => {
@@ -545,10 +680,9 @@ describe("image-field", () => {
     const fileInput = element.querySelector('input[type="file"]');
 
     // Assert the accepted image formats copy.
-    expect(helpText).to.include("Supported formats: SVG, PNG, JPEG and WEBP.");
-    expect(helpText).not.to.include("GIF");
+    expect(helpText).to.include("Supported formats: SVG, PNG, JPEG, GIF and WEBP.");
     expect(helpText).not.to.include("TIFF");
-    expect(fileInput.accept).to.equal(".svg,.png,.jpg,.jpeg,.webp");
+    expect(fileInput.accept).to.equal(".svg,.png,.jpg,.jpeg,.gif,.webp");
   });
 
   it("shows the generic supported formats text for images without mandatory dimensions", async () => {
@@ -613,8 +747,7 @@ describe("image-field", () => {
 
     // The failure details list only the formats the editor can open.
     const alert = env.current.swal.calls.at(-1);
-    expect(alert.html).to.include("Supported formats: SVG, PNG, JPEG and WEBP.");
-    expect(alert.html).not.to.include("GIF");
+    expect(alert.html).to.include("Supported formats: SVG, PNG, JPEG, GIF and WEBP.");
     expect(alert.html).not.to.include("TIFF");
   });
 });

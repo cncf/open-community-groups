@@ -4,22 +4,24 @@ import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { ImageCropper } from "/static/js/common/media/image-cropper.js";
 import {
+  ANIMATED_GIF_ERROR_MESSAGE,
   CROP_IMAGE_ACCEPTED_FORMATS,
   CROP_IMAGE_SUPPORTED_FORMATS_TEXT,
   DEFAULT_IMAGE_ACCEPTED_FORMATS,
   getImageUploadErrorMessage,
   IMAGE_UPLOAD_ERROR_DETAILS,
+  IMAGE_UPLOAD_MAX_SIZE_BYTES,
   IMAGE_UPLOAD_MAX_SIZE_TEXT,
   IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT,
+  isAnimatedGif,
+  isGifFile,
+  isSvgFile,
   OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS,
   OPEN_GRAPH_IMAGE_SUPPORTED_FORMATS_TEXT,
   uploadImageFile,
 } from "/static/js/common/media/image-upload.js";
 import "/static/js/common/svg-spinner.js";
 
-const GIF_IMAGE_ERROR_MESSAGE =
-  "GIF images cannot be cropped because their animation would be lost. " +
-  "Choose a static SVG, PNG, JPEG or WEBP image.";
 const IMAGE_KIND = {
   AVATAR: "avatar",
   BANNER: "banner",
@@ -29,6 +31,11 @@ const IMAGE_TARGET = {
   BADGE: "badge",
   OPEN_GRAPH: "open_graph",
 };
+const IMAGE_TOO_LARGE_ERROR_MESSAGE = "The selected image is larger than the 1MB limit.";
+// Targets served publicly, which the server restricts to PNG, JPEG and WEBP.
+const RASTER_ONLY_TARGETS = [IMAGE_TARGET.BADGE, IMAGE_TARGET.OPEN_GRAPH];
+const getRasterOnlyErrorMessage = (formatLabel) =>
+  `${formatLabel} images are not supported for this field. Choose a PNG, JPEG or WEBP image.`;
 
 /**
  * ImageField renders upload controls with drag-and-drop support and a preview.
@@ -73,6 +80,7 @@ export class ImageField extends LitWrapper {
     submitLabel: { type: String, attribute: "submit-label" },
     target: { type: String },
     legend: { type: String },
+    _isEditorOpen: { state: true },
     _isPreparing: { state: true },
     _pendingUploadFile: { state: true },
   };
@@ -88,6 +96,7 @@ export class ImageField extends LitWrapper {
     this._filePickerTrigger = null;
     this._filePreparationToken = 0;
     this._isDragActive = false;
+    this._isEditorOpen = false;
     this._isPreparing = false;
     this._isUploading = false;
     this._pendingUploadFile = null;
@@ -137,6 +146,11 @@ export class ImageField extends LitWrapper {
 
   get _isPending() {
     return this._isPreparing || this._isUploading;
+  }
+
+  /** Whether to show the busy overlay; the crop editor owns feedback while open. */
+  get _showsBusyOverlay() {
+    return this._isUploading || (this._isPreparing && !this._isEditorOpen);
   }
 
   /** Return a dashboard-safe preview URL for unsaved badge artwork. */
@@ -317,9 +331,22 @@ export class ImageField extends LitWrapper {
 
     try {
       const cropper = getElementById(this, this._cropperId);
-      const isGif = file.type.toLowerCase() === "image/gif" || file.name.toLowerCase().endsWith(".gif");
-      if (cropper && isGif) {
-        showErrorAlert(GIF_IMAGE_ERROR_MESSAGE, true);
+      if (RASTER_ONLY_TARGETS.includes(this.target)) {
+        const unsupportedFormat = isSvgFile(file) ? "SVG" : isGifFile(file) ? "GIF" : null;
+        if (unsupportedFormat) {
+          showErrorAlert(getRasterOnlyErrorMessage(unsupportedFormat));
+          resetCallback?.();
+          return;
+        }
+      }
+
+      // Every target stores the file as-is or as a single frame, so animation is never kept.
+      const isAnimated = await isAnimatedGif(file);
+      if (preparationToken !== this._filePreparationToken) {
+        return;
+      }
+      if (isAnimated) {
+        showErrorAlert(ANIMATED_GIF_ERROR_MESSAGE);
         resetCallback?.();
         return;
       }
@@ -329,6 +356,14 @@ export class ImageField extends LitWrapper {
         return;
       }
       if (!preparedFile) {
+        resetCallback?.();
+        return;
+      }
+      if (preparedFile.size > IMAGE_UPLOAD_MAX_SIZE_BYTES) {
+        showErrorAlert(
+          getImageUploadErrorMessage("image", IMAGE_TOO_LARGE_ERROR_MESSAGE, this._uploadErrorDetails),
+          true,
+        );
         resetCallback?.();
         return;
       }
@@ -519,9 +554,9 @@ export class ImageField extends LitWrapper {
         >
           <div
             class="absolute inset-0 flex items-center justify-center bg-white/50 z-10 ${
-              this._isPending ? "opacity-100" : "opacity-0 pointer-events-none"
+              this._showsBusyOverlay ? "opacity-100" : "opacity-0 pointer-events-none"
             } transition-opacity duration-200"
-            aria-hidden=${this._isPending ? "false" : "true"}
+            aria-hidden=${this._showsBusyOverlay ? "false" : "true"}
           >
             <svg-spinner
               size="size-8"
@@ -620,7 +655,17 @@ export class ImageField extends LitWrapper {
       ${
         requiresCropping
           ? html`
-              <image-cropper id=${this._cropperId} .label=${this.label} .target=${cropTarget}></image-cropper>
+              <image-cropper
+                id=${this._cropperId}
+                .label=${this.label}
+                .target=${cropTarget}
+                @editor-open=${() => {
+                  this._isEditorOpen = true;
+                }}
+                @editor-close=${() => {
+                  this._isEditorOpen = false;
+                }}
+              ></image-cropper>
             `
           : nothing
       }
