@@ -8,6 +8,7 @@
 
 use std::time::Duration;
 
+use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
@@ -20,10 +21,17 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+/// Delay before the first report, so every worker has started and had time
+/// to make progress.
+const INITIAL_REPORT_DELAY: Duration = Duration::from_secs(30);
+
 /// Interval between queue health reports.
 const REPORT_INTERVAL: Duration = Duration::from_mins(5);
 
 /// Starts the queue health reporter.
+///
+/// Call it after every other worker has been spawned so the first report
+/// covers all of them.
 pub(crate) fn start(
     db: &DynDB,
     worker_registry: WorkerRegistry,
@@ -52,6 +60,13 @@ struct Reporter {
 impl Reporter {
     /// Reports queue health until graceful shutdown.
     async fn run(&self) {
+        // Let the other workers start before the first report, unless shutdown comes first
+        tokio::select! {
+            biased;
+            () = self.cancellation_token.cancelled() => return,
+            () = sleep(INITIAL_REPORT_DELAY) => {}
+        }
+
         run_worker(&self.cancellation_token, || async {
             // Emit one report per queue before the fixed cadence
             self.report().await;
@@ -65,7 +80,9 @@ impl Reporter {
         // Log the durable queues
         match self.db.get_worker_queue_health().await {
             Ok(health) => Self::log_health(&health),
-            Err(err) => error!(error = %err, "error reading worker queue health"),
+            Err(err) => {
+                error!(error = %format_args!("{err:#}"), "error reading worker queue health");
+            }
         }
 
         // Log the running instances and unexpected exits of every worker

@@ -40,7 +40,7 @@ mod tests;
 ///
 /// This handler manages the main group dashboard page, selecting the appropriate tab
 /// and preparing the content for each dashboard section.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn page(

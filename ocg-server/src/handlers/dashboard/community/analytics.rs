@@ -19,7 +19,7 @@ mod tests;
 // Pages handlers.
 
 /// Displays the community analytics dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,

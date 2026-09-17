@@ -38,7 +38,7 @@ const PARTIAL_URL: &str = "/dashboard/group/sponsors";
 // Pages handlers.
 
 /// Displays the page to add a new sponsor.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let template = sponsors::AddPage;
@@ -47,7 +47,7 @@ pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
 }
 
 /// Displays the list of sponsors for the group dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -73,7 +73,7 @@ pub(crate) async fn list_page(
 }
 
 /// Displays the page to update an existing sponsor.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -102,7 +102,7 @@ pub(crate) async fn update_page(
 // Actions handlers.
 
 /// Adds a new sponsor to the database.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -120,7 +120,7 @@ pub(crate) async fn add(
 }
 
 /// Deletes a sponsor from the database.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn delete(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -138,7 +138,7 @@ pub(crate) async fn delete(
 }
 
 /// Updates an existing sponsor in the database.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -157,7 +157,7 @@ pub(crate) async fn update(
 }
 
 /// Updates the featured flag for an existing sponsor in the database.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_featured(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,

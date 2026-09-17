@@ -39,7 +39,7 @@ mod tests;
 ///
 /// This handler manages the main community dashboard page, selecting the appropriate tab
 /// and preparing the content for each dashboard section.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 #[allow(clippy::too_many_lines)]
 pub(crate) async fn page(
     CurrentUser(user): CurrentUser,

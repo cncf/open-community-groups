@@ -79,7 +79,7 @@ async fn run_server(db: PgDB, server_cfg: &HttpServerConfig) -> Result<()> {
         .with_graceful_shutdown(shutdown_signal())
         .await
     {
-        error!(?err, "server error");
+        error!(error = %format_args!("{err:#}"), "server error");
         return Err(anyhow::Error::new(err));
     }
 
@@ -117,7 +117,7 @@ fn spawn_redirect_refresh(db: PgDB, redirects: Arc<RwLock<router::Redirects>>) {
                     info!("redirect mappings refreshed");
                 }
                 Err(err) => {
-                    error!(?err, "failed to refresh redirect mappings");
+                    error!(error = %format_args!("{err:#}"), "failed to refresh redirect mappings");
                 }
             }
         }

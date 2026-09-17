@@ -37,7 +37,7 @@ const PARTIAL_URL: &str = "/dashboard/user/events";
 // Pages handlers.
 
 /// Returns the upcoming events list page for the user dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -57,7 +57,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Cancels the current user's event attendance from the dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn cancel_attendance(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -94,7 +94,7 @@ pub(crate) async fn cancel_attendance(
 }
 
 /// Submits registration question answers from the user dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn submit_registration_answers(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,

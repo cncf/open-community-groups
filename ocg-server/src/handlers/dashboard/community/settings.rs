@@ -25,7 +25,7 @@ mod tests;
 // Pages handlers.
 
 /// Displays the page to update community settings.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -51,7 +51,7 @@ pub(crate) async fn update_page(
 // Actions handlers.
 
 /// Updates community settings in the database.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,

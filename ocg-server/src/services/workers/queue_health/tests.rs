@@ -49,6 +49,18 @@ async fn test_report_reads_queue_health_once() {
     reporter(db).report().await;
 }
 
+#[tokio::test]
+async fn test_run_stops_during_initial_delay_when_cancelled() {
+    // Reject every queue health read
+    let mut db = MockDB::new();
+    db.expect_get_worker_queue_health().times(0);
+
+    // Cancel before the initial delay elapses
+    let reporter = reporter(db);
+    reporter.cancellation_token.cancel();
+    reporter.run().await;
+}
+
 // Helpers.
 
 /// Creates a queue health reporter with a fresh cancellation token.

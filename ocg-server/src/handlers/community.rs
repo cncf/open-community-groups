@@ -32,7 +32,7 @@ mod tests;
 // Pages handlers.
 
 /// Handler that renders the community page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
@@ -94,7 +94,7 @@ pub(crate) async fn page(
 // Actions handlers.
 
 /// Tracks a community page view.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn track_view(
     headers: HeaderMap,
     State(activity_tracker): State<DynActivityTracker>,

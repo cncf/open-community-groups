@@ -7,7 +7,7 @@ use async_trait::async_trait;
 #[cfg(test)]
 use mockall::automock;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, instrument};
+use tracing::{error, info, instrument};
 
 use crate::{
     config::MeetingsZoomConfig,
@@ -242,7 +242,7 @@ impl MeetingsAutoEndWorker {
             },
             || self.auto_end_meeting(),
             |err| {
-                error!(%err, "error auto-ending meeting");
+                error!(error = %format_args!("{err:#}"), "error auto-ending meeting");
                 err.retry_after()
             },
         )
@@ -290,7 +290,7 @@ impl MeetingsAutoEndWorker {
             }
             Err(err) => {
                 error!(
-                    %err,
+                    error = %format_args!("{err:#}"),
                     meeting_id = %candidate.meeting_id,
                     provider_meeting_id = %candidate.provider_meeting_id,
                     "non-retryable auto-end error, recording error outcome",
@@ -325,7 +325,7 @@ impl MeetingsClaimRecoveryWorker {
             let pause = match self.mark_stale_meeting_claims_unknown().await {
                 Ok(_) => PAUSE_ON_CLAIM_RECOVERY_NONE,
                 Err(err) => {
-                    error!(%err, "error recovering stale meeting claims");
+                    error!(error = %format_args!("{err:#}"), "error recovering stale meeting claims");
                     PAUSE_ON_CLAIM_RECOVERY_ERROR
                 }
             };
@@ -373,7 +373,7 @@ impl MeetingsSyncWorker {
             },
             || self.sync_meeting(),
             |err| {
-                error!(%err, "error syncing meeting");
+                error!(error = %format_args!("{err:#}"), "error syncing meeting");
                 err.retry_after()
             },
         )
@@ -407,7 +407,7 @@ impl MeetingsSyncWorker {
             // Non-retryable: record error and mark as synced
             if err.is_non_retryable() {
                 self.db
-                    .set_meeting_error(&meeting, &err.to_string())
+                    .set_meeting_error(&meeting, &format!("{err:#}"))
                     .await
                     .map_err(SyncError::Other)?;
                 return Ok(true);
@@ -505,6 +505,8 @@ impl MeetingsSyncWorker {
         // Add meeting to database
         self.db.add_meeting(&meeting).await.map_err(SyncError::Other)?;
 
+        Self::log_synced("created", &meeting);
+
         Ok(())
     }
 
@@ -529,7 +531,23 @@ impl MeetingsSyncWorker {
         // Remove meeting from database
         self.db.delete_meeting(meeting).await.map_err(SyncError::Other)?;
 
+        Self::log_synced("deleted", meeting);
+
         Ok(())
+    }
+
+    /// Logs a provider synchronization action with the identifiers needed to
+    /// trace it back to the event or session and the provider meeting.
+    fn log_synced(action: &str, meeting: &Meeting) {
+        info!(
+            action,
+            meeting_id = meeting.meeting_id.as_ref().map(tracing::field::display),
+            event_id = meeting.event_id.as_ref().map(tracing::field::display),
+            session_id = meeting.session_id.as_ref().map(tracing::field::display),
+            provider = %meeting.provider,
+            provider_meeting_id = meeting.provider_meeting_id.as_ref().map(tracing::field::display),
+            "meeting synchronized with provider"
+        );
     }
 
     /// Update a meeting on the provider and mark as synced in database.
@@ -559,6 +577,8 @@ impl MeetingsSyncWorker {
 
         // Update meeting in database
         self.db.update_meeting(&meeting).await.map_err(SyncError::Other)?;
+
+        Self::log_synced("updated", &meeting);
 
         Ok(())
     }
@@ -609,9 +629,10 @@ enum SyncError {
 impl std::fmt::Display for SyncError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Provider(e) => write!(f, "{e}"),
+            // Delegate to the source so alternate formatting prints the cause chain
+            Self::Provider(e) => std::fmt::Display::fmt(e, f),
             Self::ProviderNotConfigured(p) => write!(f, "provider not configured: {p}"),
-            Self::Other(e) => write!(f, "{e}"),
+            Self::Other(e) => std::fmt::Display::fmt(e, f),
         }
     }
 }

@@ -61,7 +61,7 @@ impl EnrollmentWorker {
                     .map(|outcome| outcome.is_some())
             },
             |err| {
-                error!(error = %err, "error reconciling event enrollment");
+                error!(error = %format_args!("{err:#}"), "error reconciling event enrollment");
                 None
             },
         )

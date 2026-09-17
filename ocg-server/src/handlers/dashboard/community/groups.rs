@@ -37,7 +37,7 @@ const PARTIAL_URL: &str = "/dashboard/community/groups";
 // Pages handlers.
 
 /// Displays the list of groups for the community dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -62,7 +62,7 @@ pub(crate) async fn list_page(
 }
 
 /// Displays the page to add a new group.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -84,7 +84,7 @@ pub(crate) async fn add_page(
 }
 
 /// Displays the page to update an existing group.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -119,7 +119,7 @@ pub(crate) async fn update_page(
 // Actions handlers.
 
 /// Activates a group (sets active=true).
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn activate(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -136,7 +136,7 @@ pub(crate) async fn activate(
 }
 
 /// Adds a new group to the database.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
     session: Session,
@@ -160,7 +160,7 @@ pub(crate) async fn add(
 }
 
 /// Deactivates a group (sets active=false without deleting).
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn deactivate(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -177,7 +177,7 @@ pub(crate) async fn deactivate(
 }
 
 /// Deletes a group from the database (soft delete).
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn delete(
     CurrentUser(user): CurrentUser,
     session: Session,
@@ -212,7 +212,7 @@ pub(crate) async fn delete(
 }
 
 /// Updates an existing group's information in the database.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,

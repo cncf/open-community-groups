@@ -185,9 +185,9 @@ same phases:
   cannot overwrite a newer attempt.
 - **Release** (notifications): a worker interrupted by shutdown between
   attempts returns its claim to the queue without recording an outcome; the
-  row becomes claimable immediately and keeps its attempt count and last
-  error, so a restart does not spend the retry budget. The same stale claim
-  guard applies.
+  row becomes claimable immediately, refunds the attempt the claim counted,
+  and keeps its last error, so a restart does not spend the retry budget. The
+  same stale claim guard applies.
 - **Stale claim recovery**: periodic functions release claims whose worker
   disappeared.
 - **Operator recovery**: exhausted work can be retried or completed with

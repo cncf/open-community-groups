@@ -200,7 +200,7 @@ impl EnqueueWorker {
             let pause = match self.enqueue_due_notifications().await {
                 Ok(_) => PAUSE_ON_ENQUEUE_NONE,
                 Err(err) => {
-                    error!(error = %err, "error enqueueing due notifications");
+                    error!(error = %format_args!("{err:#}"), "error enqueueing due notifications");
                     PAUSE_ON_ENQUEUE_ERROR
                 }
             };
@@ -237,7 +237,7 @@ impl DeliveryRecoveryWorker {
                     PAUSE_ON_DELIVERY_RECOVERY_NONE
                 }
                 Err(err) => {
-                    error!(error = %err, "error recovering stale notification deliveries");
+                    error!(error = %format_args!("{err:#}"), "error recovering stale notification deliveries");
                     PAUSE_ON_DELIVERY_RECOVERY_ERROR
                 }
             };
@@ -280,7 +280,7 @@ impl DeliveryWorker {
             },
             || self.deliver_notification(),
             |err| {
-                error!(error = %err, "error delivering notification");
+                error!(error = %format_args!("{err:#}"), "error delivering notification");
                 None
             },
         )
@@ -319,11 +319,11 @@ impl DeliveryWorker {
                     notification_id = %notification.notification_id,
                     kind = %notification.kind,
                     outcome = "terminal",
-                    error = %err,
+                    error = %format_args!("{err:#}"),
                     "notification content could not be rendered"
                 );
                 self.db
-                    .update_notification(&notification, Some(err.to_string()))
+                    .update_notification(&notification, Some(format!("{err:#}")))
                     .await?;
             }
         }
@@ -462,7 +462,7 @@ impl DeliveryWorker {
         err: EmailDeliveryError,
     ) -> Result<()> {
         // Persist the safest recovery action for the classified delivery failure
-        let error = err.to_string();
+        let error = format!("{err:#}");
         let notification_id = notification.notification_id;
         let kind = &notification.kind;
         match err {
@@ -594,7 +594,7 @@ impl DeliveryWorker {
                         attempt,
                         next_attempt = attempt + 1,
                         max_attempts = DELIVERY_SEND_MAX_ATTEMPTS,
-                        error = %err,
+                        error = %format_args!("{err:#}"),
                         "transient notification email delivery error; retrying",
                     );
 
@@ -766,7 +766,10 @@ impl EmailDeliveryError {
 impl std::fmt::Display for EmailDeliveryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Retryable(err) | Self::Terminal(err) | Self::Unknown(err) => write!(f, "{err}"),
+            // Delegate to the source so alternate formatting prints the cause chain
+            Self::Retryable(err) | Self::Terminal(err) | Self::Unknown(err) => {
+                std::fmt::Display::fmt(err, f)
+            }
         }
     }
 }

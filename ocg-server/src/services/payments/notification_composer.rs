@@ -175,7 +175,7 @@ impl PaymentsNotificationComposer {
         ) {
             Ok(notification) => notification,
             Err(err) => {
-                warn!(error = %err, "failed to build event welcome notification");
+                warn!(error = %format_args!("{err:#}"), "failed to build event welcome notification");
                 return;
             }
         };
@@ -209,7 +209,7 @@ impl PaymentsNotificationComposer {
         ) {
             Ok(notification) => notification,
             Err(err) => {
-                warn!(error = %err, "failed to build refund rejection notification");
+                warn!(error = %format_args!("{err:#}"), "failed to build refund rejection notification");
                 return;
             }
         };
@@ -221,7 +221,7 @@ impl PaymentsNotificationComposer {
     async fn enqueue_notification(&self, notification: &NewNotification, notification_kind: &str) {
         // Log and swallow enqueue failures so the main payments flow can continue
         if let Err(err) = self.notifications_manager.enqueue(notification).await {
-            warn!(error = %err, "failed to enqueue {notification_kind} notification");
+            warn!(error = %format_args!("{err:#}"), "failed to enqueue {notification_kind} notification");
         }
     }
 
@@ -239,7 +239,7 @@ impl PaymentsNotificationComposer {
         match load_event_notification_context(self.db.as_ref(), community_id, event_id).await {
             Ok(context) => Some(context),
             Err(err) => {
-                warn!(error = %err, "failed to load {notification_kind} notification context");
+                warn!(error = %format_args!("{err:#}"), "failed to load {notification_kind} notification context");
                 None
             }
         }

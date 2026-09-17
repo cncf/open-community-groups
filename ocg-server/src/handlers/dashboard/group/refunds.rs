@@ -40,7 +40,7 @@ const PARTIAL_URL: &str = "/dashboard/group/refunds";
 // Pages handlers.
 
 /// Displays the purchase refund workflows for a group.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -68,7 +68,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Completes exhausted payment job work resolved outside OCG.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn complete_payment_job_recovery(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -96,7 +96,7 @@ pub(crate) async fn complete_payment_job_recovery(
 }
 
 /// Completes an externally resolved terminal provider refund.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn complete_refund_recovery(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -125,7 +125,7 @@ pub(crate) async fn complete_refund_recovery(
 }
 
 /// Requeues exhausted payment work for another bounded attempt cycle.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn retry_payment_job(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,

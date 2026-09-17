@@ -243,7 +243,7 @@ impl PgEnrollmentManager {
         // Log the failure with the identifiers needed to reconstruct it
         if let Err(err) = result {
             warn!(
-                error = %err,
+                error = %format_args!("{err:#}"),
                 %community_id,
                 %group_id,
                 %user_id,

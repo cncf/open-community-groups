@@ -42,7 +42,7 @@ mod tests;
 // Pages and sections handlers.
 
 /// Handler that renders the global explore page with either events or groups section.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
@@ -93,7 +93,7 @@ pub(crate) async fn page(
 }
 
 /// Handler that renders the events results section of the explore page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn events_results_section(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -114,7 +114,7 @@ pub(crate) async fn events_results_section(
 }
 
 /// Handler that renders the events section of the explore page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn events_section(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -135,7 +135,7 @@ pub(crate) async fn events_section(
 }
 
 /// Handler that renders the groups results section of the explore page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn groups_results_section(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -156,7 +156,7 @@ pub(crate) async fn groups_results_section(
 }
 
 /// Handler that renders the groups section of the explore page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn groups_section(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -177,7 +177,7 @@ pub(crate) async fn groups_section(
 }
 
 /// Prepares the events result section template.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 async fn prepare_events_result_section(
     db: &DynDB,
     filters: &SearchEventsFilters,
@@ -218,7 +218,7 @@ async fn prepare_events_result_section(
 }
 
 /// Prepares the events section template.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 async fn prepare_events_section(
     db: &DynDB,
     filters: &SearchEventsFilters,
@@ -244,7 +244,7 @@ async fn prepare_events_section(
 }
 
 /// Prepares the groups result section template.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 async fn prepare_groups_result_section(
     db: &DynDB,
     filters: &SearchGroupsFilters,
@@ -281,7 +281,7 @@ async fn prepare_groups_result_section(
 }
 
 /// Prepares groups section template.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 async fn prepare_groups_section(
     db: &DynDB,
     filters: &SearchGroupsFilters,
@@ -309,7 +309,7 @@ async fn prepare_groups_section(
 // JSON search handlers.
 
 /// Handler for the events search endpoint (JSON format).
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn search_events(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -331,7 +331,7 @@ pub(crate) async fn search_events(
 }
 
 /// Handler for the groups search endpoint (JSON format).
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn search_groups(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,

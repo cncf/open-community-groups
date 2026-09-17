@@ -34,7 +34,7 @@ mod tests;
 ///
 /// This handler manages the main user dashboard page, selecting the appropriate tab
 /// and preparing the content for each dashboard section.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn page(
     CurrentUser(user): CurrentUser,
     auth_session: AuthSession,

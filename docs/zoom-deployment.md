@@ -137,6 +137,26 @@ Store them in OCG as:
 
 Reference: [Internal apps (Server-to-server)](https://developers.zoom.us/docs/internal-apps/).
 
+#### Required Scopes
+
+Add these granular scopes to the Server-to-Server OAuth app. Each one covers a
+Zoom API call OCG makes:
+
+| Scope                              | Used for                                                    |
+| ---------------------------------- | ----------------------------------------------------------- |
+| `meeting:delete:meeting:admin`     | Deleting meetings an event or session no longer needs       |
+| `meeting:read:list_meetings:admin` | Listing a host's meetings to adopt an interrupted creation  |
+| `meeting:read:meeting:admin`       | Reading join details after an update or adoption            |
+| `meeting:update:meeting:admin`     | Updating meetings when an event or session changes          |
+| `meeting:update:status:admin`      | Ending meetings after their scheduled end time              |
+| `meeting:write:meeting:admin`      | Creating meetings for events and sessions                   |
+
+Without `meeting:read:list_meetings:admin`, OCG cannot verify whether an
+interrupted creation already produced a meeting, so every meeting creation
+fails.
+
+Reference: [Meetings APIs](https://developers.zoom.us/docs/api/meetings/).
+
 ### Step 2: Choose the Host Pool Users
 
 OCG does not turn event organizers or speaker emails into Zoom hosts automatically. Instead, it

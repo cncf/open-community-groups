@@ -6,9 +6,11 @@ create or replace function release_notification(
 )
 returns void as $$
 begin
-    -- Make the claim immediately claimable again, keeping attempts and error intact
+    -- Make the claim immediately claimable again, refunding the attempt the
+    -- claim consumed and keeping the last recorded error intact
     update notification
     set
+        delivery_attempts = greatest(delivery_attempts - 1, 0),
         delivery_status = 'pending',
         next_delivery_attempt_at = current_timestamp,
         processed_at = null

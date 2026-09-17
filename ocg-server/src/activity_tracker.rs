@@ -279,7 +279,7 @@ impl Flusher {
             if !batches.community_views.is_empty() {
                 let data = prepare_batch_data(&batches.community_views);
                 if let Err(err) = self.db.update_community_views(data).await {
-                    error!(?err, "error writing community views to database");
+                    error!(error = %format_args!("{err:#}"), "error writing community views to database");
                 }
             }
 
@@ -287,7 +287,7 @@ impl Flusher {
             if !batches.event_views.is_empty() {
                 let data = prepare_batch_data(&batches.event_views);
                 if let Err(err) = self.db.update_event_views(data).await {
-                    error!(?err, "error writing event views to database");
+                    error!(error = %format_args!("{err:#}"), "error writing event views to database");
                 }
             }
 
@@ -295,7 +295,7 @@ impl Flusher {
             if !batches.group_views.is_empty() {
                 let data = prepare_batch_data(&batches.group_views);
                 if let Err(err) = self.db.update_group_views(data).await {
-                    error!(?err, "error writing group views to database");
+                    error!(error = %format_args!("{err:#}"), "error writing group views to database");
                 }
             }
         }

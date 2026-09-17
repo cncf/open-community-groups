@@ -50,7 +50,8 @@ pub(crate) trait DBNotifications {
     -> Result<usize>;
 
     /// Returns a claimed notification to the pending queue without recording an
-    /// outcome, leaving its delivery attempts and last error unchanged.
+    /// outcome, refunding the attempt the claim consumed and leaving its last
+    /// error unchanged.
     async fn release_notification(&self, notification: &Notification) -> Result<()>;
 
     /// Requeues a notification after a retryable delivery error.
@@ -99,7 +100,7 @@ where
                 Ok(attachment) => attachment,
                 Err(err) => {
                     // Finalize pre-send failures so claimed rows are not stranded
-                    let error = err.to_string();
+                    let error = format!("{err:#}");
                     db.execute(
                         "
                         select update_notification($1::uuid, $2::text, $3::timestamptz);

@@ -29,7 +29,7 @@ pub(crate) struct CommunityId(pub Uuid);
 impl FromRequestParts<router::State> for CommunityId {
     type Rejection = (StatusCode, &'static str);
 
-    #[instrument(skip_all, err(Debug))]
+    #[instrument(skip_all, err(Debug, level = "warn"))]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &router::State,
@@ -52,7 +52,7 @@ impl FromRequestParts<router::State> for CommunityId {
                 .get_community_id_by_name(community_name)
                 .await
                 .map_err(|err| {
-                    error!(?err, "error looking up community id");
+                    error!(error = %format_args!("{err:#}"), "error looking up community id");
                     (StatusCode::INTERNAL_SERVER_ERROR, "")
                 })?
         else {
@@ -69,7 +69,7 @@ pub(crate) struct CurrentUser(pub AuthUser);
 impl FromRequestParts<router::State> for CurrentUser {
     type Rejection = (StatusCode, &'static str);
 
-    #[instrument(skip_all, err(Debug))]
+    #[instrument(skip_all, err(Debug, level = "warn"))]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &router::State,
@@ -91,7 +91,7 @@ pub(crate) struct OAuth2(pub Arc<OAuth2ProviderDetails>);
 impl FromRequestParts<router::State> for OAuth2 {
     type Rejection = (StatusCode, &'static str);
 
-    #[instrument(skip_all, err(Debug))]
+    #[instrument(skip_all, err(Debug, level = "warn"))]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &router::State,
@@ -115,7 +115,7 @@ pub(crate) struct Oidc(pub Arc<OidcProviderDetails>);
 impl FromRequestParts<router::State> for Oidc {
     type Rejection = (StatusCode, &'static str);
 
-    #[instrument(skip_all, err(Debug))]
+    #[instrument(skip_all, err(Debug, level = "warn"))]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &router::State,

@@ -181,7 +181,7 @@ impl PaymentsWebhookReconciler {
             )
             .await
             .map_err(|err| {
-                warn!(error = %err, "failed to expire checkout session");
+                warn!(error = %format_args!("{err:#}"), "failed to expire checkout session");
                 err
             })
     }
@@ -230,7 +230,7 @@ impl PaymentsWebhookReconciler {
                 Ok(())
             }
             Err(err) => {
-                warn!(error = %err, "failed to reconcile purchase");
+                warn!(error = %format_args!("{err:#}"), "failed to reconcile purchase");
                 Err(err)
             }
         }

@@ -98,7 +98,6 @@ async fn main() -> Result<()> {
     // Configure background services that depend on the database
     let workers_db = db.clone() as DynDB;
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
-    queue_health::start(&workers_db, background_tasks.registry(), &background_tasks);
     start_badge_award_workers(&workers_db, &background_tasks);
     start_meetings_workers(cfg.meetings.as_ref(), db.clone(), &background_tasks)?;
     let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;
@@ -115,6 +114,10 @@ async fn main() -> Result<()> {
         &cfg.server,
         &background_tasks,
     );
+
+    // Start the health reporter last so its reports cover every worker
+    queue_health::start(&workers_db, background_tasks.registry(), &background_tasks);
+
     let payments_manager = setup_payments_manager(
         db.clone(),
         notifications_manager.clone(),
@@ -197,7 +200,7 @@ async fn run_server(
         .with_graceful_shutdown(shutdown_signal())
         .await
     {
-        error!(?err, "server error");
+        error!(error = %format_args!("{err:#}"), "server error");
         return Err(err.into());
     }
 

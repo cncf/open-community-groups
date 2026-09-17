@@ -985,7 +985,7 @@ async fn test_process_next_payment_job_records_failure_after_notification_contex
         .withf(move |id, claim, message| {
             *id == payment_job_id
                 && *claim == claim_id
-                && message == "failed to build refund approval notification"
+                && message == "failed to build refund approval notification: event unavailable"
         })
         .times(1)
         .returning(|_, _, _| Ok(()));
@@ -1052,7 +1052,7 @@ async fn test_process_next_payment_job_records_failure_after_success_persistence
         .withf(move |id, claim, message| {
             *id == payment_job_id
                 && *claim == claim_id
-                && message == "failed to record successful provider refund"
+                && message == "failed to record successful provider refund: database unavailable"
         })
         .times(1)
         .returning(|_, _, _| Ok(()));

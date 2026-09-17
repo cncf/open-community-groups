@@ -33,7 +33,7 @@ const PARTIAL_URL: &str = "/dashboard/user/logs";
 // Pages handlers.
 
 /// Displays the user audit logs list.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,

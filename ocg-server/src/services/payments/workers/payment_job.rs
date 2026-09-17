@@ -87,7 +87,7 @@ impl Worker {
             ClaimLoopConfig::default(),
             || self.process_next_payment_job(),
             |err| {
-                error!(error = %err, "error processing payment job");
+                error!(error = %format_args!("{err:#}"), "error processing payment job");
                 None
             },
         )
@@ -174,17 +174,17 @@ impl Worker {
         warn!(
             payment_job_id = %job.payment_job_id,
             attempt_count = job.attempt_count,
-            error = %err,
+            error = %format_args!("{err:#}"),
             "payment job failed; claim released for retry"
         );
         if let Err(record_err) = self
             .db
-            .record_payment_job_failure(job.payment_job_id, job.claim_id, err.to_string())
+            .record_payment_job_failure(job.payment_job_id, job.claim_id, format!("{err:#}"))
             .await
         {
             warn!(
                 payment_job_id = %job.payment_job_id,
-                error = %record_err,
+                error = %format_args!("{record_err:#}"),
                 "failed to release payment job claim"
             );
         }
