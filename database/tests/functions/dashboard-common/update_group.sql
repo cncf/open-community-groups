@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(60);
+select plan(77);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(60);
 \set eventAutomaticTaxID '1c020000-0000-0000-0000-00000000001c'
 \set eventCategoryID '1c020000-0000-0000-0000-000000000002'
 \set eventDelistedID '1c020000-0000-0000-0000-000000000043'
+\set eventDelistedReplaceID '1c020000-0000-0000-0000-000000000050'
 \set eventDisablePastID '1c020000-0000-0000-0000-000000000044'
 \set eventDisableUnpublishedID '1c020000-0000-0000-0000-000000000045'
 \set eventEnableAbroadID '1c020000-0000-0000-0000-00000000003c'
@@ -30,17 +31,24 @@ select plan(60);
 \set group6ID '1c020000-0000-0000-0000-000000000015'
 \set groupAdminID '1c020000-0000-0000-0000-000000000010'
 \set groupAutomaticTaxID '1c020000-0000-0000-0000-00000000001d'
+\set groupBlockedFirstID '1c020000-0000-0000-0000-000000000051'
+\set groupBlockedReaddID '1c020000-0000-0000-0000-000000000052'
+\set groupBlockedReplaceID '1c020000-0000-0000-0000-000000000053'
 \set groupCategory1ID '1c020000-0000-0000-0000-000000000009'
 \set groupCategory2ID '1c020000-0000-0000-0000-00000000000a'
 \set groupDelistedID '1c020000-0000-0000-0000-000000000036'
 \set groupDisableID '1c020000-0000-0000-0000-000000000030'
 \set groupEnableAbroadID '1c020000-0000-0000-0000-00000000003e'
 \set groupEnableID '1c020000-0000-0000-0000-000000000031'
+\set groupExternalDelistedID '1c020000-0000-0000-0000-000000000054'
 \set groupExternalPaidID '1c020000-0000-0000-0000-000000000037'
 \set groupFinalCountryID '1c020000-0000-0000-0000-000000000032'
 \set groupID '1c020000-0000-0000-0000-00000000000c'
 \set groupMoveCountryDisableID '1c020000-0000-0000-0000-000000000033'
 \set groupMoveCountryID '1c020000-0000-0000-0000-000000000034'
+\set groupMoveKeepRecipientID '1c020000-0000-0000-0000-000000000055'
+\set groupMoveOffAllowlistID '1c020000-0000-0000-0000-000000000056'
+\set groupMoveOntoAllowlistID '1c020000-0000-0000-0000-000000000057'
 \set groupRejectEnableID '1c020000-0000-0000-0000-000000000035'
 \set groupVenueCountryID '1c020000-0000-0000-0000-00000000003d'
 \set inactiveParentGroupID '1c020000-0000-0000-0000-00000000001a'
@@ -50,6 +58,7 @@ select plan(60);
 \set parentGroupID '1c020000-0000-0000-0000-000000000012'
 \set priceWindowAutomaticTaxID '1c020000-0000-0000-0000-00000000001e'
 \set priceWindowDelistedID '1c020000-0000-0000-0000-000000000046'
+\set priceWindowDelistedReplaceID '1c020000-0000-0000-0000-000000000058'
 \set priceWindowDisablePastID '1c020000-0000-0000-0000-000000000047'
 \set priceWindowDisableUnpublishedID '1c020000-0000-0000-0000-000000000048'
 \set priceWindowEnableAbroadID '1c020000-0000-0000-0000-000000000042'
@@ -60,6 +69,7 @@ select plan(60);
 \set priceWindowVenueCountryID '1c020000-0000-0000-0000-000000000041'
 \set ticketTypeAutomaticTaxID '1c020000-0000-0000-0000-00000000001f'
 \set ticketTypeDelistedID '1c020000-0000-0000-0000-000000000049'
+\set ticketTypeDelistedReplaceID '1c020000-0000-0000-0000-000000000059'
 \set ticketTypeDisablePastID '1c020000-0000-0000-0000-00000000004a'
 \set ticketTypeDisableUnpublishedID '1c020000-0000-0000-0000-00000000004b'
 \set ticketTypeEnableAbroadID '1c020000-0000-0000-0000-000000000040'
@@ -433,6 +443,76 @@ select fx_event_ticket_price_window(:'priceWindowDelistedID', :'ticketTypeDelist
 select fx_event_ticket_price_window(:'priceWindowDisablePastID', :'ticketTypeDisablePastID', jsonb_build_object('amount_minor', 5000));
 -- event ticket price window
 select fx_event_ticket_price_window(:'priceWindowDisableUnpublishedID', :'ticketTypeDisableUnpublishedID', jsonb_build_object('amount_minor', 5000));
+
+-- Allowlisted group without a recipient that cannot add a first Stripe account
+select fx_group(:'groupBlockedFirstID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'name', 'Blocked First Sponsor Group'
+));
+
+-- Allowlisted group whose stored recipient is cleared and then re-added
+select fx_group(:'groupBlockedReaddID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'name', 'Blocked Re-add Sponsor Group',
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_blocked_readd", "seller_display_name": "Re-add Fiscal Sponsor"}'::jsonb
+));
+
+-- Allowlisted group with the toggle off whose stored recipient cannot be replaced
+select fx_group(:'groupBlockedReplaceID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'name', 'Blocked Replace Sponsor Group',
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_blocked_current", "seller_display_name": "Current Blocked Fiscal Sponsor"}'::jsonb
+));
+
+-- Enabled group in a delisted country that can still replace its recipient
+select fx_group(:'groupExternalDelistedID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'BR',
+    'external_payments_enabled', true,
+    'name', 'External Delisted Replace Group',
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_delisted", "seller_display_name": "Delisted Fiscal Sponsor"}'::jsonb
+));
+
+-- Non-allowlisted group moving onto the allowlist while keeping its recipient
+select fx_group(:'groupMoveKeepRecipientID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'US',
+    'name', 'Move Keep Recipient Group',
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_move_keep", "seller_display_name": "Kept Fiscal Sponsor"}'::jsonb
+));
+
+-- Allowlisted group adding a first Stripe account while leaving the allowlist
+select fx_group(:'groupMoveOffAllowlistID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'name', 'Move Off Allowlist Group'
+));
+
+-- Non-allowlisted group adding a first Stripe account while joining the allowlist
+select fx_group(:'groupMoveOntoAllowlistID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'US',
+    'name', 'Move Onto Allowlist Group'
+));
+
+-- Upcoming published external paid event in the delisted replace group
+select fx_event(:'eventDelistedReplaceID'::uuid, :'groupExternalDelistedID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/delisted-replace',
+    'payment_currency_code', 'BRL',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days',
+    'tax_calculation_mode', 'none',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Sao Paulo',
+    'venue_country_code', 'BR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
+
+-- Ticket type for the delisted replace external event
+select fx_event_ticket_type(:'ticketTypeDelistedReplaceID'::uuid, :'eventDelistedReplaceID'::uuid, jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
+
+-- Ticket price making the delisted replace external event paid
+select fx_event_ticket_price_window(:'priceWindowDelistedReplaceID', :'ticketTypeDelistedReplaceID', jsonb_build_object('amount_minor', 5000));
 
 -- ============================================================================
 -- TESTS
@@ -1627,8 +1707,8 @@ select is(
     'Should persist the disabled toggle for the delisted country'
 );
 
--- Should replace the fiscal sponsor when only external paid events are published
-select lives_ok(
+-- Should reject replacing the fiscal sponsor while the group country is allowlisted
+select throws_ok(
     format(
         $$select update_group(
         null::uuid,
@@ -1662,18 +1742,20 @@ select lives_ok(
         :'groupExternalPaidID',
         :'groupCategory1ID'
     ),
-    'Should replace the fiscal sponsor when only external paid events are published'
+    'OCG01',
+    'stripe connected account cannot be added or changed for this group country',
+    'Should reject replacing the fiscal sponsor while the group country is allowlisted'
 );
 
--- Should persist the replaced fiscal sponsor for an external-only group
+-- Should keep the stored fiscal sponsor after rejecting the allowlisted replacement
 select is(
     (select get_group_full(:'communityID'::uuid, :'groupExternalPaidID'::uuid)::jsonb->'payment_recipient'),
     '{
         "provider": "stripe",
-        "recipient_id": "acct_external_replacement",
-        "seller_display_name": "Replacement External Sponsor"
+        "recipient_id": "acct_external",
+        "seller_display_name": "External Event Fiscal Sponsor"
     }'::jsonb,
-    'Should persist the replaced fiscal sponsor for an external-only group'
+    'Should keep the stored fiscal sponsor after rejecting the allowlisted replacement'
 );
 
 -- Should clear the fiscal sponsor when only external paid events are published
@@ -1705,6 +1787,410 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'groupExternalPaidID'::uuid)::jsonb->'payment_recipient'),
     null::jsonb,
     'Should persist a cleared recipient for an external-only group'
+);
+
+-- Should replace the fiscal sponsor when the enabled group country is delisted
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Delisted Replace Group",
+            "category_id": "%s",
+            "country_code": "BR",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_delisted",
+                    "seller_display_name": "Delisted Fiscal Sponsor"
+                },
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_delisted_replacement",
+                    "seller_display_name": "Replacement Delisted Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_delisted_replacement",
+                "seller_display_name": "Replacement Delisted Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupExternalDelistedID',
+        :'groupCategory1ID'
+    ),
+    'Should replace the fiscal sponsor when the enabled group country is delisted'
+);
+
+-- Should persist the replaced fiscal sponsor for a delisted country
+select is(
+    (select get_group_full(:'communityID'::uuid, :'groupExternalDelistedID'::uuid)::jsonb->'payment_recipient'),
+    '{
+        "provider": "stripe",
+        "recipient_id": "acct_delisted_replacement",
+        "seller_display_name": "Replacement Delisted Sponsor"
+    }'::jsonb,
+    'Should persist the replaced fiscal sponsor for a delisted country'
+);
+
+-- Should reject a first fiscal sponsor for an allowlisted country before checking the validation snapshot
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Blocked First Sponsor Group",
+            "category_id": "%s",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_blocked_first",
+                "seller_display_name": "Blocked First Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupBlockedFirstID',
+        :'groupCategory1ID'
+    ),
+    'OCG01',
+    'stripe connected account cannot be added or changed for this group country',
+    'Should reject a first fiscal sponsor for an allowlisted country before checking the validation snapshot'
+);
+
+-- Should reject a first fiscal sponsor for an allowlisted country despite a valid validation snapshot
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Blocked First Sponsor Group",
+            "category_id": "%s",
+            "_payment_validation": {
+                "expected_payment_recipient": null,
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_blocked_first",
+                    "seller_display_name": "Blocked First Fiscal Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_blocked_first",
+                "seller_display_name": "Blocked First Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupBlockedFirstID',
+        :'groupCategory1ID'
+    ),
+    'OCG01',
+    'stripe connected account cannot be added or changed for this group country',
+    'Should reject a first fiscal sponsor for an allowlisted country despite a valid validation snapshot'
+);
+
+-- Should not record audit rows after rejecting a first fiscal sponsor
+select is(
+    (select count(*) from audit_log where group_id = :'groupBlockedFirstID'::uuid),
+    0::bigint,
+    'Should not record audit rows after rejecting a first fiscal sponsor'
+);
+
+-- Should reject replacing the fiscal sponsor while the allowlisted group keeps external payments off
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Blocked Replace Sponsor Group",
+            "category_id": "%s",
+            "external_payments_enabled": false,
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_blocked_current",
+                    "seller_display_name": "Current Blocked Fiscal Sponsor"
+                },
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_blocked_replacement",
+                    "seller_display_name": "Replacement Blocked Fiscal Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_blocked_replacement",
+                "seller_display_name": "Replacement Blocked Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupBlockedReplaceID',
+        :'groupCategory1ID'
+    ),
+    'OCG01',
+    'stripe connected account cannot be added or changed for this group country',
+    'Should reject replacing the fiscal sponsor while the allowlisted group keeps external payments off'
+);
+
+-- Should allow renaming the stored fiscal sponsor for an allowlisted country without provider validation
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Blocked Replace Sponsor Group",
+            "category_id": "%s",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_blocked_current",
+                "seller_display_name": "Renamed Blocked Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupBlockedReplaceID',
+        :'groupCategory1ID'
+    ),
+    'Should allow renaming the stored fiscal sponsor for an allowlisted country without provider validation'
+);
+
+-- Should persist the renamed fiscal sponsor for an allowlisted country
+select is(
+    (select get_group_full(:'communityID'::uuid, :'groupBlockedReplaceID'::uuid)::jsonb->'payment_recipient'),
+    '{
+        "provider": "stripe",
+        "recipient_id": "acct_blocked_current",
+        "seller_display_name": "Renamed Blocked Fiscal Sponsor"
+    }'::jsonb,
+    'Should persist the renamed fiscal sponsor for an allowlisted country'
+);
+
+-- Should record the payment recipient audit row after renaming the fiscal sponsor
+select ok(
+    exists(
+        select 1
+        from audit_log
+        where action = 'group_payment_recipient_updated'
+        and group_id = :'groupBlockedReplaceID'::uuid
+    ),
+    'Should record the payment recipient audit row after renaming the fiscal sponsor'
+);
+
+-- Should allow clearing the stored fiscal sponsor for an allowlisted country
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Blocked Re-add Sponsor Group",
+            "category_id": "%s",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "",
+                "seller_display_name": ""
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupBlockedReaddID',
+        :'groupCategory1ID'
+    ),
+    'Should allow clearing the stored fiscal sponsor for an allowlisted country'
+);
+
+-- Should persist the cleared fiscal sponsor for an allowlisted country
+select is(
+    (select get_group_full(:'communityID'::uuid, :'groupBlockedReaddID'::uuid)::jsonb->'payment_recipient'),
+    null::jsonb,
+    'Should persist the cleared fiscal sponsor for an allowlisted country'
+);
+
+-- Should reject re-adding the cleared fiscal sponsor while the country stays allowlisted
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Blocked Re-add Sponsor Group",
+            "category_id": "%s",
+            "_payment_validation": {
+                "expected_payment_recipient": null,
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_blocked_readd",
+                    "seller_display_name": "Re-add Fiscal Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_blocked_readd",
+                "seller_display_name": "Re-add Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupBlockedReaddID',
+        :'groupCategory1ID'
+    ),
+    'OCG01',
+    'stripe connected account cannot be added or changed for this group country',
+    'Should reject re-adding the cleared fiscal sponsor while the country stays allowlisted'
+);
+
+-- Should reject adding a fiscal sponsor when the same update moves the group onto the allowlist
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Move Onto Allowlist Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "country_name": "Korea",
+            "_payment_validation": {
+                "expected_payment_recipient": null,
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_move_onto",
+                    "seller_display_name": "Move Onto Fiscal Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_move_onto",
+                "seller_display_name": "Move Onto Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupMoveOntoAllowlistID',
+        :'groupCategory1ID'
+    ),
+    'OCG01',
+    'stripe connected account cannot be added or changed for this group country',
+    'Should reject adding a fiscal sponsor when the same update moves the group onto the allowlist'
+);
+
+-- Should allow adding a fiscal sponsor when the same update moves the group off the allowlist
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Move Off Allowlist Group",
+            "category_id": "%s",
+            "country_code": "US",
+            "country_name": "United States",
+            "_payment_validation": {
+                "expected_payment_recipient": null,
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_move_off",
+                    "seller_display_name": "Move Off Fiscal Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_move_off",
+                "seller_display_name": "Move Off Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupMoveOffAllowlistID',
+        :'groupCategory1ID'
+    ),
+    'Should allow adding a fiscal sponsor when the same update moves the group off the allowlist'
+);
+
+-- Should persist the new country and fiscal sponsor together after leaving the allowlist
+select is(
+    (
+        select jsonb_build_object(
+            'country_code', country_code,
+            'payment_recipient', payment_recipient
+        )
+        from "group"
+        where group_id = :'groupMoveOffAllowlistID'::uuid
+    ),
+    '{
+        "country_code": "US",
+        "payment_recipient": {
+            "provider": "stripe",
+            "recipient_id": "acct_move_off",
+            "seller_display_name": "Move Off Fiscal Sponsor"
+        }
+    }'::jsonb,
+    'Should persist the new country and fiscal sponsor together after leaving the allowlist'
+);
+
+-- Should allow moving the group onto the allowlist while keeping the stored fiscal sponsor
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Move Keep Recipient Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "country_name": "Korea"
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupMoveKeepRecipientID',
+        :'groupCategory1ID'
+    ),
+    'Should allow moving the group onto the allowlist while keeping the stored fiscal sponsor'
+);
+
+-- Should persist the allowlisted country and the kept fiscal sponsor together
+select is(
+    (
+        select jsonb_build_object(
+            'country_code', country_code,
+            'payment_recipient', payment_recipient
+        )
+        from "group"
+        where group_id = :'groupMoveKeepRecipientID'::uuid
+    ),
+    '{
+        "country_code": "KR",
+        "payment_recipient": {
+            "provider": "stripe",
+            "recipient_id": "acct_move_keep",
+            "seller_display_name": "Kept Fiscal Sponsor"
+        }
+    }'::jsonb,
+    'Should persist the allowlisted country and the kept fiscal sponsor together'
 );
 
 -- ============================================================================

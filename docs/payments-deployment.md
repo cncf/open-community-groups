@@ -150,6 +150,20 @@ both side by side, or run Stripe only. When a group turns on external payments,
 every paid event in that group uses the external path even if the group also
 has a fiscal sponsor configured.
 
+Allowlisting a country is also operator policy for Stripe onboarding: a group
+whose resulting country is on the allowlist cannot add or change a Stripe
+connected account in group settings, and the server rejects such a save with
+"stripe connected account cannot be added or changed for this group country".
+The Fiscal Sponsor section shows a notice instead of the account fields. A
+recipient that is already stored keeps working on the Stripe rail under its
+existing prerequisites (the external toggle takes precedence once it is on),
+can still be renamed or cleared, and cannot be added again while the country
+stays allowlisted. Moving a group into an allowlisted country while keeping its
+recipient is allowed. Policy changes are not serialized with in-flight settings
+saves: a config sync that runs between the server preflight and the database
+guard can let one provider validation happen before the save is rejected, or
+let a save commit against the older allowlist.
+
 Helm values:
 
 ```yaml
@@ -187,7 +201,8 @@ Omitting the section, or setting Helm `enabled: false`, is the kill switch:
 the server deletes the config row and new external activity stops immediately.
 Existing pending purchases stay confirmable, cancelable, and refundable, and
 they keep using the live event payment URL until they complete, expire, or
-are canceled.
+are canceled. With the row gone no country is allowlisted, so groups can add or
+change Stripe connected accounts again.
 
 Runtime revalidation uses the synced table. Every new hold, offer claim, paid
 invitation, and waitlist promotion re-checks that the config row is present,
@@ -637,6 +652,11 @@ Check that:
 Events with only free ticket types remain available without this section. Its absence
 blocks only paid-capable ticket configuration and positive final-price claims.
 
+If the section appears but shows a notice instead of the account fields, the
+group country is allowlisted for external payments and no recipient is stored.
+Use external payments for that group, or change the group location if the
+country is wrong.
+
 ### External Payments Section Cannot Be Enabled In Group Settings
 
 The `External payments` section in group settings explains which condition
@@ -688,6 +708,9 @@ event venue is in the group country.
 
 Check that:
 
+- The group country is not allowlisted for external payments; an allowlisted
+  country cannot add or change a Stripe connected account, so use external
+  payments instead.
 - The platform administrator created a connected account for that group on the
   same Stripe Connect platform used by OCG.
 - The sponsor account reports charges enabled, onboarding details submitted,

@@ -258,6 +258,18 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
     ) -> Result<GroupExternalPaymentsContext>;
 
+    /// Reports whether the group's resulting country is on the operator
+    /// external-payments allowlist, using `update_group` country semantics:
+    /// `None` means the country key was omitted and the stored country applies,
+    /// while `Some("")` clears the country. A missing or deleted group is
+    /// reported as not allowlisted.
+    async fn get_group_external_payments_eligibility(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        country_code: Option<String>,
+    ) -> Result<bool>;
+
     /// Gets the configured payment recipient for a group.
     async fn get_group_payment_recipient(
         &self,
@@ -1036,6 +1048,21 @@ where
         self.fetch_json_one(
             "select get_group_external_payments_context($1::uuid, $2::uuid)",
             &[&community_id, &group_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_group_external_payments_eligibility`].
+    #[instrument(skip(self), err)]
+    async fn get_group_external_payments_eligibility(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        country_code: Option<String>,
+    ) -> Result<bool> {
+        self.fetch_scalar_one(
+            "select get_group_external_payments_eligibility($1::uuid, $2::uuid, $3::text)",
+            &[&community_id, &group_id, &country_code],
         )
         .await
     }
