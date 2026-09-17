@@ -234,22 +234,27 @@ How the fee behaves:
 - When a purchase is refunded through OCG, the remaining application fee is
   returned to the fiscal sponsor and a credit note is linked to the existing
   customer refund without creating another money movement.
-- Application fees and their refunds are denominated in the purchase
-  currency; OCG requires the Stripe fee to be denominated in that currency
-  and verifies it, together with the fee's remaining unrefunded amount and the
-  completeness of its refund listing, before creating a refund. A divergence
-  fails with a diagnostic; operators inspect the fee and its existing refunds
-  in the Stripe Dashboard and, when a return already exists or was arranged
-  externally, record its reference through manual financial recovery in the
-  group's `Refunds` tab instead of issuing another refund. Fee refunds that
-  already exist on Stripe are reused based on their durable identity and
-  provider amounts.
+- Application fees are denominated in the purchase currency; OCG requires the
+  Stripe fee to be denominated in that currency and verifies it, together with
+  the fee's remaining unrefunded amount and the completeness of its refund
+  listing, before creating a refund. A divergence fails with a diagnostic;
+  operators inspect the fee and its existing refunds in the Stripe Dashboard
+  and, when a return already exists or was arranged externally, record its
+  reference through manual financial recovery in the group's `Refunds` tab
+  instead of issuing another refund. Fee refunds that already exist on Stripe
+  are reused based on their durable identity and the request OCG recorded in
+  their metadata.
 - Stripe settles collected fees according to the platform account's
   settlement configuration and may convert them to the platform's default
-  currency; a converted fee is still refunded in the purchase currency and
-  Stripe records the refund's own balance impact, so exchange-rate differences
-  are borne by the platform. Holding a settlement balance in the purchase
-  currency can avoid conversion where the account is eligible; see Stripe's
+  currency. A fee refund is requested in the purchase currency, but Stripe
+  reports it in the currency it moves on the platform balance, so a converted
+  refund carries a different amount and currency than the request. OCG
+  compares amounts directly only when the refund shares the purchase currency
+  and otherwise relies on the request it recorded in the refund's metadata;
+  a converted refund without that recorded request fails with a diagnostic.
+  Exchange-rate differences are borne by the platform. Holding a settlement
+  balance in the purchase currency can avoid conversion where the account is
+  eligible; see Stripe's
   [FX for direct charges](https://docs.stripe.com/connect/currencies/fx-quotes-api)
   and [settlement currencies](https://docs.stripe.com/payments/currencies/settlement-payouts).
 - Manual refund recovery records an externally arranged refund and does not
@@ -523,8 +528,9 @@ earlier claim completed on Stripe), start another bounded retry cycle first: it
 reuses the existing idempotency key and adopts the refund Stripe already
 created without moving money again. Use external completion only when the
 Stripe Dashboard shows the return was made outside OCG. Adjustments exhausted
-solely because the fee was settled in another currency than the purchase can
-be requeued the same way after upgrading.
+solely because Stripe reported their refund in another currency than the
+purchase can be requeued the same way: the retry adopts the refund through the
+request OCG recorded in its metadata.
 
 An abandoned application-fee adjustment or credit-note claim below ten
 attempts becomes retryable immediately with its existing idempotency key. It is
