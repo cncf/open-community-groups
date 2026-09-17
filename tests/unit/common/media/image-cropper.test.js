@@ -4,6 +4,7 @@ import { ImageCropper } from "/static/js/common/media/image-cropper.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
+/** Builds a solid PNG file with the given dimensions. */
 const createPngFile = async ({ height, name, width }) => {
   const canvas = document.createElement("canvas");
   canvas.height = height;
@@ -15,17 +16,51 @@ const createPngFile = async ({ height, name, width }) => {
   return new File([blob], name, { type: "image/png" });
 };
 
+/** Builds a square SVG file with the given side length, padded to a target byte size. */
+const createSvgFile = ({ name, paddingBytes = 0, size }) => {
+  const source = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+      <rect width="${size}" height="${size}" fill="#0094ff" />
+      <!-- ${"x".repeat(paddingBytes)} -->
+    </svg>
+  `;
+  return new File([source], name, { type: "image/svg+xml" });
+};
+
+/** Builds a decodable SVG whose 5000 × 1000 ratio matches no target, so the editor opens. */
+const createEditorSourceFile = (name = "editor-source.svg") => {
+  const source = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="5000" height="1000">
+      <rect width="5000" height="1000" fill="#0094ff" />
+    </svg>
+  `;
+  return new File([source], name, { type: "image/svg+xml" });
+};
+
+/** Loads a committed E2E image fixture as an upload file. */
+const loadFixture = async (fixtureName, { name, type }) => {
+  // The test server serves the repository root, so fetch bypasses the /static/ import map.
+  const response = await fetch(`/ocg-server/static/images/e2e/${fixtureName}`);
+  expect(response.ok).to.equal(true);
+  const blob = await response.blob();
+  return new File([blob], name, { type });
+};
+
+/** Loads the committed WEBP fixture as an upload file. */
+const loadWebpFixture = () =>
+  loadFixture("community-secondary-logo-source.webp", { name: "community-logo.webp", type: "image/webp" });
+
 describe("image-cropper", () => {
   const env = useDashboardTestEnv({ withSwal: true });
   useMountedElementsCleanup("image-cropper");
 
   it("supports every target with mandatory dimensions", () => {
     expect(ImageCropper.hasRequiredSize("ad_banner")).to.equal(true);
+    expect(ImageCropper.hasRequiredSize("badge")).to.equal(true);
     expect(ImageCropper.hasRequiredSize("banner")).to.equal(true);
     expect(ImageCropper.hasRequiredSize("banner_mobile")).to.equal(true);
     expect(ImageCropper.hasRequiredSize("logo")).to.equal(true);
     expect(ImageCropper.hasRequiredSize("open_graph")).to.equal(true);
-    expect(ImageCropper.hasRequiredSize("badge")).to.equal(false);
     expect(ImageCropper.hasRequiredSize("")).to.equal(false);
   });
 
@@ -35,11 +70,7 @@ describe("image-cropper", () => {
       label: "Banner Image",
       target: "ad_banner",
     });
-    const resultPromise = element.edit(
-      new File(["not-an-image"], "advertisement.png", {
-        type: "image/png",
-      }),
-    );
+    const resultPromise = element.edit(createEditorSourceFile("advertisement.svg"));
     await waitUntil(() => element._isOpen, "the crop editor should open");
     await element.updateComplete;
 
@@ -61,7 +92,7 @@ describe("image-cropper", () => {
     });
 
     // Open the editor for a selected file.
-    const resultPromise = element.edit(new File(["not-an-image"], "banner.png", { type: "image/png" }));
+    const resultPromise = element.edit(createEditorSourceFile("banner.svg"));
     await waitUntil(() => element._isOpen, "the crop editor should open");
     await element.updateComplete;
 
@@ -111,7 +142,7 @@ describe("image-cropper", () => {
     URL.revokeObjectURL = (objectUrl) => revokedUrls.push(objectUrl);
 
     try {
-      const resultPromise = element.edit(new File(["not-an-image"], "logo.png", { type: "image/png" }), {
+      const resultPromise = element.edit(createEditorSourceFile("logo.svg"), {
         focusOrigin: trigger,
       });
       await waitUntil(() => element._isOpen, "the crop editor should open");
@@ -140,15 +171,48 @@ describe("image-cropper", () => {
     }
   });
 
-  it("shows an error when the selected image cannot be decoded", async () => {
-    // Open the editor with a file the browser cannot decode.
+  it("rejects a selected image the browser cannot decode without opening the editor", async () => {
+    // Select a file the browser cannot decode from a focused upload control.
+    const trigger = document.createElement("button");
+    document.body.append(trigger);
+    trigger.focus();
     const element = await mountLitComponent("image-cropper", {
       target: "logo",
     });
-    const resultPromise = element.edit(new File(["not-an-image"], "logo.png", { type: "image/png" }));
-    await waitUntil(() => element._status === "error", "the editor should report the failure");
+
+    try {
+      const result = await element.edit(new File(["not-an-image"], "logo.png", { type: "image/png" }), {
+        focusOrigin: trigger,
+      });
+
+      // The failure is announced as an alert and the editor never opens.
+      expect(result).to.equal(null);
+      expect(element._isOpen).to.equal(false);
+      expect(element.querySelector('[role="dialog"]')).to.equal(null);
+      expect(env.current.swal.calls).to.have.length(1);
+      expect(env.current.swal.calls[0]).to.include({
+        icon: "error",
+        text: "This image couldn't be opened. Choose a different image in a supported format.",
+      });
+      expect(document.activeElement).to.equal(trigger);
+    } finally {
+      trigger.remove();
+    }
+  });
+
+  it("shows an error in the editor when the source image fails to initialize", async () => {
+    // Open the editor for a decodable source and simulate a vendor initialization failure.
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const resultPromise = element.edit(createEditorSourceFile("logo.svg"));
+    await waitUntil(() => element._isOpen, "the crop editor should open");
+    await element.updateComplete;
+    element._handleImageError();
+    await element.updateComplete;
 
     // The failure is announced and the crop action stays unavailable.
+    expect(element._status).to.equal("error");
     expect(element.querySelector('[role="alert"]').textContent).to.include("couldn't be opened");
     const applyButton = [...element.querySelectorAll("button")].find(
       (button) => button.textContent.trim() === "Apply crop",
@@ -191,7 +255,7 @@ describe("image-cropper", () => {
     const element = await mountLitComponent("image-cropper", {
       target: "logo",
     });
-    const resultPromise = element.edit(new File(["source"], "logo.png", { type: "image/png" }));
+    const resultPromise = element.edit(createEditorSourceFile("logo.svg"));
     await waitUntil(() => element._isOpen, "the crop editor should open");
     await element.updateComplete;
     const image = element.querySelector("img");
@@ -299,21 +363,169 @@ describe("image-cropper", () => {
     const element = await mountLitComponent("image-cropper", {
       target: "logo",
     });
-    const source = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720">
-        <rect width="720" height="720" fill="#0094ff" />
-      </svg>
-    `;
+    const file = await createPngFile({
+      height: 720,
+      name: "community-logo.png",
+      width: 720,
+    });
 
-    const result = await element.edit(new File([source], "community-logo.svg", { type: "image/svg+xml" }));
+    const result = await element.edit(file);
     const bitmap = await createImageBitmap(result);
 
-    expect(result.name).to.equal("community-logo-cropped.webp");
-    expect(result.type).to.equal("image/webp");
+    expect(result.name).to.equal("community-logo-cropped.png");
+    expect(result.type).to.equal("image/png");
     expect(bitmap.width).to.equal(360);
     expect(bitmap.height).to.equal(360);
     expect(element.querySelector('[role="dialog"]')).to.equal(null);
     bitmap.close();
+  });
+
+  it("crops a real WEBP source to the required dimensions", async () => {
+    // Decode the committed WEBP fixture, which has a different aspect ratio.
+    const element = await mountLitComponent("image-cropper", {
+      label: "Logo",
+      target: "logo",
+    });
+    const resultPromise = element.edit(await loadWebpFixture());
+    await waitUntil(() => element._status === "ready", "the cropper should initialize");
+
+    // Apply the crop through the visible control.
+    [...element.querySelectorAll("button")]
+      .find((button) => button.textContent.trim() === "Apply crop")
+      .click();
+    const result = await resultPromise;
+    const bitmap = await createImageBitmap(result);
+
+    // The output keeps the WEBP type and fits the target and size limit.
+    expect(result.name).to.equal("community-logo-cropped.webp");
+    expect(result.type).to.equal("image/webp");
+    expect(result.size).to.be.at.most(1024 * 1024);
+    expect(bitmap.width).to.equal(360);
+    expect(bitmap.height).to.equal(360);
+    bitmap.close();
+  });
+
+  it("uploads a same-ratio SVG untouched even when it is smaller than the target", async () => {
+    // Vectors scale losslessly, so a small square SVG is a valid logo source.
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const file = createSvgFile({ name: "community-logo.svg", size: 24 });
+
+    const result = await element.edit(file);
+
+    expect(result).to.equal(file);
+    expect(element.querySelector('[role="dialog"]')).to.equal(null);
+    expect(env.current.swal.calls).to.have.lengthOf(0);
+  });
+
+  it("rasterizes an oversized same-ratio SVG and explains the conversion", async () => {
+    // Pad the SVG past the upload limit so it cannot be uploaded as a vector.
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const file = createSvgFile({ name: "community-logo.svg", paddingBytes: 1024 * 1024, size: 720 });
+
+    const result = await element.edit(file);
+    const bitmap = await createImageBitmap(result);
+
+    // The raster output matches the target and the user learns about the format change.
+    expect(result.name).to.equal("community-logo-cropped.webp");
+    expect(result.type).to.equal("image/webp");
+    expect(bitmap.width).to.equal(360);
+    expect(bitmap.height).to.equal(360);
+    expect(env.current.swal.calls.at(-1).icon).to.equal("info");
+    expect(env.current.swal.calls.at(-1).text).to.include("converted to a WEBP image at 360 × 360 px");
+    bitmap.close();
+  });
+
+  it("uploads an exactly sized static GIF untouched", async () => {
+    // The canvas cannot re-encode GIF, so exact matches skip processing entirely.
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const file = await loadFixture("community-logo-static.gif", {
+      name: "community-logo.gif",
+      type: "image/gif",
+    });
+
+    const result = await element.edit(file);
+
+    expect(result).to.equal(file);
+    expect(element.querySelector('[role="dialog"]')).to.equal(null);
+    expect(env.current.swal.calls).to.have.lengthOf(0);
+  });
+
+  it("crops a static GIF source to a lossless PNG", async () => {
+    // A single-frame 720 × 360 GIF opens the editor like any other raster.
+    const element = await mountLitComponent("image-cropper", {
+      label: "Logo",
+      target: "logo",
+    });
+    const file = await loadFixture("community-logo-static-source.gif", {
+      name: "community-logo.gif",
+      type: "image/gif",
+    });
+    const resultPromise = element.edit(file);
+    await waitUntil(() => element._status === "ready", "the cropper should initialize");
+
+    [...element.querySelectorAll("button")]
+      .find((button) => button.textContent.trim() === "Apply crop")
+      .click();
+    const result = await resultPromise;
+    const bitmap = await createImageBitmap(result);
+
+    // GIF cannot be exported, so the crop is saved as PNG at the target size.
+    expect(result.name).to.equal("community-logo-cropped.png");
+    expect(result.type).to.equal("image/png");
+    expect(bitmap.width).to.equal(360);
+    expect(bitmap.height).to.equal(360);
+    expect(env.current.swal.calls).to.have.lengthOf(0);
+    bitmap.close();
+  });
+
+  it("names the output after the format the browser actually encoded", async () => {
+    // Simulate a browser without a WEBP encoder that falls back to PNG bytes.
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const encodeRequests = [];
+    element._canvasToBlob = async (_canvas, type) => {
+      encodeRequests.push(type);
+      return new Blob(["png-bytes"], { type: "image/png" });
+    };
+    const canvas = document.createElement("canvas");
+
+    const result = await element._createOutputFile(canvas, createSvgFile({ name: "logo.svg", size: 720 }));
+
+    // The extension and type follow the PNG blob, not the requested WEBP.
+    expect(encodeRequests).to.deep.equal(["image/webp"]);
+    expect(result.name).to.equal("logo-cropped.png");
+    expect(result.type).to.equal("image/png");
+  });
+
+  it("stops retrying WEBP qualities when the browser cannot encode WEBP", async () => {
+    // Return oversized PNG bytes for every request so quality changes cannot help.
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const encodeRequests = [];
+    element._canvasToBlob = async (_canvas, type, quality) => {
+      encodeRequests.push({ quality, type });
+      return new Blob([new Uint8Array(1024 * 1024 + 1)], { type: "image/png" });
+    };
+    const canvas = document.createElement("canvas");
+
+    let error;
+    try {
+      await element._createOutputFile(canvas, await createPngFile({ height: 1, name: "logo.png", width: 1 }));
+    } catch (caught) {
+      error = caught;
+    }
+
+    // One PNG attempt plus a single WEBP retry before reporting the size limit.
+    expect(encodeRequests.map((request) => request.type)).to.deep.equal(["image/png", "image/webp"]);
+    expect(error.message).to.include("1MB limit");
   });
 
   it("uses view boxes for relative SVG sizes and converts absolute units", async () => {
@@ -384,15 +596,13 @@ describe("image-cropper", () => {
     const element = await mountLitComponent("image-cropper", {
       target: "logo",
     });
-    const source = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180">
-        <rect width="180" height="180" fill="#0094ff" />
-      </svg>
-    `;
-
-    const result = await element.edit(new File([source], "small-logo.svg", { type: "image/svg+xml" }), {
-      focusOrigin,
+    const file = await createPngFile({
+      height: 180,
+      name: "small-logo.png",
+      width: 180,
     });
+
+    const result = await element.edit(file, { focusOrigin });
 
     expect(result).to.equal(null);
     expect(element.querySelector('[role="dialog"]')).to.equal(null);
@@ -550,7 +760,7 @@ describe("image-cropper", () => {
         return document.createElement("canvas");
       },
     };
-    element._canvasToBlob = async () => new Blob([new Uint8Array(1_000_001)]);
+    element._canvasToBlob = async () => new Blob([new Uint8Array(1024 * 1024 + 1)], { type: "image/webp" });
     element._status = "ready";
     await element.updateComplete;
 
@@ -676,8 +886,8 @@ describe("image-cropper", () => {
     const element = await mountLitComponent("image-cropper", {
       target: "logo",
     });
-    const firstResult = element.edit(new File(["first"], "first-logo.png", { type: "image/png" }));
-    const secondResult = element.edit(new File(["second"], "second-logo.png", { type: "image/png" }));
+    const firstResult = element.edit(createEditorSourceFile("first-logo.svg"));
+    const secondResult = element.edit(createEditorSourceFile("second-logo.svg"));
 
     // The stale edit resolves without affecting the active modal.
     expect(await firstResult).to.equal(null);
@@ -695,7 +905,7 @@ describe("image-cropper", () => {
     const element = await mountLitComponent("image-cropper", {
       target: "open_graph",
     });
-    const resultPromise = element.edit(new File(["source"], "social-image.png", { type: "image/png" }));
+    const resultPromise = element.edit(createEditorSourceFile("social-image.svg"));
     await waitUntil(() => element._isOpen, "the crop editor should open");
     await element.updateComplete;
     const movements = [];

@@ -148,14 +148,22 @@ test.describe("group badge artwork", () => {
     }
   });
 
-  test("artwork uploads explain invalid formats and oversized files", async ({ organizerGroupPage }) => {
-    // Load the direct-upload artwork field before exercising server errors.
+  test("artwork uploads explain invalid formats and unreadable files", async ({ organizerGroupPage }) => {
+    // Load the artwork field before exercising the server and editor errors.
     await navigateToPath(organizerGroupPage, ARTWORK_PATH);
     const artworkField = organizerGroupPage.locator('image-field[name="badge_artwork_url"]');
+    const cropper = artworkField.locator("image-cropper");
     const fileInput = artworkField.locator('input[type="file"]');
     const valueInput = artworkField.locator('input[name="badge_artwork_url"]');
+    const uploadRequests = [];
+    organizerGroupPage.on("request", (request) => {
+      if (request.method() === "POST" && new URL(request.url()).pathname === "/images") {
+        uploadRequests.push(request);
+      }
+    });
 
-    // Upload PNG bytes with a mismatched JPEG extension.
+    // Upload PNG bytes with a mismatched JPEG extension; the exact 512 × 512
+    // size skips the crop editor so the server detects the mismatch.
     await waitForActionResponse(
       organizerGroupPage,
       () =>
@@ -179,25 +187,108 @@ test.describe("group badge artwork", () => {
     ).toBeVisible();
     await formatAlert.locator(".swal2-confirm").click();
     await expect(formatAlert).toBeHidden();
+    expect(uploadRequests).toHaveLength(1);
 
-    // Upload a nominal PNG that exceeds the one-megabyte server limit.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () =>
-        fileInput.setInputFiles({
-          buffer: Buffer.alloc(1024 * 1024 + 1),
-          mimeType: "image/png",
-          name: "e2e-oversized-artwork.png",
-        }),
-      { method: "POST", urlEndsWith: "/images", status: 413 },
-    );
+    // Upload a nominal PNG whose bytes cannot be decoded; the cropper rejects
+    // it before the editor opens and nothing reaches the server.
+    await fileInput.setInputFiles({
+      buffer: Buffer.alloc(1024 * 1024 + 1),
+      mimeType: "image/png",
+      name: "e2e-unreadable-artwork.png",
+    });
+    const unreadableAlert = organizerGroupPage.locator(".swal2-popup");
+    await expect(unreadableAlert).toContainText("This image couldn't be opened.");
+    await expect(unreadableAlert).toContainText("Choose a different image in a supported format.");
+    await unreadableAlert.locator(".swal2-confirm").click();
+    await expect(unreadableAlert).toBeHidden();
 
-    // Verify size guidance appears without enabling the save action.
-    const sizeAlert = organizerGroupPage.locator(".swal2-popup");
-    await expect(sizeAlert).toContainText("image exceeds 1MB limit");
-    await expect(sizeAlert).toContainText("Maximum size: 1MB.");
+    // Verify the editor stayed closed and nothing was uploaded or enabled.
+    await expect(cropper.getByRole("dialog")).toBeHidden();
+    await expect(fileInput).toHaveValue("");
     await expect(valueInput).toHaveValue("");
     await expect(organizerGroupPage.getByRole("button", { name: "Save to library" })).toBeDisabled();
+    expect(uploadRequests).toHaveLength(1);
+  });
+
+  test("artwork uploads crop non-square sources to the badge size", async ({ organizerEmptyGroupPage }) => {
+    // Load the artwork field and capture the file sent to the image endpoint.
+    await navigateToPath(organizerEmptyGroupPage, ARTWORK_PATH);
+    const artworkField = organizerEmptyGroupPage.locator('image-field[name="badge_artwork_url"]');
+    const cropper = artworkField.locator("image-cropper");
+    const fileInput = artworkField.locator('input[type="file"]');
+    const valueInput = artworkField.locator('input[name="badge_artwork_url"]');
+    const preview = artworkField.getByRole("img", { name: "Image preview" });
+    await organizerEmptyGroupPage.evaluate(() => {
+      const nativeFetch = window.fetch;
+      window.imageUploadMetadata = [];
+      window.fetch = (input, init) => {
+        if (input === "/images" && init?.body instanceof FormData) {
+          const uploadFile = init.body.get("file");
+          if (uploadFile instanceof File) {
+            window.imageUploadMetadata.push({ name: uploadFile.name, type: uploadFile.type });
+          }
+        }
+
+        return nativeFetch(input, init);
+      };
+    });
+
+    // A 1024 × 512 WEBP source does not match the square badge, so the editor opens.
+    const uploadPromise = organizerEmptyGroupPage.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/images" &&
+        response.status() === 201,
+    );
+    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.badgeArtworkSource);
+    const dialog = cropper.getByRole("dialog", { name: "Crop Upload artwork" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Apply crop" })).toBeEnabled();
+    await dialog.getByRole("button", { name: "Apply crop" }).click();
+    await uploadPromise;
+
+    // The cropped artwork lands at the exact badge size and enables saving.
+    await expect(dialog).toBeHidden();
+    await expect(valueInput).toHaveValue(/\/images\//);
+    await expect(preview).toHaveJSProperty("naturalWidth", 512);
+    await expect(preview).toHaveJSProperty("naturalHeight", 512);
+    await expect(organizerEmptyGroupPage.getByRole("button", { name: "Save to library" })).toBeEnabled();
+    const uploadMetadata = await organizerEmptyGroupPage.evaluate(() => window.imageUploadMetadata);
+    expect(uploadMetadata).toEqual([{ name: "artwork-source-cropped.webp", type: "image/webp" }]);
+  });
+
+  test("artwork uploads reject SVG and GIF sources before uploading", async ({ organizerGroupPage }) => {
+    // Load the artwork field and track upload requests.
+    await navigateToPath(organizerGroupPage, ARTWORK_PATH);
+    const artworkField = organizerGroupPage.locator('image-field[name="badge_artwork_url"]');
+    const fileInput = artworkField.locator('input[type="file"]');
+    const valueInput = artworkField.locator('input[name="badge_artwork_url"]');
+    const uploadRequests = [];
+    organizerGroupPage.on("request", (request) => {
+      if (request.method() === "POST" && new URL(request.url()).pathname === "/images") {
+        uploadRequests.push(request);
+      }
+    });
+
+    // Badges are served as public raster images, so SVG and GIF sources are refused client-side.
+    const alert = organizerGroupPage.locator(".swal2-popup");
+    for (const [assetPath, formatLabel] of [
+      [TEST_UPLOAD_ASSET_PATHS.logo, "SVG"],
+      [TEST_UPLOAD_ASSET_PATHS.animatedGifLogo, "GIF"],
+    ]) {
+      await fileInput.setInputFiles(assetPath);
+      await expect(alert).toContainText(`${formatLabel} images are not supported for this field.`);
+      await expect(alert).toContainText("Choose a PNG, JPEG or WEBP image.");
+      await alert.locator(".swal2-confirm").click();
+      await expect(alert).toBeHidden();
+      await expect(fileInput).toHaveValue("");
+    }
+
+    // Verify nothing was selected, opened, or uploaded.
+    await expect(artworkField.locator("image-cropper").getByRole("dialog")).toBeHidden();
+    await expect(valueInput).toHaveValue("");
+    await expect(organizerGroupPage.getByRole("button", { name: "Save to library" })).toBeDisabled();
+    expect(uploadRequests).toHaveLength(0);
   });
 
   test("artwork form requires an uploaded image", async ({ organizerGroupPage }) => {
