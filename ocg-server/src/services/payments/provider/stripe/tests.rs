@@ -810,6 +810,55 @@ async fn create_checkout_session_omits_tax_fields_for_no_tax_mode() {
 }
 
 #[test]
+fn find_matching_application_fee_refund_adopts_keyed_converted_refund_with_recorded_request() {
+    // Setup a keyed refund Stripe reports in the platform currency with OCG's recorded request
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
+    refund.currency = "eur".to_string();
+    refund
+        .metadata
+        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
+    refund
+        .metadata
+        .insert("requested_amount_minor".to_string(), "125".to_string());
+    refund
+        .metadata
+        .insert("requested_currency".to_string(), "usd".to_string());
+
+    // Reuse the refund because the converted provider amount is not comparable
+    let matched = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
+        .expect("application-fee refund lookup to parse")
+        .expect("converted keyed refund to be reused");
+
+    // Check the durable identity is adopted through its recorded request
+    assert_eq!(matched.id, "fr_keyed_123");
+}
+
+#[test]
+fn find_matching_application_fee_refund_adopts_legacy_converted_refund_with_recorded_request() {
+    // Setup a purchase-kind refund Stripe converted that still carries OCG's recorded request
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let mut refund = sample_application_fee_refund(purchase_id, "fr_legacy_123", 105);
+    refund.currency = "eur".to_string();
+    refund
+        .metadata
+        .insert("requested_amount_minor".to_string(), "125".to_string());
+    refund
+        .metadata
+        .insert("requested_currency".to_string(), "usd".to_string());
+
+    // Reuse the leftover through the request recorded at creation
+    let matched = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
+        .expect("application-fee refund lookup to parse")
+        .expect("converted legacy refund to be reused");
+
+    // Check the recorded request identifies the converted leftover
+    assert_eq!(matched.id, "fr_legacy_123");
+}
+
+#[test]
 fn find_matching_application_fee_refund_prefers_idempotency_key() {
     // Setup a leftover purchase-kind match ahead of the durable identity
     let purchase_id = Uuid::new_v4();
@@ -828,6 +877,34 @@ fn find_matching_application_fee_refund_prefers_idempotency_key() {
 
     // Check the durable identity wins over an earlier purchase-kind match
     assert_eq!(refund.id, "fr_keyed_123");
+}
+
+#[test]
+fn find_matching_application_fee_refund_rejects_converted_refund_with_recorded_request_mismatch() {
+    // Setup a keyed converted refund whose recorded request is for another adjustment amount
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
+    refund.currency = "eur".to_string();
+    refund
+        .metadata
+        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
+    refund
+        .metadata
+        .insert("requested_amount_minor".to_string(), "99".to_string());
+    refund
+        .metadata
+        .insert("requested_currency".to_string(), "usd".to_string());
+
+    // Reject the refund because the only comparable evidence disagrees
+    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
+        .expect_err("converted recorded request mismatch to be rejected");
+
+    // Check the provider amount and recorded request both remain visible
+    assert!(err.to_string().contains("fr_keyed_123"));
+    assert!(err.to_string().contains("105 eur"));
+    assert!(err.to_string().contains("(recorded request 99 usd)"));
+    assert!(err.to_string().contains("125 usd ("));
 }
 
 #[test]
@@ -853,7 +930,7 @@ fn find_matching_application_fee_refund_rejects_idempotency_key_amount_mismatch(
 
 #[test]
 fn find_matching_application_fee_refund_rejects_keyed_currency_mismatch() {
-    // Setup a keyed refund whose provider currency diverges from the adjustment
+    // Setup a keyed refund in another currency without the request OCG records at creation
     let purchase_id = Uuid::new_v4();
     let input = sample_application_fee_adjustment_input(purchase_id);
     let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
@@ -862,14 +939,15 @@ fn find_matching_application_fee_refund_rejects_keyed_currency_mismatch() {
         .metadata
         .insert("idempotency_key".to_string(), input.idempotency_key.clone());
 
-    // Reject the durable identity instead of trusting unlike units
+    // Reject the durable identity because the converted amount cannot be verified
     let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect_err("keyed currency mismatch to be rejected");
+        .expect_err("unverifiable keyed currency mismatch to be rejected");
 
     // Check the failure points operators at the existing refund
     assert!(err.to_string().contains("fr_keyed_123"));
     assert!(err.to_string().contains("105 eur"));
     assert!(err.to_string().contains("125 usd"));
+    assert!(err.to_string().contains("no recorded request"));
     assert!(err.to_string().contains("financial recovery"));
 }
 
@@ -906,34 +984,6 @@ fn find_matching_application_fee_refund_rejects_legacy_currency_mismatch() {
     assert!(err.to_string().contains("fr_legacy_123"));
     assert!(err.to_string().contains("125 eur"));
     assert!(err.to_string().contains("125 usd"));
-}
-
-#[test]
-fn find_matching_application_fee_refund_rejects_metadata_that_contradicts_provider_amount() {
-    // Setup a keyed refund whose recorded request disagrees with its provider fields
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
-    refund.currency = "eur".to_string();
-    refund
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-    refund
-        .metadata
-        .insert("requested_amount_minor".to_string(), "125".to_string());
-    refund
-        .metadata
-        .insert("requested_currency".to_string(), "usd".to_string());
-
-    // Reject the refund because provider fields are authoritative over metadata
-    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect_err("contradicting recorded request to be rejected");
-
-    // Check the provider amount and recorded request both remain visible
-    assert!(err.to_string().contains("fr_keyed_123"));
-    assert!(err.to_string().contains("105 eur"));
-    assert!(err.to_string().contains("(recorded request 125 usd)"));
-    assert!(err.to_string().contains("125 usd ("));
 }
 
 #[test]
@@ -1398,6 +1448,57 @@ async fn list_tax_rates_propagates_provider_errors() {
 }
 
 #[tokio::test]
+async fn reconcile_application_fee_adjustment_accepts_created_refund_converted_to_platform_currency()
+ {
+    // Setup an empty lookup, a purchase-currency fee, and a creation response Stripe converted
+    let purchase_id = Uuid::new_v4();
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get(|| async { Json(json!({"amount": 125, "amount_refunded": 0, "currency": "usd"})) }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(|| async { Json(json!({"data": [], "has_more": false})) }).post(
+                move |body: String| async move {
+                    // Echo the request metadata back the way Stripe stores it
+                    let form: BTreeMap<String, String> =
+                        serde_urlencoded::from_str(&body).expect("application-fee form to parse");
+                    assert_eq!(form.get("amount"), Some(&"125".to_string()));
+                    Json(json!({
+                        "amount": 105,
+                        "currency": "eur",
+                        "id": "fr_converted_123",
+                        "metadata": {
+                            "event_purchase_id": purchase_id,
+                            "idempotency_key": "fee-adjustment-test",
+                            "kind": "tax-reconciliation",
+                            "requested_amount_minor": "125",
+                            "requested_currency": "usd"
+                        }
+                    }))
+                },
+            ),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile an adjustment whose refund Stripe reports in the platform currency
+    let result = provider
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(purchase_id))
+        .await
+        .expect("converted created refund to be accepted");
+    server.abort();
+
+    // Check the created refund is accepted through its recorded request
+    assert_eq!(
+        result.provider_application_fee_refund_id,
+        "fr_converted_123"
+    );
+}
+
+#[tokio::test]
 async fn reconcile_application_fee_adjustment_accepts_fee_without_settlement_transaction() {
     // Setup an empty lookup and a fee whose settlement transaction is null
     let router = Router::new()
@@ -1442,6 +1543,64 @@ async fn reconcile_application_fee_adjustment_accepts_fee_without_settlement_tra
 
     // Check the refund is created in the fee currency
     assert_eq!(result.provider_application_fee_refund_id, "fr_test_123");
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_adopts_converted_keyed_refund() {
+    // Setup a listed keyed refund Stripe reports in the platform currency
+    let purchase_id = Uuid::new_v4();
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get(|| async {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "converted keyed refund must not fetch the fee",
+                )
+            }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(move || async move {
+                Json(json!({
+                    "data": [{
+                        "amount": 105,
+                        "currency": "eur",
+                        "id": "fr_converted_123",
+                        "metadata": {
+                            "event_purchase_id": purchase_id,
+                            "idempotency_key": "fee-adjustment-test",
+                            "kind": "tax-reconciliation",
+                            "requested_amount_minor": "125",
+                            "requested_currency": "usd"
+                        }
+                    }],
+                    "has_more": false
+                }))
+            })
+            .post(|| async {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "converted keyed refund must not be created again",
+                )
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Retry the adjustment after Stripe already moved the converted refund
+    let result = provider
+        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(purchase_id))
+        .await
+        .expect("converted keyed refund to be adopted");
+    server.abort();
+
+    // Check the existing refund is adopted without moving money again
+    assert_eq!(
+        result.provider_application_fee_refund_id,
+        "fr_converted_123"
+    );
 }
 
 #[tokio::test]

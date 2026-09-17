@@ -1712,7 +1712,7 @@ impl PaymentsProvider for StripeProvider {
         )
         .await?;
 
-        // Fail closed when the created refund does not carry the requested amount
+        // Fail closed when the created refund cannot be tied to the requested adjustment
         if let Err(err) = refund.matches_adjustment(input) {
             bail!(
                 "Stripe created application-fee refund {} with {} but the adjustment requests {} {currency_code} ({err}); inspect it in the Stripe Dashboard before recording it through financial recovery",
@@ -2103,11 +2103,15 @@ impl StripeApplicationFee {
 }
 
 /// Provider application-fee refund used for lookup-before-create reconciliation.
+///
+/// Stripe reports the refund in the currency it moves on the platform balance, which is
+/// the platform's default currency for direct charges and can differ from the fee and
+/// purchase currency the refund was requested in.
 #[derive(Clone, Debug, Deserialize)]
 struct StripeApplicationFeeRefund {
-    /// Refunded application-fee amount in the fee currency.
+    /// Refunded amount in the refund currency, converted when Stripe settled the fee elsewhere.
     amount: i64,
-    /// Currency of the application-fee refund.
+    /// Currency Stripe reports the refund in.
     currency: String,
     /// Provider application-fee refund identifier.
     id: String,
@@ -2118,23 +2122,33 @@ struct StripeApplicationFeeRefund {
 }
 
 impl StripeApplicationFeeRefund {
-    /// Requires the provider refund fields to match the adjustment and any recorded request.
+    /// Requires the provider refund to represent the adjustment.
+    ///
+    /// A refund reported in the purchase currency must carry the requested amount. A refund
+    /// Stripe converted to another currency has no comparable provider amount, so it is
+    /// accepted only through the request OCG recorded in its metadata when creating it.
     fn matches_adjustment(&self, input: &ApplicationFeeAdjustmentInput) -> Result<()> {
-        // Compare the provider amount and currency against the adjustment
-        let currency_code = StripeProvider::normalized_currency_code(&input.currency_code);
-        if self.amount != input.amount_minor {
-            bail!("provider amount differs");
-        }
-        if StripeProvider::normalized_currency_code(&self.currency) != currency_code {
-            bail!("provider currency differs");
-        }
-
         // Cross-check the request values recorded when OCG created the refund
-        if let Some((requested_amount, requested_currency)) = self.recorded_request()
+        let currency_code = StripeProvider::normalized_currency_code(&input.currency_code);
+        let recorded_request = self.recorded_request();
+        if let Some((requested_amount, requested_currency)) = recorded_request
             && (requested_amount != input.amount_minor.to_string()
                 || requested_currency != currency_code)
         {
             bail!("recorded request differs");
+        }
+
+        // Compare provider units directly when the refund shares the purchase currency
+        if StripeProvider::normalized_currency_code(&self.currency) == currency_code {
+            if self.amount != input.amount_minor {
+                bail!("provider amount differs");
+            }
+            return Ok(());
+        }
+
+        // Require the recorded request when Stripe converted the refund to another currency
+        if recorded_request.is_none() {
+            bail!("provider currency differs and no recorded request is available");
         }
 
         Ok(())
