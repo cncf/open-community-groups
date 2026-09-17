@@ -90,12 +90,17 @@
 
 {# Form title #}
 {# Used by dashboard and profile forms for section titles and descriptions. #}
-{% macro form_title(title, description = "", button = "") -%}
+{% macro form_title(title, description = "", button = "", meta = "") -%}
   <div class="min-w-0">
     <div class="text-xl leading-tight font-medium text-stone-900 lg:text-2xl">{{ title }}</div>
-    {% if !description.is_empty() -%}
+    {% if !description.is_empty() || !meta.is_empty() -%}
       <div class="mt-1 flex flex-wrap items-center gap-3">
-        <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
+        {% if !description.is_empty() -%}
+          <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
+        {% endif -%}
+        {% if !meta.is_empty() -%}
+          <p class="text-sm/6 text-stone-500 m-0">{{ meta }}</p>
+        {% endif -%}
         {% if !button.is_empty() -%}
           {{ button | safe }}
         {% endif -%}
@@ -225,7 +230,7 @@
 
 {# Page title #}
 {# Used by dashboard pages for the primary title and documentation link. #}
-{% macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "") -%}
+{% macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "", meta = "") -%}
   <div class="min-w-0">
     <div class="flex items-center justify-between gap-3">
       <div class="min-w-0 text-xl leading-tight font-medium text-stone-900 lg:text-2xl">{{ title }}</div>
@@ -238,9 +243,14 @@
         <div class="svg-icon size-4 icon-question bg-primary-500 transition-colors group-hover:bg-white"></div>
       </a>
     </div>
-    {% if !description.is_empty() -%}
+    {% if !description.is_empty() || !meta.is_empty() -%}
       <div class="mt-1 flex flex-wrap items-center gap-3">
-        <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
+        {% if !description.is_empty() -%}
+          <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
+        {% endif -%}
+        {% if !meta.is_empty() -%}
+          <p class="text-sm/6 text-stone-500 m-0">{{ meta }}</p>
+        {% endif -%}
         {% if !button.is_empty() -%}
           {{ button | safe }}
         {% endif -%}

@@ -12,6 +12,7 @@
 {% let ticketing_read_only = event_read_only || paid_ticketing_read_only -%}
 {% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
 {% let event_public_url_enabled = event.published || event.canceled -%}
+{% let event_meta -%}(id: {{ event.event_id }}){%- endlet %}
 <div id="event-update-page"
      class="group/event-page grid h-full min-h-full min-w-0 grow grid-rows-[auto_minmax(0,1fr)] gap-y-8 has-[#pending-changes-alert:not(.hidden)]:grid-rows-[auto_auto_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
      data-event-page="update"
@@ -210,7 +211,7 @@
       <div data-content="details">
         <form id="details-form">
           <div class="pb-12">
-            {{ dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.") -}}
+            {{ dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.", meta = event_meta) -}}
 
             <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
               {# Event name -#}

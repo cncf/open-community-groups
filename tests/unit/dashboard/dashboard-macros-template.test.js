@@ -112,6 +112,22 @@ describe("dashboard macros template", () => {
     expect(template).to.include('<span class="block space-y-2 px-3 py-3">{{ caller() }}</span>');
   });
 
+  it("renders optional meta text beside title descriptions", async () => {
+    // Load the dashboard macros template before checking title meta slots.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify both title macros accept meta and render it after the description.
+    expect(template).to.include(
+      'macro form_title(title, description = "", button = "", meta = "")',
+    );
+    expect(template).to.include(
+      'macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "", meta = "")',
+    );
+    expect(template).to.include(
+      '{% if !description.is_empty() || !meta.is_empty() -%} <div class="mt-1 flex flex-wrap items-center gap-3"> {% if !description.is_empty() -%} <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p> {% endif -%} {% if !meta.is_empty() -%} <p class="text-sm/6 text-stone-500 m-0">{{ meta }}</p> {% endif -%}',
+    );
+  });
+
   it("renders shared refund review modal contracts", async () => {
     // Load the dashboard macros template before checking refund review markup.
     const template = normalizeWhitespace(await loadTemplate());
