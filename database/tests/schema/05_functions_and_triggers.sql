@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(464);
+select plan(465);
 
 -- ============================================================================
 -- VARIABLES
@@ -279,6 +279,7 @@ select has_function('get_event_ticket_capacity', array['jsonb']::name[]);
 select has_function('get_event_ticket_type_allocated_seat_count', array['uuid', 'uuid']::name[]);
 select has_function('get_filters_options', array['text', 'text']::name[]);
 select has_function('get_group_external_payments_context', array['uuid', 'uuid']::name[]);
+select has_function('get_group_external_payments_eligibility', array['uuid', 'uuid', 'text']::name[]);
 select has_function('get_group_full', array['uuid', 'uuid']::name[]);
 select has_function('get_group_full_by_slug', array['uuid', 'text']::name[]);
 select has_function('get_group_past_events', array['uuid', 'text', 'text[]', 'integer']::name[]);

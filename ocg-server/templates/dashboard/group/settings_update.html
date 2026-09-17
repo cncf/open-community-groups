@@ -199,48 +199,76 @@
   <div class="border-b border-stone-900/10 pb-12">
     {{ dashboard::form_title(title = "Fiscal Sponsor", description = "Configure the legal seller for this group's paid events.") -}}
 
-    <p class="mt-4 max-w-3xl text-sm/6 text-stone-600">
-      The fiscal sponsor owns Tax Rate definitions in Stripe. Event organizers select the applicable active rates in each event's Tickets tab.
-    </p>
-
-    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-      <input type="hidden" name="payment_recipient[provider]" value="stripe">
-
-      <div class="col-span-full lg:col-span-4">
-        <label for="payment_recipient_seller_display_name"
-               class="form-label">Fiscal Sponsor Legal Name</label>
-        <div class="mt-2">
-          <input type="text"
-                 name="payment_recipient[seller_display_name]"
-                 id="payment_recipient_seller_display_name"
-                 class="input-primary"
-                 maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
-                 placeholder="Example Fiscal Sponsor, Inc."
-                 {% if let Some(payment_recipient) = &group.payment_recipient %}
-                   value="{{ payment_recipient.seller_display_name }}"
-                 {% endif %}>
-        </div>
-        <p class="form-legend">Legal seller name shown to attendees in purchase and refund records.</p>
-      </div>
-
-      <div class="col-span-full lg:col-span-4">
-        <label for="payment_recipient_recipient_id" class="form-label">Fiscal Sponsor Stripe Account</label>
-        <div class="mt-2">
-          <input type="text"
-                 name="payment_recipient[recipient_id]"
-                 id="payment_recipient_recipient_id"
-                 class="input-primary"
-                 placeholder="acct_..."
-                 {% if let Some(payment_recipient) = &group.payment_recipient %}
-                   value="{{ payment_recipient.recipient_id }}"
-                 {% endif %}>
-        </div>
-        <p class="form-legend">
-          Enter the Standard-like Stripe connected account owned by the named fiscal sponsor that sells tickets and handles tax, invoices, refunds, disputes, and negative balances.
-          Leave both fiscal sponsor fields blank to keep the group on free events only.
+    {% if external_payments.stripe_onboarding_blocked() -%}
+      {# Stripe onboarding blocked for the group country -#}
+      <div class="mt-4 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
+           role="alert">
+        <p>
+          This deployment collects ticket payments outside the platform for groups located in
+          <span class="font-semibold">
+            {%- if let Some(country_code) = &external_payments.country_code -%}
+              {{ group.country_name.as_deref().unwrap_or(country_code) }}
+            {%- else -%}
+              this country
+            {%- endif -%}
+          </span>.
+          A Stripe connected account cannot be added or changed here; use the External payments section below.
         </p>
+        {% if group.payment_recipient.is_some() -%}
+          <p class="mt-2">
+            The stored fiscal sponsor can still be used for paid events on Stripe while its other payment
+            prerequisites hold; external payments take precedence once enabled. You can edit the legal name or
+            leave both fields blank to remove it (removal is blocked while upcoming published paid events depend
+            on it). A removed account cannot be added again while the country stays on this list.
+          </p>
+        {% endif -%}
       </div>
-    </div>
+    {% else -%}
+      <p class="mt-4 max-w-3xl text-sm/6 text-stone-600">
+        The fiscal sponsor owns Tax Rate definitions in Stripe. Event organizers select the applicable active rates in each event's Tickets tab.
+      </p>
+    {% endif -%}
+
+    {% if self.shows_fiscal_sponsor_fields() -%}
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        <input type="hidden" name="payment_recipient[provider]" value="stripe">
+
+        <div class="col-span-full lg:col-span-4">
+          <label for="payment_recipient_seller_display_name"
+                 class="form-label">Fiscal Sponsor Legal Name</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="payment_recipient[seller_display_name]"
+                   id="payment_recipient_seller_display_name"
+                   class="input-primary"
+                   maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                   placeholder="Example Fiscal Sponsor, Inc."
+                   {% if let Some(payment_recipient) = &group.payment_recipient %}
+                     value="{{ payment_recipient.seller_display_name }}"
+                   {% endif %}>
+          </div>
+          <p class="form-legend">Legal seller name shown to attendees in purchase and refund records.</p>
+        </div>
+
+        <div class="col-span-full lg:col-span-4">
+          <label for="payment_recipient_recipient_id" class="form-label">Fiscal Sponsor Stripe Account</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="payment_recipient[recipient_id]"
+                   id="payment_recipient_recipient_id"
+                   class="input-primary"
+                   placeholder="acct_..."
+                   {% if let Some(payment_recipient) = &group.payment_recipient %}
+                     value="{{ payment_recipient.recipient_id }}"
+                   {% endif %}>
+          </div>
+          <p class="form-legend">
+            Enter the Standard-like Stripe connected account owned by the named fiscal sponsor that sells tickets and handles tax, invoices, refunds, disputes, and negative balances.
+            Leave both fiscal sponsor fields blank to keep the group on free events only.
+          </p>
+        </div>
+      </div>
+    {% endif -%}
   </div>
   {# End payments section -#}
 {% endif -%}

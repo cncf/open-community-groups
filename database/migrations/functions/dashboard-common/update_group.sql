@@ -51,6 +51,23 @@ begin
         raise exception 'you must be able to manage the selected parent group' using errcode = 'OCG01';
     end if;
 
+    -- Resolve the final country and external-payments toggle together
+    v_new_country_code := case
+        -- Use an explicitly submitted country
+        when p_group ? 'country_code' then nullif(p_group->>'country_code', '')
+        -- Preserve the country omitted from a partial payload
+        else v_current_country_code
+    end;
+    v_new_external_payments_enabled := case
+        -- Use an explicitly submitted toggle, treating an invalid value as off
+        when p_group ? 'external_payments_enabled' then
+            coalesce((p_group->>'external_payments_enabled')::boolean, false)
+        -- Preserve the toggle omitted from a partial payload
+        else v_current_external_payments_enabled
+    end;
+    v_external_payments_enabled_changed :=
+        v_new_external_payments_enabled is distinct from v_current_external_payments_enabled;
+
     -- Require the provider account and attendee-visible seller name together
     if p_group ? 'payment_recipient'
        and nullif(btrim(coalesce(p_group->'payment_recipient'->>'recipient_id', '')), '')
@@ -106,6 +123,13 @@ begin
             or v_previous_payment_recipient->>'recipient_id' is distinct from
                 v_new_payment_recipient->>'recipient_id'
         );
+
+    -- Reject adding or changing a Stripe account while the resulting group
+    -- country collects ticket payments outside the platform
+    if v_provider_account_changed
+       and is_country_external_payments_allowlisted(v_new_country_code) then
+        raise exception 'stripe connected account cannot be added or changed for this group country' using errcode = 'OCG01';
+    end if;
 
     -- Bind external provider validation to the payment state locked above
     if v_provider_account_changed then
@@ -173,23 +197,6 @@ begin
        ) then
         raise exception 'fiscal sponsor cannot be replaced while published manual-tax events are upcoming' using errcode = 'OCG01';
     end if;
-
-    -- Resolve the final country and external-payments toggle together
-    v_new_country_code := case
-        -- Use an explicitly submitted country
-        when p_group ? 'country_code' then nullif(p_group->>'country_code', '')
-        -- Preserve the country omitted from a partial payload
-        else v_current_country_code
-    end;
-    v_new_external_payments_enabled := case
-        -- Use an explicitly submitted toggle, treating an invalid value as off
-        when p_group ? 'external_payments_enabled' then
-            coalesce((p_group->>'external_payments_enabled')::boolean, false)
-        -- Preserve the toggle omitted from a partial payload
-        else v_current_external_payments_enabled
-    end;
-    v_external_payments_enabled_changed :=
-        v_new_external_payments_enabled is distinct from v_current_external_payments_enabled;
 
     -- Keep upcoming published external sales on their payment rail while the
     -- group can still collect externally

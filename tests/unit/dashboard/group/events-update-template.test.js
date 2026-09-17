@@ -374,7 +374,17 @@ describe("dashboard group event update template", () => {
       'class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600"',
     );
     expect(ticketForm).to.include(
-      "Paid ticket settings are read-only until server payments and a matching group recipient are configured.",
+      "{% if self.requires_external_payments_opt_in() -%} Paid ticket settings are read-only. " +
+        "This group's country collects payments outside the platform: enable external payments in group settings " +
+        "and add a payment URL to keep selling these tickets. {% else -%} " +
+        "Paid ticket settings are read-only until server payments and a matching group recipient are configured. {% endif -%}",
+    );
+    expect(ticketForm).to.include(
+      "{% if ticketing_free_only -%} {% if self.requires_external_payments_opt_in() -%} " +
+        "Ticket prices are fixed at 0 until external payments are enabled in group settings; " +
+        "this deployment does not offer Stripe connected accounts for this group's country. " +
+        "{% else -%} Ticket prices are fixed at 0 until payments are configured. {% endif -%} " +
+        "{% else -%} Set the ticket amount to 0 to make a specific tier free. {% endif -%}",
     );
     expect(ticketForm).not.to.include(
       "Payments are not configured for this group, but free ticket tiers remain editable.",

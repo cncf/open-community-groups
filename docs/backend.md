@@ -325,6 +325,13 @@ Rules that follow from the layering:
   `handlers/tests.rs` re-exports them, and `services` or `templates` tests
   import them from `types::tests`, so test code follows the same dependency
   direction as production code.
+- A test file's local helpers share what is identical and incidental across
+  its tests and keep visible what each test exists to prove. Request
+  builders for a route and the fixed set of context reads a page always
+  performs belong in a helper; a read whose return value drives the scenario
+  is passed to the helper as an explicit argument, never selected by a flag,
+  and is written inline when only one test needs it. Assertions on the
+  response (status, headers, body) stay inline in every test.
 - A test is removed only when the PR description names the test that proves
   the same behavior at another layer. A test with no replacement stays.
 

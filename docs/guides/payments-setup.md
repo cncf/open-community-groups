@@ -14,9 +14,13 @@ are true:
    [Group Dashboard -> Settings](/guides/group-dashboard.md#payments-fiscal-sponsor-setup).
 
 ?> If your group is in a country that Stripe Connect does not serve and the
-operator has allowlisted that country, the group can instead collect ticket
-payments outside OCG. That path does not use this guide; see
-[External payments](/guides/group-dashboard.md#external-payments).
+operator has allowlisted that country for external payments, `Settings` does
+not offer adding or replacing a Stripe connected account, so Steps 1, 2, 6 and
+7 do not apply to a new setup. A fiscal sponsor that is already stored keeps
+working; its fields remain editable for the legal name or removal, and the
+account-maintenance guidance in Steps 3 to 5 still applies to it. See
+[External payments](/guides/group-dashboard.md#external-payments) for the
+alternative path.
 
 OCG does not create or onboard Stripe accounts from the group dashboard. The
 group dashboard stores the connected-account identifier for the legal entity

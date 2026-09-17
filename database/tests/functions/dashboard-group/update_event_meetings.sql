@@ -1,4 +1,5 @@
 -- Tests updating event meeting settings.
+-- Split from update_event.sql to keep that file a manageable size.
 
 -- ============================================================================
 -- SETUP

@@ -1,5 +1,6 @@
 import { expect } from "@open-wc/testing";
 
+import { createNoEmptyValuesExtension } from "/static/js/common/htmx-extensions.js";
 import { initializeGroupSettings } from "/static/js/dashboard/group/settings-form.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
@@ -13,6 +14,7 @@ const loadSettingsTemplate = async () => {
 };
 
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
+const formDataToEntries = (formData) => Array.from(formData.entries());
 
 describe("dashboard group settings page", () => {
   const renderSettingsForm = ({ account = "", legalName = "" } = {}) => {
@@ -69,6 +71,96 @@ describe("dashboard group settings page", () => {
     expect(template).to.include("Collect ticket payments outside this platform");
     expect(template).to.include("When enabled, paid events require a payment URL instead of Stripe.");
     expect(template).to.include("This option cannot be disabled while published paid events are upcoming");
+  });
+
+  it("replaces the fiscal sponsor controls with a notice when Stripe onboarding is blocked", async () => {
+    // Load the settings template before checking the Fiscal Sponsor section.
+    const template = normalizeWhitespace(await loadSettingsTemplate());
+    const fiscalSponsorSection = template.slice(
+      template.indexOf('title = "Fiscal Sponsor"'),
+      template.indexOf("{# End payments section -#}"),
+    );
+
+    // The notice is rendered whenever operator policy blocks onboarding.
+    expect(fiscalSponsorSection).to.include("{% if external_payments.stripe_onboarding_blocked() -%}");
+    expect(fiscalSponsorSection).to.include('role="alert"');
+    expect(fiscalSponsorSection).to.include("border-amber-200 bg-amber-50");
+    expect(fiscalSponsorSection).to.include(
+      "This deployment collects ticket payments outside the platform for groups located in",
+    );
+    expect(fiscalSponsorSection).to.include(
+      "A Stripe connected account cannot be added or changed here; use the External payments section below.",
+    );
+    expect(fiscalSponsorSection).to.include("{% if group.payment_recipient.is_some() -%}");
+    expect(fiscalSponsorSection).to.include(
+      "The stored fiscal sponsor can still be used for paid events on Stripe",
+    );
+    expect(fiscalSponsorSection).to.include(
+      "A removed account cannot be added again while the country stays on this list.",
+    );
+    expect(fiscalSponsorSection).to.include("The fiscal sponsor owns Tax Rate definitions in Stripe.");
+
+    // Every payment recipient control shares one visibility condition.
+    expect(fiscalSponsorSection).to.include("{% if self.shows_fiscal_sponsor_fields() -%}");
+    const controlsStart = fiscalSponsorSection.indexOf("{% if self.shows_fiscal_sponsor_fields() -%}");
+    const controls = fiscalSponsorSection.slice(controlsStart);
+    expect(controls).to.include('<input type="hidden" name="payment_recipient[provider]" value="stripe">');
+    expect(controls).to.include('name="payment_recipient[seller_display_name]"');
+    expect(controls).to.include('id="payment_recipient_seller_display_name"');
+    expect(controls).to.include('name="payment_recipient[recipient_id]"');
+    expect(controls).to.include('id="payment_recipient_recipient_id"');
+
+    // The form keeps the clearing contract regardless of rendered controls.
+    expect(template).to.include(
+      'data-hx-keep-empty="payment_recipient[recipient_id] payment_recipient[seller_display_name]"',
+    );
+  });
+
+  it("does nothing when the fiscal sponsor controls are not rendered", () => {
+    // Render the form shell without any payment recipient control.
+    document.body.innerHTML = `
+      <form id="groups-form">
+        <input id="name" name="name" value="Group">
+      </form>
+    `;
+    const form = document.getElementById("groups-form");
+
+    // Initialize the settings behavior against the reduced form.
+    initializeGroupSettings();
+
+    // No field becomes required and the form is left unbound for a later render.
+    expect(form.querySelector("[required]")).to.equal(null);
+    expect(form.dataset.groupSettingsBound).to.equal(undefined);
+  });
+
+  it("keeps blank fiscal sponsor fields in the submitted parameters to clear the recipient", () => {
+    // Build the real form shell with both sponsor fields blank and an unrelated blank field.
+    document.body.innerHTML = `
+      <form id="groups-form"
+            hx-ext="no-empty-vals"
+            data-hx-keep-empty="payment_recipient[recipient_id] payment_recipient[seller_display_name]">
+        <input name="name" value="Group">
+        <input name="city" value="">
+        <input type="hidden" name="payment_recipient[provider]" value="stripe">
+        <input id="payment_recipient_seller_display_name" name="payment_recipient[seller_display_name]" value="">
+        <input id="payment_recipient_recipient_id" name="payment_recipient[recipient_id]" value="">
+      </form>
+    `;
+    const form = document.getElementById("groups-form");
+    initializeGroupSettings();
+
+    // Serialize the form through the no-empty-vals extension used by the settings form.
+    const parameters = new FormData(form);
+    createNoEmptyValuesExtension(true).encodeParameters(null, parameters, form);
+
+    // Blank sponsor fields stay submitted while the unrelated blank field is dropped.
+    expect(form.checkValidity()).to.equal(true);
+    expect(formDataToEntries(parameters)).to.deep.equal([
+      ["name", "Group"],
+      ["payment_recipient[provider]", "stripe"],
+      ["payment_recipient[seller_display_name]", ""],
+      ["payment_recipient[recipient_id]", ""],
+    ]);
   });
 
   it("requires both fiscal sponsor fields when either one has a value", () => {

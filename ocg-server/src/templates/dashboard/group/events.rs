@@ -63,6 +63,11 @@ impl AddPage {
         )
     }
 
+    /// Returns true when paid tickets wait only on the group's external-payments opt-in.
+    pub(crate) fn requires_external_payments_opt_in(&self) -> bool {
+        requires_external_payments_opt_in(self.payments_ready, &self.external_payments)
+    }
+
     /// Returns true when the group currently collects paid tickets outside the platform.
     pub(crate) fn uses_external_ticketing(&self) -> bool {
         matches!(
@@ -144,6 +149,11 @@ impl UpdatePage {
         self.event.payment_currency_code.as_deref() == Some(payment_currency_code)
     }
 
+    /// Returns true when paid tickets wait only on the group's external-payments opt-in.
+    pub(crate) fn requires_external_payments_opt_in(&self) -> bool {
+        requires_external_payments_opt_in(self.payments_ready, &self.external_payments)
+    }
+
     /// Returns true when tax is added to the configured ticket price.
     pub(crate) fn uses_exclusive_ticket_tax(&self) -> bool {
         self.event.tax_behavior == TicketTaxBehavior::Exclusive
@@ -198,11 +208,26 @@ fn event_ticketing_mode(
     }
 }
 
+/// Reports whether paid ticketing is unavailable only because an allowlisted
+/// group has not opted into external payments; Stripe onboarding is blocked
+/// for its country, so the opt-in is the remaining path to paid tickets.
+fn requires_external_payments_opt_in(
+    payments_ready: bool,
+    external_payments: &GroupExternalPaymentsContext,
+) -> bool {
+    matches!(
+        event_ticketing_mode(payments_ready, external_payments),
+        EventTicketingMode::Unavailable
+    ) && external_payments.configured
+        && external_payments.eligible
+        && !external_payments.enabled
+}
+
 #[cfg(test)]
 mod tests {
     use crate::types::payments::GroupExternalPaymentsContext;
 
-    use super::{EventTicketingMode, event_ticketing_mode};
+    use super::{EventTicketingMode, event_ticketing_mode, requires_external_payments_opt_in};
 
     #[test]
     fn test_event_ticketing_mode_prefers_external_when_eligible() {
@@ -263,5 +288,50 @@ mod tests {
             event_ticketing_mode(false, &external_payments),
             EventTicketingMode::Unavailable
         );
+    }
+
+    #[test]
+    fn test_requires_external_payments_opt_in_is_false_for_ineligible_group() {
+        let external_payments = GroupExternalPaymentsContext {
+            configured: true,
+            eligible: false,
+            enabled: false,
+            country_code: Some("US".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+        };
+
+        assert!(!requires_external_payments_opt_in(
+            false,
+            &external_payments
+        ));
+    }
+
+    #[test]
+    fn test_requires_external_payments_opt_in_is_false_for_stripe_ready_group() {
+        let external_payments = GroupExternalPaymentsContext {
+            configured: true,
+            eligible: true,
+            enabled: false,
+            country_code: Some("KR".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+        };
+
+        assert!(!requires_external_payments_opt_in(true, &external_payments));
+    }
+
+    #[test]
+    fn test_requires_external_payments_opt_in_is_true_for_eligible_opted_out_group() {
+        let external_payments = GroupExternalPaymentsContext {
+            configured: true,
+            eligible: true,
+            enabled: false,
+            country_code: Some("KR".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+        };
+
+        assert!(requires_external_payments_opt_in(false, &external_payments));
     }
 }

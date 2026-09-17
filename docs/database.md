@@ -278,7 +278,12 @@ soft-delete flag, ownership) lives in a function with a mirrored pgTAP test.
 ### pgTAP function tests
 
 - Every function file has a test at the same path under `tests/functions/`;
-  changing a function updates its test in the same change.
+  changing a function updates its test in the same change. A group of
+  scenarios may live in a sibling `<function>_<suffix>.sql` file when its
+  precondition contradicts the base file's seed data (for example, a
+  singleton configuration row that must be absent) or when the base file
+  would otherwise grow unwieldy; the sibling's header names the base file and
+  the reason for the split, and `just db-lint` accepts these splits.
 - Each file is an independent `begin; ... rollback;` transaction with an
   exact `plan` count. The suite runs in parallel against one database, so
   files never take table-level locks (`alter table`, `lock table`,

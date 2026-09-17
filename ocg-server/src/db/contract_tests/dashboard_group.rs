@@ -882,6 +882,57 @@ async fn db_contracts_get_group_external_payments_context_deserializes() -> Resu
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_get_group_external_payments_eligibility_deserializes() -> Result<()> {
+    // Setup the contract database and group fixture (stored country US, allowlisted)
+    let db = contract_tests_db()?;
+
+    // Check an omitted country resolves to the stored allowlisted country
+    assert!(
+        db.get_group_external_payments_eligibility(community_id(), group_id(), None)
+            .await?
+    );
+
+    // Check a submitted non-allowlisted country overrides the stored one
+    assert!(
+        !db.get_group_external_payments_eligibility(
+            community_id(),
+            group_id(),
+            Some("FR".to_string())
+        )
+        .await?
+    );
+
+    // Check a submitted lowercase country is normalized before matching
+    assert!(
+        db.get_group_external_payments_eligibility(
+            community_id(),
+            group_id(),
+            Some("us".to_string())
+        )
+        .await?
+    );
+
+    // Check an explicit empty country clears the stored one
+    assert!(
+        !db.get_group_external_payments_eligibility(
+            community_id(),
+            group_id(),
+            Some(String::new())
+        )
+        .await?
+    );
+
+    // Check a missing group is reported as not allowlisted instead of null
+    assert!(
+        !db.get_group_external_payments_eligibility(community_id(), Uuid::new_v4(), None)
+            .await?
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_payment_recipient_deserializes() -> Result<()> {
     // Setup the contract database and group fixture
     let db = contract_tests_db()?;
