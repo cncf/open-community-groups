@@ -293,7 +293,11 @@ describe("dashboard group event update template", () => {
     expect(paymentUrlIndex).to.be.greaterThan(currencyIndex);
     expect(paymentWindowIndex).to.be.greaterThan(paymentUrlIndex);
     expect(paymentInstructionsIndex).to.be.greaterThan(paymentWindowIndex);
-    expect(template).to.include("{% if !self.uses_external_ticketing() -%}");
+    expect(template).to.include("{% if self.requires_external_payments_seller_name() -%}");
+    expect(template).to.include(
+      "Save the legal name of the organization collecting external payments in group settings to save changes and keep selling these tickets.",
+    );
+    expect(template).to.include("{% else if !self.uses_external_ticketing() -%}");
     expect(template).to.include(
       "External payments are no longer available for this group.",
     );
@@ -376,13 +380,17 @@ describe("dashboard group event update template", () => {
     expect(ticketForm).to.include(
       "{% if self.requires_external_payments_opt_in() -%} Paid ticket settings are read-only. " +
         "This group's country collects payments outside the platform: enable external payments in group settings " +
-        "and add a payment URL to keep selling these tickets. {% else -%} " +
+        "and add a payment URL to keep selling these tickets. {% else if self.requires_external_payments_seller_name() -%} " +
+        "Paid ticket settings are read-only until the legal name of the organization collecting " +
+        "external payments is saved in group settings. {% else -%} " +
         "Paid ticket settings are read-only until server payments and a matching group recipient are configured. {% endif -%}",
     );
     expect(ticketForm).to.include(
       "{% if ticketing_free_only -%} {% if self.requires_external_payments_opt_in() -%} " +
         "Ticket prices are fixed at 0 until external payments are enabled in group settings; " +
         "this deployment does not offer Stripe connected accounts for this group's country. " +
+        "{% else if self.requires_external_payments_seller_name() -%} Ticket prices are fixed at 0 until the legal name of the organization collecting " +
+        "external payments is saved in group settings. " +
         "{% else -%} Ticket prices are fixed at 0 until payments are configured. {% endif -%} " +
         "{% else -%} Set the ticket amount to 0 to make a specific tier free. {% endif -%}",
     );

@@ -12,6 +12,7 @@ declare
     v_event_id uuid;
     v_group_country_code text;
     v_group_external_ready boolean;
+    v_group_external_selected boolean;
     v_max_retries int := 10;
     v_payload record;
     v_payment_recipient jsonb;
@@ -25,10 +26,12 @@ begin
     select
         g.country_code,
         is_group_external_payments_ready(g.group_id),
+        is_group_external_payments_selected(g.group_id),
         g.payment_recipient
     into
         v_group_country_code,
         v_group_external_ready,
+        v_group_external_selected,
         v_payment_recipient
     from "group" g
     where g.group_id = p_group_id
@@ -37,7 +40,12 @@ begin
     -- Resolve the event columns, ticket configuration and payment rail from the payload
     select *
     into v_payload
-    from resolve_event_payload(p_event, null::event, v_group_external_ready);
+    from resolve_event_payload(
+        p_event,
+        null::event,
+        v_group_external_selected,
+        v_group_external_ready
+    );
     v_event := v_payload.resolved;
 
     -- Bind provider validation to the recipient protected by the group lock

@@ -9,11 +9,13 @@ returns void as $$
 declare
     v_current_country_code text;
     v_current_external_payments_enabled boolean;
+    v_current_external_payments_seller_display_name text;
     v_current_parent_group_id uuid;
-    v_external_payments_enabled_changed boolean := false;
+    v_external_payments_changed boolean := false;
     v_group "group";
     v_new_country_code text;
     v_new_external_payments_enabled boolean;
+    v_new_external_payments_seller_display_name text;
     v_new_parent_group_id uuid;
     v_new_payment_recipient jsonb;
     v_parent_group_id_present boolean := false;
@@ -26,6 +28,7 @@ begin
     v_group := lock_active_group(p_community_id, p_group_id);
     v_current_country_code := v_group.country_code;
     v_current_external_payments_enabled := v_group.external_payments_enabled;
+    v_current_external_payments_seller_display_name := v_group.external_payments_seller_display_name;
     v_current_parent_group_id := v_group.parent_group_id;
     v_previous_payment_recipient := v_group.payment_recipient;
 
@@ -65,8 +68,28 @@ begin
         -- Preserve the toggle omitted from a partial payload
         else v_current_external_payments_enabled
     end;
-    v_external_payments_enabled_changed :=
-        v_new_external_payments_enabled is distinct from v_current_external_payments_enabled;
+    v_new_external_payments_seller_display_name := case
+        -- Use an explicitly submitted legal name, treating blank as a clear
+        when p_group ? 'external_payments_seller_display_name' then
+            nullif(btrim(p_group->>'external_payments_seller_display_name'), '')
+        -- Preserve the legal name omitted from a partial payload
+        else v_current_external_payments_seller_display_name
+    end;
+    v_external_payments_changed :=
+        v_new_external_payments_enabled is distinct from v_current_external_payments_enabled
+        or v_new_external_payments_seller_display_name
+            is distinct from v_current_external_payments_seller_display_name;
+
+    -- Require the legal name of the external payee while payloads addressing
+    -- external payments keep the rail enabled
+    if v_new_external_payments_enabled
+       and v_new_external_payments_seller_display_name is null
+       and (
+           p_group ? 'external_payments_enabled'
+           or p_group ? 'external_payments_seller_display_name'
+       ) then
+        raise exception 'external payments require the legal name of the organization collecting payments' using errcode = 'OCG01';
+    end if;
 
     -- Require the provider account and attendee-visible seller name together
     if p_group ? 'payment_recipient'
@@ -290,6 +313,7 @@ begin
         description_short = nullif(p_group->>'description_short', ''),
         extra_links = p_group->'extra_links',
         external_payments_enabled = v_new_external_payments_enabled,
+        external_payments_seller_display_name = v_new_external_payments_seller_display_name,
         facebook_url = nullif(p_group->>'facebook_url', ''),
         flickr_url = nullif(p_group->>'flickr_url', ''),
         github_url = nullif(p_group->>'github_url', ''),
@@ -349,8 +373,8 @@ begin
         );
     end if;
 
-    -- Track external-payments toggle changes after the group update succeeds
-    if v_external_payments_enabled_changed then
+    -- Track external-payments toggle and payee changes after the group update succeeds
+    if v_external_payments_changed then
         perform insert_audit_log(
             'group_external_payments_updated',
             p_actor_user_id,
@@ -359,9 +383,10 @@ begin
             p_community_id,
             p_group_id,
             null,
-            jsonb_build_object(
-                'external_payments_enabled', v_new_external_payments_enabled
-            )
+            jsonb_strip_nulls(jsonb_build_object(
+                'external_payments_enabled', v_new_external_payments_enabled,
+                'external_payments_seller_display_name', v_new_external_payments_seller_display_name
+            ))
         );
     end if;
 end;

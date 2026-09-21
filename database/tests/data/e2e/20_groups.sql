@@ -115,6 +115,7 @@ set
     country_code = 'US',
     country_name = 'United States',
     external_payments_enabled = true,
+    external_payments_seller_display_name = 'E2E External Payee Co',
     location = ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
     state = 'New York'
 where group_id = '44444444-4444-4444-4444-444444444448';

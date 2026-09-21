@@ -879,6 +879,9 @@
                 {% if self.requires_external_payments_opt_in() -%}
                   Paid ticket settings are read-only. This group's country collects payments outside the platform:
                   enable external payments in group settings and add a payment URL to keep selling these tickets.
+                {% else if self.requires_external_payments_seller_name() -%}
+                  Paid ticket settings are read-only until the legal name of the organization collecting
+                  external payments is saved in group settings.
                 {% else -%}
                   Paid ticket settings are read-only until server payments and a matching group recipient are configured.
                 {% endif -%}
@@ -908,7 +911,12 @@
             </div>
 
             {% if self.uses_external_ticketing() || event.external_payment_url.is_some() -%}
-              {% if !self.uses_external_ticketing() -%}
+              {% if self.requires_external_payments_seller_name() -%}
+                <p class="form-legend col-span-full text-amber-700">
+                  Save the legal name of the organization collecting external payments
+                  in group settings to save changes and keep selling these tickets.
+                </p>
+              {% else if !self.uses_external_ticketing() -%}
                 <p class="form-legend col-span-full text-amber-700">
                   External payments are no longer available for this group.
                   Clear the external payment URL to save changes; paid tickets
@@ -1131,6 +1139,9 @@
             {% if self.requires_external_payments_opt_in() -%}
               Ticket prices are fixed at 0 until external payments are enabled in group settings;
               this deployment does not offer Stripe connected accounts for this group's country.
+            {% else if self.requires_external_payments_seller_name() -%}
+              Ticket prices are fixed at 0 until the legal name of the organization collecting
+              external payments is saved in group settings.
             {% else -%}
               Ticket prices are fixed at 0 until payments are configured.
             {% endif -%}

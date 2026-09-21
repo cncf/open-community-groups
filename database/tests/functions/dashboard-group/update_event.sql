@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(54);
+select plan(56);
 
 -- ============================================================================
 -- VARIABLES
@@ -21,6 +21,9 @@ select plan(54);
 \set eventExternalDelistedID '3a390000-0000-0000-0000-00000000005a'
 \set eventExternalDelistedPriceWindowID '3a390000-0000-0000-0000-00000000005b'
 \set eventExternalDelistedTicketTypeID '3a390000-0000-0000-0000-00000000005c'
+\set eventExternalNamelessID '3a390000-0000-0000-0000-000000000066'
+\set eventExternalNamelessPriceWindowID '3a390000-0000-0000-0000-000000000067'
+\set eventExternalNamelessTicketTypeID '3a390000-0000-0000-0000-000000000068'
 \set eventExternalPaidID '3a390000-0000-0000-0000-000000000053'
 \set eventExternalPaidPriceWindowID '3a390000-0000-0000-0000-000000000054'
 \set eventExternalPaidPurchaseID '3a390000-0000-0000-0000-000000000063'
@@ -34,6 +37,7 @@ select plan(54);
 \set eventExternalStripeTicketTypeID '3a390000-0000-0000-0000-000000000058'
 \set groupDelistedID '3a390000-0000-0000-0000-00000000005d'
 \set groupExternalID '3a390000-0000-0000-0000-000000000059'
+\set groupExternalNamelessID '3a390000-0000-0000-0000-000000000069'
 \set event4ID '3a390000-0000-0000-0000-000000000005'
 \set event10ID '3a390000-0000-0000-0000-000000000006'
 \set event11ID '3a390000-0000-0000-0000-000000000007'
@@ -120,13 +124,22 @@ select fx_group(:'group1ID', :'community1ID', '3a390000-0000-0000-0000-000000000
 -- Allowlisted group with external payments enabled for external update scenarios
 select fx_group(:'groupExternalID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
+));
+
+-- Allowlisted enabled group that kept a Stripe sponsor but never named the external payee
+select fx_group(:'groupExternalNamelessID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true,
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_nameless_update", "seller_display_name": "Retained Fiscal Sponsor"}'::jsonb
 ));
 
 -- Delisted-country group used to reject a preserved external URL
 select fx_group(:'groupDelistedID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object(
     'country_code', 'US',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- Events used for paid-capability transition results
@@ -450,6 +463,18 @@ select fx_event(:'eventExternalStripeID', :'groupExternalID', :'category1ID', js
     'venue_zip_code', '00000'
 ));
 
+-- Free event in the nameless external group that must not turn paid on Stripe
+select fx_event(:'eventExternalNamelessID', :'groupExternalNamelessID', :'category1ID', jsonb_build_object(
+    'description', 'Free event in a nameless external group',
+    'name', 'Nameless External Group Event',
+    'starts_at', current_timestamp + interval '7 days',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
+
 -- Paid external-group event already marked with a URL for window and tax updates
 select fx_event(:'eventExternalPaidID', :'groupExternalID', :'category1ID', jsonb_build_object(
     'description', 'External event updated for window and tax normalization',
@@ -481,6 +506,10 @@ select fx_event_ticket_type(:'eventExternalPendingClearTicketTypeID', :'eventExt
     'seats_total', 50,
     'title', 'General Admission'
 ));
+select fx_event_ticket_type(:'eventExternalNamelessTicketTypeID', :'eventExternalNamelessID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General Admission'
+));
 select fx_event_ticket_type(:'eventExternalStripeTicketTypeID', :'eventExternalStripeID', jsonb_build_object(
     'seats_total', 50,
     'title', 'General Admission'
@@ -489,6 +518,7 @@ select fx_event_ticket_type(:'eventExternalStripeTicketTypeID', :'eventExternalS
 -- Price windows for the external update fixtures
 select fx_event_ticket_price_window(:'eventExternalClearPriceWindowID', :'eventExternalClearTicketTypeID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'eventExternalDelistedPriceWindowID', :'eventExternalDelistedTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'eventExternalNamelessPriceWindowID', :'eventExternalNamelessTicketTypeID', jsonb_build_object('amount_minor', 0));
 select fx_event_ticket_price_window(:'eventExternalPaidPriceWindowID', :'eventExternalPaidTicketTypeID', jsonb_build_object('amount_minor', 5000));
 select fx_event_ticket_price_window(:'eventExternalPendingClearPriceWindowID', :'eventExternalPendingClearTicketTypeID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'eventExternalStripePriceWindowID', :'eventExternalStripeTicketTypeID', jsonb_build_object('amount_minor', 5000));
@@ -638,6 +668,7 @@ select is(
         "attendee_approval_required": false,
         "capacity": 100,
         "remaining_capacity": 100,
+        "seller_display_name": "Update Event Fiscal Sponsor",
         "ends_at": 1896220800,
         "event_reminder_enabled": true,
         "has_registration_questions": false,
@@ -1232,6 +1263,7 @@ select is(
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 100,
         "remaining_capacity": 100,
+        "seller_display_name": "Update Event Fiscal Sponsor",
         "description_short": "Updated short description",
         "starts_at": 1896152400,
         "ends_at": 1896159600,
@@ -2009,6 +2041,72 @@ select throws_ok(
     'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject updating a paid external event without a payment URL'
+);
+
+-- Should reject a paid update on Stripe while the selected external rail lacks its payee name
+select throws_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            jsonb_build_object(
+                'name', 'Nameless External Group Event',
+                'description', 'Free event in a nameless external group',
+                'timezone', 'UTC',
+                'category_id', %L::uuid,
+                'kind_id', 'in-person',
+                'payment_currency_code', 'KRW',
+                'starts_at', to_char(
+                    (
+                        select starts_at
+                        from event
+                        where event_id = %L::uuid
+                    ) at time zone 'UTC',
+                    'YYYY-MM-DD"T"HH24:MI:SS'
+                ),
+                'venue_address', '1 Test Street',
+                'venue_city', 'Seoul',
+                'venue_country_code', 'KR',
+                'venue_name', 'Test Hall',
+                'venue_zip_code', '00000',
+                'ticket_types', jsonb_build_array(jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', %L::uuid,
+                    'order', 1,
+                    'price_windows', jsonb_build_array(jsonb_build_object(
+                        'amount_minor', 5500,
+                        'event_ticket_price_window_id', %L::uuid
+                    )),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                ))
+            ),
+            null::jsonb,
+            'stripe'
+        )$$,
+        :'groupExternalNamelessID',
+        :'eventExternalNamelessID',
+        :'category1ID',
+        :'eventExternalNamelessID',
+        :'eventExternalNamelessTicketTypeID',
+        :'eventExternalNamelessPriceWindowID'
+    ),
+    'OCG01',
+    'external payments require the legal name of the organization collecting payments',
+    'Should reject a paid update on Stripe while the selected external rail lacks its payee name'
+);
+
+-- Should keep the nameless external group event free after the rejected update
+select is(
+    (
+        select etpw.amount_minor
+        from event_ticket_price_window etpw
+        where etpw.event_ticket_price_window_id = :'eventExternalNamelessPriceWindowID'::uuid
+    ),
+    0::bigint,
+    'Should keep the nameless external group event free after the rejected update'
 );
 
 -- Should mark a published Stripe event external when this update sets a payment URL

@@ -238,7 +238,8 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
 -- Allowlisted group with external payments enabled for ready checkout
 select fx_group(:'externalReadyGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- Stripe-ready group with external payments disabled for no-fallback conflicts

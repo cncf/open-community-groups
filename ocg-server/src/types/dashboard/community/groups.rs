@@ -80,6 +80,11 @@ pub(crate) struct GroupInput {
     #[serde(default)]
     #[garde(skip)]
     pub external_payments_enabled: Option<bool>,
+    /// Legal name of the organization collecting paid tickets outside the
+    /// platform. A blank value clears the stored name; an omitted field keeps it.
+    #[serde(default)]
+    #[garde(length(max = MAX_LEN_ENTITY_NAME))]
+    pub external_payments_seller_display_name: Option<String>,
     /// Facebook profile URL.
     #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub facebook_url: Option<String>,

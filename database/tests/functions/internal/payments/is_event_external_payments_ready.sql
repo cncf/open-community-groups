@@ -43,13 +43,15 @@ insert into external_payments_config (
 -- Allowlisted group with the external-payments toggle enabled
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- Group outside the allowlist
 select fx_group(:'groupUnreadyID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'US',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- Event without an external payment URL

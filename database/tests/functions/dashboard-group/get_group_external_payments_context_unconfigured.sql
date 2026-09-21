@@ -28,7 +28,8 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 -- Group whose operator config row is absent
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- ============================================================================
@@ -45,7 +46,8 @@ select is(
         'configured', false,
         'country_code', 'KR',
         'eligible', false,
-        'enabled', true
+        'enabled', true,
+        'seller_display_name', 'External Payee Co'
     ),
     'Should report the operator config as absent when no row is synced'
 );

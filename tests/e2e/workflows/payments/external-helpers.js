@@ -155,6 +155,7 @@ export const resetExternalPaymentFixtures = () => {
       country_code = 'US',
       country_name = 'United States',
       external_payments_enabled = true,
+      external_payments_seller_display_name = 'E2E External Payee Co',
       payment_recipient = null
     where group_id = '${EXTERNAL_GROUP_ID}';
 

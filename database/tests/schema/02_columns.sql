@@ -719,6 +719,7 @@ select columns_are('group', array[
     'deleted_at',
     'description',
     'description_short',
+    'external_payments_seller_display_name',
     'extra_links',
     'facebook_url',
     'flickr_url',

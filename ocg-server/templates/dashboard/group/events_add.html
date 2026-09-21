@@ -896,6 +896,9 @@
               {% else if self.requires_external_payments_opt_in() -%}
                 Ticket prices are fixed at 0 until external payments are enabled in group settings;
                 this deployment does not offer Stripe connected accounts for this group's country.
+              {% else if self.requires_external_payments_seller_name() -%}
+                Ticket prices are fixed at 0 until the legal name of the organization collecting
+                external payments is saved in group settings.
               {% else -%}
                 Ticket prices are fixed at 0 until payments are configured.
               {% endif -%}

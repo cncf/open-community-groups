@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(50);
+select plan(52);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(50);
 \set eventCategoryID '3a020000-0000-0000-0000-000000000011'
 \set groupCategoryID '3a020000-0000-0000-0000-000000000010'
 \set groupExternalID '3a020000-0000-0000-0000-0000000000a0'
+\set groupExternalNamelessID '3a020000-0000-0000-0000-0000000000b1'
 \set groupID '3a020000-0000-0000-0000-000000000002'
 \set invalidUserID '3a020000-0000-0000-0000-000000009999'
 \set sponsor1ID '3a020000-0000-0000-0000-000000000061'
@@ -70,7 +71,15 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
 -- Allowlisted group with external payments enabled for paid external creates
 select fx_group(:'groupExternalID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
+));
+
+-- Allowlisted enabled group that kept a Stripe sponsor but never named the external payee
+select fx_group(:'groupExternalNamelessID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true,
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_nameless_add", "seller_display_name": "Retained Fiscal Sponsor"}'::jsonb
 ));
 
 -- Group Sponsors
@@ -169,6 +178,7 @@ select ok(
         "name": "Kubernetes Fundamentals Workshop",
         "published": false,
         "remaining_capacity": 500,
+        "seller_display_name": "Add Event Fiscal Sponsor",
         "sponsors": [],
         "sessions": {},
         "test_event": false,
@@ -379,6 +389,7 @@ select ok(
         "banner_url": "https://example.com/banner.jpg",
         "capacity": 500,
         "remaining_capacity": 500,
+        "seller_display_name": "Add Event Fiscal Sponsor",
         "description_short": "Short description",
         "event_reminder_enabled": true,
         "has_registration_questions": false,
@@ -1379,6 +1390,57 @@ select throws_ok(
     'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject a paid external event without a payment URL'
+);
+
+-- Should reject a paid event on Stripe while the selected external rail lacks its payee name
+select throws_ok(
+    format(
+        $$select add_event(
+            null::uuid,
+            %L::uuid,
+            '{
+                "name": "Nameless External Group Event",
+                "description": "Test",
+                "timezone": "UTC",
+                "category_id": "3a020000-0000-0000-0000-000000000011",
+                "kind_id": "in-person",
+                "payment_currency_code": "KRW",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000b2",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000b3"
+                            }
+                        ],
+                        "seats_total": 25,
+                        "title": "General admission"
+                    }
+                ],
+                "venue_address": "1 Test Street",
+                "venue_city": "Seoul",
+                "venue_country_code": "KR",
+                "venue_name": "Test Hall",
+                "venue_zip_code": "00000"
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalNamelessID'
+    ),
+    'OCG01',
+    'external payments require the legal name of the organization collecting payments',
+    'Should reject a paid event on Stripe while the selected external rail lacks its payee name'
+);
+
+-- Should not create any event for the nameless external group
+select is(
+    (select count(*) from event where group_id = :'groupExternalNamelessID'::uuid),
+    0::bigint,
+    'Should not create any event for the nameless external group'
 );
 
 -- Should reject a paid external event with an invalid payment URL

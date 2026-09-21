@@ -134,6 +134,100 @@ async fn test_update_page_selects_current_inactive_parent_option() {
 }
 
 #[tokio::test]
+async fn test_update_trims_external_payments_seller_display_name() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut update = sample_group_update();
+    update.external_payments_enabled = Some(true);
+    update.external_payments_seller_display_name = Some("  External Payee Co  ".to_string());
+    let body = serde_qs::to_string(&update).unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
+    db.expect_update_group()
+        .times(1)
+        .withf(move |uid, cid, gid, group| {
+            *uid == user_id
+                && *cid == community_id
+                && *gid == group_id
+                && group.external_payments_enabled == Some(true)
+                && group.external_payments_seller_display_name.as_deref()
+                    == Some("External Payee Co")
+        })
+        .returning(move |_, _, _, _| Ok(()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(MockPaymentsManager::new())
+        .build()
+        .await;
+    let response = router.oneshot(update_request(session_id, body)).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_keeps_blank_external_payments_seller_display_name_for_clearing() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut update = sample_group_update();
+    update.external_payments_enabled = Some(false);
+    update.external_payments_seller_display_name = Some("   ".to_string());
+    let body = serde_qs::to_string(&update).unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
+    db.expect_update_group()
+        .times(1)
+        .withf(move |uid, cid, gid, group| {
+            *uid == user_id
+                && *cid == community_id
+                && *gid == group_id
+                && group.external_payments_seller_display_name.as_deref() == Some("")
+        })
+        .returning(move |_, _, _, _| Ok(()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(MockPaymentsManager::new())
+        .build()
+        .await;
+    let response = router.oneshot(update_request(session_id, body)).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_update_normalizes_unchanged_payment_recipient() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -989,7 +1083,7 @@ async fn test_update_page_hides_fiscal_sponsor_controls_when_onboarding_is_block
     assert!(!body.contains("name=\"payment_recipient[seller_display_name]\""));
     assert!(!body.contains("id=\"payment_recipient_recipient_id\""));
     assert!(body.contains(
-        "data-hx-keep-empty=\"payment_recipient[recipient_id] payment_recipient[seller_display_name]\""
+        "data-hx-keep-empty=\"external_payments_seller_display_name payment_recipient[recipient_id] payment_recipient[seller_display_name]\""
     ));
 }
 
@@ -1059,6 +1153,7 @@ async fn test_update_page_shows_fiscal_sponsor_controls_when_onboarding_is_open(
         country_code: Some("US".to_string()),
         default_payment_window_hours: Some(72),
         max_payment_window_hours: Some(336),
+        seller_display_name: None,
     };
 
     // Setup database mock
@@ -1100,7 +1195,230 @@ async fn test_update_page_shows_fiscal_sponsor_controls_when_onboarding_is_open(
     assert!(body.contains("name=\"payment_recipient[seller_display_name]\""));
 }
 
+#[tokio::test]
+async fn test_update_page_renders_external_payee_legal_name_for_enabled_group() {
+    // Setup an allowlisted group that opted into external payments
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut group = sample_group_full(community_id, group_id);
+    group.external_payments_enabled = true;
+    group.external_payments_seller_display_name = Some("External Payee Co".to_string());
+    let external_payments = GroupExternalPaymentsContext {
+        enabled: true,
+        seller_display_name: Some("External Payee Co".to_string()),
+        ..allowlisted_external_payments()
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_update_page_reads(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        external_payments,
+        group,
+        vec![],
+    );
+
+    // Render the page
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_cfg(sample_payments_cfg())
+        .build()
+        .await;
+    let response = router.oneshot(update_page_request(session_id)).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the editable legal name input renders with the stored value
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let input = external_payee_input(&body);
+    assert!(input.contains("value=\"External Payee Co\""));
+    assert!(!input.contains("disabled"));
+}
+
+#[tokio::test]
+async fn test_update_page_keeps_external_payee_input_editable_for_delisted_enabled_group() {
+    // Setup an enabled legacy group whose country left the allowlist without a payee name
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut group = sample_group_full(community_id, group_id);
+    group.external_payments_enabled = true;
+    let external_payments = GroupExternalPaymentsContext {
+        configured: true,
+        eligible: false,
+        enabled: true,
+        country_code: Some("US".to_string()),
+        default_payment_window_hours: Some(72),
+        max_payment_window_hours: Some(336),
+        seller_display_name: None,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_update_page_reads(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        external_payments,
+        group,
+        vec![],
+    );
+
+    // Render the page
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_cfg(sample_payments_cfg())
+        .build()
+        .await;
+    let response = router.oneshot(update_page_request(session_id)).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the legal name stays editable while the toggle is locked on
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("name=\"external_payments_enabled\""));
+    let input = external_payee_input(&body);
+    assert!(!input.contains("value="));
+    assert!(!input.contains("disabled"));
+}
+
+#[tokio::test]
+async fn test_update_page_disables_external_payee_input_for_ineligible_opted_out_group() {
+    // Setup a group that cannot opt into external payments
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let group = sample_group_full(community_id, group_id);
+    let external_payments = GroupExternalPaymentsContext {
+        configured: true,
+        eligible: false,
+        enabled: false,
+        country_code: Some("US".to_string()),
+        default_payment_window_hours: Some(72),
+        max_payment_window_hours: Some(336),
+        seller_display_name: None,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_update_page_reads(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        external_payments,
+        group,
+        vec![],
+    );
+
+    // Render the page
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_cfg(sample_payments_cfg())
+        .build()
+        .await;
+    let response = router.oneshot(update_page_request(session_id)).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the legal name input is disabled alongside the toggle
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let input = external_payee_input(&body);
+    assert!(input.contains("disabled"));
+}
+
+#[tokio::test]
+async fn test_update_page_renders_external_payments_section_for_enabled_group_without_config() {
+    // Setup an enabled legacy group after the operator removed the external payments config
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut group = sample_group_full(community_id, group_id);
+    group.external_payments_enabled = true;
+    let external_payments = GroupExternalPaymentsContext {
+        enabled: true,
+        ..unconfigured_external_payments()
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_update_page_reads(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        external_payments,
+        group,
+        vec![],
+    );
+
+    // Render the page without Stripe payments enabled
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let response = router.oneshot(update_page_request(session_id)).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the section renders so the missing legal name can be saved
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("name=\"external_payments_enabled\""));
+    let input = external_payee_input(&body);
+    assert!(!input.contains("disabled"));
+}
+
 // Helpers.
+
+/// Returns the rendered external payee legal name input tag.
+fn external_payee_input(body: &str) -> &str {
+    let start = body
+        .find("id=\"external_payments_seller_display_name\"")
+        .expect("external payee input should render");
+    let end = body[start..].find('>').expect("external payee input should close");
+    &body[start..start + end]
+}
 
 /// External-payments context for a group whose country is allowlisted.
 fn allowlisted_external_payments() -> GroupExternalPaymentsContext {
@@ -1111,6 +1429,7 @@ fn allowlisted_external_payments() -> GroupExternalPaymentsContext {
         country_code: Some("US".to_string()),
         default_payment_window_hours: Some(72),
         max_payment_window_hours: Some(336),
+        seller_display_name: None,
     }
 }
 
@@ -1168,6 +1487,7 @@ fn unconfigured_external_payments() -> GroupExternalPaymentsContext {
         country_code: None,
         default_payment_window_hours: None,
         max_payment_window_hours: None,
+        seller_display_name: None,
     }
 }
 

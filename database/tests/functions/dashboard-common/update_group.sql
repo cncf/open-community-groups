@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(77);
+select plan(88);
 
 -- ============================================================================
 -- VARIABLES
@@ -49,6 +49,8 @@ select plan(77);
 \set groupMoveKeepRecipientID '1c020000-0000-0000-0000-000000000055'
 \set groupMoveOffAllowlistID '1c020000-0000-0000-0000-000000000056'
 \set groupMoveOntoAllowlistID '1c020000-0000-0000-0000-000000000057'
+\set groupNamelessEnableID '1c020000-0000-0000-0000-00000000005a'
+\set groupPayeeID '1c020000-0000-0000-0000-00000000005b'
 \set groupRejectEnableID '1c020000-0000-0000-0000-000000000035'
 \set groupVenueCountryID '1c020000-0000-0000-0000-00000000003d'
 \set inactiveParentGroupID '1c020000-0000-0000-0000-00000000001a'
@@ -287,6 +289,20 @@ select fx_group(:'groupDisableID', :'communityID', :'groupCategory1ID', jsonb_bu
 select fx_group(:'groupEnableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
     'country_code', 'KR',
     'name', 'External Enable Group'
+));
+
+-- Allowlisted group rejected when enabling without the external payee legal name
+select fx_group(:'groupNamelessEnableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'name', 'External Nameless Enable Group'
+));
+
+-- Allowlisted enabled group with a stored external payee legal name
+select fx_group(:'groupPayeeID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co',
+    'name', 'External Payee Group'
 ));
 
 -- Non-allowlisted group enabled by changing country in the same update
@@ -1334,7 +1350,8 @@ select lives_ok(
             "name": "External Enable Group",
             "category_id": "%s",
             "country_code": "KR",
-            "external_payments_enabled": true
+            "external_payments_enabled": true,
+            "external_payments_seller_display_name": "External Payee Co"
         }'::jsonb
     )$$,
         :'communityID',
@@ -1362,9 +1379,188 @@ select ok(
         from audit_log
         where action = 'group_external_payments_updated'
         and group_id = :'groupEnableID'::uuid
-        and details = '{"external_payments_enabled": true}'::jsonb
+        and details = '{"external_payments_enabled": true, "external_payments_seller_display_name": "External Payee Co"}'::jsonb
     ),
     'Should create the external-payments audit row when the toggle changes'
+);
+
+-- Should reject enabling external payments without the external payee legal name
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Nameless Enable Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "external_payments_enabled": true
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupNamelessEnableID',
+        :'groupCategory1ID'
+    ),
+    'OCG01',
+    'external payments require the legal name of the organization collecting payments',
+    'Should reject enabling external payments without the external payee legal name'
+);
+
+-- Should keep external payments disabled after rejecting the nameless enable
+select is(
+    (
+        select external_payments_enabled
+        from "group"
+        where group_id = :'groupNamelessEnableID'::uuid
+    ),
+    false,
+    'Should keep external payments disabled after rejecting the nameless enable'
+);
+
+-- Should reject clearing the external payee legal name while external payments stay enabled
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Payee Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "external_payments_seller_display_name": "   "
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupPayeeID',
+        :'groupCategory1ID'
+    ),
+    'OCG01',
+    'external payments require the legal name of the organization collecting payments',
+    'Should reject clearing the external payee legal name while external payments stay enabled'
+);
+
+-- Should keep the stored external payee legal name after rejecting the clear
+select is(
+    (
+        select external_payments_seller_display_name
+        from "group"
+        where group_id = :'groupPayeeID'::uuid
+    ),
+    'External Payee Co',
+    'Should keep the stored external payee legal name after rejecting the clear'
+);
+
+-- Should rename the external payee legal name while external payments stay enabled
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Payee Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "external_payments_enabled": true,
+            "external_payments_seller_display_name": "  Renamed Payee Ltd  "
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupPayeeID',
+        :'groupCategory1ID'
+    ),
+    'Should rename the external payee legal name while external payments stay enabled'
+);
+
+-- Should persist the trimmed external payee legal name
+select is(
+    (
+        select external_payments_seller_display_name
+        from "group"
+        where group_id = :'groupPayeeID'::uuid
+    ),
+    'Renamed Payee Ltd',
+    'Should persist the trimmed external payee legal name'
+);
+
+-- Should create the external-payments audit row when only the payee legal name changes
+select ok(
+    exists(
+        select 1
+        from audit_log
+        where action = 'group_external_payments_updated'
+        and group_id = :'groupPayeeID'::uuid
+        and details = '{"external_payments_enabled": true, "external_payments_seller_display_name": "Renamed Payee Ltd"}'::jsonb
+    ),
+    'Should create the external-payments audit row when only the payee legal name changes'
+);
+
+-- Should accept a partial payload that omits the external payee legal name
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Payee Group Updated",
+            "category_id": "%s"
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupPayeeID',
+        :'groupCategory1ID'
+    ),
+    'Should accept a partial payload that omits the external payee legal name'
+);
+
+-- Should preserve the external payee legal name when a partial payload omits it
+select is(
+    (
+        select external_payments_seller_display_name
+        from "group"
+        where group_id = :'groupPayeeID'::uuid
+    ),
+    'Renamed Payee Ltd',
+    'Should preserve the external payee legal name when a partial payload omits it'
+);
+
+-- Should clear the external payee legal name when disabling external payments
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Payee Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "external_payments_enabled": false,
+            "external_payments_seller_display_name": ""
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupPayeeID',
+        :'groupCategory1ID'
+    ),
+    'Should clear the external payee legal name when disabling external payments'
+);
+
+-- Should persist the disabled toggle and cleared payee legal name together
+select is(
+    (
+        select jsonb_build_object(
+            'external_payments_enabled', external_payments_enabled,
+            'external_payments_seller_display_name', external_payments_seller_display_name
+        )
+        from "group"
+        where group_id = :'groupPayeeID'::uuid
+    ),
+    '{"external_payments_enabled": false, "external_payments_seller_display_name": null}'::jsonb,
+    'Should persist the disabled toggle and cleared payee legal name together'
 );
 
 -- Should enable external payments when the same update moves onto the allowlist
@@ -1379,7 +1575,8 @@ select lives_ok(
             "category_id": "%s",
             "country_code": "KR",
             "country_name": "Korea",
-            "external_payments_enabled": true
+            "external_payments_enabled": true,
+            "external_payments_seller_display_name": "External Payee Co"
         }'::jsonb
     )$$,
         :'communityID',
@@ -1506,7 +1703,8 @@ select throws_ok(
             "name": "External Reject Enable Group",
             "category_id": "%s",
             "country_code": "US",
-            "external_payments_enabled": true
+            "external_payments_enabled": true,
+            "external_payments_seller_display_name": "External Payee Co"
         }'::jsonb
     )$$,
         :'communityID',
@@ -1529,7 +1727,8 @@ select throws_ok(
             "name": "External Enable Abroad Group",
             "category_id": "%s",
             "country_code": "JP",
-            "external_payments_enabled": true
+            "external_payments_enabled": true,
+            "external_payments_seller_display_name": "External Payee Co"
         }'::jsonb
     )$$,
         :'communityID',

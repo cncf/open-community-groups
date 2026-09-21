@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- SEED DATA
@@ -44,7 +44,7 @@ select is(
         )
         from test_resolved t
         cross join test_ticket_types tt
-        cross join resolve_event_payment_rail(t.payload, tt.free, true) r
+        cross join resolve_event_payment_rail(t.payload, tt.free, true, true) r
     ),
     '{"external_mode": false, "external_payment_url": null, "external_payment_window_hours": null, "tax_calculation_mode": "manual"}'::jsonb,
     'Should clear external fields for free events in an eligible group'
@@ -57,6 +57,7 @@ select is(
         from resolve_event_payment_rail(
             jsonb_populate_record(null::event, '{"tax_calculation_mode": "automatic"}'::jsonb),
             null::jsonb,
+            true,
             true
         ) r
     ),
@@ -79,6 +80,7 @@ select is(
         cross join resolve_event_payment_rail(
             jsonb_populate_record(t.payload, '{"external_payment_url": null}'::jsonb),
             tt.paid,
+            false,
             false
         ) r
     ),
@@ -100,7 +102,7 @@ select is(
         )
         from test_resolved t
         cross join test_ticket_types tt
-        cross join resolve_event_payment_rail(t.payload, tt.paid, true) r
+        cross join resolve_event_payment_rail(t.payload, tt.paid, true, true) r
     ),
     '{"external_mode": true, "external_payment_instructions": "Wire the purchase ID.", "external_payment_url": "https://pay.example.test/event", "external_payment_window_hours": 72, "manual_tax_rate_ids": [], "tax_behavior": "inclusive", "tax_calculation_mode": "none"}'::jsonb,
     'Should move paid events in an eligible group onto organizer-managed tax'
@@ -114,6 +116,7 @@ select is(
         cross join resolve_event_payment_rail(
             jsonb_populate_record(null::event, '{"name": "Kept Name"}'::jsonb),
             tt.paid,
+            true,
             true
         ) r
     ),
@@ -125,7 +128,7 @@ select is(
 select throws_ok(
     $$select * from test_resolved t
       cross join test_ticket_types tt
-      cross join resolve_event_payment_rail(t.payload, tt.free, false) r$$,
+      cross join resolve_event_payment_rail(t.payload, tt.free, false, false) r$$,
     'OCG01',
     'external payments are not available for this event',
     'Should reject an external URL for free events in an ineligible group'
@@ -135,10 +138,40 @@ select throws_ok(
 select throws_ok(
     $$select * from test_resolved t
       cross join test_ticket_types tt
-      cross join resolve_event_payment_rail(t.payload, tt.paid, false) r$$,
+      cross join resolve_event_payment_rail(t.payload, tt.paid, false, false) r$$,
     'OCG01',
     'external payments are not available for this event',
     'Should reject an external URL for paid events in an ineligible group'
+);
+
+-- Should clear external fields for free events in a selected group that is not ready
+select is(
+    (
+        select jsonb_build_object(
+            'external_mode', r.external_mode,
+            'external_payment_url', (r.resolved).external_payment_url
+        )
+        from test_resolved t
+        cross join test_ticket_types tt
+        cross join resolve_event_payment_rail(t.payload, tt.free, true, false) r
+    ),
+    '{"external_mode": false, "external_payment_url": null}'::jsonb,
+    'Should clear external fields for free events in a selected group that is not ready'
+);
+
+-- Should reject paid events in a selected group that is not ready instead of using Stripe
+select throws_ok(
+    $$select * from test_resolved t
+      cross join test_ticket_types tt
+      cross join resolve_event_payment_rail(
+          jsonb_populate_record(t.payload, '{"external_payment_url": null}'::jsonb),
+          tt.paid,
+          true,
+          false
+      ) r$$,
+    'OCG01',
+    'external payments require the legal name of the organization collecting payments',
+    'Should reject paid events in a selected group that is not ready instead of using Stripe'
 );
 
 -- Should return exactly one row
@@ -146,7 +179,7 @@ select is(
     (
         select count(*)
         from test_ticket_types tt
-        cross join resolve_event_payment_rail(null::event, tt.paid, true) r
+        cross join resolve_event_payment_rail(null::event, tt.paid, true, true) r
     ),
     1::bigint,
     'Should return exactly one row'

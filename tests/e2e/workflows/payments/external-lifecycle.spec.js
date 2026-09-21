@@ -39,6 +39,9 @@ test.describe("external payment journeys", () => {
     try {
       // Start checkout and assert the pending payment notification.
       await startExternalCheckout(member1Page, event);
+      const hostBox = member1Page.locator("[data-event-host]");
+      await expect(hostBox).toContainText("Host");
+      await expect(hostBox).toContainText("This event is hosted by E2E External Payee Co");
       notificationIds = expectNewNotifications(pendingPaymentSnapshot, [
         { kind: "event-external-payment-pending", userIds: [TEST_USER_IDS.member1] },
       ]);

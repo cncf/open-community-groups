@@ -31,6 +31,24 @@ describe("dashboard group settings page", () => {
     };
   };
 
+  const renderExternalPaymentsSection = ({
+    checked = false,
+    legalNameDisabled = false,
+    toggleDisabled = false,
+  } = {}) => {
+    document.body.innerHTML = `
+      <form id="groups-form">
+        <input type="checkbox" id="external_payments_enabled" ${checked ? "checked" : ""} ${toggleDisabled ? "disabled" : ""}>
+        <input id="external_payments_seller_display_name" ${legalNameDisabled ? "disabled" : ""}>
+      </form>
+    `;
+
+    return {
+      legalName: document.getElementById("external_payments_seller_display_name"),
+      toggle: document.getElementById("external_payments_enabled"),
+    };
+  };
+
   beforeEach(() => {
     resetDom();
   });
@@ -43,7 +61,7 @@ describe("dashboard group settings page", () => {
     // Load the settings template before checking the external payments section.
     const template = normalizeWhitespace(await loadSettingsTemplate());
 
-    expect(template).to.include("{% if external_payments.configured -%}");
+    expect(template).to.include("{% if external_payments.configured || group.external_payments_enabled -%}");
     expect(template).to.include('title = "External payments"');
     expect(template).to.include('country-code-field-name="country_code"');
     expect(template).not.to.include("External payments are not configured for this deployment.");
@@ -58,6 +76,13 @@ describe("dashboard group settings page", () => {
     expect(template).to.include('value="{{ group.external_payments_enabled }}"');
     expect(template).to.include("cursor-not-allowed");
     expect(template).to.include("disabled");
+
+    // The external payee legal name is part of the same section and stays editable while enabled.
+    expect(template).to.include('name="external_payments_seller_display_name"');
+    expect(template).to.include('id="external_payments_seller_display_name"');
+    expect(template).to.include(
+      "{% if !external_payments.eligible && !group.external_payments_enabled %}disabled{% endif %}",
+    );
     expect(template).to.include("border-amber-200 bg-amber-50");
     expect(template).to.include('role="alert"');
     expect(template).to.include("External payments are not available for groups located in");
@@ -112,7 +137,7 @@ describe("dashboard group settings page", () => {
 
     // The form keeps the clearing contract regardless of rendered controls.
     expect(template).to.include(
-      'data-hx-keep-empty="payment_recipient[recipient_id] payment_recipient[seller_display_name]"',
+      'data-hx-keep-empty="external_payments_seller_display_name payment_recipient[recipient_id] payment_recipient[seller_display_name]"',
     );
   });
 
@@ -138,7 +163,7 @@ describe("dashboard group settings page", () => {
     document.body.innerHTML = `
       <form id="groups-form"
             hx-ext="no-empty-vals"
-            data-hx-keep-empty="payment_recipient[recipient_id] payment_recipient[seller_display_name]">
+            data-hx-keep-empty="external_payments_seller_display_name payment_recipient[recipient_id] payment_recipient[seller_display_name]">
         <input name="name" value="Group">
         <input name="city" value="">
         <input type="hidden" name="payment_recipient[provider]" value="stripe">
@@ -161,6 +186,77 @@ describe("dashboard group settings page", () => {
       ["payment_recipient[seller_display_name]", ""],
       ["payment_recipient[recipient_id]", ""],
     ]);
+  });
+
+  it("keeps a blank external payee legal name in the submitted parameters to clear it", () => {
+    // Build the external payments section with the toggle off and the legal name blank.
+    document.body.innerHTML = `
+      <form id="groups-form"
+            hx-ext="no-empty-vals"
+            data-hx-keep-empty="external_payments_seller_display_name payment_recipient[recipient_id] payment_recipient[seller_display_name]">
+        <input name="name" value="Group">
+        <input name="city" value="">
+        <input type="hidden" name="external_payments_enabled" value="false">
+        <input type="checkbox" id="external_payments_enabled" name="external_payments_enabled" value="true">
+        <input id="external_payments_seller_display_name" name="external_payments_seller_display_name" value="">
+      </form>
+    `;
+    const form = document.getElementById("groups-form");
+    initializeGroupSettings();
+
+    // Serialize the form through the no-empty-vals extension used by the settings form.
+    const parameters = new FormData(form);
+    createNoEmptyValuesExtension(true).encodeParameters(null, parameters, form);
+
+    // The blank legal name stays submitted so the server clears the stored value.
+    expect(form.checkValidity()).to.equal(true);
+    expect(formDataToEntries(parameters)).to.deep.equal([
+      ["name", "Group"],
+      ["external_payments_enabled", "false"],
+      ["external_payments_seller_display_name", ""],
+    ]);
+  });
+
+  it("requires the external payee legal name while external payments are enabled", () => {
+    const fields = renderExternalPaymentsSection();
+    initializeGroupSettings();
+
+    expect(fields.legalName.required).to.equal(false);
+
+    fields.toggle.checked = true;
+    fields.toggle.dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(fields.legalName.required).to.equal(true);
+    expect(fields.legalName.validity.valueMissing).to.equal(true);
+
+    fields.toggle.checked = false;
+    fields.toggle.dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(fields.legalName.required).to.equal(false);
+  });
+
+  it("requires the external payee legal name when the toggle is locked on", () => {
+    const fields = renderExternalPaymentsSection({ checked: true, toggleDisabled: true });
+    initializeGroupSettings();
+
+    expect(fields.legalName.required).to.equal(true);
+  });
+
+  it("does not require a disabled external payee legal name", () => {
+    const fields = renderExternalPaymentsSection({ legalNameDisabled: true, toggleDisabled: true });
+    initializeGroupSettings();
+
+    expect(fields.legalName.required).to.equal(false);
+  });
+
+  it("binds the external payee requirement without fiscal sponsor controls", () => {
+    const fields = renderExternalPaymentsSection({ checked: true });
+    const form = document.getElementById("groups-form");
+
+    dispatchHtmxLoad(document.body);
+
+    expect(form.dataset.groupSettingsBound).to.equal("true");
+    expect(fields.legalName.required).to.equal(true);
   });
 
   it("requires both fiscal sponsor fields when either one has a value", () => {

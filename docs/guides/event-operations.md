@@ -141,7 +141,8 @@ These are the ticketing rules to keep in mind:
   offer.
 - Positive prices require either Stripe payment configuration with a matching
   group recipient, or an external payment URL when the group has opted into
-  [external payments](group-dashboard.md#external-payments).
+  [external payments](group-dashboard.md#external-payments) and saved the
+  legal name of the organization collecting them.
 - External paid events skip the Stripe recipient and tax-rate checks. OCG does
   not calculate tax for them and treats prices as tax-inclusive. They still
   require an in-person or hybrid event with a complete venue.

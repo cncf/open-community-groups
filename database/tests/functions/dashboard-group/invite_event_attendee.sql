@@ -154,13 +154,15 @@ select fx_group(:'paidContextGroupID', :'communityID', :'groupCategoryID', jsonb
 -- Allowlisted group with external payments enabled for ready invitations
 select fx_group(:'groupExternalReadyID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- External-marked group outside the allowlist for readiness rejection
 select fx_group(:'groupExternalUnreadyID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'US',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- Users

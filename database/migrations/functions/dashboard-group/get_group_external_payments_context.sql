@@ -11,7 +11,8 @@ returns jsonb as $$
 
         'country_code', g.country_code,
         'default_payment_window_hours', cfg.default_payment_window_hours,
-        'max_payment_window_hours', cfg.max_payment_window_hours
+        'max_payment_window_hours', cfg.max_payment_window_hours,
+        'seller_display_name', g.external_payments_seller_display_name
     ))
     from "group" g
     left join external_payments_config cfg on cfg.singleton

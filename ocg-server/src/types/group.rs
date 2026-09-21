@@ -159,6 +159,8 @@ pub struct GroupFull {
     pub description: Option<String>,
     /// Short group description text.
     pub description_short: Option<String>,
+    /// Legal name of the organization collecting paid tickets outside the platform.
+    pub external_payments_seller_display_name: Option<String>,
     /// Additional links as key-value pairs.
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Facebook profile URL.

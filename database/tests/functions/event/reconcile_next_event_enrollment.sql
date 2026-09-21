@@ -70,7 +70,8 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
 -- Allowlisted group with external payments enabled for worker claims
 select fx_group(:'externalGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- Published event with one due and one future admission offer

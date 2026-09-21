@@ -124,6 +124,7 @@ insert into "group" (
     photos_urls,
     og_image_url,
     extra_links,
+    external_payments_seller_display_name,
     payment_recipient,
     created_at
 ) values (
@@ -162,6 +163,7 @@ insert into "group" (
         jsonb_build_object('name', 'Discord', 'url', 'https://discord.gg/seattlek8s'),
         jsonb_build_object('name', 'Forum', 'url', 'https://forum.seattlek8s.com')
     ),
+    'Seattle External Payee Co',
     jsonb_build_object(
         'provider', 'stripe',
         'recipient_id', 'acct_test_group',
@@ -275,6 +277,7 @@ select is(
         "country_name": "United States",
         "description": "A technology group focused on Kubernetes and cloud native technologies",
         "description_short": "A brief overview of the Seattle Kubernetes group",
+        "external_payments_seller_display_name": "Seattle External Payee Co",
         "extra_links": [{"name": "Discord", "url": "https://discord.gg/seattlek8s"}, {"name": "Forum", "url": "https://forum.seattlek8s.com"}],
         "bluesky_url": "https://bsky.app/profile/seattlek8s",
         "facebook_url": "https://facebook.com/seattlek8s",

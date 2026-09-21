@@ -9,7 +9,7 @@
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #group-settings-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button"
-      data-hx-keep-empty="payment_recipient[recipient_id] payment_recipient[seller_display_name]"
+      data-hx-keep-empty="external_payments_seller_display_name payment_recipient[recipient_id] payment_recipient[seller_display_name]"
       data-htmx-response
       data-success-message="You have successfully updated the group."
       data-error-message="Something went wrong updating the group. Please try again later.">
@@ -273,7 +273,7 @@
   {# End payments section -#}
 {% endif -%}
 
-{% if external_payments.configured -%}
+{% if external_payments.configured || group.external_payments_enabled -%}
   {# External payments section -#}
   <div class="border-b border-stone-900/10 pb-12">
     {{ dashboard::form_title(title = "External payments", description = "Collect ticket payments outside this platform when Stripe Connect is not available.") -}}
@@ -325,6 +325,30 @@
             those events first.
           </p>
         {% endif -%}
+      </div>
+
+      {# External payee legal name -#}
+      <div class="col-span-full lg:col-span-4">
+        <label for="external_payments_seller_display_name" class="form-label">
+          Legal Name
+          <span class="asterisk">* <sup class="text-xs font-normal">(required while enabled)</sup></span>
+        </label>
+        <div class="mt-2">
+          <input type="text"
+                 name="external_payments_seller_display_name"
+                 id="external_payments_seller_display_name"
+                 class="input-primary"
+                 maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                 placeholder="Example Organization, Inc."
+                 {% if let Some(seller_display_name) = &group.external_payments_seller_display_name %}
+                   value="{{ seller_display_name }}"
+                 {% endif %}
+                 {% if !external_payments.eligible && !group.external_payments_enabled %}disabled{% endif %}>
+        </div>
+        <p class="form-legend">
+          Legal name of the organization collecting ticket payments outside this platform.
+          Required while external payments are enabled and shown to attendees on the event page.
+        </p>
       </div>
     </div>
   </div>

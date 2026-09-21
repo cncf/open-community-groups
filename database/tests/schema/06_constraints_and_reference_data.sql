@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(181);
+select plan(182);
 
 -- ============================================================================
 -- VARIABLES
@@ -265,6 +265,7 @@ select has_check('group', 'group_og_image_url_check');
 select has_check('group', 'group_slug_pretty_chk');
 select col_not_null('group', 'external_payments_enabled');
 select col_default_is('group', 'external_payments_enabled', 'false');
+select col_has_check('group', 'external_payments_seller_display_name');
 
 -- Test: site table expected constraints exist
 select has_check('site', 'site_og_image_url_check');

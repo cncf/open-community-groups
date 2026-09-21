@@ -97,6 +97,10 @@ test.describe("external payment settings", () => {
       await expect(enabledToggle).toBeEnabled();
       await expect(enabledToggle).toHaveClass(/\bsr-only\b.*\bpeer\b/u);
       await expect(enabledToggle.locator("xpath=following-sibling::div[1]")).toBeVisible();
+      const legalName = organizerExternalGroupPage.getByRole("textbox", { name: /^Legal Name/u });
+      await expect(legalName).toHaveValue("E2E External Payee Co");
+      await expect(legalName).toBeEnabled();
+      await expect(legalName).toHaveAttribute("required", "");
 
       // Removing the country from the allowlist leaves the toggle visible but inert.
       queryE2eDatabase("select sync_external_payments_config(array['CA']::text[], 72, 336);");
@@ -106,6 +110,8 @@ test.describe("external payment settings", () => {
       await expect(ineligibleToggle).toBeChecked();
       await expect(ineligibleToggle).toBeDisabled();
       await expect(ineligibleToggle.locator("xpath=following-sibling::div[1]")).toBeVisible();
+      // The legal name stays editable so an enabled legacy group can still save it.
+      await expect(organizerExternalGroupPage.getByRole("textbox", { name: /^Legal Name/u })).toBeEnabled();
       const eligibilityWarning = organizerExternalGroupPage.getByRole("alert");
       await expect(eligibilityWarning).toContainText(
         "External payments are not available for groups located in United States.",
