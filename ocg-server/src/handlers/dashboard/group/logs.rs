@@ -33,7 +33,7 @@ const PARTIAL_URL: &str = "/dashboard/group/logs";
 // Pages handlers.
 
 /// Displays the group audit logs list.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,

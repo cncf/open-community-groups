@@ -52,7 +52,7 @@ async fn handle_webhook(
         Err(HandleWebhookError::InvalidPayload) => StatusCode::UNAUTHORIZED.into_response(),
         Err(HandleWebhookError::PaymentsNotConfigured) => StatusCode::NOT_FOUND.into_response(),
         Err(HandleWebhookError::Unexpected(err)) => {
-            warn!(error = %err, "failed to handle payments webhook");
+            warn!(error = %format_args!("{err:#}"), "failed to handle payments webhook");
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }

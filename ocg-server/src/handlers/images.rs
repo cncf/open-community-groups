@@ -55,7 +55,7 @@ const X_CONTENT_TYPE_OPTIONS: HeaderName = HeaderName::from_static("x-content-ty
 // Handlers
 
 /// Serves previously uploaded images.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn serve(
     headers: HeaderMap,
     State(image_storage): State<DynImageStorage>,
@@ -77,7 +77,7 @@ pub(crate) async fn serve(
 }
 
 /// Serves images referenced by current or historical badge credentials.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn serve_badge(
     State(db): State<DynDB>,
     State(image_storage): State<DynImageStorage>,
@@ -96,7 +96,7 @@ pub(crate) async fn serve_badge(
 }
 
 /// Serves images that are currently configured for public Open Graph previews.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn serve_open_graph(
     State(db): State<DynDB>,
     State(image_storage): State<DynImageStorage>,
@@ -115,7 +115,7 @@ pub(crate) async fn serve_open_graph(
 }
 
 /// Handles authenticated image uploads.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn upload(
     CurrentUser(user): CurrentUser,
     State(image_storage): State<DynImageStorage>,

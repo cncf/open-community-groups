@@ -54,7 +54,7 @@ pub(crate) fn payments_ready(
 }
 
 /// Sets the selected community and auto-selects the first group in session.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn select_community(
     CurrentUser(user): CurrentUser,
     session: Session,
@@ -75,7 +75,7 @@ pub(crate) async fn select_community(
 }
 
 /// Sets the selected group in the session for the current user.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn select_group(
     session: Session,
     Path(group_id): Path<Uuid>,

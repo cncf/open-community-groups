@@ -32,7 +32,7 @@ pub(crate) mod settings;
 pub(crate) mod team;
 
 /// Sets the selected community and auto-selects the first group in session.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn select_community(
     CurrentUser(user): CurrentUser,
     session: Session,

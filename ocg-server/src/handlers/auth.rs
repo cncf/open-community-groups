@@ -80,7 +80,7 @@ pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 // Pages and sections handlers.
 
 /// Handler that returns the log in page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn log_in_page(
     auth_session: AuthSession,
     messages: Messages,
@@ -116,7 +116,7 @@ pub(crate) async fn log_in_page(
 }
 
 /// Handler that returns the sign up page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn sign_up_page(
     auth_session: AuthSession,
     messages: Messages,
@@ -152,7 +152,7 @@ pub(crate) async fn sign_up_page(
 }
 
 /// Handler for rendering the user menu section.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn user_menu_section(
     auth_session: AuthSession,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -167,7 +167,7 @@ pub(crate) async fn user_menu_section(
 // Actions handlers.
 
 /// Handler that logs the user in.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn log_in(
     mut auth_session: AuthSession,
     messages: Messages,
@@ -216,7 +216,7 @@ pub(crate) async fn log_in(
 }
 
 /// Handler that logs the user out.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn log_out(
     mut auth_session: AuthSession,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -226,7 +226,7 @@ pub(crate) async fn log_out(
 }
 
 /// Handler that completes the oauth2 authorization process.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn oauth2_callback(
     mut auth_session: AuthSession,
     messages: Messages,
@@ -248,7 +248,7 @@ pub(crate) async fn oauth2_callback(
 }
 
 /// Handler that redirects the user to the oauth2 provider.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn oauth2_redirect(
     session: Session,
     OAuth2(oauth2_provider): OAuth2,
@@ -273,7 +273,7 @@ pub(crate) async fn oauth2_redirect(
 }
 
 /// Handler that completes the oidc authorization process.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn oidc_callback(
     mut auth_session: AuthSession,
     messages: Messages,
@@ -295,7 +295,7 @@ pub(crate) async fn oidc_callback(
 }
 
 /// Handler that redirects the user to the oidc provider.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn oidc_redirect(
     session: Session,
     Oidc(oidc_provider): Oidc,
@@ -325,7 +325,7 @@ pub(crate) async fn oidc_redirect(
 }
 
 /// Handler that signs up a new user.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn sign_up(
     messages: Messages,
     State(blocking_executor): State<BlockingExecutor>,
@@ -387,7 +387,7 @@ pub(crate) async fn sign_up(
 }
 
 /// Handler that updates the user's details.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_user_details(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -403,7 +403,7 @@ pub(crate) async fn update_user_details(
 }
 
 /// Handler that updates the user's password.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_user_password(
     mut auth_session: AuthSession,
     CurrentUser(user): CurrentUser,
@@ -431,14 +431,14 @@ pub(crate) async fn update_user_password(
 
     // Best-effort invalidate the current session after changing credentials
     if let Err(err) = auth_session.logout().await {
-        warn!(error = %err, "failed to delete current session after password change");
+        warn!(error = %format_args!("{err:#}"), "failed to delete current session after password change");
     }
 
     Ok(Redirect::to(LOG_IN_URL).into_response())
 }
 
 /// Handler that verifies the user's email.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn verify_email(
     messages: Messages,
     State(db): State<DynDB>,

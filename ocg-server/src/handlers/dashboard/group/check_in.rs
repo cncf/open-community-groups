@@ -28,7 +28,7 @@ mod tests;
 // Pages handlers.
 
 /// Returns events available to the selected group's scanner.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -42,7 +42,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Checks in an attendee using a scanned versioned credential.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn scan(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,

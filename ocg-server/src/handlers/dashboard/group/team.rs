@@ -51,7 +51,7 @@ const GROUP_TEAM_MANAGEMENT_INSUFFICIENT_ROLE_TOOLTIP: &str =
 // Pages handlers.
 
 /// Displays the list of group team members.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -79,7 +79,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Adds a user to the group team.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -111,7 +111,7 @@ pub(crate) async fn add(
 }
 
 /// Deletes a user from the group team.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn delete(
     mut auth_session: AuthSession,
     headers: HeaderMap,
@@ -153,7 +153,7 @@ pub(crate) async fn delete(
 }
 
 /// Updates a user role in the group team.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_role(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,

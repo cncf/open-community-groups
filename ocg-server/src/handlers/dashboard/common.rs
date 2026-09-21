@@ -17,7 +17,7 @@ use crate::{db::DynDB, handlers::error::HandlerError};
 mod tests;
 
 /// Searches for users by query.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn search_user(
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,

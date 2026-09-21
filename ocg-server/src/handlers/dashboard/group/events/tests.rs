@@ -1332,7 +1332,7 @@ async fn test_update_invalid_ticketing_fields_returns_unprocessable_entity() {
 }
 
 #[tokio::test]
-async fn test_cancel_series_returns_no_content_with_location() {
+async fn test_cancel_series_returns_no_content_with_table_refresh() {
     // Setup identifiers and the series cancellation
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1382,12 +1382,12 @@ async fn test_cancel_series_returns_no_content_with_location() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the events tab location
-    assert_empty_hx_location_response(
+    // Check the table refresh trigger
+    assert_empty_hx_trigger_response(
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
+        "refresh-group-dashboard-table",
     );
 }
 

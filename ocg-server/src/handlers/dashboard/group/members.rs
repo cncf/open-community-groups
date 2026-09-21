@@ -42,7 +42,7 @@ const PARTIAL_URL: &str = "/dashboard/group/members";
 // Pages handlers.
 
 /// Displays the list of group members.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -70,7 +70,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Sends a custom notification to all group members.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn send_group_custom_notification(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,

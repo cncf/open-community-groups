@@ -28,7 +28,7 @@ mod tests;
 // Pages handlers.
 
 /// Returns the invitations list page for the user dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -42,7 +42,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Accepts a pending community team invitation.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn accept_community_team_invitation(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -64,7 +64,7 @@ pub(crate) async fn accept_community_team_invitation(
 }
 
 /// Accepts a pending group team invitation.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn accept_group_team_invitation(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -85,7 +85,7 @@ pub(crate) async fn accept_group_team_invitation(
 }
 
 /// Declines an active admission offer owned by the current user.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn decline_event_admission_offer(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -106,7 +106,7 @@ pub(crate) async fn decline_event_admission_offer(
 }
 
 /// Rejects a pending community team invitation.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn reject_community_team_invitation(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -122,7 +122,7 @@ pub(crate) async fn reject_community_team_invitation(
 }
 
 /// Rejects a pending group team invitation.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn reject_group_team_invitation(
     CurrentUser(user): CurrentUser,
     messages: Messages,

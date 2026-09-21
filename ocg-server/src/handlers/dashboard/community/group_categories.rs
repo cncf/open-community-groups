@@ -29,7 +29,7 @@ mod tests;
 // Pages handlers.
 
 /// Displays the list of group categories for the selected community.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -53,7 +53,7 @@ pub(crate) async fn list_page(
 }
 
 /// Displays the form to create a new group category.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let template = group_categories::AddPage;
@@ -62,7 +62,7 @@ pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
 }
 
 /// Displays the form to update an existing group category.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -97,7 +97,7 @@ pub(crate) async fn update_page(
 // Actions handlers.
 
 /// Adds a new group category to the selected community.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -114,7 +114,7 @@ pub(crate) async fn add(
 }
 
 /// Deletes a group category from the selected community.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn delete(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -131,7 +131,7 @@ pub(crate) async fn delete(
 }
 
 /// Updates a group category in the selected community.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,

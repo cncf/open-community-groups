@@ -32,7 +32,7 @@ mod tests;
 // Pages handlers.
 
 /// Export one active owned badge as a PNG containing its signed credential.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn export(
     CurrentUser(user): CurrentUser,
     State(badges_manager): State<DynBadgesManager>,
@@ -87,7 +87,7 @@ pub(crate) async fn export(
 }
 
 /// Render the active user badge list.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -99,7 +99,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Permanently revoke one active badge owned by the current user.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn revoke(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -112,7 +112,7 @@ pub(crate) async fn revoke(
 }
 
 /// Persist whether a badge is discoverable on public profiles.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_listing(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -127,7 +127,7 @@ pub(crate) async fn update_listing(
 }
 
 /// Persist a complete keyboard or pointer-generated badge order.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_order(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,

@@ -840,9 +840,7 @@ fn test_delivery_worker_prepare_content_event_admission_offer_declined() {
     assert_eq!(subject, "[Enrollment Group] Event offer declined");
     assert!(body.contains("Example Recipient"));
     assert!(body.contains("General admission"));
-    assert!(body.contains(
-        "https://example.test/dashboard/group/events/11111111-1111-1111-1111-111111111111/attendees"
-    ));
+    assert!(body.contains("https://example.test/dashboard/group?tab=events"));
 }
 
 #[test]
@@ -2143,7 +2141,7 @@ fn sample_event_admission_offer_created_template_data() -> serde_json::Value {
 /// Sample template payload for declined event admission offer notifications.
 fn sample_event_admission_offer_declined_template_data() -> serde_json::Value {
     json!({
-        "dashboard_url": "/dashboard/group/events/11111111-1111-1111-1111-111111111111/attendees",
+        "dashboard_url": "/dashboard/group?tab=events",
         "event_name": "Enrollment Event",
         "group_name": "Enrollment Group",
         "recipient_name": "Example Recipient",

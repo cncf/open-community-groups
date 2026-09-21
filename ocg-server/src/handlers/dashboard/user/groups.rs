@@ -34,7 +34,7 @@ const PARTIAL_URL: &str = "/dashboard/user/groups";
 // Pages handlers.
 
 /// Returns the groups list page for the user dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -54,7 +54,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Removes the current user's membership from a group.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn leave_group(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,

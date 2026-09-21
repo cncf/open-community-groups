@@ -51,7 +51,7 @@ pub(super) const USER_PROFILE_BADGES_LIMIT: usize = 50;
 // Pages handlers.
 
 /// Serve the public credential page or signed JSON-LD representation.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn credential(
     State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
@@ -103,7 +103,7 @@ pub(crate) async fn credential(
 }
 
 /// Render the public badge verification form.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn verify_page(
     State(db): State<DynDB>,
     uri: Uri,
@@ -114,7 +114,7 @@ pub(crate) async fn verify_page(
 // JSON handlers.
 
 /// Publish a stable group issuer profile.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn issuer(
     State(badges_manager): State<DynBadgesManager>,
     Path(group_id): Path<Uuid>,
@@ -144,7 +144,7 @@ pub(crate) async fn issuer(
 }
 
 /// Publish one retained issuer verification key as a Multikey document.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn issuer_key(
     State(badges_manager): State<DynBadgesManager>,
     Path((group_id, key_multibase)): Path<(Uuid, String)>,
@@ -171,7 +171,7 @@ pub(crate) async fn issuer_key(
 }
 
 /// Publish a signed revocation-only Bitstring Status List credential.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn status_list(
     State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
@@ -203,7 +203,7 @@ pub(crate) async fn status_list(
 }
 
 /// Return active, listed badges for a user across all communities.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn user_profile_badges(
     State(db): State<DynDB>,
     Path(username): Path<String>,
@@ -227,7 +227,7 @@ pub(crate) async fn user_profile_badges(
 // Actions handlers.
 
 /// Verify one ID, credential URL, or bounded Open Badges PNG.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn verify(
     State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,

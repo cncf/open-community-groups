@@ -33,7 +33,7 @@ const PARTIAL_URL: &str = "/dashboard/community/logs";
 // Pages handlers.
 
 /// Displays the community audit logs list.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,

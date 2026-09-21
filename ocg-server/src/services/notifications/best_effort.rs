@@ -68,7 +68,7 @@ pub(crate) async fn enqueue_cfs_submission_updated_best_effort(
     .await
     {
         warn!(
-            error = %err,
+            error = %format_args!("{err:#}"),
             %event_id,
             %cfs_submission_id,
             %reviewer_id,
@@ -116,7 +116,7 @@ pub(crate) async fn enqueue_community_team_invitation_best_effort(
     .await
     {
         warn!(
-            error = %err,
+            error = %format_args!("{err:#}"),
             %community_id,
             %user_id,
             "failed to enqueue community team invitation notification"
@@ -164,7 +164,7 @@ pub(crate) async fn enqueue_group_team_invitation_best_effort(
     .await
     {
         warn!(
-            error = %err,
+            error = %format_args!("{err:#}"),
             %community_id,
             %group_id,
             %user_id,
@@ -196,7 +196,7 @@ pub(crate) async fn enqueue_event_notification_best_effort<F>(
             Ok(context) => context,
             Err(err) => {
                 warn!(
-                    error = %err,
+                    error = %format_args!("{err:#}"),
                     %community_id,
                     %event_id,
                     "failed to load event notification context"
@@ -210,7 +210,7 @@ pub(crate) async fn enqueue_event_notification_best_effort<F>(
         Ok(notification) => notification,
         Err(err) => {
             warn!(
-                error = %err,
+                error = %format_args!("{err:#}"),
                 %community_id,
                 %event_id,
                 "failed to build event notification"
@@ -222,7 +222,7 @@ pub(crate) async fn enqueue_event_notification_best_effort<F>(
     // Enqueue the notification, logging delivery queue failures
     if let Err(err) = notifications_manager.enqueue(&notification).await {
         warn!(
-            error = %err,
+            error = %format_args!("{err:#}"),
             %community_id,
             %event_id,
             kind = ?notification.kind,

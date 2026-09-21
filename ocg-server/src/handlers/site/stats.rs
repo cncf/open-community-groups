@@ -21,7 +21,7 @@ mod tests;
 // Page handlers.
 
 /// Handler that renders the global site stats page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
     uri: Uri,

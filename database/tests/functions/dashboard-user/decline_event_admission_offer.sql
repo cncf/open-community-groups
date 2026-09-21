@@ -349,7 +349,7 @@ select ok(
     (
         select ntd.data @> jsonb_build_object(
             'admission_offer_id', :'offerID',
-            'dashboard_url', '/dashboard/group/events/' || :'eventID' || '/attendees',
+            'dashboard_url', '/dashboard/group?tab=events',
             'event_id', :'eventID',
             'event_name', 'Offer Decline Event',
             'event_ticket_type_id', :'ticketTypeID',

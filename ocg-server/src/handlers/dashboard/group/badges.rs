@@ -65,7 +65,7 @@ const MAX_DATABASE_OFFSET: usize = i32::MAX as usize;
 // Pages handlers.
 
 /// Renders the badge artwork page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn artwork_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -83,7 +83,7 @@ pub(crate) async fn artwork_page(
 }
 
 /// Renders the badge award history page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn awards_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -101,7 +101,7 @@ pub(crate) async fn awards_page(
 }
 
 /// Renders the badge definitions page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn badges_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -121,7 +121,7 @@ pub(crate) async fn badges_page(
 // JSON handlers.
 
 /// Return searchable badge definitions for the shared award modal.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn options(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -149,7 +149,7 @@ pub(crate) async fn options(
 // Actions handlers.
 
 /// Create one group badge definition.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -170,7 +170,7 @@ pub(crate) async fn add(
 }
 
 /// Add an uploaded image to the reusable artwork gallery.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add_artwork(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -203,7 +203,7 @@ pub(crate) async fn add_artwork(
 }
 
 /// Award one badge to an explicit recipient list.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn award(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -236,7 +236,7 @@ pub(crate) async fn award(
 }
 
 /// Delete one definition while retaining historical credential snapshots.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn delete(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -254,7 +254,7 @@ pub(crate) async fn delete(
 }
 
 /// Remove an unreferenced image from the reusable artwork gallery.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn delete_artwork(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -272,7 +272,7 @@ pub(crate) async fn delete_artwork(
 }
 
 /// Resolve attendee badge recipients for one event-owned bypass option.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn recipients(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -292,7 +292,7 @@ pub(crate) async fn recipients(
 }
 
 /// Permanently revoke one active group-issued credential with a private reason.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn revoke(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -317,7 +317,7 @@ pub(crate) async fn revoke(
 }
 
 /// Update one group badge definition.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,

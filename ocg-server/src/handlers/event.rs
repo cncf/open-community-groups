@@ -54,7 +54,7 @@ mod tests;
 // Pages handlers.
 
 /// Handler that renders the event page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
@@ -106,7 +106,7 @@ pub(crate) async fn page(
 }
 
 /// Handler that renders the CFS submission modal.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn cfs_modal(
     auth_session: AuthSession,
     State(db): State<DynDB>,
@@ -145,7 +145,7 @@ pub(crate) async fn cfs_modal(
 // JSON handlers.
 
 /// Handler that returns fresh public availability for the event page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn availability(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
@@ -170,7 +170,7 @@ pub(crate) async fn availability(
 // Actions handlers.
 
 /// Handler for attending an event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn attend_event(
     CurrentUser(user): CurrentUser,
     State(enrollment_manager): State<DynEnrollmentManager>,
@@ -192,7 +192,7 @@ pub(crate) async fn attend_event(
 }
 
 /// Handler for canceling an active checkout hold.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn cancel_checkout(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -220,7 +220,7 @@ pub(crate) async fn cancel_checkout(
 }
 
 /// Handler that returns the current user's event enrollment state.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn enrollment_state(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -257,7 +257,7 @@ pub(crate) async fn enrollment_state(
 }
 
 /// Handler for leaving an event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn leave_event(
     CurrentUser(user): CurrentUser,
     State(enrollment_manager): State<DynEnrollmentManager>,
@@ -282,7 +282,7 @@ pub(crate) async fn leave_event(
 }
 
 /// Handler for requesting a refund.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn request_refund(
     CurrentUser(user): CurrentUser,
     State(payments_manager): State<DynPaymentsManager>,
@@ -309,7 +309,7 @@ pub(crate) async fn request_refund(
 }
 
 /// Handler for starting or resuming event checkout.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn start_checkout(
     CurrentUser(user): CurrentUser,
     State(enrollment_manager): State<DynEnrollmentManager>,
@@ -331,7 +331,7 @@ pub(crate) async fn start_checkout(
 }
 
 /// Handler for submitting a CFS proposal to an event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn submit_cfs_submission(
     CurrentUser(user): CurrentUser,
     auth_session: AuthSession,
@@ -372,7 +372,7 @@ pub(crate) async fn submit_cfs_submission(
 }
 
 /// Tracks an event page view.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn track_view(
     headers: HeaderMap,
     State(activity_tracker): State<DynActivityTracker>,

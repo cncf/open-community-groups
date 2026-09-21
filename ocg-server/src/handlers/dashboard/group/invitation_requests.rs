@@ -28,7 +28,7 @@ mod tests;
 // Pages handlers.
 
 /// Displays the invitation requests for a specific event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,

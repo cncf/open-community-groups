@@ -53,7 +53,7 @@ const PARTIAL_URL: &str = "/dashboard/group/events";
 // Pages handlers.
 
 /// Displays the page to add a new event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -116,7 +116,7 @@ pub(crate) async fn add_page(
 }
 
 /// Displays the list of events for the group dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -142,7 +142,7 @@ pub(crate) async fn list_page(
 }
 
 /// Renders a database-free preview from the submitted event editor state.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn preview(
     State(serde_qs_de): State<serde_qs::Config>,
     body: String,
@@ -159,7 +159,7 @@ pub(crate) async fn preview(
 }
 
 /// Displays the page to update an existing event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -232,7 +232,7 @@ pub(crate) async fn update_page(
 // JSON handlers.
 
 /// Checks a saved event's venue with the configured automatic-tax provider.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn automatic_tax_readiness(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -258,7 +258,7 @@ pub(crate) async fn automatic_tax_readiness(
 }
 
 /// Returns full event details in JSON format.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn details(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -271,7 +271,7 @@ pub(crate) async fn details(
 }
 
 /// Lists active fiscal-sponsor Stripe Tax Rates for an event tax behavior.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn tax_rates(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -289,7 +289,7 @@ pub(crate) async fn tax_rates(
 // Actions handlers.
 
 /// Adds a new event to the database.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -316,7 +316,7 @@ pub(crate) async fn add(
 }
 
 /// Cancels an event (sets canceled=true).
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn cancel(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -338,15 +338,12 @@ pub(crate) async fn cancel(
 
     Ok((
         StatusCode::NO_CONTENT,
-        [(
-            "HX-Location",
-            r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
-        )],
+        [("HX-Trigger", "refresh-group-dashboard-table")],
     ))
 }
 
 /// Deletes an event from the database (soft delete).
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn delete(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -373,7 +370,7 @@ pub(crate) async fn delete(
 }
 
 /// Publishes an event (sets published=true and records publication metadata).
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn publish(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -410,7 +407,7 @@ pub(crate) async fn publish(
 }
 
 /// Unpublishes an event (sets published=false and clears publication metadata).
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn unpublish(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -437,7 +434,7 @@ pub(crate) async fn unpublish(
 }
 
 /// Updates an existing event's information in the database.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -525,7 +522,7 @@ fn automatic_tax_error_response(error: &AutomaticTaxReadinessError) -> axum::res
         return (StatusCode::UNPROCESSABLE_ENTITY, Json(body)).into_response();
     }
 
-    error!(error = %error, "automatic-tax readiness provider failure");
+    error!(error = %format_args!("{error:#}"), "automatic-tax readiness provider failure");
     (
         StatusCode::BAD_GATEWAY,
         Json(AutomaticTaxReadinessErrorResponse {

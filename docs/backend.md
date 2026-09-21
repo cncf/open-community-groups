@@ -224,14 +224,18 @@ Rules:
   raised inside the service into a 500. Its user-facing variants map to
   `Rejected`.
 - `Deserialization` carries parser output that is never returned to the
-  client; `into_response` logs it and answers with the fixed body. Parse
-  failures in the validated extractors and query-string conversions use this
-  variant; `garde` failures keep returning the field-level report through
-  `Validation`.
+  client; `into_response` answers with the fixed body. Parse failures in the
+  validated extractors and query-string conversions use this variant; `garde`
+  failures keep returning the field-level report through `Validation`.
 - `Auth` carries no payload. Callers that need the underlying cause in logs
   record it before mapping.
+- `into_response` is the single logging point for a `HandlerError`. The 4xx
+  variants are logged with `warn!`, because the client can correct them; the
+  500 variants are logged with `error!` and the full `anyhow` cause chain.
+  Handlers do not log the errors they return, so a failure is never written
+  twice.
 - Internal detail (database errors, provider errors, panics) is logged
-  through the handler span and never written to the response body.
+  through the request span and never written to the response body.
 
 ## Handler shape
 
@@ -263,9 +267,11 @@ A handler does extraction, delegation, and response shaping, in this order:
    `hx-push-url`), and body. Response-only shapes and contracts stay in the
    handler.
 
-Every `Result`-returning handler carries `#[instrument(skip_all, err)]`.
-Extractors keep `#[instrument(skip_all, err(Debug))]` because their rejection
-type is a tuple.
+Every `Result`-returning handler carries `#[instrument(skip_all)]`, without
+`err`: the returned `HandlerError` is logged once by `into_response` at the
+severity of its variant. Extractors keep `#[instrument(skip_all, err(Debug))]`
+because their rejection type is a tuple; extractors whose rejections are
+client errors add `level = "warn"`.
 
 `db/` methods carry `#[instrument(skip(self, ...), err)]`. Because `err`
 writes every span field on failure, including the `OCG01` rejections that end

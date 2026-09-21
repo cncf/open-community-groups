@@ -57,7 +57,7 @@ pub(crate) async fn zoom_event(
     let payload: ZoomWebhookPayload = match serde_json::from_str(&body) {
         Ok(p) => p,
         Err(err) => {
-            warn!(?err, "failed to parse zoom webhook payload");
+            warn!(error = %format_args!("{err:#}"), "failed to parse zoom webhook payload");
             return StatusCode::BAD_REQUEST.into_response();
         }
     };
@@ -94,7 +94,7 @@ async fn handle_recording_completed(
         .append_meeting_recording_url(MeetingProvider::Zoom, &provider_meeting_id, recording_url)
         .await
     {
-        warn!(?err, "failed to append meeting recording url");
+        warn!(error = %format_args!("{err:#}"), "failed to append meeting recording url");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 

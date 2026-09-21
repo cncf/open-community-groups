@@ -21,7 +21,7 @@ const NOT_FOUND_PATH: &str = "/404";
 // Pages handlers.
 
 /// Handler that renders the global site not found page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn page(State(db): State<DynDB>) -> Result<Response, HandlerError> {
     // Load site settings
     let site_settings = db.get_site_settings().await?;
@@ -33,7 +33,7 @@ pub(crate) async fn page(State(db): State<DynDB>) -> Result<Response, HandlerErr
 // Helpers.
 
 /// Renders the global site not found page.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) fn render(site_settings: SiteSettings) -> Result<Response, HandlerError> {
     // Prepare template
     let template = Page {

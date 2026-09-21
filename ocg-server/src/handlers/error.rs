@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use tokio_postgres::error::SqlState;
-use tracing::warn;
+use tracing::{error, warn};
 
 use crate::{
     db::USER_FACING_DB_ERROR_CODE,
@@ -25,6 +25,10 @@ mod tests;
 pub(crate) const INVALID_REQUEST_PAYLOAD: &str = "invalid request payload";
 
 /// Represents all possible errors that can occur in a handler.
+///
+/// Converting the error into a response logs it once: client-correctable
+/// rejections as warnings and server failures as errors with their full
+/// cause chain, so handlers must not log the errors they return.
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum HandlerError {
     /// Error related to authentication.
@@ -77,17 +81,39 @@ pub(crate) enum HandlerError {
     Validation(#[from] garde::Report),
 }
 
+impl HandlerError {
+    /// Logs the error with a severity that matches who can correct it.
+    fn log(&self) {
+        match self {
+            // Server failures need operator attention, so log the full cause chain
+            Self::Other(_) | Self::Serde(_) | Self::Session(_) | Self::Template(_) => {
+                error!(error = %format_args!("{self:#}"), "handler error");
+            }
+            // Client rejections are expected traffic
+            Self::Auth
+            | Self::Database(_)
+            | Self::Deserialization(_)
+            | Self::Forbidden
+            | Self::NotFound
+            | Self::Rejected(_)
+            | Self::Validation(_) => warn!(error = %self, "request rejected"),
+        }
+    }
+}
+
 /// Enables conversion of `HandlerError` into an HTTP response for Axum handlers.
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
+        // Log once at the boundary where the error becomes a response
+        self.log();
+
         match self {
             HandlerError::Auth => StatusCode::UNAUTHORIZED.into_response(),
             HandlerError::Database(msg) | HandlerError::Rejected(msg) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response()
             }
-            HandlerError::Deserialization(detail) => {
-                // Keep parser output out of the response body
-                warn!(%detail, "invalid request payload");
+            // Keep parser output out of the response body; the log carries the detail
+            HandlerError::Deserialization(_) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, INVALID_REQUEST_PAYLOAD).into_response()
             }
             HandlerError::Forbidden => StatusCode::FORBIDDEN.into_response(),

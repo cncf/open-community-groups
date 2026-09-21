@@ -66,7 +66,9 @@ impl Worker {
                 warn!(recovered, "requeued stale payment job claims");
             }
             Ok(_) => {}
-            Err(err) => error!(error = %err, "error recovering payment job claims"),
+            Err(err) => {
+                error!(error = %format_args!("{err:#}"), "error recovering payment job claims");
+            }
         }
     }
 }

@@ -83,7 +83,7 @@ impl BadgeAwardWorker {
             ClaimLoopConfig::default(),
             || self.process_next_award_job(),
             |err| {
-                error!(error = %err, "error processing badge award job");
+                error!(error = %format_args!("{err:#}"), "error processing badge award job");
                 None
             },
         )
@@ -143,7 +143,7 @@ impl BadgeAwardWorker {
             .record_badge_award_job_failure(
                 job.badge_award_job_id,
                 job.claim_id,
-                err.to_string(),
+                format!("{err:#}"),
                 MAX_FAILURES,
             )
             .await
@@ -154,7 +154,7 @@ impl BadgeAwardWorker {
             ),
             Ok(false) => {}
             Err(record_err) => warn!(
-                error = %record_err,
+                error = %format_args!("{record_err:#}"),
                 badge_award_job_id = %job.badge_award_job_id,
                 "failed to release badge award job claim"
             ),
@@ -193,7 +193,9 @@ impl BadgeAwardRecoveryWorker {
                 warn!(recovered, "recovered stale badge award job claims");
             }
             Ok(_) => {}
-            Err(err) => error!(error = %err, "error recovering badge award job claims"),
+            Err(err) => {
+                error!(error = %format_args!("{err:#}"), "error recovering badge award job claims");
+            }
         }
 
         // Remove completed summaries after the retention window
@@ -202,7 +204,9 @@ impl BadgeAwardRecoveryWorker {
                 info!(deleted, "deleted expired badge award job summaries");
             }
             Ok(_) => {}
-            Err(err) => error!(error = %err, "error cleaning badge award job summaries"),
+            Err(err) => {
+                error!(error = %format_args!("{err:#}"), "error cleaning badge award job summaries");
+            }
         }
     }
 }

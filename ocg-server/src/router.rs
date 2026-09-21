@@ -526,7 +526,7 @@ async fn enforce_browser_same_origin(
     let origin_matches = match request_headers_match_site_origin(&server_cfg, request.headers()) {
         Ok(origin_matches) => origin_matches,
         Err(err) => {
-            error!(error = %err, "error checking request origin");
+            error!(error = %format_args!("{err:#}"), "error checking request origin");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };

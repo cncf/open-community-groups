@@ -33,7 +33,7 @@ const PARTIAL_URL: &str = "/dashboard/user/submissions";
 // Pages handlers.
 
 /// Returns the submissions list page for the user dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -53,7 +53,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Resubmits a CFS submission for the authenticated user.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn resubmit(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -71,7 +71,7 @@ pub(crate) async fn resubmit(
 }
 
 /// Withdraws a CFS submission for the authenticated user.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn withdraw(
     CurrentUser(user): CurrentUser,
     messages: Messages,

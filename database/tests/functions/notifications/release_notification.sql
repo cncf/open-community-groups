@@ -63,7 +63,7 @@ select lives_ok(
     'Should release an active claim back to the queue'
 );
 
--- Should make the notification pending now without spending delivery budget
+-- Should make the notification pending now and refund the claimed attempt
 select results_eq(
     format(
         $$
@@ -80,14 +80,14 @@ select results_eq(
     ),
     $$
         values (
-            2,
+            1,
             'pending'::text,
             'previous smtp timeout'::text,
             current_timestamp,
             null::timestamptz
         )
     $$,
-    'Should make the notification pending now without spending delivery budget'
+    'Should make the notification pending now and refund the claimed attempt'
 );
 
 -- Should release a claim that already reached the delivery attempt limit
@@ -99,7 +99,7 @@ select lives_ok(
     'Should release a claim that already reached the delivery attempt limit'
 );
 
--- Should leave the final-claim notification pending instead of failed
+-- Should leave the final-claim notification pending with a refunded attempt
 select results_eq(
     format(
         $$
@@ -109,8 +109,8 @@ select results_eq(
         $$,
         :'notificationFinalClaimID'
     ),
-    $$ values (10, 'pending'::text, current_timestamp) $$,
-    'Should leave the final-claim notification pending instead of failed'
+    $$ values (9, 'pending'::text, current_timestamp) $$,
+    'Should leave the final-claim notification pending with a refunded attempt'
 );
 
 -- Should keep the released final-claim notification claimable

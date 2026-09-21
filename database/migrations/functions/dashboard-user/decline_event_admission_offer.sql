@@ -167,7 +167,7 @@ begin
             'event-admission-offer-declined',
             jsonb_build_object(
                 'admission_offer_id', p_admission_offer_id,
-                'dashboard_url', '/dashboard/group/events/' || v_event_id || '/attendees',
+                'dashboard_url', '/dashboard/group?tab=events',
                 'event_id', v_event_id,
                 'event_name', v_event_name,
                 'event_ticket_type_id', v_event_ticket_type_id,

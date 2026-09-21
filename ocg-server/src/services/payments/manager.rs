@@ -211,7 +211,7 @@ impl PgPaymentsManager {
         let webhook_event = payments_provider
             .verify_and_parse_webhook(endpoint, headers, body)
             .map_err(|err| {
-                warn!(error = %err, "failed to verify payments webhook");
+                warn!(error = %format_args!("{err:#}"), "failed to verify payments webhook");
                 HandleWebhookError::InvalidPayload
             })?;
 

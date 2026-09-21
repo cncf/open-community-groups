@@ -34,7 +34,7 @@ const PARTIAL_URL: &str = "/dashboard/user/purchases";
 // Pages handlers.
 
 /// Returns the purchase-document list partial.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -51,7 +51,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Redirects an attendee to the provider's current credit-note URL.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn credit_note_document(
     CurrentUser(user): CurrentUser,
     State(payments_manager): State<DynPaymentsManager>,
@@ -67,7 +67,7 @@ pub(crate) async fn credit_note_document(
 }
 
 /// Redirects an attendee to the provider's current invoice URL.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn invoice_document(
     CurrentUser(user): CurrentUser,
     State(payments_manager): State<DynPaymentsManager>,

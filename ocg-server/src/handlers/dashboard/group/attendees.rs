@@ -67,7 +67,7 @@ pub(crate) const MAX_ATTENDEES_EXPORT_ROWS: usize = 10_000;
 // Pages handlers.
 
 /// Displays the list of attendees for a specific event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -145,7 +145,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Accepts an event invitation request.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn accept_invitation_request(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -173,7 +173,7 @@ pub(crate) async fn accept_invitation_request(
 }
 
 /// Approves an attendee refund request.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn approve_refund_request(
     CurrentUser(user): CurrentUser,
@@ -203,7 +203,7 @@ pub(crate) async fn approve_refund_request(
 }
 
 /// Cancels an active group-scoped admission offer.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn cancel_event_admission_offer(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -232,7 +232,7 @@ pub(crate) async fn cancel_event_admission_offer(
 }
 
 /// Cancels free attendance or queues a paid attendance refund.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn cancel_event_attendee_attendance(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -263,7 +263,7 @@ pub(crate) async fn cancel_event_attendee_attendance(
 }
 
 /// Invites a user to attend an event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn invite_event_attendee(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -299,7 +299,7 @@ pub(crate) async fn invite_event_attendee(
 }
 
 /// Manually checks in a confirmed attendee for an event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn manual_check_in(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -318,7 +318,7 @@ pub(crate) async fn manual_check_in(
 }
 
 /// Marks a pending external purchase as paid.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn mark_external_payment(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -343,7 +343,7 @@ pub(crate) async fn mark_external_payment(
 }
 
 /// Rejects an event invitation request.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn reject_invitation_request(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -361,7 +361,7 @@ pub(crate) async fn reject_invitation_request(
 }
 
 /// Rejects an attendee refund request.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn reject_refund_request(
     CurrentUser(user): CurrentUser,
@@ -391,7 +391,7 @@ pub(crate) async fn reject_refund_request(
 }
 
 /// Sends a custom notification to event attendees.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn send_event_custom_notification(
     CurrentUser(user): CurrentUser,
@@ -460,7 +460,7 @@ pub(crate) async fn send_event_custom_notification(
 // Download handlers.
 
 /// Downloads a CSV file with all attendees for a specific event.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn download_csv(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
@@ -492,7 +492,7 @@ pub(crate) async fn download_csv(
 }
 
 /// Downloads a CSV file with attendees and their registration question answers.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn download_csv_with_answers(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,

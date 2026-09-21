@@ -40,7 +40,7 @@ const PARTIAL_URL: &str = "/dashboard/user/session-proposals";
 // Pages handlers.
 
 /// Returns the session proposals list page for the user dashboard.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -60,7 +60,7 @@ pub(crate) async fn list_page(
 // Actions handlers.
 
 /// Accepts a pending co-speaker invitation.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn accept_co_speaker_invitation(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -79,7 +79,7 @@ pub(crate) async fn accept_co_speaker_invitation(
 }
 
 /// Adds a session proposal for the authenticated user.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -104,7 +104,7 @@ pub(crate) async fn add(
         .await
     {
         warn!(
-            error = %err,
+            error = %format_args!("{err:#}"),
             user_id = %user.user_id,
             %co_speaker_user_id,
             "failed to enqueue session proposal co-speaker invitation notification"
@@ -120,7 +120,7 @@ pub(crate) async fn add(
 }
 
 /// Deletes a session proposal for the authenticated user.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn delete(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -138,7 +138,7 @@ pub(crate) async fn delete(
 }
 
 /// Rejects a pending co-speaker invitation.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 pub(crate) async fn reject_co_speaker_invitation(
     CurrentUser(user): CurrentUser,
     messages: Messages,
@@ -157,7 +157,7 @@ pub(crate) async fn reject_co_speaker_invitation(
 }
 
 /// Updates a session proposal for the authenticated user.
-#[instrument(skip_all, err)]
+#[instrument(skip_all)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
@@ -197,7 +197,7 @@ pub(crate) async fn update(
         .await
     {
         warn!(
-            error = %err,
+            error = %format_args!("{err:#}"),
             user_id = %user.user_id,
             %co_speaker_user_id,
             %session_proposal_id,
