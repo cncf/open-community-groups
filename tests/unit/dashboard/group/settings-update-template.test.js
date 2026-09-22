@@ -14,15 +14,12 @@ const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group settings update template", () => {
   it("shows the group id beside the group details description", async () => {
-    // Load the group settings template before checking the page title meta.
+    // Load the group settings template before checking the page title id.
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert the group id is passed to the page title.
     expect(template).to.include(
-      "{% let group_meta -%}(id: {{ group.group_id }}){%- endlet %}",
-    );
-    expect(template).to.include(
-      'dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/group-dashboard?id=settings-group-identity", description = "Information about the group.", meta = group_meta)',
+      'dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/group-dashboard?id=settings-group-identity", description = "Information about the group.", id = group.group_id.to_string())',
     );
   });
 });

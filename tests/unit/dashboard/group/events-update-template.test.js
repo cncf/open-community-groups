@@ -547,15 +547,12 @@ describe("dashboard group event update template", () => {
   });
 
   it("shows the event id beside the event details description", async () => {
-    // Load the event update template before checking the details title meta.
+    // Load the event update template before checking the details title id.
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert the event id is passed to the details section title.
     expect(template).to.include(
-      "{% let event_meta -%}(id: {{ event.event_id }}){%- endlet %}",
-    );
-    expect(template).to.include(
-      'dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.", meta = event_meta)',
+      'dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.", id = event.event_id.to_string())',
     );
   });
 

@@ -3,7 +3,6 @@
 {% import "macros/form_fields.html" as form_fields -%}
 
 {# Groups update form -#}
-{% let group_meta -%}(id: {{ group.group_id }}){%- endlet %}
 <form id="groups-form"
       hx-put="/dashboard/group/settings/update"
       hx-ext="no-empty-vals"
@@ -15,7 +14,7 @@
       data-success-message="You have successfully updated the group."
       data-error-message="Something went wrong updating the group. Please try again later.">
   <div class="space-y-12">
-    {{ dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/group-dashboard?id=settings-group-identity", description = "Information about the group.", meta = group_meta) -}}
+    {{ dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/group-dashboard?id=settings-group-identity", description = "Information about the group.", id = group.group_id.to_string()) -}}
 
     {% if !can_manage_settings -%}
       {{ dashboard::permission_warning(message = "Your role cannot update group settings.") -}}
