@@ -1,4 +1,5 @@
 -- Tests updating event dates and sessions.
+-- Split from update_event.sql to keep that file a manageable size.
 
 -- ============================================================================
 -- SETUP

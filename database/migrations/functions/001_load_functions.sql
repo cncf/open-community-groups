@@ -229,6 +229,7 @@
 {{ template "dashboard-group/get_cfs_submission_notification_data.sql" }}
 {{ template "dashboard-group/get_event_summary_dashboard.sql" }}
 {{ template "dashboard-group/get_group_external_payments_context.sql" }}
+{{ template "dashboard-group/get_group_external_payments_eligibility.sql" }}
 {{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/get_group_stats.sql" }}
 {{ template "dashboard-group/list_group_automatic_tax_readiness_event_ids.sql" }} -- Dependency for group_requires_automatic_tax_readiness

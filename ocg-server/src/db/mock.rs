@@ -533,6 +533,12 @@ mock! {
             community_id: Uuid,
             group_id: Uuid,
         ) -> Result<crate::types::payments::GroupExternalPaymentsContext>;
+        async fn get_group_external_payments_eligibility(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+            country_code: Option<String>,
+        ) -> Result<bool>;
         async fn get_group_payment_recipient(
             &self,
             community_id: Uuid,

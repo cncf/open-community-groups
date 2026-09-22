@@ -25,13 +25,14 @@ use crate::{
         dashboard::group::{
             analytics,
             home::{Content, Page, Tab},
-            settings,
         },
     },
     types::permissions::GroupPermission,
 };
 
-use super::{badges, check_in, events, logs, members, payments_ready, refunds, sponsors, team};
+use super::{
+    badges, check_in, events, logs, members, payments_ready, refunds, settings, sponsors, team,
+};
 
 #[cfg(test)]
 mod tests;
@@ -181,38 +182,15 @@ pub(crate) async fn page(
             Content::Refunds(template)
         }
         Tab::Settings => {
-            let (
-                can_manage_settings,
-                group,
-                has_child_links,
-                categories,
-                parent_options,
-                regions,
-                external_payments,
-            ) = tokio::try_join!(
-                db.user_has_group_permission(
-                    &community_id,
-                    &group_id,
-                    &user.user_id,
-                    GroupPermission::SettingsWrite
-                ),
-                db.get_group_full(community_id, group_id),
-                db.group_has_child_links(community_id, group_id),
-                db.list_group_categories(community_id),
-                db.list_group_parent_options(community_id, user.user_id, Some(group_id)),
-                db.list_regions(community_id),
-                db.get_group_external_payments_context(community_id, group_id)
-            )?;
-            Content::Settings(Box::new(settings::UpdatePage {
-                can_manage_settings,
-                categories,
-                external_payments,
-                group,
-                has_child_links,
-                parent_options,
-                payments_enabled: payments_cfg.is_some(),
-                regions,
-            }))
+            let template = settings::prepare_update_page(
+                &db,
+                community_id,
+                group_id,
+                user.user_id,
+                payments_cfg.is_some(),
+            )
+            .await?;
+            Content::Settings(Box::new(template))
         }
         Tab::Sponsors => {
             let (_, template) = sponsors::prepare_list_page(

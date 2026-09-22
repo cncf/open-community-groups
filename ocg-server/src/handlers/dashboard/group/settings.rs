@@ -8,6 +8,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
     config::PaymentsConfig,
@@ -39,30 +40,14 @@ pub(crate) async fn update_page(
     State(payments_cfg): State<Option<PaymentsConfig>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (can_manage_settings, group, has_child_links, categories, parent_options, regions) = tokio::try_join!(
-        db.user_has_group_permission(
-            &community_id,
-            &group_id,
-            &user.user_id,
-            GroupPermission::SettingsWrite
-        ),
-        db.get_group_full(community_id, group_id),
-        db.group_has_child_links(community_id, group_id),
-        db.list_group_categories(community_id),
-        db.list_group_parent_options(community_id, user.user_id, Some(group_id)),
-        db.list_regions(community_id)
-    )?;
-    let external_payments = db.get_group_external_payments_context(community_id, group_id).await?;
-    let template = settings::UpdatePage {
-        can_manage_settings,
-        categories,
-        external_payments,
-        group,
-        has_child_links,
-        parent_options,
-        payments_enabled: payments_cfg.is_some(),
-        regions,
-    };
+    let template = prepare_update_page(
+        &db,
+        community_id,
+        group_id,
+        user.user_id,
+        payments_cfg.is_some(),
+    )
+    .await?;
 
     Ok(Html(template.render()?))
 }
@@ -97,6 +82,22 @@ pub(crate) async fn update(
             current.provider != recipient.provider || current.recipient_id != recipient.recipient_id
         });
         if provider_account_changed {
+            // Avoid provider calls for a request already known to be blocked; the
+            // database re-evaluates the policy visible when its own guard runs
+            if db
+                .get_group_external_payments_eligibility(
+                    community_id,
+                    group_id,
+                    group_update.country_code.clone(),
+                )
+                .await?
+            {
+                return Err(HandlerError::Rejected(
+                    "stripe connected account cannot be added or changed for this group country"
+                        .to_string(),
+                ));
+            }
+
             let require_automatic_tax = db
                 .group_requires_automatic_tax_readiness(community_id, group_id)
                 .await?;
@@ -136,6 +137,50 @@ pub(crate) async fn update(
 }
 
 // Helpers.
+
+/// Prepares the group settings update page template.
+pub(crate) async fn prepare_update_page(
+    db: &DynDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    payments_enabled: bool,
+) -> Result<settings::UpdatePage> {
+    // Load the settings page context concurrently
+    let (
+        can_manage_settings,
+        group,
+        has_child_links,
+        categories,
+        parent_options,
+        regions,
+        external_payments,
+    ) = tokio::try_join!(
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user_id,
+            GroupPermission::SettingsWrite
+        ),
+        db.get_group_full(community_id, group_id),
+        db.group_has_child_links(community_id, group_id),
+        db.list_group_categories(community_id),
+        db.list_group_parent_options(community_id, user_id, Some(group_id)),
+        db.list_regions(community_id),
+        db.get_group_external_payments_context(community_id, group_id)
+    )?;
+
+    Ok(settings::UpdatePage {
+        can_manage_settings,
+        categories,
+        external_payments,
+        group,
+        has_child_links,
+        parent_options,
+        payments_enabled,
+        regions,
+    })
+}
 
 /// Maps an upcoming-event readiness failure onto the fiscal-sponsor update.
 fn upcoming_event_automatic_tax_error(

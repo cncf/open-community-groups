@@ -168,6 +168,14 @@ in-person or hybrid event, complete physical venue, and tax setup. Every paid
 hybrid ticket includes physical admission; it may also include virtual access,
 but cannot be virtual-only.
 
+If the operator has allowlisted the group's country for
+[external payments](#external-payments), the `Fiscal Sponsor` section shows a
+notice instead of the account fields: a Stripe connected account cannot be
+added or changed for that country. A fiscal sponsor that is already stored
+keeps its fields, so its legal name can be edited or both fields left blank to
+remove it; once removed it cannot be added again while the country stays
+allowlisted.
+
 If the deployment has no payment provider, the event editor still shows the
 `Tickets` tab for free configuration. Positive prices remain unavailable unless
 the group has opted into external payments, and group settings do not show a
@@ -182,8 +190,8 @@ Organizers with read access can still view attendee refund status in `Event -> A
 
 Groups in countries that Stripe Connect does not serve can collect ticket
 payments outside OCG when the operator has allowlisted the group's country.
-When that is the case, `Settings` shows an `External payments` section next to
-the fiscal-sponsor section with a `Collect ticket payments outside this platform`
+When that is the case, `Settings` shows an `External payments` section below
+the `Fiscal Sponsor` section with a `Collect ticket payments outside this platform`
 checkbox. Enabling it is an explicit, group-wide opt-in: every paid event in
 the group then requires a payment URL instead of Stripe Connect readiness, even
 if a fiscal sponsor is also configured.
@@ -194,6 +202,12 @@ Rules:
   the operator allowlist. When the group has no country or its country is not
   allowlisted, the checkbox is not offered unless it is already on, in which
   case it stays visible so it can be turned off.
+- While the group's country is allowlisted, a Stripe connected account cannot
+  be added or changed in the `Fiscal Sponsor` section, whether or not the
+  checkbox is on. A fiscal sponsor stored before the country was allowlisted
+  stays usable for paid events on Stripe (subject to its other prerequisites)
+  until the checkbox is turned on, and it can be renamed or removed. Moving the
+  group into an allowlisted country while keeping its sponsor is allowed.
 - Changing the group country away from an allowlisted country while the
   checkbox stays on is rejected unless the same save turns it off.
 - Turning it off is rejected while an upcoming published external paid event

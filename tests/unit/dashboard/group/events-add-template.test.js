@@ -284,6 +284,21 @@ describe("dashboard group event add template", () => {
     );
   });
 
+  it("points free-only ticketing at the external payments opt-in for allowlisted groups", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+    const ticketForm = template.slice(
+      template.indexOf('<form id="payments-form">'),
+      template.indexOf("{# End Tickets Tab -#}"),
+    );
+
+    expect(ticketForm).to.include(
+      "{% if self.is_paid_ticketing_available() -%} Set the ticket amount to 0 to make a specific tier free. " +
+        "{% else if self.requires_external_payments_opt_in() -%} Ticket prices are fixed at 0 until external payments are enabled in group settings; " +
+        "this deployment does not offer Stripe connected accounts for this group's country. " +
+        "{% else -%} Ticket prices are fixed at 0 until payments are configured. {% endif -%}",
+    );
+  });
+
   it("describes paid enrollment modes as mutually exclusive alternatives", async () => {
     // Load the event add template before checking enrollment guidance.
     const template = normalizeWhitespace(await loadTemplate());

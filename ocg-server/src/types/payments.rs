@@ -449,7 +449,9 @@ pub struct FiscalSponsorSeller {
 pub struct GroupExternalPaymentsContext {
     /// Whether the operator has configured external payments for this deployment.
     pub configured: bool,
-    /// Whether the group's country is currently allowlisted.
+    /// Whether the group's country is currently allowlisted. Allowlisting makes
+    /// the group eligible for external payments and, as operator policy, stops
+    /// it from adding or changing a Stripe connected account.
     pub eligible: bool,
     /// Whether the group has opted into external payments.
     pub enabled: bool,
@@ -460,6 +462,15 @@ pub struct GroupExternalPaymentsContext {
     pub default_payment_window_hours: Option<i32>,
     /// Maximum organizer-confirmation window in hours.
     pub max_payment_window_hours: Option<i32>,
+}
+
+impl GroupExternalPaymentsContext {
+    /// Returns true when operator policy blocks adding or changing a Stripe
+    /// connected account for the group's country. A recipient stored before
+    /// the country was allowlisted stays usable, renameable, and clearable.
+    pub(crate) fn stripe_onboarding_blocked(&self) -> bool {
+        self.eligible
+    }
 }
 
 /// Group-level payout recipient details.

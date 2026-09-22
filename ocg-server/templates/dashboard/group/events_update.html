@@ -876,7 +876,12 @@
           {% if paid_ticketing_read_only -%}
             <div class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600">
               <p class="text-sm/6">
-                Paid ticket settings are read-only until server payments and a matching group recipient are configured.
+                {% if self.requires_external_payments_opt_in() -%}
+                  Paid ticket settings are read-only. This group's country collects payments outside the platform:
+                  enable external payments in group settings and add a payment URL to keep selling these tickets.
+                {% else -%}
+                  Paid ticket settings are read-only until server payments and a matching group recipient are configured.
+                {% endif -%}
               </p>
             </div>
           {% endif -%}
@@ -1123,7 +1128,12 @@
           Paid ticket prices require an in-person or hybrid event with a venue name,
           address, city, postal code, and country.
           {% if ticketing_free_only -%}
-            Ticket prices are fixed at 0 until payments are configured.
+            {% if self.requires_external_payments_opt_in() -%}
+              Ticket prices are fixed at 0 until external payments are enabled in group settings;
+              this deployment does not offer Stripe connected accounts for this group's country.
+            {% else -%}
+              Ticket prices are fixed at 0 until payments are configured.
+            {% endif -%}
           {% else -%}
             Set the ticket amount to 0 to make a specific tier free.
           {% endif -%}
