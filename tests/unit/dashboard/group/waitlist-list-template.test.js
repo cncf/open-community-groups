@@ -171,7 +171,7 @@ describe("dashboard group waitlist list template", () => {
       "entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Canceled)",
     );
     expect(template).to.include(
-      "{% let can_invite = !event.canceled && !event.is_past() && (is_queued || can_reissue) -%}",
+      "{% let can_invite = !event.canceled && !event.is_past() && (is_queued || has_stale_offer) -%}",
     );
     expect(template).to.include("{% if can_manage_events && (has_active_offer || can_invite) -%}");
 
@@ -179,9 +179,10 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include(
       '<form hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite" hx-indicator="#dashboard-spinner" hx-disabled-elt="find button[type=submit]" data-waitlist-invite-action',
     );
-    expect(template).to.include(
-      'data-success-message="{% if is_queued %}Invitation sent.{% else %}Ticket offer reissued.{% endif %}"',
-    );
+    // Verify stale offers get a plain invitation rather than a reissued waitlist offer.
+    expect(template).to.include('data-success-message="Invitation sent."');
+    expect(template).not.to.include("reissue");
+    expect(template).not.to.include("Reissue");
     expect(template).to.include('<input type="hidden" name="user_id" value="{{ entry.user.user_id }}">');
     expect(template).to.include('<label for="waitlist-invite-ticket-type-{{ row_key }}"');
     expect(template).to.include(
@@ -199,9 +200,7 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include("data-waitlist-invite-ticket-empty");
     expect(template).to.include("data-waitlist-invite-ticket-submit");
     expect(template).to.include("<span>Invite</span>");
-    expect(template).to.include("<span>Reissue offer</span>");
     expect(template).to.include("icon-user-plus");
-    expect(template).to.include("icon-refresh");
 
     // Verify each row owns a stable dropdown key even without an offer.
     expect(template).to.include("{% let row_key = self::waitlist_row_key(entry) -%}");

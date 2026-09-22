@@ -277,10 +277,10 @@
               {% let is_queued = entry.admission_offer_id.is_none() -%}
               {% let has_active_offer = entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
                 || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
-              {% let can_reissue = entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)
+              {% let has_stale_offer = entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)
                 || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Declined)
                 || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Canceled) -%}
-              {% let can_invite = !event.canceled && !event.is_past() && (is_queued || can_reissue) -%}
+              {% let can_invite = !event.canceled && !event.is_past() && (is_queued || has_stale_offer) -%}
               {% let row_key = self::waitlist_row_key(entry) -%}
               <div class="flex justify-end">
                 {% if can_manage_events && (has_active_offer || can_invite) -%}
@@ -326,7 +326,7 @@
                                   hx-indicator="#dashboard-spinner"
                                   hx-disabled-elt="find button[type=submit]"
                                   data-waitlist-invite-action
-                                  data-success-message="{% if is_queued %}Invitation sent.{% else %}Ticket offer reissued.{% endif %}"
+                                  data-success-message="Invitation sent."
                                   data-error-message="Something went wrong sending this invitation. Please check capacity and ticket availability, then try again.">
                               <input type="hidden" name="user_id" value="{{ entry.user.user_id }}">
                               <div class="px-4 pb-2">
@@ -369,13 +369,8 @@
                                       role="menuitem"
                                       data-waitlist-invite-ticket-submit
                                       class="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50">
-                                {% if is_queued -%}
-                                  <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-600"></div>
-                                  <span>Invite</span>
-                                {% else -%}
-                                  <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
-                                  <span>Reissue offer</span>
-                                {% endif -%}
+                                <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-600"></div>
+                                <span>Invite</span>
                               </button>
                             </form>
                           </li>
