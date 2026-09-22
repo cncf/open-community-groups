@@ -8,6 +8,13 @@ Public pages are usable on mobile, so you can discover groups and events from yo
 user and group Check-In sections are also mobile-friendly. Other dashboard sections are currently
 desktop-only.
 
+If you need one of those sections from a phone or tablet, open the user menu at the top right and
+choose **Desktop version**. The site reloads with the full desktop layout, so everything is
+available, although it is not optimized for small screens. The choice applies to the whole site
+and is remembered in that browser until you pick **Mobile version** from the same menu. It only
+changes the layout, never your permissions, and it requires JavaScript and cookies. Because the
+switch reloads the page, save any unfinished work first.
+
 ## Where Do I Submit a Speaker Proposal?
 
 Proposal creation and submission happen in two different places. First create your proposals in

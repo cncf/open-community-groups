@@ -23,11 +23,7 @@
 
 {% block mobile_dashboard_view -%}
   {% if !content.is_check_in() -%}
-    <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">
-      <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
-        <p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>
-      </div>
-    </div>
+    {{ dashboard::mobile_notice() -}}
   {% endif -%}
 {% endblock mobile_dashboard_view -%}
 

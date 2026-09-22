@@ -41,6 +41,8 @@ choose the needed community or group.
 the right context.
 Community Dashboard needs a selected community.
 Group Dashboard needs both a selected community and a selected group.
+On phones, the mobile layout hides the dashboard links; choose **Desktop version** from the same
+menu to make them reappear.
 
 ## Fixed Role Model
 

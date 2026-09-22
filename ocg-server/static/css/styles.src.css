@@ -5,6 +5,9 @@
 @source "static/js";
 @source "templates";
 
+/* Active while the desktop version mode is on (set by common/base.html). */
+@custom-variant viewport-desktop (&:where(html[data-viewport-mode="desktop"] *));
+
 @theme {
   --font-inter: Inter, sans-serif;
   --font-sans:
@@ -671,6 +674,7 @@ input:placeholder-shown {
 .icon-copy { --icon-url: url('/static/images/icons/copy.svg'); }
 .icon-csv { --icon-url: url('/static/images/icons/csv.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
+.icon-desktop { --icon-url: url('/static/images/icons/desktop.svg'); }
 .icon-docs { --icon-url: url('/static/images/icons/docs.svg'); }
 .icon-download { --icon-url: url('/static/images/icons/download.svg'); }
 .icon-drag { --icon-url: url('/static/images/icons/drag.svg'); }
@@ -711,6 +715,7 @@ input:placeholder-shown {
 .icon-megaphone { --icon-url: url('/static/images/icons/megaphone.svg'); }
 .icon-members { --icon-url: url('/static/images/icons/members.svg'); }
 .icon-meeting { --icon-url: url('/static/images/icons/meeting.svg'); }
+.icon-mobile { --icon-url: url('/static/images/icons/mobile.svg'); }
 .icon-network { --icon-url: url('/static/images/icons/network.svg'); }
 .icon-next { --icon-url: url('/static/images/icons/next.svg'); }
 .icon-pencil { --icon-url: url('/static/images/icons/pencil.svg'); }

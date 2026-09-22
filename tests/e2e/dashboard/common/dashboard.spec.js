@@ -122,6 +122,46 @@ test.describe("dashboard access and shared behavior", () => {
       await expect(warning).toBeHidden();
       await expect(openMenuButton).toBeHidden();
     });
+
+    test("desktop version mode replaces the mobile unsupported state", async ({ member1Page }) => {
+      // Load unsupported user content on the mobile viewport.
+      await navigateToPath(member1Page, "/dashboard/user?tab=events");
+      const main = member1Page.locator("#dashboard-main-content");
+      const warning = member1Page.getByText(MOBILE_WARNING, { exact: true });
+
+      // Verify the placeholder points touch users to the desktop version entry.
+      await expect(warning).toBeVisible();
+      await expect(main).toBeHidden();
+      await expect(member1Page.getByText(/load the desktop version from the user menu/u)).toBeVisible();
+
+      // Enable the desktop version from the user menu and wait for the reload.
+      await member1Page.locator('#user-dropdown-button[data-logged-in="true"]').click();
+      const desktopVersionItem = member1Page
+        .locator("#user-dropdown")
+        .getByRole("menuitem", { name: "Desktop version" });
+      await expect(desktopVersionItem).toBeVisible();
+      await Promise.all([member1Page.waitForEvent("load"), desktopVersionItem.click()]);
+
+      // Verify the dashboard content replaces the placeholder in desktop mode.
+      await expect
+        .poll(() => member1Page.evaluate(() => document.documentElement.dataset.viewportMode))
+        .toBe("desktop");
+      await expect(warning).toBeHidden();
+      await expect(main).toBeVisible();
+      await expect(member1Page.getByRole("button", { name: "Open dashboard menu" })).toBeHidden();
+
+      // Verify the mobile version entry restores the responsive layout. The 1280px layout
+      // exceeds the mobile visual viewport, so drive the menu through DOM events instead of
+      // emulated pointer coordinates.
+      await member1Page.locator('#user-dropdown-button[data-logged-in="true"]').dispatchEvent("click");
+      const mobileVersionItem = member1Page
+        .locator("#user-dropdown")
+        .getByRole("menuitem", { name: "Mobile version" });
+      await expect(mobileVersionItem).toBeVisible();
+      await Promise.all([member1Page.waitForEvent("load"), mobileVersionItem.dispatchEvent("click")]);
+      await expect(warning).toBeVisible();
+      await expect(main).toBeHidden();
+    });
   });
 });
 

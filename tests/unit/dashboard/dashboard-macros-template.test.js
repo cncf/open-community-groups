@@ -1,7 +1,7 @@
 import { expect } from "@open-wc/testing";
 
-const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/macros/dashboard.html");
+const loadTemplate = async (path = "macros/dashboard.html") => {
+  const response = await fetch(`/ocg-server/templates/${path}`);
 
   expect(response.ok).to.equal(true);
 
@@ -146,5 +146,46 @@ describe("dashboard macros template", () => {
     expect(template).to.include('name="review_note"');
     expect(template).to.include("{% if show_reason -%}");
     expect(template).to.include("Review note (optional)");
+  });
+
+  it("renders the shared mobile notice with a touch-only desktop version hint", async () => {
+    // Load the dashboard macros template before checking the mobile notice.
+    const template = normalizeWhitespace(await loadTemplate());
+    const macro = template.slice(template.indexOf("{% macro mobile_notice() -%}"));
+
+    // Verify the overlay keeps its original card and heading.
+    expect(macro).to.include(
+      '<div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">',
+    );
+    expect(macro).to.include(
+      '<p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>',
+    );
+
+    // Verify the hint only shows where the user menu offers the desktop version entry.
+    expect(macro).to.include('<p class="hidden pointer-coarse:block text-sm text-stone-600 mt-4">');
+    expect(macro).to.include("load the desktop version from the user menu at the top right");
+    expect(macro).to.include("you can switch back from the same menu");
+  });
+
+  it("is used by every dashboard instead of an inline mobile notice", async () => {
+    // Load the dashboard shells that render the mobile notice.
+    const templates = await Promise.all([
+      loadTemplate("dashboard/dashboard_base.html"),
+      loadTemplate("dashboard/user/home.html"),
+      loadTemplate("dashboard/group/home.html"),
+    ]);
+
+    // Verify each shell delegates to the shared macro and carries no copy of the card.
+    templates.forEach((source) => {
+      const template = normalizeWhitespace(source);
+      expect(template).to.include("{{ dashboard::mobile_notice() -}}");
+      expect(template).not.to.include("This dashboard is not optimized yet for mobile devices");
+    });
+
+    // Verify the group dashboard keeps the notice inside its out-of-band swap container.
+    const groupTemplate = normalizeWhitespace(templates[2]);
+    expect(groupTemplate).to.include(
+      '<div id="mobile-dashboard-view" class="contents"> {% if !content.is_check_in() && !is_check_in_fallback -%} {{ dashboard::mobile_notice() -}} {% endif -%} </div>',
+    );
   });
 });

@@ -2,6 +2,13 @@ import { expect, test } from "../../fixtures.js";
 
 import { navigateToPath, navigateToSiteHome } from "../../utils.js";
 
+/**
+ * Clicks a control through a DOM event instead of emulated pointer input. In desktop version
+ * mode the 1280px layout viewport exceeds the mobile visual viewport, and Chromium's emulated
+ * pointer coordinates no longer map onto elements outside the visible area.
+ */
+const clickInDesktopMode = (locator) => locator.dispatchEvent("click");
+
 test.describe("site header", () => {
   test("desktop navigation links point to the expected public pages", async ({ page }) => {
     // Load the public home page before checking desktop navigation links.
@@ -114,6 +121,110 @@ test.describe("site header", () => {
     await expect(userMenu.getByRole("menuitem", { name: "Docs" })).toHaveAttribute("href", "/docs");
     await expect(userMenu.getByRole("menuitem", { name: "Sign up" })).toBeVisible();
     await expect(userMenu.getByRole("menuitem", { name: "Log in" })).toBeVisible();
+  });
+
+  test("desktop version mode is toggled from the mobile user menu @mobile", async ({ page }) => {
+    // Load a public page with a query string and fragment the reload must preserve.
+    await navigateToPath(page, "/explore?entity=events#main-content");
+    const initialUrl = page.url();
+    expect(initialUrl).toContain("?entity=events#main-content");
+    const userMenuButton = page.locator('#user-dropdown-button[data-logged-in="false"]');
+    const userMenu = page.locator("#user-dropdown");
+    const desktopVersionItem = userMenu.getByRole("menuitem", { name: "Desktop version" });
+    const mobileVersionItem = userMenu.getByRole("menuitem", { name: "Mobile version" });
+
+    // Verify the responsive layout offers only the desktop version entry.
+    await userMenuButton.click();
+    await expect(desktopVersionItem).toBeVisible();
+    await expect(mobileVersionItem).toBeHidden();
+
+    // Verify a manually applied attribute hides the entry even before any reload.
+    await page.evaluate(() => document.documentElement.setAttribute("data-viewport-mode", "desktop"));
+    await expect(desktopVersionItem).toBeHidden();
+    await expect(mobileVersionItem).toBeVisible();
+    await page.evaluate(() => document.documentElement.removeAttribute("data-viewport-mode"));
+    await expect(desktopVersionItem).toBeVisible();
+
+    // Enable the desktop version and wait for the reload it triggers.
+    await Promise.all([page.waitForEvent("load"), desktopVersionItem.click()]);
+
+    // Verify the reloaded document is in desktop mode at the same URL, fragment included.
+    expect(page.url()).toBe(initialUrl);
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.dataset.viewportMode))
+      .toBe("desktop");
+    expect(await page.evaluate(() => window.innerWidth)).toBe(1280);
+    expect(await page.evaluate(() => document.cookie)).toContain("ocg_viewport_mode=desktop");
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", "width=1280");
+
+    // Verify the menu now offers only the mobile version entry.
+    await clickInDesktopMode(userMenuButton);
+    await expect(mobileVersionItem).toBeVisible();
+    await expect(desktopVersionItem).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect(userMenu).toBeHidden();
+
+    // Verify a boosted navigation keeps the mode.
+    const statsLink = page
+      .getByRole("navigation", { name: "Main navigation" })
+      .getByRole("link", { name: "Stats" });
+    await expect(statsLink).toBeVisible();
+    await clickInDesktopMode(statsLink);
+    await expect(page).toHaveURL(/\/stats$/u);
+    expect(await page.evaluate(() => document.documentElement.dataset.viewportMode)).toBe("desktop");
+    expect(await page.evaluate(() => window.innerWidth)).toBe(1280);
+
+    // Return to the mobile version and wait for the reload.
+    await expect(userMenuButton).toBeVisible();
+    await clickInDesktopMode(userMenuButton);
+    await expect(mobileVersionItem).toBeVisible();
+    await Promise.all([page.waitForEvent("load"), clickInDesktopMode(mobileVersionItem)]);
+
+    // Verify the responsive layout is restored and the cookie is gone.
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.hasAttribute("data-viewport-mode")))
+      .toBe(false);
+    expect(await page.evaluate(() => window.innerWidth)).toBeLessThan(1024);
+    expect(await page.evaluate(() => document.cookie)).not.toContain("ocg_viewport_mode");
+    await userMenuButton.click();
+    await expect(desktopVersionItem).toBeVisible();
+    await expect(mobileVersionItem).toBeHidden();
+  });
+
+  test("desktop version entry follows the lg breakpoint on touch devices @mobile", async ({ page }) => {
+    // Load the public shell and open the guest menu.
+    await navigateToSiteHome(page);
+    const userMenuButton = page.locator('#user-dropdown-button[data-logged-in="false"]');
+    const userMenu = page.locator("#user-dropdown");
+    const desktopVersionItem = userMenu.getByRole("menuitem", { name: "Desktop version" });
+
+    // Verify the entry disappears once the layout viewport reaches lg.
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await userMenuButton.click();
+    await expect(desktopVersionItem).toBeHidden();
+    await expect(userMenu.getByRole("menuitem", { name: "Mobile version" })).toBeHidden();
+
+    // Verify the entry returns right below lg.
+    await page.setViewportSize({ width: 1023, height: 900 });
+    await expect(desktopVersionItem).toBeVisible();
+  });
+
+  test("viewport mode entries stay hidden for fine pointer devices", async ({ page }) => {
+    // Load the public shell and open the guest menu on a mouse-driven browser.
+    await navigateToSiteHome(page);
+    const userMenuButton = page.locator("#user-dropdown-button");
+    const userMenu = page.locator("#user-dropdown");
+
+    // Verify neither entry shows at desktop or narrow widths.
+    for (const width of [1280, 1023, 767]) {
+      await page.setViewportSize({ width, height: 900 });
+      await userMenuButton.click();
+      await expect(userMenu).toBeVisible();
+      await expect(userMenu.getByRole("menuitem", { name: "Desktop version" })).toBeHidden();
+      await expect(userMenu.getByRole("menuitem", { name: "Mobile version" })).toBeHidden();
+      await page.keyboard.press("Escape");
+      await expect(userMenu).toBeHidden();
+    }
   });
 
   test("logged-in attendee opens personal check-in from the mobile menu @mobile", async ({
