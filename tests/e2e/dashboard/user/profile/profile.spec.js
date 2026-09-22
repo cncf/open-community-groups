@@ -55,7 +55,7 @@ test.describe("user dashboard profile view", () => {
 
     // Find the notification toggle label.
     const notificationToggleLabel = page.locator('label[for="toggle_optional_notifications_enabled"]');
-    const notificationSwitch = notificationToggleLabel.locator("span.relative.w-11.h-6");
+    const notificationSwitch = notificationToggleLabel.locator(".toggle-track");
     const notificationText = notificationToggleLabel.getByText("Receive optional notifications");
     const notificationDescription = page.getByText(
       "Receive broader announcements such as new event announcements",
