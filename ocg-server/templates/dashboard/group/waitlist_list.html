@@ -273,7 +273,7 @@
             </td>
             {# End created date -#}
             {# Actions -#}
-            <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
+            <td class="px-3 xl:px-5 py-4 w-[72px]">
               {% let is_queued = entry.admission_offer_id.is_none() -%}
               {% let has_active_offer = entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
                 || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
@@ -282,9 +282,9 @@
                 || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Canceled) -%}
               {% let can_invite = !event.canceled && !event.is_past() && (is_queued || can_reissue) -%}
               {% let row_key = self::waitlist_row_key(entry) -%}
-              <div class="relative inline-flex justify-end">
+              <div class="flex justify-end">
                 {% if can_manage_events && (has_active_offer || can_invite) -%}
-                  <div class="group relative inline-flex justify-end">
+                  <div class="group relative">
                     <button type="button"
                             class="btn-actions btn-tertiary flex items-center justify-center p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
                             data-event-id="{{ row_key }}"
@@ -357,12 +357,13 @@
                                     {% endfor -%}
                                   {% endif -%}
                                 </select>
-                                <p data-waitlist-invite-ticket-empty
-                                   class="form-legend hidden text-amber-800">
+                                <p class="form-legend mt-2">The admission tier is reserved when the invitation is sent.</p>
+                                <div data-waitlist-invite-ticket-empty
+                                     role="status"
+                                     class="mt-3 hidden rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs/5 text-amber-900">
                                   No ticket types can be assigned. Add seats or activate a ticket type with a current
                                   price before sending an invitation.
-                                </p>
-                                <p class="form-legend mt-2">The admission tier is reserved when the invitation is sent.</p>
+                                </div>
                               </div>
                               <button type="submit"
                                       role="menuitem"
