@@ -58,7 +58,7 @@ test.describe("external payment settings", () => {
 
       // Verify group settings explain the ineligible payment state.
       await navigateToPath(organizerExternalGroupPage, "/dashboard/group?tab=settings");
-      await expect(organizerExternalGroupPage.getByRole("alert")).toContainText(
+      await expect(organizerExternalGroupPage.getByRole("note")).toContainText(
         "External payments are not available for groups located in United States.",
       );
 
@@ -112,7 +112,7 @@ test.describe("external payment settings", () => {
       await expect(ineligibleToggle.locator("xpath=following-sibling::div[1]")).toBeVisible();
       // The legal name stays editable so an enabled legacy group can still save it.
       await expect(organizerExternalGroupPage.getByRole("textbox", { name: /^Legal Name/u })).toBeEnabled();
-      const eligibilityWarning = organizerExternalGroupPage.getByRole("alert");
+      const eligibilityWarning = organizerExternalGroupPage.getByRole("note");
       await expect(eligibilityWarning).toContainText(
         "External payments are not available for groups located in United States.",
       );
@@ -131,7 +131,7 @@ test.describe("external payment settings", () => {
           name: toggleName,
         }),
       ).toBeDisabled();
-      await expect(organizerExternalGroupPage.getByRole("alert")).toContainText(
+      await expect(organizerExternalGroupPage.getByRole("note")).toContainText(
         "Set the group's location above and save the settings to determine eligibility.",
       );
     } finally {

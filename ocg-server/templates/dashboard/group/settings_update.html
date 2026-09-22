@@ -199,31 +199,7 @@
   <div class="border-b border-stone-900/10 pb-12">
     {{ dashboard::form_title(title = "Fiscal Sponsor", description = "Configure the legal seller for this group's paid events.") -}}
 
-    {% if external_payments.stripe_onboarding_blocked() -%}
-      {# Stripe onboarding blocked for the group country -#}
-      <div class="mt-4 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
-           role="alert">
-        <p>
-          This deployment collects ticket payments outside the platform for groups located in
-          <span class="font-semibold">
-            {%- if let Some(country_code) = &external_payments.country_code -%}
-              {{ group.country_name.as_deref().unwrap_or(country_code) }}
-            {%- else -%}
-              this country
-            {%- endif -%}
-          </span>.
-          A Stripe connected account cannot be added or changed here; use the External payments section below.
-        </p>
-        {% if group.payment_recipient.is_some() -%}
-          <p class="mt-2">
-            The stored fiscal sponsor can still be used for paid events on Stripe while its other payment
-            prerequisites hold; external payments take precedence once enabled. You can edit the legal name or
-            leave both fields blank to remove it (removal is blocked while upcoming published paid events depend
-            on it). A removed account cannot be added again while the country stays on this list.
-          </p>
-        {% endif -%}
-      </div>
-    {% else -%}
+    {% if !external_payments.stripe_onboarding_blocked() -%}
       <p class="mt-4 max-w-3xl text-sm/6 text-stone-600">
         The fiscal sponsor owns Tax Rate definitions in Stripe. Event organizers select the applicable active rates in each event's Tickets tab.
       </p>
@@ -264,9 +240,38 @@
           </div>
           <p class="form-legend">
             Enter the Standard-like Stripe connected account owned by the named fiscal sponsor that sells tickets and handles tax, invoices, refunds, disputes, and negative balances.
-            Leave both fiscal sponsor fields blank to keep the group on free events only.
+            {% if external_payments.stripe_onboarding_blocked() -%}
+              Leave both fiscal sponsor fields blank to remove the stored fiscal sponsor; it cannot be added again while this country collects payments outside the platform.
+            {% else -%}
+              Leave both fiscal sponsor fields blank to keep the group on free events only.
+            {% endif -%}
           </p>
         </div>
+      </div>
+    {% endif -%}
+
+    {% if external_payments.stripe_onboarding_blocked() -%}
+      {# Stripe onboarding blocked for the group country -#}
+      <div class="{% if self.shows_fiscal_sponsor_fields() %}mt-8{% else %}mt-4{% endif %}
+                  max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
+           role="note">
+        <p>
+          This deployment collects ticket payments outside the platform for groups located in
+          <span class="font-semibold">
+            {%- if let Some(country_code) = &external_payments.country_code -%}
+              {{ group.country_name.as_deref().unwrap_or(country_code) }}
+            {%- endif -%}
+          </span>.
+          A Stripe connected account cannot be added or changed here; use the External payments section below.
+        </p>
+        {% if group.payment_recipient.is_some() -%}
+          <p class="mt-2">
+            The stored fiscal sponsor can still be used for paid events on Stripe while its other payment
+            prerequisites hold; external payments take precedence once enabled. You can edit the legal name or
+            leave both fields blank to remove it (removal is blocked while upcoming published paid events depend
+            on it). A removed account cannot be added again while the country stays on this list.
+          </p>
+        {% endif -%}
       </div>
     {% endif -%}
   </div>
@@ -279,6 +284,33 @@
     {{ dashboard::form_title(title = "External payments", description = "Collect ticket payments outside this platform when Stripe Connect is not available.") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      {# External payee legal name -#}
+      {% let external_payee_name_disabled = !external_payments.eligible && !group.external_payments_enabled -%}
+      <div class="col-span-full lg:col-span-4">
+        <label for="external_payments_seller_display_name" class="form-label">
+          Legal Name
+          {% if !external_payee_name_disabled -%}
+            <span class="asterisk">* <sup class="text-xs font-normal">(required while enabled)</sup></span>
+          {% endif -%}
+        </label>
+        <div class="mt-2">
+          <input type="text"
+                 name="external_payments_seller_display_name"
+                 id="external_payments_seller_display_name"
+                 class="input-primary"
+                 maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                 placeholder="Example Organization, Inc."
+                 {% if let Some(seller_display_name) = &group.external_payments_seller_display_name %}
+                   value="{{ seller_display_name }}"
+                 {% endif %}
+                 {% if external_payee_name_disabled %}disabled{% endif %}>
+        </div>
+        <p class="form-legend">
+          Legal name of the organization collecting ticket payments outside this platform.
+          Required while external payments are enabled and shown to attendees on the event page.
+        </p>
+      </div>
+
       <div class="col-span-full">
         {% if !external_payments.eligible -%}
           <label class="inline-flex cursor-not-allowed items-center">
@@ -290,13 +322,16 @@
                    id="external_payments_enabled"
                    {% if group.external_payments_enabled %}checked{% endif %}
                    disabled>
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-            </div>
+            <div class="toggle-track"></div>
             <span class="ms-3 text-sm font-medium text-stone-900">Collect ticket payments outside this platform</span>
           </label>
           <div class="mt-4 w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
-               role="alert">
-            {% if let Some(country_code) = &external_payments.country_code -%}
+               role="note">
+            {% if !external_payments.configured -%}
+              External payments are not configured for this deployment, so this option cannot
+              be changed. Contact the platform operator if the group still needs to collect
+              ticket payments outside this platform.
+            {% else if let Some(country_code) = &external_payments.country_code -%}
               External payments are not available for groups located in
               <span class="font-semibold">{{ group.country_name.as_deref().unwrap_or(country_code) }}</span>.
               This option is offered in a limited set of countries. If the group's country is
@@ -315,8 +350,7 @@
                    name="external_payments_enabled"
                    value="true"
                    {% if group.external_payments_enabled %}checked{% endif %}>
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-            </div>
+            <div class="toggle-track"></div>
             <span class="ms-3 text-sm font-medium text-stone-900">Collect ticket payments outside this platform</span>
           </label>
           <p class="form-legend">
@@ -325,30 +359,6 @@
             those events first.
           </p>
         {% endif -%}
-      </div>
-
-      {# External payee legal name -#}
-      <div class="col-span-full lg:col-span-4">
-        <label for="external_payments_seller_display_name" class="form-label">
-          Legal Name
-          <span class="asterisk">* <sup class="text-xs font-normal">(required while enabled)</sup></span>
-        </label>
-        <div class="mt-2">
-          <input type="text"
-                 name="external_payments_seller_display_name"
-                 id="external_payments_seller_display_name"
-                 class="input-primary"
-                 maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
-                 placeholder="Example Organization, Inc."
-                 {% if let Some(seller_display_name) = &group.external_payments_seller_display_name %}
-                   value="{{ seller_display_name }}"
-                 {% endif %}
-                 {% if !external_payments.eligible && !group.external_payments_enabled %}disabled{% endif %}>
-        </div>
-        <p class="form-legend">
-          Legal name of the organization collecting ticket payments outside this platform.
-          Required while external payments are enabled and shown to attendees on the event page.
-        </p>
       </div>
     </div>
   </div>

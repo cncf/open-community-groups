@@ -947,9 +947,7 @@ class TicketTypesEditor extends TicketingEditorBase {
                     ?disabled=${!this._isModalOpen}
                     @change=${(event) => this._updateDraftTicketType("active", event.target.checked)}
                   />
-                  <div
-                    class="relative h-6 w-11 rounded-full bg-stone-200 transition peer-checked:bg-primary-500 peer-checked:after:translate-x-full after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-200 after:bg-white after:transition-all after:content-['']"
-                  ></div>
+                  <div class="toggle-track"></div>
                   <span class="ms-3 text-sm font-medium text-stone-900">Active</span>
                 </label>
               </div>

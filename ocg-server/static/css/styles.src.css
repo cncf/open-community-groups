@@ -76,6 +76,16 @@
     @apply bg-stone-900;
   }
 
+  /* Toggle switch track, placed right after an `sr-only peer` checkbox */
+  .toggle-track {
+    @apply relative h-6 w-11 rounded-full bg-stone-200 transition-colors
+      peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300
+      peer-checked:bg-primary-500
+      after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-['']
+      peer-checked:after:translate-x-full peer-checked:after:border-white rtl:peer-checked:after:-translate-x-full
+      peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-disabled:after:bg-stone-100;
+  }
+
   .btn-primary-outline {
     @apply enabled:cursor-pointer text-center text-primary-500 border border-primary-500 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-500 hover:enabled:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
   }

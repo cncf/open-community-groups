@@ -191,23 +191,26 @@ Organizers with read access can still view attendee refund status in `Event -> A
 Groups in countries that Stripe Connect does not serve can collect ticket
 payments outside OCG when the operator has allowlisted the group's country.
 When that is the case, `Settings` shows an `External payments` section below
-the `Fiscal Sponsor` section with a `Collect ticket payments outside this platform`
-checkbox and a `Legal Name` field. Enabling it is an explicit, group-wide
-opt-in: every paid event in the group then requires a payment URL instead of
-Stripe Connect readiness, even if a fiscal sponsor is also configured.
+the `Fiscal Sponsor` section with a `Legal Name` field and a
+`Collect ticket payments outside this platform` checkbox. Enabling the checkbox
+is an explicit, group-wide opt-in: every paid event in the group then requires
+a payment URL instead of Stripe Connect readiness, even if a fiscal sponsor is
+also configured.
 
 `Legal Name` is the legal name of the organization that collects the external
 payments. It is required while the checkbox is on, and the public event page
-of every paid external event shows it in a `Host` box as the legal entity
+of every paid external event shows it in a notice as the legal entity
 responsible for ticket sales and invoicing. Paid events on Stripe show the
-fiscal sponsor's legal name in the same box.
+fiscal sponsor's legal name in the same notice.
 
 Rules:
 
 - The group's country, taken from the location field in `Settings`, must be on
   the operator allowlist. When the group has no country or its country is not
   allowlisted, the checkbox is not offered unless it is already on, in which
-  case it stays visible so it can be turned off.
+  case it stays visible but locked, greyed out with a notice explaining why.
+  The same applies when the operator has not configured external payments
+  for the deployment at all.
 - Saving `Settings` with the checkbox on and `Legal Name` blank is rejected.
   While the checkbox is on without a stored legal name, the group stays on the
   external rail but is not ready to collect: new external checkouts, paid

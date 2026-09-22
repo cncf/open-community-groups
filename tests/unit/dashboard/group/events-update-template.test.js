@@ -293,16 +293,30 @@ describe("dashboard group event update template", () => {
     expect(paymentUrlIndex).to.be.greaterThan(currencyIndex);
     expect(paymentWindowIndex).to.be.greaterThan(paymentUrlIndex);
     expect(paymentInstructionsIndex).to.be.greaterThan(paymentWindowIndex);
-    expect(template).to.include("{% if self.requires_external_payments_seller_name() -%}");
+    expect(template).to.include(
+      "{% if self.requires_external_payments_seller_name() -%}",
+    );
+    // Both rail notices render as amber alert boxes rather than plain legends.
+    expect(template).to.include(
+      '{% if self.requires_external_payments_seller_name() -%} <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900" role="note"> Save the legal name',
+    );
     expect(template).to.include(
       "Save the legal name of the organization collecting external payments in group settings to save changes and keep selling these tickets.",
     );
-    expect(template).to.include("{% else if !self.uses_external_ticketing() -%}");
+    expect(template).to.include(
+      "{% else if !self.uses_external_ticketing() -%}",
+    );
+    expect(template).to.include(
+      '{% else if !self.uses_external_ticketing() -%} <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900" role="note"> External payments are no longer available for this group.',
+    );
     expect(template).to.include(
       "External payments are no longer available for this group.",
     );
     expect(template).to.include(
-      "Clear the external payment URL to save changes; paid tickets",
+      "turn external payments back on in group settings if the group is still eligible, or clear the external payment URL and set every ticket price to 0.",
+    );
+    expect(template).to.include(
+      "Paid tickets off the external rail need a Stripe fiscal sponsor, which is not offered in external-payment countries.",
     );
   });
 

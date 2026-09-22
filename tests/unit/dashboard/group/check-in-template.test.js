@@ -41,7 +41,9 @@ describe("dashboard group check-in template", () => {
 
     // Verify the title legend replaces the desktop action with an explanatory link.
     expect(template).to.include('<span class="hidden md:inline">');
-    expect(template).to.include("For manual check-in, open an event's attendee list from");
+    expect(template).to.include(
+      "For manual check-in, open an event's attendee list from",
+    );
     expect(template).to.include('href="/dashboard/group?tab=events"');
     expect(template).to.include(">Events</a>.");
     expect(template).not.to.include(">Manual attendees list</a>");
@@ -57,7 +59,9 @@ describe("dashboard group check-in template", () => {
       'class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"',
     );
     expect(template).to.include("<span>Scan Attendee Codes</span>");
-    expect(template).to.include('<span class="sr-only">for {{ event.name }}</span>');
+    expect(template).to.include(
+      '<span class="sr-only">for {{ event.name }}</span>',
+    );
     expect(template).not.to.include("icon-qr-code bg-primary-500");
   });
 
@@ -65,14 +69,18 @@ describe("dashboard group check-in template", () => {
     // Load the Check-In template before checking the modal primitives.
     const checkInTemplate = normalizeWhitespace(await loadTemplate());
     const template = normalizeWhitespace(
-      await loadTemplate("/ocg-server/templates/dashboard/group/check_in_scanner_modal.html"),
+      await loadTemplate(
+        "/ocg-server/templates/dashboard/group/check_in_scanner_modal.html",
+      ),
     );
 
     // Verify the scanner follows the app modal, form, switch, and action styles.
     expect(checkInTemplate).to.include(
       '{% include "dashboard/group/check_in_scanner_modal.html" -%}',
     );
-    expect(template).to.include('{% import "macros/dashboard.html" as dashboard -%}');
+    expect(template).to.include(
+      '{% import "macros/dashboard.html" as dashboard -%}',
+    );
     expect(template).to.include(
       'class="fixed inset-0 z-[1000] hidden h-full max-h-full w-full items-center justify-center overflow-x-hidden overflow-y-auto flex"',
     );
@@ -88,7 +96,9 @@ describe("dashboard group check-in template", () => {
     );
     expect(template).to.include('id="group-check-in-event-name"');
     expect(template).to.include('id="group-check-in-event-date"');
-    expect(template).to.include('id="group-check-in-event-location" class="min-w-0 truncate"');
+    expect(template).to.include(
+      'id="group-check-in-event-location" class="min-w-0 truncate"',
+    );
     expect(template).to.include(
       '<div class="w-full overflow-hidden rounded-xl border border-stone-200 bg-white">',
     );
@@ -100,12 +110,18 @@ describe("dashboard group check-in template", () => {
     );
     expect(template).to.include('class="select select-primary mt-1" disabled');
     expect(template).not.to.include("icon-caret-down");
-    expect(template).to.include('class="sr-only peer" data-group-check-in-mute>');
+    expect(template).to.include(
+      'class="sr-only peer" data-group-check-in-mute>',
+    );
     expect(template).not.to.include("data-group-check-in-mute checked");
     expect(template).to.include("data-group-check-in-torch-control");
-    expect(template).to.include('class="sr-only peer" data-group-check-in-torch disabled');
-    expect(template).to.include('class="ms-3 text-sm font-medium text-stone-900">Torch</span>');
-    expect(template).to.include("peer-checked:bg-primary-500");
+    expect(template).to.include(
+      'class="sr-only peer" data-group-check-in-torch disabled',
+    );
+    expect(template).to.include(
+      'class="ms-3 text-sm font-medium text-stone-900">Torch</span>',
+    );
+    expect(template).to.include('class="toggle-track"');
     expect(template).not.to.include("Turn torch on");
     expect(template).to.include('class="btn-primary-outline w-full sm:w-auto"');
     expect(template).not.to.include("data-group-check-in-manual");

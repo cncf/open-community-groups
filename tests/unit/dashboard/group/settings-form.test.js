@@ -6,7 +6,9 @@ import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 const loadSettingsTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/group/settings_update.html");
+  const response = await fetch(
+    "/ocg-server/templates/dashboard/group/settings_update.html",
+  );
 
   expect(response.ok).to.equal(true);
 
@@ -27,7 +29,9 @@ describe("dashboard group settings page", () => {
 
     return {
       account: document.getElementById("payment_recipient_recipient_id"),
-      legalName: document.getElementById("payment_recipient_seller_display_name"),
+      legalName: document.getElementById(
+        "payment_recipient_seller_display_name",
+      ),
     };
   };
 
@@ -44,7 +48,9 @@ describe("dashboard group settings page", () => {
     `;
 
     return {
-      legalName: document.getElementById("external_payments_seller_display_name"),
+      legalName: document.getElementById(
+        "external_payments_seller_display_name",
+      ),
       toggle: document.getElementById("external_payments_enabled"),
     };
   };
@@ -61,19 +67,28 @@ describe("dashboard group settings page", () => {
     // Load the settings template before checking the external payments section.
     const template = normalizeWhitespace(await loadSettingsTemplate());
 
-    expect(template).to.include("{% if external_payments.configured || group.external_payments_enabled -%}");
+    expect(template).to.include(
+      "{% if external_payments.configured || group.external_payments_enabled -%}",
+    );
     expect(template).to.include('title = "External payments"');
     expect(template).to.include('country-code-field-name="country_code"');
-    expect(template).not.to.include("External payments are not configured for this deployment.");
+    // An enabled legacy group in an unconfigured deployment sees a locked toggle with its own notice.
+    expect(template).to.include("{% if !external_payments.configured -%}");
+    expect(template).to.include(
+      "External payments are not configured for this deployment, so this option cannot be changed.",
+    );
     expect(template).to.include("{% if !external_payments.eligible -%}");
     expect(template).to.include('name="external_payments_enabled"');
     expect(template).to.include('id="external_payments_enabled"');
     expect(template).to.include('value="true"');
     expect(template).to.include('class="sr-only peer"');
-    expect(template).to.include("peer-checked:bg-primary-500");
-    expect(template).to.include("peer-disabled:opacity-70");
-    expect(template).to.include("{% if group.external_payments_enabled %}checked{% endif %}");
-    expect(template).to.include('value="{{ group.external_payments_enabled }}"');
+    expect(template).to.include('class="toggle-track"');
+    expect(template).to.include(
+      "{% if group.external_payments_enabled %}checked{% endif %}",
+    );
+    expect(template).to.include(
+      'value="{{ group.external_payments_enabled }}"',
+    );
     expect(template).to.include("cursor-not-allowed");
     expect(template).to.include("disabled");
 
@@ -81,21 +96,40 @@ describe("dashboard group settings page", () => {
     expect(template).to.include('name="external_payments_seller_display_name"');
     expect(template).to.include('id="external_payments_seller_display_name"');
     expect(template).to.include(
-      "{% if !external_payments.eligible && !group.external_payments_enabled %}disabled{% endif %}",
+      "{% let external_payee_name_disabled = !external_payments.eligible && !group.external_payments_enabled -%}",
+    );
+    expect(template).to.include(
+      "{% if external_payee_name_disabled %}disabled{% endif %}",
+    );
+    // The required hint is hidden while the legal name cannot be edited.
+    expect(template).to.include(
+      '{% if !external_payee_name_disabled -%} <span class="asterisk">* <sup class="text-xs font-normal">(required while enabled)</sup></span> {% endif -%}',
     );
     expect(template).to.include("border-amber-200 bg-amber-50");
-    expect(template).to.include('role="alert"');
-    expect(template).to.include("External payments are not available for groups located in");
+    expect(template).to.include('role="note"');
+    expect(template).to.include(
+      "External payments are not available for groups located in",
+    );
     expect(template).to.include(
       'class="font-semibold">{{ group.country_name.as_deref().unwrap_or(country_code) }}</span>',
     );
-    expect(template).to.include("update the location above and save the settings.");
+    expect(template).to.include(
+      "update the location above and save the settings.",
+    );
     expect(template).to.include("save the settings to determine eligibility.");
     expect(template).not.to.include("operator allowlist");
-    expect(template).not.to.include("Eligibility is updated after the group settings are saved.");
-    expect(template).to.include("Collect ticket payments outside this platform");
-    expect(template).to.include("When enabled, paid events require a payment URL instead of Stripe.");
-    expect(template).to.include("This option cannot be disabled while published paid events are upcoming");
+    expect(template).not.to.include(
+      "Eligibility is updated after the group settings are saved.",
+    );
+    expect(template).to.include(
+      "Collect ticket payments outside this platform",
+    );
+    expect(template).to.include(
+      "When enabled, paid events require a payment URL instead of Stripe.",
+    );
+    expect(template).to.include(
+      "This option cannot be disabled while published paid events are upcoming",
+    );
   });
 
   it("replaces the fiscal sponsor controls with a notice when Stripe onboarding is blocked", async () => {
@@ -107,8 +141,10 @@ describe("dashboard group settings page", () => {
     );
 
     // The notice is rendered whenever operator policy blocks onboarding.
-    expect(fiscalSponsorSection).to.include("{% if external_payments.stripe_onboarding_blocked() -%}");
-    expect(fiscalSponsorSection).to.include('role="alert"');
+    expect(fiscalSponsorSection).to.include(
+      "{% if external_payments.stripe_onboarding_blocked() -%}",
+    );
+    expect(fiscalSponsorSection).to.include('role="note"');
     expect(fiscalSponsorSection).to.include("border-amber-200 bg-amber-50");
     expect(fiscalSponsorSection).to.include(
       "This deployment collects ticket payments outside the platform for groups located in",
@@ -116,21 +152,46 @@ describe("dashboard group settings page", () => {
     expect(fiscalSponsorSection).to.include(
       "A Stripe connected account cannot be added or changed here; use the External payments section below.",
     );
-    expect(fiscalSponsorSection).to.include("{% if group.payment_recipient.is_some() -%}");
+    expect(fiscalSponsorSection).to.include(
+      "{% if group.payment_recipient.is_some() -%}",
+    );
     expect(fiscalSponsorSection).to.include(
       "The stored fiscal sponsor can still be used for paid events on Stripe",
     );
     expect(fiscalSponsorSection).to.include(
       "A removed account cannot be added again while the country stays on this list.",
     );
-    expect(fiscalSponsorSection).to.include("The fiscal sponsor owns Tax Rate definitions in Stripe.");
+    // The country name has no unreachable fallback branch.
+    expect(fiscalSponsorSection).to.include(
+      "{%- if let Some(country_code) = &external_payments.country_code -%} {{ group.country_name.as_deref().unwrap_or(country_code) }} {%- endif -%}",
+    );
+    expect(fiscalSponsorSection).not.to.include("this country {%- endif -%}");
+    // The blocked notice renders below the fiscal sponsor fields.
+    expect(fiscalSponsorSection.indexOf('role="note"')).to.be.greaterThan(
+      fiscalSponsorSection.indexOf('id="payment_recipient_recipient_id"'),
+    );
+    // The clearing legend matches the onboarding policy of the group country.
+    expect(fiscalSponsorSection).to.include(
+      "{% if external_payments.stripe_onboarding_blocked() -%} Leave both fiscal sponsor fields blank to remove the stored fiscal sponsor; it cannot be added again while this country collects payments outside the platform. {% else -%} Leave both fiscal sponsor fields blank to keep the group on free events only. {% endif -%}",
+    );
+    expect(fiscalSponsorSection).to.include(
+      "The fiscal sponsor owns Tax Rate definitions in Stripe.",
+    );
 
     // Every payment recipient control shares one visibility condition.
-    expect(fiscalSponsorSection).to.include("{% if self.shows_fiscal_sponsor_fields() -%}");
-    const controlsStart = fiscalSponsorSection.indexOf("{% if self.shows_fiscal_sponsor_fields() -%}");
+    expect(fiscalSponsorSection).to.include(
+      "{% if self.shows_fiscal_sponsor_fields() -%}",
+    );
+    const controlsStart = fiscalSponsorSection.indexOf(
+      "{% if self.shows_fiscal_sponsor_fields() -%}",
+    );
     const controls = fiscalSponsorSection.slice(controlsStart);
-    expect(controls).to.include('<input type="hidden" name="payment_recipient[provider]" value="stripe">');
-    expect(controls).to.include('name="payment_recipient[seller_display_name]"');
+    expect(controls).to.include(
+      '<input type="hidden" name="payment_recipient[provider]" value="stripe">',
+    );
+    expect(controls).to.include(
+      'name="payment_recipient[seller_display_name]"',
+    );
     expect(controls).to.include('id="payment_recipient_seller_display_name"');
     expect(controls).to.include('name="payment_recipient[recipient_id]"');
     expect(controls).to.include('id="payment_recipient_recipient_id"');
@@ -236,14 +297,20 @@ describe("dashboard group settings page", () => {
   });
 
   it("requires the external payee legal name when the toggle is locked on", () => {
-    const fields = renderExternalPaymentsSection({ checked: true, toggleDisabled: true });
+    const fields = renderExternalPaymentsSection({
+      checked: true,
+      toggleDisabled: true,
+    });
     initializeGroupSettings();
 
     expect(fields.legalName.required).to.equal(true);
   });
 
   it("does not require a disabled external payee legal name", () => {
-    const fields = renderExternalPaymentsSection({ legalNameDisabled: true, toggleDisabled: true });
+    const fields = renderExternalPaymentsSection({
+      legalNameDisabled: true,
+      toggleDisabled: true,
+    });
     initializeGroupSettings();
 
     expect(fields.legalName.required).to.equal(false);
