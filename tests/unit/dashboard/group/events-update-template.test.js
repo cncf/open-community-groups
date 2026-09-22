@@ -546,6 +546,16 @@ describe("dashboard group event update template", () => {
     expect(template).to.include("can-award-badges{% endif %}");
   });
 
+  it("shows the event id beside the event details description", async () => {
+    // Load the event update template before checking the details title id.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the event id is passed to the details section title.
+    expect(template).to.include(
+      'dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.", id = event.event_id.to_string())',
+    );
+  });
+
   it("spaces contributor sections without separators", async () => {
     // Load and isolate the contributor form before checking section spacing.
     const template = normalizeWhitespace(await loadTemplate());

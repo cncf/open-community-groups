@@ -112,6 +112,28 @@ describe("dashboard macros template", () => {
     expect(template).to.include('<span class="block space-y-2 px-3 py-3">{{ caller() }}</span>');
   });
 
+  it("renders an optional selectable id beside title descriptions", async () => {
+    // Load the dashboard macros template before checking title id slots.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify both title macros accept an id and render it after the description.
+    expect(template).to.include(
+      'macro form_title(title, description = "", button = "", id = "")',
+    );
+    expect(template).to.include(
+      'macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "", id = "")',
+    );
+    // Check each macro body separately so a regression in either one is caught.
+    const macros = template.split("{% macro ");
+    const formTitle = macros.find((macro) => macro.startsWith("form_title("));
+    const pageTitle = macros.find((macro) => macro.startsWith("page_title("));
+    const idMarkup =
+      '{% if !description.is_empty() || !id.is_empty() -%} <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0"> {% if !description.is_empty() -%} <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p> {% endif -%} {% if !id.is_empty() -%} <p class="text-xs/6 text-stone-500 m-0">(ID: <span class="font-mono select-all">{{ id }}</span>)</p> {% endif -%}';
+
+    expect(formTitle).to.include(idMarkup);
+    expect(pageTitle).to.include(idMarkup);
+  });
+
   it("renders shared refund review modal contracts", async () => {
     // Load the dashboard macros template before checking refund review markup.
     const template = normalizeWhitespace(await loadTemplate());
