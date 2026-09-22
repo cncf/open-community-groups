@@ -225,7 +225,13 @@ export const TEST_EVENT_IDS = {
 export const TEST_WAITLIST_INVITE_EVENT = {
   id: "55555555-5555-5555-5555-555555555537",
   name: "Dashboard Waitlist Invite Lab",
-  ticketTypeId: "56555555-5555-5555-5555-555555555537",
+  // Sold-out tier that holds the queue and the expired offer.
+  queuedTicketTypeId: "56555555-5555-5555-5555-555555555537",
+  // Tier with spare seats that organizers assign from the waitlist.
+  inviteTicketTypeId: "56555555-5555-5555-5555-555555555538",
+  // Seeded offers that must survive fixture restoration.
+  expiredOfferId: "59555555-5555-5555-5555-555555555537",
+  claimedOfferId: "59555555-5555-5555-5555-555555555538",
 };
 
 /** Payment-specific event ids used by the future Playwright payment suite. */

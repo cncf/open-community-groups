@@ -297,13 +297,12 @@
                     <div id="dropdown-actions-{{ row_key }}"
                          data-event-actions-dropdown
                          class="dropdown absolute end-0 top-8 z-10 hidden w-[280px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
-                      <ul class="text-sm text-stone-700" role="menu">
+                      <ul class="text-sm text-stone-700">
                         {% if has_active_offer -%}
                           {% if let Some(admission_offer_id) = entry.admission_offer_id -%}
                             <li>
                               <button id="cancel-waitlist-offer-{{ admission_offer_id }}"
                                       type="button"
-                                      role="menuitem"
                                       hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
                                       hx-indicator="#dashboard-spinner"
                                       hx-disabled-elt="this"
@@ -366,7 +365,6 @@
                                 </div>
                               </div>
                               <button type="submit"
-                                      role="menuitem"
                                       data-waitlist-invite-ticket-submit
                                       class="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50">
                                 <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-600"></div>

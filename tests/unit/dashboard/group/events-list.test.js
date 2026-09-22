@@ -253,6 +253,32 @@ describe("events list page", () => {
     expect(root.querySelector("p").classList.contains("hidden")).to.equal(true);
   });
 
+  it("selects the sole assignable tier for invitation requests", () => {
+    // Build an invitation request form with a single private tier to assign.
+    document.body.innerHTML = `
+      <div id="events-list-root">
+        <form data-invitation-request-action>
+          <select data-invitation-request-ticket-type>
+            <option value="">Select ticket type</option>
+            <option value="ticket-1">Private admission</option>
+          </select>
+          <p data-invitation-request-ticket-empty class="hidden">No tickets available.</p>
+          <button data-invitation-request-ticket-submit type="submit">Accept</button>
+        </form>
+      </div>
+    `;
+    const root = document.getElementById("events-list-root");
+
+    // Initialize the invitation request ticket guard.
+    initializeEventsListPage(root);
+
+    // Check the only tier is preselected and the form stays enabled.
+    expect(root.querySelector("select").value).to.equal("ticket-1");
+    expect(root.querySelector("select").disabled).to.equal(false);
+    expect(root.querySelector("button").disabled).to.equal(false);
+    expect(root.querySelector("p").classList.contains("hidden")).to.equal(true);
+  });
+
   it("selects the sole assignable tier for waitlist invitations", () => {
     // Build a waitlist invite form whose queued tier is no longer assignable.
     document.body.innerHTML = `

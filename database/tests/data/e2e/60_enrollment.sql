@@ -104,9 +104,17 @@ values (
     true,
     '55555555-5555-5555-5555-555555555537',
     1,
-    3,
+    1,
     'General Admission',
-    'Free tier with spare seats used for dashboard waitlist invitation coverage.'
+    'Sold-out tier whose queue feeds dashboard waitlist invitation coverage.'
+), (
+    '56555555-5555-5555-5555-555555555538',
+    true,
+    '55555555-5555-5555-5555-555555555537',
+    2,
+    3,
+    'Late Admission',
+    'Free tier with spare seats organizers assign from the waitlist.'
 );
 
 insert into event_ticket_type (

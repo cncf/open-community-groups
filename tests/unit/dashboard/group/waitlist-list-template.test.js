@@ -261,7 +261,9 @@ describe("dashboard group waitlist list template", () => {
     );
     expect(template).to.include('id="cancel-waitlist-offer-{{ admission_offer_id }}"');
     expect(template).to.include('hx-trigger="confirmed"');
-    expect(template).to.include('role="menuitem"');
+    // The panel hosts a form, so it must not announce itself as an ARIA menu.
+    expect(template).not.to.include('role="menu"');
+    expect(template).not.to.include('role="menuitem"');
     expect(template).to.include("<span>Cancel offer</span>");
   });
 });

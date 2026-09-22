@@ -399,7 +399,7 @@ test.describe("group dashboard waitlist tab", () => {
     await expect(queuedActions).toBeFocused();
   });
 
-  test("organizer invites a queued entry and reissues an expired offer from the waitlist", async ({
+  test("organizer invites a queued entry and an expired offer holder from the waitlist", async ({
     organizerGroupPage,
   }) => {
     test.setTimeout(90_000);
@@ -425,7 +425,7 @@ test.describe("group dashboard waitlist tab", () => {
       await expect(claimedAction).toBeDisabled();
       await expect(claimedAction).toHaveAttribute("title", "This waiting list offer was already claimed.");
 
-      // Open the queued entry menu and verify the queued tier is preselected.
+      // Open the queued entry menu and verify the only tier with seats is preselected.
       const queuedRow = waitlistContent.locator("tr", { hasText: "E2E Pending One" });
       const queuedActions = queuedRow.getByRole("button", {
         name: "Open waitlist actions for E2E Pending One",
@@ -435,8 +435,9 @@ test.describe("group dashboard waitlist tab", () => {
       await expect(queuedActions).toHaveAttribute("aria-expanded", "true");
       const queuedTicketSelect = queuedRow.getByLabel("Ticket type");
       await expect(queuedTicketSelect).toBeEnabled();
-      await expect(queuedTicketSelect).toHaveValue(TEST_WAITLIST_INVITE_EVENT.ticketTypeId);
-      await expect(queuedTicketSelect).toContainText("General Admission (Public)");
+      await expect(queuedTicketSelect).toHaveValue(TEST_WAITLIST_INVITE_EVENT.inviteTicketTypeId);
+      await expect(queuedTicketSelect).toContainText("Late Admission (Public)");
+      await expect(queuedTicketSelect).not.toContainText("General Admission");
       await expect(queuedRow.locator("[data-waitlist-invite-ticket-empty]")).toBeHidden();
 
       // Invite the queued entry and verify the request carries the user and tier.
@@ -454,7 +455,7 @@ test.describe("group dashboard waitlist tab", () => {
       });
       const invitePayload = new URLSearchParams((await inviteRequest).postData() ?? "");
       expect(invitePayload.get("user_id")).toBe(TEST_USER_IDS.pending1);
-      expect(invitePayload.get("event_ticket_type_id")).toBe(TEST_WAITLIST_INVITE_EVENT.ticketTypeId);
+      expect(invitePayload.get("event_ticket_type_id")).toBe(TEST_WAITLIST_INVITE_EVENT.inviteTicketTypeId);
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Invitation sent.");
       await organizerGroupPage.getByRole("button", { name: "OK" }).click();
 
@@ -479,35 +480,42 @@ test.describe("group dashboard waitlist tab", () => {
         `),
       ).toBe("0");
 
-      // Open the expired offer menu and verify its offered tier is preselected.
+      // Open the expired offer menu and verify it offers the same invite action.
       const expiredRow = waitlistContent.locator("tr", { hasText: "E2E Pending Two" });
       const expiredActions = expiredRow.getByRole("button", {
         name: "Open waitlist actions for E2E Pending Two",
       });
-      const reissueButton = expiredRow.locator("[data-waitlist-invite-ticket-submit]");
+      const expiredInviteButton = expiredRow.locator("[data-waitlist-invite-ticket-submit]");
       await expect(expiredRow).toContainText("Offer expired");
       await expiredActions.click();
-      await expect(expiredRow.getByLabel("Ticket type")).toHaveValue(TEST_WAITLIST_INVITE_EVENT.ticketTypeId);
-      await expect(reissueButton).toHaveText("Reissue offer");
+      await expect(expiredRow.getByLabel("Ticket type")).toHaveValue(
+        TEST_WAITLIST_INVITE_EVENT.inviteTicketTypeId,
+      );
+      await expect(expiredInviteButton).toHaveText("Invite");
 
-      // Reissue the expired offer and verify the request targets the expired user.
-      const reissueRequest = organizerGroupPage.waitForRequest(
+      // Invite the expired offer holder and verify the request targets that user.
+      const expiredInviteRequest = organizerGroupPage.waitForRequest(
         (request) => request.method() === "POST" && request.url().includes(inviteUrl),
       );
-      const refreshAfterReissue = waitForWaitlistRefresh(organizerGroupPage, TEST_WAITLIST_INVITE_EVENT.id);
-      await waitForActionResponse(organizerGroupPage, () => reissueButton.click(), {
+      const refreshAfterExpiredInvite = waitForWaitlistRefresh(
+        organizerGroupPage,
+        TEST_WAITLIST_INVITE_EVENT.id,
+      );
+      await waitForActionResponse(organizerGroupPage, () => expiredInviteButton.click(), {
         method: "POST",
         urlIncludes: inviteUrl,
         status: 201,
       });
-      const reissuePayload = new URLSearchParams((await reissueRequest).postData() ?? "");
-      expect(reissuePayload.get("user_id")).toBe(TEST_USER_IDS.pending2);
-      expect(reissuePayload.get("event_ticket_type_id")).toBe(TEST_WAITLIST_INVITE_EVENT.ticketTypeId);
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Ticket offer reissued.");
+      const expiredInvitePayload = new URLSearchParams((await expiredInviteRequest).postData() ?? "");
+      expect(expiredInvitePayload.get("user_id")).toBe(TEST_USER_IDS.pending2);
+      expect(expiredInvitePayload.get("event_ticket_type_id")).toBe(
+        TEST_WAITLIST_INVITE_EVENT.inviteTicketTypeId,
+      );
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Invitation sent.");
       await organizerGroupPage.getByRole("button", { name: "OK" }).click();
 
-      // Verify the expired history stays next to the reissued organizer offer.
-      await refreshAfterReissue;
+      // Verify the expired history stays next to the new organizer offer.
+      await refreshAfterExpiredInvite;
       await waitForHtmxSettle(organizerGroupPage);
       await expect(expiredRow).toBeVisible();
       await expect(expiredRow).toContainText("Offer expired");
@@ -520,9 +528,9 @@ test.describe("group dashboard waitlist tab", () => {
         `),
       ).toBe("waitlist:expired,organizer_invitation:pending");
 
-      // Verify a repeated reissue is rejected while the new offer is still pending.
+      // Verify a repeated invite is rejected while the new offer is still pending.
       await expiredActions.click();
-      await waitForActionResponse(organizerGroupPage, () => reissueButton.click(), {
+      await waitForActionResponse(organizerGroupPage, () => expiredInviteButton.click(), {
         method: "POST",
         urlIncludes: inviteUrl,
         status: 422,
@@ -689,12 +697,15 @@ const restoreWaitlistInviteFixtures = (notificationSnapshot) => {
   queryE2eDatabase(`
     delete from admission_offer
     where event_id = '${TEST_WAITLIST_INVITE_EVENT.id}'
-    and source = 'organizer_invitation';
+    and admission_offer_id not in (
+      '${TEST_WAITLIST_INVITE_EVENT.expiredOfferId}',
+      '${TEST_WAITLIST_INVITE_EVENT.claimedOfferId}'
+    );
 
     insert into event_waitlist (event_id, event_ticket_type_id, user_id)
     values (
       '${TEST_WAITLIST_INVITE_EVENT.id}',
-      '${TEST_WAITLIST_INVITE_EVENT.ticketTypeId}',
+      '${TEST_WAITLIST_INVITE_EVENT.queuedTicketTypeId}',
       '${TEST_USER_IDS.pending1}'
     )
     on conflict do nothing;
