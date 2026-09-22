@@ -974,7 +974,7 @@ async fn test_invite_event_attendee_returns_created_for_email_target() {
         &parts,
         &bytes,
         StatusCode::CREATED,
-        "refresh-event-attendees, refresh-event-waitlist",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 
@@ -1034,7 +1034,7 @@ async fn test_invite_event_attendee_returns_created_for_registered_user() {
         &parts,
         &bytes,
         StatusCode::CREATED,
-        "refresh-event-attendees, refresh-event-waitlist",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 

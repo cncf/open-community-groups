@@ -294,7 +294,7 @@ pub(crate) async fn invite_event_attendee(
     Ok(admission_allocation_response(
         outcome,
         StatusCode::CREATED,
-        "refresh-event-attendees, refresh-event-waitlist",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     ))
 }
 

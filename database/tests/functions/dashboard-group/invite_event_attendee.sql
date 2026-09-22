@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(60);
+select plan(66);
 
 -- ============================================================================
 -- VARIABLES
@@ -46,6 +46,16 @@ select plan(60);
 \set inProgressPriceWindowID '3a130000-0000-0000-0000-000000000027'
 \set inProgressTicketTypeID '3a130000-0000-0000-0000-000000000028'
 \set invalidTicketUserID '3a130000-0000-0000-0000-000000000029'
+\set lapsedCheckoutEventID '3a130000-0000-0000-0000-00000000007c'
+\set lapsedCheckoutPriceWindowID '3a130000-0000-0000-0000-00000000007d'
+\set lapsedCheckoutTicketTypeID '3a130000-0000-0000-0000-00000000007e'
+\set lapsedCheckoutUserID '3a130000-0000-0000-0000-00000000007f'
+\set lapsedOfferEventID '3a130000-0000-0000-0000-000000000080'
+\set lapsedOfferID '3a130000-0000-0000-0000-000000000081'
+\set lapsedOfferPriceWindowID '3a130000-0000-0000-0000-000000000082'
+\set lapsedOfferTicketTypeID '3a130000-0000-0000-0000-000000000083'
+\set lapsedOfferUserID '3a130000-0000-0000-0000-000000000084'
+\set lapsedPurchaseID '3a130000-0000-0000-0000-000000000085'
 \set paidContextEventID '3a130000-0000-0000-0000-000000000049'
 \set paidContextGroupID '3a130000-0000-0000-0000-00000000004a'
 \set paidContextInviteUserID '3a130000-0000-0000-0000-00000000004b'
@@ -76,6 +86,7 @@ select plan(60);
 \set registrationQuestionID '3a130000-0000-0000-0000-000000000012'
 \set rejectedUserID '3a130000-0000-0000-0000-000000000013'
 \set siteID '3a130000-0000-0000-0000-000000000024'
+\set soldOutAttendeeUserID '3a130000-0000-0000-0000-000000000086'
 \set soldOutInviteUserID '3a130000-0000-0000-0000-000000000037'
 \set soldOutOccupantID '3a130000-0000-0000-0000-000000000038'
 \set soldOutPriceWindowID '3a130000-0000-0000-0000-000000000039'
@@ -106,6 +117,9 @@ select fx_user(:'invalidTicketUserID');
 select fx_user(:'privateSimpleInviteUserID');
 select fx_user(:'queueConflictInviteUserID');
 select fx_user(:'queueConflictWaitlistUserID');
+select fx_user(:'lapsedCheckoutUserID');
+select fx_user(:'lapsedOfferUserID');
+select fx_user(:'soldOutAttendeeUserID');
 select fx_user(:'soldOutInviteUserID');
 select fx_user(:'soldOutOccupantID');
 select fx_user(:'unavailableInviteUserID');
@@ -267,6 +281,19 @@ select fx_event(:'expiredReservationEventID', :'groupID', :'eventCategoryID', js
     'waitlist_enabled', true
 ));
 
+-- Event whose lapsed waitlist offer is expired by reconciliation before the invite
+select fx_event(:'lapsedOfferEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day',
+    'waitlist_enabled', true
+));
+
+-- Event whose lapsed checkout registration is released by reconciliation before the invite
+select fx_event(:'lapsedCheckoutEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+
 -- In-progress ticketed event that remains open for organizer invitations
 select fx_event(:'inProgressEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp + interval '2 hours',
@@ -288,6 +315,8 @@ select fx_event(:'eventQuestionsID', :'groupID', :'eventCategoryID', jsonb_build
 
 -- Ticket types
 select fx_event_ticket_type(:'inProgressTicketTypeID', :'inProgressEventID', jsonb_build_object('seats_total', 100));
+select fx_event_ticket_type(:'lapsedCheckoutTicketTypeID', :'lapsedCheckoutEventID', jsonb_build_object('seats_total', 5));
+select fx_event_ticket_type(:'lapsedOfferTicketTypeID', :'lapsedOfferEventID', jsonb_build_object('seats_total', 5));
 select fx_event_ticket_type(:'paidTicketTypeID', :'paidEventID', jsonb_build_object('seats_total', 100));
 select fx_event_ticket_type(:'queueConflictTicketTypeID', :'queueConflictEventID', jsonb_build_object('seats_total', 1));
 select fx_event_ticket_type(:'queueOfferTicketTypeID', :'queueOfferEventID', jsonb_build_object('seats_total', 1));
@@ -317,6 +346,8 @@ select fx_event_ticket_type(:'unavailableTicketTypeID', :'unavailableTicketEvent
 ));
 
 select fx_event_ticket_price_window(:'inProgressPriceWindowID', :'inProgressTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'lapsedCheckoutPriceWindowID', :'lapsedCheckoutTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'lapsedOfferPriceWindowID', :'lapsedOfferTicketTypeID', jsonb_build_object('amount_minor', 0));
 select fx_event_ticket_price_window(:'paidPriceWindowID', :'paidTicketTypeID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'queueConflictPriceWindowID', :'queueConflictTicketTypeID', jsonb_build_object('amount_minor', 0));
 select fx_event_ticket_price_window(:'queueOfferPriceWindowID', :'queueOfferTicketTypeID', jsonb_build_object('amount_minor', 0));
@@ -385,6 +416,37 @@ insert into event_attendee (event_id, user_id, status)
 values
     (:'eventID', :'confirmedAttendeeUserID', 'confirmed'),
     (:'eventID', :'rejectedUserID', 'invitation-rejected');
+
+-- Confirmed attendee on the sold-out tier; the occupant's pending offer already fills its single seat
+insert into event_attendee (event_id, user_id, status)
+values (:'soldOutTicketedEventID', :'soldOutAttendeeUserID', 'confirmed');
+
+-- Checkout registration still waiting for answers after its purchase hold lapsed
+insert into event_attendee (event_id, manually_invited, status, user_id)
+values (:'lapsedCheckoutEventID', false, 'registration-questions-pending', :'lapsedCheckoutUserID');
+
+-- Lapsed checkout hold expired by reconciliation before the invite
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    'USD',
+    :'lapsedCheckoutEventID',
+    :'lapsedPurchaseID',
+    :'lapsedCheckoutTicketTypeID',
+    current_timestamp - interval '1 hour',
+    'pending',
+    'Lapsed checkout admission',
+    :'lapsedCheckoutUserID'
+);
 
 -- Canceled attendee row reused by a new organizer invitation
 insert into event_attendee (
@@ -481,6 +543,27 @@ insert into admission_offer (
     'waitlist',
     'expired',
     :'expiredWaitlistOfferUserID'
+);
+
+-- Lapsed waitlist offer still pending until reconciliation expires it
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'lapsedOfferID',
+    current_timestamp - interval '2 days',
+    :'lapsedOfferEventID',
+    :'lapsedOfferTicketTypeID',
+    current_timestamp - interval '1 hour',
+    'waitlist',
+    'pending',
+    :'lapsedOfferUserID'
 );
 
 -- Active ticket offer occupying the sold-out ticketed tier
@@ -737,7 +820,7 @@ select is(
     'Should remove the invited user from the waitlist'
 );
 
--- Should reissue an invitation to a user whose waitlist offer expired
+-- Should invite a user whose waitlist offer expired
 select is(
     invite_event_attendee(
         :'actorID', :'groupID', :'eventID', :'expiredWaitlistOfferUserID', null, :'simpleTicketTypeID'
@@ -762,7 +845,7 @@ select results_eq(
             ('waitlist', 'expired'),
             ('organizer_invitation', 'pending')
     $$,
-    'Should keep the expired waitlist offer history next to the reissued organizer offer'
+    'Should keep the expired waitlist offer next to the new organizer offer'
 );
 
 -- Should pre-register an email invitee and keep them out of normal registration state
@@ -1145,6 +1228,95 @@ select is(
     ),
     0,
     'Should not create an offer for a sold-out ticket tier'
+);
+
+-- Should reject re-inviting a pending invitee before reporting a full tier
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
+        :'actorID', :'groupID', :'soldOutTicketedEventID', :'soldOutOccupantID', :'soldOutTicketTypeID'
+    ),
+    'OCG01',
+    'user already has a pending event invitation',
+    'Should reject re-inviting a pending invitee before reporting a full tier'
+);
+
+-- Should reject re-inviting a confirmed attendee before reporting a full tier
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
+        :'actorID', :'groupID', :'soldOutTicketedEventID', :'soldOutAttendeeUserID', :'soldOutTicketTypeID'
+    ),
+    'OCG01',
+    'user is already attending this event',
+    'Should reject re-inviting a confirmed attendee before reporting a full tier'
+);
+
+-- Should invite a user whose lapsed offer is expired by reconciliation
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'lapsedOfferEventID',
+        :'lapsedOfferUserID',
+        null,
+        :'lapsedOfferTicketTypeID'
+    )->>'outcome',
+    'offer-created',
+    'Should invite a user whose lapsed offer is expired by reconciliation'
+);
+
+select results_eq(
+    format(
+        $$
+        select source, status
+        from admission_offer
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+        order by created_at
+        $$,
+        :'lapsedOfferEventID', :'lapsedOfferUserID'
+    ),
+    $$
+        values
+            ('waitlist', 'expired'),
+            ('organizer_invitation', 'pending')
+    $$,
+    'Should expire the lapsed waitlist offer before creating the organizer offer'
+);
+
+-- Should invite a user whose lapsed checkout registration is released by reconciliation
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'lapsedCheckoutEventID',
+        :'lapsedCheckoutUserID',
+        null,
+        :'lapsedCheckoutTicketTypeID'
+    )->>'outcome',
+    'offer-created',
+    'Should invite a user whose lapsed checkout registration is released by reconciliation'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'attendee_rows', (
+                select count(*)::int
+                from event_attendee ea
+                where ea.event_id = :'lapsedCheckoutEventID'::uuid
+                and ea.user_id = :'lapsedCheckoutUserID'::uuid
+            ),
+            'purchase_status', (
+                select ep.status
+                from event_purchase ep
+                where ep.event_purchase_id = :'lapsedPurchaseID'::uuid
+            )
+        )
+    ),
+    '{"attendee_rows": 0, "purchase_status": "expired"}'::jsonb,
+    'Should release the lapsed checkout registration before creating the organizer offer'
 );
 
 -- Should create in-progress event invitations with future offer expiry
