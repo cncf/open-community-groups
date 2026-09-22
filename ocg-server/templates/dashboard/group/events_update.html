@@ -345,8 +345,7 @@
                    id="waitlist_enabled"
                    name="waitlist_enabled"
                    value="{{ event.waitlist_enabled }}">
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-            </div>
+            <div class="toggle-track"></div>
             <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
           </label>
           <p class="form-legend">
@@ -373,8 +372,7 @@
                    id="attendee_approval_required"
                    name="attendee_approval_required"
                    value="{{ event.attendee_approval_required }}">
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-            </div>
+            <div class="toggle-track"></div>
             <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
           </label>
           <p class="form-legend">
@@ -401,8 +399,7 @@
                    id="test_event"
                    name="test_event"
                    value="{{ event.test_event }}">
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-            </div>
+            <div class="toggle-track"></div>
             <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
           </label>
           <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
@@ -507,8 +504,7 @@
                    id="cfs_enabled"
                    name="cfs_enabled"
                    value="{%- if let Some(cfs_enabled) = &event.cfs_enabled -%} {{ cfs_enabled }} {%- else -%} false {%- endif -%}">
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-            </div>
+            <div class="toggle-track"></div>
             <span class="ms-3 text-sm font-medium text-stone-900">Enable Call for Speakers</span>
           </label>
           <p class="form-legend">Allow speakers to submit session proposals.</p>
@@ -698,8 +694,7 @@
                      id="event_reminder_enabled"
                      name="event_reminder_enabled"
                      value="{{ event.event_reminder_is_enabled() }}">
-              <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-              </div>
+              <div class="toggle-track"></div>
               <span class="ms-3 text-sm font-medium text-stone-900">Send Event Reminder</span>
             </label>
             <p class="form-legend">Send a reminder email 24 hours before the event starts.</p>
@@ -819,7 +814,7 @@
                          id="meeting_recording_published"
                          name="meeting_recording_published"
                          value="{{ event.meeting_recording_published.unwrap_or(false) }}">
-                  <span class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></span>
+                  <span class="toggle-track"></span>
                   <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
                 </label>
                 <p class="form-legend">Controls whether public visitors can see the final public recording URL.</p>
@@ -879,6 +874,9 @@
                 {% if self.requires_external_payments_opt_in() -%}
                   Paid ticket settings are read-only. This group's country collects payments outside the platform:
                   enable external payments in group settings and add a payment URL to keep selling these tickets.
+                {% else if self.requires_external_payments_seller_name() -%}
+                  Paid ticket settings are read-only until the legal name of the organization collecting
+                  external payments is saved in group settings.
                 {% else -%}
                   Paid ticket settings are read-only until server payments and a matching group recipient are configured.
                 {% endif -%}
@@ -908,12 +906,21 @@
             </div>
 
             {% if self.uses_external_ticketing() || event.external_payment_url.is_some() -%}
-              {% if !self.uses_external_ticketing() -%}
-                <p class="form-legend col-span-full text-amber-700">
-                  External payments are no longer available for this group.
-                  Clear the external payment URL to save changes; paid tickets
-                  will then require the group's Stripe configuration.
-                </p>
+              {% if self.requires_external_payments_seller_name() -%}
+                <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
+                     role="note">
+                  Save the legal name of the organization collecting external payments
+                  in group settings to save changes and keep selling these tickets.
+                </div>
+              {% else if !self.uses_external_ticketing() -%}
+                <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
+                     role="note">
+                  External payments are no longer available for this group. To save changes,
+                  turn external payments back on in group settings if the group is still
+                  eligible, or clear the external payment URL and set every ticket price to 0.
+                  Paid tickets off the external rail need a Stripe fiscal sponsor, which is not
+                  offered in external-payment countries.
+                </div>
               {% endif -%}
               <div class="col-span-full 2xl:col-span-4 2xl:col-start-1">
                 <input type="hidden" name="external_payment_url_present" value="true">
@@ -1131,6 +1138,9 @@
             {% if self.requires_external_payments_opt_in() -%}
               Ticket prices are fixed at 0 until external payments are enabled in group settings;
               this deployment does not offer Stripe connected accounts for this group's country.
+            {% else if self.requires_external_payments_seller_name() -%}
+              Ticket prices are fixed at 0 until the legal name of the organization collecting
+              external payments is saved in group settings.
             {% else -%}
               Ticket prices are fixed at 0 until payments are configured.
             {% endif -%}

@@ -133,6 +133,7 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
 select fx_group(:'externalGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
     'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co',
     'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_external_reconcile", "seller_display_name": "External Fiscal Sponsor"}'::jsonb
 ));
 

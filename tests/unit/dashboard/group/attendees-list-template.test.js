@@ -401,6 +401,17 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       "No ticket types can be assigned. Add seats or activate a ticket type with a current price before sending an invitation.",
     );
+    // The blocking state renders as a warning box below the field legend.
+    expect(template).to.include(
+      '<div data-attendee-invitation-ticket-empty class="mt-4 hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900" role="note">',
+    );
+    expect(
+      template.indexOf("data-attendee-invitation-ticket-empty"),
+    ).to.be.greaterThan(
+      template.indexOf(
+        "The admission tier is reserved when the invitation is sent.",
+      ),
+    );
   });
 
   it("collects an optional review note before rejecting a refund", async () => {

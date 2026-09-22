@@ -355,6 +355,19 @@
 </div>
 
 {# End location -#}
+
+{# Host -#}
+{% if event.is_paid_capable() -%}
+  {% if let Some(seller_display_name) = &event.seller_display_name -%}
+    <div class="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-700 md:col-span-2"
+         data-event-host>
+      This event is hosted by
+      <span class="font-semibold text-stone-900">{{ seller_display_name }}</span>,
+      the legal entity responsible for ticket sales and invoicing.
+    </div>
+  {% endif -%}
+{% endif -%}
+{# End host -#}
 </div>
 </div>
 {# End event date and location -#}

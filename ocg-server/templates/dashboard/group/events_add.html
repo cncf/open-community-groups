@@ -236,8 +236,7 @@
                            id="waitlist_enabled"
                            name="waitlist_enabled"
                            value="false">
-                    <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-                    </div>
+                    <div class="toggle-track"></div>
                     <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
                   </label>
                   <p class="form-legend">
@@ -261,8 +260,7 @@
                            id="attendee_approval_required"
                            name="attendee_approval_required"
                            value="false">
-                    <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-                    </div>
+                    <div class="toggle-track"></div>
                     <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
                   </label>
                   <p class="form-legend">
@@ -283,8 +281,7 @@
                            type="checkbox"
                            class="sr-only peer">
                     <input type="hidden" id="test_event" name="test_event" value="false">
-                    <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-                    </div>
+                    <div class="toggle-track"></div>
                     <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
                   </label>
                   <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
@@ -370,8 +367,7 @@
                          type="checkbox"
                          class="sr-only peer">
                   <input type="hidden" id="cfs_enabled" name="cfs_enabled" value="false">
-                  <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-                  </div>
+                  <div class="toggle-track"></div>
                   <span class="ms-3 text-sm font-medium text-stone-900">Enable Call for Speakers</span>
                 </label>
                 <p class="form-legend">Allow speakers to submit session proposals.</p>
@@ -581,8 +577,7 @@
                            id="event_reminder_enabled"
                            name="event_reminder_enabled"
                            value="true">
-                    <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-                    </div>
+                    <div class="toggle-track"></div>
                     <span class="ms-3 text-sm font-medium text-stone-900">Send Event Reminder</span>
                   </label>
                   <p class="form-legend">Send a reminder email 24 hours before the event starts.</p>
@@ -674,7 +669,7 @@
                                id="meeting_recording_published"
                                name="meeting_recording_published"
                                value="false">
-                        <span class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></span>
+                        <span class="toggle-track"></span>
                         <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
                       </label>
                       <p class="form-legend">Controls whether public visitors can see the final public recording URL.</p>
@@ -896,6 +891,9 @@
               {% else if self.requires_external_payments_opt_in() -%}
                 Ticket prices are fixed at 0 until external payments are enabled in group settings;
                 this deployment does not offer Stripe connected accounts for this group's country.
+              {% else if self.requires_external_payments_seller_name() -%}
+                Ticket prices are fixed at 0 until the legal name of the organization collecting
+                external payments is saved in group settings.
               {% else -%}
                 Ticket prices are fixed at 0 until payments are configured.
               {% endif -%}

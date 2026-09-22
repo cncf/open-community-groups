@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -107,6 +107,7 @@ select is(
                 "venue_state_code": "or"
             }', :'eventCategoryID')::jsonb,
             null::event,
+            false,
             false
         ) r
     ),
@@ -156,7 +157,7 @@ select is(
                 from jsonb_array_elements(r.ticket_types) tt
             )
         )
-        from resolve_event_payload('{"name": "Free Event", "timezone": "UTC"}'::jsonb, null::event, true) r
+        from resolve_event_payload('{"name": "Free Event", "timezone": "UTC"}'::jsonb, null::event, true, true) r
     ),
     '{
         "capacity": 500,
@@ -178,7 +179,7 @@ select is(
 select is(
     (
         select r.ticket_types->0->>'title'
-        from resolve_event_payload('{"ticket_types": null, "timezone": "UTC"}'::jsonb, null::event, false) r
+        from resolve_event_payload('{"ticket_types": null, "timezone": "UTC"}'::jsonb, null::event, false, false) r
     ),
     'General Admission',
     'Should give a new event with null ticket types the default tier'
@@ -199,6 +200,7 @@ select is(
                 "timezone": "UTC"
             }'::jsonb,
             null::event,
+            false,
             false
         ) r
     ),
@@ -230,6 +232,7 @@ select is(
         from resolve_event_payload(
             '{"name": "Renamed", "timezone": "UTC", "venue_country_code": "US", "venue_state_name": "Oregon"}'::jsonb,
             (select e from event e where e.event_id = :'eventID'),
+            true,
             true
         ) r
     ),
@@ -263,6 +266,7 @@ select is(
         from resolve_event_payload(
             '{"external_payment_url": "", "timezone": "UTC"}'::jsonb,
             (select e from event e where e.event_id = :'eventID'),
+            false,
             false
         ) r
     ),
@@ -305,6 +309,7 @@ select is(
                 "timezone": "UTC"
             }'::jsonb,
             (select e from event e where e.event_id = :'eventID'),
+            false,
             false
         ) r
     ),
@@ -329,6 +334,7 @@ select is(
         from resolve_event_payload(
             '{"tax_behavior": "exclusive", "tax_calculation_mode": "none", "timezone": "UTC"}'::jsonb,
             null::event,
+            false,
             false
         ) r
     ),
@@ -343,6 +349,7 @@ select is(
         from resolve_event_payload(
             '{"timezone": "UTC", "venue_country_code": "US", "venue_state_code": " wa ", "venue_state_name": "Washington"}'::jsonb,
             (select e from event e where e.event_id = :'eventID'),
+            true,
             true
         ) r
     ),
@@ -357,6 +364,7 @@ select is(
         from resolve_event_payload(
             '{"timezone": "UTC", "venue_country_code": "CA", "venue_state_name": "Oregon"}'::jsonb,
             (select e from event e where e.event_id = :'eventID'),
+            true,
             true
         ) r
     ),
@@ -371,6 +379,7 @@ select is(
         from resolve_event_payload(
             '{"timezone": "UTC", "venue_country_code": "US", "venue_state": "Washington"}'::jsonb,
             (select e from event e where e.event_id = :'eventID'),
+            true,
             true
         ) r
     ),
@@ -385,6 +394,7 @@ select is(
         from resolve_event_payload(
             '{"timezone": "UTC", "venue_country_code": "US"}'::jsonb,
             (select e from event e where e.event_id = :'eventID'),
+            true,
             true
         ) r
     ),
@@ -406,6 +416,7 @@ select is(
         from resolve_event_payload(
             '{"timezone": "UTC"}'::jsonb,
             (select e from event e where e.event_id = :'eventID'),
+            true,
             true
         ) r
     ),
@@ -433,6 +444,7 @@ select is(
                 "timezone": "Europe/Madrid"
             }'::jsonb,
             null::event,
+            false,
             false
         ) r
     ),
@@ -451,11 +463,29 @@ select throws_ok(
     $$select * from resolve_event_payload(
         '{"external_payment_url": "https://pay.example.test/event", "timezone": "UTC"}'::jsonb,
         null::event,
+        false,
         false
     )$$,
     'OCG01',
     'external payments are not available for this event',
     'Should reject an external URL when the group cannot collect externally'
+);
+
+-- Should reject paid events in a selected group that is not ready to collect
+select throws_ok(
+    $$select * from resolve_event_payload(
+        '{
+            "tax_calculation_mode": "automatic",
+            "ticket_types": [{"price_windows": [{"amount_minor": 1000}]}],
+            "timezone": "UTC"
+        }'::jsonb,
+        null::event,
+        true,
+        false
+    )$$,
+    'OCG01',
+    'external payments require the legal name of the organization collecting payments',
+    'Should reject paid events in a selected group that is not ready to collect'
 );
 
 -- Should select the external rail for paid events in an eligible group
@@ -474,6 +504,7 @@ select is(
                 "timezone": "UTC"
             }'::jsonb,
             null::event,
+            true,
             true
         ) r
     ),

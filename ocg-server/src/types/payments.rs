@@ -462,6 +462,8 @@ pub struct GroupExternalPaymentsContext {
     pub default_payment_window_hours: Option<i32>,
     /// Maximum organizer-confirmation window in hours.
     pub max_payment_window_hours: Option<i32>,
+    /// Legal name of the organization collecting external payments.
+    pub seller_display_name: Option<String>,
 }
 
 impl GroupExternalPaymentsContext {

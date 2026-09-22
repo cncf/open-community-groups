@@ -66,6 +66,7 @@
 {{ template "internal/payments/expire_event_checkout_holds.sql" }}
 {{ template "internal/payments/external_payment_notification_payload.sql" }}
 {{ template "internal/payments/is_country_external_payments_allowlisted.sql" }}
+{{ template "internal/payments/is_group_external_payments_selected.sql" }} -- Dependency for is_group_external_payments_ready
 {{ template "internal/payments/is_group_external_payments_ready.sql" }} -- Dependency for is_event_external_payments_ready
 {{ template "internal/payments/is_event_external_payments_ready.sql" }}
 {{ template "internal/payments/load_checkout_context.sql" }}

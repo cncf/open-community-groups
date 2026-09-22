@@ -82,6 +82,7 @@ mod tests {
             country_code: Some("KR".to_string()),
             default_payment_window_hours: Some(72),
             max_payment_window_hours: Some(336),
+            seller_display_name: None,
         }
     }
 

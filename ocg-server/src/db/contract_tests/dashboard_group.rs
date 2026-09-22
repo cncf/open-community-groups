@@ -869,13 +869,17 @@ async fn db_contracts_get_group_external_payments_context_deserializes() -> Resu
         .get_group_external_payments_context(community_id(), group_id())
         .await?;
 
-    // Check eligibility, toggle, and window limits
+    // Check eligibility, toggle, payee, and window limits
     assert!(context.configured);
     assert!(context.eligible);
     assert!(context.enabled);
     assert_eq!(context.country_code.as_deref(), Some("US"));
     assert_eq!(context.default_payment_window_hours, Some(72));
     assert_eq!(context.max_payment_window_hours, Some(336));
+    assert_eq!(
+        context.seller_display_name.as_deref(),
+        Some("Contract External Payee")
+    );
 
     Ok(())
 }

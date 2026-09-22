@@ -57,15 +57,17 @@ pub(crate) struct AddPage {
 impl AddPage {
     /// Returns true when paid tickets can be configured through Stripe or external payments.
     pub(crate) fn is_paid_ticketing_available(&self) -> bool {
-        !matches!(
-            event_ticketing_mode(self.payments_ready, &self.external_payments),
-            EventTicketingMode::Unavailable
-        )
+        is_paid_ticketing_available(self.payments_ready, &self.external_payments)
     }
 
     /// Returns true when paid tickets wait only on the group's external-payments opt-in.
     pub(crate) fn requires_external_payments_opt_in(&self) -> bool {
         requires_external_payments_opt_in(self.payments_ready, &self.external_payments)
+    }
+
+    /// Returns true when paid tickets wait only on the external payee legal name.
+    pub(crate) fn requires_external_payments_seller_name(&self) -> bool {
+        requires_external_payments_seller_name(self.payments_ready, &self.external_payments)
     }
 
     /// Returns true when the group currently collects paid tickets outside the platform.
@@ -138,10 +140,7 @@ pub(crate) struct UpdatePage {
 impl UpdatePage {
     /// Returns true when paid tickets can be configured through Stripe or external payments.
     pub(crate) fn is_paid_ticketing_available(&self) -> bool {
-        !matches!(
-            event_ticketing_mode(self.payments_ready, &self.external_payments),
-            EventTicketingMode::Unavailable
-        )
+        is_paid_ticketing_available(self.payments_ready, &self.external_payments)
     }
 
     /// Returns true when the provided currency code matches the current event currency.
@@ -152,6 +151,11 @@ impl UpdatePage {
     /// Returns true when paid tickets wait only on the group's external-payments opt-in.
     pub(crate) fn requires_external_payments_opt_in(&self) -> bool {
         requires_external_payments_opt_in(self.payments_ready, &self.external_payments)
+    }
+
+    /// Returns true when paid tickets wait only on the external payee legal name.
+    pub(crate) fn requires_external_payments_seller_name(&self) -> bool {
+        requires_external_payments_seller_name(self.payments_ready, &self.external_payments)
     }
 
     /// Returns true when tax is added to the configured ticket price.
@@ -191,7 +195,9 @@ enum EventTicketingMode {
     Unavailable,
 }
 
-/// Resolves the event editor's paid-ticketing rail.
+/// Resolves the event editor's paid-ticketing rail. Selection is independent
+/// of readiness: an opted-in, allowlisted group stays on the external rail even
+/// while it cannot collect on it yet.
 fn event_ticketing_mode(
     payments_ready: bool,
     external_payments: &GroupExternalPaymentsContext,
@@ -205,6 +211,21 @@ fn event_ticketing_mode(
     // Hide paid ticketing until one rail is available
     } else {
         EventTicketingMode::Unavailable
+    }
+}
+
+/// Reports whether the selected rail can collect paid tickets right now.
+fn is_paid_ticketing_available(
+    payments_ready: bool,
+    external_payments: &GroupExternalPaymentsContext,
+) -> bool {
+    match event_ticketing_mode(payments_ready, external_payments) {
+        // External collection needs the legal name of the collecting organization
+        EventTicketingMode::External => external_payments.seller_display_name.is_some(),
+        // Stripe readiness already covers the fiscal sponsor
+        EventTicketingMode::Stripe => true,
+        // No rail is selected or ready
+        EventTicketingMode::Unavailable => false,
     }
 }
 
@@ -223,11 +244,26 @@ fn requires_external_payments_opt_in(
         && !external_payments.enabled
 }
 
+/// Reports whether paid ticketing waits only on the legal name of the
+/// organization collecting external payments for a group on that rail.
+fn requires_external_payments_seller_name(
+    payments_ready: bool,
+    external_payments: &GroupExternalPaymentsContext,
+) -> bool {
+    matches!(
+        event_ticketing_mode(payments_ready, external_payments),
+        EventTicketingMode::External
+    ) && external_payments.seller_display_name.is_none()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::types::payments::GroupExternalPaymentsContext;
 
-    use super::{EventTicketingMode, event_ticketing_mode, requires_external_payments_opt_in};
+    use super::{
+        EventTicketingMode, event_ticketing_mode, is_paid_ticketing_available,
+        requires_external_payments_opt_in, requires_external_payments_seller_name,
+    };
 
     #[test]
     fn test_event_ticketing_mode_prefers_external_when_eligible() {
@@ -238,6 +274,7 @@ mod tests {
             country_code: Some("KR".to_string()),
             default_payment_window_hours: Some(72),
             max_payment_window_hours: Some(336),
+            seller_display_name: Some("External Payee Co".to_string()),
         };
 
         assert_eq!(
@@ -255,6 +292,7 @@ mod tests {
             country_code: Some("KR".to_string()),
             default_payment_window_hours: Some(72),
             max_payment_window_hours: Some(336),
+            seller_display_name: Some("External Payee Co".to_string()),
         };
 
         assert_eq!(
@@ -272,6 +310,7 @@ mod tests {
             country_code: Some("US".to_string()),
             default_payment_window_hours: Some(72),
             max_payment_window_hours: Some(336),
+            seller_display_name: Some("External Payee Co".to_string()),
         };
 
         assert_eq!(
@@ -299,6 +338,7 @@ mod tests {
             country_code: Some("US".to_string()),
             default_payment_window_hours: Some(72),
             max_payment_window_hours: Some(336),
+            seller_display_name: Some("External Payee Co".to_string()),
         };
 
         assert!(!requires_external_payments_opt_in(
@@ -316,6 +356,7 @@ mod tests {
             country_code: Some("KR".to_string()),
             default_payment_window_hours: Some(72),
             max_payment_window_hours: Some(336),
+            seller_display_name: Some("External Payee Co".to_string()),
         };
 
         assert!(!requires_external_payments_opt_in(true, &external_payments));
@@ -330,8 +371,117 @@ mod tests {
             country_code: Some("KR".to_string()),
             default_payment_window_hours: Some(72),
             max_payment_window_hours: Some(336),
+            seller_display_name: Some("External Payee Co".to_string()),
         };
 
         assert!(requires_external_payments_opt_in(false, &external_payments));
+    }
+
+    #[test]
+    fn test_event_ticketing_mode_keeps_external_without_seller_name_despite_stripe_readiness() {
+        let external_payments = nameless_selected_external_payments();
+
+        assert_eq!(
+            event_ticketing_mode(true, &external_payments),
+            EventTicketingMode::External
+        );
+    }
+
+    #[test]
+    fn test_is_paid_ticketing_available_is_false_for_nameless_selected_group_with_stripe() {
+        let external_payments = nameless_selected_external_payments();
+
+        assert!(!is_paid_ticketing_available(true, &external_payments));
+    }
+
+    #[test]
+    fn test_is_paid_ticketing_available_is_true_for_named_external_group() {
+        let external_payments = GroupExternalPaymentsContext {
+            seller_display_name: Some("External Payee Co".to_string()),
+            ..nameless_selected_external_payments()
+        };
+
+        assert!(is_paid_ticketing_available(false, &external_payments));
+    }
+
+    #[test]
+    fn test_is_paid_ticketing_available_follows_stripe_readiness_off_the_external_rail() {
+        let external_payments = GroupExternalPaymentsContext {
+            configured: true,
+            eligible: false,
+            enabled: false,
+            country_code: Some("US".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+            seller_display_name: None,
+        };
+
+        assert!(is_paid_ticketing_available(true, &external_payments));
+        assert!(!is_paid_ticketing_available(false, &external_payments));
+    }
+
+    #[test]
+    fn test_requires_external_payments_seller_name_is_false_for_named_group() {
+        let external_payments = GroupExternalPaymentsContext {
+            configured: true,
+            eligible: true,
+            enabled: true,
+            country_code: Some("KR".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+            seller_display_name: Some("External Payee Co".to_string()),
+        };
+
+        assert!(!requires_external_payments_seller_name(
+            false,
+            &external_payments
+        ));
+    }
+
+    #[test]
+    fn test_requires_external_payments_seller_name_is_false_for_opted_out_group() {
+        let external_payments = GroupExternalPaymentsContext {
+            configured: true,
+            eligible: true,
+            enabled: false,
+            country_code: Some("KR".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+            seller_display_name: None,
+        };
+
+        assert!(!requires_external_payments_seller_name(
+            false,
+            &external_payments
+        ));
+    }
+
+    #[test]
+    fn test_requires_external_payments_seller_name_is_true_for_nameless_opted_in_group() {
+        let external_payments = nameless_selected_external_payments();
+
+        assert!(requires_external_payments_seller_name(
+            false,
+            &external_payments
+        ));
+        assert!(requires_external_payments_seller_name(
+            true,
+            &external_payments
+        ));
+    }
+
+    // Helpers.
+
+    /// Opted-in, allowlisted group that has not named the external payee.
+    fn nameless_selected_external_payments() -> GroupExternalPaymentsContext {
+        GroupExternalPaymentsContext {
+            configured: true,
+            eligible: true,
+            enabled: true,
+            country_code: Some("KR".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+            seller_display_name: None,
+        }
     }
 }

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(465);
+select plan(468);
 
 -- ============================================================================
 -- VARIABLES
@@ -331,6 +331,7 @@ select has_function('is_event_paid_capable', array['uuid']::name[]);
 select has_function('is_event_simple_rsvp', array['uuid']::name[]);
 select has_function('is_event_ticketing_payload_paid_capable', array['jsonb']::name[]);
 select has_function('is_group_external_payments_ready', array['uuid']::name[]);
+select has_function('is_group_external_payments_selected', array['uuid']::name[]);
 select has_function('is_group_member', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('is_open_graph_image', array['text']::name[]);
 select has_function(
@@ -552,8 +553,10 @@ select hasnt_function('requeue_stale_event_purchase_refund_claims', '{}'::name[]
 select has_function('requeue_stale_payment_job_claims', '{}'::name[]);
 select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
 select has_function('resolve_event_discount_code_available_override', array['jsonb', 'boolean']::name[]);
-select has_function('resolve_event_payload', array['jsonb', 'event', 'boolean']::name[]);
-select has_function('resolve_event_payment_rail', array['event', 'jsonb', 'boolean']::name[]);
+select has_function('resolve_event_payload', array['jsonb', 'event', 'boolean', 'boolean']::name[]);
+select has_function('resolve_event_payment_rail', array['event', 'jsonb', 'boolean', 'boolean']::name[]);
+select hasnt_function('resolve_event_payload', array['jsonb', 'event', 'boolean']::name[]);
+select hasnt_function('resolve_event_payment_rail', array['event', 'jsonb', 'boolean']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
 select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);
 select has_function('revoke_group_user_badge', array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]);

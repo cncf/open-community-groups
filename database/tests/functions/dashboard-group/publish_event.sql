@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(29);
+select plan(31);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,7 @@ select plan(29);
 \set eventExternalAbroadID '3a0a0000-0000-0000-0000-00000000003a'
 \set eventExternalClearID '3a0a0000-0000-0000-0000-000000000030'
 \set eventExternalMissingUrlID '3a0a0000-0000-0000-0000-000000000031'
+\set eventExternalNamelessID '3a0a0000-0000-0000-0000-00000000003d'
 \set eventExternalReadyID '3a0a0000-0000-0000-0000-000000000032'
 \set eventID '3a0a0000-0000-0000-0000-000000000003'
 \set eventNoMeetingID '3a0a0000-0000-0000-0000-000000000004'
@@ -27,6 +28,7 @@ select plan(29);
 \set eventTicketedNoRecipientID '3a0a0000-0000-0000-0000-000000000008'
 \set groupCategoryID '3a0a0000-0000-0000-0000-000000000009'
 \set groupExternalID '3a0a0000-0000-0000-0000-000000000033'
+\set groupExternalNamelessID '3a0a0000-0000-0000-0000-00000000003e'
 \set groupID '3a0a0000-0000-0000-0000-000000000010'
 \set groupNoRecipientID '3a0a0000-0000-0000-0000-000000000011'
 \set missingGroupID '3a0a0000-0000-0000-0000-000000000012'
@@ -34,6 +36,7 @@ select plan(29);
 \set priceWindowExternalAbroadID '3a0a0000-0000-0000-0000-00000000003b'
 \set priceWindowExternalClearID '3a0a0000-0000-0000-0000-000000000034'
 \set priceWindowExternalMissingUrlID '3a0a0000-0000-0000-0000-000000000035'
+\set priceWindowExternalNamelessID '3a0a0000-0000-0000-0000-00000000003f'
 \set priceWindowExternalReadyID '3a0a0000-0000-0000-0000-000000000036'
 \set priceWindowFreeID '3a0a0000-0000-0000-0000-00000000001b'
 \set priceWindowHybridID '3a0a0000-0000-0000-0000-000000000021'
@@ -45,6 +48,7 @@ select plan(29);
 \set ticketTypeExternalAbroadID '3a0a0000-0000-0000-0000-00000000003c'
 \set ticketTypeExternalClearID '3a0a0000-0000-0000-0000-000000000037'
 \set ticketTypeExternalMissingUrlID '3a0a0000-0000-0000-0000-000000000038'
+\set ticketTypeExternalNamelessID '3a0a0000-0000-0000-0000-000000000040'
 \set ticketTypeExternalReadyID '3a0a0000-0000-0000-0000-000000000039'
 \set ticketTypeInvalidCurrencyID '3a0a0000-0000-0000-0000-000000000017'
 \set ticketTypeFreeID '3a0a0000-0000-0000-0000-00000000001e'
@@ -84,7 +88,19 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
 -- Allowlisted group with external payments enabled for external publish scenarios
 select fx_group(:'groupExternalID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
+));
+
+-- Allowlisted enabled group that kept a Stripe sponsor but never named the external payee
+select fx_group(:'groupExternalNamelessID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true,
+    'payment_recipient', jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_nameless_publish',
+        'seller_display_name', 'Retained Fiscal Sponsor'
+    )
 ));
 
 -- Users
@@ -219,6 +235,17 @@ select fx_event(:'eventExternalMissingUrlID', :'groupExternalID', :'eventCategor
     'venue_zip_code', '00000'
 ));
 
+-- Paid Stripe-shaped draft in the nameless external group that must not publish on Stripe
+select fx_event(:'eventExternalNamelessID', :'groupExternalNamelessID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'KRW',
+    'starts_at', current_timestamp + interval '2 days',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
+
 -- Paid external draft ready to publish without Stripe
 select fx_event(:'eventExternalReadyID', :'groupExternalID', :'eventCategoryID', jsonb_build_object(
     'external_payment_url', 'https://pay.example.test/publish',
@@ -235,12 +262,14 @@ select fx_event(:'eventExternalReadyID', :'groupExternalID', :'eventCategoryID',
 select fx_event_ticket_type(:'ticketTypeExternalAbroadID', :'eventExternalAbroadID', jsonb_build_object('seats_total', 50));
 select fx_event_ticket_type(:'ticketTypeExternalClearID', :'eventExternalClearID', jsonb_build_object('seats_total', 50));
 select fx_event_ticket_type(:'ticketTypeExternalMissingUrlID', :'eventExternalMissingUrlID', jsonb_build_object('seats_total', 50));
+select fx_event_ticket_type(:'ticketTypeExternalNamelessID', :'eventExternalNamelessID', jsonb_build_object('seats_total', 50));
 select fx_event_ticket_type(:'ticketTypeExternalReadyID', :'eventExternalReadyID', jsonb_build_object('seats_total', 50));
 
 -- Price windows for the external publish fixtures
 select fx_event_ticket_price_window(:'priceWindowExternalAbroadID', :'ticketTypeExternalAbroadID', jsonb_build_object('amount_minor', 5000));
 select fx_event_ticket_price_window(:'priceWindowExternalClearID', :'ticketTypeExternalClearID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'priceWindowExternalMissingUrlID', :'ticketTypeExternalMissingUrlID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'priceWindowExternalNamelessID', :'ticketTypeExternalNamelessID', jsonb_build_object('amount_minor', 5000));
 select fx_event_ticket_price_window(:'priceWindowExternalReadyID', :'ticketTypeExternalReadyID', jsonb_build_object('amount_minor', 5000));
 
 -- Session with meeting_requested=true (should be marked as out of sync)
@@ -740,6 +769,26 @@ select throws_ok(
     'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject publishing a paid external event without a payment URL'
+);
+
+-- Should reject publishing a paid event on Stripe while the selected external rail lacks its payee name
+select throws_ok(
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'groupExternalNamelessID',
+        :'eventExternalNamelessID'
+    ),
+    'OCG01',
+    'external payments require the legal name of the organization collecting payments',
+    'Should reject publishing a paid event on Stripe while the selected external rail lacks its payee name'
+);
+
+-- Should keep the draft unpublished after rejecting the nameless external publication
+select is(
+    (select published from event where event_id = :'eventExternalNamelessID'::uuid),
+    false,
+    'Should keep the draft unpublished after rejecting the nameless external publication'
 );
 
 -- Should reject publishing a paid external event with a venue outside the group country

@@ -10,6 +10,7 @@
 create or replace function resolve_event_payload(
     p_event jsonb,
     p_before event,
+    p_group_external_selected boolean,
     p_group_external_ready boolean
 )
 returns table (
@@ -189,7 +190,12 @@ begin
     -- Select the payment rail and normalize the tax and external fields for it
     select *
     into v_rail
-    from resolve_event_payment_rail(v_resolved, v_ticket_types, p_group_external_ready);
+    from resolve_event_payment_rail(
+        v_resolved,
+        v_ticket_types,
+        p_group_external_selected,
+        p_group_external_ready
+    );
 
     -- Return the resolved payload
     return query select v_discount_codes, v_rail.external_mode, v_rail.resolved, v_ticket_types;

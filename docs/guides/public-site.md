@@ -116,6 +116,11 @@ with a current price. Invitation-only seats are excluded. `Remaining` accounts f
 purchases and unexpired admission offers and checkout holds; pending approval requests do not
 reserve seats.
 
+When any ticket tier has a positive price, a notice below the event date and location names the
+legal entity responsible for ticket sales and invoicing: the group's fiscal sponsor for tickets
+sold through OCG, or the organization collecting payments when the organizer collects payment
+outside OCG.
+
 Registration questions appear at the stage where the answers are needed:
 before a direct checkout, with an approval request, or when an organizer or
 waitlist offer is claimed. Only questions marked required must be answered.

@@ -46,7 +46,8 @@ insert into external_payments_config (
 -- Allowlisted group with external payments enabled
 select fx_group(:'readyGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- Group with the matching Stripe payment recipient
@@ -61,7 +62,8 @@ select fx_group(:'stripeGroupID', :'communityID', :'groupCategoryID', jsonb_buil
 -- Group outside the external-payments allowlist
 select fx_group(:'unreadyGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'US',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- External event used by the free unready and paid unready branches

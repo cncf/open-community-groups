@@ -70,6 +70,12 @@ pub(crate) async fn update(
         recipient.seller_display_name = recipient.seller_display_name.trim().to_string();
     }
 
+    // Normalize the external payee legal name, keeping a blank value so the
+    // database clears the stored name
+    if let Some(seller_display_name) = group_update.external_payments_seller_display_name.as_mut() {
+        *seller_display_name = seller_display_name.trim().to_string();
+    }
+
     // Validate a changed provider account before persisting it
     let mut payment_validation = None;
     if let Some(recipient) = group_update

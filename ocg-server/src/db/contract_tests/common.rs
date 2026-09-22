@@ -96,6 +96,10 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
     assert_eq!(event.registration_questions.len(), 1);
     assert_eq!(event.registration_questions[0].prompt, "Meal preference");
     assert!(event.registration_questions_locked);
+    assert_eq!(
+        event.seller_display_name.as_deref(),
+        Some("Contract Fiscal Sponsor")
+    );
     assert_eq!(event.sessions.len(), 1);
     assert_eq!(event.sponsors.len(), 1);
     assert_contract_ticket_type(
@@ -124,6 +128,10 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
         Some("https://pay.example.test/contract-external")
     );
     assert_eq!(external_event.external_payment_window_hours, Some(72));
+    assert_eq!(
+        external_event.seller_display_name.as_deref(),
+        Some("Contract External Payee")
+    );
 
     Ok(())
 }
@@ -194,6 +202,10 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
     );
     assert_eq!(group.group_id, group_id());
     assert!(group.external_payments_enabled);
+    assert_eq!(
+        group.external_payments_seller_display_name.as_deref(),
+        Some("Contract External Payee")
+    );
     assert_eq!(group.organizers.len(), 1);
     assert_eq!(group.sponsors.len(), 1);
     assert_eq!(group.subgroups.len(), 1);

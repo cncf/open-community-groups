@@ -435,6 +435,8 @@ pub struct EventFull {
     pub registration_starts_at: Option<DateTime<Utc>>,
     /// Remaining capacity after subtracting registered attendees.
     pub remaining_capacity: Option<i32>,
+    /// Legal name of the entity selling tickets on the event's payment rail.
+    pub seller_display_name: Option<String>,
     /// Event start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,

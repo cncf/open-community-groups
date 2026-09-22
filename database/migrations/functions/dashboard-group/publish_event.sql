@@ -14,6 +14,7 @@ declare
     v_external_payment_window_hours int;
     v_group_country_code text;
     v_group_external_ready boolean := false;
+    v_group_external_selected boolean := false;
     v_paid_capable boolean;
     v_payment_currency_code text;
     v_payment_recipient jsonb;
@@ -27,11 +28,13 @@ begin
         g.community_id,
         g.country_code,
         is_group_external_payments_ready(g.group_id),
+        is_group_external_payments_selected(g.group_id),
         g.payment_recipient
     into
         v_community_id,
         v_group_country_code,
         v_group_external_ready,
+        v_group_external_selected,
         v_payment_recipient
     from "group" g
     where g.group_id = p_group_id
@@ -77,13 +80,18 @@ begin
         return;
     end if;
 
-    -- Reject publishing an external-marked event while the group is ineligible
-    if v_external_payment_url is not null and not v_group_external_ready then
+    -- Reject publishing an external-marked event while the group has not selected the rail
+    if v_external_payment_url is not null and not v_group_external_selected then
         raise exception 'external payments are not available for this event' using errcode = 'OCG01';
     end if;
 
-    -- Use the external rail only while the group is eligible right now
-    v_external_mode := v_paid_capable and v_group_external_ready;
+    -- Use the external rail only while the group selects it right now
+    v_external_mode := v_paid_capable and v_group_external_selected;
+
+    -- Reject paid external publication while the group cannot collect on its rail
+    if v_external_mode and not v_group_external_ready then
+        raise exception 'external payments require the legal name of the organization collecting payments' using errcode = 'OCG01';
+    end if;
 
     -- Clear leftover windows only when the event is not on the external rail
     if not v_external_mode then

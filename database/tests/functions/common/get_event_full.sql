@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(15);
 \set communityID '0c060000-0000-0000-0000-000000000002'
 \set eventCategoryID '0c060000-0000-0000-0000-000000000003'
 \set eventCommunityLogoFallbackID '0c060000-0000-0000-0000-000000000004'
+\set eventExternalNamelessID '0c060000-0000-0000-0000-000000000027'
 \set eventGroupLogoFallbackID '0c060000-0000-0000-0000-000000000005'
 \set eventID '0c060000-0000-0000-0000-000000000006'
 \set eventInactiveGroupID '0c060000-0000-0000-0000-000000000007'
@@ -24,6 +25,7 @@ select plan(15);
 \set eventSeriesID '0c060000-0000-0000-0000-00000000000b'
 \set eventUnpublishedID '0c060000-0000-0000-0000-00000000000c'
 \set groupCategoryID '0c060000-0000-0000-0000-00000000000d'
+\set groupExternalNamelessID '0c060000-0000-0000-0000-000000000028'
 \set groupID '0c060000-0000-0000-0000-00000000000e'
 \set groupInactiveID '0c060000-0000-0000-0000-00000000000f'
 \set groupNoLogoID '0c060000-0000-0000-0000-000000000010'
@@ -140,9 +142,11 @@ insert into "group" (
     country_code,
     country_name,
     created_at,
+    external_payments_seller_display_name,
     location,
     logo_url,
     og_image_url,
+    payment_recipient,
     state
 ) values (
     :'groupID',
@@ -156,11 +160,22 @@ insert into "group" (
     'US',
     'United States',
     '2024-03-01 10:00:00+00',
+    'Seattle External Payee Co',
     ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326),  -- New York coordinates
     'https://example.com/group-logo.png',
     'https://example.com/group-og.png',
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_event_full',
+        'seller_display_name', 'Seattle Fiscal Sponsor'
+    ),
     'NY'
 );
+
+-- Group with a fiscal sponsor but no external payee legal name
+select fx_group(:'groupExternalNamelessID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_nameless", "seller_display_name": "Nameless Fiscal Sponsor"}'::jsonb
+));
 
 -- Group (inactive)
 select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
@@ -743,6 +758,15 @@ select fx_event(:'eventCommunityLogoFallbackID', :'groupNoLogoID', :'eventCatego
     'timezone', 'America/New_York'
 ));
 
+-- External-rail event whose group lacks the external payee legal name
+select fx_event(:'eventExternalNamelessID', :'groupExternalNamelessID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'external_payment_url', 'https://pay.example.test/nameless',
+    'published', true,
+    'starts_at', '2024-11-15 09:00:00+00',
+    'timezone', 'America/New_York'
+));
+
 -- Ticketed event for normalized payment payload checks
 select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
@@ -868,6 +892,7 @@ select is(
         "venue_state_name": "New York",
         "venue_zip_code": "10001",
         "remaining_capacity": 498,
+        "seller_display_name": "Seattle External Payee Co",
         "waitlist_count": 0,
         "waitlist_enabled": false,
         "community": {
@@ -1299,6 +1324,31 @@ select is(
         :'ticketDiscountCodeID', :'ticketTypeID', :'ticketPriceWindowID'
     )::jsonb,
     'Should include normalized ticketing fields in the full event payload'
+);
+
+-- Should resolve the fiscal sponsor as seller for events on the Stripe rail
+select is(
+    (
+        get_event_full(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'eventPaidID'::uuid
+        )::jsonb
+    )->>'seller_display_name',
+    'Seattle Fiscal Sponsor',
+    'Should resolve the fiscal sponsor as seller for events on the Stripe rail'
+);
+
+-- Should omit the seller when an external-rail group lacks the external payee legal name
+select ok(
+    not (
+        get_event_full(
+            :'communityID'::uuid,
+            :'groupExternalNamelessID'::uuid,
+            :'eventExternalNamelessID'::uuid
+        )::jsonb ? 'seller_display_name'
+    ),
+    'Should omit the seller when an external-rail group lacks the external payee legal name'
 );
 
 -- Should order event organizers by snapshot order with nulls last

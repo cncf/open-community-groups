@@ -38,7 +38,8 @@ insert into external_payments_config (
 -- Allowlisted group with the toggle enabled
 select fx_group(:'groupEligibleID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
-    'external_payments_enabled', true
+    'external_payments_enabled', true,
+    'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- Group whose country is not allowlisted
@@ -50,7 +51,7 @@ select fx_group(:'groupIneligibleID', :'communityID', :'groupCategoryID', jsonb_
 -- TESTS
 -- ============================================================================
 
--- Should return eligibility, toggle, and window limits for an allowlisted group
+-- Should return eligibility, toggle, payee, and window limits for an allowlisted group
 select is(
     get_group_external_payments_context(
         :'communityID'::uuid,
@@ -62,9 +63,10 @@ select is(
         'default_payment_window_hours', 72,
         'eligible', true,
         'enabled', true,
-        'max_payment_window_hours', 336
+        'max_payment_window_hours', 336,
+        'seller_display_name', 'External Payee Co'
     ),
-    'Should return eligibility, toggle, and window limits for an allowlisted group'
+    'Should return eligibility, toggle, payee, and window limits for an allowlisted group'
 );
 
 -- Should return ineligible context for a group outside the allowlist

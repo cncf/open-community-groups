@@ -100,8 +100,13 @@ pub(crate) struct CfsModal {
 mod tests {
     use chrono::{DateTime, TimeZone, Utc};
     use chrono_tz::{America::Los_Angeles, Tz};
+    use uuid::Uuid;
 
-    use crate::types::{community::CommunitySummary, group::GroupSummary};
+    use crate::types::{
+        community::CommunitySummary,
+        group::GroupSummary,
+        payments::{EventTicketPriceWindow, EventTicketType, EventTicketTypeAvailability},
+    };
 
     use super::*;
 
@@ -132,7 +137,61 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_page_renders_host_for_paid_event_with_seller() {
+        let mut page = sample_page(None, chrono_tz::UTC);
+        page.event.seller_display_name = Some("Example Payee <Ltd>".to_string());
+        page.event.ticket_types = Some(vec![sample_ticket_type(1_500)]);
+
+        let body = page.render().unwrap();
+
+        assert!(body.contains("data-event-host"));
+        assert!(body.contains("This event is hosted by"));
+        assert!(body.contains("Example Payee &#60;Ltd&#62;"));
+    }
+
+    #[test]
+    fn test_page_hides_host_for_free_event() {
+        let mut page = sample_page(None, chrono_tz::UTC);
+        page.event.seller_display_name = Some("Example Payee".to_string());
+        page.event.ticket_types = Some(vec![sample_ticket_type(0)]);
+
+        let body = page.render().unwrap();
+
+        assert!(!body.contains("data-event-host"));
+        assert!(!body.contains("Example Payee"));
+    }
+
+    #[test]
+    fn test_page_hides_host_for_paid_event_without_seller() {
+        let mut page = sample_page(None, chrono_tz::UTC);
+        page.event.ticket_types = Some(vec![sample_ticket_type(1_500)]);
+
+        let body = page.render().unwrap();
+
+        assert!(!body.contains("data-event-host"));
+    }
+
     // Helpers.
+
+    fn sample_ticket_type(amount_minor: i64) -> EventTicketType {
+        EventTicketType {
+            active: true,
+            availability: EventTicketTypeAvailability::Public,
+            event_ticket_type_id: Uuid::new_v4(),
+            order: 1,
+            title: "General admission".to_string(),
+
+            price_windows: vec![EventTicketPriceWindow {
+                amount_minor,
+                event_ticket_price_window_id: Uuid::new_v4(),
+
+                ends_at: None,
+                starts_at: None,
+            }],
+            ..Default::default()
+        }
+    }
 
     fn sample_page(starts_at: Option<DateTime<Utc>>, timezone: Tz) -> Page {
         Page {

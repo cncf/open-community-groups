@@ -110,6 +110,7 @@ async fn test_add_page_renders_external_ticketing_without_payment_recipient() {
                 country_code: Some("KR".to_string()),
                 default_payment_window_hours: Some(72),
                 max_payment_window_hours: Some(336),
+                seller_display_name: Some("External Payee Co".to_string()),
             })
         });
 
@@ -229,6 +230,7 @@ async fn test_add_page_success() {
                 country_code: None,
                 default_payment_window_hours: None,
                 max_payment_window_hours: None,
+                seller_display_name: None,
             })
         });
 
@@ -443,6 +445,7 @@ async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases
                 country_code: None,
                 default_payment_window_hours: None,
                 max_payment_window_hours: None,
+                seller_display_name: None,
             })
         });
     db.expect_list_event_approved_cfs_submissions()
@@ -573,6 +576,7 @@ async fn test_update_page_success() {
                 country_code: None,
                 default_payment_window_hours: None,
                 max_payment_window_hours: None,
+                seller_display_name: None,
             })
         });
     db.expect_list_event_approved_cfs_submissions()

@@ -301,9 +301,7 @@ const renderQuestionModal = (editor) => html`
                 ?disabled=${!editor._isModalOpen}
                 @change=${(event) => editor._updateDraftQuestion({ required: event.target.checked })}
               />
-              <div
-                class="relative h-6 w-11 rounded-full bg-stone-200 peer peer-checked:bg-primary-500 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 after:absolute after:start-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-stone-200 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white rtl:peer-checked:after:-translate-x-full"
-              ></div>
+              <div class="toggle-track"></div>
               <span class="ms-3 text-sm font-medium text-stone-900">Required</span>
             </label>
             <p class="form-legend mt-2">

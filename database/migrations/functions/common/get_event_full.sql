@@ -191,6 +191,12 @@ returns json as $$
                     when e.capacity is null then null
                     else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
                 end,
+            -- Resolve the legal seller from the payment rail the event uses
+            'seller_display_name',
+                case
+                    when e.external_payment_url is not null then g.external_payments_seller_display_name
+                    else g.payment_recipient->>'seller_display_name'
+                end,
             -- Include sessions grouped by local event day
             'sessions', (
                 with

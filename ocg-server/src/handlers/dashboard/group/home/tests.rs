@@ -577,6 +577,7 @@ async fn test_page_settings_tab_success() {
                 country_code: None,
                 default_payment_window_hours: None,
                 max_payment_window_hours: None,
+                seller_display_name: None,
             })
         });
     db.expect_get_site_settings()
