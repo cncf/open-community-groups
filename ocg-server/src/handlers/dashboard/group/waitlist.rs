@@ -45,7 +45,7 @@ pub(crate) async fn list_page(
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary(community_id, group_id, event_id),
+        db.get_event_summary_dashboard(community_id, group_id, event_id),
         db.search_event_waitlist(group_id, event_id, &filters)
     )?;
 

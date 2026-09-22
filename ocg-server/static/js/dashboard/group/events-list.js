@@ -13,7 +13,6 @@ import { initializeAnswersModal } from "/static/js/dashboard/group/attendees/ans
 const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
 const EVENT_ACTIONS_BUTTON_SELECTOR = ".btn-actions";
 const EVENTS_LIST_PAGE_SELECTOR = "[data-events-list-page]";
-const INVITATION_REQUEST_ACTION_SELECTOR = "[data-invitation-request-action]";
 const INVITATION_REQUEST_ANSWERS_MODAL = {
   closeSelector:
     "#close-invitation-request-answers-modal, #cancel-invitation-request-answers-modal, #overlay-invitation-request-answers-modal",
@@ -21,7 +20,13 @@ const INVITATION_REQUEST_ANSWERS_MODAL = {
   modalId: "invitation-request-answers-modal",
   nameId: "invitation-request-answers-name",
 };
-const INVITATION_REQUEST_TICKET_SELECTOR = "[data-invitation-request-ticket-type]";
+// Row-level ticket allocation forms share feedback and ticket select behavior.
+const ROW_TICKET_ACTION_SELECTOR = "[data-invitation-request-action], [data-waitlist-invite-action]";
+const ROW_TICKET_EMPTY_SELECTOR =
+  "[data-invitation-request-ticket-empty], [data-waitlist-invite-ticket-empty]";
+const ROW_TICKET_SUBMIT_SELECTOR =
+  "[data-invitation-request-ticket-submit], [data-waitlist-invite-ticket-submit]";
+const ROW_TICKET_TYPE_SELECTOR = "[data-invitation-request-ticket-type], [data-waitlist-invite-ticket-type]";
 const TABLE_FILTER_MENU_SELECTOR = "[data-table-filter-menu]";
 const initializedRoots = new WeakSet();
 let documentDismissHandlerBound = false;
@@ -43,7 +48,7 @@ export const initializeEventsListPage = (root = document) => {
   if (getElementById(root, INVITATION_REQUEST_ANSWERS_MODAL.modalId)) {
     initializeAnswersModal(root, INVITATION_REQUEST_ANSWERS_MODAL, prepareInvitationRequestAnswersOpen);
   }
-  initializeInvitationRequestTicketControls(root);
+  initializeRowTicketControls(root);
 
   root.addEventListener("click", (event) => {
     const actionsButton = closestElementWithinRoot(event.target, EVENT_ACTIONS_BUTTON_SELECTOR, root);
@@ -71,13 +76,9 @@ export const initializeEventsListPage = (root = document) => {
       return;
     }
 
-    const invitationRequestButton = closestElementWithinRoot(
-      event.target,
-      INVITATION_REQUEST_ACTION_SELECTOR,
-      root,
-    );
-    if (invitationRequestButton) {
-      handleInvitationRequestAfterRequest(invitationRequestButton, event);
+    const rowTicketAction = closestElementWithinRoot(event.target, ROW_TICKET_ACTION_SELECTOR, root);
+    if (rowTicketAction) {
+      handleRowTicketActionAfterRequest(rowTicketAction, event);
     }
   });
 
@@ -190,16 +191,16 @@ const handleActionsMenuClick = (button, root) => {
 };
 
 /**
- * Reports the result of an invitation request action.
- * @param {HTMLElement} button Invitation request action.
+ * Reports the result of a row-level ticket allocation action.
+ * @param {HTMLElement} form Ticket allocation form or button.
  * @param {Event} event HTMX after-request event.
  * @returns {void}
  */
-const handleInvitationRequestAfterRequest = (button, event) => {
+const handleRowTicketActionAfterRequest = (form, event) => {
   handleHtmxResponse({
     xhr: event.detail?.xhr,
-    successMessage: button.dataset.successMessage || "",
-    errorMessage: button.dataset.errorMessage || "Something went wrong. Please try again later.",
+    successMessage: form.dataset.successMessage || "",
+    errorMessage: form.dataset.errorMessage || "Something went wrong. Please try again later.",
   });
 };
 
@@ -273,27 +274,34 @@ const handleScopedActionConfigRequest = (button, event) => {
  * @returns {void}
  */
 const initializeEventsListPageRoots = (root = document) => {
-  initializeInvitationRequestTicketControls(root);
+  initializeRowTicketControls(root);
   initializeMatchingRoots(root, EVENTS_LIST_PAGE_SELECTOR, initializeEventsListPage);
 };
 
 /**
- * Disables one invitation request ticket assignment without an eligible tier.
+ * Prepares one row ticket assignment select and its submit button.
+ *
+ * Selects the sole assignable tier when the template left nothing selected,
+ * and disables the form without an eligible tier.
  * @param {Element} ticketTypeInput Ticket type select element.
  * @returns {void}
  */
-const initializeInvitationRequestTicketControl = (ticketTypeInput) => {
+const initializeRowTicketControl = (ticketTypeInput) => {
   if (!(ticketTypeInput instanceof HTMLSelectElement)) {
     return;
   }
 
   const form = ticketTypeInput.closest("form");
-  const emptyState = form?.querySelector("[data-invitation-request-ticket-empty]");
-  const submitButton = form?.querySelector("[data-invitation-request-ticket-submit]");
-  const hasAssignableTicketType = Array.from(ticketTypeInput.options).some(
+  const emptyState = form?.querySelector(ROW_TICKET_EMPTY_SELECTOR);
+  const submitButton = form?.querySelector(ROW_TICKET_SUBMIT_SELECTOR);
+  const assignableOptions = Array.from(ticketTypeInput.options).filter(
     (option) => option.value !== "" && !option.disabled,
   );
+  const hasAssignableTicketType = assignableOptions.length > 0;
 
+  if (ticketTypeInput.value === "" && assignableOptions.length === 1) {
+    ticketTypeInput.value = assignableOptions[0].value;
+  }
   ticketTypeInput.disabled = !hasAssignableTicketType;
   if (submitButton instanceof HTMLButtonElement) {
     submitButton.disabled = submitButton.disabled || !hasAssignableTicketType;
@@ -304,12 +312,12 @@ const initializeInvitationRequestTicketControl = (ticketTypeInput) => {
 };
 
 /**
- * Initializes invitation request ticket assignment controls.
+ * Initializes row ticket assignment controls.
  * @param {Document|Element} root Root element to scan from.
  * @returns {void}
  */
-const initializeInvitationRequestTicketControls = (root) => {
-  initializeMatchingRoots(root, INVITATION_REQUEST_TICKET_SELECTOR, initializeInvitationRequestTicketControl);
+const initializeRowTicketControls = (root) => {
+  initializeMatchingRoots(root, ROW_TICKET_TYPE_SELECTOR, initializeRowTicketControl);
 };
 
 /**

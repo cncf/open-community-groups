@@ -221,6 +221,19 @@ export const TEST_EVENT_IDS = {
   },
 };
 
+/** Dashboard waitlist invitation fixture with spare seats on one free tier. */
+export const TEST_WAITLIST_INVITE_EVENT = {
+  id: "55555555-5555-5555-5555-555555555537",
+  name: "Dashboard Waitlist Invite Lab",
+  // Sold-out tier that holds the queue and the expired offer.
+  queuedTicketTypeId: "56555555-5555-5555-5555-555555555537",
+  // Tier with spare seats that organizers assign from the waitlist.
+  inviteTicketTypeId: "56555555-5555-5555-5555-555555555538",
+  // Seeded offers that must survive fixture restoration.
+  expiredOfferId: "59555555-5555-5555-5555-555555555537",
+  claimedOfferId: "59555555-5555-5555-5555-555555555538",
+};
+
 /** Payment-specific event ids used by the future Playwright payment suite. */
 export const TEST_PAYMENT_EVENT_IDS = {
   draft: "55555555-5555-5555-5555-555555555522",

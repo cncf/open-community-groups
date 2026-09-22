@@ -57,7 +57,7 @@ async fn test_list_page_success() {
         user_id,
         GroupPermission::EventsWrite,
     );
-    db.expect_get_event_summary()
+    db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
@@ -208,7 +208,7 @@ async fn test_list_page_with_pagination_params() {
         user_id,
         GroupPermission::EventsWrite,
     );
-    db.expect_get_event_summary()
+    db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
@@ -278,7 +278,7 @@ async fn test_list_page_with_search_query() {
         user_id,
         GroupPermission::EventsWrite,
     );
-    db.expect_get_event_summary()
+    db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
