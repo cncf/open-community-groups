@@ -39,19 +39,17 @@ describe("common header template", () => {
     const template = normalizeWhitespace(await loadTemplate("macros/header.html"));
     const macro = template.slice(template.indexOf("{% macro viewport_mode_items() -%}"));
 
-    // Verify the separator only shows alongside one of the two entries.
-    expect(macro).to.include(
-      '<li class="hidden max-lg:pointer-coarse:not-viewport-desktop:block viewport-desktop:block border-t border-stone-200 mt-2 pt-2" role="separator" aria-hidden="true"></li>',
-    );
+    // Verify no standalone separator item is rendered; each entry carries its own divider.
+    expect(macro).not.to.include('role="separator"');
 
     // Verify the desktop entry targets narrow touch devices still in the default mode.
     expect(macro).to.include(
-      '<li class="hidden max-lg:pointer-coarse:not-viewport-desktop:block" role="none"> <button type="button" data-viewport-mode="desktop" class="block w-full text-start px-4 py-2 hover:bg-stone-100" role="menuitem"> <span class="flex items-center"> <span class="svg-icon size-4 icon-desktop bg-stone-600"></span> <span class="ms-2 text-xs/6">Desktop version</span>',
+      '<li class="hidden max-lg:pointer-coarse:not-viewport-desktop:block border-t border-stone-200 mt-2 pt-2" role="none"> <button type="button" data-viewport-mode="desktop" class="block w-full text-start px-4 py-2 hover:bg-stone-100" role="menuitem"> <span class="flex items-center"> <span class="svg-icon size-4 icon-desktop bg-stone-600"></span> <span class="ms-2 text-xs/6">Desktop version</span>',
     );
 
     // Verify the mobile entry only depends on the desktop mode attribute.
     expect(macro).to.include(
-      '<li class="hidden viewport-desktop:block" role="none"> <button type="button" data-viewport-mode="default" class="block w-full text-start px-4 py-2 hover:bg-stone-100" role="menuitem"> <span class="flex items-center"> <span class="svg-icon size-4 icon-mobile bg-stone-600"></span> <span class="ms-2 text-xs/6">Mobile version</span>',
+      '<li class="hidden viewport-desktop:block border-t border-stone-200 mt-2 pt-2" role="none"> <button type="button" data-viewport-mode="default" class="block w-full text-start px-4 py-2 hover:bg-stone-100" role="menuitem"> <span class="flex items-center"> <span class="svg-icon size-4 icon-mobile bg-stone-600"></span> <span class="ms-2 text-xs/6">Mobile version</span>',
     );
   });
 

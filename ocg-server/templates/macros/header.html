@@ -21,11 +21,7 @@
    Visibility is CSS-only: "Desktop version" shows below lg on coarse-pointer devices while the
    default mode is active; "Mobile version" shows whenever the desktop mode attribute is set. -#}
 {% macro viewport_mode_items() -%}
-  <li class="hidden max-lg:pointer-coarse:not-viewport-desktop:block viewport-desktop:block border-t border-stone-200 mt-2 pt-2"
-      role="separator"
-      aria-hidden="true"></li>
-
-  <li class="hidden max-lg:pointer-coarse:not-viewport-desktop:block"
+  <li class="hidden max-lg:pointer-coarse:not-viewport-desktop:block border-t border-stone-200 mt-2 pt-2"
       role="none">
     <button type="button"
             data-viewport-mode="desktop"
@@ -38,7 +34,8 @@
     </button>
   </li>
 
-  <li class="hidden viewport-desktop:block" role="none">
+  <li class="hidden viewport-desktop:block border-t border-stone-200 mt-2 pt-2"
+      role="none">
     <button type="button"
             data-viewport-mode="default"
             class="block w-full text-start px-4 py-2 hover:bg-stone-100"

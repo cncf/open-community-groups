@@ -58,7 +58,10 @@ describe("viewport mode", () => {
     const response = await fetch("/ocg-server/templates/common/base.html");
     expect(response.ok).to.equal(true);
     const template = await response.text();
-    const inlineScript = template.match(/<script>([\s\S]*?)<\/script>/)[1];
+    const inlineScript = [...template.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+      .map((match) => match[1])
+      .find((body) => body.includes(VIEWPORT_MODE_COOKIE));
+    expect(inlineScript, "viewport mode initializer").not.to.equal(undefined);
 
     // Verify both files agree on the persisted cookie pair and the html attribute.
     expect(inlineScript).to.include(`"${VIEWPORT_MODE_COOKIE}=${DESKTOP_MODE}"`);

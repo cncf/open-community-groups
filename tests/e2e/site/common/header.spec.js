@@ -2,13 +2,6 @@ import { expect, test } from "../../fixtures.js";
 
 import { navigateToPath, navigateToSiteHome } from "../../utils.js";
 
-/**
- * Clicks a control through a DOM event instead of emulated pointer input. In desktop version
- * mode the 1280px layout viewport exceeds the mobile visual viewport, and Chromium's emulated
- * pointer coordinates no longer map onto elements outside the visible area.
- */
-const clickInDesktopMode = (locator) => locator.dispatchEvent("click");
-
 test.describe("site header", () => {
   test("desktop navigation links point to the expected public pages", async ({ page }) => {
     // Load the public home page before checking desktop navigation links.
@@ -311,3 +304,10 @@ test.describe("site header", () => {
     await expect(footer.getByRole("link", { name: /GitHub/i })).toHaveAttribute("href", /github\.com/);
   });
 });
+
+/**
+ * Clicks a control through a DOM event instead of emulated pointer input. In desktop version
+ * mode the 1280px layout viewport exceeds the mobile visual viewport, and Chromium's emulated
+ * pointer coordinates no longer map onto elements outside the visible area.
+ */
+const clickInDesktopMode = (locator) => locator.dispatchEvent("click");
