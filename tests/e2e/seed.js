@@ -221,6 +221,13 @@ export const TEST_EVENT_IDS = {
   },
 };
 
+/** Dashboard waitlist invitation fixture with spare seats on one free tier. */
+export const TEST_WAITLIST_INVITE_EVENT = {
+  id: "55555555-5555-5555-5555-555555555537",
+  name: "Dashboard Waitlist Invite Lab",
+  ticketTypeId: "56555555-5555-5555-5555-555555555537",
+};
+
 /** Payment-specific event ids used by the future Playwright payment suite. */
 export const TEST_PAYMENT_EVENT_IDS = {
   draft: "55555555-5555-5555-5555-555555555522",

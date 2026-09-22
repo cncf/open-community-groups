@@ -99,6 +99,14 @@ values (
     20,
     'Ended sales pass',
     'Zero-price pass whose only sales window has ended.'
+), (
+    '56555555-5555-5555-5555-555555555537',
+    true,
+    '55555555-5555-5555-5555-555555555537',
+    1,
+    3,
+    'General Admission',
+    'Free tier with spare seats used for dashboard waitlist invitation coverage.'
 );
 
 insert into event_ticket_type (
@@ -510,6 +518,17 @@ values (
     '55555555-5555-5555-5555-555555555526',
     (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555526' order by "order" limit 1),
     '77777777-7777-7777-7777-777777777707'
+), (
+    '55555555-5555-5555-5555-555555555537',
+    '56555555-5555-5555-5555-555555555537',
+    '77777777-7777-7777-7777-777777777707'
+);
+
+-- Confirmed attendee whose waitlist offer was already claimed on the invite lab event.
+insert into event_attendee (event_id, user_id)
+values (
+    '55555555-5555-5555-5555-555555555537',
+    '77777777-7777-7777-7777-777777777705'
 );
 
 insert into event_attendee (event_id, user_id, manually_invited, status)
@@ -745,6 +764,15 @@ values (
     'expired',
     '77777777-7777-7777-7777-777777777701'
 ), (
+    '59555555-5555-5555-5555-555555555537',
+    current_timestamp - interval '2 days',
+    '55555555-5555-5555-5555-555555555537',
+    '56555555-5555-5555-5555-555555555537',
+    current_timestamp - interval '1 day',
+    'waitlist',
+    'expired',
+    '77777777-7777-7777-7777-777777777708'
+), (
     '59555555-5555-5555-5555-555555555528',
     current_timestamp - interval '2 days',
     '55555555-5555-5555-5555-555555555528',
@@ -807,6 +835,18 @@ values (
     'checkout_pending',
     'Private paid offer',
     '77777777-7777-7777-7777-777777777708'
+), (
+    '59555555-5555-5555-5555-555555555538',
+    0,
+    null,
+    0,
+    '55555555-5555-5555-5555-555555555537',
+    '56555555-5555-5555-5555-555555555537',
+    current_timestamp + interval '3 days',
+    'waitlist',
+    'completed',
+    'General Admission',
+    '77777777-7777-7777-7777-777777777705'
 );
 
 -- Canceled invitation retained for attendee history regression coverage.

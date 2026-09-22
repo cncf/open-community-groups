@@ -452,6 +452,20 @@ insert into event (
     now() + interval '59 days 2 hours',
     1,
     true
+), (
+    '55555555-5555-5555-5555-555555555537',
+    'Dashboard Waitlist Invite Lab',
+    'alpha-dashboard-waitlist-invite-lab',
+    'Future event with spare seats dedicated to dashboard waitlist invitation coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() + interval '58 days',
+    now() + interval '58 days 2 hours',
+    3,
+    true
 );
 
 -- Events reserved for cancellation lifecycle and canceled invitation history coverage.
