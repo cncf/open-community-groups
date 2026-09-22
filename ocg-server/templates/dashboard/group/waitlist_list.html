@@ -274,61 +274,128 @@
             {# End created date -#}
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
+              {% let is_queued = entry.admission_offer_id.is_none() -%}
+              {% let has_active_offer = entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+                || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
+              {% let can_reissue = entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)
+                || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Declined)
+                || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Canceled) -%}
+              {% let can_invite = !event.canceled && !event.is_past() && (is_queued || can_reissue) -%}
+              {% let row_key = self::waitlist_row_key(entry) -%}
               <div class="relative inline-flex justify-end">
-                {% if can_manage_events
-                  && (entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
-                  || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)) -%}
-                  {% if let Some(admission_offer_id) = entry.admission_offer_id -%}
-                    <div class="group relative inline-flex justify-end">
-                      <button type="button"
-                              class="btn-actions btn-tertiary flex items-center justify-center p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
-                              data-event-id="waitlist-offer-{{ admission_offer_id }}"
-                              aria-controls="dropdown-actions-waitlist-offer-{{ admission_offer_id }}"
-                              aria-expanded="false"
-                              aria-label="Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"
-                              title="Open waitlist actions">
-                        <div class="svg-icon size-4 icon-vertical-dots"></div>
-                      </button>
-                      <div id="dropdown-actions-waitlist-offer-{{ admission_offer_id }}"
-                           data-event-actions-dropdown
-                           class="dropdown absolute end-0 top-8 z-10 hidden w-[220px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
-                        <ul class="text-sm text-stone-700" role="menu">
+                {% if can_manage_events && (has_active_offer || can_invite) -%}
+                  <div class="group relative inline-flex justify-end">
+                    <button type="button"
+                            class="btn-actions btn-tertiary flex items-center justify-center p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
+                            data-event-id="{{ row_key }}"
+                            aria-controls="dropdown-actions-{{ row_key }}"
+                            aria-expanded="false"
+                            aria-label="Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"
+                            title="Open waitlist actions">
+                      <div class="svg-icon size-4 icon-vertical-dots"></div>
+                    </button>
+                    <div id="dropdown-actions-{{ row_key }}"
+                         data-event-actions-dropdown
+                         class="dropdown absolute end-0 top-8 z-10 hidden w-[280px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                      <ul class="text-sm text-stone-700" role="menu">
+                        {% if has_active_offer -%}
+                          {% if let Some(admission_offer_id) = entry.admission_offer_id -%}
+                            <li>
+                              <button id="cancel-waitlist-offer-{{ admission_offer_id }}"
+                                      type="button"
+                                      role="menuitem"
+                                      hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
+                                      hx-indicator="#dashboard-spinner"
+                                      hx-disabled-elt="this"
+                                      hx-trigger="confirmed"
+                                      data-confirm-action
+                                      data-confirm-message="Are you sure you want to cancel this waiting list offer?"
+                                      data-confirm-text="Yes"
+                                      data-success-message="Waiting list offer canceled."
+                                      data-error-message="Something went wrong canceling this waiting list offer. Please try again later."
+                                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                                <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
+                                <span>Cancel offer</span>
+                              </button>
+                            </li>
+                          {% endif -%}
+                        {% endif -%}
+                        {% if can_invite -%}
                           <li>
-                            <button id="cancel-waitlist-offer-{{ admission_offer_id }}"
-                                    type="button"
-                                    role="menuitem"
-                                    hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
-                                    hx-indicator="#dashboard-spinner"
-                                    hx-disabled-elt="this"
-                                    hx-trigger="confirmed"
-                                    data-confirm-action
-                                    data-confirm-message="Are you sure you want to cancel this waiting list offer?"
-                                    data-confirm-text="Yes"
-                                    data-success-message="Waiting list offer canceled."
-                                    data-error-message="Something went wrong canceling this waiting list offer. Please try again later."
-                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                              <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
-                              <span>Cancel offer</span>
-                            </button>
+                            <form hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"
+                                  hx-indicator="#dashboard-spinner"
+                                  hx-disabled-elt="find button[type=submit]"
+                                  data-waitlist-invite-action
+                                  data-success-message="{% if is_queued %}Invitation sent.{% else %}Ticket offer reissued.{% endif %}"
+                                  data-error-message="Something went wrong sending this invitation. Please check capacity and ticket availability, then try again.">
+                              <input type="hidden" name="user_id" value="{{ entry.user.user_id }}">
+                              <div class="px-4 pb-2">
+                                <label for="waitlist-invite-ticket-type-{{ row_key }}" class="form-label">
+                                  Ticket type <span class="asterisk">*</span>
+                                </label>
+                                <select id="waitlist-invite-ticket-type-{{ row_key }}"
+                                        data-waitlist-invite-ticket-type
+                                        name="event_ticket_type_id"
+                                        class="select-primary mt-2"
+                                        required>
+                                  <option value="">Select ticket type</option>
+                                  {% if let Some(ticket_types) = &event.ticket_types -%}
+                                    {% for ticket_type in ticket_types -%}
+                                      {% if ticket_type.active && !ticket_type.sold_out && ticket_type.current_price.is_some() -%}
+                                        <option value="{{ ticket_type.event_ticket_type_id }}"
+                                                {% if ticket_type.event_ticket_type_id == entry.event_ticket_type_id -%}
+                                                  selected
+                                                {% endif -%}>
+                                          {{ ticket_type.title }}
+                                          {% if ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly -%}
+                                            (Invitation only)
+                                          {% else -%}
+                                            (Public)
+                                          {% endif -%}
+                                        </option>
+                                      {% endif -%}
+                                    {% endfor -%}
+                                  {% endif -%}
+                                </select>
+                                <p data-waitlist-invite-ticket-empty
+                                   class="form-legend hidden text-amber-800">
+                                  No ticket types can be assigned. Add seats or activate a ticket type with a current
+                                  price before sending an invitation.
+                                </p>
+                                <p class="form-legend mt-2">The admission tier is reserved when the invitation is sent.</p>
+                              </div>
+                              <button type="submit"
+                                      role="menuitem"
+                                      data-waitlist-invite-ticket-submit
+                                      class="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50">
+                                {% if is_queued -%}
+                                  <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-600"></div>
+                                  <span>Invite</span>
+                                {% else -%}
+                                  <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
+                                  <span>Reissue offer</span>
+                                {% endif -%}
+                              </button>
+                            </form>
                           </li>
-                        </ul>
-                      </div>
+                        {% endif -%}
+                      </ul>
                     </div>
-                  {% endif -%}
+                  </div>
                 {% else -%}
                   <button type="button"
                           class="btn-actions btn-tertiary flex cursor-not-allowed items-center justify-center p-2 opacity-50"
                           disabled
                           {% if !can_manage_events -%}
-                            title="Your role cannot manage waiting list offers."
+                            title="Your role cannot manage the waiting list."
                           {% else if event.canceled -%}
                             title="Canceled events have no available waiting list actions."
                           {% else if event.is_past() -%}
                             title="Past events have no available waiting list actions."
-                          {% else if entry.admission_offer_id.is_some() -%}
-                            title="This waiting list offer is no longer active."
+                          {% else if entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Completed) -%}
+                            title="This waiting list offer was already claimed."
                           {% else -%}
-                            title="No active waiting list offer to cancel."
+                            title="No available waiting list actions."
                           {% endif -%}
                           aria-label="Waitlist actions unavailable for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}">
                     <div class="svg-icon size-4 icon-vertical-dots"></div>

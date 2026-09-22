@@ -144,14 +144,69 @@ describe("dashboard group waitlist list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify every unsupported offer state explains why actions are unavailable.
-    expect(template).to.include('title="Your role cannot manage waiting list offers."');
+    expect(template).to.include('title="Your role cannot manage the waiting list."');
     expect(template).to.include('title="Canceled events have no available waiting list actions."');
     expect(template).to.include('title="Past events have no available waiting list actions."');
-    expect(template).to.include('title="This waiting list offer is no longer active."');
-    expect(template).to.include('title="No active waiting list offer to cancel."');
+    expect(template).to.include('title="This waiting list offer was already claimed."');
+    expect(template).to.include('title="No available waiting list actions."');
+    expect(template).not.to.include("No active waiting list offer to cancel.");
     expect(template).to.include(
       "Waitlist actions unavailable for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}",
     );
+  });
+
+  it("lets organizers invite queued entries with a ticket type", async () => {
+    // Load the waitlist list template before checking the invite action markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify queued entries and stale offers expose the invite form.
+    expect(template).to.include("{% let is_queued = entry.admission_offer_id.is_none() -%}");
+    expect(template).to.include(
+      "entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)",
+    );
+    expect(template).to.include(
+      "entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Declined)",
+    );
+    expect(template).to.include(
+      "entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Canceled)",
+    );
+    expect(template).to.include(
+      "{% let can_invite = !event.canceled && !event.is_past() && (is_queued || can_reissue) -%}",
+    );
+    expect(template).to.include("{% if can_manage_events && (has_active_offer || can_invite) -%}");
+
+    // Verify the form reuses the attendee invitation endpoint with the selected tier.
+    expect(template).to.include(
+      '<form hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite" hx-indicator="#dashboard-spinner" hx-disabled-elt="find button[type=submit]" data-waitlist-invite-action',
+    );
+    expect(template).to.include(
+      'data-success-message="{% if is_queued %}Invitation sent.{% else %}Ticket offer reissued.{% endif %}"',
+    );
+    expect(template).to.include('<input type="hidden" name="user_id" value="{{ entry.user.user_id }}">');
+    expect(template).to.include('<label for="waitlist-invite-ticket-type-{{ row_key }}"');
+    expect(template).to.include(
+      'id="waitlist-invite-ticket-type-{{ row_key }}" data-waitlist-invite-ticket-type name="event_ticket_type_id" class="select-primary mt-2" required',
+    );
+    expect(template).to.include('<option value="">Select ticket type</option>');
+    expect(template).to.include(
+      "{% if ticket_type.active && !ticket_type.sold_out && ticket_type.current_price.is_some() -%}",
+    );
+    expect(template).to.include(
+      "{% if ticket_type.event_ticket_type_id == entry.event_ticket_type_id -%} selected {% endif -%}",
+    );
+    expect(template).to.include("(Invitation only)");
+    expect(template).to.include("(Public)");
+    expect(template).to.include("data-waitlist-invite-ticket-empty");
+    expect(template).to.include("data-waitlist-invite-ticket-submit");
+    expect(template).to.include("<span>Invite</span>");
+    expect(template).to.include("<span>Reissue offer</span>");
+    expect(template).to.include("icon-user-plus");
+    expect(template).to.include("icon-refresh");
+
+    // Verify each row owns a stable dropdown key even without an offer.
+    expect(template).to.include("{% let row_key = self::waitlist_row_key(entry) -%}");
+    expect(template).to.include('data-event-id="{{ row_key }}"');
+    expect(template).to.include('aria-controls="dropdown-actions-{{ row_key }}"');
   });
 
   it("renders waitlist queue and offer history states", async () => {
@@ -197,20 +252,17 @@ describe("dashboard group waitlist list template", () => {
     );
 
     // Active offers use the shared table action-menu presentation.
-    expect(template).to.include('data-event-id="waitlist-offer-{{ admission_offer_id }}"');
-    expect(template).to.include(
-      'aria-controls="dropdown-actions-waitlist-offer-{{ admission_offer_id }}"',
-    );
+    expect(template).to.include('data-event-id="{{ row_key }}"');
+    expect(template).to.include('aria-controls="dropdown-actions-{{ row_key }}"');
     expect(template).to.include('aria-expanded="false"');
     expect(template).to.include('aria-label="Open waitlist actions for');
     expect(template).to.include("icon-vertical-dots");
     expect(template).to.include(
-      'id="dropdown-actions-waitlist-offer-{{ admission_offer_id }}" data-event-actions-dropdown class="dropdown absolute end-0 top-8 z-10 hidden w-[220px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg"',
+      'id="dropdown-actions-{{ row_key }}" data-event-actions-dropdown class="dropdown absolute end-0 top-8 z-10 hidden w-[280px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg"',
     );
     expect(template).to.include('id="cancel-waitlist-offer-{{ admission_offer_id }}"');
     expect(template).to.include('hx-trigger="confirmed"');
     expect(template).to.include('role="menuitem"');
     expect(template).to.include("<span>Cancel offer</span>");
-    expect(template).not.to.include("Reissue offer");
   });
 });

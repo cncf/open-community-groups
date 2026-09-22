@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(58);
+select plan(60);
 
 -- ============================================================================
 -- VARIABLES
@@ -37,6 +37,8 @@ select plan(58);
 \set expiredReservationOfferID '3a130000-0000-0000-0000-000000000041'
 \set expiredReservationOfferUserID '3a130000-0000-0000-0000-000000000042'
 \set expiredReservationPromotedUserID '3a130000-0000-0000-0000-000000000043'
+\set expiredWaitlistOfferID '3a130000-0000-0000-0000-00000000007b'
+\set expiredWaitlistOfferUserID '3a130000-0000-0000-0000-00000000007a'
 \set groupCategoryID '3a130000-0000-0000-0000-000000000008'
 \set groupID '3a130000-0000-0000-0000-000000000009'
 \set inProgressEventID '3a130000-0000-0000-0000-000000000025'
@@ -186,6 +188,7 @@ select fx_user(:'unverifiedUserID', jsonb_build_object(
     'username', 'unverified-invite-event-attendee'
 ));
 select fx_user(:'waitlistedUserID', jsonb_build_object('username', 'waitlisted'));
+select fx_user(:'expiredWaitlistOfferUserID', jsonb_build_object('username', 'expired-waitlist-offer'));
 
 -- Events
 select fx_event(:'capacityEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -459,6 +462,27 @@ values (
     :'queueConflictWaitlistUserID'
 );
 
+-- Expired waitlist promotion that organizers can reissue from the waitlist page
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'expiredWaitlistOfferID',
+    current_timestamp - interval '2 days',
+    :'eventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1),
+    current_timestamp - interval '1 day',
+    'waitlist',
+    'expired',
+    :'expiredWaitlistOfferUserID'
+);
+
 -- Active ticket offer occupying the sold-out ticketed tier
 insert into admission_offer (
     event_id,
@@ -711,6 +735,34 @@ select is(
     ),
     0::bigint,
     'Should remove the invited user from the waitlist'
+);
+
+-- Should reissue an invitation to a user whose waitlist offer expired
+select is(
+    invite_event_attendee(
+        :'actorID', :'groupID', :'eventID', :'expiredWaitlistOfferUserID', null, :'simpleTicketTypeID'
+    ) ->> 'outcome',
+    'offer-created',
+    'Should create a new organizer offer for a user whose waitlist offer expired'
+);
+
+select results_eq(
+    format(
+        $$
+        select source, status
+        from admission_offer
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+        order by created_at
+        $$,
+        :'eventID', :'expiredWaitlistOfferUserID'
+    ),
+    $$
+        values
+            ('waitlist', 'expired'),
+            ('organizer_invitation', 'pending')
+    $$,
+    'Should keep the expired waitlist offer history next to the reissued organizer offer'
 );
 
 -- Should pre-register an email invitee and keep them out of normal registration state

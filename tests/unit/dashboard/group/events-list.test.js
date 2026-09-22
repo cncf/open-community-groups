@@ -253,6 +253,113 @@ describe("events list page", () => {
     expect(root.querySelector("p").classList.contains("hidden")).to.equal(true);
   });
 
+  it("selects the sole assignable tier for waitlist invitations", () => {
+    // Build a waitlist invite form whose queued tier is no longer assignable.
+    document.body.innerHTML = `
+      <div id="events-list-root">
+        <form data-waitlist-invite-action>
+          <select data-waitlist-invite-ticket-type>
+            <option value="">Select ticket type</option>
+            <option value="ticket-2">VIP (Invitation only)</option>
+          </select>
+          <p data-waitlist-invite-ticket-empty class="hidden">No tickets available.</p>
+          <button data-waitlist-invite-ticket-submit type="submit">Invite</button>
+        </form>
+      </div>
+    `;
+    const root = document.getElementById("events-list-root");
+
+    // Initialize the waitlist invite ticket guard.
+    initializeEventsListPage(root);
+
+    // Check the only tier is preselected and the form stays enabled.
+    expect(root.querySelector("select").value).to.equal("ticket-2");
+    expect(root.querySelector("select").disabled).to.equal(false);
+    expect(root.querySelector("button").disabled).to.equal(false);
+    expect(root.querySelector("p").classList.contains("hidden")).to.equal(true);
+  });
+
+  it("keeps the template-selected waitlist tier when several tiers are assignable", () => {
+    // Build a waitlist invite form with the queued tier preselected by the template.
+    document.body.innerHTML = `
+      <div id="events-list-root">
+        <form data-waitlist-invite-action>
+          <select data-waitlist-invite-ticket-type>
+            <option value="">Select ticket type</option>
+            <option value="ticket-1">General (Public)</option>
+            <option value="ticket-2" selected>VIP (Invitation only)</option>
+          </select>
+          <p data-waitlist-invite-ticket-empty class="hidden">No tickets available.</p>
+          <button data-waitlist-invite-ticket-submit type="submit">Invite</button>
+        </form>
+      </div>
+    `;
+    const root = document.getElementById("events-list-root");
+
+    // Initialize the waitlist invite ticket guard.
+    initializeEventsListPage(root);
+
+    // Check the template selection is preserved.
+    expect(root.querySelector("select").value).to.equal("ticket-2");
+    expect(root.querySelector("button").disabled).to.equal(false);
+  });
+
+  it("disables waitlist invitations without an eligible ticket tier", () => {
+    // Build a waitlist invite form without an assignable option.
+    document.body.innerHTML = `
+      <div id="events-list-root">
+        <form data-waitlist-invite-action>
+          <select data-waitlist-invite-ticket-type>
+            <option value="">Select ticket type</option>
+          </select>
+          <p data-waitlist-invite-ticket-empty class="hidden">No tickets available.</p>
+          <button data-waitlist-invite-ticket-submit type="submit">Invite</button>
+        </form>
+      </div>
+    `;
+    const root = document.getElementById("events-list-root");
+
+    // Initialize the waitlist invite ticket guard.
+    initializeEventsListPage(root);
+
+    // Check the unavailable controls and recovery guidance are synchronized.
+    expect(root.querySelector("select").disabled).to.equal(true);
+    expect(root.querySelector("button").disabled).to.equal(true);
+    expect(root.querySelector("p").classList.contains("hidden")).to.equal(false);
+  });
+
+  it("reports waitlist invitation responses from the form dataset", () => {
+    // Prepare a waitlist invite form inside the events list root.
+    const root = mountEventsList();
+    root.insertAdjacentHTML(
+      "beforeend",
+      `
+        <form
+          data-waitlist-invite-action
+          data-success-message="Invitation sent."
+          data-error-message="Invite failed."
+        >
+          <button type="submit">Invite</button>
+        </form>
+      `,
+    );
+    initializeEventsListPage(root);
+    const form = root.querySelector("[data-waitlist-invite-action]");
+
+    // Dispatch a successful and then a failed invitation response.
+    form.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", { bubbles: true, detail: { xhr: { status: 201 } } }),
+    );
+    form.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", { bubbles: true, detail: { xhr: { status: 409 } } }),
+    );
+
+    // Verify both outcomes use the form messages.
+    expect(env.current.swal.calls).to.have.length(2);
+    expect(env.current.swal.calls[0]).to.include({ text: "Invitation sent.", icon: "success" });
+    expect(env.current.swal.calls[1]).to.include({ text: "Invite failed.", icon: "error" });
+  });
+
   it("does not bind answers modal controls without a review modal", () => {
     // Initialize an events-list root that does not include a review modal.
     document.body.innerHTML = `<div id="events-list-root"></div>`;
