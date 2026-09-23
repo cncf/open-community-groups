@@ -1,6 +1,11 @@
 import { expect, test } from "../../../fixtures.js";
 import { queryE2eDatabase } from "../../../database.js";
-import { snapshotNotifications } from "../../../notifications.js";
+import {
+  deleteNotifications,
+  expectNewNotifications,
+  snapshotNotifications,
+} from "../../../notifications.js";
+import { cleanupOwnedAttendee, setupOwnedAttendee } from "../../../data-graphs/attendance.js";
 import {
   TEST_EVENT_IDS,
   TEST_INVITATION_CANCELLATION,
@@ -14,6 +19,7 @@ import {
   waitForActionResponse,
   waitForHtmxSettle,
 } from "../../../utils.js";
+import { openCurrentEventEditorSection } from "./helpers.js";
 import { expectUserColumnHasRoom, expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
 const DASHBOARD_WAITLIST_EVENT_NAME = "Dashboard Waitlist Table Lab";
@@ -416,8 +422,15 @@ test.describe("group dashboard waitlist tab", () => {
         TEST_WAITLIST_INVITE_EVENT.id,
       );
 
-      // Verify claimed offers stay read-only and explain why.
+      // Verify earlier lapsed offers stay behind one row per person.
       const claimedRow = waitlistContent.locator("tr", { hasText: "E2E Member One" });
+      const queuedRow = waitlistContent.locator("tr", { hasText: "E2E Pending One" });
+      await expect(waitlistContent).toContainText(/1 - 3 of\s+3\s+waitlist entries/);
+      await expect(claimedRow).toHaveCount(1);
+      await expect(queuedRow).toHaveCount(1);
+      await expect(queuedRow).not.toContainText("Offer expired");
+
+      // Verify claimed offers stay read-only and explain why.
       const claimedAction = claimedRow.getByRole("button", {
         name: "Waitlist actions unavailable for E2E Member One",
       });
@@ -426,7 +439,6 @@ test.describe("group dashboard waitlist tab", () => {
       await expect(claimedAction).toHaveAttribute("title", "This waiting list offer was already claimed.");
 
       // Open the queued entry menu and verify the only tier with seats is preselected.
-      const queuedRow = waitlistContent.locator("tr", { hasText: "E2E Pending One" });
       const queuedActions = queuedRow.getByRole("button", {
         name: "Open waitlist actions for E2E Pending One",
       });
@@ -459,18 +471,18 @@ test.describe("group dashboard waitlist tab", () => {
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Invitation sent.");
       await organizerGroupPage.getByRole("button", { name: "OK" }).click();
 
-      // Verify the refreshed table drops the queued entry and the offer is durable.
+      // Verify the refreshed table drops the queued entry without exposing its earlier offer.
       await refreshAfterInvite;
       await waitForHtmxSettle(organizerGroupPage);
       await expect(queuedRow).toHaveCount(0);
       expect(
         queryE2eDatabase(`
-          select source || ':' || status
+          select string_agg(source || ':' || status, ',' order by created_at)
           from admission_offer
           where event_id = '${TEST_WAITLIST_INVITE_EVENT.id}'
           and user_id = '${TEST_USER_IDS.pending1}'
         `),
-      ).toBe("organizer_invitation:pending");
+      ).toBe("waitlist:expired,organizer_invitation:pending");
       expect(
         queryE2eDatabase(`
           select count(*)
@@ -514,11 +526,11 @@ test.describe("group dashboard waitlist tab", () => {
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Invitation sent.");
       await organizerGroupPage.getByRole("button", { name: "OK" }).click();
 
-      // Verify the expired history stays next to the new organizer offer.
+      // Verify the new organizer offer supersedes the expired row while claimed history stays.
       await refreshAfterExpiredInvite;
       await waitForHtmxSettle(organizerGroupPage);
-      await expect(expiredRow).toBeVisible();
-      await expect(expiredRow).toContainText("Offer expired");
+      await expect(expiredRow).toHaveCount(0);
+      await expect(claimedRow).toContainText("Ticket claimed");
       expect(
         queryE2eDatabase(`
           select string_agg(source || ':' || status, ',' order by created_at)
@@ -527,19 +539,154 @@ test.describe("group dashboard waitlist tab", () => {
           and user_id = '${TEST_USER_IDS.pending2}'
         `),
       ).toBe("waitlist:expired,organizer_invitation:pending");
-
-      // Verify a repeated invite is rejected while the new offer is still pending.
-      await expiredActions.click();
-      await waitForActionResponse(organizerGroupPage, () => expiredInviteButton.click(), {
-        method: "POST",
-        urlIncludes: inviteUrl,
-        status: 422,
-      });
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-        "user already has a pending event invitation",
-      );
-      await organizerGroupPage.getByRole("button", { name: "OK" }).click();
     } finally {
+      restoreWaitlistInviteFixtures(notificationSnapshot);
+    }
+  });
+
+  test("organizer stays on the last waitlist page after inviting its only entry", async ({
+    organizerGroupPage,
+  }) => {
+    test.setTimeout(60_000);
+
+    // Snapshot notifications so the offer created here can be cleaned up afterwards.
+    const notificationSnapshot = snapshotNotifications();
+    const inviteUrl = `/dashboard/group/events/${TEST_WAITLIST_INVITE_EVENT.id}/attendees/invite`;
+
+    try {
+      // Load the last one-entry page of the invite lab sorted by name.
+      const waitlistContent = await openWaitlistTab(
+        organizerGroupPage,
+        TEST_WAITLIST_INVITE_EVENT.name,
+        TEST_WAITLIST_INVITE_EVENT.id,
+        { query: "?limit=1&offset=2&sort=name-asc" },
+      );
+      const expiredRow = waitlistContent.locator("tr", { hasText: "E2E Pending Two" });
+      await expect(expiredRow).toBeVisible();
+      await expect(waitlistContent).toContainText(/3 - 3 of\s+3\s+waitlist entry/);
+
+      // Invite the only entry on the last page.
+      await expiredRow.getByRole("button", { name: "Open waitlist actions for E2E Pending Two" }).click();
+      await expect(expiredRow.getByLabel("Ticket type")).toHaveValue(
+        TEST_WAITLIST_INVITE_EVENT.inviteTicketTypeId,
+      );
+      const refreshAfterInvite = waitForWaitlistRefresh(organizerGroupPage, TEST_WAITLIST_INVITE_EVENT.id);
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => expiredRow.locator("[data-waitlist-invite-ticket-submit]").click(),
+        {
+          method: "POST",
+          urlIncludes: inviteUrl,
+          status: 201,
+        },
+      );
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Invitation sent.");
+      await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+
+      // Verify the stale offset refresh lands on the new last page instead of an empty one.
+      const refreshResponse = await refreshAfterInvite;
+      await waitForHtmxSettle(organizerGroupPage);
+      expect(new URL(refreshResponse.url()).searchParams.get("offset")).toBe("2");
+      await expect(expiredRow).toHaveCount(0);
+      await expect(waitlistContent.locator("tr", { hasText: "E2E Pending One" })).toBeVisible();
+      await expect(waitlistContent).toContainText(/2 - 2 of\s+2\s+waitlist entry/);
+      await expect(waitlistContent.locator("#waitlist-refresh")).toHaveAttribute(
+        "hx-get",
+        /[?&]offset=1(&|$)/,
+      );
+    } finally {
+      restoreWaitlistInviteFixtures(notificationSnapshot);
+    }
+  });
+
+  test("organizer sees a lapsed waitlist offer again after canceling the attendance that hid it", async ({
+    organizerGroupPage,
+  }) => {
+    test.setTimeout(60_000);
+
+    // Seed a declined waitlist offer hidden by the same user's later attendance.
+    const notificationSnapshot = snapshotNotifications();
+    queryE2eDatabase(`
+      insert into admission_offer (
+        created_at,
+        event_id,
+        event_ticket_type_id,
+        expires_at,
+        source,
+        status,
+        user_id
+      ) values (
+        current_timestamp - interval '2 days',
+        '${TEST_WAITLIST_INVITE_EVENT.id}',
+        '${TEST_WAITLIST_INVITE_EVENT.queuedTicketTypeId}',
+        current_timestamp - interval '1 day',
+        'waitlist',
+        'declined',
+        '${TEST_USER_IDS.member2}'
+      );
+    `);
+    const attendee = setupOwnedAttendee({
+      eventId: TEST_WAITLIST_INVITE_EVENT.id,
+      userId: TEST_USER_IDS.member2,
+    });
+    let notificationIds = [];
+
+    try {
+      // Verify the active attendance hides the lapsed waitlist offer.
+      const waitlistContent = await openWaitlistTab(
+        organizerGroupPage,
+        TEST_WAITLIST_INVITE_EVENT.name,
+        TEST_WAITLIST_INVITE_EVENT.id,
+      );
+      const waitlistRow = waitlistContent.locator("tr", { hasText: "E2E Member Two" });
+      await expect(waitlistContent.locator("tr", { hasText: "E2E Pending Two" })).toBeVisible();
+      await expect(waitlistRow).toHaveCount(0);
+
+      // Open the attendance row from the same event editor.
+      const attendeesContent = await openCurrentEventEditorSection(
+        organizerGroupPage,
+        TEST_WAITLIST_INVITE_EVENT.id,
+        "attendees",
+        "#attendees-content",
+        { tableName: "Attendees list" },
+      );
+      const attendeeRow = attendeesContent.locator("tr", { hasText: "E2E Member Two" });
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
+      await expect(attendeeRow).toBeVisible();
+      await rowActionsMenu.locator("summary").click();
+      await rowActionsMenu.getByRole("menuitem", { name: "Cancel attendance" }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you want to cancel this attendance?",
+      );
+
+      // Cancel the attendance and wait for the hidden waitlist tab to refresh.
+      const cancellationSnapshot = snapshotNotifications();
+      const refreshAfterCancel = waitForWaitlistRefresh(organizerGroupPage, TEST_WAITLIST_INVITE_EVENT.id);
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          status: 204,
+          urlIncludes: `/dashboard/group/events/${TEST_WAITLIST_INVITE_EVENT.id}/attendees/${TEST_USER_IDS.member2}`,
+          urlEndsWith: "/attendance",
+        },
+      );
+      notificationIds = expectNewNotifications(cancellationSnapshot, [
+        { kind: "event-attendance-canceled", userIds: [TEST_USER_IDS.member2] },
+      ]);
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Attendance canceled.");
+      await organizerGroupPage.locator(".swal2-confirm").click();
+      await refreshAfterCancel;
+      await waitForHtmxSettle(organizerGroupPage);
+
+      // Return to the already loaded waitlist tab and verify the offer is back.
+      await organizerGroupPage.locator('button[data-section="waitlist"]').click();
+      await expect(waitlistRow).toBeVisible();
+      await expect(waitlistRow).toContainText("Offer declined");
+    } finally {
+      deleteNotifications(notificationIds);
+      cleanupOwnedAttendee(attendee);
       restoreWaitlistInviteFixtures(notificationSnapshot);
     }
   });
@@ -660,7 +807,7 @@ const openDashboardWaitlist = async (page, query = "") => {
 };
 
 /** Opens an event's waitlist tab from the requested dashboard event list. */
-const openWaitlistTab = async (page, eventName, eventId, { past = false } = {}) => {
+const openWaitlistTab = async (page, eventName, eventId, { past = false, query = "" } = {}) => {
   await navigateToPath(page, "/dashboard/group?tab=events");
 
   if (past) {
@@ -681,6 +828,11 @@ const openWaitlistTab = async (page, eventName, eventId, { past = false } = {}) 
     },
   );
 
+  // Apply the optional table state to the first waitlist request.
+  if (query !== "") {
+    await routeNextRequestWithQuery(page, `/dashboard/group/events/${eventId}/waitlist`, query);
+  }
+
   await waitForActionResponse(page, () => page.locator('button[data-section="waitlist"]').click(), {
     method: "GET",
     urlIncludes: `/dashboard/group/events/${eventId}/waitlist`,
@@ -699,7 +851,9 @@ const restoreWaitlistInviteFixtures = (notificationSnapshot) => {
     where event_id = '${TEST_WAITLIST_INVITE_EVENT.id}'
     and admission_offer_id not in (
       '${TEST_WAITLIST_INVITE_EVENT.expiredOfferId}',
-      '${TEST_WAITLIST_INVITE_EVENT.claimedOfferId}'
+      '${TEST_WAITLIST_INVITE_EVENT.claimedOfferId}',
+      '${TEST_WAITLIST_INVITE_EVENT.queuedEarlierOfferId}',
+      '${TEST_WAITLIST_INVITE_EVENT.claimedEarlierOfferId}'
     );
 
     insert into event_waitlist (event_id, event_ticket_type_id, user_id)

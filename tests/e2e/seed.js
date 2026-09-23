@@ -232,6 +232,9 @@ export const TEST_WAITLIST_INVITE_EVENT = {
   // Seeded offers that must survive fixture restoration.
   expiredOfferId: "59555555-5555-5555-5555-555555555537",
   claimedOfferId: "59555555-5555-5555-5555-555555555538",
+  // Earlier lapsed offers hidden behind the queued and claimed rows.
+  queuedEarlierOfferId: "59555555-5555-5555-5555-555555555539",
+  claimedEarlierOfferId: "59555555-5555-5555-5555-555555555540",
 };
 
 /** Payment-specific event ids used by the future Playwright payment suite. */

@@ -21,6 +21,7 @@ import {
   routeNextRequestWithQuery,
   uniqueName,
   waitForActionResponse,
+  waitForHtmxSettle,
 } from "../../../utils.js";
 import { getVisibleStatusBadge, openAttendeesTab, openInvitationRequestsTab } from "./attendees-helpers.js";
 import {
@@ -109,6 +110,7 @@ test.describe("group dashboard attendees tab — invitations", () => {
       // Assert that the content is hidden.
       await expect(modal).toBeHidden();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Invitation sent.");
+      await organizerGroupPage.getByRole("button", { name: "OK" }).click();
 
       // Verify the invitation appears in the attendees table.
       const attendeeRow = attendeesContent.locator("tr", {
@@ -116,6 +118,35 @@ test.describe("group dashboard attendees tab — invitations", () => {
       });
       await expect(attendeeRow).toBeVisible();
       await expect(getVisibleStatusBadge(attendeeRow, "Offer pending")).toBeVisible();
+
+      // Retry the invitation and verify the pending offer rejects the duplicate.
+      const duplicateModal = await submitAttendeeInvitation(
+        organizerGroupPage,
+        attendeesContent,
+        eventId,
+        { name: "E2E Pending Two", username: "e2e-pending-2" },
+        422,
+      );
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "user already has a pending event invitation",
+      );
+      await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+      expect(
+        queryE2eDatabase(`
+          select count(*)
+          from admission_offer
+          where event_id = '${eventId}'
+          and user_id = '${TEST_USER_IDS.pending2}'
+        `),
+      ).toBe("1");
+
+      // Verify the failed submission keeps the selection until the organizer closes the modal.
+      await expect(duplicateModal).toBeVisible();
+      await expect(duplicateModal.locator("#attendee-invitation-selected-user")).toContainText(
+        "E2E Pending Two",
+      );
+      await duplicateModal.locator("#cancel-attendee-invitation").click();
+      await expect(duplicateModal).toBeHidden();
 
       // Cancel the temporary invitation and wait for the table to refresh.
       const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
@@ -385,6 +416,183 @@ test.describe("group dashboard attendees tab — invitations", () => {
       // Remove request notifications and the temporary event.
       deleteNotifications(notificationIds);
       await deleteEventFromList(organizerGroupPage, eventId);
+    }
+  });
+
+  test("organizer invitations hide superseded reviewed requests without a reload", async ({
+    organizerGroupPage,
+    pending1Page,
+    pending2Page,
+  }) => {
+    // Give the review and invitation flow enough time on slower deep runs.
+    test.setTimeout(120_000);
+
+    // Create a temporary approval-required event.
+    const eventName = uniqueName("superseded requests");
+    const { eventId } = await createApprovalRequiredEvent(organizerGroupPage, eventName);
+    const notificationSnapshot = snapshotNotifications();
+
+    try {
+      // Request invitations from two users with an empty form payload.
+      for (const requesterPage of [pending1Page, pending2Page]) {
+        const requestResponse = await requesterPage.request.post(
+          buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
+          { form: {} },
+        );
+        expect(requestResponse.ok()).toBeTruthy();
+      }
+
+      // Open the Requests tab with every request status visible.
+      const requestsContent = await openCurrentEventEditorSection(
+        organizerGroupPage,
+        eventId,
+        "invitation-requests",
+        "#invitation-requests-content",
+        { query: "?status=all", tableName: "Invitation requests" },
+      );
+      const rejectedRow = requestsContent.locator("tr", { hasText: "E2E Pending One" });
+      const acceptedRow = requestsContent.locator("tr", { hasText: "E2E Pending Two" });
+
+      // Reject the first request.
+      await rejectedRow
+        .getByRole("button", { name: "Open actions for E2E Pending One", exact: true })
+        .click();
+      await rejectedRow.getByRole("button", { name: "Reject", exact: true }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you want to reject this invitation request?",
+      );
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/group/events/${eventId}/attendees/${TEST_USER_IDS.pending1}/invitation-request/reject`,
+        },
+      );
+      await expect(rejectedRow).toContainText("Rejected");
+
+      // Accept the second request.
+      await acceptedRow
+        .getByRole("button", { name: "Open actions for E2E Pending Two", exact: true })
+        .click();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => acceptedRow.getByRole("button", { name: "Accept", exact: true }).click(),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/group/events/${eventId}/attendees/${TEST_USER_IDS.pending2}/invitation-request/accept`,
+        },
+      );
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Ticket request accepted.");
+      await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+
+      // Cancel the approval offer so the accepted request holds a lapsed offer.
+      await acceptedRow
+        .getByRole("button", { name: "Open actions for E2E Pending Two", exact: true })
+        .click();
+      await acceptedRow.getByRole("button", { name: "Cancel offer", exact: true }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you want to cancel this ticket offer?",
+      );
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "PUT",
+          urlIncludes: "/dashboard/group/admission-offers/",
+          urlEndsWith: "/cancel",
+        },
+      );
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Ticket offer canceled.");
+      await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+      await expectTicketOfferStatus(acceptedRow, "Accepted", "Canceled");
+
+      // Invite both reviewed requesters from the Attendees tab.
+      const attendeesContent = await openCurrentEventEditorSection(
+        organizerGroupPage,
+        eventId,
+        "attendees",
+        "#attendees-content",
+        { tableName: "Attendees list" },
+      );
+      for (const requester of [
+        { name: "E2E Pending One", username: "e2e-pending-1" },
+        { name: "E2E Pending Two", username: "e2e-pending-2" },
+      ]) {
+        const requestsRefresh = waitForInvitationRequestsRefresh(organizerGroupPage, eventId);
+        await submitAttendeeInvitation(organizerGroupPage, attendeesContent, eventId, requester);
+        await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Invitation sent.");
+        await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+
+        // Verify the hidden Requests tab refreshes with its active status filter.
+        const refreshResponse = await requestsRefresh;
+        expect(new URL(refreshResponse.url()).searchParams.get("status")).toBe("all");
+        await waitForHtmxSettle(organizerGroupPage);
+      }
+
+      // Return to the already loaded Requests tab and verify both reviews are hidden.
+      await organizerGroupPage.locator('button[data-section="invitation-requests"]').click();
+      await expect(rejectedRow).toHaveCount(0);
+      await expect(acceptedRow).toHaveCount(0);
+
+      // Verify the rejected filter no longer lists the superseded rejection.
+      await requestsContent.getByLabel("Status filters").click();
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response.url().includes(`/dashboard/group/events/${eventId}/invitation-requests`) &&
+            response.url().includes("status=rejected") &&
+            response.ok(),
+        ),
+        requestsContent
+          .locator("#invitation-requests-status-filter")
+          .getByRole("button", { name: "Rejected", exact: true })
+          .click(),
+      ]);
+      await expect(rejectedRow).toHaveCount(0);
+
+      // Verify the reviews persist next to the organizer offers that replaced them.
+      expect(
+        queryE2eDatabase(`
+          select string_agg(u.username || ':' || eir.status, ',' order by u.username)
+          from event_invitation_request eir
+          join "user" u using (user_id)
+          where eir.event_id = '${eventId}'
+        `),
+      ).toBe("e2e-pending-1:rejected,e2e-pending-2:accepted");
+      expect(
+        queryE2eDatabase(`
+          select string_agg(
+            u.username || ':' || ao.source || ':' || ao.status,
+            ','
+            order by u.username, ao.created_at
+          )
+          from admission_offer ao
+          join "user" u using (user_id)
+          where ao.event_id = '${eventId}'
+        `),
+      ).toBe(
+        [
+          "e2e-pending-1:organizer_invitation:pending",
+          "e2e-pending-2:approval:canceled",
+          "e2e-pending-2:organizer_invitation:pending",
+        ].join(","),
+      );
+    } finally {
+      // Remove the temporary event and the requester notifications it produced.
+      await deleteEventFromList(organizerGroupPage, eventId);
+      for (const kind of [
+        "event-admission-offer-canceled",
+        "event-admission-offer-created",
+        "event-canceled",
+        "event-ticket-request-approved",
+      ]) {
+        deleteNotificationsSince(notificationSnapshot, kind, [
+          TEST_USER_IDS.pending1,
+          TEST_USER_IDS.pending2,
+        ]);
+      }
     }
   });
 
@@ -835,3 +1043,42 @@ const resetFutureRegistrationWindowRequest = () => {
     and user_id = '${TEST_USER_IDS.member1}';
   `);
 };
+
+/** Submits the attendee invitation modal for one user and returns the modal locator. */
+const submitAttendeeInvitation = async (
+  page,
+  attendeesContent,
+  eventId,
+  { name, username },
+  status = 201,
+) => {
+  // Open the invitation modal from the attendee actions menu.
+  await attendeesContent.getByRole("button", { name: "Open attendee actions menu" }).click();
+  await attendeesContent.getByRole("menuitem", { name: "Invite attendee" }).click();
+  const modal = page.locator("#attendee-invitation-modal");
+  await expect(modal).toBeVisible();
+
+  // Select the user from the search results.
+  const searchField = modal.locator("user-search-field[data-attendee-invitation-search]");
+  await searchField.locator("#attendee-invitation-search-input").fill(username);
+  await searchField.getByText(name).click();
+  await expect(modal.locator("#attendee-invitation-selected-user")).toContainText(name);
+
+  // Submit the invitation and require the expected response status.
+  await waitForActionResponse(page, () => modal.locator("#submit-attendee-invitation").click(), {
+    method: "POST",
+    urlIncludes: `/dashboard/group/events/${eventId}/attendees/invite`,
+    status,
+  });
+
+  return modal;
+};
+
+/** Returns a promise for the Requests table refresh triggered by a completed action. */
+const waitForInvitationRequestsRefresh = (page, eventId) =>
+  page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      response.url().includes(`/dashboard/group/events/${eventId}/invitation-requests`) &&
+      response.ok(),
+  );
