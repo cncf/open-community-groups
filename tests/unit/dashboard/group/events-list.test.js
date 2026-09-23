@@ -4,7 +4,7 @@ import "/static/js/dashboard/group/attendees.js";
 import { initializeEventsListPage } from "/static/js/dashboard/group/events-list.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
+import { dispatchHtmxAfterRequest, dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 // Prepare the module under test.
 const scopedActionMarkup = ({ hasRelatedEvents = false } = {}) => `
@@ -384,6 +384,77 @@ describe("events list page", () => {
     expect(env.current.swal.calls).to.have.length(2);
     expect(env.current.swal.calls[0]).to.include({ text: "Invitation sent.", icon: "success" });
     expect(env.current.swal.calls[1]).to.include({ text: "Invite failed.", icon: "error" });
+  });
+
+  it("reports ticket allocation capacity conflicts and refreshes affected lists", () => {
+    // Prepare an invitation request accept form inside the events list root.
+    const root = mountEventsList();
+    root.insertAdjacentHTML(
+      "beforeend",
+      `
+        <form data-invitation-request-action data-error-message="Accept failed.">
+          <button type="submit">Accept</button>
+        </form>
+      `,
+    );
+    initializeEventsListPage(root);
+    const form = root.querySelector("[data-invitation-request-action]");
+
+    // Dispatch sold-out and waitlist-priority conflict responses.
+    dispatchHtmxAfterRequest(form, {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "ticket-type-sold-out" }),
+    });
+    dispatchHtmxAfterRequest(form, {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "queue-has-priority" }),
+    });
+
+    // Verify each conflict shows specific guidance.
+    expect(env.current.swal.calls).to.have.length(2);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "This ticket type is sold out. Add seats or cancel a pending offer before allocating another ticket.",
+      icon: "error",
+    });
+    expect(env.current.swal.calls[1]).to.include({
+      text: "The remaining seats for this ticket type were offered to people on the waiting list. Add seats to allocate another ticket.",
+      icon: "error",
+    });
+
+    // Verify each conflict refreshes the lists showing ticket availability.
+    const refreshEvents = [
+      "refresh-event-attendees",
+      "refresh-event-invitation-requests",
+      "refresh-event-waitlist",
+    ];
+    expect(env.current.htmx.triggerCalls).to.deep.equal(
+      [...refreshEvents, ...refreshEvents].map((eventName) => [document.body, eventName]),
+    );
+  });
+
+  it("falls back to the form error message for unknown ticket allocation conflicts", () => {
+    // Prepare a waitlist invite form inside the events list root.
+    const root = mountEventsList();
+    root.insertAdjacentHTML(
+      "beforeend",
+      `
+        <form data-waitlist-invite-action data-error-message="Invite failed.">
+          <button type="submit">Invite</button>
+        </form>
+      `,
+    );
+    initializeEventsListPage(root);
+
+    // Dispatch a conflict response without organizer guidance.
+    dispatchHtmxAfterRequest(root.querySelector("[data-waitlist-invite-action]"), {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "unexpected-conflict" }),
+    });
+
+    // Verify the generic error is shown without refreshing lists.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({ text: "Invite failed.", icon: "error" });
+    expect(env.current.htmx.triggerCalls).to.have.length(0);
   });
 
   it("does not bind answers modal controls without a review modal", () => {

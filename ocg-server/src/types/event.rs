@@ -267,6 +267,15 @@ impl EventSummary {
     pub fn single_public_ticket_type(&self) -> Option<&EventTicketType> {
         single_public_ticket_type(self.ticket_types.as_deref())
     }
+
+    /// Returns true when the given ticket type has no seats left.
+    pub fn ticket_type_is_sold_out(&self, event_ticket_type_id: &Uuid) -> bool {
+        self.ticket_types.as_deref().is_some_and(|ticket_types| {
+            ticket_types.iter().any(|ticket_type| {
+                ticket_type.event_ticket_type_id == *event_ticket_type_id && ticket_type.sold_out
+            })
+        })
+    }
 }
 
 /// Full event information.

@@ -20,11 +20,13 @@ use crate::{
             group::{
                 PresenceFilter,
                 invitation_requests::{
-                    InvitationRequestsOutput, InvitationRequestsSort,
+                    InvitationRequest, InvitationRequestsOutput, InvitationRequestsSort,
                     InvitationRequestsStatusFilter,
                 },
             },
         },
+        event::EventSummary,
+        payments::EventTicketType,
         permissions::GroupPermission,
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
@@ -131,6 +133,119 @@ async fn test_list_page_success() {
     assert!(body.contains("id=\"invitation-request-answers-modal\""));
     assert!(body.contains("Dietary restrictions?"));
     assert!(body.contains("Vegetarian"));
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_list_page_disables_accept_for_sold_out_requested_ticket_type() {
+    // Setup identifiers and data structures
+    let available_ticket_type_id = Uuid::from_u128(1);
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let sold_out_ticket_type_id = Uuid::from_u128(2);
+    let user_id = Uuid::new_v4();
+    let event = EventSummary {
+        attendee_approval_required: true,
+        ticket_types: Some(vec![
+            EventTicketType {
+                active: true,
+                event_ticket_type_id: available_ticket_type_id,
+                title: "General admission".to_string(),
+                ..Default::default()
+            },
+            EventTicketType {
+                active: true,
+                event_ticket_type_id: sold_out_ticket_type_id,
+                title: "Early bird".to_string(),
+
+                sold_out: true,
+                ..Default::default()
+            },
+        ]),
+        ..sample_event_summary(event_id, group_id)
+    };
+    let available_request = InvitationRequest {
+        requested_event_ticket_type_id: Some(available_ticket_type_id),
+        ..sample_invitation_request()
+    };
+    let sold_out_request = InvitationRequest {
+        requested_event_ticket_type_id: Some(sold_out_ticket_type_id),
+        ..sample_invitation_request()
+    };
+    let available_user_id = available_request.user.user_id;
+    let sold_out_user_id = sold_out_request.user.user_id;
+    let output = InvitationRequestsOutput {
+        invitation_requests: vec![available_request, sold_out_request],
+        total: 2,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    db.expect_get_event_summary_dashboard()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_search_event_invitation_requests()
+        .times(1)
+        .withf(move |gid, eid, _| *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(output.clone()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/invitation-requests"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+
+    // Check only the sold-out request disables acceptance with guidance
+    assert_eq!(
+        body.matches("disabled title=\"This ticket type is sold out.\"")
+            .count(),
+        1
+    );
+    assert!(body.contains(&format!(
+        "id=\"invitation-request-ticket-sold-out-{sold_out_user_id}\""
+    )));
+    assert!(body.contains(&format!(
+        "aria-describedby=\"invitation-request-ticket-sold-out-{sold_out_user_id}\""
+    )));
+    assert!(!body.contains(&format!(
+        "invitation-request-ticket-sold-out-{available_user_id}"
+    )));
 }
 
 #[tokio::test]

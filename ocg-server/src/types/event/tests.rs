@@ -682,6 +682,33 @@ fn event_summary_single_public_ticket_type_requires_exactly_one_visible_tier() {
     assert!(multiple.single_public_ticket_type().is_none());
 }
 
+#[test]
+fn event_summary_ticket_type_is_sold_out_matches_the_requested_tier() {
+    // Setup one sold-out tier and one tier with seats
+    let available_id = Uuid::from_u128(1);
+    let sold_out_id = Uuid::from_u128(2);
+    let event = sample_event_summary(vec![
+        EventTicketType {
+            event_ticket_type_id: available_id,
+            ..sample_ticket_type(true, Some(0), false, "Available")
+        },
+        EventTicketType {
+            event_ticket_type_id: sold_out_id,
+            ..sample_ticket_type(true, Some(0), true, "Sold out")
+        },
+    ]);
+    let event_without_ticket_types = EventSummary {
+        ticket_types: None,
+        ..event.clone()
+    };
+
+    // Check only the sold-out tier is reported
+    assert!(!event.ticket_type_is_sold_out(&available_id));
+    assert!(event.ticket_type_is_sold_out(&sold_out_id));
+    assert!(!event.ticket_type_is_sold_out(&Uuid::from_u128(3)));
+    assert!(!event_without_ticket_types.ticket_type_is_sold_out(&sold_out_id));
+}
+
 // Helpers.
 
 /// Build a sample ticket type with specified properties for testing.
