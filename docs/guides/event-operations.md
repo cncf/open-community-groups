@@ -624,6 +624,7 @@ confirmed attendee with these columns:
 
 - Name, company, and title.
 - Whether the attendee was manually invited.
+- Enrollment date (UTC).
 - Payment method (`Stripe`, `External`, or `Free`), amount, and paid-at time.
 - For external purchases: payment deadline, who marked the payment received,
   and the payment details note.

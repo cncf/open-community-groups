@@ -527,9 +527,11 @@ test.describe("group dashboard attendees tab", () => {
     // Assert the downloaded filename.
     expect(download.suggestedFilename()).toBe("event-alpha-waitlist-lab-attendees.csv");
     const csvContents = await readFile(downloadPath, "utf8");
-    expect(csvContents).toContain(
-      "Name,Company,Title,Invited,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details\n" +
-        "E2E Organizer One,,,No,Free,Free,,,,\n",
+    expect(csvContents).toMatch(
+      new RegExp(
+        "Name,Company,Title,Invited,Enrollment date,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details\\n" +
+          "E2E Organizer One,,,No,\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2} UTC,Free,Free,,,,\\n",
+      ),
     );
   });
 });

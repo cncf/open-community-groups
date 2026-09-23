@@ -9,6 +9,7 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
+use chrono::{TimeZone, Utc};
 use mockall::Sequence;
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -547,6 +548,7 @@ async fn test_download_csv_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let mut attendee = sample_attendee();
+    attendee.created_at = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 0).unwrap();
     attendee.user.name = Some("Doe, Jane".to_string());
     attendee.user.company = Some("Example \"Cloud\"".to_string());
     attendee.manually_invited = true;
@@ -615,7 +617,7 @@ async fn test_download_csv_success() {
     );
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "Name,Company,Title,Invited,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details\n\"Doe, Jane\",\"Example \"\"Cloud\"\"\",\"Principal\nEngineer\",Yes,,,,,,\nanonymous-attendee,,,No,,,,,,\n",
+        "Name,Company,Title,Invited,Enrollment date,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details\n\"Doe, Jane\",\"Example \"\"Cloud\"\"\",\"Principal\nEngineer\",Yes,2024-02-03 04:05 UTC,,,,,,\nanonymous-attendee,,,No,2024-01-01 12:00 UTC,,,,,,\n",
     );
 }
 
@@ -818,7 +820,7 @@ async fn test_download_csv_with_answers_success() {
     );
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "Name,Company,Title,Invited,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details,Dietary restrictions?,Meal preference,Topics\nEvent Attendee,Example,Engineer,No,,,,,,,No peanuts,Vegetarian,\"Rust, Databases\"\nNo Answers,Example,Engineer,No,,,,,,,,,\n",
+        "Name,Company,Title,Invited,Enrollment date,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details,Dietary restrictions?,Meal preference,Topics\nEvent Attendee,Example,Engineer,No,2024-01-01 12:00 UTC,,,,,,,No peanuts,Vegetarian,\"Rust, Databases\"\nNo Answers,Example,Engineer,No,2024-01-01 12:00 UTC,,,,,,,,,\n",
     );
 }
 
