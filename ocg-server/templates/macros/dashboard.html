@@ -198,6 +198,23 @@
 {% endmacro menu_title -%}
 {# End menu title -#}
 
+{# Mobile notice -#}
+{# Used by dashboards to cover unsupported content on small screens and point to the desktop
+   version option in the user menu. -#}
+{% macro mobile_notice() -%}
+  <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">
+    <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
+      <p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>
+      <p class="hidden pointer-coarse:block text-sm text-stone-600 mt-4">
+        If you prefer, you can load the desktop version from the user menu at the top right. It is
+        not optimized for small screens, but everything is available, and you can switch back from
+        the same menu.
+      </p>
+    </div>
+  </div>
+{% endmacro mobile_notice -%}
+{# End mobile notice -#}
+
 {# Modal close button #}
 {# Used by dashboard modal headers as the shared close control. #}
 {% macro modal_close_button(id = "", attrs = "") -%}

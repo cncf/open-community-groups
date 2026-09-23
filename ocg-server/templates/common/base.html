@@ -7,6 +7,18 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full min-h-screen">
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    {# Desktop version mode: apply the cookie before first paint. Inline and synchronous on
+       purpose; a module or deferred script would run after layout. Cookie and attribute names
+       mirror static/js/common/viewport-mode.js. -#}
+    <script>
+      if (document.cookie.split(";").some((c) => c.trim() === "ocg_viewport_mode=desktop")) {
+        document.documentElement.setAttribute("data-viewport-mode", "desktop");
+        document.querySelector('meta[name="viewport"]').setAttribute("content", "width=1280");
+      }
+    </script>
+
     {# Page title -#}
     {% block head_title -%}
       <title>Open Community Groups</title>
@@ -49,8 +61,6 @@
             sizes="any">
 
     {% endif -%}
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     {# Styles -#}
     <link rel="stylesheet"
@@ -89,6 +99,7 @@
     <script type="module" src="/static/js/common/modals/modal-toggle-bindings.js"></script>
     <script type="module" src="/static/js/common/form-validation.js"></script>
     <script type="module" src="/static/js/common/ad-banner.js"></script>
+    <script type="module" src="/static/js/common/viewport-mode.js"></script>
     {# End scripts -#}
   </head>
   {# djlint:off #}
