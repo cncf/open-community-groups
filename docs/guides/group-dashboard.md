@@ -373,7 +373,12 @@ Enrollment-aware event operations also include:
   may still complete checkout and required registration questions after the public window closes,
   until the hold expires.
 - Separate `Attendees`, `Requests`, and `Waitlist` tabs inside the event editor, depending on event
-  enrollment settings, with table search, sorting, and filters for day-of operations.
+  enrollment settings, with table search, sorting, and filters for day-of operations. Each tab
+  lists one row per person. `Waitlist` shows a queued person's position or, for a person no longer
+  queued, their newest waiting-list offer; `Requests` shows each requester's request with its
+  newest approval offer. Lapsed waiting-list or approval outcomes (expired, declined, canceled)
+  leave those tabs once the person is enrolled another way (organizer invitation, registration,
+  purchase, new request, or queue entry); claimed offers and pending requests stay listed.
 - Automatic reconciliation when attendance, checkout, refund, capacity, or
   offer state releases inventory.
 - Waitlist recipients included in event cancellation notifications.
@@ -387,7 +392,9 @@ Approval event operations include:
   pending requests and can be filtered to all, accepted, or rejected requests. Accept pending
   requests and reissue expired offers while the event is still active, including outside the
   public registration window. `View answers` shows registration answers submitted with a ticket
-  request.
+  request. An accepted request whose approval offer lapsed, or a rejected request, is no longer
+  listed once the requester is enrolled another way; such rejected requests also leave the
+  `Rejected` filter.
 - A public ticket request keeps the requester-selected tier.
 - A generic request for a fully private event requires the organizer
   to assign an invitation-only tier.
@@ -415,7 +422,12 @@ Organizer-created event invitations are managed from the event `Attendees` tab:
   recipient is still eligible.
 - Declined, canceled, or expired offers release their reservation and trigger
   queue reconciliation. Declined or expired waiting-list recipients are not
-  automatically requeued, and their offers cannot be manually reissued.
+  automatically requeued, and their offers cannot be manually reissued. `Invite`
+  on a lapsed-offer row in `Waitlist` sends an organizer invitation, and the
+  person is then managed from `Attendees`. `Invite` on a queued person sends an
+  organizer invitation unless reconciliation first promotes them from the queue,
+  in which case they receive a waiting-list offer and stay in `Waitlist`. A later
+  invitation that ends does not restore the waiting-list row.
 
 ![Add event flow](../screenshots/dashboard-group-add-event.png)
 

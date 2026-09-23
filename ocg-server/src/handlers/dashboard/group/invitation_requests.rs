@@ -17,7 +17,7 @@ use crate::{
     templates::dashboard::group::invitation_requests,
     types::{
         dashboard::group::invitation_requests::InvitationRequestsFilters,
-        pagination::{self, NavigationLinks},
+        pagination::{self, NavigationLinks, Pagination},
         permissions::GroupPermission,
     },
 };
@@ -35,10 +35,10 @@ pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
-    ValidatedQuery(filters): ValidatedQuery<InvitationRequestsFilters>,
+    ValidatedQuery(mut filters): ValidatedQuery<InvitationRequestsFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event context, questions, and invitation requests
-    let (can_manage_events, event, registration_questions, search_results) = tokio::try_join!(
+    let (can_manage_events, event, registration_questions, mut search_results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -49,6 +49,13 @@ pub(crate) async fn list_page(
         db.get_event_registration_questions(community_id, event_id),
         db.search_event_invitation_requests(group_id, event_id, &filters)
     )?;
+
+    // Step back to the last page with rows when the requested page is past the end
+    if filters.clamp_offset_to_last_page(search_results.total) {
+        search_results = db
+            .search_event_invitation_requests(group_id, event_id, &filters)
+            .await?;
+    }
 
     // Prepare template
     let navigation_links = NavigationLinks::from_filters(

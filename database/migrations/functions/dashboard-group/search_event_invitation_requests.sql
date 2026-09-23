@@ -1,4 +1,4 @@
--- Returns paginated invitation requests for a group's event using provided filters.
+-- Returns paginated invitation requests for a group's event, one per requester whose latest enrollment state is still the request.
 create or replace function search_event_invitation_requests(p_group_id uuid, p_event_id uuid, p_filters jsonb)
 returns json as $$
     with
@@ -67,21 +67,33 @@ returns json as $$
                 on requested_ett.event_ticket_type_id = eir.event_ticket_type_id
             left join lateral (
                 select
-                    admission_offer_id,
-                    event_ticket_type_id,
-                    expires_at,
-                    status
-                from admission_offer
-                where event_id = eir.event_id
-                and source = 'approval'
-                and user_id = eir.user_id
-                order by created_at desc, admission_offer_id desc
+                    ao.admission_offer_id,
+                    ao.created_at,
+                    ao.event_ticket_type_id,
+                    ao.expires_at,
+                    ao.status
+                from admission_offer ao
+                where ao.event_id = eir.event_id
+                and ao.source = 'approval'
+                and ao.user_id = eir.user_id
+                order by ao.created_at desc, ao.admission_offer_id desc
                 limit 1
             ) ao on true
             left join event_ticket_type offered_ett
                 on offered_ett.event_ticket_type_id = ao.event_ticket_type_id
             where e.group_id = p_group_id
             and eir.event_id = p_event_id
+            and case
+                -- Hide an accepted request whose lapsed approval offer was superseded
+                when eir.status = 'accepted'
+                    and ao.status in ('canceled', 'declined', 'expired')
+                    then not is_event_enrollment_superseded(eir.event_id, eir.user_id, 'approval', ao.created_at)
+                -- Hide a rejected request once the requester enrolled another way
+                when eir.status = 'rejected'
+                    then not is_event_enrollment_superseded(eir.event_id, eir.user_id, 'approval', eir.reviewed_at)
+                -- Keep pending requests, live or claimed approvals and accepted requests without an offer
+                else true
+            end
         ),
         -- Apply table filters while retaining internal search data
         filtered_invitation_requests as (

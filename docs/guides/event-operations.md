@@ -444,10 +444,13 @@ The dashboard separates confirmed attendees from people waiting for a seat or or
 On the organizer side, the tabs work like this:
 
 - `Attendees` shows confirmed attendees plus organizer-created offer history.
-- `Requests` shows approval requests, requested or assigned tiers, and approval
-  offer history.
-- `Waitlist` shows FIFO queue position for queued users and ticket offer
-  history for promoted users.
+- `Requests` shows one row per requester: the request, its requested or assigned
+  tier, and the requester's newest approval offer.
+- `Waitlist` shows one row per person: the FIFO queue position for a queued
+  user, or the newest waiting-list offer for a person no longer queued.
+- Lapsed waiting-list or approval outcomes (expired, declined, canceled) are not
+  listed once the person is enrolled another way, such as an organizer
+  invitation, a registration, a purchase, a new request, or a queue entry.
 - `Attendees`, `Requests`, and `Waitlist` keep search, filter, sort, and pagination state together
   while you refine the table.
 - Canceling an event notifies attendees, speakers, and waitlisted users.
@@ -487,6 +490,11 @@ Capacity changes drive automatic waitlist behavior:
   position and are not automatically requeued.
 - Expired approval offers and organizer invitations can be reissued when the
   recipient remains eligible. Waiting-list offers cannot be manually reissued.
+  `Invite` on a lapsed-offer row in `Waitlist` sends an organizer invitation, and
+  the person is then managed from `Attendees`. `Invite` on a queued person sends
+  an organizer invitation unless reconciliation first promotes them from the
+  queue, in which case they receive a waiting-list offer and stay in `Waitlist`.
+  A later invitation that ends does not restore the waiting-list row.
 
 On the member side, these actions trigger notifications:
 

@@ -6,6 +6,7 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
+use mockall::Sequence;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -212,6 +213,103 @@ async fn test_list_page_rejects_pagination_limit_above_maximum() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_list_page_steps_back_to_last_page_when_offset_is_past_end() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id, group_id);
+    let empty_page = InvitationRequestsOutput {
+        invitation_requests: vec![],
+        total: 6,
+    };
+    let last_page = InvitationRequestsOutput {
+        invitation_requests: vec![sample_invitation_request()],
+        total: 6,
+    };
+
+    // Setup session, permission, and event context expectations
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    db.expect_get_event_summary_dashboard()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+
+    // Setup the empty requested page followed by the last page with rows
+    let mut sequence = Sequence::new();
+    db.expect_search_event_invitation_requests()
+        .times(1)
+        .in_sequence(&mut sequence)
+        .withf(move |gid, eid, filters| {
+            *gid == group_id
+                && *eid == event_id
+                && filters.limit == Some(5)
+                && filters.offset == Some(10)
+                && filters.status == InvitationRequestsStatusFilter::Pending
+        })
+        .return_once(move |_, _, _| Ok(empty_page));
+    db.expect_search_event_invitation_requests()
+        .times(1)
+        .in_sequence(&mut sequence)
+        .withf(move |gid, eid, filters| {
+            *gid == group_id
+                && *eid == event_id
+                && filters.limit == Some(5)
+                && filters.offset == Some(5)
+                && filters.status == InvitationRequestsStatusFilter::Pending
+        })
+        .return_once(move |_, _, _| Ok(last_page));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/invitation-requests?limit=5&offset=10"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the last page with rows is rendered and refreshed in place
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("Requesting User"));
+    assert!(body.contains("offset=5"));
+    assert!(!body.contains("offset=10"));
 }
 
 #[tokio::test]

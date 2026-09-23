@@ -41,6 +41,19 @@ pub(crate) mod submissions;
 pub(crate) mod team;
 pub(crate) mod waitlist;
 
+/// HTMX events that refresh the event enrollment tabs and the refunds list.
+///
+/// Extends [`EVENT_ENROLLMENT_REFRESH_TRIGGER`] for actions that also change
+/// refund state.
+pub(crate) const EVENT_ENROLLMENT_AND_REFUNDS_REFRESH_TRIGGER: &str = "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist, refresh-group-refunds";
+
+/// HTMX events that refresh every event tab whose rows depend on enrollment.
+///
+/// Attendees, Requests, and Waitlist rows all derive from the same enrollment
+/// state, so any action that changes it refreshes all three loaded tabs.
+pub(crate) const EVENT_ENROLLMENT_REFRESH_TRIGGER: &str =
+    "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist";
+
 /// Checks whether group payments match the configured server provider.
 pub(crate) fn payments_ready(
     payment_recipient: Option<&GroupPaymentRecipient>,

@@ -5,15 +5,18 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set claimedApprovalOfferID '3a2f0000-0000-0000-0000-000000000019'
+\set claimedRequestUserID '3a2f0000-0000-0000-0000-00000000001a'
 \set communityID '3a2f0000-0000-0000-0000-000000000001'
 \set event1ID '3a2f0000-0000-0000-0000-000000000002'
 \set event2ID '3a2f0000-0000-0000-0000-000000000003'
+\set event3ID '3a2f0000-0000-0000-0000-00000000001b'
 \set eventCategoryID '3a2f0000-0000-0000-0000-000000000004'
 \set expiredOfferID '3a2f0000-0000-0000-0000-000000000015'
 \set group2ID '3a2f0000-0000-0000-0000-000000000005'
@@ -21,10 +24,23 @@ select plan(14);
 \set groupID '3a2f0000-0000-0000-0000-000000000007'
 \set missingEventID '3a2f0000-0000-0000-0000-000000000008'
 \set offerID '3a2f0000-0000-0000-0000-000000000012'
+\set offerlessRequestUserID '3a2f0000-0000-0000-0000-00000000001c'
 \set priceWindowID '3a2f0000-0000-0000-0000-000000000013'
 \set priceWindow2ID '3a2f0000-0000-0000-0000-000000000016'
+\set priceWindow3ID '3a2f0000-0000-0000-0000-00000000001d'
+\set rejectedInvitationOfferID '3a2f0000-0000-0000-0000-00000000001e'
+\set rejectedInvitedUserID '3a2f0000-0000-0000-0000-00000000001f'
+\set reviewAnchorOfferID '3a2f0000-0000-0000-0000-000000000020'
+\set reviewAnchorUserID '3a2f0000-0000-0000-0000-000000000021'
+\set supersededApprovalOfferID '3a2f0000-0000-0000-0000-000000000022'
+\set supersededRequestUserID '3a2f0000-0000-0000-0000-000000000023'
+\set supersedingInvitationOfferID '3a2f0000-0000-0000-0000-000000000024'
 \set ticketTypeID '3a2f0000-0000-0000-0000-000000000014'
 \set ticketType2ID '3a2f0000-0000-0000-0000-000000000017'
+\set ticketType3ID '3a2f0000-0000-0000-0000-000000000027'
+\set tiedExpiredOfferID '3a2f0000-0000-0000-0000-000000000025'
+\set tiedPendingOfferID '3a2f0000-0000-0000-0000-000000000026'
+\set tiedRequestUserID '3a2f0000-0000-0000-0000-000000000028'
 \set user1ID '3a2f0000-0000-0000-0000-000000000009'
 \set user2ID '3a2f0000-0000-0000-0000-000000000010'
 \set user3ID '3a2f0000-0000-0000-0000-000000000011'
@@ -63,6 +79,12 @@ select fx_user(:'user3ID', jsonb_build_object(
     'title', 'Designer',
     'username', 'carol'
 ));
+select fx_user(:'claimedRequestUserID', jsonb_build_object('username', 'claimed-request'));
+select fx_user(:'offerlessRequestUserID', jsonb_build_object('username', 'offerless-request'));
+select fx_user(:'rejectedInvitedUserID', jsonb_build_object('username', 'rejected-invited'));
+select fx_user(:'reviewAnchorUserID', jsonb_build_object('username', 'review-anchor'));
+select fx_user(:'supersededRequestUserID', jsonb_build_object('username', 'superseded-request'));
+select fx_user(:'tiedRequestUserID', jsonb_build_object('username', 'tied-request'));
 
 -- Events
 select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -70,6 +92,10 @@ select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published', true
 ));
 select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true
+));
+select fx_event(:'event3ID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'attendee_approval_required', true,
     'published', true
 ));
@@ -84,10 +110,15 @@ select fx_event_ticket_type(:'ticketType2ID', :'event2ID', jsonb_build_object(
     'seats_total', 10,
     'title', 'Private admission'
 ));
+select fx_event_ticket_type(:'ticketType3ID', :'event3ID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Tied admission'
+));
 
 -- Free price windows for the request ticket tiers
 select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
 select fx_event_ticket_price_window(:'priceWindow2ID', :'ticketType2ID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'priceWindow3ID', :'ticketType3ID', jsonb_build_object('amount_minor', 0));
 
 -- Invitation requests
 insert into event_invitation_request (
@@ -137,6 +168,59 @@ insert into event_invitation_request (
     'accepted'
 );
 
+-- Rejected request whose requester was later invited by an organizer
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    user_id,
+    created_at,
+    reviewed_at,
+    reviewed_by,
+    status
+) values (
+    :'event1ID',
+    :'ticketTypeID',
+    :'rejectedInvitedUserID',
+    '2024-01-04 00:00:00+00',
+    '2024-01-04 01:00:00+00',
+    :'user1ID',
+    'rejected'
+);
+
+-- Reviewed requests on the private event: superseded, review-anchored, claimed and offerless
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    user_id,
+    created_at,
+    reviewed_at,
+    reviewed_by,
+    status
+) values
+    (:'event2ID', null, :'supersededRequestUserID', '2024-01-05 00:00:00+00', '2024-01-05 01:00:00+00', :'user1ID', 'accepted'),
+    (:'event2ID', null, :'reviewAnchorUserID', '2024-01-05 03:00:00+00', '2024-01-05 05:00:00+00', :'user1ID', 'rejected'),
+    (:'event2ID', null, :'claimedRequestUserID', '2024-01-06 00:00:00+00', '2024-01-06 01:00:00+00', :'user1ID', 'accepted'),
+    (:'event2ID', null, :'offerlessRequestUserID', '2024-01-07 00:00:00+00', '2024-01-07 01:00:00+00', :'user1ID', 'accepted');
+
+-- Accepted request whose two approval offers share a timestamp
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    user_id,
+    created_at,
+    reviewed_at,
+    reviewed_by,
+    status
+) values (
+    :'event3ID',
+    :'ticketType3ID',
+    :'tiedRequestUserID',
+    '2024-01-08 00:00:00+00',
+    '2024-01-08 01:00:00+00',
+    :'user1ID',
+    'accepted'
+);
+
 -- Active approval offer returned with its request
 insert into admission_offer (
     admission_offer_id,
@@ -181,6 +265,60 @@ insert into admission_offer (
     :'user3ID'
 );
 
+-- Organizer invitations and lapsed approval offers around the reviewed requests
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values
+    (:'rejectedInvitationOfferID', '2024-01-05 00:00:00+00', :'event1ID', :'ticketTypeID', '2099-01-01 00:00:00+00', :'user1ID', 'organizer_invitation', 'pending', :'rejectedInvitedUserID'),
+    (:'supersededApprovalOfferID', '2024-01-05 02:00:00+00', :'event2ID', :'ticketType2ID', '2024-01-06 00:00:00+00', :'user1ID', 'approval', 'expired', :'supersededRequestUserID'),
+    (:'supersedingInvitationOfferID', '2024-01-06 00:00:00+00', :'event2ID', :'ticketType2ID', '2099-01-01 00:00:00+00', :'user1ID', 'organizer_invitation', 'pending', :'supersededRequestUserID'),
+    (:'reviewAnchorOfferID', '2024-01-05 04:00:00+00', :'event2ID', :'ticketType2ID', '2024-01-06 00:00:00+00', :'user1ID', 'organizer_invitation', 'canceled', :'reviewAnchorUserID'),
+    (:'tiedExpiredOfferID', '2024-01-08 02:00:00+00', :'event3ID', :'ticketType3ID', '2024-01-09 00:00:00+00', :'user1ID', 'approval', 'expired', :'tiedRequestUserID'),
+    (:'tiedPendingOfferID', '2024-01-08 02:00:00+00', :'event3ID', :'ticketType3ID', '2099-01-01 00:00:00+00', :'user1ID', 'approval', 'pending', :'tiedRequestUserID');
+
+-- Claimed approval offer whose free snapshot confirmed the requester
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'claimedApprovalOfferID',
+    0,
+    '2024-01-06 02:00:00+00',
+    0,
+    :'event2ID',
+    :'ticketType2ID',
+    '2024-01-07 00:00:00+00',
+    :'user1ID',
+    'approval',
+    'completed',
+    'Private admission',
+    :'claimedRequestUserID'
+);
+
+-- Confirmed attendees behind the claimed and offerless accepted requests
+insert into event_attendee (event_id, status, user_id)
+values
+    (:'event2ID', 'confirmed', :'claimedRequestUserID'),
+    (:'event2ID', 'confirmed', :'offerlessRequestUserID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -203,7 +341,7 @@ select is(
     'Should return invitation requests by requested date descending by default'
 );
 
--- Should retain the latest expired approval offer for reissue
+-- Should list accepted and rejected requests that were not superseded with their newest approval offer
 select is(
     search_event_invitation_requests(
         :'groupID'::uuid,
@@ -214,6 +352,44 @@ select is(
         $json$
         {
             "invitation_requests": [
+                {
+                    "created_at": 1704585600,
+                    "invitation_request_status": "accepted",
+                    "requested_event_ticket_type_id": null,
+                    "requested_ticket_title": null,
+                    "reviewed_at": 1704589200,
+                    "user": {
+                        "user_id": "%s",
+                        "username": "offerless-request"
+                    }
+                },
+                {
+                    "admission_offer_id": "%s",
+                    "admission_offer_status": "completed",
+                    "created_at": 1704499200,
+                    "invitation_request_status": "accepted",
+                    "offer_expires_at": 1704585600,
+                    "offered_event_ticket_type_id": "%s",
+                    "offered_ticket_title": "Private admission",
+                    "requested_event_ticket_type_id": null,
+                    "requested_ticket_title": null,
+                    "reviewed_at": 1704502800,
+                    "user": {
+                        "user_id": "%s",
+                        "username": "claimed-request"
+                    }
+                },
+                {
+                    "created_at": 1704423600,
+                    "invitation_request_status": "rejected",
+                    "requested_event_ticket_type_id": null,
+                    "requested_ticket_title": null,
+                    "reviewed_at": 1704430800,
+                    "user": {
+                        "user_id": "%s",
+                        "username": "review-anchor"
+                    }
+                },
                 {
                     "admission_offer_id": "%s",
                     "admission_offer_status": "expired",
@@ -233,14 +409,109 @@ select is(
                     }
                 }
             ],
-            "total": 1
+            "total": 4
         }
         $json$,
+        :'offerlessRequestUserID',
+        :'claimedApprovalOfferID',
+        :'ticketType2ID',
+        :'claimedRequestUserID',
+        :'reviewAnchorUserID',
         :'expiredOfferID',
         :'ticketType2ID',
         :'user3ID'
     )::jsonb,
-    'Should retain the latest expired approval offer for reissue'
+    'Should list accepted and rejected requests that were not superseded with their newest approval offer'
+);
+
+-- Should hide a rejected request once the requester holds a newer organizer invitation
+select is(
+    (
+        select jsonb_agg(entry#>>'{user,user_id}')
+        from jsonb_array_elements(
+            search_event_invitation_requests(
+                :'groupID'::uuid,
+                :'event1ID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0, 'status', 'rejected')
+            )::jsonb->'invitation_requests'
+        ) as entry
+    ),
+    jsonb_build_array(:'user3ID'),
+    'Should hide a rejected request once the requester holds a newer organizer invitation'
+);
+
+-- Should hide an accepted request whose lapsed offer was superseded by an organizer invitation
+select ok(
+    not exists (
+        select 1
+        from jsonb_array_elements(
+            search_event_invitation_requests(
+                :'groupID'::uuid,
+                :'event2ID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0)
+            )::jsonb->'invitation_requests'
+        ) as entry
+        where entry#>>'{user,user_id}' = :'supersededRequestUserID'
+    ),
+    'Should hide an accepted request whose lapsed offer was superseded by an organizer invitation'
+);
+
+-- Should keep a rejected request when another offer predates its review
+select ok(
+    exists (
+        select 1
+        from jsonb_array_elements(
+            search_event_invitation_requests(
+                :'groupID'::uuid,
+                :'event2ID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0, 'status', 'rejected')
+            )::jsonb->'invitation_requests'
+        ) as entry
+        where entry#>>'{user,user_id}' = :'reviewAnchorUserID'
+    ),
+    'Should keep a rejected request when another offer predates its review'
+);
+
+-- Should keep an accepted request without an approval offer when the requester is confirmed
+select ok(
+    exists (
+        select 1
+        from jsonb_array_elements(
+            search_event_invitation_requests(
+                :'groupID'::uuid,
+                :'event2ID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0, 'status', 'accepted')
+            )::jsonb->'invitation_requests'
+        ) as entry
+        where entry#>>'{user,user_id}' = :'offerlessRequestUserID'
+        and not entry ? 'admission_offer_id'
+    ),
+    'Should keep an accepted request without an approval offer when the requester is confirmed'
+);
+
+-- Should pick the higher approval offer identifier when offer timestamps are equal
+select is(
+    (
+        with result as (
+            select search_event_invitation_requests(
+                :'groupID'::uuid,
+                :'event3ID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0)
+            )::jsonb as data
+        )
+        select jsonb_build_object(
+            'admission_offer_id', data#>>'{invitation_requests,0,admission_offer_id}',
+            'admission_offer_status', data#>>'{invitation_requests,0,admission_offer_status}',
+            'total', data->'total'
+        )
+        from result
+    ),
+    jsonb_build_object(
+        'admission_offer_id', :'tiedPendingOfferID',
+        'admission_offer_status', 'pending',
+        'total', 1
+    ),
+    'Should pick the higher approval offer identifier when offer timestamps are equal'
 );
 
 -- Should return paginated invitation requests when limit and offset are provided

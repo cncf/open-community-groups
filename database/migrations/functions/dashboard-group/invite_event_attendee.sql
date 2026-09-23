@@ -50,6 +50,7 @@ begin
     order by ett.event_ticket_type_id
     for update of ett;
 
+    -- Capture the registration-question and RSVP wording context for notifications
     v_has_registration_questions :=
         jsonb_array_length(coalesce(v_event.registration_questions, '[]'::jsonb)) > 0;
     v_is_simple_rsvp := is_event_simple_rsvp(p_event_id);
@@ -146,6 +147,9 @@ begin
         and v_ticket_type.availability = 'public'
         and v_ticket_current_price = 0;
 
+    -- Take the enrollment locks with the invitee in the global order before reconciliation
+    perform lock_event_enrollment_rows(p_event_id, p_event_ticket_type_id, v_target_user_id);
+
     -- Reconcile stale reservations and public queue priority before allocation
     v_promoted_user_ids := reconcile_event_enrollment(
         p_event_id,
@@ -170,26 +174,6 @@ begin
             'user_id', v_target_user_id
         );
     end if;
-
-    -- Serialize offer issuance with attendee and offer transitions
-    perform pg_advisory_xact_lock(
-        hashtext(p_event_id::text),
-        hashtext(v_target_user_id::text)
-    );
-
-    -- Surface a conflict instead of overselling the target tier now that stale reservations are settled
-    v_capacity_conflict := admission_offer_capacity_conflict(v_ticket_type, v_promoted_user_ids);
-    if v_capacity_conflict is not null then
-        return jsonb_build_object('conflict', v_capacity_conflict);
-    end if;
-
-    -- Ensure payments can be collected before reserving a paid seat
-    perform validate_admission_offer_payment_readiness(
-        v_event,
-        v_group,
-        v_ticket_current_price,
-        p_configured_provider
-    );
 
     -- Lock the attendee row whose state decides whether the user can be invited again
     select ea.status
@@ -224,6 +208,20 @@ begin
     ) then
         raise exception 'user already has a pending event invitation' using errcode = 'OCG01';
     end if;
+
+    -- Surface a conflict instead of overselling the target tier now that stale reservations are settled
+    v_capacity_conflict := admission_offer_capacity_conflict(v_ticket_type, v_promoted_user_ids);
+    if v_capacity_conflict is not null then
+        return jsonb_build_object('conflict', v_capacity_conflict);
+    end if;
+
+    -- Ensure payments can be collected before reserving a paid seat
+    perform validate_admission_offer_payment_readiness(
+        v_event,
+        v_group,
+        v_ticket_current_price,
+        p_configured_provider
+    );
 
     -- Persist a new email invitee only after capacity allocation succeeds
     if v_create_pre_registered_user then

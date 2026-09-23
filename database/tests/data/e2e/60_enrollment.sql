@@ -781,6 +781,25 @@ values (
     'expired',
     '77777777-7777-7777-7777-777777777708'
 ), (
+    -- Earlier lapsed offers stay hidden behind each invite lab user's current row.
+    '59555555-5555-5555-5555-555555555539',
+    current_timestamp - interval '4 days',
+    '55555555-5555-5555-5555-555555555537',
+    '56555555-5555-5555-5555-555555555537',
+    current_timestamp - interval '3 days',
+    'waitlist',
+    'expired',
+    '77777777-7777-7777-7777-777777777707'
+), (
+    '59555555-5555-5555-5555-555555555540',
+    current_timestamp - interval '5 days',
+    '55555555-5555-5555-5555-555555555537',
+    '56555555-5555-5555-5555-555555555537',
+    current_timestamp - interval '4 days',
+    'waitlist',
+    'declined',
+    '77777777-7777-7777-7777-777777777705'
+), (
     '59555555-5555-5555-5555-555555555528',
     current_timestamp - interval '2 days',
     '55555555-5555-5555-5555-555555555528',

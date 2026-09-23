@@ -1,30 +1,52 @@
--- Tests searching organizer event waiting lists and offer history.
+-- Tests searching organizer event waiting lists as one row per person.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a300000-0000-0000-0000-000000000001'
 \set canceledOfferID '3a300000-0000-0000-0000-00000000000f'
+\set claimedOfferID '3a300000-0000-0000-0000-000000000012'
+\set claimedUserID '3a300000-0000-0000-0000-000000000013'
+\set communityID '3a300000-0000-0000-0000-000000000001'
 \set event1ID '3a300000-0000-0000-0000-000000000002'
-\set eventOfferID '3a300000-0000-0000-0000-00000000000a'
+\set event1TicketTypeID '3a300000-0000-0000-0000-000000000011'
 \set eventCategoryID '3a300000-0000-0000-0000-000000000003'
+\set eventOfferID '3a300000-0000-0000-0000-00000000000a'
+\set eventPersonID '3a300000-0000-0000-0000-000000000014'
 \set expiredOfferID '3a300000-0000-0000-0000-000000000010'
 \set group2ID '3a300000-0000-0000-0000-000000000004'
 \set groupCategoryID '3a300000-0000-0000-0000-000000000005'
 \set groupID '3a300000-0000-0000-0000-000000000006'
 \set missingEventID '3a300000-0000-0000-0000-000000000007'
 \set offerID '3a300000-0000-0000-0000-00000000000b'
+\set personPriceWindowID '3a300000-0000-0000-0000-000000000015'
+\set personTicketTypeID '3a300000-0000-0000-0000-000000000016'
 \set priceWindowID '3a300000-0000-0000-0000-00000000000c'
+\set purchaserOfferID '3a300000-0000-0000-0000-000000000017'
+\set purchaserPurchaseID '3a300000-0000-0000-0000-000000000018'
+\set purchaserUserID '3a300000-0000-0000-0000-000000000019'
+\set registeredOfferID '3a300000-0000-0000-0000-00000000001c'
+\set registeredUserID '3a300000-0000-0000-0000-00000000001d'
+\set requeuedOfferID '3a300000-0000-0000-0000-00000000001e'
+\set requeuedUserID '3a300000-0000-0000-0000-00000000001f'
+\set supersededCanceledOfferID '3a300000-0000-0000-0000-000000000020'
+\set supersededExpiredOfferID '3a300000-0000-0000-0000-000000000021'
+\set supersededInvitationOfferID '3a300000-0000-0000-0000-000000000022'
+\set supersededUserID '3a300000-0000-0000-0000-000000000023'
 \set ticketTypeID '3a300000-0000-0000-0000-00000000000d'
+\set tiedHighOfferID '3a300000-0000-0000-0000-00000000001b'
+\set tiedLowOfferID '3a300000-0000-0000-0000-00000000001a'
+\set tiedUserID '3a300000-0000-0000-0000-000000000024'
 \set user1ID '3a300000-0000-0000-0000-000000000008'
+\set user1InvitationOfferID '3a300000-0000-0000-0000-000000000025'
+\set user2DeclinedOfferID '3a300000-0000-0000-0000-000000000026'
 \set user2ID '3a300000-0000-0000-0000-000000000009'
 \set user3ID '3a300000-0000-0000-0000-00000000000e'
 
@@ -42,6 +64,12 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
 
 -- Users
+select fx_user(:'claimedUserID', jsonb_build_object('username', 'claimed-search-event-waitlist'));
+select fx_user(:'purchaserUserID', jsonb_build_object('username', 'purchaser-search-event-waitlist'));
+select fx_user(:'registeredUserID', jsonb_build_object('username', 'registered-search-event-waitlist'));
+select fx_user(:'requeuedUserID', jsonb_build_object('username', 'requeued-search-event-waitlist'));
+select fx_user(:'supersededUserID', jsonb_build_object('username', 'superseded-search-event-waitlist'));
+select fx_user(:'tiedUserID', jsonb_build_object('username', 'tied-search-event-waitlist'));
 select fx_user(:'user1ID', jsonb_build_object(
     'bio', 'Waits for event capacity',
     'company', 'Cloud Corp',
@@ -62,7 +90,7 @@ select fx_user(:'user3ID', jsonb_build_object(
     'username', 'carol-search-event-waitlist'
 ));
 
--- Event
+-- Events
 select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 1,
     'published', true,
@@ -73,6 +101,16 @@ select fx_event(:'eventOfferID', :'groupID', :'eventCategoryID', jsonb_build_obj
     'published', true,
     'waitlist_enabled', true
 ));
+select fx_event(:'eventPersonID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'waitlist_enabled', true
+));
+
+-- Ticket type queued by the first event's waitlist entries
+select fx_event_ticket_type(:'event1TicketTypeID', :'event1ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
 
 -- Ticket type assigned to the promoted-offer event
 select fx_event_ticket_type(:'ticketTypeID', :'eventOfferID', jsonb_build_object(
@@ -80,44 +118,19 @@ select fx_event_ticket_type(:'ticketTypeID', :'eventOfferID', jsonb_build_object
     'title', 'General admission'
 ));
 
+-- Ticket type whose offers exercise the one-row-per-person rules
+select fx_event_ticket_type(:'personTicketTypeID', :'eventPersonID', jsonb_build_object(
+    'seats_total', 5,
+    'title', 'Person admission'
+));
+
 -- Free price window for the promoted-offer ticket type
 select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
 
--- Events without an explicit ticket fixture use default admission tiers
-select fx_event_ticket_type(gen_random_uuid(), e.event_id, jsonb_build_object(
-    'seats_total', 100,
-    'title', 'General Admission'
-))
-from event e
-where not exists (
-    select 1
-    from event_ticket_type ett
-    where ett.event_id = e.event_id
-);
+-- Free price window for the person-row ticket type
+select fx_event_ticket_price_window(:'personPriceWindowID', :'personTicketTypeID', jsonb_build_object('amount_minor', 0));
 
--- Capture the first event's synthesized ticket tier
-select event_ticket_type_id as "event1TicketTypeID"
-from event_ticket_type
-where event_id = :'event1ID'
-\gset
-
--- Waitlist entries
-insert into event_waitlist (event_id, event_ticket_type_id, user_id, created_at)
-values
-    (
-        :'event1ID',
-        (select event_ticket_type_id from event_ticket_type where event_id = :'event1ID' limit 1),
-        :'user1ID',
-        '2024-01-01 00:00:00+00'
-    ),
-    (
-        :'event1ID',
-        (select event_ticket_type_id from event_ticket_type where event_id = :'event1ID' limit 1),
-        :'user2ID',
-        '2024-01-02 00:00:00+00'
-    );
-
--- Waitlist offer history
+-- Waitlist offers on the promoted-offer event: user1 expired then invited, user2 declined then canceled, user3 pending
 insert into admission_offer (
     admission_offer_id,
     created_at,
@@ -128,36 +141,97 @@ insert into admission_offer (
     status,
     user_id
 ) values
-    (
-        :'expiredOfferID',
-        '2024-01-01 00:00:00+00',
-        :'eventOfferID',
-        :'ticketTypeID',
-        '2024-01-02 00:00:00+00',
-        'waitlist',
-        'expired',
-        :'user1ID'
-    ),
-    (
-        :'offerID',
-        '2024-01-03 00:00:00+00',
-        :'eventOfferID',
-        :'ticketTypeID',
-        '2099-01-03 10:00:00+00',
-        'waitlist',
-        'pending',
-        :'user3ID'
-    ),
-    (
-        :'canceledOfferID',
-        '2024-01-04 00:00:00+00',
-        :'eventOfferID',
-        :'ticketTypeID',
-        '2024-01-05 00:00:00+00',
-        'waitlist',
-        'canceled',
-        :'user2ID'
-    );
+    (:'expiredOfferID', '2024-01-01 00:00:00+00', :'eventOfferID', :'ticketTypeID', '2024-01-02 00:00:00+00', 'waitlist', 'expired', :'user1ID'),
+    (:'user2DeclinedOfferID', '2024-01-02 00:00:00+00', :'eventOfferID', :'ticketTypeID', '2024-01-03 00:00:00+00', 'waitlist', 'declined', :'user2ID'),
+    (:'offerID', '2024-01-03 00:00:00+00', :'eventOfferID', :'ticketTypeID', '2099-01-03 10:00:00+00', 'waitlist', 'pending', :'user3ID'),
+    (:'canceledOfferID', '2024-01-04 00:00:00+00', :'eventOfferID', :'ticketTypeID', '2024-01-05 00:00:00+00', 'waitlist', 'canceled', :'user2ID'),
+    (:'user1InvitationOfferID', '2024-01-06 00:00:00+00', :'eventOfferID', :'ticketTypeID', '2099-01-06 00:00:00+00', 'organizer_invitation', 'pending', :'user1ID');
+
+-- Lapsed waitlist offers on the person-row event, plus the invitation that ended after one of them
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values
+    (:'requeuedOfferID', '2024-01-01 00:00:00+00', :'eventPersonID', :'personTicketTypeID', '2024-01-02 00:00:00+00', 'waitlist', 'expired', :'requeuedUserID'),
+    (:'registeredOfferID', '2024-01-01 00:00:00+00', :'eventPersonID', :'personTicketTypeID', '2024-01-02 00:00:00+00', 'waitlist', 'expired', :'registeredUserID'),
+    (:'purchaserOfferID', '2024-01-01 00:00:00+00', :'eventPersonID', :'personTicketTypeID', '2024-01-02 00:00:00+00', 'waitlist', 'expired', :'purchaserUserID'),
+    (:'supersededCanceledOfferID', '2024-01-01 00:00:00+00', :'eventPersonID', :'personTicketTypeID', '2024-01-02 00:00:00+00', 'waitlist', 'canceled', :'supersededUserID'),
+    (:'supersededExpiredOfferID', '2024-01-03 00:00:00+00', :'eventPersonID', :'personTicketTypeID', '2024-01-04 00:00:00+00', 'waitlist', 'expired', :'supersededUserID'),
+    (:'supersededInvitationOfferID', '2024-01-05 00:00:00+00', :'eventPersonID', :'personTicketTypeID', '2024-01-06 00:00:00+00', 'organizer_invitation', 'canceled', :'supersededUserID'),
+    (:'tiedLowOfferID', '2024-01-04 00:00:00+00', :'eventPersonID', :'personTicketTypeID', '2024-01-05 00:00:00+00', 'waitlist', 'declined', :'tiedUserID'),
+    (:'tiedHighOfferID', '2024-01-04 00:00:00+00', :'eventPersonID', :'personTicketTypeID', '2024-01-05 00:00:00+00', 'waitlist', 'expired', :'tiedUserID');
+
+-- Claimed waitlist offer whose free snapshot confirmed the attendee
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'claimedOfferID',
+    0,
+    '2024-01-02 00:00:00+00',
+    0,
+    :'eventPersonID',
+    :'personTicketTypeID',
+    '2024-01-03 00:00:00+00',
+    'waitlist',
+    'completed',
+    'Person admission',
+    :'claimedUserID'
+);
+
+-- Confirmed attendees: one who claimed the offer and one who registered after it lapsed
+insert into event_attendee (event_id, status, user_id)
+values
+    (:'eventPersonID', 'confirmed', :'claimedUserID'),
+    (:'eventPersonID', 'confirmed', :'registeredUserID');
+
+-- Pending checkout hold taken after the waitlist offer lapsed
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    'USD',
+    :'eventPersonID',
+    :'purchaserPurchaseID',
+    :'personTicketTypeID',
+    '2099-01-01 00:00:00+00',
+    'pending',
+    'Person admission',
+    :'purchaserUserID'
+);
+
+-- Waitlist entries on the first event
+insert into event_waitlist (event_id, event_ticket_type_id, user_id, created_at)
+values
+    (:'event1ID', :'event1TicketTypeID', :'user1ID', '2024-01-01 00:00:00+00'),
+    (:'event1ID', :'event1TicketTypeID', :'user2ID', '2024-01-02 00:00:00+00');
+
+-- Queue entry of the user who rejoined after their offer expired
+insert into event_waitlist (event_id, event_ticket_type_id, user_id, created_at)
+values (:'eventPersonID', :'personTicketTypeID', :'requeuedUserID', '2024-01-07 00:00:00+00');
 
 -- ============================================================================
 -- TESTS
@@ -171,16 +245,16 @@ select is(
         jsonb_build_object('limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
-        'waitlist', format('[
-            {"created_at": 1704067200, "event_ticket_type_id": "%s", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000008", "username": "alice-search-event-waitlist", "bio": "Waits for event capacity", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "waitlist_position": 1},
-            {"created_at": 1704153600, "event_ticket_type_id": "%s", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob-search-event-waitlist", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
-        ]', :'event1TicketTypeID', :'event1TicketTypeID')::jsonb,
+        'waitlist', '[
+            {"created_at": 1704067200, "event_ticket_type_id": "3a300000-0000-0000-0000-000000000011", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000008", "username": "alice-search-event-waitlist", "bio": "Waits for event capacity", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "waitlist_position": 1},
+            {"created_at": 1704153600, "event_ticket_type_id": "3a300000-0000-0000-0000-000000000011", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob-search-event-waitlist", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
+        ]'::jsonb,
         'total', 2
     ),
     'Should return waitlist entries with expected fields and FIFO order by default'
 );
 
--- Should expose offer history promoted from the ticket waitlist
+-- Should list one row per person with the newest waitlist offer and hide superseded lapsed offers
 select is(
     search_event_waitlist(
         :'groupID'::uuid,
@@ -190,36 +264,8 @@ select is(
     format(
         $json$
         {
-            "total": 3,
+            "total": 2,
             "waitlist": [
-                {
-                    "admission_offer_id": "%s",
-                    "admission_offer_status": "expired",
-                    "created_at": 1704067200,
-                    "event_ticket_type_id": "%s",
-                    "offer_expires_at": 1704153600,
-                    "ticket_title": "General admission",
-                    "user": {
-                        "bio": "Waits for event capacity",
-                        "company": "Cloud Corp",
-                        "github_url": "https://github.com/alice",
-                        "name": "Alice",
-                        "photo_url": "https://example.com/alice.png",
-                        "provider": {
-                            "github": {
-                                "username": "alice-gh"
-                            },
-                            "linuxfoundation": {
-                                "username": "alice-lf"
-                            }
-                        },
-                        "title": "Principal Engineer",
-                        "user_id": "%s",
-                        "username": "alice-search-event-waitlist",
-                        "website_url": "https://example.com/alice"
-                    },
-                    "waitlist_position": null
-                },
                 {
                     "admission_offer_id": "%s",
                     "admission_offer_status": "pending",
@@ -251,9 +297,6 @@ select is(
             ]
         }
         $json$,
-        :'expiredOfferID',
-        :'ticketTypeID',
-        :'user1ID',
         :'offerID',
         :'ticketTypeID',
         :'user3ID',
@@ -261,7 +304,151 @@ select is(
         :'ticketTypeID',
         :'user2ID'
     )::jsonb,
-    'Should expose offer history promoted from the ticket waitlist'
+    'Should list one row per person with the newest waitlist offer and hide superseded lapsed offers'
+);
+
+-- Should hide a lapsed offer after a newer invitation ended without revealing an older offer
+select ok(
+    not exists (
+        select 1
+        from jsonb_array_elements(
+            search_event_waitlist(
+                :'groupID'::uuid,
+                :'eventPersonID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0)
+            )::jsonb->'waitlist'
+        ) as entry
+        where entry#>>'{user,user_id}' = :'supersededUserID'
+    ),
+    'Should hide a lapsed offer after a newer invitation ended without revealing an older offer'
+);
+
+-- Should hide a lapsed offer for a confirmed attendee
+select ok(
+    not exists (
+        select 1
+        from jsonb_array_elements(
+            search_event_waitlist(
+                :'groupID'::uuid,
+                :'eventPersonID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0)
+            )::jsonb->'waitlist'
+        ) as entry
+        where entry#>>'{user,user_id}' = :'registeredUserID'
+    ),
+    'Should hide a lapsed offer for a confirmed attendee'
+);
+
+-- Should hide a lapsed offer for a pending purchase holder
+select ok(
+    not exists (
+        select 1
+        from jsonb_array_elements(
+            search_event_waitlist(
+                :'groupID'::uuid,
+                :'eventPersonID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0)
+            )::jsonb->'waitlist'
+        ) as entry
+        where entry#>>'{user,user_id}' = :'purchaserUserID'
+    ),
+    'Should hide a lapsed offer for a pending purchase holder'
+);
+
+-- Should keep a completed waitlist offer visible
+select is(
+    (
+        select jsonb_build_object(
+            'admission_offer_id', entry->>'admission_offer_id',
+            'admission_offer_status', entry->>'admission_offer_status'
+        )
+        from jsonb_array_elements(
+            search_event_waitlist(
+                :'groupID'::uuid,
+                :'eventPersonID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0)
+            )::jsonb->'waitlist'
+        ) as entry
+        where entry#>>'{user,user_id}' = :'claimedUserID'
+    ),
+    jsonb_build_object(
+        'admission_offer_id', :'claimedOfferID',
+        'admission_offer_status', 'completed'
+    ),
+    'Should keep a completed waitlist offer visible'
+);
+
+-- Should paginate one row per person
+select is(
+    (
+        with result as (
+            select search_event_waitlist(
+                :'groupID'::uuid,
+                :'eventPersonID'::uuid,
+                jsonb_build_object('limit', 1, 'offset', 1)
+            )::jsonb as data
+        )
+        select jsonb_build_object(
+            'rows', jsonb_array_length(data->'waitlist'),
+            'total', data->'total',
+            'user_id', data#>>'{waitlist,0,user,user_id}'
+        )
+        from result
+    ),
+    jsonb_build_object(
+        'rows', 1,
+        'total', 3,
+        'user_id', :'tiedUserID'
+    ),
+    'Should paginate one row per person'
+);
+
+-- Should pick the higher offer identifier when offer timestamps are equal
+select is(
+    (
+        select jsonb_build_object(
+            'admission_offer_id', entry->>'admission_offer_id',
+            'admission_offer_status', entry->>'admission_offer_status'
+        )
+        from jsonb_array_elements(
+            search_event_waitlist(
+                :'groupID'::uuid,
+                :'eventPersonID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0)
+            )::jsonb->'waitlist'
+        ) as entry
+        where entry#>>'{user,user_id}' = :'tiedUserID'
+    ),
+    jsonb_build_object(
+        'admission_offer_id', :'tiedHighOfferID',
+        'admission_offer_status', 'expired'
+    ),
+    'Should pick the higher offer identifier when offer timestamps are equal'
+);
+
+-- Should show only the queue row for a user who rejoined after an expired offer
+select is(
+    (
+        select jsonb_build_object(
+            'has_offer_fields', entry ? 'admission_offer_id' or entry ? 'admission_offer_status',
+            'row_count', count(*) over (),
+            'waitlist_position', entry->'waitlist_position'
+        )
+        from jsonb_array_elements(
+            search_event_waitlist(
+                :'groupID'::uuid,
+                :'eventPersonID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0)
+            )::jsonb->'waitlist'
+        ) as entry
+        where entry#>>'{user,user_id}' = :'requeuedUserID'
+    ),
+    jsonb_build_object(
+        'has_offer_fields', false,
+        'row_count', 1,
+        'waitlist_position', 1
+    ),
+    'Should show only the queue row for a user who rejoined after an expired offer'
 );
 
 -- Should return paginated waitlist entries when limit and offset are provided
@@ -272,9 +459,9 @@ select is(
         jsonb_build_object('limit', 1, 'offset', 1)
     )::jsonb,
     jsonb_build_object(
-        'waitlist', format('[
-            {"created_at": 1704153600, "event_ticket_type_id": "%s", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob-search-event-waitlist", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
-        ]', :'event1TicketTypeID')::jsonb,
+        'waitlist', '[
+            {"created_at": 1704153600, "event_ticket_type_id": "3a300000-0000-0000-0000-000000000011", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob-search-event-waitlist", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
+        ]'::jsonb,
         'total', 2
     ),
     'Should return paginated waitlist entries when limit and offset are provided'

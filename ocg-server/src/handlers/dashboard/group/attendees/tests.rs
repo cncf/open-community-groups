@@ -9,6 +9,7 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
+use mockall::Sequence;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -171,7 +172,7 @@ async fn test_accept_invitation_request_returns_no_content() {
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees, refresh-event-invitation-requests",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 
@@ -234,7 +235,7 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees, refresh-group-refunds",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist, refresh-group-refunds",
     );
 }
 
@@ -405,7 +406,7 @@ async fn test_cancel_event_attendee_attendance_returns_no_content() {
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees, refresh-group-refunds",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist, refresh-group-refunds",
     );
 }
 
@@ -974,7 +975,7 @@ async fn test_invite_event_attendee_returns_created_for_email_target() {
         &parts,
         &bytes,
         StatusCode::CREATED,
-        "refresh-event-attendees, refresh-event-waitlist",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 
@@ -1034,7 +1035,7 @@ async fn test_invite_event_attendee_returns_created_for_registered_user() {
         &parts,
         &bytes,
         StatusCode::CREATED,
-        "refresh-event-attendees, refresh-event-waitlist",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 
@@ -1324,6 +1325,108 @@ async fn test_list_page_rejects_too_many_ticket_type_ids() {
 }
 
 #[tokio::test]
+async fn test_list_page_steps_back_to_last_page_when_offset_is_past_end() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id, group_id);
+    let empty_page = crate::types::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: 0,
+        attendees: vec![],
+        total: 6,
+    };
+    let last_page = crate::types::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: 0,
+        attendees: vec![sample_attendee()],
+        total: 6,
+    };
+
+    // Setup session and permission expectations
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::CheckInsWrite,
+    );
+
+    // Setup event context expectations
+    db.expect_get_event_summary_dashboard()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+
+    // Setup the empty requested page followed by the last page with rows
+    let mut sequence = Sequence::new();
+    db.expect_search_event_attendees()
+        .times(1)
+        .in_sequence(&mut sequence)
+        .withf(move |gid, eid, filters| {
+            *gid == group_id
+                && *eid == event_id
+                && filters.limit == Some(5)
+                && filters.offset == Some(10)
+        })
+        .return_once(move |_, _, _| Ok(empty_page));
+    db.expect_search_event_attendees()
+        .times(1)
+        .in_sequence(&mut sequence)
+        .withf(move |gid, eid, filters| {
+            *gid == group_id
+                && *eid == event_id
+                && filters.limit == Some(5)
+                && filters.offset == Some(5)
+        })
+        .return_once(move |_, _, _| Ok(last_page));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees?limit=5&offset=10"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the last page with rows is rendered and refreshed in place
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("Event Attendee"));
+    assert!(body.contains("offset=5"));
+    assert!(!body.contains("offset=10"));
+}
+
+#[tokio::test]
 async fn test_list_page_with_pagination_params() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1336,7 +1439,7 @@ async fn test_list_page_with_pagination_params() {
     let output = crate::types::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 0,
         attendees: vec![attendee.clone()],
-        total: 1,
+        total: 11,
     };
 
     // Setup database mock
@@ -1653,12 +1756,12 @@ async fn test_mark_external_payment_success() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the attendee table refresh trigger
+    // Check the enrollment tabs refresh trigger
     assert_empty_hx_trigger_response(
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 
@@ -1714,12 +1817,12 @@ async fn test_mark_external_payment_success_with_blank_details() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the attendee table refresh trigger
+    // Check the enrollment tabs refresh trigger
     assert_empty_hx_trigger_response(
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 
@@ -1775,12 +1878,12 @@ async fn test_mark_external_payment_success_with_empty_body() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the attendee table refresh trigger
+    // Check the enrollment tabs refresh trigger
     assert_empty_hx_trigger_response(
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 
@@ -1833,7 +1936,7 @@ async fn test_reject_invitation_request_returns_no_content() {
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-invitation-requests",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 

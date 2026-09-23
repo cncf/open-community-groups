@@ -1,4 +1,4 @@
--- Returns paginated waitlist entries and waitlist offer history for an event.
+-- Returns paginated waitlist rows for an event, one per user: the queue entry or the user's newest waitlist offer.
 create or replace function search_event_waitlist(p_group_id uuid, p_event_id uuid, p_filters jsonb)
 returns json as $$
     with
@@ -24,8 +24,8 @@ returns json as $$
                 f.tsquery
             from parse_search_filters(p_filters) f
         ),
-        -- Combine queued users with offer history promoted from those queues
-        enrollment_entries as (
+        -- Queue entries with their FIFO position per ticket tier
+        queued_entries as (
             select
                 null::uuid as admission_offer_id,
                 null::text as admission_offer_status,
@@ -40,21 +40,56 @@ returns json as $$
                 )::int as waitlist_position
             from event_waitlist ew
             where ew.event_id = p_event_id
+        ),
+        -- Newest waitlist offer of each user without a queue entry
+        latest_waitlist_offers as (
+            select
+                ranked.admission_offer_id,
+                ranked.created_at,
+                ranked.event_id,
+                ranked.event_ticket_type_id,
+                ranked.expires_at,
+                ranked.status,
+                ranked.user_id
+            from (
+                select
+                    ao.*,
+                    row_number() over (
+                        partition by ao.user_id
+                        order by ao.created_at desc, ao.admission_offer_id desc
+                    ) as offer_rank
+                from admission_offer ao
+                where ao.event_id = p_event_id
+                and ao.source = 'waitlist'
+                and not exists (
+                    select 1
+                    from event_waitlist ew
+                    where ew.event_id = ao.event_id
+                    and ew.user_id = ao.user_id
+                )
+            ) ranked
+            where ranked.offer_rank = 1
+        ),
+        -- One row per user: the queue entry, or the newest offer unless a lapsed offer was superseded
+        enrollment_entries as (
+            select * from queued_entries
 
             union all
 
             select
-                ao.admission_offer_id,
-                ao.status,
-                ao.created_at,
-                ao.event_id,
-                ao.event_ticket_type_id,
-                epoch_seconds(ao.expires_at),
-                ao.user_id,
+                lwo.admission_offer_id,
+                lwo.status,
+                lwo.created_at,
+                lwo.event_id,
+                lwo.event_ticket_type_id,
+                epoch_seconds(lwo.expires_at),
+                lwo.user_id,
                 null::int
-            from admission_offer ao
-            where ao.event_id = p_event_id
-            and ao.source = 'waitlist'
+            from latest_waitlist_offers lwo
+            where not (
+                lwo.status in ('canceled', 'declined', 'expired')
+                and is_event_enrollment_superseded(lwo.event_id, lwo.user_id, 'waitlist', lwo.created_at)
+            )
         ),
         -- Select waitlist entries with ticket and internal search data
         base_waitlist as (

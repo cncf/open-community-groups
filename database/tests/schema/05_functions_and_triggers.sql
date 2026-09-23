@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(468);
+select plan(470);
 
 -- ============================================================================
 -- VARIABLES
@@ -247,6 +247,7 @@ select has_function(
     array['uuid', 'uuid', 'jsonb', 'text']::name[]
 );
 select has_function('event_user_enrollment', array['uuid', 'uuid']::name[]);
+select has_function('event_user_enrollment_conflict', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('event_venue_snapshot', array['event']::name[]);
 select has_function('expire_event_checkout_holds', array['event', '"group"', 'jsonb']::name[]);
 select has_function('external_payment_notification_payload', array['event', '"group"', 'event_purchase', 'jsonb']::name[]);
@@ -325,6 +326,7 @@ select has_function(
 select has_function('is_badge_image', array['text']::name[]);
 select has_function('is_country_external_payments_allowlisted', array['text']::name[]);
 select hasnt_function('is_event_check_in_window_open', array['uuid', 'uuid']::name[]);
+select has_function('is_event_enrollment_superseded', array['uuid', 'uuid', 'text', 'timestamp with time zone']::name[]);
 select has_function('is_event_external_payments_ready', array['uuid']::name[]);
 select has_function('is_event_meeting_in_sync', array['event', 'jsonb']::name[]);
 select has_function('is_event_paid_capable', array['uuid']::name[]);
