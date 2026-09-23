@@ -131,6 +131,10 @@ pub(crate) struct UpdatePage {
     pub payments_ready: bool,
     /// List of available session kinds.
     pub session_kinds: Vec<SessionKindSummary>,
+    /// Whether the invitation requests tab is shown.
+    pub show_invitation_requests_tab: bool,
+    /// Whether the waitlist tab is shown.
+    pub show_waitlist_tab: bool,
     /// List of sponsors available for this group.
     pub sponsors: Vec<GroupSponsor>,
     /// List of available timezones.

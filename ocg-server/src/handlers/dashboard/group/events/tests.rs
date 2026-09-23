@@ -21,7 +21,15 @@ use crate::{
         payments::{AutomaticTaxReadiness, AutomaticTaxReadinessError},
     },
     types::{
-        dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::EventActionScope},
+        dashboard::{
+            DASHBOARD_PAGINATION_LIMIT,
+            group::{
+                events::EventActionScope,
+                invitation_requests::{InvitationRequestsOutput, InvitationRequestsStatusFilter},
+                sponsors::GroupSponsorsOutput,
+                waitlist::WaitlistOutput,
+            },
+        },
         event::EventFull,
         payments::{
             EventTicketPriceWindow, EventTicketType, GroupExternalPaymentsContext, PaymentMode,
@@ -347,20 +355,13 @@ async fn test_list_page_success() {
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
 async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases() {
-    // Setup identifiers and data structures
+    // Setup identifiers and a paid event with purchases
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let category = sample_event_category();
-    let kind = sample_event_kind_summary();
-    let payment_currency_codes = vec!["EUR".to_string(), "USD".to_string()];
-    let session_kind = sample_session_kind_summary();
-    let sponsor = sample_group_sponsor();
-    let timezones = vec!["UTC".to_string()];
     let event_full = EventFull {
         has_ticket_purchases: true,
         ticket_types: Some(vec![EventTicketType {
@@ -375,111 +376,22 @@ async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases
         }]),
         ..sample_event_full(community_id, event_id, group_id)
     };
-    let event_full_db = event_full.clone();
 
-    // Setup database mock
+    // Setup database expectations
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
+    expect_update_page_context(
         &mut db,
+        session_id,
         community_id,
         group_id,
         user_id,
-        GroupPermission::Read,
+        event_full,
     );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-    db.expect_get_event_full()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event_full_db.clone()));
-    db.expect_list_event_categories()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(vec![category.clone()]));
-    db.expect_list_event_kinds()
-        .times(1)
-        .returning(move || Ok(vec![kind.clone()]));
-    db.expect_list_payment_currency_codes()
-        .times(1)
-        .returning(move || Ok(payment_currency_codes.clone()));
-    db.expect_list_session_kinds()
-        .times(1)
-        .returning(move || Ok(vec![session_kind.clone()]));
-    db.expect_list_group_sponsors()
-        .times(1)
-        .withf(move |id, filters, full_list| {
-            *id == group_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
-                && *full_list
-        })
-        .returning(move |_, _, _| {
-            Ok(
-                crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
-                    sponsors: vec![sponsor.clone()],
-                    total: 1,
-                },
-            )
-        });
-    db.expect_list_timezones()
-        .times(1)
-        .returning(move || Ok(timezones.clone()));
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(None));
-    db.expect_get_group_external_payments_context()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| {
-            Ok(GroupExternalPaymentsContext {
-                configured: false,
-                eligible: false,
-                enabled: false,
-                country_code: None,
-                default_payment_window_hours: None,
-                max_payment_window_hours: None,
-                seller_display_name: None,
-            })
-        });
-    db.expect_list_event_approved_cfs_submissions()
-        .times(1)
-        .withf(move |eid| *eid == event_id)
-        .returning(|_| Ok(vec![]));
-    db.expect_list_cfs_submission_statuses_for_review()
-        .times(1)
-        .returning(|| Ok(vec![]));
+    expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
+    expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
-            connected_webhook_secret: "whsec_connect_test".to_string(),
-            mode: PaymentMode::Test,
-            secret_key: "sk_test_123".to_string(),
-            ticket_tax_api_version: "2026-07-29.preview".to_string(),
-            webhook_secret: "whsec_test_123".to_string(),
-
-            http_client: HttpClientConfig::default(),
-            platform_fee_bps: 0,
-        }))
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/update"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    // Run the request
+    let response = send_update_page_request(db, session_id, event_id).await;
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
@@ -491,9 +403,131 @@ async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
+async fn test_update_page_shows_enabled_invitation_requests_tab_without_search() {
+    // Setup identifiers and an approval event without the waitlist
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event_full = EventFull {
+        attendee_approval_required: true,
+        ..sample_event_full(community_id, event_id, group_id)
+    };
+
+    // Setup database expectations
+    let mut db = MockDB::new();
+    expect_update_page_context(
+        &mut db,
+        session_id,
+        community_id,
+        group_id,
+        user_id,
+        event_full,
+    );
+    db.expect_search_event_invitation_requests().never();
+    expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
+
+    // Run the request
+    let response = send_update_page_request(db, session_id, event_id).await;
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check only the enabled enrollment tab is shown
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("<option value=\"invitation-requests\""));
+    assert!(body.contains("data-section=\"invitation-requests\""));
+    assert!(body.contains("data-content=\"invitation-requests\""));
+    assert!(!body.contains("<option value=\"waitlist\""));
+    assert!(!body.contains("data-section=\"waitlist\""));
+    assert!(!body.contains("data-content=\"waitlist\""));
+}
+
+#[tokio::test]
+async fn test_update_page_shows_enabled_waitlist_tab_without_search() {
+    // Setup identifiers and a waitlist event without approval
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event_full = EventFull {
+        waitlist_enabled: true,
+        ..sample_event_full(community_id, event_id, group_id)
+    };
+
+    // Setup database expectations
+    let mut db = MockDB::new();
+    expect_update_page_context(
+        &mut db,
+        session_id,
+        community_id,
+        group_id,
+        user_id,
+        event_full,
+    );
+    expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
+    db.expect_search_event_waitlist().never();
+
+    // Run the request
+    let response = send_update_page_request(db, session_id, event_id).await;
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check only the enabled enrollment tab is shown
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(!body.contains("<option value=\"invitation-requests\""));
+    assert!(!body.contains("data-section=\"invitation-requests\""));
+    assert!(!body.contains("data-content=\"invitation-requests\""));
+    assert!(body.contains("<option value=\"waitlist\""));
+    assert!(body.contains("data-section=\"waitlist\""));
+    assert!(body.contains("data-content=\"waitlist\""));
+}
+
+#[tokio::test]
+async fn test_update_page_shows_enrollment_tabs_while_rows_remain() {
+    // Setup identifiers and an event with both enrollment features disabled
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event_full = sample_event_full(community_id, event_id, group_id);
+
+    // Setup database expectations with remaining enrollment rows
+    let mut db = MockDB::new();
+    expect_update_page_context(
+        &mut db,
+        session_id,
+        community_id,
+        group_id,
+        user_id,
+        event_full,
+    );
+    expect_invitation_requests_tab_search(&mut db, group_id, event_id, 1);
+    expect_waitlist_tab_search(&mut db, group_id, event_id, 1);
+
+    // Run the request
+    let response = send_update_page_request(db, session_id, event_id).await;
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check both enrollment tabs stay visible
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("<option value=\"invitation-requests\""));
+    assert!(body.contains("data-section=\"invitation-requests\""));
+    assert!(body.contains("data-content=\"invitation-requests\""));
+    assert!(body.contains("<option value=\"waitlist\""));
+    assert!(body.contains("data-section=\"waitlist\""));
+    assert!(body.contains("data-content=\"waitlist\""));
+}
+
+#[tokio::test]
 async fn test_update_page_success() {
-    // Setup identifiers and data structures
+    // Setup identifiers and an event with both enrollment features disabled
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -501,116 +535,22 @@ async fn test_update_page_success() {
     let user_id = Uuid::new_v4();
     let mut event_full = sample_event_full(community_id, event_id, group_id);
     event_full.payment_currency_code = Some("USD".to_string());
-    let event_full_db = event_full.clone();
-    let category = sample_event_category();
-    let kind = sample_event_kind_summary();
-    let payment_currency_codes = vec!["EUR".to_string(), "USD".to_string()];
-    let session_kind = sample_session_kind_summary();
-    let sponsor = sample_group_sponsor();
-    let timezones = vec!["UTC".to_string()];
-    // Setup database mock
+
+    // Setup database expectations without enrollment rows
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
+    expect_update_page_context(
         &mut db,
+        session_id,
         community_id,
         group_id,
         user_id,
-        GroupPermission::Read,
+        event_full,
     );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-    db.expect_get_event_full()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event_full_db.clone()));
-    db.expect_list_event_categories()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(vec![category.clone()]));
-    db.expect_list_event_kinds()
-        .times(1)
-        .returning(move || Ok(vec![kind.clone()]));
-    db.expect_list_payment_currency_codes()
-        .times(1)
-        .returning(move || Ok(payment_currency_codes.clone()));
-    db.expect_list_session_kinds()
-        .times(1)
-        .returning(move || Ok(vec![session_kind.clone()]));
-    db.expect_list_group_sponsors()
-        .times(1)
-        .withf(move |id, filters, full_list| {
-            *id == group_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
-                && *full_list
-        })
-        .returning(move |_, _, _| {
-            Ok(
-                crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
-                    sponsors: vec![sponsor.clone()],
-                    total: 1,
-                },
-            )
-        });
-    db.expect_list_timezones()
-        .times(1)
-        .returning(move || Ok(timezones.clone()));
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(None));
-    db.expect_get_group_external_payments_context()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| {
-            Ok(GroupExternalPaymentsContext {
-                configured: false,
-                eligible: false,
-                enabled: false,
-                country_code: None,
-                default_payment_window_hours: None,
-                max_payment_window_hours: None,
-                seller_display_name: None,
-            })
-        });
-    db.expect_list_event_approved_cfs_submissions()
-        .times(1)
-        .withf(move |eid| *eid == event_id)
-        .returning(|_| Ok(vec![]));
-    db.expect_list_cfs_submission_statuses_for_review()
-        .times(1)
-        .returning(|| Ok(vec![]));
+    expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
+    expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
-            connected_webhook_secret: "whsec_connect_test".to_string(),
-            mode: PaymentMode::Test,
-            secret_key: "sk_test_123".to_string(),
-            ticket_tax_api_version: "2026-07-29.preview".to_string(),
-            webhook_secret: "whsec_test_123".to_string(),
-
-            http_client: HttpClientConfig::default(),
-            platform_fee_bps: 0,
-        }))
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/update"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    // Run the request
+    let response = send_update_page_request(db, session_id, event_id).await;
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
@@ -619,6 +559,14 @@ async fn test_update_page_success() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains(">Tickets</"));
     assert!(body.contains("free-only"));
+
+    // Check disabled enrollment tabs without rows are hidden
+    assert!(!body.contains("<option value=\"invitation-requests\""));
+    assert!(!body.contains("data-section=\"invitation-requests\""));
+    assert!(!body.contains("data-content=\"invitation-requests\""));
+    assert!(!body.contains("<option value=\"waitlist\""));
+    assert!(!body.contains("data-section=\"waitlist\""));
+    assert!(!body.contains("data-content=\"waitlist\""));
 }
 
 #[tokio::test]
@@ -1954,4 +1902,160 @@ fn assert_event_editor_location_response(
         &super::event_editor_location_json(event_id),
     );
     assert!(parts.headers.get("HX-Trigger").is_none());
+}
+
+/// Registers the invitation requests lookup used to decide the tab visibility.
+fn expect_invitation_requests_tab_search(
+    db: &mut MockDB,
+    group_id: Uuid,
+    event_id: Uuid,
+    total: usize,
+) {
+    db.expect_search_event_invitation_requests()
+        .times(1)
+        .withf(move |gid, eid, filters| {
+            *gid == group_id
+                && *eid == event_id
+                && filters.status == InvitationRequestsStatusFilter::All
+                && filters.limit == Some(1)
+                && filters.offset == Some(0)
+                && filters.ts_query.is_none()
+        })
+        .returning(move |_, _, _| {
+            Ok(InvitationRequestsOutput {
+                invitation_requests: vec![],
+                total,
+            })
+        });
+}
+
+/// Registers the database expectations shared by event editor page requests.
+fn expect_update_page_context(
+    db: &mut MockDB,
+    session_id: session::Id,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    event_full: EventFull,
+) {
+    // Authenticate the group dashboard user
+    expect_authenticated_group_session(db, session_id, user_id, community_id, group_id);
+    expect_group_permission(db, community_id, group_id, user_id, GroupPermission::Read);
+    expect_group_permission(
+        db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+
+    // Load the event and editor options
+    let event_id = event_full.event_id;
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_full.clone()));
+    db.expect_list_event_approved_cfs_submissions()
+        .times(1)
+        .withf(move |eid| *eid == event_id)
+        .returning(|_| Ok(vec![]));
+    db.expect_list_event_categories()
+        .times(1)
+        .withf(move |cid| *cid == community_id)
+        .returning(|_| Ok(vec![sample_event_category()]));
+    db.expect_list_cfs_submission_statuses_for_review()
+        .times(1)
+        .returning(|| Ok(vec![]));
+    db.expect_list_event_kinds()
+        .times(1)
+        .returning(|| Ok(vec![sample_event_kind_summary()]));
+    db.expect_list_payment_currency_codes()
+        .times(1)
+        .returning(|| Ok(vec!["EUR".to_string(), "USD".to_string()]));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(None));
+    db.expect_list_session_kinds()
+        .times(1)
+        .returning(|| Ok(vec![sample_session_kind_summary()]));
+    db.expect_list_group_sponsors()
+        .times(1)
+        .withf(move |id, filters, full_list| {
+            *id == group_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+                && *full_list
+        })
+        .returning(|_, _, _| {
+            Ok(GroupSponsorsOutput {
+                sponsors: vec![sample_group_sponsor()],
+                total: 1,
+            })
+        });
+    db.expect_list_timezones()
+        .times(1)
+        .returning(|| Ok(vec!["UTC".to_string()]));
+    db.expect_get_group_external_payments_context()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| {
+            Ok(GroupExternalPaymentsContext {
+                configured: false,
+                eligible: false,
+                enabled: false,
+                country_code: None,
+                default_payment_window_hours: None,
+                max_payment_window_hours: None,
+                seller_display_name: None,
+            })
+        });
+}
+
+/// Registers the waitlist lookup used to decide the tab visibility.
+fn expect_waitlist_tab_search(db: &mut MockDB, group_id: Uuid, event_id: Uuid, total: usize) {
+    db.expect_search_event_waitlist()
+        .times(1)
+        .withf(move |gid, eid, filters| {
+            *gid == group_id
+                && *eid == event_id
+                && filters.limit == Some(1)
+                && filters.offset == Some(0)
+                && filters.ts_query.is_none()
+        })
+        .returning(move |_, _, _| {
+            Ok(WaitlistOutput {
+                total,
+                waitlist: vec![],
+            })
+        });
+}
+
+/// Sends an authenticated event editor page request.
+async fn send_update_page_request(
+    db: MockDB,
+    session_id: session::Id,
+    event_id: Uuid,
+) -> axum::response::Response {
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            connected_webhook_secret: "whsec_connect_test".to_string(),
+            mode: PaymentMode::Test,
+            secret_key: "sk_test_123".to_string(),
+            ticket_tax_api_version: "2026-07-29.preview".to_string(),
+            webhook_secret: "whsec_test_123".to_string(),
+
+            http_client: HttpClientConfig::default(),
+            platform_fee_bps: 0,
+        }))
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!("/dashboard/group/events/{event_id}/update"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+
+    router.oneshot(request).await.unwrap()
 }

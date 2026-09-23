@@ -172,6 +172,12 @@ test.describe("group dashboard waitlist tab", () => {
     // Reopen the Alpha event editor.
     await openAlphaEventEditor();
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
+
+    // Assert the empty disabled waitlist no longer has a tab.
+    await expect(organizerGroupPage.locator('button[data-section="waitlist"]')).toHaveCount(0);
+    await expect(
+      organizerGroupPage.locator('#update-event-section-select option[value="waitlist"]'),
+    ).toHaveCount(0);
   });
 
   test("organizer can see a waitlist entry on the waitlist tab", async ({ organizerGroupPage }) => {
