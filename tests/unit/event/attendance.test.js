@@ -1373,7 +1373,7 @@ describe("event attendance", () => {
     }
   });
 
-  it("hides remaining seats when the waitlist is enabled", async () => {
+  it("shows remaining seats when the waitlist is enabled", async () => {
     // Render the attendance fixture.
     const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
@@ -1397,12 +1397,12 @@ describe("event attendance", () => {
       },
     });
 
-    // Verify the waitlist mode does not expose a separate remaining-seat count.
+    // Verify the waitlist mode still exposes the remaining-seat count.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Capacity remains visible, while remaining and waitlist counts stay hidden.
+      // Capacity and remaining counts are visible, while the waitlist count stays hidden.
       expect(
         availabilityCaptions.attendees.classList.contains("hidden"),
       ).to.equal(true);
@@ -1412,11 +1412,11 @@ describe("event attendance", () => {
       expect(availabilityCapacity.textContent.trim()).to.equal("2");
       expect(
         availabilityCaptions.remaining.classList.contains("hidden"),
-      ).to.equal(true);
+      ).to.equal(false);
       expect(
         availabilityCaptions.remaining.classList.contains("inline"),
-      ).to.equal(false);
-      expect(availabilityCaptions.remaining.textContent).to.not.include("1");
+      ).to.equal(true);
+      expect(availabilityCaptions.remaining.textContent).to.include("1");
       expect(
         availabilityCaptions.waitlist.classList.contains("hidden"),
       ).to.equal(true);
