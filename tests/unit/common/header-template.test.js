@@ -52,21 +52,81 @@ describe("common header template", () => {
 
     // Verify every dashboard entry point and its divider show from md.
     [
-      "/dashboard/user?tab=groups",
-      "/dashboard/user?tab=events",
       "/dashboard/community",
       "/dashboard/group",
       "/dashboard/user",
+      "/dashboard/user?tab=groups",
+      "/dashboard/user?tab=events",
+      "/dashboard/group?tab=events",
     ].forEach((href) => {
       expect(loggedInMenu, href).to.include(`<li class="hidden md:block" role="none"> <a href="${href}"`);
     });
     expect(loggedInMenu).to.include(
-      '<li class="hidden md:block border-t border-stone-200 mt-2 pt-2" role="separator" aria-hidden="true"></li> {# Dashboard links -#}',
+      '{# End dashboard links -#} <li class="hidden md:block border-t border-stone-200 mt-2 pt-2" role="separator" aria-hidden="true"></li> {# Quick access links -#}',
     );
 
     // Verify the public destination copies still follow the lg desktop navigation.
     expect(loggedInMenu).to.include('<li class="lg:hidden" role="none"> <a href="/"');
     expect(loggedInMenu).not.to.include("hidden lg:block");
+  });
+
+  it("renders the dashboard links above the labeled quick access shortcuts", async () => {
+    // Load the header template and isolate the logged-in menu.
+    const template = normalizeWhitespace(await loadTemplate());
+    const loggedInMenu = template.slice(
+      0,
+      template.indexOf("{# User dropdown menu for non-logged users -#}"),
+    );
+    const indexOf = (value) => {
+      const index = loggedInMenu.indexOf(value);
+      expect(index, value).to.be.greaterThan(-1);
+      return index;
+    };
+
+    // Verify the dashboard links use sentence case labels.
+    ["Community dashboard", "Group dashboard", "User dashboard"].forEach((label) => {
+      expect(loggedInMenu).to.include(`<div class="ms-2 text-xs/6">${label}</div>`);
+    });
+
+    // Verify the dashboards section comes before the quick access section.
+    expect(indexOf('<a href="/dashboard/user" ')).to.be.lessThan(indexOf("{# Quick access links -#}"));
+
+    // Verify the quick access title and subtitles use distinct heading styles.
+    expect(loggedInMenu).to.include(
+      '<li id="user-menu-quick-access-title" class="px-4 pt-1 text-[11px]/6 font-semibold uppercase tracking-wide text-stone-600" role="none">Quick access</li>',
+    );
+    expect(loggedInMenu).to.include(
+      '<div id="user-menu-quick-access-user-title" class="px-4 pt-1 text-xs/6 font-medium text-stone-500">User dashboard</div>',
+    );
+    expect(loggedInMenu).to.include(
+      '<div id="user-menu-quick-access-group-title" class="px-4 pt-1 text-xs/6 font-medium text-stone-500">Group dashboard</div>',
+    );
+
+    // Verify each shortcut group is named by the title and its subtitle.
+    const userGroupIndex = indexOf(
+      '<ul role="group" aria-labelledby="user-menu-quick-access-title user-menu-quick-access-user-title">',
+    );
+    const groupGroupIndex = indexOf(
+      '<ul role="group" aria-labelledby="user-menu-quick-access-title user-menu-quick-access-group-title">',
+    );
+
+    // Verify user shortcuts sit in the user group and group shortcuts in the group group.
+    ["/dashboard/user?tab=check-in", "/dashboard/user?tab=groups", "/dashboard/user?tab=events"].forEach(
+      (href) => {
+        const index = indexOf(`<a href="${href}"`);
+        expect(index, href).to.be.greaterThan(userGroupIndex);
+        expect(index, href).to.be.lessThan(groupGroupIndex);
+      },
+    );
+    ["/dashboard/group?tab=check-in", "/dashboard/group?tab=events"].forEach((href) => {
+      expect(indexOf(`<a href="${href}"`), href).to.be.greaterThan(groupGroupIndex);
+    });
+
+    // Verify the group shortcuts are gated by group team membership.
+    expect(loggedInMenu).to.include(
+      '{# Group dashboard shortcuts -#} {% if user.belongs_to_any_group_team.unwrap_or(false) -%} <li role="none"> <div id="user-menu-quick-access-group-title"',
+    );
+    expect(loggedInMenu).to.include('<div class="ms-2 text-xs/6">Events</div>');
   });
 
   it("renders mutually exclusive desktop and mobile version menu items", async () => {

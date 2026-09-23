@@ -66,7 +66,7 @@ test.describe("navigation", () => {
     const userMenuButton = member1Page.locator('#user-dropdown-button[data-logged-in="true"]');
     await expect(userMenuButton).toBeVisible();
     await userMenuButton.click();
-    await member1Page.locator("#user-dropdown").getByRole("menuitem", { name: "User Dashboard" }).click();
+    await member1Page.locator("#user-dropdown").getByRole("menuitem", { name: "User dashboard" }).click();
 
     // Verify the user dashboard renders its default Profile tab.
     await expect(member1Page).toHaveURL(/\/dashboard\/user/);

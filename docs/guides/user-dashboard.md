@@ -47,7 +47,8 @@ check-in, profile, portable credentials, access, proposals, submissions, and aud
 ## My Groups
 
 `My Groups` lists active groups where you are a member or an accepted group team member. The
-top-right user menu also links directly to this section.
+`Quick access` section of the top-right user menu also links directly to this section, under
+`User dashboard`.
 
 Each row includes:
 
@@ -67,7 +68,8 @@ Rows are ordered by group name.
 ## My Events: Upcoming Participation
 
 `My Events` is your personal queue of upcoming events where you have an active role, an active
-direct checkout hold, or an event offer.
+direct checkout hold, or an event offer. The `Quick access` section of the top-right user menu also
+links directly to this section, under `User dashboard`.
 
 Each row includes:
 
