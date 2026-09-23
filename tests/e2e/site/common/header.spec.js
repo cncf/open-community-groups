@@ -283,6 +283,36 @@ test.describe("site header", () => {
     await expect(userMenu.getByRole("menuitem", { name: "Log out" })).toBeVisible();
   });
 
+  test("logged-in menu swaps check-in shortcuts for dashboard links at the md breakpoint", async ({
+    checkInManagerGroupPage,
+  }) => {
+    // Load the public shell with a group team session right below md.
+    await checkInManagerGroupPage.setViewportSize({ width: 767, height: 900 });
+    await navigateToSiteHome(checkInManagerGroupPage);
+    const userMenu = checkInManagerGroupPage.locator("#user-dropdown");
+    const checkInLink = userMenu.getByRole("menuitem", { name: "Check in" });
+    const scanAttendeesLink = userMenu.getByRole("menuitem", { name: "Scan attendees" });
+    const groupDashboardLink = userMenu.getByRole("menuitem", { name: "Group Dashboard" });
+    const userDashboardLink = userMenu.getByRole("menuitem", { name: "User Dashboard" });
+
+    // Verify phones get the check-in shortcuts instead of the dashboard links.
+    await checkInManagerGroupPage.locator('#user-dropdown-button[data-logged-in="true"]').click();
+    await expect(checkInLink).toBeVisible();
+    await expect(scanAttendeesLink).toBeVisible();
+    await expect(groupDashboardLink).toBeHidden();
+    await expect(userDashboardLink).toBeHidden();
+
+    // Verify md layouts get the dashboard links while public destinations stay in the menu.
+    await checkInManagerGroupPage.setViewportSize({ width: 768, height: 900 });
+    await expect(groupDashboardLink).toBeVisible();
+    await expect(userDashboardLink).toBeVisible();
+    await expect(userMenu.getByRole("menuitem", { name: "My Groups" })).toBeVisible();
+    await expect(userMenu.getByRole("menuitem", { name: "My Events" })).toBeVisible();
+    await expect(checkInLink).toBeHidden();
+    await expect(scanAttendeesLink).toBeHidden();
+    await expect(userMenu.getByRole("menuitem", { name: "Home" })).toBeVisible();
+  });
+
   test("public shell exposes its skip link, logo, and footer destinations", async ({ page }) => {
     // Load a non-home public page before checking its shared destinations.
     await navigateToPath(page, "/stats");

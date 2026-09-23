@@ -34,6 +34,41 @@ describe("common header template", () => {
     );
   });
 
+  it("swaps check-in shortcuts for dashboard links at the md breakpoint", async () => {
+    // Load the header template and isolate the logged-in menu.
+    const template = normalizeWhitespace(await loadTemplate());
+    const loggedInMenu = template.slice(
+      0,
+      template.indexOf("{# User dropdown menu for non-logged users -#}"),
+    );
+
+    // Verify the check-in shortcuts only show below md.
+    expect(loggedInMenu).to.include(
+      '<li class="md:hidden" role="none"> <a href="/dashboard/user?tab=check-in"',
+    );
+    expect(loggedInMenu).to.include(
+      '<li class="md:hidden" role="none"> <a href="/dashboard/group?tab=check-in"',
+    );
+
+    // Verify every dashboard entry point and its divider show from md.
+    [
+      "/dashboard/user?tab=groups",
+      "/dashboard/user?tab=events",
+      "/dashboard/community",
+      "/dashboard/group",
+      "/dashboard/user",
+    ].forEach((href) => {
+      expect(loggedInMenu, href).to.include(`<li class="hidden md:block" role="none"> <a href="${href}"`);
+    });
+    expect(loggedInMenu).to.include(
+      '<li class="hidden md:block border-t border-stone-200 mt-2 pt-2" role="separator" aria-hidden="true"></li> {# Dashboard links -#}',
+    );
+
+    // Verify the public destination copies still follow the lg desktop navigation.
+    expect(loggedInMenu).to.include('<li class="lg:hidden" role="none"> <a href="/"');
+    expect(loggedInMenu).not.to.include("hidden lg:block");
+  });
+
   it("renders mutually exclusive desktop and mobile version menu items", async () => {
     // Load the header macros before checking the viewport mode toggle markup.
     const template = normalizeWhitespace(await loadTemplate("macros/header.html"));

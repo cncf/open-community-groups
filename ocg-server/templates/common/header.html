@@ -156,7 +156,7 @@
               aria-hidden="true"></li>
 
           {# Mobile Check-In links -#}
-          <li class="lg:hidden" role="none">
+          <li class="md:hidden" role="none">
             <a href="/dashboard/user?tab=check-in"
                hx-boost="true"
                hx-target="body"
@@ -171,7 +171,7 @@
           </li>
 
           {% if user.belongs_to_any_group_team.unwrap_or(false) -%}
-            <li class="lg:hidden" role="none">
+            <li class="md:hidden" role="none">
               <a href="/dashboard/group?tab=check-in"
                  hx-boost="true"
                  hx-target="body"
@@ -187,7 +187,7 @@
           {% endif -%}
           {# End mobile Check-In links -#}
 
-          <li class="hidden lg:block" role="none">
+          <li class="hidden md:block" role="none">
             <a href="/dashboard/user?tab=groups"
                hx-boost="true"
                hx-target="body"
@@ -201,7 +201,7 @@
             </a>
           </li>
 
-          <li class="hidden lg:block" role="none">
+          <li class="hidden md:block" role="none">
             <a href="/dashboard/user?tab=events"
                hx-boost="true"
                hx-target="body"
@@ -215,13 +215,13 @@
             </a>
           </li>
 
-          <li class="hidden lg:block border-t border-stone-200 mt-2 pt-2"
+          <li class="hidden md:block border-t border-stone-200 mt-2 pt-2"
               role="separator"
               aria-hidden="true"></li>
 
           {# Dashboard links -#}
           {% if user.belongs_to_community_team.unwrap_or(false) -%}
-            <li class="hidden lg:block" role="none">
+            <li class="hidden md:block" role="none">
               <a href="/dashboard/community"
                  hx-boost="true"
                  hx-target="body"
@@ -237,7 +237,7 @@
           {% endif -%}
 
           {% if user.belongs_to_any_group_team.unwrap_or(false) -%}
-            <li class="hidden lg:block" role="none">
+            <li class="hidden md:block" role="none">
               <a href="/dashboard/group"
                  hx-boost="true"
                  hx-target="body"
@@ -252,7 +252,7 @@
             </li>
           {% endif -%}
 
-          <li class="hidden lg:block" role="none">
+          <li class="hidden md:block" role="none">
             <a href="/dashboard/user"
                hx-boost="true"
                hx-target="body"
