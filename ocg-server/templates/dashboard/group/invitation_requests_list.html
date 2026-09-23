@@ -422,6 +422,8 @@
                                           disabled title="Canceled events cannot manage invitation requests."
                                         {% else if event.is_past() -%}
                                           disabled title="Past events cannot manage invitation requests."
+                                        {% else if !event.attendee_approval_required -%}
+                                          disabled title="Turn on invitation approval to reissue ticket offers."
                                         {% endif -%}>
                                   <div class="flex items-center gap-2">
                                     <div class="svg-icon size-4 icon-check bg-stone-600"></div>

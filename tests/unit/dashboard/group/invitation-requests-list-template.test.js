@@ -75,15 +75,11 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('<span class="whitespace-nowrap">Ticket type</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Requested</span>');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%]"');
-    expect(template).to.include(
-      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"',
-    );
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-48"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-48"');
-    expect(template).to.include(
-      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"',
-    );
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0 w-48"');
     expect(template).to.include('class="truncate text-xs text-stone-600 2xl:hidden"');
     expect(template).to.include(
@@ -152,9 +148,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include("request.offered_ticket_title.as_deref()");
     expect(template).to.include("Ticket offer");
     expect(template).to.include("group/request-offer relative inline-flex shrink-0");
-    expect(template).to.include(
-      "invitation-request-offer-details-{{ request.user.user_id }}",
-    );
+    expect(template).to.include("invitation-request-offer-details-{{ request.user.user_id }}");
     expect(template).to.include('aria-describedby="{{ request_offer_tooltip_id }}"');
     expect(template).to.include("dashboard::tooltip_panel(");
     expect(template).to.include('title = "Ticket offer"');
@@ -168,15 +162,9 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include("Offer status");
     expect(template).to.include("Checkout in progress");
     expect(template).to.include("Expired");
-    expect(template).to.include(
-      'invitation_request_status_badge(request, event, "Pending", false, false)',
-    );
-    expect(template).to.include(
-      'invitation_request_status_badge(request, event, "Rejected", true, false)',
-    );
-    expect(template).to.include(
-      'invitation_request_status_badge(request, event, "Accepted", false, true)',
-    );
+    expect(template).to.include('invitation_request_status_badge(request, event, "Pending", false, false)');
+    expect(template).to.include('invitation_request_status_badge(request, event, "Rejected", true, false)');
+    expect(template).to.include('invitation_request_status_badge(request, event, "Accepted", false, true)');
     expect(template).to.not.include("Request pending");
     expect(template).to.not.include("Request rejected");
     expect(template).to.not.include("Request accepted");
@@ -206,6 +194,9 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('id="cancel-invitation-request-offer-{{ admission_offer_id }}"');
     expect(template).to.include("Cancel offer");
     expect(template).to.include("Reissue offer");
+    expect(template).to.include(
+      '{% else if !event.attendee_approval_required -%} disabled title="Turn on invitation approval to reissue ticket offers."',
+    );
     expect(template).to.include(
       "{% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}reissue{% else %}accept{% endif %}",
     );
@@ -256,9 +247,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include(
       "question_answers::review_list(questions = registration_questions, answers = request.registration_answers.as_ref())",
     );
-    expect(template).to.include(
-      'question_answers::review_modal(id_prefix = "invitation-request-answers")',
-    );
+    expect(template).to.include('question_answers::review_modal(id_prefix = "invitation-request-answers")');
     expect(template).to.include("data-answers-open");
     expect(template).to.include("event.registration_window_is_open()");
     expect(template).to.include("event.has_started()");

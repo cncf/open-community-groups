@@ -448,9 +448,10 @@ On the organizer side, the tabs work like this:
   tier, and the requester's newest approval offer.
 - `Waitlist` shows one row per person: the FIFO queue position for a queued
   user, or the newest waiting-list offer for a person no longer queued.
-- `Requests` appears while invitation review is enabled, and `Waitlist` appears while the
-  waitlist is enabled. After the feature is disabled, each tab stays available while it still
-  lists rows.
+- `Requests` appears while invitation review is enabled, and `Waitlist` appears
+  while the waitlist is enabled. When either setting is turned off, its tab
+  remains until its list is empty, so organizers can still review past requests
+  or remaining waitlist entries.
 - Lapsed waiting-list or approval outcomes (expired, declined, canceled) are not
   listed once the person is enrolled another way, such as an organizer
   invitation, a registration, a purchase, a new request, or a queue entry.
