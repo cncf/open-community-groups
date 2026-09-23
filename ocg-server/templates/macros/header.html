@@ -18,10 +18,10 @@
 
 {# Viewport mode items -#}
 {# Used by the header user menu to switch between the responsive layout and the desktop version.
-   Visibility is CSS-only: "Desktop version" shows below lg on coarse-pointer devices while the
+   Visibility is CSS-only: "Desktop version" shows below xl on coarse-pointer devices while the
    default mode is active; "Mobile version" shows whenever the desktop mode attribute is set. -#}
 {% macro viewport_mode_items() -%}
-  <li class="hidden max-lg:pointer-coarse:not-viewport-desktop:block border-t border-stone-200 mt-2 pt-2"
+  <li class="hidden max-xl:pointer-coarse:not-viewport-desktop:block border-t border-stone-200 mt-2 pt-2"
       role="none">
     <button type="button"
             data-viewport-mode="desktop"

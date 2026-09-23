@@ -184,21 +184,21 @@ test.describe("site header", () => {
     await expect(mobileVersionItem).toBeHidden();
   });
 
-  test("desktop version entry follows the lg breakpoint on touch devices @mobile", async ({ page }) => {
+  test("desktop version entry follows the xl breakpoint on touch devices @mobile", async ({ page }) => {
     // Load the public shell and open the guest menu.
     await navigateToSiteHome(page);
     const userMenuButton = page.locator('#user-dropdown-button[data-logged-in="false"]');
     const userMenu = page.locator("#user-dropdown");
     const desktopVersionItem = userMenu.getByRole("menuitem", { name: "Desktop version" });
 
-    // Verify the entry disappears once the layout viewport reaches lg.
-    await page.setViewportSize({ width: 1024, height: 900 });
+    // Verify the entry disappears once the layout viewport reaches xl.
+    await page.setViewportSize({ width: 1280, height: 900 });
     await userMenuButton.click();
     await expect(desktopVersionItem).toBeHidden();
     await expect(userMenu.getByRole("menuitem", { name: "Mobile version" })).toBeHidden();
 
-    // Verify the entry returns right below lg.
-    await page.setViewportSize({ width: 1023, height: 900 });
+    // Verify the entry returns right below xl, including landscape tablet widths.
+    await page.setViewportSize({ width: 1279, height: 900 });
     await expect(desktopVersionItem).toBeVisible();
   });
 
@@ -209,7 +209,7 @@ test.describe("site header", () => {
     const userMenu = page.locator("#user-dropdown");
 
     // Verify neither entry shows at desktop or narrow widths.
-    for (const width of [1280, 1023, 767]) {
+    for (const width of [1280, 1279, 1023, 767]) {
       await page.setViewportSize({ width, height: 900 });
       await userMenuButton.click();
       await expect(userMenu).toBeVisible();
