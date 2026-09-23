@@ -432,7 +432,7 @@ async fn test_complete_refund_recovery_allows_event_manager() {
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees, refresh-group-refunds",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist, refresh-group-refunds",
     );
 }
 

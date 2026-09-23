@@ -10,6 +10,21 @@ use serde::{Deserialize, Serialize};
 /// Provides methods to access and modify pagination parameters, used by the navigation
 /// link generation logic to create appropriate URLs for different pages.
 pub(crate) trait Pagination {
+    /// Moves the offset to the last page with results when it points past the
+    /// end of a non-empty result set, returning whether the offset changed.
+    ///
+    /// Keeps a refreshed list from rendering an empty page after its last rows
+    /// were removed while earlier pages still hold rows.
+    fn clamp_offset_to_last_page(&mut self, total: usize) -> bool {
+        let limit = self.limit().expect("pagination limit to be set");
+        let offset = self.offset().unwrap_or(0);
+        if total == 0 || offset < total {
+            return false;
+        }
+        self.set_offset(Some((total - 1) / limit * limit));
+        true
+    }
+
     /// Get the current page size limit.
     fn limit(&self) -> Option<usize>;
 
@@ -244,9 +259,49 @@ fn get_url_filters_separator(url: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{NavigationLinksOffsets, get_url_filters_separator};
+    use super::{NavigationLinksOffsets, Pagination, get_url_filters_separator};
 
     const TEST_PAGINATION_LIMIT: usize = 10;
+
+    #[test]
+    fn test_clamp_offset_to_last_page_keeps_offset_when_results_are_empty() {
+        let mut filters = test_filters(Some(10));
+
+        assert!(!filters.clamp_offset_to_last_page(0));
+        assert_eq!(filters.offset, Some(10));
+    }
+
+    #[test]
+    fn test_clamp_offset_to_last_page_keeps_offset_within_results() {
+        let mut filters = test_filters(Some(10));
+
+        assert!(!filters.clamp_offset_to_last_page(11));
+        assert_eq!(filters.offset, Some(10));
+    }
+
+    #[test]
+    fn test_clamp_offset_to_last_page_moves_to_last_full_page() {
+        let mut filters = test_filters(Some(20));
+
+        assert!(filters.clamp_offset_to_last_page(20));
+        assert_eq!(filters.offset, Some(10));
+    }
+
+    #[test]
+    fn test_clamp_offset_to_last_page_moves_to_last_partial_page() {
+        let mut filters = test_filters(Some(30));
+
+        assert!(filters.clamp_offset_to_last_page(15));
+        assert_eq!(filters.offset, Some(10));
+    }
+
+    #[test]
+    fn test_clamp_offset_to_last_page_moves_unaligned_offset_to_page_start() {
+        let mut filters = test_filters(Some(12));
+
+        assert!(filters.clamp_offset_to_last_page(12));
+        assert_eq!(filters.offset, Some(10));
+    }
 
     #[test]
     fn test_navigation_links_offsets_1() {
@@ -452,5 +507,25 @@ mod tests {
     fn test_get_url_filters_separator_4() {
         let url = "https://example.com?param1=value1&";
         assert_eq!(get_url_filters_separator(url), "");
+    }
+
+    // Helpers.
+
+    /// Minimal paginated filters used to exercise the `Pagination` defaults.
+    struct TestFilters {
+        /// Number of results per page.
+        limit: Option<usize>,
+        /// Pagination offset for results.
+        offset: Option<usize>,
+    }
+
+    crate::impl_pagination!(TestFilters, limit, offset);
+
+    /// Builds test filters with the default test page size and the given offset.
+    fn test_filters(offset: Option<usize>) -> TestFilters {
+        TestFilters {
+            limit: Some(TEST_PAGINATION_LIMIT),
+            offset,
+        }
     }
 }

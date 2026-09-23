@@ -22,6 +22,9 @@ use crate::{
     config::{HttpServerConfig, PaymentsConfig},
     db::DynDB,
     handlers::{
+        dashboard::group::{
+            EVENT_ENROLLMENT_AND_REFUNDS_REFRESH_TRIGGER, EVENT_ENROLLMENT_REFRESH_TRIGGER,
+        },
         error::HandlerError,
         extractors::{
             CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedFormQs,
@@ -40,7 +43,7 @@ use crate::{
     types::{
         dashboard::group::attendees::{Attendee, AttendeeEnrollmentStatusFilter, AttendeesFilters},
         notifications::EventCustomNotificationInput,
-        pagination::{self, NavigationLinks},
+        pagination::{self, NavigationLinks, Pagination},
         payments::EventPurchaseChargeModel,
         permissions::GroupPermission,
         questionnaire::QuestionnaireQuestion,
@@ -74,7 +77,7 @@ pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
-    ValidatedQuery(filters): ValidatedQuery<AttendeesFilters>,
+    ValidatedQuery(mut filters): ValidatedQuery<AttendeesFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load permissions and attendee context concurrently
     let (
@@ -82,7 +85,7 @@ pub(crate) async fn list_page(
         can_manage_events,
         event,
         registration_questions,
-        search_attendees_results,
+        mut search_attendees_results,
     ) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -100,6 +103,11 @@ pub(crate) async fn list_page(
         db.get_event_registration_questions(community_id, event_id),
         db.search_event_attendees(group_id, event_id, &filters)
     )?;
+
+    // Step back to the last page with rows when the requested page is past the end
+    if filters.clamp_offset_to_last_page(search_attendees_results.total) {
+        search_attendees_results = db.search_event_attendees(group_id, event_id, &filters).await?;
+    }
 
     // Prepare pagination and template context
     let navigation_links = NavigationLinks::from_filters(
@@ -168,7 +176,7 @@ pub(crate) async fn accept_invitation_request(
     Ok(admission_allocation_response(
         outcome,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees, refresh-event-invitation-requests",
+        EVENT_ENROLLMENT_REFRESH_TRIGGER,
     ))
 }
 
@@ -194,10 +202,7 @@ pub(crate) async fn approve_refund_request(
 
     Ok((
         StatusCode::NO_CONTENT,
-        [(
-            "HX-Trigger",
-            "refresh-event-attendees, refresh-group-refunds",
-        )],
+        [("HX-Trigger", EVENT_ENROLLMENT_AND_REFUNDS_REFRESH_TRIGGER)],
     )
         .into_response())
 }
@@ -223,10 +228,7 @@ pub(crate) async fn cancel_event_admission_offer(
     // Refresh every dashboard view affected by the cancellation
     Ok((
         StatusCode::NO_CONTENT,
-        [(
-            "HX-Trigger",
-            "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
-        )],
+        [("HX-Trigger", EVENT_ENROLLMENT_REFRESH_TRIGGER)],
     )
         .into_response())
 }
@@ -251,13 +253,10 @@ pub(crate) async fn cancel_event_attendee_attendance(
         })
         .await?;
 
-    // Refresh attendee and refund views after the cancellation commits
+    // Refresh enrollment and refund views after the cancellation commits
     Ok((
         StatusCode::NO_CONTENT,
-        [(
-            "HX-Trigger",
-            "refresh-event-attendees, refresh-group-refunds",
-        )],
+        [("HX-Trigger", EVENT_ENROLLMENT_AND_REFUNDS_REFRESH_TRIGGER)],
     )
         .into_response())
 }
@@ -294,7 +293,7 @@ pub(crate) async fn invite_event_attendee(
     Ok(admission_allocation_response(
         outcome,
         StatusCode::CREATED,
-        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
+        EVENT_ENROLLMENT_REFRESH_TRIGGER,
     ))
 }
 
@@ -337,7 +336,7 @@ pub(crate) async fn mark_external_payment(
 
     Ok((
         StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-event-attendees")],
+        [("HX-Trigger", EVENT_ENROLLMENT_REFRESH_TRIGGER)],
     )
         .into_response())
 }
@@ -355,7 +354,7 @@ pub(crate) async fn reject_invitation_request(
 
     Ok((
         StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-event-invitation-requests")],
+        [("HX-Trigger", EVENT_ENROLLMENT_REFRESH_TRIGGER)],
     )
         .into_response())
 }

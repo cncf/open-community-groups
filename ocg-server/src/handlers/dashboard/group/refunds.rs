@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
+        dashboard::group::EVENT_ENROLLMENT_AND_REFUNDS_REFRESH_TRIGGER,
         error::HandlerError,
         extractors::{
             CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
@@ -116,10 +117,7 @@ pub(crate) async fn complete_refund_recovery(
 
     Ok((
         StatusCode::NO_CONTENT,
-        [(
-            "HX-Trigger",
-            "refresh-event-attendees, refresh-group-refunds",
-        )],
+        [("HX-Trigger", EVENT_ENROLLMENT_AND_REFUNDS_REFRESH_TRIGGER)],
     )
         .into_response())
 }
