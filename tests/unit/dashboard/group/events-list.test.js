@@ -444,16 +444,21 @@ describe("events list page", () => {
       `,
     );
     initializeEventsListPage(root);
+    const form = root.querySelector("[data-waitlist-invite-action]");
 
-    // Dispatch a conflict response without organizer guidance.
-    dispatchHtmxAfterRequest(root.querySelector("[data-waitlist-invite-action]"), {
-      status: 409,
-      responseText: JSON.stringify({ conflict: "unexpected-conflict" }),
+    // Dispatch conflict responses without organizer guidance, including inherited object keys.
+    ["unexpected-conflict", "constructor", "toString"].forEach((conflict) => {
+      dispatchHtmxAfterRequest(form, {
+        status: 409,
+        responseText: JSON.stringify({ conflict }),
+      });
     });
 
     // Verify the generic error is shown without refreshing lists.
-    expect(env.current.swal.calls).to.have.length(1);
-    expect(env.current.swal.calls[0]).to.include({ text: "Invite failed.", icon: "error" });
+    expect(env.current.swal.calls).to.have.length(3);
+    env.current.swal.calls.forEach((call) => {
+      expect(call).to.include({ text: "Invite failed.", icon: "error" });
+    });
     expect(env.current.htmx.triggerCalls).to.have.length(0);
   });
 

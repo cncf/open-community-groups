@@ -211,8 +211,10 @@ const handleActionsMenuClick = (button, root) => {
  */
 const handleRowTicketActionAfterRequest = (form, event) => {
   const xhr = event.detail?.xhr;
-  const conflictMessage =
-    xhr?.status === 409 ? ROW_TICKET_CONFLICT_MESSAGES[parseJsonText(xhr.responseText, {})?.conflict] : null;
+  const conflict = xhr?.status === 409 ? parseJsonText(xhr.responseText, {})?.conflict : null;
+  const conflictMessage = Object.hasOwn(ROW_TICKET_CONFLICT_MESSAGES, conflict)
+    ? ROW_TICKET_CONFLICT_MESSAGES[conflict]
+    : null;
 
   handleHtmxResponse({
     xhr,
