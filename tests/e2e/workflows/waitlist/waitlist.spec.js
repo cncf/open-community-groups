@@ -37,7 +37,12 @@ test.describe("event waitlist promotion workflow", () => {
     // The public page starts sold out while the only seeded seat is occupied.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, WAITLIST_EVENT_SLUG);
     const soldOutRibbon = page.locator("[data-availability-sold-out-ribbon]");
+    const remainingCaption = page.locator('[data-availability-caption="remaining"]');
+    const waitlistCaption = page.locator('[data-availability-caption="waitlist"]');
+    await waitForAvailabilityHydration(page);
     await expect(soldOutRibbon).toBeVisible();
+    await expect(remainingCaption).toBeHidden();
+    await expect(waitlistCaption).toBeHidden();
 
     // Load the waitlist event before creating a waitlisted member.
     await navigateToEvent(
@@ -60,6 +65,13 @@ test.describe("event waitlist promotion workflow", () => {
 
     // Verify the member is waiting before the attendee leaves.
     await expect(getLeaveButton(member2Page)).toContainText("Leave waiting list");
+
+    // The public page shows the queue size while no seats remain.
+    await reloadWithAvailability(page);
+    await expect(soldOutRibbon).toBeVisible();
+    await expect(remainingCaption).toBeHidden();
+    await expect(waitlistCaption).toBeVisible();
+    await expect(page.locator("[data-availability-waitlist]")).toHaveText("1");
 
     // Load the attendee account that can free the event capacity.
     await navigateToEvent(
@@ -98,9 +110,11 @@ test.describe("event waitlist promotion workflow", () => {
       deleteNotifications(notificationIds);
     }
 
-    // Promotion reserves the released seat, so capacity remains sold out.
-    await page.reload();
+    // Promotion reserves the released seat and empties the queue.
+    await reloadWithAvailability(page);
     await expect(soldOutRibbon).toBeVisible();
+    await expect(remainingCaption).toBeHidden();
+    await expect(waitlistCaption).toBeHidden();
 
     // Open the promoted member's invitations and verify the waitlist offer.
     await navigateToPath(member2Page, "/dashboard/user?tab=invitations");
@@ -130,8 +144,9 @@ test.describe("event waitlist promotion workflow", () => {
     await expect(offerRow).toHaveCount(0);
 
     // Claiming the promoted offer keeps the single seat allocated.
-    await page.reload();
+    await reloadWithAvailability(page);
     await expect(soldOutRibbon).toBeVisible();
+    await expect(remainingCaption).toBeHidden();
 
     // Verify the promoted member is now attending the event.
     await navigateToEvent(
@@ -152,8 +167,13 @@ test.describe("event waitlist promotion workflow", () => {
       urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
     });
     deleteNotificationsSince(cancellationSnapshot, "event-attendance-canceled", [TEST_USER_IDS.member2]);
-    await page.reload();
+    await reloadWithAvailability(page);
     await expect(soldOutRibbon).toBeHidden();
+
+    // The reopened seat stays visible while the waiting list remains enabled.
+    await expect(remainingCaption).toBeVisible();
+    await expect(page.locator("[data-availability-remaining]")).toHaveText("1");
+    await expect(waitlistCaption).toBeHidden();
   });
 });
 
@@ -165,4 +185,17 @@ const deleteNotificationsSince = (snapshot, kind, userIds) => {
     and kind = '${kind}'
     and user_id in (${userIds.map((userId) => `'${userId}'::uuid`).join(", ")});
   `);
+};
+
+/** Reloads the page and waits for the refreshed public availability. */
+const reloadWithAvailability = async (page) => {
+  await page.reload();
+  await waitForAvailabilityHydration(page);
+};
+
+/** Waits until the public availability payload has been applied to the page. */
+const waitForAvailabilityHydration = async (page) => {
+  await expect(
+    page.locator('[data-availability-url][data-availability-hydrated="true"]').first(),
+  ).toBeAttached();
 };

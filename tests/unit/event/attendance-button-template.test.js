@@ -82,6 +82,11 @@ describe("event attendance button template", () => {
     // The frontend payload cannot reproduce a price-window end timestamp.
     expect(template).to.include("Available now");
     expect(template).to.not.include("Available until");
+
+    // Joinable sold-out tickets use the same waitlist hint as refreshed cards.
+    expect(template).to.include(
+      "{% if ticket_type.sold_out && ticket_type_selectable && event.waitlist_enabled && !event.attendee_approval_required -%} Sold out (you can join the waiting list) {% else if ticket_type.sold_out -%} Sold out",
+    );
   });
 
   it("keeps the discount field visible and disabled for approval flows", async () => {

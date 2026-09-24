@@ -18,6 +18,8 @@ import {
 } from "./helpers.js";
 import { buildE2eUrl, getIntroSection, navigateToEvent } from "../../utils.js";
 
+const DASHBOARD_WAITLIST_EVENT_SLUG = "alpha-dashboard-waitlist-lab";
+
 const OPEN_GRAPH_IMAGE_FILE_NAME = "7744970faed216a0b2d3be30ffef5aeb1bd6b65c5407ccc4f3dd824d132f1656.png";
 
 const PRIMARY_EVENT_LOCATION = "Tech Conference Center, 123 Main Street, New York, NY, United States";
@@ -431,6 +433,20 @@ test.describe("event page - sold-out availability", () => {
     await expect(page.locator("[data-availability-sold-out-ribbon]")).toBeVisible();
     await expect(page.locator("[data-availability-sold-out-ribbon]")).toContainText("Sold out");
     await expect(page.locator('[data-availability-caption="remaining"]')).toBeHidden();
+    await expect(page.locator('[data-availability-caption="waitlist"]')).toBeHidden();
+  });
+
+  test("shows the waiting list size when no capacity remains", async ({ page }) => {
+    // Load the full event whose waiting list holds two seeded members.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, DASHBOARD_WAITLIST_EVENT_SLUG);
+    await expect(page.locator('[data-availability-url][data-availability-hydrated="true"]')).toBeAttached();
+
+    // Verify the queue size replaces the remaining seats caption.
+    await expect(page.locator("[data-availability-capacity]")).toHaveText("1");
+    await expect(page.locator("[data-availability-sold-out-ribbon]")).toBeVisible();
+    await expect(page.locator('[data-availability-caption="remaining"]')).toBeHidden();
+    await expect(page.locator('[data-availability-caption="waitlist"]')).toBeVisible();
+    await expect(page.locator("[data-availability-waitlist]")).toHaveText("2");
   });
 });
 

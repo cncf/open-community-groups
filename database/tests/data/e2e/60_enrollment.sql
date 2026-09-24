@@ -115,6 +115,38 @@ values (
     3,
     'Late Admission',
     'Free tier with spare seats organizers assign from the waitlist.'
+), (
+    '56555555-5555-5555-5555-555555555949',
+    true,
+    '55555555-5555-5555-5555-555555555949',
+    1,
+    1,
+    'Early pass',
+    'One-seat tier sold out next to an open tier with the waiting list enabled.'
+), (
+    '56555555-5555-5555-5555-555555555950',
+    true,
+    '55555555-5555-5555-5555-555555555949',
+    2,
+    3,
+    'Standard pass',
+    'Open tier that keeps seats available next to the sold-out tier.'
+), (
+    '56555555-5555-5555-5555-555555555951',
+    true,
+    '55555555-5555-5555-5555-555555555950',
+    1,
+    1,
+    'Early pass',
+    'One-seat tier sold out next to an open tier without a waiting list.'
+), (
+    '56555555-5555-5555-5555-555555555952',
+    true,
+    '55555555-5555-5555-5555-555555555950',
+    2,
+    3,
+    'Standard pass',
+    'Open tier that keeps seats available next to the sold-out tier.'
 );
 
 insert into event_ticket_type (
@@ -537,6 +569,16 @@ insert into event_attendee (event_id, user_id)
 values (
     '55555555-5555-5555-5555-555555555537',
     '77777777-7777-7777-7777-777777777705'
+);
+
+-- Confirmed attendees fill the first tier of the mixed-tier fixtures.
+insert into event_attendee (event_id, user_id)
+values (
+    '55555555-5555-5555-5555-555555555949',
+    '77777777-7777-7777-7777-777777777710'
+), (
+    '55555555-5555-5555-5555-555555555950',
+    '77777777-7777-7777-7777-777777777710'
 );
 
 insert into event_attendee (event_id, user_id, manually_invited, status)

@@ -808,7 +808,9 @@ test.describe("event attendance", () => {
         const soldOutCard = ticketModal.locator('[data-attendance-role="ticket-type-card"]', {
           hasText: "Limited conference pass",
         });
-        await expect(soldOutCard).toContainText("Sold out");
+        await expect(soldOutCard.locator('[data-attendance-role="ticket-type-status-label"]')).toHaveText(
+          "Sold out (you can join the waiting list)",
+        );
         await soldOutCard.click();
 
         // Seed stale client values that must not cross the waitlist boundary.
@@ -864,6 +866,78 @@ test.describe("event attendance", () => {
       );
       await expect(refundedTierCard).toContainText("Available now");
       await expect(refundedTierCard.locator('[data-attendance-role="ticket-type-option"]')).toBeEnabled();
+    });
+
+    test("mixed tiers show remaining seats and the waitlist hint on the sold-out tier", async ({
+      member1Page,
+    }) => {
+      const event = TEST_TICKETING_EVENTS.mixedTierWaitlist;
+
+      // Load the mixed-tier event whose waiting list is enabled.
+      await navigateToEvent(member1Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, event.slug);
+      await waitForAttendanceState(member1Page);
+
+      // The open tier keeps remaining seats visible despite the waiting list.
+      await expect(member1Page.locator("[data-availability-capacity]")).toHaveText("4");
+      await expect(member1Page.locator('[data-availability-caption="remaining"]')).toBeVisible();
+      await expect(member1Page.locator("[data-availability-remaining]")).toHaveText("3");
+      await expect(member1Page.locator("[data-availability-sold-out-ribbon]")).toBeHidden();
+
+      // Open ticket choices and verify each tier status.
+      await getAttendButton(member1Page).click();
+      const ticketModal = getTicketModal(member1Page);
+      await expect(ticketModal).toBeVisible();
+      const soldOutCard = getTicketTypeCard(ticketModal, "Early pass");
+      const openCard = getTicketTypeCard(ticketModal, "Standard pass");
+      await expect(soldOutCard.locator('[data-attendance-role="ticket-type-status-label"]')).toHaveText(
+        "Sold out (you can join the waiting list)",
+      );
+      await expect(soldOutCard.locator('[data-attendance-role="ticket-type-option"]')).toBeEnabled();
+      await expect(openCard.locator('[data-attendance-role="ticket-type-status-label"]')).toHaveText(
+        "Available now",
+      );
+      await expect(openCard.locator('[data-attendance-role="ticket-type-option"]')).toBeEnabled();
+
+      // Selecting each tier switches between the waitlist and ticket actions.
+      await soldOutCard.click();
+      await expect(getCheckoutButton(member1Page)).toContainText("Join waiting list");
+      await openCard.click();
+      await expect(getCheckoutButton(member1Page)).toContainText("Get free ticket");
+
+      // Close the ticket modal without registering.
+      await ticketModal.locator('[data-attendance-role="ticket-modal-cancel"]').click();
+      await expect(ticketModal).toBeHidden();
+    });
+
+    test("mixed tiers keep the sold-out tier closed without a waiting list", async ({ member1Page }) => {
+      const event = TEST_TICKETING_EVENTS.mixedTierNoWaitlist;
+
+      // Load the mixed-tier event whose waiting list is disabled.
+      await navigateToEvent(member1Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, event.slug);
+      await waitForAttendanceState(member1Page);
+
+      // The open tier keeps remaining seats visible.
+      await expect(member1Page.locator('[data-availability-caption="remaining"]')).toBeVisible();
+      await expect(member1Page.locator("[data-availability-remaining]")).toHaveText("3");
+
+      // Open ticket choices and verify the sold-out tier omits the waitlist hint.
+      await getAttendButton(member1Page).click();
+      const ticketModal = getTicketModal(member1Page);
+      await expect(ticketModal).toBeVisible();
+      const soldOutCard = getTicketTypeCard(ticketModal, "Early pass");
+      const openCard = getTicketTypeCard(ticketModal, "Standard pass");
+      await expect(soldOutCard.locator('[data-attendance-role="ticket-type-status-label"]')).toHaveText(
+        "Sold out",
+      );
+      await expect(soldOutCard.locator('[data-attendance-role="ticket-type-option"]')).toBeDisabled();
+      await expect(openCard.locator('[data-attendance-role="ticket-type-status-label"]')).toHaveText(
+        "Available now",
+      );
+      await expect(openCard.locator('[data-attendance-role="ticket-type-option"]')).toBeEnabled();
+
+      // Close the ticket modal without registering.
+      await ticketModal.locator('[data-attendance-role="ticket-modal-cancel"]').click();
+      await expect(ticketModal).toBeHidden();
     });
 
     test("ticket cards show the not-on-sale state from refreshed availability", async ({ member1Page }) => {
@@ -1344,3 +1418,9 @@ const getSignInButton = (page) => page.locator('[data-attendance-role="signin-bt
 
 /** Returns the ticket selection modal. */
 const getTicketModal = (page) => page.locator('[data-attendance-role="ticket-modal"]');
+
+/** Returns the ticket type card matching a tier title inside the ticket modal. */
+const getTicketTypeCard = (ticketModal, title) =>
+  ticketModal.locator('[data-attendance-role="ticket-type-card"]', {
+    has: ticketModal.page().locator('[data-attendance-role="ticket-type-title"]', { hasText: title }),
+  });

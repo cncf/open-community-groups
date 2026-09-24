@@ -26,7 +26,11 @@ import {
   waitForHtmxSettle,
 } from "../../../utils.js";
 import { expectErrorAlert, holdSeat } from "./attendees-helpers.js";
-import { openCurrentEventEditorSection, openEventUpdateFormByName } from "./helpers.js";
+import {
+  openCurrentEventEditorSection,
+  openEventUpdateFormByName,
+  openGroupEventsTabWithEvent,
+} from "./helpers.js";
 import { expectUserColumnHasRoom, expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
 const DASHBOARD_WAITLIST_EVENT_NAME = "Dashboard Waitlist Table Lab";
@@ -948,16 +952,9 @@ const openDashboardWaitlist = async (page, query = "") => {
 
 /** Opens an event's waitlist tab from the requested dashboard event list. */
 const openWaitlistTab = async (page, eventName, eventId, { past = false, query = "" } = {}) => {
-  await navigateToPath(page, "/dashboard/group?tab=events");
-
-  if (past) {
-    await page.locator("#past-tab").click();
-    await expect(page.locator("#past-content")).toBeVisible();
-  }
-
-  const eventsContent = page.locator(past ? "#past-content" : "#upcoming-content");
-  const eventRow = eventsContent.locator("tr", { hasText: eventName });
-  await expect(eventRow).toBeVisible();
+  const eventRow = await openGroupEventsTabWithEvent(page, eventName, {
+    eventsTab: past ? "past" : "upcoming",
+  });
 
   await waitForActionResponse(
     page,

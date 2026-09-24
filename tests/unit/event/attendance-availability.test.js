@@ -340,6 +340,50 @@ describe("attendance availability", () => {
     expect(document.activeElement).to.equal(ticketOption);
   });
 
+  it("renders the waitlist hint on appended sold-out tickets", async () => {
+    document.body.innerHTML = `
+      <div data-attendance-container>
+        <div data-attendance-role="ticket-type-list"></div>
+      </div>
+    `;
+
+    // Render a sold-out ticket for an event with the waitlist enabled.
+    const container = document.querySelector("[data-attendance-container]");
+    renderAttendanceAvailability(container, {
+      attendee_approval_required: false,
+      canceled: false,
+      has_sellable_ticket_types: false,
+      is_simple_rsvp: false,
+      registration_window_open: true,
+      ticket_types: [
+        {
+          active: true,
+          current_price_label: "EUR 20.00",
+          event_ticket_type_id: "ticket-1",
+          is_sellable_now: false,
+          sold_out: true,
+          title: "General admission",
+        },
+      ],
+      waitlist_enabled: true,
+    });
+
+    const card = container.querySelector("attendance-ticket-card");
+    await card.updateComplete;
+
+    // Verify the sold-out ticket stays selectable and explains the waitlist.
+    const ticketOption = card.querySelector(
+      '[data-attendance-role="ticket-type-option"]',
+    );
+    const ticketStatusLabel = card.querySelector(
+      '[data-attendance-role="ticket-type-status-label"]',
+    );
+    expect(ticketOption.disabled).to.equal(false);
+    expect(ticketStatusLabel.textContent.trim()).to.equal(
+      "Sold out (you can join the waiting list)",
+    );
+  });
+
   it("keeps price-ineligible approval tickets unavailable", () => {
     // Build cached markup containing a ticket that has since become inactive.
     document.body.innerHTML = `
