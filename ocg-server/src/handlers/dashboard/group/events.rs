@@ -33,8 +33,11 @@ use crate::{
     types::{
         dashboard::group::{
             events::{EventActionScope, EventInput, EventsListFilters, EventsTab},
+            invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
             sponsors::GroupSponsorsFilters,
+            waitlist::WaitlistFilters,
         },
+        event::EventFull,
         pagination::{self, NavigationLinks},
         payments::TicketTaxBehavior,
         permissions::GroupPermission,
@@ -208,6 +211,14 @@ pub(crate) async fn update_page(
         db.list_timezones(),
         db.get_group_external_payments_context(community_id, group_id),
     )?;
+
+    // Keep enrollment tabs visible while their feature is enabled or rows remain
+    let (show_invitation_requests_tab, show_waitlist_tab) = tokio::try_join!(
+        shows_invitation_requests_tab(&db, group_id, &event),
+        shows_waitlist_tab(&db, group_id, &event),
+    )?;
+
+    // Prepare template
     let template = events::UpdatePage {
         approved_submissions,
         can_manage_events,
@@ -222,6 +233,8 @@ pub(crate) async fn update_page(
         payment_currency_codes,
         payments_ready: payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()),
         session_kinds,
+        show_invitation_requests_tab,
+        show_waitlist_tab,
         sponsors: sponsors.sponsors,
         timezones,
     };
@@ -601,4 +614,47 @@ fn event_editor_location_json(event_id: Uuid) -> String {
     format!(
         r##"{{"path":"/dashboard/group/events/{event_id}/update", "target":"#dashboard-content", "push":"false"}}"##
     )
+}
+
+/// Returns true when the event editor should show the invitation requests tab.
+async fn shows_invitation_requests_tab(
+    db: &DynDB,
+    group_id: Uuid,
+    event: &EventFull,
+) -> Result<bool> {
+    // Show the tab while invitation review is enabled
+    if event.attendee_approval_required {
+        return Ok(true);
+    }
+
+    // Otherwise show it only while the requests list still has rows
+    let filters = InvitationRequestsFilters {
+        status: InvitationRequestsStatusFilter::All,
+        limit: Some(1),
+        offset: Some(0),
+        ..Default::default()
+    };
+    let output = db
+        .search_event_invitation_requests(group_id, event.event_id, &filters)
+        .await?;
+
+    Ok(output.total > 0)
+}
+
+/// Returns true when the event editor should show the waitlist tab.
+async fn shows_waitlist_tab(db: &DynDB, group_id: Uuid, event: &EventFull) -> Result<bool> {
+    // Show the tab while the waitlist is enabled
+    if event.waitlist_enabled {
+        return Ok(true);
+    }
+
+    // Otherwise show it only while the waitlist still has rows
+    let filters = WaitlistFilters {
+        limit: Some(1),
+        offset: Some(0),
+        ..Default::default()
+    };
+    let output = db.search_event_waitlist(group_id, event.event_id, &filters).await?;
+
+    Ok(output.total > 0)
 }

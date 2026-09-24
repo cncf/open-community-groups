@@ -7,6 +7,7 @@ import {
 } from "../../../notifications.js";
 import {
   TEST_COMMUNITY_NAME,
+  TEST_EVENT_IDS,
   TEST_GROUP_SLUGS,
   TEST_REGISTRATION_WINDOW_EVENTS,
   TEST_TICKETING_EVENTS,
@@ -32,6 +33,8 @@ import {
 import { expectUserColumnHasRoom, expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
 const CLOSED_APPROVAL_OFFER_ID = "59555555-5555-5555-5555-555555555905";
+
+const DISABLED_APPROVAL_EVENT_NAME = "Upcoming In-Person Event";
 
 test.describe("group dashboard attendees tab — invitations", () => {
   test("organizer can invite and cancel an attendee invitation", async ({ organizerGroupPage }) => {
@@ -769,6 +772,56 @@ test.describe("group dashboard attendees tab — invitations", () => {
     }
   });
 
+  test("organizer cannot reissue an expired approval offer after approval is disabled", async ({
+    organizerGroupPage,
+  }) => {
+    try {
+      // Record an accepted request with an expired offer while approval stays disabled.
+      setupDisabledApprovalExpiredOffer();
+
+      // Load the Alpha event's Requests tab.
+      const requestsContent = await openInvitationRequestsTab(
+        organizerGroupPage,
+        DISABLED_APPROVAL_EVENT_NAME,
+        TEST_EVENT_IDS.alpha.one,
+      );
+
+      // Include accepted requests so the expired approval offer is visible.
+      await requestsContent.getByLabel("Status filters").click();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () =>
+          requestsContent
+            .locator("#invitation-requests-status-filter")
+            .getByRole("button", { name: "All", exact: true })
+            .click(),
+        {
+          method: "GET",
+          urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/invitation-requests`,
+        },
+      );
+
+      // Verify the reissue action is disabled with the approval reason.
+      const requestRow = requestsContent.locator("tr", {
+        hasText: "E2E Member Two",
+      });
+      await expectTicketOfferStatus(requestRow, "Accepted", "Expired");
+      await requestRow.getByRole("button", { name: "Open actions for E2E Member Two" }).click();
+      const reissueButton = requestRow.getByRole("button", {
+        name: "Reissue offer",
+        exact: true,
+      });
+      await expect(reissueButton).toBeDisabled();
+      await expect(reissueButton).toHaveAttribute(
+        "title",
+        "Turn on invitation approval to reissue ticket offers.",
+      );
+    } finally {
+      // Remove the temporary request and offer.
+      cleanupDisabledApprovalExpiredOffer();
+    }
+  });
+
   test("organizer manages tiered invitation request offers across lifecycle states", async ({
     organizerGroupPage,
   }) => {
@@ -907,6 +960,19 @@ test.describe("group dashboard attendees tab — invitations", () => {
   });
 });
 
+/** Removes the temporary request and offer used by disabled approval reissue coverage. */
+const cleanupDisabledApprovalExpiredOffer = () => {
+  queryE2eDatabase(`
+    delete from admission_offer
+    where event_id = '${TEST_EVENT_IDS.alpha.one}'
+    and user_id = '${TEST_USER_IDS.member2}';
+
+    delete from event_invitation_request
+    where event_id = '${TEST_EVENT_IDS.alpha.one}'
+    and user_id = '${TEST_USER_IDS.member2}';
+  `);
+};
+
 /** Deletes matching notifications from the notification table after a snapshot. */
 const deleteNotificationsSince = (snapshot, kind, userIds) => {
   queryE2eDatabase(`
@@ -1041,6 +1107,45 @@ const resetFutureRegistrationWindowRequest = () => {
       reviewed_by = null
     where event_id = '${eventId}'
     and user_id = '${TEST_USER_IDS.member1}';
+  `);
+};
+
+/** Records an accepted request with an expired approval offer on the Alpha event. */
+const setupDisabledApprovalExpiredOffer = () => {
+  queryE2eDatabase(`
+    insert into event_invitation_request (event_id, user_id, status, reviewed_at, reviewed_by)
+    values (
+      '${TEST_EVENT_IDS.alpha.one}',
+      '${TEST_USER_IDS.member2}',
+      'accepted',
+      current_timestamp - interval '3 days',
+      '${TEST_USER_IDS.organizer1}'
+    )
+    on conflict do nothing;
+
+    insert into admission_offer (
+      created_at,
+      event_id,
+      event_ticket_type_id,
+      expires_at,
+      source,
+      status,
+      user_id
+    ) values (
+      current_timestamp - interval '2 days',
+      '${TEST_EVENT_IDS.alpha.one}',
+      (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '${TEST_EVENT_IDS.alpha.one}'
+        order by "order"
+        limit 1
+      ),
+      current_timestamp - interval '1 day',
+      'approval',
+      'expired',
+      '${TEST_USER_IDS.member2}'
+    );
   `);
 };
 

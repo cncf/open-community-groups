@@ -177,10 +177,12 @@
         {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
         {{ event_form::tab_option(section = "submissions", label = "Submissions") -}}
         {{ event_form::tab_option(section = "attendees", label = "Attendees") -}}
-        {% if event.attendee_approval_required -%}
+        {% if show_invitation_requests_tab -%}
           {{ event_form::tab_option(section = "invitation-requests", label = "Requests") -}}
         {% endif -%}
-        {{ event_form::tab_option(section = "waitlist", label = "Waitlist") -}}
+        {% if show_waitlist_tab -%}
+          {{ event_form::tab_option(section = "waitlist", label = "Waitlist") -}}
+        {% endif -%}
       </select>
       <ul class="hidden flex-col gap-1 font-medium xl:flex">
         {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
@@ -194,12 +196,14 @@
       {{ event_form::tab_button(section = "submissions", icon = "submission", label = "Submissions", extra_attrs = submissions_attrs) -}}
       {% let attendees_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content" hx-swap="innerHTML" hx-indicator="#attendees-loading"{%- endlet %}
     {{ event_form::tab_button(section = "attendees", icon = "attendees", label = "Attendees", extra_attrs = attendees_attrs) -}}
-    {% if event.attendee_approval_required -%}
+    {% if show_invitation_requests_tab -%}
       {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests" hx-trigger="click once" hx-target="#invitation-requests-content" hx-swap="innerHTML" hx-indicator="#invitation-requests-loading"{%- endlet %}
     {{ event_form::tab_button(section = "invitation-requests", icon = "request-invitation", label = "Requests", extra_attrs = invitation_requests_attrs) -}}
   {% endif -%}
-  {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content" hx-swap="innerHTML" hx-indicator="#waitlist-loading"{%- endlet %}
-{{ event_form::tab_button(section = "waitlist", icon = "waitlist", label = "Waitlist", extra_attrs = waitlist_attrs) -}}
+  {% if show_waitlist_tab -%}
+    {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content" hx-swap="innerHTML" hx-indicator="#waitlist-loading"{%- endlet %}
+  {{ event_form::tab_button(section = "waitlist", icon = "waitlist", label = "Waitlist", extra_attrs = waitlist_attrs) -}}
+{% endif -%}
 </ul>
 </aside>
 
@@ -1270,7 +1274,7 @@
 </div>
 {# End Attendees Tab -#}
 
-{% if event.attendee_approval_required -%}
+{% if show_invitation_requests_tab -%}
   {# Invitation Requests Tab -#}
   <div data-content="invitation-requests"
        class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">
@@ -1288,20 +1292,22 @@
   {# End Invitation Requests Tab -#}
 {% endif -%}
 
-{# Waitlist Tab -#}
-<div data-content="waitlist"
-     class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">
-  <div id="waitlist-content">
-    {{ dashboard::form_title(title = "Waitlist", description = "Review and manage people waiting for a seat.") -}}
-    <div id="waitlist-loading" class="flex items-center justify-center py-12">
-      <div class="flex flex-col items-center space-y-4">
-        {{ ui::spinner(size = "size-10") -}}
-        <div class="text-sm text-stone-500">Loading waitlist...</div>
+{% if show_waitlist_tab -%}
+  {# Waitlist Tab -#}
+  <div data-content="waitlist"
+       class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">
+    <div id="waitlist-content">
+      {{ dashboard::form_title(title = "Waitlist", description = "Review and manage people waiting for a seat.") -}}
+      <div id="waitlist-loading" class="flex items-center justify-center py-12">
+        <div class="flex flex-col items-center space-y-4">
+          {{ ui::spinner(size = "size-10") -}}
+          <div class="text-sm text-stone-500">Loading waitlist...</div>
+        </div>
       </div>
     </div>
   </div>
-</div>
-{# End Waitlist Tab -#}
+  {# End Waitlist Tab -#}
+{% endif -%}
 
 {# Form buttons -#}
 <div class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0">

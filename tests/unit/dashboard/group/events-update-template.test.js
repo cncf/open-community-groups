@@ -191,10 +191,10 @@ describe("dashboard group event update template", () => {
       'event_form::tab_option(section = "attendees", label = "Attendees")',
     );
     expect(template).to.include(
-      'event_form::tab_option(section = "invitation-requests", label = "Requests")',
+      '{% if show_invitation_requests_tab -%} {{ event_form::tab_option(section = "invitation-requests", label = "Requests")',
     );
     expect(template).to.include(
-      'event_form::tab_option(section = "waitlist", label = "Waitlist")',
+      '{% if show_waitlist_tab -%} {{ event_form::tab_option(section = "waitlist", label = "Waitlist")',
     );
     expect(template).to.include(
       'hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content"',
@@ -203,10 +203,10 @@ describe("dashboard group event update template", () => {
       '<div id="attendees-content" data-group-check-in-root>',
     );
     expect(template).to.include(
-      'hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests" hx-trigger="click once" hx-target="#invitation-requests-content"',
+      '{% if show_invitation_requests_tab -%} {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests" hx-trigger="click once" hx-target="#invitation-requests-content"',
     );
     expect(template).to.include(
-      'hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content"',
+      '{% if show_waitlist_tab -%} {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content"',
     );
   });
 
@@ -219,10 +219,10 @@ describe("dashboard group event update template", () => {
       'data-content="attendees" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
     );
     expect(template).to.include(
-      'data-content="invitation-requests" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
+      '{% if show_invitation_requests_tab -%} {# Invitation Requests Tab -#} <div data-content="invitation-requests" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
     );
     expect(template).to.include(
-      'data-content="waitlist" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
+      '{% if show_waitlist_tab -%} {# Waitlist Tab -#} <div data-content="waitlist" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
     );
     expect(template).to.include(
       'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0"',

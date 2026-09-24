@@ -1,6 +1,13 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { TEST_APPROVAL_REQUIRED_EVENT, TEST_EVENT_IDS, TEST_PAYMENT_EVENT_NAMES } from "../../../seed.js";
+import { queryE2eDatabase } from "../../../database.js";
+
+import {
+  TEST_APPROVAL_REQUIRED_EVENT,
+  TEST_EVENT_IDS,
+  TEST_PAYMENT_EVENT_NAMES,
+  TEST_USER_IDS,
+} from "../../../seed.js";
 
 import { navigateToPath, selectTimezone, uniqueName, waitForActionResponse } from "../../../utils.js";
 
@@ -8,10 +15,13 @@ import { fillMarkdownEditor } from "../../form-helpers.js";
 
 import {
   deleteEventFromList,
+  openCurrentEventEditorSection,
   openEventUpdateFormByName,
   openPaymentsSection,
   waitForEventEditorAfterSave,
 } from "./helpers.js";
+
+const REVIEWED_REQUEST_EVENT_NAME = "Upcoming In-Person Event";
 
 test.describe("group dashboard event editor", () => {
   test("organizer sees the expected add and edit event form tabs", async ({ organizerGroupPage }) => {
@@ -133,7 +143,9 @@ test.describe("group dashboard event editor", () => {
     await expect(dateVenueTabButton).toBeVisible();
   });
 
-  test("requests tab is only offered for approval-required events", async ({ organizerGroupPage }) => {
+  test("requests tab is offered for approval-required events and hidden for events without requests", async ({
+    organizerGroupPage,
+  }) => {
     // Open the seeded approval-required event form first.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
@@ -147,7 +159,7 @@ test.describe("group dashboard event editor", () => {
     await expect(organizerGroupPage.locator('button[data-section="invitation-requests"]')).toBeVisible();
     await expect(sectionSelect.locator('option[value="invitation-requests"]')).toHaveCount(1);
 
-    // Open an event without attendee approval and verify the tab is absent.
+    // Open an event without attendee approval or requests and verify the tab is absent.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
       organizerGroupPage,
@@ -156,6 +168,68 @@ test.describe("group dashboard event editor", () => {
     );
     await expect(organizerGroupPage.locator('button[data-section="invitation-requests"]')).toHaveCount(0);
     await expect(sectionSelect.locator('option[value="invitation-requests"]')).toHaveCount(0);
+  });
+
+  test("requests tab stays while reviewed requests remain after approval is disabled", async ({
+    organizerGroupPage,
+  }) => {
+    try {
+      // Record a reviewed request on the Alpha event while approval stays disabled.
+      setupReviewedInvitationRequest();
+
+      // Open the Alpha event editor.
+      await openEventUpdateFormByName(
+        organizerGroupPage,
+        REVIEWED_REQUEST_EVENT_NAME,
+        TEST_EVENT_IDS.alpha.one,
+      );
+      await expect(organizerGroupPage.locator("#attendee_approval_required")).toHaveValue("false");
+
+      // Verify both section pickers still offer the requests tab.
+      const sectionSelect = organizerGroupPage.locator('select[aria-label="Event form section"]');
+      await expect(organizerGroupPage.locator('button[data-section="invitation-requests"]')).toHaveCount(1);
+      await expect(sectionSelect.locator('option[value="invitation-requests"]')).toHaveCount(1);
+
+      // Open the requests tab.
+      const requestsContent = await openCurrentEventEditorSection(
+        organizerGroupPage,
+        TEST_EVENT_IDS.alpha.one,
+        "invitation-requests",
+        "#invitation-requests-content",
+        { tableName: "Invitation requests" },
+      );
+      const requestRow = requestsContent.locator("tr", { hasText: "E2E Member Two" });
+
+      // Verify the default pending filter hides reviewed requests.
+      await expect(requestsContent.getByRole("row", { name: "No invitation requests found." })).toBeVisible();
+      await expect(requestRow).toHaveCount(0);
+
+      // Reset the status filter and verify the reviewed request is listed.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => requestsContent.getByRole("button", { name: "Reset status filter" }).click(),
+        {
+          method: "GET",
+          urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/invitation-requests`,
+        },
+      );
+      await expect(requestRow).toBeVisible();
+      await expect(requestRow).toContainText("Rejected");
+
+      // Remove the request and verify the reopened editor hides the tab.
+      cleanupReviewedInvitationRequest();
+      await openEventUpdateFormByName(
+        organizerGroupPage,
+        REVIEWED_REQUEST_EVENT_NAME,
+        TEST_EVENT_IDS.alpha.one,
+      );
+      await expect(organizerGroupPage.locator('button[data-section="invitation-requests"]')).toHaveCount(0);
+      await expect(sectionSelect.locator('option[value="invitation-requests"]')).toHaveCount(0);
+      await expect(organizerGroupPage.locator('[data-content="invitation-requests"]')).toHaveCount(0);
+    } finally {
+      // Remove the temporary invitation request.
+      cleanupReviewedInvitationRequest();
+    }
   });
 
   test("organizer can preview pending event details before saving", async ({ organizerGroupPage }) => {
@@ -429,3 +503,27 @@ test.describe("group dashboard event editor", () => {
     ).toContainText("EARLY20");
   });
 });
+
+/** Removes the temporary request used by disabled approval tab coverage. */
+const cleanupReviewedInvitationRequest = () => {
+  queryE2eDatabase(`
+    delete from event_invitation_request
+    where event_id = '${TEST_EVENT_IDS.alpha.one}'
+    and user_id = '${TEST_USER_IDS.member2}';
+  `);
+};
+
+/** Records a rejected request on the Alpha event without enabling approval. */
+const setupReviewedInvitationRequest = () => {
+  queryE2eDatabase(`
+    insert into event_invitation_request (event_id, user_id, status, reviewed_at, reviewed_by)
+    values (
+      '${TEST_EVENT_IDS.alpha.one}',
+      '${TEST_USER_IDS.member2}',
+      'rejected',
+      now(),
+      '${TEST_USER_IDS.organizer1}'
+    )
+    on conflict do nothing;
+  `);
+};
