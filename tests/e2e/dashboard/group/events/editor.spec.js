@@ -336,6 +336,66 @@ test.describe("group dashboard event editor", () => {
     }
   });
 
+  test("organizer can clear the event short description", async ({ organizerGroupPage }) => {
+    // Create a unique draft with a short description.
+    const descriptionShort = "A dashboard event used to cover clearing the short description.";
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+    await expect(organizerGroupPage.locator("#name")).toBeVisible();
+    await organizerGroupPage.locator("#name").fill(uniqueName("Editor Short Description Event"));
+    await organizerGroupPage.locator("#kind_id").selectOption("virtual");
+    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#description_short").fill(descriptionShort);
+    await fillMarkdownEditor(
+      organizerGroupPage,
+      "description",
+      "Editor coverage for clearing the event short description.",
+    );
+    await organizerGroupPage.locator("button[data-section-next]").click();
+    await selectTimezone(organizerGroupPage, "UTC");
+    await organizerGroupPage.locator("#starts_at").fill("2030-08-12T10:00");
+    await organizerGroupPage.locator("#ends_at").fill("2030-08-12T12:00");
+    await organizerGroupPage
+      .locator("#meeting_join_url")
+      .fill("https://meet.example.com/e2e-editor-short-description");
+
+    // Save the draft and wait for the editor to reopen on the created event.
+    const visibleAddEventButton = organizerGroupPage.locator(
+      "#pending-changes-alert:not(.hidden) #add-event-button",
+    );
+    await expect(visibleAddEventButton).toBeVisible();
+    await waitForActionResponse(organizerGroupPage, () => visibleAddEventButton.click(), {
+      method: "POST",
+      status: 201,
+      urlIncludes: "/dashboard/group/events/add",
+    });
+    const eventId = await waitForEventEditorAfterSave(organizerGroupPage);
+
+    try {
+      // The reloaded editor renders the saved short description without padding.
+      await organizerGroupPage.locator('button[data-section="details"]').click();
+      await expect(organizerGroupPage.locator("#description_short")).toHaveValue(descriptionShort);
+
+      // Clearing the short description saves and reloads an empty field.
+      await organizerGroupPage.locator("#description_short").fill("");
+      await waitForEventEditorAfterSave(
+        organizerGroupPage,
+        () => organizerGroupPage.locator("#update-event-button").click(),
+        {
+          eventId,
+          method: "PUT",
+          urlIncludes: `/dashboard/group/events/${eventId}/update`,
+        },
+      );
+      await organizerGroupPage.locator('button[data-section="details"]').click();
+      await expect(organizerGroupPage.locator("#description_short")).toHaveValue("");
+    } finally {
+      // Delete the temporary event created for the editor flow.
+      await deleteEventFromList(organizerGroupPage, eventId);
+    }
+  });
+
   test("organizer can copy event details and payment configuration", async ({ organizerGroupPage }) => {
     // Load the events list before opening the create form.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");

@@ -304,7 +304,7 @@
                    name="description_short"
                    class="input-primary"
                    maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
-                   value="{% if let Some(description_short) = &event.description_short %} {{ description_short }} {% endif %}" />
+                   value="{%- if let Some(description_short) = &event.description_short -%}{{ description_short }}{%- endif -%}" />
           </div>
           <p class="form-legend">
             Brief description used in event listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
