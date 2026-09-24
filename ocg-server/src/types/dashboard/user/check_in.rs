@@ -5,13 +5,16 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::types::event::EventKind;
+use crate::types::event::{EventCohostGroup, EventKind};
 
 /// Event carrying the user's attendee check-in credential.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UserCheckInEvent {
     /// Whether the attendee is already checked in.
     pub checked_in: bool,
+    /// Groups publicly credited as co-hosts of the event.
+    #[serde(default)]
+    pub cohosts: Vec<EventCohostGroup>,
     /// Event identifier.
     pub event_id: Uuid,
     /// Whether the event is currently in progress.

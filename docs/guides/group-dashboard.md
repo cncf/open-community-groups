@@ -23,6 +23,7 @@ Path: [/dashboard/group](/dashboard/group ':ignore')
   - [Members: Communication](#members-communication)
   - [Sponsors: Reusable Profiles](#sponsors-reusable-profiles)
   - [Events: Operations Hub](#events-operations-hub)
+  - [Co-hosts: Partner Events](#co-hosts-partner-events)
   - [Badges: Portable Recognition](#badges-portable-recognition)
   - [Refunds: Operational Queue](#refunds-operational-queue)
   - [Audit: Logs](#audit-logs)
@@ -40,6 +41,8 @@ Main areas:
 - [Events](/dashboard/group?tab=events ':ignore'): full event lifecycle operations.
 - [Check-In](/dashboard/group?tab=check-in ':ignore'): continuous attendee QR scanning and manual
   check-in fallback.
+- [Co-hosts](/dashboard/group?tab=cohosts ':ignore'): invitations from other groups to co-host
+  their events.
 - `Badges`: a main-menu section below `Events` with full-width
   [Badges](/dashboard/group?tab=badges ':ignore'),
   [Artwork](/dashboard/group?tab=artwork ':ignore'), and
@@ -294,6 +297,9 @@ the group page and all event pages.
 Each metric includes running totals and monthly trends, so it is easier to tell whether growth is
 steady over time or mainly tied to isolated spikes.
 
+A separate `Co-hosted events` section counts published events owned by other groups that this group
+co-hosts with an approved invitation. Those events never count under `Events`.
+
 The `Page views` section starts with total group and event page views, then breaks views down by
 page type with daily charts for the last month.
 
@@ -439,6 +445,34 @@ For complete mechanics, continue to:
 
 To understand how attendees experience the published result, see
 [Public Site Guide](public-site.md).
+
+## Co-hosts: Partner Events
+
+Other groups, including groups in other communities, can invite your group to co-host their events.
+[Co-hosts](/dashboard/group?tab=cohosts ':ignore') lists every invitation your group received, newest
+event date first, with its current status: `Pending`, `Approved`, `Rejected`, `Canceled`,
+`Removed by organizer`, `Event canceled`, or `Event deleted`.
+
+Responding requires settings write access, so group admins and community `admin` and
+`groups-manager` roles can approve, reject, or cancel co-hosting, while other roles only see the
+list. From each row's actions menu you can:
+
+- `Approve` or `Reject` a pending invitation while the event is not published or canceled.
+- `Cancel co-hosting` after approving, at any time, including on a published event.
+
+Approving means:
+
+- The event appears on your group page and credits your group on its page and cards.
+- When it is published, your members are notified as if it were your own event.
+- The owning group keeps managing and operating it, and your group gets no access to it.
+- It is counted only under `Co-hosted events` in your analytics.
+- You can cancel later, and the owning group's admins are notified.
+
+Invitations, removals, and responses are emailed to the accepted, email-verified group `admin`
+team members of the receiving group. Community roles can respond but do not receive these emails.
+For recurring series, each occurrence is a separate invitation that is approved on its own.
+
+Public pages are cached, so co-hosting changes can take a few minutes to appear there.
 
 ## Badges: Portable Recognition
 

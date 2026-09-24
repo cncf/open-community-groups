@@ -65,6 +65,65 @@ async fn test_page_community_not_found() {
 }
 
 #[tokio::test]
+async fn test_page_credits_cohosted_events_to_their_owner() {
+    // Setup identifiers and an upcoming event owned by another community's group
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut group = sample_group_full(community_id, group_id);
+    group.community.name = "test-community".to_string();
+    group.name = "Cohost Group".to_string();
+    group.slug_pretty = None;
+    let group_slug = group.slug.clone();
+    let expected_group_slug = group_slug.clone();
+    let mut event = sample_event_summary(event_id, Uuid::new_v4());
+    event.cohosts = vec![sample_event_cohost_group(group_id, "Cohost Group")];
+    event.community_name = "owner-community".to_string();
+    event.group_name = "Owner Group".to_string();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_get_group_full_by_slug()
+        .times(1)
+        .withf(move |id, slug| *id == community_id && slug == expected_group_slug)
+        .returning(move |_, _| Ok(Some(group.clone())));
+    db.expect_get_group_upcoming_events()
+        .times(1)
+        .returning(move |_, _, _, _| Ok(vec![event.clone()]));
+    db.expect_get_group_past_events()
+        .times(1)
+        .returning(|_, _, _, _| Ok(vec![]));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_server_cfg(sample_tracking_server_cfg())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!("/test-community/group/{group_slug}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the card credits the owner and links to the owner's community
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("Hosted by Owner Group"));
+    assert!(body.contains("Co-hosted with Cohost Group"));
+    assert!(body.contains("href=\"/owner-community/group/"));
+    assert!(!body.contains("href=\"/test-community/group/npq6789/event/"));
+}
+
+#[tokio::test]
 async fn test_page_not_found() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

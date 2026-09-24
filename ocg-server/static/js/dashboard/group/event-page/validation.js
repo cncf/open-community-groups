@@ -9,7 +9,7 @@ import {
   validateRegistrationWindow,
   validateSessionDateBounds,
 } from "/static/js/common/form-validation.js";
-import { EVENT_PAGE_FORM_IDS } from "/static/js/dashboard/group/event-page/context.js";
+import { getEventPageFormIds } from "/static/js/dashboard/group/event-page/context.js";
 
 /**
  * Finds the first invalid form control.
@@ -157,7 +157,7 @@ export const createEventPageValidationCallbacks = ({
     syncEventEnrollmentState();
     return validateEventFormsAcrossSections({
       pageRoot,
-      formSections: EVENT_PAGE_FORM_IDS,
+      formSections: getEventPageFormIds(pageRoot),
       displayActiveSection,
       cfsStartsAtInput,
       cfsEndsAtInput,

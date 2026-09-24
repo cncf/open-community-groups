@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -219,6 +219,19 @@ select fx_event(:'event8ID', :'group2ID', :'eventCategory2ID', jsonb_build_objec
     'published', true,
     'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days'
 ));
+
+-- Approved co-host credit that must not affect owner-scoped community stats
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id
+) values (
+    current_timestamp,
+    'approved',
+    :'event1ID',
+    :'group2ID'
+);
 
 -- Event attendees (in the same months as the events they attend)
 -- event1 (month_10): 3 attendees
@@ -902,6 +915,13 @@ select is(
     (get_community_stats(:'communityID'::uuid)::jsonb->'groups'->>'total')::int,
     4,
     'Should only count groups from the requested community'
+);
+
+-- Should not add co-host rows to community event totals
+select is(
+    (get_community_stats(:'communityID'::uuid)::jsonb->'events'->>'total')::int,
+    6,
+    'Should not add co-host rows to community event totals'
 );
 
 -- ============================================================================

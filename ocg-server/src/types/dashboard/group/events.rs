@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     types::{
         dashboard,
-        event::{EventCfsLabel, EventSummary, SessionKind},
+        event::{EventCfsLabel, EventCohostStatus, EventSummary, SessionKind},
         meetings::MeetingProvider,
         pagination::{Pagination, ToRawQuery},
         payments::{
@@ -20,13 +20,16 @@ use crate::{
         questionnaire::QuestionnaireQuestion,
     },
     validation::{
-        MAX_EVENT_LABELS_PER_EVENT, MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION,
+        MAX_EVENT_COHOSTS, MAX_EVENT_LABELS_PER_EVENT, MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION,
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_S, MAX_LEN_TIMEZONE,
         MAX_PAGINATION_LIMIT, MAX_RECURRING_ADDITIONAL_OCCURRENCES, email_vec, image_url_opt,
         trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_tag_vec, trimmed_non_empty_vec,
         valid_latitude, valid_longitude, web_url_opt,
     },
 };
+
+#[cfg(test)]
+mod tests;
 
 /// Approved CFS submission summary for linking sessions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +51,15 @@ pub(crate) struct CfsSubmissionStatus {
     pub cfs_submission_status_id: String,
     /// Display name.
     pub display_name: String,
+}
+
+/// Co-hosts selection submitted by the event editor.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CohostsUpdate {
+    /// Co-hosts revision the editor loaded.
+    pub expected_revision: i32,
+    /// Groups that should co-host the event.
+    pub group_ids: Vec<Uuid>,
 }
 
 /// Dashboard discount code payload.
@@ -109,6 +121,55 @@ pub(crate) enum EventActionScope {
     This,
 }
 
+/// Current co-host of an event shown in the owner's editor.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventCohostInvitation {
+    /// Human-readable display name of the co-host group's community.
+    pub community_display_name: String,
+    /// Name of the co-host group's community (slug for URLs).
+    pub community_name: String,
+    /// Whether the co-host group is still active.
+    pub group_active: bool,
+    /// Co-host group identifier.
+    pub group_id: Uuid,
+    /// Current invitation identifier.
+    pub invitation_id: Uuid,
+    /// When the current invitation was sent.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub invited_at: DateTime<Utc>,
+    /// URL to the co-host group's logo, falling back to its community logo.
+    pub logo_url: String,
+    /// Co-host group display name.
+    pub name: String,
+    /// Generated URL-friendly identifier for the co-host group.
+    pub slug: String,
+    /// Current co-hosting status (pending or approved).
+    pub status: EventCohostStatus,
+
+    /// Admin-managed URL-friendly identifier for the co-host group.
+    pub slug_pretty: Option<String>,
+}
+
+/// Co-hosts state loaded by the owner's event editor.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct EventCohostsEditor {
+    /// Current pending and approved co-hosts.
+    pub cohosts: Vec<EventCohostInvitation>,
+    /// Co-hosts revision used to detect concurrent changes.
+    pub revision: i32,
+}
+
+impl EventCohostsEditor {
+    /// Returns the number of co-hosts that have not responded yet.
+    pub(crate) fn pending_count(&self) -> usize {
+        self.cohosts
+            .iter()
+            .filter(|cohost| cohost.status == EventCohostStatus::Pending)
+            .count()
+    }
+}
+
 /// Event details for dashboard management.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, Validate)]
@@ -161,6 +222,15 @@ pub(crate) struct EventInput {
     /// Call for speakers start time.
     #[garde(skip)]
     pub cfs_starts_at: Option<NaiveDateTime>,
+    /// Groups selected as co-hosts of the event.
+    #[garde(length(max = MAX_EVENT_COHOSTS))]
+    pub cohost_group_ids: Option<Vec<Uuid>>,
+    /// Whether the co-hosts selection was changed and submitted.
+    #[garde(skip)]
+    pub cohost_group_ids_present: Option<bool>,
+    /// Co-hosts revision loaded by the editor.
+    #[garde(skip)]
+    pub cohosts_revision: Option<i32>,
     /// Short description of the event.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub description_short: Option<String>,
@@ -327,6 +397,18 @@ pub(crate) struct EventInput {
 }
 
 impl EventInput {
+    /// Returns the submitted co-hosts selection, when the editor changed it.
+    pub(crate) fn cohosts_update(&self) -> Option<CohostsUpdate> {
+        if !self.cohost_group_ids_present.unwrap_or(false) {
+            return None;
+        }
+
+        Some(CohostsUpdate {
+            expected_revision: self.cohosts_revision.unwrap_or(0),
+            group_ids: self.cohost_group_ids.clone().unwrap_or_default(),
+        })
+    }
+
     /// Returns whether the form selects at least one manual Tax Rate.
     pub(crate) fn has_manual_tax_selection(&self) -> bool {
         self.tax_calculation_mode == TicketTaxCalculationMode::Manual
@@ -398,6 +480,11 @@ impl EventInput {
         if let Some(ticket_types) = ticket_types.as_mut() {
             Self::normalize_ticket_types(ticket_types);
         }
+
+        // Remove co-host fields, which are synchronized separately
+        payload.remove("cohost_group_ids");
+        payload.remove("cohost_group_ids_present");
+        payload.remove("cohosts_revision");
 
         // Remove ticketing fields so they can be reinserted from submitted inputs
         payload.remove("discount_codes");
@@ -743,411 +830,4 @@ pub(crate) struct TicketTypeInput {
     /// Total seats available for this ticket type.
     #[garde(range(min = 0))]
     pub seats_total: Option<i32>,
-}
-
-#[cfg(test)]
-mod tests {
-    use chrono::{DateTime, Utc};
-    use serde_json::Value;
-
-    use crate::types::payments::{
-        EventDiscountType, EventTicketTypeAvailability, TicketTaxBehavior, TicketTaxCalculationMode,
-    };
-
-    use super::{DiscountCodeInput, EventInput, TicketPriceWindowInput, TicketTypeInput};
-
-    #[test]
-    fn discount_code_deserialization_keeps_explicit_availability_override_signals() {
-        let discount_code: DiscountCodeInput = serde_qs::from_str(
-            "active=true&available=12&available_override_active=true&code=EARLY20&kind=percentage&percentage=20&title=Early%20supporter",
-        )
-        .unwrap();
-
-        assert_eq!(discount_code.available, Some(12));
-        assert_eq!(discount_code.available_override_active, Some(true));
-    }
-
-    #[test]
-    fn event_deserialization_accepts_nested_registration_questions() {
-        let event: EventInput = serde_qs::from_str(
-            "\
-category_id=00000000-0000-0000-0000-000000000001&\
-description=Event%20description&\
-kind_id=virtual&\
-name=Sample%20Event&\
-timezone=UTC&\
-registration_questions_present=true&\
-registration_questions[0][id]=00000000-0000-0000-0000-000000000101&\
-registration_questions[0][kind]=single-select&\
-registration_questions[0][prompt]=Meal%20preference&\
-registration_questions[0][required]=true&\
-registration_questions[0][options][0][id]=00000000-0000-0000-0000-000000000201&\
-registration_questions[0][options][0][label]=Vegetarian",
-        )
-        .unwrap();
-
-        assert!(event.registration_questions_present.is_some());
-        assert_eq!(event.registration_questions.len(), 1);
-        assert_eq!(event.registration_questions[0].prompt, "Meal preference");
-        assert_eq!(
-            event.registration_questions[0].options[0].label,
-            "Vegetarian"
-        );
-    }
-
-    #[test]
-    fn event_deserialization_tracks_empty_manual_tax_rate_selection() {
-        let event: EventInput = serde_qs::from_str(
-            "\
-category_id=00000000-0000-0000-0000-000000000001&\
-description=Event%20description&\
-kind_id=virtual&\
-manual_tax_rate_ids_present=true&\
-name=Sample%20Event&\
-tax_calculation_mode=manual&\
-timezone=UTC",
-        )
-        .unwrap();
-
-        assert!(event.manual_tax_rate_ids.is_none());
-        assert_eq!(event.manual_tax_rate_ids_present, Some(true));
-        assert_eq!(event.tax_calculation_mode, TicketTaxCalculationMode::Manual);
-    }
-
-    #[test]
-    fn to_db_payload_clears_submitted_empty_external_payment_fields() {
-        let mut event = sample_event();
-        event.external_payment_instructions_present = Some(true);
-        event.external_payment_url_present = Some(true);
-        event.external_payment_window_hours_present = Some(true);
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert_eq!(payload["external_payment_instructions"], Value::Null);
-        assert_eq!(payload["external_payment_url"], Value::Null);
-        assert_eq!(payload["external_payment_window_hours"], Value::Null);
-        assert!(payload.get("external_payment_instructions_present").is_none());
-        assert!(payload.get("external_payment_url_present").is_none());
-        assert!(payload.get("external_payment_window_hours_present").is_none());
-    }
-
-    #[test]
-    fn to_db_payload_clears_submitted_empty_manual_tax_rate_selection() {
-        let mut event = sample_event();
-        event.manual_tax_rate_ids_present = Some(true);
-        event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert_eq!(payload["manual_tax_rate_ids"], serde_json::json!([]));
-        assert!(payload.get("manual_tax_rate_ids_present").is_none());
-    }
-
-    #[test]
-    fn to_db_payload_keeps_optional_section_keys_omitted_when_form_omits_inputs() {
-        let payload = sample_event().to_db_payload().unwrap();
-
-        assert_eq!(payload["cfs_labels"], Value::Array(Vec::new()));
-        assert_eq!(payload["description"], "Event description");
-        assert_eq!(payload["kind_id"], "virtual");
-        assert_eq!(payload["name"], "Sample Event");
-        assert_eq!(payload["timezone"], "UTC");
-        assert!(payload.get("discount_codes").is_none());
-        assert!(payload.get("external_payment_instructions").is_none());
-        assert!(payload.get("external_payment_url").is_none());
-        assert!(payload.get("external_payment_window_hours").is_none());
-        assert!(payload.get("registration_questions").is_none());
-        assert!(payload.get("ticket_types").is_none());
-    }
-
-    #[test]
-    fn to_db_payload_keeps_manual_tax_rate_ids() {
-        let mut event = sample_event();
-        event.manual_tax_rate_ids = Some(vec!["txr_state".to_string(), "txr_local".to_string()]);
-        event.manual_tax_rate_ids_present = Some(true);
-        event.tax_behavior = TicketTaxBehavior::Exclusive;
-        event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert_eq!(
-            payload["manual_tax_rate_ids"],
-            serde_json::json!(["txr_state", "txr_local"])
-        );
-        assert!(payload.get("manual_tax_rate_ids_present").is_none());
-        assert_eq!(payload["tax_behavior"], "exclusive");
-        assert_eq!(payload["tax_calculation_mode"], "manual");
-    }
-
-    #[test]
-    fn to_db_payload_keeps_omitted_manual_tax_rate_selection_absent() {
-        let mut event = sample_event();
-        event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert!(payload.get("manual_tax_rate_ids").is_none());
-        assert!(payload.get("manual_tax_rate_ids_present").is_none());
-    }
-
-    #[test]
-    fn to_db_payload_normalizes_external_event_tax() {
-        let mut event = sample_event();
-        event.external_payment_url = Some("https://pay.example.test/add".to_string());
-        event.manual_tax_rate_ids = Some(vec!["txr_stale".to_string()]);
-        event.tax_behavior = TicketTaxBehavior::Exclusive;
-        event.tax_calculation_mode = TicketTaxCalculationMode::Automatic;
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert_eq!(payload["manual_tax_rate_ids"], serde_json::json!([]));
-        assert_eq!(payload["tax_behavior"], "inclusive");
-        assert_eq!(payload["tax_calculation_mode"], "none");
-    }
-
-    #[test]
-    fn to_db_payload_normalizes_no_tax_configuration() {
-        let mut event = sample_event();
-        event.manual_tax_rate_ids = Some(vec!["txr_stale".to_string()]);
-        event.tax_behavior = TicketTaxBehavior::Exclusive;
-        event.tax_calculation_mode = TicketTaxCalculationMode::None;
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert_eq!(payload["manual_tax_rate_ids"], serde_json::json!([]));
-        assert_eq!(payload["tax_behavior"], "inclusive");
-        assert_eq!(payload["tax_calculation_mode"], "none");
-    }
-
-    #[test]
-    fn to_db_payload_includes_empty_registration_questions_when_inputs_are_present() {
-        let mut event = sample_event();
-        event.registration_questions_present = Some(true);
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert_eq!(payload["registration_questions"], Value::Array(Vec::new()));
-    }
-
-    #[test]
-    fn to_db_payload_serializes_dated_ticketing_timestamps_as_utc_z() {
-        // Setup a dated discount code and price window without a live inventory count
-        let starts_at = "2030-01-01T10:00:00Z".parse::<DateTime<Utc>>().unwrap();
-        let ends_at = "2030-06-01T10:00:00Z".parse::<DateTime<Utc>>().unwrap();
-        let mut event = sample_event();
-        event.discount_codes = Some(vec![DiscountCodeInput {
-            active: true,
-            code: "DATED10".to_string(),
-            kind: EventDiscountType::Percentage,
-            title: "Dated".to_string(),
-
-            available: None,
-            available_override_active: Some(true),
-            available_cleared: None,
-            amount_minor: None,
-            ends_at: Some(ends_at),
-            event_discount_code_id: Some(uuid::Uuid::new_v4()),
-            percentage: Some(10),
-            starts_at: Some(starts_at),
-            total_available: Some(10),
-        }]);
-        event.discount_codes_present = Some(true);
-        event.ticket_types = Some(vec![TicketTypeInput {
-            active: true,
-            availability: EventTicketTypeAvailability::Public,
-            order: 1,
-            price_windows: vec![TicketPriceWindowInput {
-                amount_minor: 2500,
-
-                ends_at: Some(ends_at),
-                event_ticket_price_window_id: Some(uuid::Uuid::new_v4()),
-                starts_at: Some(starts_at),
-            }],
-            title: "General".to_string(),
-
-            description: None,
-            event_ticket_type_id: Some(uuid::Uuid::new_v4()),
-            seats_total: Some(10),
-        }]);
-        event.ticket_types_present = Some(true);
-
-        // Serialize the payload
-        let payload = event.to_db_payload().unwrap();
-
-        // Check timestamps use the Z spelling and the omitted count stays absent
-        assert_eq!(
-            payload["discount_codes"][0]["ends_at"],
-            "2030-06-01T10:00:00Z"
-        );
-        assert_eq!(
-            payload["discount_codes"][0]["starts_at"],
-            "2030-01-01T10:00:00Z"
-        );
-        assert!(payload["discount_codes"][0].get("available").is_none());
-        assert_eq!(
-            payload["ticket_types"][0]["price_windows"][0]["ends_at"],
-            "2030-06-01T10:00:00Z"
-        );
-        assert_eq!(
-            payload["ticket_types"][0]["price_windows"][0]["starts_at"],
-            "2030-01-01T10:00:00Z"
-        );
-    }
-
-    #[test]
-    fn to_db_payload_sets_ticketing_keys_to_null_when_inputs_are_present_but_empty() {
-        let mut event = sample_event();
-        event.discount_codes_present = Some(true);
-        event.ticket_types_present = Some(true);
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert_eq!(payload["discount_codes"], Value::Null);
-        assert_eq!(payload["ticket_types"], Value::Null);
-    }
-
-    #[test]
-    fn to_db_payload_accepts_new_ticketing_rows_without_ids() {
-        let mut event = sample_event();
-        event.discount_codes = Some(vec![DiscountCodeInput {
-            active: true,
-            code: "EARLY20".to_string(),
-            kind: EventDiscountType::Percentage,
-            title: "Early supporter".to_string(),
-
-            available: None,
-            available_override_active: None,
-            available_cleared: None,
-            amount_minor: None,
-            ends_at: None,
-            event_discount_code_id: None,
-            percentage: Some(20),
-            starts_at: None,
-            total_available: None,
-        }]);
-        event.discount_codes_present = Some(true);
-        event.ticket_types = Some(vec![TicketTypeInput {
-            active: true,
-            availability: EventTicketTypeAvailability::InvitationOnly,
-            order: 1,
-            price_windows: vec![TicketPriceWindowInput {
-                amount_minor: 2500,
-
-                ends_at: None,
-                event_ticket_price_window_id: None,
-                starts_at: None,
-            }],
-            title: "General admission".to_string(),
-
-            description: None,
-            event_ticket_type_id: None,
-            seats_total: Some(100),
-        }]);
-        event.ticket_types_present = Some(true);
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert_eq!(payload["discount_codes"][0]["code"], "EARLY20");
-        assert!(
-            uuid::Uuid::parse_str(
-                payload["discount_codes"][0]["event_discount_code_id"]
-                    .as_str()
-                    .unwrap()
-            )
-            .is_ok()
-        );
-        assert_eq!(payload["ticket_types"][0]["title"], "General admission");
-        assert_eq!(
-            payload["ticket_types"][0]["availability"],
-            "invitation_only"
-        );
-        assert!(
-            uuid::Uuid::parse_str(
-                payload["ticket_types"][0]["event_ticket_type_id"].as_str().unwrap()
-            )
-            .is_ok()
-        );
-        assert!(
-            uuid::Uuid::parse_str(
-                payload["ticket_types"][0]["price_windows"][0]["event_ticket_price_window_id"]
-                    .as_str()
-                    .unwrap()
-            )
-            .is_ok()
-        );
-    }
-
-    #[test]
-    fn to_db_payload_keeps_explicit_discount_availability_override_state() {
-        let mut event = sample_event();
-        event.discount_codes = Some(vec![DiscountCodeInput {
-            active: true,
-            code: "EARLY20".to_string(),
-            kind: EventDiscountType::Percentage,
-            title: "Early supporter".to_string(),
-
-            available: None,
-            available_override_active: Some(true),
-            available_cleared: None,
-            amount_minor: None,
-            ends_at: None,
-            event_discount_code_id: None,
-            percentage: Some(20),
-            starts_at: None,
-            total_available: Some(50),
-        }]);
-        event.discount_codes_present = Some(true);
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert!(payload["discount_codes"][0].get("available").is_none());
-        assert_eq!(
-            payload["discount_codes"][0]["available_override_active"],
-            Value::Bool(true)
-        );
-    }
-
-    #[test]
-    fn to_db_payload_omits_discount_availability_override_state_when_form_omits_it() {
-        let mut event = sample_event();
-        event.discount_codes = Some(vec![DiscountCodeInput {
-            active: true,
-            code: "EARLY20".to_string(),
-            kind: EventDiscountType::Percentage,
-            title: "Early supporter".to_string(),
-
-            available: None,
-            available_override_active: None,
-            available_cleared: None,
-            amount_minor: None,
-            ends_at: None,
-            event_discount_code_id: None,
-            percentage: Some(20),
-            starts_at: None,
-            total_available: Some(50),
-        }]);
-        event.discount_codes_present = Some(true);
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert!(
-            payload["discount_codes"][0]
-                .get("available_override_active")
-                .is_none()
-        );
-    }
-
-    // Helpers.
-
-    /// Creates a sample event with required fields for testing.
-    fn sample_event() -> EventInput {
-        EventInput {
-            category_id: uuid::Uuid::new_v4(),
-            description: "Event description".to_string(),
-            kind_id: "virtual".to_string(),
-            name: "Sample Event".to_string(),
-            timezone: "UTC".to_string(),
-            ..EventInput::default()
-        }
-    }
 }

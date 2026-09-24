@@ -8,6 +8,7 @@
 {% let event_read_only = event.canceled || !can_manage_events -%}
 {% let paid_ticketing_available = self.is_paid_ticketing_available() -%}
 {% let paid_ticketing_read_only = !paid_ticketing_available && event.is_paid_capable() && event.external_payment_url.is_none() -%}
+{% let pending_cohosts_count = self.pending_cohosts_count() -%}
 {% let ticketing_free_only = !paid_ticketing_available && !event.is_paid_capable() -%}
 {% let ticketing_read_only = event_read_only || paid_ticketing_read_only -%}
 {% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
@@ -118,6 +119,8 @@
                   disabled title="Canceled events cannot be published."
                 {% else if event.published -%}
                   disabled title="This event is already published."
+                {% else if pending_cohosts_count > 0 -%}
+                  disabled title="Waiting for {{ pending_cohosts_count }} co-host(s) to respond."
                 {% else if !can_manage_events -%}
                   disabled title="Your role cannot publish events."
                 {% else -%}
@@ -148,7 +151,7 @@
               hx-put="/dashboard/group/events/{{ event.event_id }}/update"
               hx-trigger="click, confirmed"
               hx-ext="no-empty-vals-keep-zero"
-              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form, #payments-form"
+              hx-include="form[data-event-form]"
               hx-target="#dashboard-content"
               hx-swap="none"
               hx-indicator="#dashboard-spinner"
@@ -169,6 +172,7 @@
               aria-label="Event form section"
               class="select-primary w-full sm:w-sm xl:hidden">
         {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
+        {{ event_form::tab_option(section = "cohosts", label = "Co-hosts") -}}
         {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
         {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
         {{ event_form::tab_option(section = "payments", label = "Tickets") -}}
@@ -186,6 +190,7 @@
       </select>
       <ul class="hidden flex-col gap-1 font-medium xl:flex">
         {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
+        {{ event_form::tab_button(section = "cohosts", icon = "groups", label = "Co-hosts") -}}
         {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
         {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
         {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Tickets") -}}
@@ -212,7 +217,7 @@
     <div class="space-y-12">
       {# Event Details Tab -#}
       <div data-content="details">
-        <form id="details-form">
+        <form id="details-form" data-event-form>
           <div class="pb-12">
             {{ dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.", id = event.event_id.to_string()) -}}
 
@@ -463,9 +468,28 @@
 </div>
 {# End Event Details Tab -#}
 
+{# Co-hosts Tab -#}
+<div data-content="cohosts" class="hidden">
+  <form id="cohosts-form" data-event-form>
+    <div class="pb-12">
+      {{ dashboard::form_title(title = "Co-hosts", description = "Invite other groups to co-host this event.") -}}
+      <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+        Co-hosts must be added and must respond before the event can be published. Co-hosts can't be changed while the event is published.
+      </div>
+      {% if event.published -%}
+        {{ dashboard::permission_warning(message = "Co-hosts can't be changed while the event is published. If you unpublish it to change them, it can't be published again until every newly added group responds.", extra_classes = "mt-6") -}}
+      {% endif -%}
+      <div class="mt-10">
+        <cohosts-selector communities="{{ communities|json }}" selected-cohosts="{{ cohosts.cohosts|json }}" revision="{{ cohosts.revision }}" current-group-id="{{ event.group.group_id }}" {% if event.published || event_read_only %}disabled{% endif %}></cohosts-selector>
+      </div>
+    </div>
+  </form>
+</div>
+{# End Co-hosts Tab -#}
+
 {# Questions Tab -#}
 <div data-content="questions" class="hidden">
-  <form id="questions-form">
+  <form id="questions-form" data-event-form>
     <div class="pb-12">
       {{ dashboard::form_title(title = "Registration questions", description = "Ask attendees extra questions. Mark a question Required if you need the answer with a ticket request, RSVP, checkout, or offer claim.") -}}
       <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
@@ -488,7 +512,7 @@
 
 {# CFS Tab -#}
 <div data-content="cfs" class="hidden">
-  <form id="cfs-form">
+  <form id="cfs-form" data-event-form>
     <div class="pb-12">
       {{ dashboard::form_title(title = "Call for Speakers", description = "Collect session proposals ahead of the event.") -}}
 
@@ -590,7 +614,7 @@
 
 {# Date & Venue Tab -#}
 <div data-content="date-venue" class="hidden">
-  <form id="date-venue-form">
+  <form id="date-venue-form" data-event-form>
     <div class="space-y-12">
       {# Date and Time section -#}
       <div>
@@ -853,7 +877,7 @@
 
 {# Sessions Tab -#}
 <div data-content="sessions" class="hidden">
-  <form id="sessions-form">
+  <form id="sessions-form" data-event-form>
     <div class="pb-12">
       {{ dashboard::form_title(title = "Sessions") -}}
       <div class="mt-10">
@@ -866,7 +890,7 @@
 
 {# Tickets Tab -#}
 <div data-content="payments" class="hidden">
-  <form id="payments-form">
+  <form id="payments-form" data-event-form>
     <div class="space-y-12">
       {% if paid_ticketing_available || event.is_paid_capable() -%}
         <div>
@@ -1198,7 +1222,7 @@
 
 {# Hosts & Speakers Tab -#}
 <div data-content="hosts-sponsors" class="hidden">
-  <form id="hosts-sponsors-form">
+  <form id="hosts-sponsors-form" data-event-form>
     <div class="space-y-12">
       {# Hosts Section -#}
       <div>

@@ -742,6 +742,7 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
     EventSummary {
         attendee_approval_required: false,
         canceled: false,
+        cohosts: vec![],
         community_display_name: "Community".to_string(),
         community_name: "community".to_string(),
         event_id: Uuid::nil(),

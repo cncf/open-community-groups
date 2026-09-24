@@ -1,35 +1,46 @@
 //! Notification enqueue workflows.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use chrono::{DateTime, TimeDelta, Utc};
+use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::{DBOperations, notifications::CustomNotificationTracking},
+    db::{
+        DBOperations,
+        dashboard::group::{EventCohostNotificationData, EventCohostRef, EventCohostResponse},
+        notifications::CustomNotificationTracking,
+    },
     services::notifications::{
         load_event_notification_context,
         payloads::{
             build_event_attendance_canceled_notification, build_event_canceled_notification,
-            build_event_paid_configured_notification, build_event_published_notification,
-            build_event_rescheduled_notification, build_speaker_welcome_notification,
+            build_event_cohost_invitation_notification, build_event_cohost_removed_notification,
+            build_event_cohost_responded_notification, build_event_paid_configured_notification,
+            build_event_published_notification, build_event_rescheduled_notification,
+            build_speaker_welcome_notification,
         },
     },
     templates::notifications::{
-        EventCustom, EventSeriesCanceled, EventSeriesNotificationItem, EventSeriesPublished,
-        GroupCustom, SpeakerSeriesWelcome,
+        EventCohostRemovalReason, EventCustom, EventSeriesCanceled, EventSeriesNotificationItem,
+        EventSeriesPublished, GroupCustom, SpeakerSeriesWelcome,
     },
     types::{
-        event::{EventFull, EventSummary},
+        event::{EventCohostStatus, EventFull, EventSummary},
         notifications::{
             EventCustomNotificationInput, GroupCustomNotificationInput, NewNotification,
             NotificationKind,
         },
+        site::SiteSettings,
     },
     util::{base_url_without_trailing_slash, build_event_page_link},
 };
+
+#[cfg(test)]
+mod tests;
 
 /// Minimum shift required to notify a reschedule.
 const MIN_RESCHEDULE_SHIFT: TimeDelta = TimeDelta::minutes(15);
@@ -102,6 +113,117 @@ pub(crate) async fn enqueue_event_canceled_notification(
     Ok(())
 }
 
+/// Enqueues one co-hosting invitation per co-host group to its admins.
+pub(crate) async fn enqueue_event_cohost_invitation_notifications(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+    invitations: &[EventCohostRef],
+) -> Result<()> {
+    // Load the invitation content grouped by co-host group
+    let groups = load_cohost_notification_groups(db, invitations).await?;
+    if groups.is_empty() {
+        return Ok(());
+    }
+
+    // Enqueue one combined invitation per co-host group with admins
+    let site_settings = db.get_site_settings().await?;
+    for (cohost_group_id, items) in groups {
+        let recipients = db.list_group_admin_ids(cohost_group_id).await?;
+        if recipients.is_empty() {
+            warn!(%cohost_group_id, "no group admins to notify about co-hosting invitation");
+            continue;
+        }
+        let notification = build_event_cohost_invitation_notification(
+            &items,
+            recipients,
+            server_cfg,
+            &site_settings,
+        )?;
+        db.enqueue_notification(&notification).await?;
+    }
+
+    Ok(())
+}
+
+/// Enqueues one co-hosting removal notification per co-host group to its admins.
+pub(crate) async fn enqueue_event_cohost_removed_notifications(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+    reason: EventCohostRemovalReason,
+    refs: &[EventCohostRef],
+) -> Result<()> {
+    // Load the removal content grouped by co-host group
+    let groups = load_cohost_notification_groups(db, refs).await?;
+    if groups.is_empty() {
+        return Ok(());
+    }
+
+    // Enqueue one combined notification per co-host group with admins
+    let site_settings = db.get_site_settings().await?;
+    for (cohost_group_id, items) in groups {
+        let recipients = db.list_group_admin_ids(cohost_group_id).await?;
+        if recipients.is_empty() {
+            warn!(%cohost_group_id, %reason, "no group admins to notify about co-hosting removal");
+            continue;
+        }
+        let notification = build_event_cohost_removed_notification(
+            &items,
+            reason,
+            recipients,
+            server_cfg,
+            &site_settings,
+        )?;
+        db.enqueue_notification(&notification).await?;
+    }
+
+    Ok(())
+}
+
+/// Enqueues the notification telling the owner group's admins that a co-host responded.
+pub(crate) async fn enqueue_event_cohost_responded_notification(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+    response: &EventCohostResponse,
+    status: EventCohostStatus,
+) -> Result<()> {
+    // Resolve the owner group's admins before loading the content
+    let recipients = db.list_group_admin_ids(response.owner_group_id).await?;
+    if recipients.is_empty() {
+        warn!(
+            owner_group_id = %response.owner_group_id,
+            invitation_id = %response.invitation_id,
+            "no group admins to notify about co-hosting response"
+        );
+        return Ok(());
+    }
+
+    // Load the response content
+    let reference = EventCohostRef {
+        cohost_group_id: response.cohost_group_id,
+        event_id: response.event_id,
+        invitation_id: response.invitation_id,
+    };
+    let item = db
+        .get_event_cohost_notification_data(&[reference])
+        .await?
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("co-hosting notification data not found"))?;
+
+    // Build and enqueue the required owner notification
+    let site_settings = db.get_site_settings().await?;
+    let notification = build_event_cohost_responded_notification(
+        &item,
+        status,
+        recipients,
+        server_cfg,
+        &site_settings,
+    )?;
+    db.enqueue_notification(&notification).await?;
+
+    Ok(())
+}
+
 /// Enqueues one aggregate paid event configuration notification to community admins.
 pub(crate) async fn enqueue_event_paid_configured_notifications(
     db: &dyn DBOperations,
@@ -140,7 +262,8 @@ pub(crate) async fn enqueue_event_paid_configured_notifications(
     Ok(())
 }
 
-/// Enqueues event-published notifications to group members, team members, and speakers.
+/// Enqueues event-published notifications to the owner and co-host audiences
+/// and to the speakers.
 pub(crate) async fn enqueue_event_published_notifications(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
@@ -148,11 +271,10 @@ pub(crate) async fn enqueue_event_published_notifications(
     group_id: Uuid,
     event_id: Uuid,
 ) -> Result<()> {
-    // Fetch event full and group member IDs concurrently
-    let (event_full, group_member_ids, team_member_ids) = tokio::try_join!(
+    // Fetch the event and the owner group audience concurrently
+    let (event_full, owner_audience) = tokio::try_join!(
         db.get_event_full(community_id, group_id, event_id),
-        db.list_group_members_ids(group_id),
-        db.list_group_team_members_ids(group_id)
+        group_audience_ids(db, group_id)
     )?;
 
     // Test events are reachable by direct link but should not broadcast publication
@@ -160,24 +282,34 @@ pub(crate) async fn enqueue_event_published_notifications(
         return Ok(());
     }
 
-    // Combine group members and team members
-    let mut recipients = group_member_ids;
-    recipients.extend(team_member_ids);
-    recipients.sort();
-    recipients.dedup();
-
-    // Extract speaker IDs
+    // Speakers get a separate notification, so they are covered first
     let speaker_ids = event_full.speakers_ids();
-    let has_speakers = !speaker_ids.is_empty();
+    let mut covered: HashSet<Uuid> = speaker_ids.iter().copied().collect();
 
-    // Filter out speakers because they get a separate notification
-    let recipients: Vec<Uuid> = recipients
-        .into_iter()
-        .filter(|id| !speaker_ids.contains(id))
-        .collect();
-    let has_members = !recipients.is_empty();
+    // Keep owner audience members not covered yet
+    let owner_recipients: Vec<Uuid> =
+        owner_audience.into_iter().filter(|id| covered.insert(*id)).collect();
 
-    if !has_members && !has_speakers {
+    // Add each co-host audience, skipping recipients already covered. A
+    // published, non-canceled event only exposes approved co-hosts in its
+    // public projection, so `cohosts` is the approved co-host list here
+    let mut cohosts = event_full.cohosts.iter().collect::<Vec<_>>();
+    cohosts
+        .sort_by(|left, right| left.name.cmp(&right.name).then(left.group_id.cmp(&right.group_id)));
+    let mut cohost_recipients = Vec::new();
+    for cohost in cohosts {
+        let recipients: Vec<Uuid> = group_audience_ids(db, cohost.group_id)
+            .await?
+            .into_iter()
+            .filter(|id| covered.insert(*id))
+            .collect();
+        if !recipients.is_empty() {
+            cohost_recipients.push((cohost.name.clone(), recipients));
+        }
+    }
+
+    // Skip the remaining work when nobody has to be notified
+    if owner_recipients.is_empty() && cohost_recipients.is_empty() && speaker_ids.is_empty() {
         return Ok(());
     }
 
@@ -185,10 +317,23 @@ pub(crate) async fn enqueue_event_published_notifications(
     let site_settings = db.get_site_settings().await?;
     let event_summary = EventSummary::from(&event_full);
 
-    // Enqueue group member notifications about the published event
-    if has_members {
+    // Enqueue owner audience notifications about the published event
+    if !owner_recipients.is_empty() {
         let notification = build_event_published_notification(
             &event_summary,
+            None,
+            owner_recipients,
+            server_cfg,
+            &site_settings,
+        )?;
+        db.enqueue_notification(&notification).await?;
+    }
+
+    // Enqueue one notification per co-host audience about the published event
+    for (cohost_group_name, recipients) in cohost_recipients {
+        let notification = build_event_published_notification(
+            &event_summary,
+            Some(&cohost_group_name),
             recipients,
             server_cfg,
             &site_settings,
@@ -197,7 +342,7 @@ pub(crate) async fn enqueue_event_published_notifications(
     }
 
     // Enqueue speaker notifications about being added to the event
-    if has_speakers {
+    if !speaker_ids.is_empty() {
         let notification = build_speaker_welcome_notification(
             &event_summary,
             speaker_ids,
@@ -341,7 +486,12 @@ pub(crate) async fn enqueue_event_series_canceled_notifications(
     Ok(())
 }
 
-/// Enqueues aggregate publish notifications to members/team and speakers.
+/// Enqueues aggregate publish notifications to the owner and co-host
+/// audiences and to the speakers.
+///
+/// Each recipient is notified at most once per occurrence: speakers first,
+/// then the owner audience, then the co-host audiences ordered by name.
+#[allow(clippy::too_many_lines)]
 pub(crate) async fn enqueue_event_series_published_notifications(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
@@ -351,21 +501,16 @@ pub(crate) async fn enqueue_event_series_published_notifications(
 ) -> Result<()> {
     let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
 
-    // Fetch member recipients shared by all published occurrences
-    let (group_member_ids, team_member_ids) = tokio::try_join!(
-        db.list_group_members_ids(group_id),
-        db.list_group_team_members_ids(group_id)
-    )?;
-    let mut member_ids = group_member_ids;
-    member_ids.extend(team_member_ids);
-    member_ids.sort();
-    member_ids.dedup();
+    // Fetch the owner audience shared by all published occurrences
+    let owner_audience = group_audience_ids(db, group_id).await?;
 
     // Build recipient event lists for each published occurrence
-    let mut member_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
-    let mut speaker_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
+    let mut cohost_audiences: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
+    let mut cohost_events: BTreeMap<(String, Uuid), RecipientEvents> = BTreeMap::new();
+    let mut covered: HashSet<(Uuid, Uuid)> = HashSet::new();
+    let mut member_events: RecipientEvents = HashMap::new();
+    let mut speaker_events: RecipientEvents = HashMap::new();
     for event_id in event_ids {
-        // Map members and speakers to the published occurrence relevant to them
         let event_full = db.get_event_full(community_id, group_id, *event_id).await?;
 
         // Test events in a series should stay out of publication broadcasts
@@ -373,53 +518,69 @@ pub(crate) async fn enqueue_event_series_published_notifications(
             continue;
         }
         let event = event_series_notification_item(base_url, &event_full);
-        let speaker_ids = event_full.speakers_ids();
-        let speaker_set: HashSet<Uuid> = speaker_ids.iter().copied().collect();
 
-        for speaker_id in speaker_ids {
+        // Map speakers to the occurrence first so they only get their own email
+        for speaker_id in event_full.speakers_ids() {
+            covered.insert((speaker_id, *event_id));
             speaker_events.entry(speaker_id).or_default().push(event.clone());
         }
 
-        for member_id in &member_ids {
-            if !speaker_set.contains(member_id) {
+        // Map owner audience members not covered for this occurrence
+        for member_id in &owner_audience {
+            if covered.insert((*member_id, *event_id)) {
                 member_events.entry(*member_id).or_default().push(event.clone());
             }
         }
+
+        // Map each approved co-host audience, skipping recipients already
+        // covered for this occurrence (see the single-event helper for why
+        // `cohosts` only holds approved co-hosts here)
+        let mut cohosts = event_full.cohosts.iter().collect::<Vec<_>>();
+        cohosts.sort_by(|left, right| {
+            left.name.cmp(&right.name).then(left.group_id.cmp(&right.group_id))
+        });
+        for cohost in cohosts {
+            let audience = if let Some(audience) = cohost_audiences.get(&cohost.group_id) {
+                audience.clone()
+            } else {
+                let audience = group_audience_ids(db, cohost.group_id).await?;
+                cohost_audiences.insert(cohost.group_id, audience.clone());
+                audience
+            };
+            let recipient_events = cohost_events
+                .entry((cohost.name.clone(), cohost.group_id))
+                .or_default();
+            for member_id in audience {
+                if covered.insert((member_id, *event_id)) {
+                    recipient_events.entry(member_id).or_default().push(event.clone());
+                }
+            }
+        }
     }
+    cohost_events.retain(|_, recipient_events| !recipient_events.is_empty());
 
     // If there are no notification recipients, we are done
-    if member_events.is_empty() && speaker_events.is_empty() {
+    if member_events.is_empty() && cohost_events.is_empty() && speaker_events.is_empty() {
         return Ok(());
     }
 
-    // Enqueue group member notifications about the published event series
+    // Enqueue owner audience notifications about the published event series
     let site_settings = db.get_site_settings().await?;
     for group in group_recipients_by_events(member_events) {
-        let Some(community_display_name) = group
-            .events
-            .first()
-            .map(|event| event.event.community_display_name.clone())
-        else {
-            continue;
-        };
-        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone())
-        else {
-            continue;
-        };
-        let template_data = EventSeriesPublished {
-            community_display_name,
-            event_count: group.events.len(),
-            events: group.events,
-            group_name,
-            theme: site_settings.theme.clone(),
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::EventSeriesPublished,
-            recipients: group.recipients,
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        db.enqueue_notification(&notification).await?;
+        enqueue_event_series_published_group(db, group, None, &site_settings).await?;
+    }
+
+    // Enqueue co-host audience notifications, never combining co-host groups
+    for ((cohost_group_name, _), recipient_events) in cohost_events {
+        for group in group_recipients_by_events(recipient_events) {
+            enqueue_event_series_published_group(
+                db,
+                group,
+                Some(cohost_group_name.clone()),
+                &site_settings,
+            )
+            .await?;
+        }
     }
 
     // Enqueue speaker notifications about being added to the event series
@@ -545,6 +706,9 @@ pub(crate) async fn enqueue_tracked_group_custom_notification(
 
 // Types.
 
+/// Events relevant to each recipient of an aggregate notification.
+type RecipientEvents = HashMap<Uuid, Vec<EventSeriesNotificationItem>>;
+
 /// Recipient group sharing the same event list for one aggregate notification.
 struct EventSeriesNotificationGroup {
     /// Events included in the notification.
@@ -555,6 +719,41 @@ struct EventSeriesNotificationGroup {
 
 // Helpers.
 
+/// Enqueues one aggregate event series publication notification.
+async fn enqueue_event_series_published_group(
+    db: &dyn DBOperations,
+    group: EventSeriesNotificationGroup,
+    cohost_group_name: Option<String>,
+    site_settings: &SiteSettings,
+) -> Result<()> {
+    // Resolve the shared owner context from the first event
+    let Some(first_event) = group.events.first() else {
+        return Ok(());
+    };
+    let community_display_name = first_event.event.community_display_name.clone();
+    let group_name = first_event.event.group_name.clone();
+
+    // Build and enqueue the notification
+    let template_data = EventSeriesPublished {
+        community_display_name,
+        event_count: group.events.len(),
+        events: group.events,
+        group_name,
+        theme: site_settings.theme.clone(),
+
+        cohost_group_name,
+    };
+    let notification = NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::EventSeriesPublished,
+        recipients: group.recipients,
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+    db.enqueue_notification(&notification).await?;
+
+    Ok(())
+}
+
 /// Builds one aggregate notification item from full event data.
 fn event_series_notification_item(
     base_url: &str,
@@ -564,6 +763,20 @@ fn event_series_notification_item(
     let link = build_event_page_link(base_url, &event);
 
     EventSeriesNotificationItem { event, link }
+}
+
+/// Returns the members and accepted team members of a group, deduplicated.
+async fn group_audience_ids(db: &dyn DBOperations, group_id: Uuid) -> Result<Vec<Uuid>> {
+    let (member_ids, team_member_ids) = tokio::try_join!(
+        db.list_group_members_ids(group_id),
+        db.list_group_team_members_ids(group_id)
+    )?;
+    let mut audience = member_ids;
+    audience.extend(team_member_ids);
+    audience.sort();
+    audience.dedup();
+
+    Ok(audience)
 }
 
 /// Groups recipients by the exact event list relevant to them.
@@ -597,935 +810,32 @@ fn group_recipients_by_events(
     groups
 }
 
-#[cfg(test)]
-mod tests {
-    use std::sync::{Arc, Mutex};
-
-    use anyhow::anyhow;
-    use chrono::{Duration, Utc};
-    use serde_json::from_value;
-
-    use crate::{
-        config::HttpServerConfig,
-        db::mock::MockDB,
-        templates::notifications::{
-            EventPaidConfigured, EventRescheduled, EventSeriesCanceled, EventSeriesPublished,
-            SpeakerSeriesWelcome, SpeakerWelcome,
-        },
-        types::{
-            event::{EventFull, EventSummary, Speaker},
-            notifications::{NewNotification, NotificationKind},
-            tests::{
-                sample_event_full, sample_event_summary, sample_group_summary,
-                sample_site_settings, sample_template_user_with_id,
-            },
-        },
-    };
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_enqueue_event_paid_configured_notifications_propagates_enqueue_failure() {
-        // Setup persisted event and recipient context
-        let admin_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let event = sample_event_summary(event_id, group_id);
-        let mut db = MockDB::new();
-        db.expect_list_community_admin_ids()
-            .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(vec![admin_id]));
-        db.expect_get_event_summary()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .returning(move |_, _, _| Ok(event.clone()));
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-        db.expect_enqueue_notification()
-            .times(1)
-            .returning(|_| Err(anyhow::anyhow!("notification error")));
-
-        // Run the required notification workflow
-        let err =
-            enqueue_event_paid_configured_notifications(&db, community_id, group_id, &[event_id])
-                .await
-                .expect_err("enqueue failure to propagate");
-
-        // Check the required side-effect failure remains visible
-        assert_eq!(err.to_string(), "notification error");
+/// Loads co-hosting notification content grouped by co-host group.
+///
+/// Groups are ordered by identifier and events by start time, so combined
+/// notifications are deterministic.
+async fn load_cohost_notification_groups(
+    db: &dyn DBOperations,
+    refs: &[EventCohostRef],
+) -> Result<BTreeMap<Uuid, Vec<EventCohostNotificationData>>> {
+    if refs.is_empty() {
+        return Ok(BTreeMap::new());
     }
 
-    #[tokio::test]
-    async fn test_enqueue_event_paid_configured_notifications_returns_for_empty_event_ids() {
-        // Forbid every database operation after the empty-input guard
-        let mut db = MockDB::new();
-        db.expect_list_community_admin_ids().never();
-        db.expect_get_event_summary().never();
-        db.expect_get_site_settings().never();
-        db.expect_enqueue_notification().never();
-
-        // Run the workflow with no event identifiers
-        enqueue_event_paid_configured_notifications(&db, Uuid::new_v4(), Uuid::new_v4(), &[])
-            .await
-            .unwrap();
+    // Group the loaded content by co-host group
+    let mut groups: BTreeMap<Uuid, Vec<EventCohostNotificationData>> = BTreeMap::new();
+    for item in db.get_event_cohost_notification_data(refs).await? {
+        groups.entry(item.cohost_group_id).or_default().push(item);
     }
 
-    #[tokio::test]
-    async fn test_enqueue_event_paid_configured_notifications_returns_for_empty_recipients() {
-        // Setup identifiers and recipient query
-        let community_id = Uuid::new_v4();
-        let mut db = MockDB::new();
-        db.expect_list_community_admin_ids()
-            .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(|_| Ok(vec![]));
-        db.expect_get_event_summary().never();
-        db.expect_get_site_settings().never();
-        db.expect_enqueue_notification().never();
-
-        // Run the workflow without loading event data
-        enqueue_event_paid_configured_notifications(
-            &db,
-            community_id,
-            Uuid::new_v4(),
-            &[Uuid::new_v4()],
-        )
-        .await
-        .unwrap();
+    // Order each group's events by start time
+    for items in groups.values_mut() {
+        items.sort_by(|left, right| {
+            left.starts_at
+                .cmp(&right.starts_at)
+                .then(left.event_id.cmp(&right.event_id))
+        });
     }
 
-    #[tokio::test]
-    async fn test_enqueue_event_paid_configured_notifications_returns_for_test_events() {
-        // Setup identifiers and a test event
-        let admin_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let event = EventSummary {
-            test_event: true,
-            ..sample_event_summary(event_id, group_id)
-        };
-
-        // Setup recipient and event queries while forbidding downstream work
-        let mut db = MockDB::new();
-        db.expect_list_community_admin_ids()
-            .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(vec![admin_id]));
-        db.expect_get_event_summary()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .returning(move |_, _, _| Ok(event.clone()));
-        db.expect_get_site_settings().never();
-        db.expect_enqueue_notification().never();
-
-        // Run the workflow through the empty-items guard
-        enqueue_event_paid_configured_notifications(&db, community_id, group_id, &[event_id])
-            .await
-            .unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_enqueue_event_paid_configured_notifications_sends_ordered_aggregate() {
-        // Setup ordered events and recipients
-        let admin_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let related_event_id = Uuid::new_v4();
-        let event = sample_event_summary(event_id, group_id);
-        let related_event = sample_event_summary(related_event_id, group_id);
-        let notifications = Arc::new(Mutex::new(Vec::new()));
-
-        // Setup database reads in event-id order
-        let mut db = MockDB::new();
-        db.expect_list_community_admin_ids()
-            .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(vec![admin_id]));
-        db.expect_get_event_summary()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .returning(move |_, _, _| Ok(event.clone()));
-        db.expect_get_event_summary()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == related_event_id
-            })
-            .returning(move |_, _, _| Ok(related_event.clone()));
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-        let notifications_for_mock = notifications.clone();
-        db.expect_enqueue_notification()
-            .times(1)
-            .returning(move |notification| {
-                notifications_for_mock
-                    .lock()
-                    .expect("notifications lock not to be poisoned")
-                    .push(notification.clone());
-                Ok(())
-            });
-
-        // Run the workflow
-        enqueue_event_paid_configured_notifications(
-            &db,
-            community_id,
-            group_id,
-            &[event_id, related_event_id],
-        )
-        .await
-        .unwrap();
-
-        // Check the aggregate contract and ordering
-        let notifications = notifications.lock().expect("notifications lock not to be poisoned");
-        assert_eq!(notifications.len(), 1);
-        let notification = &notifications[0];
-        assert!(matches!(
-            notification.kind,
-            NotificationKind::EventPaidConfigured
-        ));
-        assert_eq!(notification.recipients, vec![admin_id]);
-        let template: EventPaidConfigured =
-            from_value(notification.template_data.clone().expect("template data to exist"))
-                .expect("paid event notification to deserialize");
-        assert_eq!(
-            template.events.iter().map(|event| event.event_id).collect::<Vec<_>>(),
-            vec![event_id, related_event_id]
-        );
-    }
-
-    #[tokio::test]
-    #[allow(clippy::too_many_lines)]
-    async fn test_enqueue_event_series_canceled_notifications_groups_by_recipient_event_set() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let related_event_id = Uuid::new_v4();
-        let test_event_id = Uuid::new_v4();
-        let shared_recipient_id = Uuid::new_v4();
-        let event_recipient_id = Uuid::new_v4();
-        let related_event_recipient_id = Uuid::new_v4();
-        let speaker_id = Uuid::new_v4();
-        let test_event_recipient_id = Uuid::new_v4();
-        let event =
-            sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id]);
-        let related_event =
-            sample_event_full_with_speakers(community_id, related_event_id, group_id, &[]);
-        let test_event = EventFull {
-            test_event: true,
-            ..sample_event_full_with_speakers(community_id, test_event_id, group_id, &[])
-        };
-        let notifications = Arc::new(Mutex::new(Vec::new()));
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_event_full()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .returning(move |_, _, _| Ok(event.clone()));
-        db.expect_list_event_attendees_ids()
-            .times(1)
-            .withf(move |gid, eid, checked_in_only| {
-                *gid == group_id && *eid == event_id && !checked_in_only
-            })
-            .returning(move |_, _, _| Ok(vec![shared_recipient_id, event_recipient_id]));
-        db.expect_list_event_waitlist_ids()
-            .times(1)
-            .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-            .returning(|_, _| Ok(vec![]));
-        db.expect_get_event_full()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == related_event_id
-            })
-            .returning(move |_, _, _| Ok(related_event.clone()));
-        db.expect_list_event_attendees_ids()
-            .times(1)
-            .withf(move |gid, eid, checked_in_only| {
-                *gid == group_id && *eid == related_event_id && !checked_in_only
-            })
-            .returning(move |_, _, _| Ok(vec![shared_recipient_id]));
-        db.expect_list_event_waitlist_ids()
-            .times(1)
-            .withf(move |gid, eid| *gid == group_id && *eid == related_event_id)
-            .returning(move |_, _| Ok(vec![related_event_recipient_id]));
-        db.expect_get_event_full()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == test_event_id
-            })
-            .returning(move |_, _, _| Ok(test_event.clone()));
-        db.expect_list_event_attendees_ids()
-            .times(1)
-            .withf(move |gid, eid, checked_in_only| {
-                *gid == group_id && *eid == test_event_id && !checked_in_only
-            })
-            .returning(move |_, _, _| Ok(vec![test_event_recipient_id]));
-        db.expect_list_event_waitlist_ids()
-            .times(1)
-            .withf(move |gid, eid| *gid == group_id && *eid == test_event_id)
-            .returning(|_, _| Ok(vec![]));
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-        let notifications_for_mock = notifications.clone();
-        db.expect_enqueue_notification()
-            .times(3)
-            .returning(move |notification| {
-                notifications_for_mock
-                    .lock()
-                    .expect("notifications lock not to be poisoned")
-                    .push(notification.clone());
-                Ok(())
-            });
-
-        // Run the workflow
-        enqueue_event_series_canceled_notifications(
-            &db,
-            &sample_server_cfg(),
-            community_id,
-            group_id,
-            &[event_id, related_event_id, test_event_id],
-        )
-        .await
-        .unwrap();
-
-        // Check notifications match recipient event sets
-        let notifications = notifications
-            .lock()
-            .expect("notifications lock not to be poisoned")
-            .clone();
-        assert_eq!(notifications.len(), 3);
-        let groups: Vec<(Vec<Uuid>, Vec<Uuid>)> = notifications
-            .iter()
-            .filter(|notification| {
-                matches!(notification.kind, NotificationKind::EventSeriesCanceled)
-            })
-            .map(|notification| {
-                let template: EventSeriesCanceled =
-                    from_value(notification.template_data.clone().expect("template data to exist"))
-                        .expect("series canceled notification to deserialize");
-                let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
-                (notification.recipients.clone(), event_ids)
-            })
-            .collect();
-        assert_recipient_event_group_exists(
-            &groups,
-            &[shared_recipient_id],
-            &[event_id, related_event_id],
-        );
-        assert_recipient_event_group_exists(
-            &groups,
-            &[event_recipient_id, speaker_id],
-            &[event_id],
-        );
-        assert_recipient_event_group_exists(
-            &groups,
-            &[related_event_recipient_id],
-            &[related_event_id],
-        );
-        assert!(
-            !groups
-                .iter()
-                .any(|(recipients, _)| recipients.contains(&test_event_recipient_id))
-        );
-    }
-
-    #[tokio::test]
-    #[allow(clippy::too_many_lines)]
-    async fn test_enqueue_event_series_published_notifications_groups_members_and_speakers() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let related_event_id = Uuid::new_v4();
-        let member_id = Uuid::new_v4();
-        let speaker_id = Uuid::new_v4();
-        let related_event_speaker_id = Uuid::new_v4();
-        let team_member_id = Uuid::new_v4();
-        let event =
-            sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id]);
-        let related_event = sample_event_full_with_speakers(
-            community_id,
-            related_event_id,
-            group_id,
-            &[speaker_id, related_event_speaker_id],
-        );
-        let notifications = Arc::new(Mutex::new(Vec::new()));
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_list_group_members_ids()
-            .times(1)
-            .withf(move |gid| *gid == group_id)
-            .returning(move |_| Ok(vec![member_id, speaker_id]));
-        db.expect_list_group_team_members_ids()
-            .times(1)
-            .withf(move |gid| *gid == group_id)
-            .returning(move |_| Ok(vec![team_member_id, member_id]));
-        db.expect_get_event_full()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .returning(move |_, _, _| Ok(event.clone()));
-        db.expect_get_event_full()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == related_event_id
-            })
-            .returning(move |_, _, _| Ok(related_event.clone()));
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-        let notifications_for_mock = notifications.clone();
-        db.expect_enqueue_notification()
-            .times(3)
-            .returning(move |notification| {
-                notifications_for_mock
-                    .lock()
-                    .expect("notifications lock not to be poisoned")
-                    .push(notification.clone());
-                Ok(())
-            });
-
-        // Run the workflow
-        enqueue_event_series_published_notifications(
-            &db,
-            &sample_server_cfg(),
-            community_id,
-            group_id,
-            &[event_id, related_event_id],
-        )
-        .await
-        .unwrap();
-
-        // Check notifications match member and speaker event sets
-        let notifications = notifications
-            .lock()
-            .expect("notifications lock not to be poisoned")
-            .clone();
-        assert_eq!(notifications.len(), 3);
-        let member_groups: Vec<(Vec<Uuid>, Vec<Uuid>)> = notifications
-            .iter()
-            .filter(|notification| {
-                matches!(notification.kind, NotificationKind::EventSeriesPublished)
-            })
-            .map(|notification| {
-                let template: EventSeriesPublished =
-                    from_value(notification.template_data.clone().expect("template data to exist"))
-                        .expect("series published notification to deserialize");
-                let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
-                (notification.recipients.clone(), event_ids)
-            })
-            .collect();
-        assert_recipient_event_group_exists(
-            &member_groups,
-            &[member_id, team_member_id],
-            &[event_id, related_event_id],
-        );
-        let speaker_groups: Vec<(Vec<Uuid>, Vec<Uuid>)> = notifications
-            .iter()
-            .filter(|notification| {
-                matches!(notification.kind, NotificationKind::SpeakerSeriesWelcome)
-            })
-            .map(|notification| {
-                let template: SpeakerSeriesWelcome =
-                    from_value(notification.template_data.clone().expect("template data to exist"))
-                        .expect("speaker series notification to deserialize");
-                let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
-                (notification.recipients.clone(), event_ids)
-            })
-            .collect();
-        assert_recipient_event_group_exists(
-            &speaker_groups,
-            &[speaker_id],
-            &[event_id, related_event_id],
-        );
-        assert_recipient_event_group_exists(
-            &speaker_groups,
-            &[related_event_speaker_id],
-            &[related_event_id],
-        );
-    }
-
-    #[tokio::test]
-    async fn test_enqueue_event_published_notifications_sends_members_and_speakers_separately() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let member_id = Uuid::new_v4();
-        let speaker_id = Uuid::new_v4();
-        let speaker_member_id = Uuid::new_v4();
-        let team_member_id = Uuid::new_v4();
-        let event = sample_event_full_with_speakers(
-            community_id,
-            event_id,
-            group_id,
-            &[speaker_id, speaker_member_id],
-        );
-        let notifications = Arc::new(Mutex::new(Vec::new()));
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_event_full()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .returning(move |_, _, _| Ok(event.clone()));
-        db.expect_list_group_members_ids()
-            .times(1)
-            .withf(move |gid| *gid == group_id)
-            .returning(move |_| Ok(vec![member_id, speaker_member_id]));
-        db.expect_list_group_team_members_ids()
-            .times(1)
-            .withf(move |gid| *gid == group_id)
-            .returning(move |_| Ok(vec![team_member_id, member_id]));
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-        let notifications_for_mock = notifications.clone();
-        db.expect_enqueue_notification()
-            .times(2)
-            .returning(move |notification| {
-                notifications_for_mock
-                    .lock()
-                    .expect("notifications lock not to be poisoned")
-                    .push(notification.clone());
-                Ok(())
-            });
-
-        // Run the workflow
-        enqueue_event_published_notifications(
-            &db,
-            &sample_server_cfg(),
-            community_id,
-            group_id,
-            event_id,
-        )
-        .await
-        .unwrap();
-
-        // Check notifications split member and speaker audiences
-        let notifications = notifications
-            .lock()
-            .expect("notifications lock not to be poisoned")
-            .clone();
-        assert_eq!(notifications.len(), 2);
-        let member_notification =
-            find_notification(&notifications, &NotificationKind::EventPublished);
-        assert_eq!(
-            sorted_ids(member_notification.recipients.clone()),
-            sorted_ids(vec![member_id, team_member_id])
-        );
-        let speaker_notification =
-            find_notification(&notifications, &NotificationKind::SpeakerWelcome);
-        assert_eq!(
-            sorted_ids(speaker_notification.recipients.clone()),
-            sorted_ids(vec![speaker_id, speaker_member_id])
-        );
-        let _: SpeakerWelcome = from_value(
-            speaker_notification
-                .template_data
-                .clone()
-                .expect("template data to exist"),
-        )
-        .expect("speaker notification to deserialize");
-    }
-
-    #[tokio::test]
-    async fn test_enqueue_event_rescheduled_notification_skips_small_shift() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let before = sample_future_event_summary(event_id, group_id);
-        let after = EventSummary {
-            starts_at: before.starts_at.map(|starts_at| starts_at + Duration::minutes(10)),
-            ..before.clone()
-        };
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_event_summary()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .returning(move |_, _, _| Ok(after.clone()));
-
-        // Run the workflow
-        enqueue_event_rescheduled_notification(
-            &db,
-            &sample_server_cfg(),
-            community_id,
-            group_id,
-            event_id,
-            &before,
-            Utc::now(),
-        )
-        .await
-        .unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_enqueue_event_rescheduled_notification_sends_to_attendees_and_speakers() {
-        // Setup identifiers and data structures
-        let attendee_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let speaker_id = Uuid::new_v4();
-        let before = sample_future_event_summary(event_id, group_id);
-        let after = EventSummary {
-            starts_at: before.starts_at.map(|starts_at| starts_at + Duration::minutes(30)),
-            ..before.clone()
-        };
-        let event =
-            sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id]);
-        let notifications = Arc::new(Mutex::new(Vec::new()));
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_event_summary()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .returning(move |_, _, _| Ok(after.clone()));
-        db.expect_get_event_full()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .returning(move |_, _, _| Ok(event.clone()));
-        db.expect_list_event_attendees_ids()
-            .times(1)
-            .withf(move |gid, eid, checked_in_only| {
-                *gid == group_id && *eid == event_id && !checked_in_only
-            })
-            .returning(move |_, _, _| Ok(vec![attendee_id, speaker_id]));
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-        let notifications_for_mock = notifications.clone();
-        db.expect_enqueue_notification()
-            .times(1)
-            .returning(move |notification| {
-                notifications_for_mock
-                    .lock()
-                    .expect("notifications lock not to be poisoned")
-                    .push(notification.clone());
-                Ok(())
-            });
-
-        // Run the workflow
-        enqueue_event_rescheduled_notification(
-            &db,
-            &sample_server_cfg(),
-            community_id,
-            group_id,
-            event_id,
-            &before,
-            Utc::now(),
-        )
-        .await
-        .unwrap();
-
-        // Check notification matches recipient selection
-        let notifications = notifications
-            .lock()
-            .expect("notifications lock not to be poisoned")
-            .clone();
-        assert_eq!(notifications.len(), 1);
-        let notification = find_notification(&notifications, &NotificationKind::EventRescheduled);
-        assert_eq!(
-            sorted_ids(notification.recipients.clone()),
-            sorted_ids(vec![attendee_id, speaker_id])
-        );
-        let template: EventRescheduled =
-            from_value(notification.template_data.clone().expect("template data to exist"))
-                .expect("event rescheduled notification to deserialize");
-        assert_eq!(template.event.event_id, event_id);
-    }
-
-    #[tokio::test]
-    async fn test_enqueue_tracked_event_custom_notification_builds_content_and_tracking() {
-        // Setup identifiers and data structures
-        let actor_user_id = Uuid::new_v4();
-        let attendee_id1 = Uuid::new_v4();
-        let attendee_id2 = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let event = sample_event_summary(event_id, group_id);
-        let expected_link = format!(
-            "https://example.test/{}/group/{}/event/{}",
-            event.community_name, event.group_slug, event.slug
-        );
-        let expected_event_name = event.name.clone();
-        let input = EventCustomNotificationInput {
-            actor_user_id,
-            body: "Hello, event attendees!".to_string(),
-            community_id,
-            event_id,
-            group_id,
-            recipients: vec![attendee_id1, attendee_id2],
-            subject: "Event Update".to_string(),
-        };
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_event_summary_by_id()
-            .times(1)
-            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-            .returning(move |_, _| Ok(event.clone()));
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-        db.expect_enqueue_tracked_custom_notification()
-            .times(1)
-            .withf(move |notification, tracking| {
-                matches!(notification.kind, NotificationKind::EventCustom)
-                    && notification.attachments.is_empty()
-                    && notification.recipients == vec![attendee_id1, attendee_id2]
-                    && notification.template_data.as_ref().is_some_and(|value| {
-                        from_value::<EventCustom>(value.clone()).is_ok_and(|template| {
-                            template.subject == "Event Update"
-                                && template.body == "Hello, event attendees!"
-                                && template.event.name == expected_event_name
-                                && template.link == expected_link
-                                && template.theme.primary_color
-                                    == sample_site_settings().theme.primary_color
-                        })
-                    })
-                    && tracking.body == "Hello, event attendees!"
-                    && tracking.created_by == actor_user_id
-                    && tracking.event_id == Some(event_id)
-                    && tracking.group_id == Some(group_id)
-                    && tracking.recipient_count == 2
-                    && tracking.subject == "Event Update"
-            })
-            .returning(|_, _| Ok(()));
-
-        // Run the workflow
-        enqueue_tracked_event_custom_notification(&db, &sample_server_cfg(), &input)
-            .await
-            .unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_enqueue_tracked_event_custom_notification_propagates_context_failure() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let input = EventCustomNotificationInput {
-            actor_user_id: Uuid::new_v4(),
-            body: "Hello".to_string(),
-            community_id,
-            event_id,
-            group_id: Uuid::new_v4(),
-            recipients: vec![Uuid::new_v4()],
-            subject: "Subject".to_string(),
-        };
-
-        // Setup database mock with a failing context load
-        let mut db = MockDB::new();
-        db.expect_get_event_summary_by_id()
-            .times(1)
-            .returning(|_, _| Err(anyhow!("database unavailable")));
-        db.expect_get_site_settings()
-            .times(0..=1)
-            .returning(|| Ok(sample_site_settings()));
-        db.expect_enqueue_tracked_custom_notification().never();
-
-        // Run the workflow
-        let result =
-            enqueue_tracked_event_custom_notification(&db, &sample_server_cfg(), &input).await;
-
-        // Check the failure propagates
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_enqueue_tracked_group_custom_notification_builds_content_and_tracking() {
-        // Setup identifiers and data structures
-        let actor_user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let member_id1 = Uuid::new_v4();
-        let member_id2 = Uuid::new_v4();
-        let mut group = sample_group_summary(group_id);
-        group.slug_pretty = Some("pretty-group".to_string());
-        let expected_link = format!(
-            "https://example.test/{}/group/{}",
-            group.community_name,
-            group.public_slug()
-        );
-        let expected_group_name = group.name.clone();
-        let input = GroupCustomNotificationInput {
-            actor_user_id,
-            body: "Hello, group members!".to_string(),
-            community_id,
-            group_id,
-            recipients: vec![member_id1, member_id2],
-            subject: "Important Update".to_string(),
-        };
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_group_summary()
-            .times(1)
-            .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-            .returning(move |_, _| Ok(group.clone()));
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-        db.expect_enqueue_tracked_custom_notification()
-            .times(1)
-            .withf(move |notification, tracking| {
-                matches!(notification.kind, NotificationKind::GroupCustom)
-                    && notification.attachments.is_empty()
-                    && notification.recipients == vec![member_id1, member_id2]
-                    && notification.template_data.as_ref().is_some_and(|value| {
-                        from_value::<GroupCustom>(value.clone()).is_ok_and(|template| {
-                            template.subject == "Important Update"
-                                && template.body == "Hello, group members!"
-                                && template.group.name == expected_group_name
-                                && template.link == expected_link
-                                && template.theme.primary_color
-                                    == sample_site_settings().theme.primary_color
-                        })
-                    })
-                    && tracking.body == "Hello, group members!"
-                    && tracking.created_by == actor_user_id
-                    && tracking.event_id.is_none()
-                    && tracking.group_id == Some(group_id)
-                    && tracking.recipient_count == 2
-                    && tracking.subject == "Important Update"
-            })
-            .returning(|_, _| Ok(()));
-
-        // Run the workflow
-        enqueue_tracked_group_custom_notification(&db, &sample_server_cfg(), &input)
-            .await
-            .unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_enqueue_tracked_group_custom_notification_propagates_context_failure() {
-        // Setup identifiers and data structures
-        let input = GroupCustomNotificationInput {
-            actor_user_id: Uuid::new_v4(),
-            body: "Hello".to_string(),
-            community_id: Uuid::new_v4(),
-            group_id: Uuid::new_v4(),
-            recipients: vec![Uuid::new_v4()],
-            subject: "Subject".to_string(),
-        };
-
-        // Setup database mock with a failing context load
-        let mut db = MockDB::new();
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-        db.expect_get_group_summary()
-            .times(1)
-            .returning(|_, _| Err(anyhow!("database unavailable")));
-        db.expect_enqueue_tracked_custom_notification().never();
-
-        // Run the workflow
-        let result =
-            enqueue_tracked_group_custom_notification(&db, &sample_server_cfg(), &input).await;
-
-        // Check the failure propagates
-        assert!(result.is_err());
-    }
-
-    // Helpers.
-
-    /// Asserts that a recipient group exists for the exact event ids.
-    fn assert_recipient_event_group_exists(
-        groups: &[(Vec<Uuid>, Vec<Uuid>)],
-        recipients: &[Uuid],
-        event_ids: &[Uuid],
-    ) {
-        let recipients = sorted_ids(recipients.to_vec());
-        assert!(
-            groups.iter().any(|(actual_recipients, actual_event_ids)| {
-                sorted_ids(actual_recipients.clone()) == recipients && actual_event_ids == event_ids
-            }),
-            "expected notification group for recipients {recipients:?} and events {event_ids:?}"
-        );
-    }
-
-    /// Finds the first captured notification of the expected kind.
-    fn find_notification<'a>(
-        notifications: &'a [NewNotification],
-        expected_kind: &NotificationKind,
-    ) -> &'a NewNotification {
-        notifications
-            .iter()
-            .find(|notification| notification.kind.to_string() == expected_kind.to_string())
-            .expect("notification to exist")
-    }
-
-    /// Builds a sample full event with the provided event-level speakers.
-    fn sample_event_full_with_speakers(
-        community_id: Uuid,
-        event_id: Uuid,
-        group_id: Uuid,
-        speaker_ids: &[Uuid],
-    ) -> EventFull {
-        EventFull {
-            speakers: speaker_ids
-                .iter()
-                .copied()
-                .map(|user_id| Speaker {
-                    featured: false,
-                    user: sample_template_user_with_id(user_id),
-                })
-                .collect(),
-            ..sample_event_full(community_id, event_id, group_id)
-        }
-    }
-
-    /// Builds a published event summary safely in the future.
-    fn sample_future_event_summary(event_id: Uuid, group_id: Uuid) -> EventSummary {
-        let starts_at = Utc::now() + Duration::hours(1);
-        EventSummary {
-            ends_at: Some(starts_at + Duration::hours(1)),
-            starts_at: Some(starts_at),
-            ..sample_event_summary(event_id, group_id)
-        }
-    }
-
-    /// Builds server config with a stable public base URL.
-    fn sample_server_cfg() -> HttpServerConfig {
-        HttpServerConfig {
-            base_url: "https://example.test/".to_string(),
-            ..Default::default()
-        }
-    }
-
-    /// Sorts identifiers for order-independent assertions.
-    fn sorted_ids(mut ids: Vec<Uuid>) -> Vec<Uuid> {
-        ids.sort();
-        ids
-    }
+    Ok(groups)
 }

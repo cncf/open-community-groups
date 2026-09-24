@@ -11,6 +11,7 @@ returns json as $$
         'canceled', e.canceled,
         'community_display_name', c.display_name,
         'community_name', c.name,
+        'cohosts', event_cohosts_json(e.event_id),
         'event_id', e.event_id,
         'group_category_name', gc.name,
         'group_name', g.name,

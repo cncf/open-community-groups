@@ -79,6 +79,16 @@ those active subgroups. This affects the next-event panel, upcoming events, past
 `See all events` Explore links from that group page. Public member counts and Explore group search
 do not aggregate subgroup data.
 
+Group pages also list events the group co-hosts with other groups, including groups from other
+communities, once the group approved the co-hosting. Those cards show `Hosted by` with the owning
+group, and their links open the event under the owning group and community. Co-hosting by a
+subgroup does not add the event to its parent's page, and the `See all events` Explore links only
+cover events owned by the group and its subgroups.
+
+Event pages and event cards credit approved co-hosts: the event page shows a `Co-hosts` box
+linking to each co-host group, and cards show a `Co-hosted with` line. Each event is listed once
+elsewhere on the site, under the group that owns it.
+
 ![Group page and membership controls](../screenshots/group-page.png)
 
 ## Get Tickets, RSVP, and Attend Events

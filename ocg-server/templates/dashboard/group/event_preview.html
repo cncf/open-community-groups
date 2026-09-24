@@ -154,7 +154,36 @@
               {# End event header -#}
 
               {# Event date and location -#}
-              <section class="py-4">
+              <section class="space-y-5 py-4">
+                {% if !event.cohosts.is_empty() -%}
+                  <div class="rounded-lg border border-stone-200 bg-white p-4">
+                    <div class="mb-4 flex min-h-[25px] items-center justify-between">
+                      <div class="text-base/3 font-semibold uppercase text-stone-400">Co-hosts</div>
+                    </div>
+                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {% for cohost in event.cohosts -%}
+                        <div class="flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-stone-200 bg-white p-3">
+                          {% if let Some(logo_url) = &cohost.logo_url -%}
+                            {{ ui::logo(logo_url = logo_url, classes = "size-12 shrink-0", size = 48) -}}
+                          {% else -%}
+                            <div class="flex size-12 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white">
+                              <div class="svg-icon size-5 bg-stone-400 icon-groups"></div>
+                            </div>
+                          {% endif -%}
+                          <div class="min-w-0 flex-1">
+                            <div class="truncate text-sm font-semibold text-stone-900">{{ cohost.name_label() }}</div>
+                            {% if cohost.is_approved() -%}
+                              <span class="custom-badge mt-2 inline-block border-primary-700 bg-primary-50 px-2.5 py-0.5 text-primary-700">Approved</span>
+                            {% else -%}
+                              <span class="custom-badge mt-2 inline-block border-amber-700 bg-amber-50 px-2.5 py-0.5 text-amber-800">Pending</span>
+                            {% endif -%}
+                          </div>
+                        </div>
+                      {% endfor -%}
+                    </div>
+                    <p class="mt-4 text-sm text-stone-500">Only approved co-hosts are shown on the public page.</p>
+                  </div>
+                {% endif -%}
                 <div class="grid gap-5 sm:gap-8 md:grid-cols-2 md:gap-5 lg:gap-8">
                   {# Event date -#}
                   <div class="h-full rounded-lg border border-stone-200 bg-white">

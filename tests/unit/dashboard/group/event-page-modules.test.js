@@ -8,6 +8,7 @@ import {
   EVENT_EDITOR_CREATED_FOLLOW_UP_MESSAGE,
   consumeStashedActiveEventSection,
   disarmEventEditorLocationFollowUp,
+  getEventPageFormIds,
 } from "/static/js/dashboard/group/event-page-shared.js";
 import {
   initializeEventUpdatePage,
@@ -26,13 +27,14 @@ import {
 // Prepare the module under test.
 const sharedEventFormsMarkup = () => `
   <div id="pending-changes-alert"></div>
-  <form id="details-form">
+  <form id="details-form" data-event-form>
     <input id="name" name="name" />
   </form>
-  <form id="date-venue-form"></form>
-  <form id="hosts-sponsors-form"></form>
-  <form id="sessions-form"></form>
-  <form id="cfs-form"></form>
+  <form id="cohosts-form" data-event-form></form>
+  <form id="date-venue-form" data-event-form></form>
+  <form id="hosts-sponsors-form" data-event-form></form>
+  <form id="sessions-form" data-event-form></form>
+  <form id="cfs-form" data-event-form></form>
   <input id="starts_at" />
   <input id="ends_at" />
   <input id="registration_starts_at" />
@@ -152,6 +154,20 @@ describe("event page modules", () => {
     // Verify initializes the add page and syncs boolean hidden fields.
     expect(document.getElementById("test_event").value).to.equal("true");
     expect(document.getElementById("event_reminder_enabled").value).to.equal("true");
+  });
+
+  it("reads event form ids from template markers", () => {
+    mountAddPageShell();
+    const pageRoot = document.querySelector('[data-event-page="add"]');
+
+    expect(getEventPageFormIds(pageRoot)).to.deep.equal([
+      "details-form",
+      "cohosts-form",
+      "date-venue-form",
+      "hosts-sponsors-form",
+      "sessions-form",
+      "cfs-form",
+    ]);
   });
 
   it("requires the external payment URL only while a positive ticket price exists", () => {

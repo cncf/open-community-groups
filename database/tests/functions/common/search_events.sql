@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(25);
+select plan(26);
 
 -- ============================================================================
 -- VARIABLES
@@ -184,6 +184,19 @@ select fx_event(:'event8ID', :'group4ID', :'eventCategory3ID', jsonb_build_objec
     'venue_name', 'Tech Hall'
 ));
 
+-- Approved co-host credit that must not duplicate owner-scoped search results
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id
+) values (
+    current_timestamp,
+    'approved',
+    :'event1ID',
+    :'group2ID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -210,6 +223,20 @@ select is(
     ),
     5::bigint,
     'Should exclude test events from total counts'
+);
+
+-- Should show a co-hosted event once under its owner
+select is(
+    (
+        select count(*)::int
+        from jsonb_array_elements(
+            search_events(jsonb_build_object('limit', 10, 'offset', 0))::jsonb->'events'
+        ) event_item
+        where event_item->>'event_id' = :'event1ID'
+        and event_item->>'group_slug' = 'test-group'
+    ),
+    1,
+    'Should show a co-hosted event once under its owner'
 );
 
 -- Should exclude events from inactive communities

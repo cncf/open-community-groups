@@ -823,6 +823,7 @@ select is(
     '{
         "canceled": false,
         "category_name": "Tech Talks",
+        "cohosts": [],
         "created_at": 1711965600,
         "description": "Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts from across the cloud native ecosystem",
         "event_id": "0c060000-0000-0000-0000-000000000006",

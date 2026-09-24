@@ -13,11 +13,7 @@ use crate::{
     },
 };
 
-use super::helpers::{
-    assert_contract_paid_ticket_type, assert_contract_ticket_type, community_id, contract_tests_db,
-    contract_tests_pool, event_id, external_event_id, group_id, paid_event_id, paid_ticket_type_id,
-    subgroup_id,
-};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
@@ -88,6 +84,7 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
         Some("https://example.com/community-ad-banner.png")
     );
     assert_eq!(event.event_id, event_id());
+    assert!(event.cohosts.is_empty());
     assert!(event.has_registration_questions);
     assert_eq!(
         event.luma_url.as_deref(),
@@ -147,6 +144,7 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
 
     // Check required and computed event fields
     assert_eq!(event.event_id, event_id());
+    assert!(event.cohosts.is_empty());
     assert!(!event.has_external_payment);
     assert!(event.has_registration_questions);
     assert!(

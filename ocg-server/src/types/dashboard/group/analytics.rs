@@ -18,6 +18,8 @@ pub(crate) struct AnalyticsQuery {
 pub(crate) struct GroupDashboardStats {
     /// Attendees statistics.
     pub attendees: GroupAttendeesStats,
+    /// Statistics for events co-hosted with other groups.
+    pub cohosted_events: GroupEventsStats,
     /// Events statistics.
     pub events: GroupEventsStats,
     /// Members statistics.

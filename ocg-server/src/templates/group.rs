@@ -116,6 +116,8 @@ impl Page {
 #[derive(Debug, Clone, Template)]
 #[template(path = "group/event_card.html")]
 pub(crate) struct PastEventCard {
+    /// Whether the page's group co-hosts the event instead of owning it.
+    pub cohosted_by_page_group: bool,
     /// Event data
     pub event: EventSummary,
 }
@@ -124,6 +126,8 @@ pub(crate) struct PastEventCard {
 #[derive(Debug, Clone, Template)]
 #[template(path = "group/event_card.html")]
 pub(crate) struct UpcomingEventCard {
+    /// Whether the page's group co-hosts the event instead of owning it.
+    pub cohosted_by_page_group: bool,
     /// Event data
     pub event: EventSummary,
 }

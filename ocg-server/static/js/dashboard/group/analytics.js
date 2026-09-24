@@ -151,6 +151,25 @@ const initEventsCharts = (stats = {}, palette) =>
   });
 
 /**
+ * Build charts for co-hosted events metrics.
+ * @param {Object} stats - Co-hosted events stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+const initCohostedEventsCharts = (stats = {}, palette) =>
+  buildTrendCharts({
+    stats,
+    palette,
+    runningChartId: "cohosted-events-running-chart",
+    monthlyChartId: "cohosted-events-monthly-chart",
+    runningTitle: "Co-hosted events over time",
+    monthlyTitle: "Co-hosted events per Month",
+    label: "Co-hosted events",
+    runningDescription: "Cumulative co-hosted events over time",
+    monthlyDescription: "Approved co-hosted events by scheduled month",
+  });
+
+/**
  * Build charts for page views.
  * @param {Object} stats - Page views stats payload.
  * @param {Object} palette - Theme palette.
@@ -195,6 +214,7 @@ export const initAnalyticsCharts = async (stats) => {
       ...initPageViewsCharts(stats.page_views, palette),
       ...initMembersCharts(stats.members, palette),
       ...initEventsCharts(stats.events, palette),
+      ...initCohostedEventsCharts(stats.cohosted_events, palette),
       ...initAttendeesCharts(stats.attendees, palette),
     ];
 

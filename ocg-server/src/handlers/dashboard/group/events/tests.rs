@@ -24,13 +24,13 @@ use crate::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
             group::{
-                events::EventActionScope,
+                events::{EventActionScope, EventCohostInvitation, EventCohostsEditor},
                 invitation_requests::{InvitationRequestsOutput, InvitationRequestsStatusFilter},
                 sponsors::GroupSponsorsOutput,
                 waitlist::WaitlistOutput,
             },
         },
-        event::EventFull,
+        event::{EventCohostStatus, EventFull},
         payments::{
             EventTicketPriceWindow, EventTicketType, GroupExternalPaymentsContext, PaymentMode,
             TicketTaxBehavior, TicketTaxRate,
@@ -75,6 +75,9 @@ async fn test_add_page_renders_external_ticketing_without_payment_recipient() {
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![category.clone()]));
+    db.expect_list_communities()
+        .times(1)
+        .returning(move || Ok(sample_user_communities(community_id)));
     db.expect_list_event_kinds()
         .times(1)
         .returning(move || Ok(vec![kind.clone()]));
@@ -195,6 +198,9 @@ async fn test_add_page_success() {
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![category.clone()]));
+    db.expect_list_communities()
+        .times(1)
+        .returning(move || Ok(sample_user_communities(community_id)));
     db.expect_list_event_kinds()
         .times(1)
         .returning(move || Ok(vec![kind.clone()]));
@@ -386,6 +392,7 @@ async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases
         group_id,
         user_id,
         event_full,
+        EventCohostsEditor::default(),
     );
     expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
     expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
@@ -424,6 +431,7 @@ async fn test_update_page_shows_enabled_invitation_requests_tab_without_search()
         group_id,
         user_id,
         event_full,
+        EventCohostsEditor::default(),
     );
     db.expect_search_event_invitation_requests().never();
     expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
@@ -469,6 +477,7 @@ async fn test_update_page_shows_enabled_waitlist_tab_without_search() {
         group_id,
         user_id,
         event_full,
+        EventCohostsEditor::default(),
     );
     expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
     db.expect_search_event_waitlist().never();
@@ -508,6 +517,7 @@ async fn test_update_page_shows_enrollment_tabs_while_rows_remain() {
         group_id,
         user_id,
         event_full,
+        EventCohostsEditor::default(),
     );
     expect_invitation_requests_tab_search(&mut db, group_id, event_id, 1);
     expect_waitlist_tab_search(&mut db, group_id, event_id, 1);
@@ -553,6 +563,7 @@ async fn test_update_page_success() {
         group_id,
         user_id,
         event_full,
+        EventCohostsEditor::default(),
     );
     expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
     expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
@@ -575,6 +586,62 @@ async fn test_update_page_success() {
     assert!(!body.contains("<option value=\"waitlist\""));
     assert!(!body.contains("data-section=\"waitlist\""));
     assert!(!body.contains("data-content=\"waitlist\""));
+}
+
+#[tokio::test]
+async fn test_update_page_waits_for_pending_cohosts_before_publishing() {
+    // Setup identifiers and an unpublished event with one pending co-host
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut event_full = sample_event_full(community_id, event_id, group_id);
+    event_full.published = false;
+    let cohosts = EventCohostsEditor {
+        cohosts: vec![EventCohostInvitation {
+            community_display_name: "Other Community".to_string(),
+            community_name: "other".to_string(),
+            group_active: true,
+            group_id: Uuid::new_v4(),
+            invitation_id: Uuid::new_v4(),
+            invited_at: chrono::Utc::now(),
+            logo_url: "https://example.test/logo.png".to_string(),
+            name: "Co-host Group".to_string(),
+            slug: "cohost-group".to_string(),
+            status: EventCohostStatus::Pending,
+
+            slug_pretty: None,
+        }],
+        revision: 4,
+    };
+
+    // Setup database expectations with the pending co-host
+    let mut db = MockDB::new();
+    expect_update_page_context(
+        &mut db,
+        session_id,
+        community_id,
+        group_id,
+        user_id,
+        event_full,
+        cohosts,
+    );
+    expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
+    expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
+
+    // Run the request
+    let response = send_update_page_request(db, session_id, event_id).await;
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the co-hosts tab and the disabled publish action
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("cohosts-selector"));
+    assert!(body.contains("Co-host Group"));
+    assert!(body.contains("revision=\"4\""));
+    assert!(body.contains("Waiting for 1 co-host(s) to respond."));
 }
 
 #[tokio::test]
@@ -932,6 +999,7 @@ async fn test_preview_uses_submitted_payload_without_event_db_calls() {
     assert!(body.contains("Test Group"));
     assert!(body.contains("Test Community"));
     assert!(body.contains("7:00 PM Europe/Madrid"));
+    assert!(!body.contains("Only approved co-hosts are shown on the public page."));
 }
 
 #[tokio::test]
@@ -1945,6 +2013,7 @@ fn expect_update_page_context(
     group_id: Uuid,
     user_id: Uuid,
     event_full: EventFull,
+    cohosts: EventCohostsEditor,
 ) {
     // Authenticate the group dashboard user
     expect_authenticated_group_session(db, session_id, user_id, community_id, group_id);
@@ -1974,6 +2043,13 @@ fn expect_update_page_context(
     db.expect_list_cfs_submission_statuses_for_review()
         .times(1)
         .returning(|| Ok(vec![]));
+    db.expect_list_event_cohosts()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(move |_, _| Ok(cohosts.clone()));
+    db.expect_list_communities()
+        .times(1)
+        .returning(move || Ok(sample_user_communities(community_id)));
     db.expect_list_event_kinds()
         .times(1)
         .returning(|| Ok(vec![sample_event_kind_summary()]));

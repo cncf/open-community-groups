@@ -113,6 +113,7 @@ select results_eq(
     ),
     $$
         values
+            ('cohosts'),
             ('event_id'),
             ('in_progress'),
             ('kind'),

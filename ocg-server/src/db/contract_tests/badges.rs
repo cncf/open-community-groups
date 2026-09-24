@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 
 use crate::db::badges::DBBadges;
 
-use super::helpers::{badge_award_job_id, contract_tests_db};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]

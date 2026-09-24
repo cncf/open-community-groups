@@ -1,9 +1,10 @@
 -- Returns group statistics as a JSON object.
 --
--- The function computes statistics for 3 domains scoped to a single group or
+-- The function computes statistics for 4 domains scoped to a single group or
 -- to a group and its active subgroups:
 --   - members
 --   - events
+--   - cohosted_events
 --   - attendees
 --
 -- Each domain includes:
@@ -79,6 +80,30 @@ events as (
         and e.deleted = false
         and e.test_event = false
 ),
+cohosted_events as (
+    select distinct
+        e.event_id,
+        e.starts_at,
+        timezone('UTC', date_trunc('month', e.starts_at at time zone 'UTC')) as starts_month
+    from event_cohost ec
+    join scoped_groups sg on sg.group_id = ec.group_id
+    join event e using (event_id)
+    join "group" owner_group on owner_group.group_id = e.group_id
+    join community owner_community on owner_community.community_id = owner_group.community_id
+    where ec.event_cohost_status_id = 'approved'
+        and e.published = true
+        and e.canceled = false
+        and e.deleted = false
+        and e.test_event = false
+        and not exists (
+            select 1
+            from scoped_groups owner_scope
+            where owner_scope.group_id = e.group_id
+        )
+        and owner_community.active = true
+        and owner_group.active = true
+        and owner_group.deleted = false
+),
 events_for_views as (
     select e.event_id
     from event e
@@ -90,6 +115,11 @@ events_for_views as (
 events_with_start as (
     select *
     from events
+    where starts_at is not null
+),
+cohosted_events_with_start as (
+    select *
+    from cohosted_events
     where starts_at is not null
 ),
 attendees as (
@@ -143,6 +173,15 @@ domain_running_total_counts as (
     union all
 
     select
+        'cohosted_events' as domain,
+        ce.starts_month as bucket_start,
+        count(*)::int as count
+    from cohosted_events_with_start ce
+    group by ce.starts_month
+
+    union all
+
+    select
         'attendees' as domain,
         a.created_month as bucket_start,
         count(*)::int as count
@@ -167,6 +206,16 @@ domain_monthly_counts as (
     from events_with_start e
     join params p on e.starts_at >= p.period_start
     group by to_char(e.starts_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'cohosted_events' as domain,
+        to_char(ce.starts_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from cohosted_events_with_start ce
+    join params p on ce.starts_at >= p.period_start
+    group by to_char(ce.starts_month, 'YYYY-MM')
 
     union all
 
@@ -281,6 +330,19 @@ select json_strip_nulls(json_build_object(
             select jsonb_agg(to_jsonb(counts))
             from domain_monthly_counts counts
             where domain = 'events'
+        ))
+    ),
+    'cohosted_events', json_build_object(
+        'total', (select count(*)::int from cohosted_events),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'cohosted_events'
+        )),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'cohosted_events'
         ))
     ),
     'attendees', json_build_object(

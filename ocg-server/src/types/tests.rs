@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::types::{
     community::CommunitySummary,
     dashboard::group::events::EventInput,
-    event::{EventFull, EventKind, EventSummary},
+    event::{EventCohostGroup, EventFull, EventKind, EventSummary},
     group::{GroupCategory, GroupRegion, GroupSummary},
     payments::{GroupPaymentRecipient, PaymentProvider},
     site::{SiteSettings, Theme},
@@ -28,6 +28,20 @@ pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
         ad_banner_link_url: None,
         ad_banner_url: None,
         og_image_url: None,
+    }
+}
+
+/// Sample group credited as an event co-host.
+pub(crate) fn sample_event_cohost_group(group_id: Uuid, name: &str) -> EventCohostGroup {
+    EventCohostGroup {
+        community_display_name: "Cohost Community".to_string(),
+        community_name: "cohost-community".to_string(),
+        group_id,
+        logo_url: "https://example.test/cohost.png".to_string(),
+        name: name.to_string(),
+        slug: format!("cohost-{}", &group_id.simple().to_string()[..7]),
+
+        slug_pretty: None,
     }
 }
 
@@ -98,6 +112,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
     EventSummary {
         attendee_approval_required: false,
         canceled: false,
+        cohosts: vec![],
         community_display_name: "Test Community".to_string(),
         community_name: "test-community".to_string(),
         event_id,

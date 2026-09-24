@@ -2,17 +2,22 @@ import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { collectExistingFormIds } from "/static/js/dashboard/group/page-form-state.js";
 import { initializePendingChangesAlert } from "/static/js/dashboard/group/pending-changes-alert.js";
 
-export const EVENT_PAGE_FORM_IDS = [
-  "details-form",
-  "date-venue-form",
-  "hosts-sponsors-form",
-  "sessions-form",
-  "payments-form",
-  "questions-form",
-  "cfs-form",
-];
-
 let stashedActiveEventSection = null;
+
+/**
+ * Returns event editor form ids from the template-owned form markers.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {string[]} Ordered event editor form ids.
+ */
+export const getEventPageFormIds = (root = document) => {
+  const markedForms = [];
+  if (root instanceof HTMLFormElement && root.matches("form[data-event-form]")) {
+    markedForms.push(root);
+  }
+  markedForms.push(...(root.querySelectorAll?.("form[data-event-form]") || []));
+
+  return markedForms.map((form) => form.id).filter(Boolean);
+};
 
 /**
  * Resolves the page root for an event page bootstrap.
@@ -99,7 +104,7 @@ export const createSessionsDateRangeSync =
 export const initializeEventPagePendingChanges = ({ pageRoot, confirmMessage }) => {
   return initializePendingChangesAlert({
     alertId: "pending-changes-alert",
-    formIds: collectExistingFormIds(EVENT_PAGE_FORM_IDS, pageRoot),
+    formIds: collectExistingFormIds(getEventPageFormIds(pageRoot), pageRoot),
     cancelButtonId: "cancel-button",
     confirmMessage,
     confirmText: "Leave",

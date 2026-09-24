@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(82);
+select plan(84);
 
 -- ============================================================================
 -- TESTS
@@ -43,6 +43,8 @@ select has_table('email_verification_code');
 select has_table('event');
 select has_table('event_attendee');
 select has_table('event_category');
+select has_table('event_cohost');
+select has_table('event_cohost_status');
 select has_table('event_discount_code');
 select has_table('event_host');
 select has_table('event_invitation_request');

@@ -47,6 +47,9 @@ describe("dashboard group home template", () => {
       'dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events", extra_styles = "max-md:hidden")',
     );
     expect(template).to.include(
+      'dashboard::menu_item(name = "Co-hosts", icon = "groups", is_active = content.is_cohosts() , href = "/dashboard/group?tab=cohosts", extra_styles = "max-md:hidden")',
+    );
+    expect(template).to.include(
       'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden")',
     );
     const eventsItem = template.indexOf('dashboard::menu_item(name = "Events"');
@@ -54,6 +57,7 @@ describe("dashboard group home template", () => {
       'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in()',
     );
     expect(checkInItem).to.be.greaterThan(eventsItem);
+    expect(template.indexOf('dashboard::menu_item(name = "Co-hosts"')).to.be.greaterThan(checkInItem);
 
     // Verify the drawer keeps a mobile-only Check-In entry for read-only groups.
     expect(template).to.include(
@@ -145,5 +149,13 @@ describe("dashboard group home template", () => {
     expect(template).to.include(
       '<script type="module" src="/static/js/dashboard/group/settings-form.js"></script>',
     );
+  });
+
+  it("loads co-hosting scripts and maps the co-hosts tab partial", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('src="/static/js/dashboard/event/cohosts.js"');
+    expect(template).to.include('src="/static/js/dashboard/group/cohosts.js"');
+    expect(template).to.include("else if content.is_cohosts() -%}cohosts");
   });
 });

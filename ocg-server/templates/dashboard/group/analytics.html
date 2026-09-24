@@ -95,6 +95,20 @@
   </div>
 
   <div>
+    {{ dashboard::form_title(title = "Co-hosted events") }}
+    <div class="mt-6 grid grid-cols-1 gap-6">
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        {{ stats_macro::analytics_chart(chart_id = "cohosted-events-running-chart", data = stats.cohosted_events.running_total, min_points = 1, wrapper_class = "mt-3") -}}
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        {{ stats_macro::analytics_chart(chart_id = "cohosted-events-monthly-chart", data = stats.cohosted_events.per_month, wrapper_class = "mt-3") -}}
+      </div>
+    </div>
+  </div>
+
+  <div>
     {{ dashboard::form_title(title = "Attendees") }}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>

@@ -14,6 +14,15 @@ begin
     -- Validate and normalize the publishable series action ids
     v_event_ids := validate_event_series_action_event_ids(p_group_id, p_event_ids, true);
 
+    -- Reject publishing the series while any occurrence has unanswered co-hosts
+    if exists (
+        select 1
+        from unnest(v_event_ids) as selected(event_id)
+        where event_has_pending_cohosts(selected.event_id)
+    ) then
+        raise exception 'co-hosts must respond for every event in the series before publishing' using errcode = 'OCG01';
+    end if;
+
     -- Apply the single-event transition to each validated event
     foreach v_event_id in array v_event_ids
     loop

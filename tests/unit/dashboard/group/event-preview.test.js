@@ -20,7 +20,7 @@ const mountPreviewPage = ({ testEvent = false } = {}) => {
          data-group-name="Test Group"
          data-group-slug="test-group">
       <div data-event-page="add">
-        <form id="details-form">
+        <form id="details-form" data-event-form>
           <input name="name" value="Draft Event" />
           <input name="capacity" value="" />
           <input name="meetup_url" value="https://meetup.example/events/draft" />
@@ -39,25 +39,31 @@ const mountPreviewPage = ({ testEvent = false } = {}) => {
           </select>
           <textarea name="description">Draft description</textarea>
         </form>
-        <form id="date-venue-form">
+        <form id="date-venue-form" data-event-form>
           <input name="starts_at" value="2026-06-01T18:30" />
           <input name="timezone" value="America/Los_Angeles" />
         </form>
-        <form id="sessions-form">
+        <form id="sessions-form" data-event-form>
           <input name="sessions[0][name]" value="Opening session" />
           <input name="sessions[0][starts_at]" value="2026-06-01T19:00" />
         </form>
-        <form id="hosts-sponsors-form">
+        <form id="cohosts-form" data-event-form>
+          <cohosts-selector></cohosts-selector>
+          <input name="cohost_group_ids[0]" value="group-1" />
+          <input name="cohost_group_ids_present" value="true" />
+          <input name="cohosts_revision" value="2" />
+        </form>
+        <form id="hosts-sponsors-form" data-event-form>
           <user-search-selector field-name="hosts"></user-search-selector>
           <speakers-selector field-name-prefix="speakers"></speakers-selector>
           <sponsors-section></sponsors-section>
         </form>
-        <form id="payments-form">
+        <form id="payments-form" data-event-form>
           <input name="payment_currency_code" value="USD" />
           <input name="ticket_types[0][title]" value="General admission" />
           <input name="ticket_types[0][price_windows][0][price]" value="25.00" />
         </form>
-        <form id="cfs-form"></form>
+        <form id="cfs-form" data-event-form></form>
         <sessions-section></sessions-section>
         <button id="event-preview-button" type="button">Preview</button>
       </div>
@@ -88,6 +94,13 @@ const mountPreviewPage = ({ testEvent = false } = {}) => {
       logo_url: "/sponsor.png",
       name: "Sponsor Co",
       website_url: "https://example.test",
+    },
+  ];
+  pageRoot.querySelector("cohosts-selector").getPreviewCohosts = () => [
+    {
+      logo_url: "/cohost.png",
+      name: "Co-host Group",
+      status: "pending",
     },
   ];
   const sessionsSection = pageRoot.querySelector("sessions-section");
@@ -125,6 +138,9 @@ describe("event preview", () => {
     expect(payload.get("meetup_url")).to.equal(null);
     expect(payload.get("luma_url")).to.equal(null);
     expect(payload.get("payment_currency_code")).to.equal(null);
+    expect(payload.get("cohost_group_ids[0]")).to.equal(null);
+    expect(payload.get("cohost_group_ids_present")).to.equal(null);
+    expect(payload.get("cohosts_revision")).to.equal(null);
     expect(payload.get("ticket_types[0][title]")).to.equal(null);
     expect(payload.get("ticket_types[0][price_windows][0][price]")).to.equal(
       null,
@@ -138,11 +154,28 @@ describe("event preview", () => {
     expect(context.category_label).to.equal("Meetup");
     expect(context.community.display_name).to.equal("Test Community");
     expect(context.group.name).to.equal("Test Group");
+    expect(context.cohosts).to.deep.equal([
+      {
+        logo_url: "/cohost.png",
+        name: "Co-host Group",
+        status: "pending",
+      },
+    ]);
     expect(context.hosts[0].name).to.equal("Host User");
     expect(context.speakers[0].featured).to.equal(true);
     expect(context.sponsors[0].name).to.equal("Sponsor Co");
     expect(context.sessions[0].kind_label).to.equal("Talk");
     expect(context.sessions[0].speakers[0].name).to.equal("Session Speaker");
+  });
+
+  it("keeps preview co-host context empty when the selector is missing", () => {
+    const pageRoot = mountPreviewPage();
+    pageRoot.querySelector("#cohosts-form").remove();
+
+    const payload = buildEventPreviewPayload(pageRoot);
+    const context = JSON.parse(payload.get("preview_context"));
+
+    expect(context.cohosts).to.deep.equal([]);
   });
 
   it("omits unsafe social links from the preview modal", () => {

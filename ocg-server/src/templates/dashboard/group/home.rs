@@ -13,7 +13,8 @@ use crate::{
         dashboard::{
             audit,
             group::{
-                analytics, badges, check_in, events, members, refunds, settings, sponsors, team,
+                analytics, badges, check_in, cohosts, events, members, refunds, settings, sponsors,
+                team,
             },
         },
         filters,
@@ -99,6 +100,8 @@ pub(crate) enum Content {
     Badges(Box<badges::BadgesPage>),
     /// Attendee check-in page.
     CheckIn(check_in::ListPage),
+    /// Co-hosted events page.
+    Cohosts(cohosts::ListPage),
     /// Events management page.
     Events(Box<events::ListPage>),
     /// Audit logs page.
@@ -139,6 +142,11 @@ impl Content {
     /// Check if the content is the check-in page.
     fn is_check_in(&self) -> bool {
         matches!(self, Content::CheckIn(_))
+    }
+
+    /// Check if the content is the co-hosted events page.
+    fn is_cohosts(&self) -> bool {
+        matches!(self, Content::Cohosts(_))
     }
 
     /// Check if the content is the events page.
@@ -185,6 +193,7 @@ impl std::fmt::Display for Content {
             Content::Awards(template) => write!(f, "{}", template.render()?),
             Content::Badges(template) => write!(f, "{}", template.render()?),
             Content::CheckIn(template) => write!(f, "{}", template.render()?),
+            Content::Cohosts(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
@@ -214,6 +223,8 @@ pub(crate) enum Tab {
     Badges,
     /// Attendee check-in tab.
     CheckIn,
+    /// Co-hosted events tab.
+    Cohosts,
     /// Events management tab.
     Events,
     /// Audit logs tab.

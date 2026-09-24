@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -95,6 +95,19 @@ select fx_event(:'event8ID', :'group3ID', :'eventCategory2ID', jsonb_build_objec
     'starts_at', now() + interval '1 week'
 ));
 
+-- Approved co-host credit that must not duplicate site upcoming events
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id
+) values (
+    current_timestamp,
+    'approved',
+    :'event2ID',
+    :'group2ID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -117,6 +130,20 @@ select ok(
         where event_item->>'event_id' = :'event8ID'
     ),
     'Should not include events from inactive communities'
+);
+
+-- Should show a co-hosted event once under its owner
+select is(
+    (
+        select count(*)::int
+        from jsonb_array_elements(
+            get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb
+        ) event_item
+        where event_item->>'event_id' = :'event2ID'
+        and event_item->>'group_slug' = (select slug from "group" where group_id = :'group1ID'::uuid)
+    ),
+    1,
+    'Should show a co-hosted event once under its owner'
 );
 
 -- Should return empty array when no events match the filter

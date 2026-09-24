@@ -80,6 +80,11 @@ begin
         return;
     end if;
 
+    -- Reject publication while co-host invitations are unanswered
+    if event_has_pending_cohosts(p_event_id) then
+        raise exception 'co-hosts must respond before the event can be published' using errcode = 'OCG01';
+    end if;
+
     -- Reject publishing an external-marked event while the group has not selected the rail
     if v_external_payment_url is not null and not v_group_external_selected then
         raise exception 'external payments are not available for this event' using errcode = 'OCG01';

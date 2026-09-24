@@ -171,6 +171,31 @@ describe("dashboard group event update template", () => {
     expect(template).to.include('hx-swap="none"');
   });
 
+  it("wires the co-hosts tab, publish gate tooltip, and marked editor forms", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include("{% let pending_cohosts_count = self.pending_cohosts_count() -%}");
+    expect(template).to.include('hx-include="form[data-event-form]"');
+    expect(template).to.include('event_form::tab_option(section = "cohosts", label = "Co-hosts")');
+    expect(template).to.include(
+      'event_form::tab_button(section = "cohosts", icon = "groups", label = "Co-hosts")',
+    );
+    expect(template).to.include(
+      'disabled title="Waiting for {{ pending_cohosts_count }} co-host(s) to respond."',
+    );
+    expect(template.indexOf("pending_cohosts_count > 0")).to.be.lessThan(
+      template.indexOf('disabled title="Your role cannot publish events."'),
+    );
+    expect(template).to.include('<form id="cohosts-form" data-event-form>');
+    expect(template).to.include(
+      "Co-hosts can't be changed while the event is published. If you unpublish it to change them, it can't be published again until every newly added group responds.",
+    );
+    expect(template).to.include(
+      '<cohosts-selector communities="{{ communities|json }}" selected-cohosts="{{ cohosts.cohosts|json }}" revision="{{ cohosts.revision }}" current-group-id="{{ event.group.group_id }}"',
+    );
+    expect(template.match(/<form id="[^"]+" data-event-form/gu)).to.have.length(8);
+  });
+
   it("lazy-loads event review tabs from the desktop tab buttons", async () => {
     // Load the event update template before checking lazy tab contracts.
     const template = normalizeWhitespace(await loadTemplate());
@@ -380,7 +405,7 @@ describe("dashboard group event update template", () => {
   it("keeps payment guidance only for read-only paid events", async () => {
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(
-      template.indexOf('<form id="payments-form">'),
+      template.indexOf('<form id="payments-form" data-event-form>'),
       template.indexOf("{# End Tickets Tab -#}"),
     );
 
@@ -507,7 +532,7 @@ describe("dashboard group event update template", () => {
     // Load and isolate the ticket form before checking section spacing.
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(
-      template.indexOf('<form id="payments-form">'),
+      template.indexOf('<form id="payments-form" data-event-form>'),
       template.indexOf("{# End Tickets Tab -#}"),
     );
 
@@ -582,7 +607,7 @@ describe("dashboard group event update template", () => {
     // Load and isolate the contributor form before checking section spacing.
     const template = normalizeWhitespace(await loadTemplate());
     const contributorForm = template.slice(
-      template.indexOf('<form id="hosts-sponsors-form">'),
+      template.indexOf('<form id="hosts-sponsors-form" data-event-form>'),
       template.indexOf("{# End Hosts & Speakers Tab -#}"),
     );
 

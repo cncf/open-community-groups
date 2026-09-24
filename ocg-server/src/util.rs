@@ -334,6 +334,7 @@ mod tests {
         EventSummary {
             attendee_approval_required: false,
             canceled,
+            cohosts: vec![],
             community_display_name: "Test Community".to_string(),
             community_name: "test-community".to_string(),
             event_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),

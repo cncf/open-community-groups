@@ -1,3 +1,4 @@
+{% import "macros/cohosts.html" as cohosts -%}
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
 
@@ -22,6 +23,7 @@
         <span class="card-title !m-0 !h-auto !line-clamp-2 break-words text-[0.85rem]/[1.05rem] text-stone-900 md:text-[0.9rem]/[1.1rem]">
           {{ event.name }}
         </span>
+        {{ cohosts::cohosts_line(event.cohosts) -}}
         <span class="mt-auto flex min-h-[17px] flex-wrap items-end gap-2">{{ caller() }}</span>
       </span>
     </span>

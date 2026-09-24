@@ -39,6 +39,13 @@ describe("dashboard group analytics", () => {
       ],
       per_month: [["2025-01", 1]],
     },
+    cohosted_events: {
+      running_total: [
+        [1, 1],
+        [2, 2],
+      ],
+      per_month: [["2025-01", 1]],
+    },
     attendees: {
       running_total: [
         [1, 1],
@@ -85,6 +92,8 @@ describe("dashboard group analytics", () => {
       "members-monthly-chart",
       "events-running-chart",
       "events-monthly-chart",
+      "cohosted-events-running-chart",
+      "cohosted-events-monthly-chart",
       "attendees-running-chart",
       "attendees-monthly-chart",
     ].forEach((id) => {
@@ -108,7 +117,7 @@ describe("dashboard group analytics", () => {
     await initAnalyticsCharts(getGroupAnalyticsPayload());
 
     // Verify initializes the expected group analytics charts.
-    expect(setOptionCalls).to.have.length(12);
+    expect(setOptionCalls).to.have.length(14);
     expect(setOptionCalls.map((call) => call.id)).to.include(
       "members-running-chart",
     );
@@ -122,6 +131,10 @@ describe("dashboard group analytics", () => {
       setOptionCalls.find((call) => call.id === "events-monthly-chart").option
         .title.text,
     ).to.equal("Events per Month");
+    expect(
+      setOptionCalls.find((call) => call.id === "cohosted-events-monthly-chart")
+        .option.title.text,
+    ).to.equal("Co-hosted events per Month");
     expect(
       setOptionCalls.find((call) => call.id === "attendees-monthly-chart")
         .option.title.text,
@@ -145,7 +158,7 @@ describe("dashboard group analytics", () => {
     await initializeGroupAnalyticsFromPage();
 
     // Verify the page payload renders the expected charts once.
-    expect(setOptionCalls).to.have.length(12);
+    expect(setOptionCalls).to.have.length(14);
     expect(setOptionCalls.map((call) => call.id)).to.include(
       "members-running-chart",
     );
@@ -170,7 +183,7 @@ describe("dashboard group analytics", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify the swapped marker initializes the analytics charts.
-    expect(setOptionCalls).to.have.length(12);
+    expect(setOptionCalls).to.have.length(14);
     expect(marker.dataset.groupAnalyticsReady).to.equal("true");
   });
 });

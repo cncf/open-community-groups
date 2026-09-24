@@ -8,11 +8,16 @@ use uuid::Uuid;
 
 use crate::{
     config::{HttpClientConfig, HttpServerConfig, MeetingsConfig, MeetingsZoomConfig},
-    db::mock::MockDB,
+    db::{
+        dashboard::group::{
+            EventCohostNotificationData, EventCohostRef, EventCohostResponse, EventCohostsSync,
+        },
+        mock::MockDB,
+    },
     services::{
         events::{
-            AddEventInput, AutomaticTaxCheckError, EventActionInput, EventsError, EventsManager,
-            UpdateEventInput,
+            AddEventInput, AutomaticTaxCheckError, EventActionInput, EventCohostActionInput,
+            EventsError, EventsManager, UpdateEventInput,
         },
         payments::{
             AutomaticTaxReadiness, AutomaticTaxReadinessError, FiscalSponsorReadinessError,
@@ -20,12 +25,17 @@ use crate::{
         },
     },
     templates::notifications::{
-        EventCanceled, EventPaidConfigured, EventPublished, EventRescheduled, EventSeriesCanceled,
-        EventSeriesPublished, SpeakerWelcome,
+        EventCanceled, EventCohostInvitation as EventCohostInvitationEmail,
+        EventCohostRemovalReason, EventCohostRemoved, EventCohostResponded, EventPaidConfigured,
+        EventPublished, EventRescheduled, EventSeriesCanceled, EventSeriesPublished,
+        SpeakerWelcome,
     },
     types::{
-        dashboard::group::events::{EventActionScope, EventInput, EventRecurrencePattern},
-        event::{EventFull, EventSummary, Speaker},
+        dashboard::group::events::{
+            EventActionScope, EventCohostInvitation, EventCohostsEditor, EventInput,
+            EventRecurrencePattern,
+        },
+        event::{EventCohostStatus, EventFull, EventSummary, Speaker},
         meetings::MeetingProvider,
         notifications::NotificationKind,
         payments::{
@@ -41,6 +51,189 @@ use crate::{
 };
 
 use super::{PgEventsManager, is_event_payload_paid_capable};
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_add_cohosts_invites_every_occurrence_with_one_email_per_group() {
+    // Setup identifiers and a recurring event with one co-host
+    let admin_id = Uuid::new_v4();
+    let cohost_group_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let first_invitation_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let second_invitation_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let mut event_form = sample_event_form();
+    event_form.cohost_group_ids = Some(vec![cohost_group_id]);
+    event_form.cohost_group_ids_present = Some(true);
+    event_form.ends_at = Some((Utc::now() + chrono::Duration::days(8)).naive_utc());
+    event_form.recurrence_additional_occurrences = Some(1);
+    event_form.recurrence_pattern = Some(EventRecurrencePattern::Weekly);
+    event_form.starts_at = Some((Utc::now() + chrono::Duration::days(7)).naive_utc());
+    let body = serde_qs::to_string(&event_form).unwrap();
+    let notification_data = vec![
+        sample_cohost_notification_data(cohost_group_id, event_id, first_invitation_id),
+        sample_cohost_notification_data(cohost_group_id, related_event_id, second_invitation_id),
+    ];
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    let mut sequence = Sequence::new();
+
+    // Setup transaction mock locking groups before creating the events
+    let mut tx = MockDB::new();
+    tx.expect_lock_event_cohost_groups()
+        .times(1)
+        .withf(move |gid, cohost_group_ids| {
+            *gid == group_id && cohost_group_ids == [cohost_group_id].as_slice()
+        })
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
+    tx.expect_add_event_series()
+        .times(1)
+        .withf(|_, _, events, _, _, _| {
+            events.iter().all(|event| {
+                event.get("cohost_group_ids").is_none()
+                    && event.get("cohost_group_ids_present").is_none()
+            })
+        })
+        .in_sequence(&mut sequence)
+        .returning(move |_, _, _, _, _, _| Ok(vec![event_id, related_event_id]));
+    tx.expect_sync_event_cohosts()
+        .times(2)
+        .withf(move |uid, gid, _, cohost_group_ids, expected_revision| {
+            *uid == user_id
+                && *gid == group_id
+                && cohost_group_ids == [cohost_group_id].as_slice()
+                && *expected_revision == 0
+        })
+        .in_sequence(&mut sequence)
+        .returning(move |_, _, eid, _, _| {
+            let invitation_id = if eid == event_id {
+                first_invitation_id
+            } else {
+                second_invitation_id
+            };
+            Ok(EventCohostsSync {
+                added: vec![EventCohostRef {
+                    cohost_group_id,
+                    event_id: eid,
+                    invitation_id,
+                }],
+                removed: vec![],
+                revision: 1,
+            })
+        });
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .withf(|items| items.len() == 2)
+        .in_sequence(&mut sequence)
+        .returning(move |_| Ok(notification_data.clone()));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .withf(move |gid| *gid == cohost_group_id)
+        .returning(move |_| Ok(vec![admin_id]));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostInvitation)
+                && notification.recipients == vec![admin_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventCohostInvitationEmail>(value.clone())
+                        .is_ok_and(|template| template.events.len() == 2)
+                })
+        })
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let event = parse_event_form(&body);
+    let result = manager
+        .add(&AddEventInput {
+            actor_user_id: user_id,
+            community_id,
+            event,
+            group_id,
+        })
+        .await;
+
+    // Check the created event identifiers
+    assert_eq!(result.unwrap(), vec![event_id, related_event_id]);
+}
+
+#[tokio::test]
+async fn test_add_cohosts_rolls_back_when_invitation_enqueue_fails() {
+    // Setup identifiers and an event with one co-host
+    let cohost_group_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let invitation_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let mut event_form = sample_event_form();
+    event_form.cohost_group_ids = Some(vec![cohost_group_id]);
+    event_form.cohost_group_ids_present = Some(true);
+    let body = serde_qs::to_string(&event_form).unwrap();
+    let notification_data =
+        sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+
+    // Setup transaction mock whose invitation enqueue fails
+    let mut tx = MockDB::new();
+    tx.expect_lock_event_cohost_groups().times(1).returning(|_, _| Ok(()));
+    tx.expect_add_event()
+        .times(1)
+        .returning(move |_, _, _, _, _| Ok(event_id));
+    tx.expect_sync_event_cohosts()
+        .times(1)
+        .returning(move |_, _, _, _, _| {
+            Ok(EventCohostsSync {
+                added: vec![EventCohostRef {
+                    cohost_group_id,
+                    event_id,
+                    invitation_id,
+                }],
+                removed: vec![],
+                revision: 1,
+            })
+        });
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .returning(move |_| Ok(vec![notification_data.clone()]));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .returning(|_| Ok(vec![Uuid::new_v4()]));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .returning(|_| Err(anyhow!("enqueue failed")));
+    expect_rolled_back_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let event = parse_event_form(&body);
+    let result = manager
+        .add(&AddEventInput {
+            actor_user_id: user_id,
+            community_id,
+            event,
+            group_id,
+        })
+        .await;
+
+    // Check the workflow failed
+    assert!(matches!(result, Err(EventsError::Other(_))));
+}
 
 #[tokio::test]
 async fn test_add_free_success() {
@@ -535,6 +728,408 @@ async fn test_add_validation_rejects_paid_event_without_payments() {
 }
 
 #[tokio::test]
+async fn test_approve_cohosting_notifies_owner_admins() {
+    // Setup identifiers and the co-host response
+    let admin_id = Uuid::new_v4();
+    let cohost_group_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let invitation_id = Uuid::new_v4();
+    let owner_group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let response = sample_cohost_response(cohost_group_id, event_id, invitation_id, owner_group_id);
+    let notification_data =
+        sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    let mut sequence = Sequence::new();
+
+    // Setup transaction mock with the transition before the email
+    let mut tx = MockDB::new();
+    tx.expect_approve_event_cohost()
+        .times(1)
+        .withf(move |uid, gid, iid| {
+            *uid == user_id && *gid == cohost_group_id && *iid == invitation_id
+        })
+        .in_sequence(&mut sequence)
+        .returning(move |_, _, _| Ok(response));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .withf(move |gid| *gid == owner_group_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_| Ok(vec![admin_id]));
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .in_sequence(&mut sequence)
+        .returning(move |_| Ok(vec![notification_data.clone()]));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostResponded)
+                && notification.recipients == vec![admin_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventCohostResponded>(value.clone())
+                        .is_ok_and(|template| template.status == EventCohostStatus::Approved)
+                })
+        })
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let result = manager
+        .approve_cohosting(&EventCohostActionInput {
+            actor_user_id: user_id,
+            cohost_group_id,
+            invitation_id,
+        })
+        .await;
+
+    // Check the workflow succeeded
+    result.unwrap();
+}
+
+#[tokio::test]
+async fn test_approve_cohosting_rolls_back_when_enqueue_fails() {
+    // Setup identifiers and the co-host response
+    let cohost_group_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let invitation_id = Uuid::new_v4();
+    let owner_group_id = Uuid::new_v4();
+    let response = sample_cohost_response(cohost_group_id, event_id, invitation_id, owner_group_id);
+    let notification_data =
+        sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+
+    // Setup transaction mock whose email enqueue fails
+    let mut tx = MockDB::new();
+    tx.expect_approve_event_cohost()
+        .times(1)
+        .returning(move |_, _, _| Ok(response));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .returning(|_| Ok(vec![Uuid::new_v4()]));
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .returning(move |_| Ok(vec![notification_data.clone()]));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .returning(|_| Err(anyhow!("enqueue failed")));
+    expect_rolled_back_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let result = manager
+        .approve_cohosting(&EventCohostActionInput {
+            actor_user_id: Uuid::new_v4(),
+            cohost_group_id,
+            invitation_id,
+        })
+        .await;
+
+    // Check the workflow failed
+    assert!(matches!(result, Err(EventsError::Other(_))));
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_cancel_closes_open_cohosts_after_the_mutation() {
+    // Setup identifiers and one pending co-host of an unpublished event
+    let admin_id = Uuid::new_v4();
+    let cohost_group_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let invitation_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let mut event_summary = sample_event_summary(event_id, group_id);
+    event_summary.published = false;
+    let notification_data =
+        sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    let mut sequence = Sequence::new();
+
+    // Setup transaction mock with the snapshot before the mutation
+    let mut tx = MockDB::new();
+    tx.expect_lock_events_for_cancellation()
+        .times(1)
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _, _| Ok(event_summary.clone()));
+    tx.expect_list_event_cohosts()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _| {
+            Ok(sample_cohosts_editor(
+                cohost_group_id,
+                invitation_id,
+                EventCohostStatus::Pending,
+            ))
+        });
+    tx.expect_cancel_event()
+        .times(1)
+        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(|_, _, _| Ok(()));
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .in_sequence(&mut sequence)
+        .returning(move |_| Ok(vec![notification_data.clone()]));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .withf(move |gid| *gid == cohost_group_id)
+        .returning(move |_| Ok(vec![admin_id]));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostRemoved)
+                && notification.recipients == vec![admin_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventCohostRemoved>(value.clone()).is_ok_and(|template| {
+                        template.reason == EventCohostRemovalReason::EventCanceled
+                    })
+                })
+        })
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let result = manager
+        .cancel(&EventActionInput {
+            actor_user_id: user_id,
+            community_id,
+            event_id,
+            group_id,
+            scope: EventActionScope::This,
+        })
+        .await;
+
+    // Check the workflow succeeded
+    result.unwrap();
+}
+
+#[tokio::test]
+async fn test_cancel_cohosting_notifies_owner_admins() {
+    // Setup identifiers and the co-host withdrawal
+    let cohost_group_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let invitation_id = Uuid::new_v4();
+    let owner_group_id = Uuid::new_v4();
+    let response = sample_cohost_response(cohost_group_id, event_id, invitation_id, owner_group_id);
+    let notification_data =
+        sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+
+    // Setup transaction mock
+    let mut tx = MockDB::new();
+    tx.expect_cancel_event_cohost()
+        .times(1)
+        .withf(move |_, gid, iid| *gid == cohost_group_id && *iid == invitation_id)
+        .returning(move |_, _, _| Ok(response));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .withf(move |gid| *gid == owner_group_id)
+        .returning(|_| Ok(vec![Uuid::new_v4()]));
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .returning(move |_| Ok(vec![notification_data.clone()]));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(|notification| {
+            notification.template_data.as_ref().is_some_and(|value| {
+                from_value::<EventCohostResponded>(value.clone())
+                    .is_ok_and(|template| template.status == EventCohostStatus::Canceled)
+            })
+        })
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let result = manager
+        .cancel_cohosting(&EventCohostActionInput {
+            actor_user_id: Uuid::new_v4(),
+            cohost_group_id,
+            invitation_id,
+        })
+        .await;
+
+    // Check the workflow succeeded
+    result.unwrap();
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_cancel_series_closes_open_cohosts_with_one_email_per_group() {
+    // Setup identifiers and one co-host on every unpublished occurrence
+    let admin_id = Uuid::new_v4();
+    let cohost_group_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let first_invitation_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let second_invitation_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_lock_event_ids = series_event_ids.clone();
+    let expected_series_event_ids = series_event_ids.clone();
+    let event_summary = EventSummary {
+        published: false,
+        ..sample_event_summary(event_id, group_id)
+    };
+    let related_event_summary = EventSummary {
+        published: false,
+        ..sample_event_summary(related_event_id, group_id)
+    };
+    let expected_refs = vec![
+        EventCohostRef {
+            cohost_group_id,
+            event_id,
+            invitation_id: first_invitation_id,
+        },
+        EventCohostRef {
+            cohost_group_id,
+            event_id: related_event_id,
+            invitation_id: second_invitation_id,
+        },
+    ];
+    let notification_data = vec![
+        sample_cohost_notification_data(cohost_group_id, event_id, first_invitation_id),
+        sample_cohost_notification_data(cohost_group_id, related_event_id, second_invitation_id),
+    ];
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    let mut sequence = Sequence::new();
+
+    // Setup transaction mock resolving and locking the series
+    let mut tx = MockDB::new();
+    tx.expect_list_event_series_cancelable_event_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _| Ok(series_event_ids.clone()));
+    tx.expect_lock_events_for_cancellation()
+        .times(1)
+        .withf(move |gid, event_ids| {
+            *gid == group_id && event_ids == expected_lock_event_ids.as_slice()
+        })
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _, _| Ok(event_summary.clone()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| {
+            *cid == community_id && *gid == group_id && *eid == related_event_id
+        })
+        .in_sequence(&mut sequence)
+        .returning(move |_, _, _| Ok(related_event_summary.clone()));
+
+    // Setup the co-host snapshot of every occurrence before the cancellation
+    tx.expect_list_event_cohosts()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _| {
+            Ok(sample_cohosts_editor(
+                cohost_group_id,
+                first_invitation_id,
+                EventCohostStatus::Approved,
+            ))
+        });
+    tx.expect_list_event_cohosts()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == related_event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _| {
+            Ok(sample_cohosts_editor(
+                cohost_group_id,
+                second_invitation_id,
+                EventCohostStatus::Pending,
+            ))
+        });
+    tx.expect_cancel_event().never();
+    tx.expect_cancel_event_series_events()
+        .times(1)
+        .withf(move |uid, gid, event_ids| {
+            *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
+        })
+        .in_sequence(&mut sequence)
+        .returning(|_, _, _| Ok(()));
+
+    // Setup one combined removal email for the co-host group
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .withf(move |items| items == expected_refs.as_slice())
+        .in_sequence(&mut sequence)
+        .returning(move |_| Ok(notification_data.clone()));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .withf(move |gid| *gid == cohost_group_id)
+        .returning(move |_| Ok(vec![admin_id]));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostRemoved)
+                && notification.recipients == vec![admin_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventCohostRemoved>(value.clone()).is_ok_and(|template| {
+                        template.reason == EventCohostRemovalReason::EventCanceled
+                            && template.events.len() == 2
+                    })
+                })
+        })
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let result = manager
+        .cancel(&EventActionInput {
+            actor_user_id: user_id,
+            community_id,
+            event_id,
+            group_id,
+            scope: EventActionScope::Series,
+        })
+        .await;
+
+    // Check the workflow succeeded
+    result.unwrap();
+}
+
+#[tokio::test]
 #[allow(clippy::too_many_lines)]
 async fn test_cancel_series_sends_aggregate_notification() {
     // Setup identifiers and data structures
@@ -646,6 +1241,9 @@ async fn test_cancel_series_sends_aggregate_notification() {
                 })
         })
         .returning(|_| Ok(()));
+    tx.expect_list_event_cohosts()
+        .withf(move |gid, _| *gid == group_id)
+        .returning(|_, _| Ok(EventCohostsEditor::default()));
     expect_successful_transaction(&mut db, tx);
 
     // Run the workflow through the manager
@@ -722,6 +1320,9 @@ async fn test_cancel_series_success() {
             *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
         })
         .returning(move |_, _, _| Ok(()));
+    tx.expect_list_event_cohosts()
+        .withf(move |gid, _| *gid == group_id)
+        .returning(|_, _| Ok(EventCohostsEditor::default()));
     expect_successful_transaction(&mut db, tx);
 
     // Run the workflow through the manager
@@ -813,6 +1414,9 @@ async fn test_cancel_success() {
                 })
         })
         .returning(|_| Ok(()));
+    tx.expect_list_event_cohosts()
+        .withf(move |gid, _| *gid == group_id)
+        .returning(|_, _| Ok(EventCohostsEditor::default()));
     expect_successful_transaction(&mut db, tx);
 
     // Run the workflow through the manager
@@ -863,6 +1467,9 @@ async fn test_cancel_test_event_no_notification() {
         .times(1)
         .withf(move |uid, id, eid| *uid == user_id && *id == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(()));
+    tx.expect_list_event_cohosts()
+        .withf(move |gid, _| *gid == group_id)
+        .returning(|_, _| Ok(EventCohostsEditor::default()));
     expect_successful_transaction(&mut db, tx);
 
     // Run the workflow through the manager
@@ -1009,6 +1616,265 @@ async fn test_check_automatic_tax_readiness_uses_persisted_venue() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_delete_closes_open_cohosts_and_notifies_their_admins() {
+    // Setup identifiers and one approved co-host
+    let admin_id = Uuid::new_v4();
+    let cohost_group_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let invitation_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let notification_data =
+        sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    let mut sequence = Sequence::new();
+
+    // Setup transaction mock with the snapshot before the deletion
+    let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
+    tx.expect_list_event_cohosts()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _| {
+            Ok(sample_cohosts_editor(
+                cohost_group_id,
+                invitation_id,
+                EventCohostStatus::Approved,
+            ))
+        });
+    tx.expect_delete_event()
+        .times(1)
+        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(|_, _, _| Ok(()));
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .withf(move |items| {
+            items
+                == [EventCohostRef {
+                    cohost_group_id,
+                    event_id,
+                    invitation_id,
+                }]
+                .as_slice()
+        })
+        .in_sequence(&mut sequence)
+        .returning(move |_| Ok(vec![notification_data.clone()]));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .withf(move |gid| *gid == cohost_group_id)
+        .returning(move |_| Ok(vec![admin_id]));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostRemoved)
+                && notification.recipients == vec![admin_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventCohostRemoved>(value.clone()).is_ok_and(|template| {
+                        template.reason == EventCohostRemovalReason::EventDeleted
+                            && template.link.is_none()
+                    })
+                })
+        })
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let result = manager
+        .delete(&EventActionInput {
+            actor_user_id: user_id,
+            community_id,
+            event_id,
+            group_id,
+            scope: EventActionScope::This,
+        })
+        .await;
+
+    // Check the workflow succeeded
+    result.unwrap();
+}
+
+#[tokio::test]
+async fn test_delete_rolls_back_when_mutation_fails() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+
+    // Setup transaction mock whose deletion fails
+    let mut tx = MockDB::new();
+    tx.expect_lock_group_events().times(1).returning(|_, _| Ok(()));
+    tx.expect_list_event_cohosts()
+        .times(1)
+        .returning(|_, _| Ok(EventCohostsEditor::default()));
+    tx.expect_delete_event()
+        .times(1)
+        .returning(|_, _, _| Err(anyhow!("db error")));
+    tx.expect_enqueue_notification().never();
+    expect_rolled_back_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let result = manager
+        .delete(&EventActionInput {
+            actor_user_id: user_id,
+            community_id,
+            event_id,
+            group_id,
+            scope: EventActionScope::This,
+        })
+        .await;
+
+    // Check the workflow failed
+    assert!(matches!(result, Err(EventsError::Other(_))));
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_delete_series_closes_open_cohosts_with_one_email_per_group() {
+    // Setup identifiers and one co-host on every occurrence
+    let admin_id = Uuid::new_v4();
+    let cohost_group_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let first_invitation_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let second_invitation_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_locked_event_ids = series_event_ids.clone();
+    let expected_series_event_ids = series_event_ids.clone();
+    let expected_refs = vec![
+        EventCohostRef {
+            cohost_group_id,
+            event_id,
+            invitation_id: first_invitation_id,
+        },
+        EventCohostRef {
+            cohost_group_id,
+            event_id: related_event_id,
+            invitation_id: second_invitation_id,
+        },
+    ];
+    let notification_data = vec![
+        sample_cohost_notification_data(cohost_group_id, event_id, first_invitation_id),
+        sample_cohost_notification_data(cohost_group_id, related_event_id, second_invitation_id),
+    ];
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    let mut sequence = Sequence::new();
+
+    // Setup transaction mock resolving and locking the series
+    let mut tx = MockDB::new();
+    tx.expect_list_event_series_event_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _| Ok(series_event_ids.clone()));
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| {
+            *gid == group_id && event_ids == expected_locked_event_ids.as_slice()
+        })
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
+
+    // Setup the co-host snapshot of every occurrence before the deletion
+    tx.expect_list_event_cohosts()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _| {
+            Ok(sample_cohosts_editor(
+                cohost_group_id,
+                first_invitation_id,
+                EventCohostStatus::Approved,
+            ))
+        });
+    tx.expect_list_event_cohosts()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == related_event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _| {
+            Ok(sample_cohosts_editor(
+                cohost_group_id,
+                second_invitation_id,
+                EventCohostStatus::Pending,
+            ))
+        });
+    tx.expect_delete_event().never();
+    tx.expect_delete_event_series_events()
+        .times(1)
+        .withf(move |uid, gid, event_ids| {
+            *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
+        })
+        .in_sequence(&mut sequence)
+        .returning(|_, _, _| Ok(()));
+
+    // Setup one combined removal email for the co-host group
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .withf(move |items| items == expected_refs.as_slice())
+        .in_sequence(&mut sequence)
+        .returning(move |_| Ok(notification_data.clone()));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .withf(move |gid| *gid == cohost_group_id)
+        .returning(move |_| Ok(vec![admin_id]));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostRemoved)
+                && notification.recipients == vec![admin_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventCohostRemoved>(value.clone()).is_ok_and(|template| {
+                        template.reason == EventCohostRemovalReason::EventDeleted
+                            && template.events.len() == 2
+                    })
+                })
+        })
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let result = manager
+        .delete(&EventActionInput {
+            actor_user_id: user_id,
+            community_id,
+            event_id,
+            group_id,
+            scope: EventActionScope::Series,
+        })
+        .await;
+
+    // Check the workflow succeeded
+    result.unwrap();
+}
+
+#[tokio::test]
 async fn test_delete_series_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1017,21 +1883,35 @@ async fn test_delete_series_success() {
     let related_event_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let series_event_ids = vec![event_id, related_event_id];
+    let expected_locked_event_ids = series_event_ids.clone();
     let expected_series_event_ids = series_event_ids.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_list_event_series_event_ids()
+
+    // Setup transaction mock
+    let mut tx = MockDB::new();
+    tx.expect_list_event_series_event_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(series_event_ids.clone()));
-    db.expect_delete_event().times(0);
-    db.expect_delete_event_series_events()
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| {
+            *gid == group_id && event_ids == expected_locked_event_ids.as_slice()
+        })
+        .returning(|_, _| Ok(()));
+    tx.expect_list_event_cohosts()
+        .times(2)
+        .returning(|_, _| Ok(EventCohostsEditor::default()));
+    tx.expect_delete_event().times(0);
+    tx.expect_delete_event_series_events()
         .times(1)
         .withf(move |uid, gid, event_ids| {
             *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
         })
         .returning(move |_, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
     // Run the workflow through the manager
     let manager = sample_manager(db, None, sample_payments_manager(None));
@@ -1059,10 +1939,21 @@ async fn test_delete_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_delete_event()
+
+    // Setup transaction mock
+    let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
+    tx.expect_list_event_cohosts()
+        .times(1)
+        .returning(|_, _| Ok(EventCohostsEditor::default()));
+    tx.expect_delete_event()
         .times(1)
         .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
     // Run the workflow through the manager
     let manager = sample_manager(db, None, sample_payments_manager(None));
@@ -1903,6 +2794,61 @@ async fn test_publish_validation_skips_external_paid_events() {
 }
 
 #[tokio::test]
+async fn test_reject_cohosting_notifies_owner_admins() {
+    // Setup identifiers and the co-host rejection
+    let cohost_group_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let invitation_id = Uuid::new_v4();
+    let owner_group_id = Uuid::new_v4();
+    let response = sample_cohost_response(cohost_group_id, event_id, invitation_id, owner_group_id);
+    let notification_data =
+        sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+
+    // Setup transaction mock
+    let mut tx = MockDB::new();
+    tx.expect_reject_event_cohost()
+        .times(1)
+        .withf(move |_, gid, iid| *gid == cohost_group_id && *iid == invitation_id)
+        .returning(move |_, _, _| Ok(response));
+    tx.expect_list_group_admin_ids()
+        .times(1)
+        .withf(move |gid| *gid == owner_group_id)
+        .returning(|_| Ok(vec![Uuid::new_v4()]));
+    tx.expect_get_event_cohost_notification_data()
+        .times(1)
+        .returning(move |_| Ok(vec![notification_data.clone()]));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(|notification| {
+            notification.template_data.as_ref().is_some_and(|value| {
+                from_value::<EventCohostResponded>(value.clone())
+                    .is_ok_and(|template| template.status == EventCohostStatus::Rejected)
+            })
+        })
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let result = manager
+        .reject_cohosting(&EventCohostActionInput {
+            actor_user_id: Uuid::new_v4(),
+            cohost_group_id,
+            invitation_id,
+        })
+        .await;
+
+    // Check the workflow succeeded
+    result.unwrap();
+}
+
+#[tokio::test]
 async fn test_unpublish_series_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1972,6 +2918,192 @@ async fn test_unpublish_success() {
 
     // Check the workflow succeeded
     result.unwrap();
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_update_cohosts_syncs_selection_and_notifies_groups() {
+    // Setup identifiers and a changed co-hosts selection
+    let added_group_id = Uuid::new_v4();
+    let added_invitation_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let removed_group_id = Uuid::new_v4();
+    let removed_invitation_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let before = sample_event_summary(event_id, group_id);
+    let after = before.clone();
+    let mut event_form = sample_event_form();
+    event_form.cohost_group_ids = Some(vec![added_group_id]);
+    event_form.cohost_group_ids_present = Some(true);
+    event_form.cohosts_revision = Some(3);
+    let body = serde_qs::to_string(&event_form).unwrap();
+    let added_data = sample_cohost_notification_data(added_group_id, event_id, added_invitation_id);
+    let removed_data =
+        sample_cohost_notification_data(removed_group_id, event_id, removed_invitation_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    let mut sequence = Sequence::new();
+
+    // Setup transaction mock locking groups first and syncing after the update
+    let mut tx = MockDB::new();
+    tx.expect_lock_event_cohost_groups()
+        .times(1)
+        .withf(move |gid, cohost_group_ids| {
+            *gid == group_id && cohost_group_ids == [added_group_id].as_slice()
+        })
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
+    tx.expect_lock_group_events()
+        .times(1)
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
+    tx.expect_get_event_summary().times(2).returning({
+        let mut first_call = true;
+        move |_, _, _| {
+            let result = if first_call {
+                first_call = false;
+                before.clone()
+            } else {
+                after.clone()
+            };
+            Ok(result)
+        }
+    });
+    tx.expect_update_event()
+        .times(1)
+        .withf(|_, _, _, event, _, _| {
+            event.get("cohost_group_ids").is_none() && event.get("cohosts_revision").is_none()
+        })
+        .in_sequence(&mut sequence)
+        .returning(|_, _, _, _, _, _| Ok(false));
+    tx.expect_sync_event_cohosts()
+        .times(1)
+        .withf(move |uid, gid, eid, cohost_group_ids, expected_revision| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && cohost_group_ids == [added_group_id].as_slice()
+                && *expected_revision == 3
+        })
+        .in_sequence(&mut sequence)
+        .returning(move |_, _, _, _, _| {
+            Ok(EventCohostsSync {
+                added: vec![EventCohostRef {
+                    cohost_group_id: added_group_id,
+                    event_id,
+                    invitation_id: added_invitation_id,
+                }],
+                removed: vec![EventCohostRef {
+                    cohost_group_id: removed_group_id,
+                    event_id,
+                    invitation_id: removed_invitation_id,
+                }],
+                revision: 4,
+            })
+        });
+    tx.expect_get_event_cohost_notification_data()
+        .times(2)
+        .returning(move |items| {
+            if items[0].cohost_group_id == added_group_id {
+                Ok(vec![added_data.clone()])
+            } else {
+                Ok(vec![removed_data.clone()])
+            }
+        });
+    tx.expect_get_site_settings()
+        .times(2)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_list_group_admin_ids()
+        .times(2)
+        .returning(|gid| Ok(vec![gid]));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostInvitation)
+                && notification.recipients == vec![added_group_id]
+        })
+        .returning(|_| Ok(()));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostRemoved)
+                && notification.recipients == vec![removed_group_id]
+        })
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let event = parse_event_form(&body);
+    let result = manager
+        .update(&UpdateEventInput {
+            actor_user_id: user_id,
+            community_id,
+            event,
+            event_id,
+            group_id,
+        })
+        .await;
+
+    // Check the workflow succeeded
+    result.unwrap();
+}
+
+#[tokio::test]
+async fn test_update_cohosts_rolls_back_on_rejected_sync() {
+    // Setup identifiers and a stale co-hosts selection
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let before = sample_event_summary(event_id, group_id);
+    let mut event_form = sample_event_form();
+    event_form.cohost_group_ids_present = Some(true);
+    event_form.cohosts_revision = Some(1);
+    let body = serde_qs::to_string(&event_form).unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+
+    // Setup transaction mock whose sync rejects the stale revision
+    let mut tx = MockDB::new();
+    tx.expect_lock_event_cohost_groups()
+        .times(1)
+        .withf(move |gid, cohost_group_ids| *gid == group_id && cohost_group_ids.is_empty())
+        .returning(|_, _| Ok(()));
+    tx.expect_lock_group_events().times(1).returning(|_, _| Ok(()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .returning(move |_, _, _| Ok(before.clone()));
+    tx.expect_update_event()
+        .times(1)
+        .returning(|_, _, _, _, _, _| Ok(false));
+    tx.expect_sync_event_cohosts().times(1).returning(|_, _, _, _, _| {
+        Err(anyhow!(
+            "co-hosts changed since this page was loaded; reload to continue"
+        ))
+    });
+    tx.expect_enqueue_notification().never();
+    expect_rolled_back_transaction(&mut db, tx);
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, sample_payments_manager(None));
+    let event = parse_event_form(&body);
+    let result = manager
+        .update(&UpdateEventInput {
+            actor_user_id: user_id,
+            community_id,
+            event,
+            event_id,
+            group_id,
+        })
+        .await;
+
+    // Check the workflow failed
+    assert!(matches!(result, Err(EventsError::Other(_))));
 }
 
 #[tokio::test]
@@ -3106,6 +4238,72 @@ fn parse_event_form(body: &str) -> EventInput {
         .use_form_encoding(true)
         .deserialize_str(body)
         .expect("event form body to deserialize")
+}
+
+/// Creates co-hosting notification content for one event and co-host group.
+fn sample_cohost_notification_data(
+    cohost_group_id: Uuid,
+    event_id: Uuid,
+    invitation_id: Uuid,
+) -> EventCohostNotificationData {
+    EventCohostNotificationData {
+        canceled: false,
+        cohost_community_display_name: "Co-host Community".to_string(),
+        cohost_group_id,
+        cohost_group_name: "Co-host Group".to_string(),
+        event_id,
+        event_name: "Co-hosted Event".to_string(),
+        invitation_id,
+        owner_community_display_name: "Owner Community".to_string(),
+        owner_community_id: Uuid::new_v4(),
+        owner_group_id: Uuid::new_v4(),
+        owner_group_name: "Owner Group".to_string(),
+        status: EventCohostStatus::Pending,
+        timezone: chrono_tz::UTC,
+
+        starts_at: Some(Utc::now()),
+    }
+}
+
+/// Creates the result of a co-host group responding to an invitation.
+fn sample_cohost_response(
+    cohost_group_id: Uuid,
+    event_id: Uuid,
+    invitation_id: Uuid,
+    owner_group_id: Uuid,
+) -> EventCohostResponse {
+    EventCohostResponse {
+        cohost_group_id,
+        event_id,
+        invitation_id,
+        owner_community_id: Uuid::new_v4(),
+        owner_group_id,
+    }
+}
+
+/// Creates an editor state with one co-host in the given status.
+fn sample_cohosts_editor(
+    cohost_group_id: Uuid,
+    invitation_id: Uuid,
+    status: EventCohostStatus,
+) -> EventCohostsEditor {
+    EventCohostsEditor {
+        cohosts: vec![EventCohostInvitation {
+            community_display_name: "Co-host Community".to_string(),
+            community_name: "cohost-community".to_string(),
+            group_active: true,
+            group_id: cohost_group_id,
+            invitation_id,
+            invited_at: Utc::now(),
+            logo_url: "https://example.test/logo.png".to_string(),
+            name: "Co-host Group".to_string(),
+            slug: "cohost-group".to_string(),
+            status,
+
+            slug_pretty: None,
+        }],
+        revision: 1,
+    }
 }
 
 /// Creates an events manager with the supplied test doubles.

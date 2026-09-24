@@ -3426,6 +3426,429 @@ insert into event_purchase (
     '00000000-0000-0000-0000-00000000c132'
 );
 
+-- ============================================================================
+-- EVENT CO-HOSTING
+-- ============================================================================
+
+-- Inactive cross-community co-host community, activated by the group page contract
+insert into community (
+    active,
+    banner_mobile_url,
+    banner_url,
+    community_id,
+    description,
+    display_name,
+    logo_url,
+    name
+) values (
+    false,
+    'https://example.com/cohost-community-banner-mobile.png',
+    'https://example.com/cohost-community-banner.png',
+    '00000000-0000-0000-0000-00000000d101',
+    'A cross-community co-hosting community used by Rust database contract tests',
+    'Contract Cross Community',
+    'https://example.com/cohost-community-logo.png',
+    'contract-cross-community'
+);
+
+insert into group_category (
+    community_id,
+    group_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000d101',
+    '00000000-0000-0000-0000-00000000d112',
+    'Cross-community co-hosts'
+);
+
+-- Co-host groups in the inactive cross-community community, one per status plus
+-- a lock-order pair, so public listings and counts of the contract community are unchanged
+insert into "group" (
+    active,
+    community_id,
+    group_category_id,
+    group_id,
+    logo_url,
+    name,
+    slug,
+    slug_pretty
+) values
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d021',
+        'https://example.com/cohost-pending-logo.png',
+        'Contract Pending Co-host',
+        'contract-pending-cohost',
+        'pending-cohost'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d022',
+        'https://example.com/cohost-approved-logo.png',
+        'Contract Approved Co-host',
+        'contract-approved-cohost',
+        'approved-cohost'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d023',
+        'https://example.com/cohost-canceled-logo.png',
+        'Contract Canceled Co-host',
+        'contract-canceled-cohost',
+        'canceled-cohost'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d024',
+        'https://example.com/cohost-event-canceled-logo.png',
+        'Contract Event Canceled Co-host',
+        'contract-event-canceled-cohost',
+        'event-canceled-cohost'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d025',
+        'https://example.com/cohost-event-deleted-logo.png',
+        'Contract Event Deleted Co-host',
+        'contract-event-deleted-cohost',
+        'event-deleted-cohost'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d026',
+        'https://example.com/cohost-rejected-logo.png',
+        'Contract Rejected Co-host',
+        'contract-rejected-cohost',
+        'rejected-cohost'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d027',
+        'https://example.com/cohost-removed-logo.png',
+        'Contract Removed Co-host',
+        'contract-removed-cohost',
+        'removed-cohost'
+    ),
+    (
+        false,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d028',
+        'https://example.com/cohost-reinvited-logo.png',
+        'Contract Reinvited Co-host',
+        'contract-reinvited-cohost',
+        'reinvited-cohost'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d029',
+        'https://example.com/cohost-lock-order-low-logo.png',
+        'Contract Lock Order Low Co-host',
+        'contract-lock-order-low-cohost',
+        'lock-order-low-cohost'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d02a',
+        'https://example.com/cohost-lock-order-high-logo.png',
+        'Contract Lock Order High Co-host',
+        'contract-lock-order-high-cohost',
+        'lock-order-high-cohost'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000d101',
+        '00000000-0000-0000-0000-00000000d112',
+        '00000000-0000-0000-0000-00000000d121',
+        null,
+        'Contract Cross-community Co-host',
+        'contract-cross-community-cohost',
+        'cross-community-cohost'
+    );
+
+-- Group admin notified about co-hosting lifecycle changes
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_cohost_admin',
+    'cohost-admin.contract@example.com',
+    true,
+    'Contract Co-host Admin',
+    '00000000-0000-0000-0000-00000000d401',
+    'contract-cohost-admin'
+);
+
+insert into group_team (
+    accepted,
+    created_at,
+    group_id,
+    role,
+    user_id,
+    "order"
+) values
+    (
+        true,
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000d021',
+        'admin',
+        '00000000-0000-0000-0000-00000000d401',
+        1
+    ),
+    (
+        true,
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000d121',
+        'admin',
+        '00000000-0000-0000-0000-00000000d401',
+        1
+    );
+
+insert into event (
+    cohosts_revision,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values
+    (
+        9,
+        'An event with every editable co-host status for contract tests',
+        '2099-10-01 12:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000d201',
+        'hybrid',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Co-host Matrix Event',
+        false,
+        'contract-cohost-matrix-event',
+        '2099-10-01 10:00:00+00',
+        true,
+        'UTC'
+    ),
+    (
+        3,
+        'A canceled event with an event-canceled co-host row for contract tests',
+        '2099-10-02 12:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000d202',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Co-host Canceled Event',
+        false,
+        'contract-cohost-canceled-event',
+        '2099-10-02 10:00:00+00',
+        true,
+        'UTC'
+    ),
+    (
+        4,
+        'A deleted event with an event-deleted co-host row for contract tests',
+        '2099-10-03 12:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000d203',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Co-host Deleted Event',
+        false,
+        'contract-cohost-deleted-event',
+        '2099-10-03 10:00:00+00',
+        true,
+        'UTC'
+    ),
+    (
+        0,
+        'An event without co-hosts that races publication against an invitation',
+        '2099-10-04 12:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000d204',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Co-host Publish Race Event',
+        false,
+        'contract-cohost-publish-race-event',
+        '2099-10-04 10:00:00+00',
+        true,
+        'UTC'
+    ),
+    (
+        0,
+        'An event whose pending co-host is re-invited while an approval waits',
+        '2099-10-05 12:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000d205',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Co-host Re-invite Race Event',
+        false,
+        'contract-cohost-reinvite-race-event',
+        '2099-10-05 10:00:00+00',
+        true,
+        'UTC'
+    );
+
+update event
+set canceled = true
+where event_id = '00000000-0000-0000-0000-00000000d202';
+
+update event
+set
+    deleted = true,
+    deleted_at = '2024-02-03 10:00:00+00'
+where event_id = '00000000-0000-0000-0000-00000000d203';
+
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id,
+    invitation_id,
+    invited_at,
+    invited_by,
+    responded_at,
+    responded_by
+) values
+    (
+        null,
+        'pending',
+        '00000000-0000-0000-0000-00000000d201',
+        '00000000-0000-0000-0000-00000000d021',
+        '00000000-0000-0000-0000-00000000d301',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        null,
+        null
+    ),
+    (
+        '2024-02-02 10:00:00+00',
+        'approved',
+        '00000000-0000-0000-0000-00000000d201',
+        '00000000-0000-0000-0000-00000000d022',
+        '00000000-0000-0000-0000-00000000d302',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        '2024-02-02 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c042'
+    ),
+    (
+        '2024-02-02 10:00:00+00',
+        'canceled',
+        '00000000-0000-0000-0000-00000000d201',
+        '00000000-0000-0000-0000-00000000d023',
+        '00000000-0000-0000-0000-00000000d303',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        '2024-02-03 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c042'
+    ),
+    (
+        null,
+        'rejected',
+        '00000000-0000-0000-0000-00000000d201',
+        '00000000-0000-0000-0000-00000000d026',
+        '00000000-0000-0000-0000-00000000d306',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        '2024-02-02 11:00:00+00',
+        '00000000-0000-0000-0000-00000000c042'
+    ),
+    (
+        '2024-02-02 10:00:00+00',
+        'removed',
+        '00000000-0000-0000-0000-00000000d201',
+        '00000000-0000-0000-0000-00000000d027',
+        '00000000-0000-0000-0000-00000000d307',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        '2024-02-04 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041'
+    ),
+    (
+        null,
+        'pending',
+        '00000000-0000-0000-0000-00000000d201',
+        '00000000-0000-0000-0000-00000000d028',
+        '00000000-0000-0000-0000-00000000d308',
+        '2024-02-10 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        null,
+        null
+    ),
+    (
+        '2024-02-02 10:00:00+00',
+        'approved',
+        '00000000-0000-0000-0000-00000000d201',
+        '00000000-0000-0000-0000-00000000d121',
+        '00000000-0000-0000-0000-00000000d309',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        '2024-02-02 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041'
+    ),
+    (
+        '2024-02-02 10:00:00+00',
+        'event-canceled',
+        '00000000-0000-0000-0000-00000000d202',
+        '00000000-0000-0000-0000-00000000d024',
+        '00000000-0000-0000-0000-00000000d304',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        '2024-02-03 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041'
+    ),
+    (
+        '2024-02-02 10:00:00+00',
+        'event-deleted',
+        '00000000-0000-0000-0000-00000000d203',
+        '00000000-0000-0000-0000-00000000d025',
+        '00000000-0000-0000-0000-00000000d305',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        '2024-02-04 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041'
+    ),
+    (
+        null,
+        'pending',
+        '00000000-0000-0000-0000-00000000d205',
+        '00000000-0000-0000-0000-00000000c021',
+        '00000000-0000-0000-0000-00000000d310',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        null,
+        null
+    );
+
 -- Every remaining event uses a default free tier in the contract fixture
 insert into event_ticket_type (
     event_id,

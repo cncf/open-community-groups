@@ -4,10 +4,7 @@ use anyhow::Result;
 
 use crate::{auth::ExternalUserProfile, db::auth::DBAuth, types::user::UserProvider};
 
-use super::helpers::{
-    activation_id, attendee_id, contract_tests_db, external_lookup_id, external_update_id,
-    organizer_id, pre_registered_id,
-};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]

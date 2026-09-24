@@ -6,11 +6,12 @@ use askama::Template;
 use uuid::Uuid;
 
 use crate::types::dashboard::group::events::{
-    ApprovedSubmissionSummary, CfsSubmissionStatus, EventsTab, GroupEvents,
+    ApprovedSubmissionSummary, CfsSubmissionStatus, EventCohostsEditor, EventsTab, GroupEvents,
 };
 use crate::{
     templates::{filters, helpers::DATE_FORMAT},
     types::{
+        community::CommunitySummary,
         event::{EventCategory, EventFull, EventKindSummary, SessionKindSummary},
         group::GroupSponsor,
         meetings::MeetingProvider,
@@ -32,6 +33,8 @@ pub(crate) struct AddPage {
     pub can_manage_events: bool,
     /// List of available event categories.
     pub categories: Vec<EventCategory>,
+    /// Communities whose groups can be invited to co-host.
+    pub communities: Vec<CommunitySummary>,
     /// List of available event kinds.
     pub event_kinds: Vec<EventKindSummary>,
     /// Group-level external-payments eligibility and window limits.
@@ -113,6 +116,10 @@ pub(crate) struct UpdatePage {
     pub categories: Vec<EventCategory>,
     /// CFS submission status options.
     pub cfs_submission_statuses: Vec<CfsSubmissionStatus>,
+    /// Current co-hosts of the event.
+    pub cohosts: EventCohostsEditor,
+    /// Communities whose groups can be invited to co-host.
+    pub communities: Vec<CommunitySummary>,
     /// Current authenticated user identifier.
     pub current_user_id: Uuid,
     /// Event details to update.
@@ -145,6 +152,11 @@ impl UpdatePage {
     /// Returns true when paid tickets can be configured through Stripe or external payments.
     pub(crate) fn is_paid_ticketing_available(&self) -> bool {
         is_paid_ticketing_available(self.payments_ready, &self.external_payments)
+    }
+
+    /// Returns the number of co-hosts that have not responded yet.
+    pub(crate) fn pending_cohosts_count(&self) -> usize {
+        self.cohosts.pending_count()
     }
 
     /// Returns true when the provided currency code matches the current event currency.

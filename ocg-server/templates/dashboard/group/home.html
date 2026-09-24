@@ -19,6 +19,7 @@
   <script type="module" src="/static/js/dashboard/confirm-actions.js"></script>
   <script type="module" src="/static/js/dashboard/menu-drawer.js"></script>
   <script type="module" src="/static/js/dashboard/event/sessions/section.js"></script>
+  <script type="module" src="/static/js/dashboard/event/cohosts.js"></script>
   <script type="module" src="/static/js/dashboard/event/cfs/actions.js"></script>
   <script type="module" src="/static/js/dashboard/event/sponsors.js"></script>
   <script type="module" src="/static/js/dashboard/event/ticketing.js"></script>
@@ -36,6 +37,7 @@
   <script type="module" src="/static/js/dashboard/group/badge-award-modal.js"></script>
   <script type="module" src="/static/js/dashboard/group/badges.js"></script>
   <script type="module" src="/static/js/dashboard/group/check-in/scanner.js"></script>
+  <script type="module" src="/static/js/dashboard/group/cohosts.js"></script>
   <script type="module" src="/static/js/dashboard/group/event-add.js"></script>
   <script type="module" src="/static/js/dashboard/group/event-update.js"></script>
   <script type="module" src="/static/js/dashboard/group/events-list.js"></script>
@@ -122,6 +124,7 @@
     {% else -%}
       {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = is_check_in_fallback , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden") -}}
     {% endif -%}
+    {{ dashboard::menu_item(name = "Co-hosts", icon = "groups", is_active = content.is_cohosts() , href = "/dashboard/group?tab=cohosts", extra_styles = "max-md:hidden") -}}
     {{ dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds", extra_styles = "max-md:hidden") -}}
   </div>
   {# End events -#}
@@ -170,7 +173,7 @@
          data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
          data-group-name="{{ current_selection.1.name }}"
          data-group-slug="{{ current_selection.1.public_slug() }}"
-         hx-get="/dashboard/group/{%- if content.is_artwork() -%}artwork{%- else if content.is_awards() -%}awards{%- else if content.is_badges() -%}badges{%- else if content.is_check_in() -%}check-in{%- else if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_refunds() -%}refunds{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
+         hx-get="/dashboard/group/{%- if content.is_artwork() -%}artwork{%- else if content.is_awards() -%}awards{%- else if content.is_badges() -%}badges{%- else if content.is_check_in() -%}check-in{%- else if content.is_cohosts() -%}cohosts{%- else if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_refunds() -%}refunds{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
          hx-trigger="refresh-group-dashboard-table"
          hx-swap="innerHTML show:window:top"
          hx-indicator="#dashboard-spinner"

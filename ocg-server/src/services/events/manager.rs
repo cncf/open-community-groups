@@ -11,12 +11,14 @@ use uuid::Uuid;
 
 use crate::{
     config::{HttpServerConfig, MeetingsConfig},
-    db::{DBExt, DBOperations, DynDB},
+    db::{DBExt, DBOperations, DynDB, dashboard::group::EventCohostRef},
     services::{
         notifications::enqueue::{
-            enqueue_event_canceled_notification, enqueue_event_paid_configured_notifications,
-            enqueue_event_published_notifications, enqueue_event_rescheduled_notification,
-            enqueue_event_series_canceled_notifications,
+            enqueue_event_canceled_notification, enqueue_event_cohost_invitation_notifications,
+            enqueue_event_cohost_removed_notifications,
+            enqueue_event_cohost_responded_notification,
+            enqueue_event_paid_configured_notifications, enqueue_event_published_notifications,
+            enqueue_event_rescheduled_notification, enqueue_event_series_canceled_notifications,
             enqueue_event_series_published_notifications,
         },
         payments::{
@@ -24,9 +26,10 @@ use crate::{
             FiscalSponsorReadinessError,
         },
     },
+    templates::notifications::EventCohostRemovalReason,
     types::{
-        dashboard::group::events::{EventActionScope, EventInput},
-        event::EventSummary,
+        dashboard::group::events::{CohostsUpdate, EventActionScope, EventInput},
+        event::{EventCohostStatus, EventSummary},
         meetings::MeetingProvider,
         payments::{
             PaymentConfigurationValidation, TicketTaxBehavior, TicketTaxCalculationMode,
@@ -49,8 +52,14 @@ pub(crate) trait EventsManager {
     /// Returns the created event identifiers with the base event first.
     async fn add(&self, input: &AddEventInput) -> Result<Vec<Uuid>, EventsError>;
 
+    /// Approves a pending co-hosting invitation on behalf of the co-host group.
+    async fn approve_cohosting(&self, input: &EventCohostActionInput) -> Result<(), EventsError>;
+
     /// Cancels the selected event or its whole linked series.
     async fn cancel(&self, input: &EventActionInput) -> Result<(), EventsError>;
+
+    /// Withdraws an approved co-hosting on behalf of the co-host group.
+    async fn cancel_cohosting(&self, input: &EventCohostActionInput) -> Result<(), EventsError>;
 
     /// Checks a saved event's venue with the configured automatic-tax provider.
     async fn check_automatic_tax_readiness(
@@ -73,6 +82,9 @@ pub(crate) trait EventsManager {
 
     /// Publishes the selected event or its whole linked series.
     async fn publish(&self, input: &EventActionInput) -> Result<(), EventsError>;
+
+    /// Rejects a pending co-hosting invitation on behalf of the co-host group.
+    async fn reject_cohosting(&self, input: &EventCohostActionInput) -> Result<(), EventsError>;
 
     /// Unpublishes the selected event or its whole linked series.
     async fn unpublish(&self, input: &EventActionInput) -> Result<(), EventsError>;
@@ -112,6 +124,53 @@ impl PgEventsManager {
             payments_manager,
             server_cfg,
         }
+    }
+
+    /// Records a co-host group's response and notifies the owner group's admins.
+    async fn respond_to_cohosting(
+        &self,
+        input: &EventCohostActionInput,
+        status: EventCohostStatus,
+    ) -> Result<(), EventsError> {
+        let EventCohostActionInput {
+            actor_user_id,
+            cohost_group_id,
+            invitation_id,
+        } = *input;
+        let server_cfg = self.server_cfg.clone();
+
+        // Record the response and enqueue the required notification atomically
+        self.db
+            .as_ref()
+            .transaction(|tx| {
+                Box::pin(async move {
+                    // Apply the co-hosting state transition
+                    let response = match status {
+                        EventCohostStatus::Approved => {
+                            tx.approve_event_cohost(actor_user_id, cohost_group_id, invitation_id)
+                                .await?
+                        }
+                        EventCohostStatus::Canceled => {
+                            tx.cancel_event_cohost(actor_user_id, cohost_group_id, invitation_id)
+                                .await?
+                        }
+                        EventCohostStatus::Rejected => {
+                            tx.reject_event_cohost(actor_user_id, cohost_group_id, invitation_id)
+                                .await?
+                        }
+                        _ => return Err(anyhow!("unsupported co-hosting response: {status}")),
+                    };
+
+                    // Tell the owner group's admins about the response
+                    enqueue_event_cohost_responded_notification(tx, &server_cfg, &response, status)
+                        .await?;
+
+                    Ok(())
+                })
+            })
+            .await?;
+
+        Ok(())
     }
 
     /// Validates the configured group sponsor before paid event configuration is persisted.
@@ -301,11 +360,18 @@ impl EventsManager for PgEventsManager {
 
         // Persist the events and required notifications atomically
         let cfg_max_participants = self.meetings_max_participants.clone();
+        let cohosts_update = event.cohosts_update().filter(|update| !update.group_ids.is_empty());
+        let server_cfg = self.server_cfg.clone();
         let event_ids = self
             .db
             .as_ref()
             .transaction(|tx| {
                 Box::pin(async move {
+                    // Lock the participating groups in a stable order before the owner locks
+                    if let Some(update) = &cohosts_update {
+                        tx.lock_event_cohost_groups(group_id, &update.group_ids).await?;
+                    }
+
                     // Create either a single event or a linked recurring event series
                     let event_ids = if let Some(recurring_event_payloads) = recurring_event_payloads
                     {
@@ -331,6 +397,19 @@ impl EventsManager for PgEventsManager {
                         ]
                     };
 
+                    // Invite the selected co-hosts to every created event
+                    if let Some(update) = &cohosts_update {
+                        invite_new_event_cohosts(
+                            tx,
+                            &server_cfg,
+                            actor_user_id,
+                            group_id,
+                            &event_ids,
+                            &update.group_ids,
+                        )
+                        .await?;
+                    }
+
                     // Enqueue required admin notifications before committing paid events
                     if is_paid_capable {
                         enqueue_event_paid_configured_notifications(
@@ -355,6 +434,11 @@ impl EventsManager for PgEventsManager {
         }
 
         Ok(event_ids)
+    }
+
+    /// [`EventsManager::approve_cohosting`].
+    async fn approve_cohosting(&self, input: &EventCohostActionInput) -> Result<(), EventsError> {
+        self.respond_to_cohosting(input, EventCohostStatus::Approved).await
     }
 
     /// [`EventsManager::cancel`].
@@ -414,6 +498,9 @@ impl EventsManager for PgEventsManager {
                         _ => {}
                     }
 
+                    // Snapshot the open co-hostings the cancellation closes
+                    let cohosts = open_cohost_refs(tx, group_id, &event_ids).await?;
+
                     // Mark the selected event or the whole linked series as canceled
                     match scope {
                         EventActionScope::Series => {
@@ -425,12 +512,26 @@ impl EventsManager for PgEventsManager {
                         }
                     }
 
+                    // Tell the co-host groups their co-hosting ended
+                    enqueue_event_cohost_removed_notifications(
+                        tx,
+                        &server_cfg,
+                        EventCohostRemovalReason::EventCanceled,
+                        &cohosts,
+                    )
+                    .await?;
+
                     Ok(())
                 })
             })
             .await?;
 
         Ok(())
+    }
+
+    /// [`EventsManager::cancel_cohosting`].
+    async fn cancel_cohosting(&self, input: &EventCohostActionInput) -> Result<(), EventsError> {
+        self.respond_to_cohosting(input, EventCohostStatus::Canceled).await
     }
 
     /// [`EventsManager::check_automatic_tax_readiness`].
@@ -470,20 +571,44 @@ impl EventsManager for PgEventsManager {
             scope,
             ..
         } = *input;
+        let server_cfg = self.server_cfg.clone();
 
-        // Delete the selected event or the whole linked series
-        match scope {
-            EventActionScope::Series => {
-                let event_ids =
-                    event_action_ids(self.db.as_ref(), group_id, event_id, scope).await?;
-                self.db
-                    .delete_event_series_events(actor_user_id, group_id, &event_ids)
+        // Delete the events and enqueue the required notifications atomically
+        self.db
+            .as_ref()
+            .transaction(|tx| {
+                Box::pin(async move {
+                    // Resolve and lock the deletion targets
+                    let event_ids = event_action_ids(tx, group_id, event_id, scope).await?;
+                    tx.lock_group_events(group_id, &event_ids).await?;
+
+                    // Snapshot the open co-hostings the deletion closes
+                    let cohosts = open_cohost_refs(tx, group_id, &event_ids).await?;
+
+                    // Delete the selected event or the whole linked series
+                    match scope {
+                        EventActionScope::Series => {
+                            tx.delete_event_series_events(actor_user_id, group_id, &event_ids)
+                                .await?;
+                        }
+                        EventActionScope::This => {
+                            tx.delete_event(actor_user_id, group_id, event_id).await?;
+                        }
+                    }
+
+                    // Tell the co-host groups their co-hosting ended
+                    enqueue_event_cohost_removed_notifications(
+                        tx,
+                        &server_cfg,
+                        EventCohostRemovalReason::EventDeleted,
+                        &cohosts,
+                    )
                     .await?;
-            }
-            EventActionScope::This => {
-                self.db.delete_event(actor_user_id, group_id, event_id).await?;
-            }
-        }
+
+                    Ok(())
+                })
+            })
+            .await?;
 
         Ok(())
     }
@@ -628,6 +753,11 @@ impl EventsManager for PgEventsManager {
         Ok(())
     }
 
+    /// [`EventsManager::reject_cohosting`].
+    async fn reject_cohosting(&self, input: &EventCohostActionInput) -> Result<(), EventsError> {
+        self.respond_to_cohosting(input, EventCohostStatus::Rejected).await
+    }
+
     /// [`EventsManager::unpublish`].
     async fn unpublish(&self, input: &EventActionInput) -> Result<(), EventsError> {
         let EventActionInput {
@@ -656,6 +786,7 @@ impl EventsManager for PgEventsManager {
     }
 
     /// [`EventsManager::update`].
+    #[allow(clippy::too_many_lines)]
     async fn update(&self, input: &UpdateEventInput) -> Result<(), EventsError> {
         let UpdateEventInput {
             actor_user_id,
@@ -722,11 +853,17 @@ impl EventsManager for PgEventsManager {
 
         // Persist the update and required notifications atomically
         let cfg_max_participants = self.meetings_max_participants.clone();
+        let cohosts_update = event.cohosts_update();
         let server_cfg = self.server_cfg.clone();
         self.db
             .as_ref()
             .transaction(|tx| {
                 Box::pin(async move {
+                    // Lock the participating groups in a stable order before the owner locks
+                    if let Some(update) = &cohosts_update {
+                        tx.lock_event_cohost_groups(group_id, &update.group_ids).await?;
+                    }
+
                     // Lock the group and event before loading notification state
                     tx.lock_group_events(group_id, &[event_id]).await?;
 
@@ -744,6 +881,19 @@ impl EventsManager for PgEventsManager {
                             payment_provider,
                         )
                         .await?;
+
+                    // Synchronize the co-hosts and notify the invited and removed groups
+                    if let Some(update) = &cohosts_update {
+                        sync_event_cohosts(
+                            tx,
+                            &server_cfg,
+                            actor_user_id,
+                            group_id,
+                            event_id,
+                            update,
+                        )
+                        .await?;
+                    }
 
                     // Enqueue required admin notification after entering the notifiable paid state
                     if requires_paid_notification {
@@ -820,6 +970,17 @@ pub(crate) struct EventActionInput {
     pub group_id: Uuid,
     /// Whether the action applies to the event or its linked series.
     pub scope: EventActionScope,
+}
+
+/// Parameters used by a co-host group to respond to a co-hosting invitation.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct EventCohostActionInput {
+    /// Co-host group member performing the action.
+    pub actor_user_id: Uuid,
+    /// Selected group responding to the invitation.
+    pub cohost_group_id: Uuid,
+    /// Invitation the action applies to.
+    pub invitation_id: Uuid,
 }
 
 /// Errors returned by event management workflows.
@@ -936,6 +1097,28 @@ async fn event_action_ids(
     }
 }
 
+/// Invites the selected co-hosts to newly created events with one email per group.
+async fn invite_new_event_cohosts(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+    actor_user_id: Uuid,
+    group_id: Uuid,
+    event_ids: &[Uuid],
+    cohost_group_ids: &[Uuid],
+) -> Result<()> {
+    // Create the invitations for every event
+    let mut invitations = Vec::new();
+    for event_id in event_ids {
+        let sync = db
+            .sync_event_cohosts(actor_user_id, group_id, *event_id, cohost_group_ids, 0)
+            .await?;
+        invitations.extend(sync.added);
+    }
+
+    // Enqueue one combined invitation per co-host group
+    enqueue_event_cohost_invitation_notifications(db, server_cfg, &invitations).await
+}
+
 /// Returns whether a normalized event payload contains any positive ticket price.
 fn is_event_payload_paid_capable(event: &serde_json::Value) -> bool {
     event
@@ -956,6 +1139,56 @@ fn is_event_payload_paid_capable(event: &serde_json::Value) -> bool {
                     })
             })
         })
+}
+
+/// Lists the pending and approved co-hostings of the given events.
+async fn open_cohost_refs(
+    db: &dyn DBOperations,
+    group_id: Uuid,
+    event_ids: &[Uuid],
+) -> Result<Vec<EventCohostRef>> {
+    let mut refs = Vec::new();
+    for event_id in event_ids {
+        let editor = db.list_event_cohosts(group_id, *event_id).await?;
+        refs.extend(editor.cohosts.into_iter().map(|cohost| EventCohostRef {
+            cohost_group_id: cohost.group_id,
+            event_id: *event_id,
+            invitation_id: cohost.invitation_id,
+        }));
+    }
+
+    Ok(refs)
+}
+
+/// Synchronizes an event's co-hosts and notifies the invited and removed groups.
+async fn sync_event_cohosts(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+    actor_user_id: Uuid,
+    group_id: Uuid,
+    event_id: Uuid,
+    update: &CohostsUpdate,
+) -> Result<()> {
+    // Apply the selection under the revision and publish lock checks
+    let sync = db
+        .sync_event_cohosts(
+            actor_user_id,
+            group_id,
+            event_id,
+            &update.group_ids,
+            update.expected_revision,
+        )
+        .await?;
+
+    // Notify the newly invited and the removed co-host groups
+    enqueue_event_cohost_invitation_notifications(db, server_cfg, &sync.added).await?;
+    enqueue_event_cohost_removed_notifications(
+        db,
+        server_cfg,
+        EventCohostRemovalReason::Removed,
+        &sync.removed,
+    )
+    .await
 }
 
 /// Selects the events whose publication is announced: previously unpublished,

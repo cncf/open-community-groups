@@ -887,6 +887,137 @@ fn test_delivery_worker_prepare_content_event_canceled() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_cohost_invitation() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "admin@example.test".to_string(),
+        kind: NotificationKind::EventCohostInvitation,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(json!({
+            "cohost_community_display_name": "Cohost Community",
+            "cohost_group_name": "Cohost Group",
+            "events": [
+                {"name": "Co-hosted One", "starts_at": 1_914_724_800, "timezone": "UTC"},
+                {"name": "Co-hosted Two", "timezone": "UTC"}
+            ],
+            "link": "https://example.test/dashboard/group?tab=cohosts",
+            "owner_community_display_name": "Owner Community",
+            "owner_group_name": "Owner Group",
+            "theme": {"primary_color": "#000000"}
+        })),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(
+        subject,
+        "[Cohost Group] Owner Group invited your group to co-host"
+    );
+    assert!(body.contains("Co-hosted One"));
+    assert!(body.contains("Co-hosted Two"));
+    assert!(body.contains("Each event is approved separately."));
+    assert!(body.contains("https://example.test/dashboard/group?tab=cohosts"));
+    assert!(body.contains("your group gets no access to it"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_cohost_removed_for_deleted_events() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "admin@example.test".to_string(),
+        kind: NotificationKind::EventCohostRemoved,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(json!({
+            "cohost_group_name": "Cohost Group",
+            "events": [{"name": "Deleted Event", "timezone": "UTC"}],
+            "owner_community_display_name": "Owner Community",
+            "owner_group_name": "Owner Group",
+            "reason": "event-deleted",
+            "theme": {"primary_color": "#000000"}
+        })),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Cohost Group] Co-hosted events deleted");
+    assert!(body.contains("Deleted Event"));
+    assert!(body.contains("deleted"));
+    assert!(!body.contains("View co-hosted events"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_cohost_removed_by_organizer() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "admin@example.test".to_string(),
+        kind: NotificationKind::EventCohostRemoved,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(json!({
+            "cohost_group_name": "Cohost Group",
+            "events": [{"name": "Removed Event", "timezone": "UTC"}],
+            "link": "https://example.test/dashboard/group?tab=cohosts",
+            "owner_community_display_name": "Owner Community",
+            "owner_group_name": "Owner Group",
+            "reason": "removed",
+            "theme": {"primary_color": "#000000"}
+        })),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(
+        subject,
+        "[Cohost Group] Your group was removed as a co-host"
+    );
+    assert!(body.contains("Removed Event"));
+    assert!(body.contains("View co-hosted events"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_cohost_responded() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "admin@example.test".to_string(),
+        kind: NotificationKind::EventCohostResponded,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(json!({
+            "cohost_community_display_name": "Cohost Community",
+            "cohost_group_name": "Cohost Group",
+            "event": {"name": "Owner Event", "starts_at": 1_914_724_800, "timezone": "UTC"},
+            "link": "https://example.test/dashboard/group?tab=events",
+            "owner_group_name": "Owner Group",
+            "status": "rejected",
+            "theme": {"primary_color": "#000000"}
+        })),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(
+        subject,
+        "[Owner Group] Cohost Group declined co-hosting Owner Event"
+    );
+    assert!(body.contains("rejected co-hosting"));
+    assert!(body.contains("once every co-host has responded"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_event_custom() {
     // Setup notification
     let notification = Notification {
@@ -1050,6 +1181,37 @@ fn test_delivery_worker_prepare_content_event_published() {
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Notification Group"));
     assert!(body.contains("Test Community community"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_published_for_cohost_audience() {
+    // Setup a co-host copy of the notification with credited co-hosts
+    let mut template_data = sample_event_reminder_template_data();
+    template_data["cohost_group_name"] = json!("Cohost Group");
+    template_data["event"]["cohosts"] = json!([{
+        "community_display_name": "Cohost Community",
+        "community_name": "cohost-community",
+        "group_id": "33333333-3333-3333-3333-333333333333",
+        "logo_url": "https://example.com/cohost.png",
+        "name": "Cohost Group",
+        "slug": "cohost-group"
+    }]);
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventPublished,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Cohost Group] New event published");
+    assert!(body.contains("Co-hosted by: Cohost Group"));
+    assert!(body.contains("which co-hosts this event with Notification Group"));
 }
 
 #[test]
@@ -1272,6 +1434,28 @@ fn test_delivery_worker_prepare_content_event_series_published() {
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Notification Group"));
     assert!(body.contains("Test Community community"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_series_published_for_cohost_audience() {
+    // Setup a co-host copy of the aggregate notification
+    let mut template_data = sample_event_series_template_data();
+    template_data["cohost_group_name"] = json!("Cohost Group");
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventSeriesPublished,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Cohost Group] New events published");
+    assert!(body.contains("which co-hosts these events with Notification Group"));
 }
 
 #[test]

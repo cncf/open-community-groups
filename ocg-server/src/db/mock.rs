@@ -433,6 +433,12 @@ mock! {
             user_id: Uuid,
             role: &crate::types::group::GroupRole,
         ) -> Result<()>;
+        async fn approve_event_cohost(
+            &self,
+            actor_user_id: Uuid,
+            cohost_group_id: Uuid,
+            invitation_id: Uuid,
+        ) -> Result<crate::db::dashboard::group::EventCohostResponse>;
         async fn award_badge(
             &self,
             actor_user_id: Uuid,
@@ -456,6 +462,12 @@ mock! {
             user_id: Uuid,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<crate::db::dashboard::group::EventAttendeeCancellationOutcome>;
+        async fn cancel_event_cohost(
+            &self,
+            actor_user_id: Uuid,
+            cohost_group_id: Uuid,
+            invitation_id: Uuid,
+        ) -> Result<crate::db::dashboard::group::EventCohostResponse>;
         async fn cancel_event_series_events(
             &self,
             actor_user_id: Uuid,
@@ -522,6 +534,10 @@ mock! {
             event_id: Uuid,
             cfs_submission_id: Uuid,
         ) -> Result<crate::types::dashboard::group::submissions::CfsSubmissionNotificationData>;
+        async fn get_event_cohost_notification_data(
+            &self,
+            items: &[crate::db::dashboard::group::EventCohostRef],
+        ) -> Result<Vec<crate::db::dashboard::group::EventCohostNotificationData>>;
         async fn get_event_summary_dashboard(
             &self,
             community_id: Uuid,
@@ -585,6 +601,11 @@ mock! {
         async fn list_cfs_submission_statuses_for_review(
             &self,
         ) -> Result<Vec<crate::types::dashboard::group::events::CfsSubmissionStatus>>;
+        async fn list_cohost_group_options(
+            &self,
+            community_id: Uuid,
+            exclude_group_id: Uuid,
+        ) -> Result<Vec<crate::types::event::EventCohostGroup>>;
         async fn list_community_admin_ids(
             &self,
             community_id: Uuid,
@@ -608,6 +629,11 @@ mock! {
             event_id: Uuid,
             filters: &crate::types::dashboard::group::submissions::CfsSubmissionsFilters,
         ) -> Result<crate::types::dashboard::group::submissions::CfsSubmissionsOutput>;
+        async fn list_event_cohosts(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<crate::types::dashboard::group::events::EventCohostsEditor>;
         async fn list_event_kinds(&self)
             -> Result<Vec<crate::types::event::EventKindSummary>>;
         async fn list_event_series_cancelable_event_ids(
@@ -630,6 +656,7 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<Vec<Uuid>>;
+        async fn list_group_admin_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
         async fn list_group_audit_logs(
             &self,
             group_id: Uuid,
@@ -644,6 +671,11 @@ mock! {
             &self,
             group_id: Uuid,
         ) -> Result<Vec<crate::types::dashboard::group::check_in::GroupCheckInEvent>>;
+        async fn list_group_cohosted_events(
+            &self,
+            group_id: Uuid,
+            filters: &crate::types::dashboard::group::cohosts::CohostedEventsFilters,
+        ) -> Result<crate::types::dashboard::group::cohosts::CohostedEventsOutput>;
         async fn list_group_events(
             &self,
             group_id: Uuid,
@@ -687,6 +719,11 @@ mock! {
             &self,
             user_id: &Uuid,
         ) -> Result<Vec<crate::types::dashboard::group::home::UserGroupsByCommunity>>;
+        async fn lock_event_cohost_groups(
+            &self,
+            group_id: Uuid,
+            cohost_group_ids: &[Uuid],
+        ) -> Result<()>;
         async fn lock_events_for_cancellation(
             &self,
             group_id: Uuid,
@@ -713,6 +750,12 @@ mock! {
             payment_provider: Option<crate::types::payments::PaymentProvider>,
             payment_validation: Option<crate::types::payments::PaymentConfigurationValidation>,
         ) -> Result<()>;
+        async fn reject_event_cohost(
+            &self,
+            actor_user_id: Uuid,
+            cohost_group_id: Uuid,
+            invitation_id: Uuid,
+        ) -> Result<crate::db::dashboard::group::EventCohostResponse>;
         async fn reject_event_invitation_request(
             &self,
             actor_user_id: Uuid,
@@ -753,6 +796,14 @@ mock! {
             event_id: Uuid,
             filters: &crate::types::dashboard::group::waitlist::WaitlistFilters,
         ) -> Result<crate::types::dashboard::group::waitlist::WaitlistOutput>;
+        async fn sync_event_cohosts(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            cohost_group_ids: &[Uuid],
+            expected_revision: i32,
+        ) -> Result<crate::db::dashboard::group::EventCohostsSync>;
         async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
             -> Result<()>;
         async fn unpublish_event_series_events(&self, actor_user_id: Uuid, group_id: Uuid, event_ids: &[Uuid])

@@ -17,7 +17,7 @@ use crate::{
         dashboard::{
             group::{
                 DBDashboardGroup, EventAdmissionAllocationOutcome, EventAdmissionAllocationResult,
-                EventAttendeeCancellationStatus, EventAttendeeInvitationInput,
+                EventAttendeeCancellationStatus, EventAttendeeInvitationInput, EventCohostRef,
             },
             user::DBDashboardUser,
         },
@@ -36,6 +36,7 @@ use crate::{
                     AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
                 },
                 check_in::CheckInOutcome,
+                cohosts::CohostedEventsFilters,
                 events::{
                     DiscountCodeInput, EventInput, EventsListFilters, TicketPriceWindowInput,
                     TicketTypeInput,
@@ -50,8 +51,8 @@ use crate::{
             },
         },
         event::{
-            EventAdmissionOfferSource, EventAdmissionOfferStatus, EventDeleteEligibility,
-            EventFull, EventInvitationRequestStatus, EventKind,
+            EventAdmissionOfferSource, EventAdmissionOfferStatus, EventCohostStatus,
+            EventDeleteEligibility, EventFull, EventInvitationRequestStatus, EventKind,
         },
         group::GroupRole,
         payments::{EventPurchaseChargeModel, PaymentProvider},
@@ -59,22 +60,7 @@ use crate::{
     },
 };
 
-use super::helpers::{
-    active_user_badge_id, attendee_id, badge_artwork_id, badge_id, badge_status_list_id,
-    cancelee_id, cancellation_lock_attendee_id, cancellation_lock_event_id, cfs_lock_session_id,
-    cfs_submission_id, check_in_code, claim_group_id, community_id, contract_active_user_badge,
-    contract_badge_snapshot, contract_tests_db, contract_tests_pool, event_category_id, event_id,
-    external_completed_purchase_id, external_completed_user_id, external_event_id,
-    external_pending_purchase_id, external_pending_user_id, financial_recovery_adjustment_job_id,
-    financial_recovery_credit_note_job_id, group_id, group_lock_event_update,
-    group_lock_first_event_id, group_lock_second_event_id, group_sponsor_id, invitation_offer_id,
-    invitation_ticket_type_id, invite_event_id, invitee_id, mutation_event_id, mutation_offer_id,
-    organizer_id, paid_cancellation_purchase_id, paid_cancellation_user_id, paid_event_id,
-    paid_ticket_price_window_id, parse_uuid, pre_registered_id, queue_invite_event_id,
-    queue_invitee_id, refund_reject_buyer_id, refund_reject_purchase_id, request_event_id,
-    requester_id, revoked_user_badge_id, session_proposal_id, status_canceled_user_id,
-    status_declined_user_id, status_event_id, status_expired_user_id, subgroup_id, waitlist_id,
-};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
@@ -104,6 +90,111 @@ async fn db_contracts_accept_event_invitation_request_deserializes() -> Result<(
         allocation.outcome,
         EventAdmissionAllocationOutcome::OfferCreated
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_approve_event_cohost_deserializes() -> Result<()> {
+    // Setup a rolled-back unit of work for the approval
+    let uow = contract_unit_of_work().await?;
+
+    // Approve the pending invitation through the Rust contract
+    let response = uow
+        .approve_event_cohost(
+            cohost_admin_id(),
+            cohost_pending_group_id(),
+            cohost_pending_invitation_id(),
+        )
+        .await?;
+
+    // Check the response identifies the owner of the co-hosted event
+    assert_eq!(response.cohost_group_id, cohost_pending_group_id());
+    assert_eq!(response.event_id, cohost_matrix_event_id());
+    assert_eq!(response.invitation_id, cohost_pending_invitation_id());
+    assert_eq!(response.owner_community_id, community_id());
+    assert_eq!(response.owner_group_id, subgroup_id());
+
+    // Check a replayed approval is rejected as a user-facing error
+    let err = uow
+        .approve_event_cohost(
+            cohost_admin_id(),
+            cohost_pending_group_id(),
+            cohost_pending_invitation_id(),
+        )
+        .await
+        .expect_err("replayed approval should be rejected");
+    assert_user_facing_error(&err, "co-hosting invitation is no longer pending");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_approve_event_cohost_rejects_concurrently_reinvited_invitation() -> Result<()>
+{
+    // Setup owner editor, co-host approval, and probe connections
+    let editor_uow = contract_unit_of_work().await?;
+    let approval_uow = contract_unit_of_work().await?;
+    let probe_client = contract_tests_pool()?.get().await?;
+    let editor_backend_pid: i32 =
+        editor_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let approval_backend_pid: i32 =
+        approval_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+
+    // Remove and re-invite the pending co-host while retaining the event lock
+    let removal = editor_uow
+        .sync_event_cohosts(
+            organizer_id(),
+            subgroup_id(),
+            cohost_reinvite_race_event_id(),
+            &[],
+            0,
+        )
+        .await?;
+    let reinvitation = editor_uow
+        .sync_event_cohosts(
+            organizer_id(),
+            subgroup_id(),
+            cohost_reinvite_race_event_id(),
+            &[group_id()],
+            removal.revision,
+        )
+        .await?;
+    assert_eq!(reinvitation.added.len(), 1);
+    let new_invitation_id = reinvitation.added[0].invitation_id;
+    assert_ne!(new_invitation_id, cohost_reinvite_race_invitation_id());
+
+    // Start approving the old invitation, which resolves before the rotation commits
+    let approval = tokio::spawn(async move {
+        approval_uow
+            .approve_event_cohost(
+                organizer_id(),
+                group_id(),
+                cohost_reinvite_race_invitation_id(),
+            )
+            .await
+    });
+    wait_for_backend_blocker(&probe_client, editor_backend_pid, approval_backend_pid).await?;
+
+    // Commit the re-invitation so the waiting approval observes it
+    Box::new(editor_uow).commit().await?;
+    let err = approval
+        .await?
+        .expect_err("the rotated invitation should not be approved");
+
+    // Check the approval rechecked the invitation under the event lock
+    assert_user_facing_error(&err, "co-hosting invitation not found");
+    let cohost = probe_client
+        .query_one(
+            "select approved_at, event_cohost_status_id, invitation_id from event_cohost where event_id = $1::uuid and group_id = $2::uuid",
+            &[&cohost_reinvite_race_event_id(), &group_id()],
+        )
+        .await?;
+    assert!(cohost.get::<_, Option<DateTime<Utc>>>(0).is_none());
+    assert_eq!(cohost.get::<_, String>(1), "pending");
+    assert_eq!(cohost.get::<_, Uuid>(2), new_invitation_id);
 
     Ok(())
 }
@@ -385,6 +476,39 @@ async fn db_contracts_cancel_event_attendee_attendance_queues_paid_refund_deseri
     assert_eq!(refund.event_purchase_id, paid_cancellation_purchase_id());
     assert_eq!(refund.kind, EventPurchaseRefundKind::AttendanceCancellation);
     assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_cancel_event_cohost_requires_approval() -> Result<()> {
+    // Setup a rolled-back unit of work for the withdrawals
+    let uow = contract_unit_of_work().await?;
+
+    // Withdraw the approved cross-community co-hosting
+    let response = uow
+        .cancel_event_cohost(
+            cohost_admin_id(),
+            cohost_cross_community_group_id(),
+            cohost_cross_community_invitation_id(),
+        )
+        .await?;
+
+    // Check the response deserializes
+    assert_eq!(response.cohost_group_id, cohost_cross_community_group_id());
+    assert_eq!(response.owner_group_id, subgroup_id());
+
+    // Check a pending invitation cannot be withdrawn
+    let err = uow
+        .cancel_event_cohost(
+            cohost_admin_id(),
+            cohost_pending_group_id(),
+            cohost_pending_invitation_id(),
+        )
+        .await
+        .expect_err("pending co-hosting should not be withdrawn");
+    assert_user_facing_error(&err, "co-hosting is not approved");
 
     Ok(())
 }
@@ -815,6 +939,61 @@ async fn db_contracts_get_cfs_submission_notification_data_deserializes() -> Res
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_cohost_notification_data_deserializes() -> Result<()> {
+    // Setup the contract database and the requested pairs
+    let db = contract_tests_db()?;
+    let items = [
+        EventCohostRef {
+            cohost_group_id: cohost_pending_group_id(),
+            event_id: cohost_matrix_event_id(),
+            invitation_id: cohost_pending_invitation_id(),
+        },
+        EventCohostRef {
+            cohost_group_id: cohost_event_deleted_group_id(),
+            event_id: cohost_deleted_event_id(),
+            invitation_id: cohost_event_deleted_invitation_id(),
+        },
+    ];
+
+    // Load the notification content through the Rust contract
+    let data = db.get_event_cohost_notification_data(&items).await?;
+
+    // Check the pending invitation content
+    assert_eq!(data.len(), 2);
+    let pending = data
+        .iter()
+        .find(|item| item.cohost_group_id == cohost_pending_group_id())
+        .expect("pending invitation content to be returned");
+    assert!(!pending.canceled);
+    assert_eq!(
+        pending.cohost_community_display_name,
+        "Contract Cross Community"
+    );
+    assert_eq!(pending.cohost_group_name, "Contract Pending Co-host");
+    assert_eq!(pending.event_name, "Contract Co-host Matrix Event");
+    assert_eq!(pending.invitation_id, cohost_pending_invitation_id());
+    assert_eq!(pending.owner_community_id, community_id());
+    assert_eq!(pending.owner_group_id, subgroup_id());
+    assert_eq!(pending.status, EventCohostStatus::Pending);
+    assert_eq!(pending.timezone.to_string(), "UTC");
+    assert_eq!(
+        pending.starts_at,
+        Some(DateTime::parse_from_rfc3339("2099-10-01T10:00:00Z")?.with_timezone(&Utc))
+    );
+
+    // Check deleted events still return their content
+    let deleted = data
+        .iter()
+        .find(|item| item.cohost_group_id == cohost_event_deleted_group_id())
+        .expect("deleted event content to be returned");
+    assert_eq!(deleted.event_id, cohost_deleted_event_id());
+    assert_eq!(deleted.status, EventCohostStatus::EventDeleted);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_summary_dashboard_deserializes() -> Result<()> {
     // Setup the contract database and event fixture
     let db = contract_tests_db()?;
@@ -1082,6 +1261,33 @@ async fn db_contracts_list_cfs_submission_statuses_for_review_deserializes() -> 
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_cohost_group_options_deserializes() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the community's co-host options excluding the owner group
+    let options = db.list_cohost_group_options(community_id(), group_id()).await?;
+
+    // Check the owner group is excluded and the subgroup is offered
+    assert!(options.iter().all(|option| option.group_id != group_id()));
+    let subgroup = options
+        .iter()
+        .find(|option| option.group_id == subgroup_id())
+        .expect("subgroup to be offered as a co-host");
+    assert_eq!(subgroup.community_name, "contract-community");
+    assert!(!subgroup.logo_url.is_empty());
+
+    // Check inactive communities offer no options
+    let inactive_options = db
+        .list_cohost_group_options(cohost_community_id(), group_id())
+        .await?;
+    assert!(inactive_options.is_empty());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_event_approved_cfs_submissions_deserializes() -> Result<()> {
     // Setup the contract database and event fixture
     let db = contract_tests_db()?;
@@ -1139,6 +1345,67 @@ async fn db_contracts_list_event_cfs_submissions_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_event_cohosts_deserializes() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the editor co-hosts through the Rust contract
+    let editor = db.list_event_cohosts(subgroup_id(), cohost_matrix_event_id()).await?;
+
+    // Check only pending and approved co-hosts are listed
+    assert_eq!(editor.revision, 9);
+    let group_ids = editor
+        .cohosts
+        .iter()
+        .map(|cohost| cohost.group_id)
+        .collect::<Vec<_>>();
+    assert_eq!(group_ids.len(), 4);
+    assert!(group_ids.contains(&cohost_approved_group_id()));
+    assert!(group_ids.contains(&cohost_cross_community_group_id()));
+    assert!(group_ids.contains(&cohost_pending_group_id()));
+    assert!(group_ids.contains(&cohost_reinvited_group_id()));
+
+    // Check the pending invitation fields
+    let pending = editor
+        .cohosts
+        .iter()
+        .find(|cohost| cohost.group_id == cohost_pending_group_id())
+        .expect("pending co-host to be listed");
+    assert_eq!(pending.community_display_name, "Contract Cross Community");
+    assert_eq!(pending.community_name, "contract-cross-community");
+    assert_eq!(pending.invitation_id, cohost_pending_invitation_id());
+    assert_eq!(
+        pending.invited_at,
+        DateTime::parse_from_rfc3339("2024-02-01T10:00:00Z")?
+    );
+    assert_eq!(
+        pending.logo_url,
+        "https://example.com/cohost-pending-logo.png"
+    );
+    assert_eq!(pending.name, "Contract Pending Co-host");
+    assert_eq!(pending.slug, "contract-pending-cohost");
+    assert_eq!(pending.slug_pretty.as_deref(), Some("pending-cohost"));
+    assert_eq!(pending.status, EventCohostStatus::Pending);
+
+    // Check inactive groups are flagged and approved rows keep their status
+    let reinvited = editor
+        .cohosts
+        .iter()
+        .find(|cohost| cohost.group_id == cohost_reinvited_group_id())
+        .expect("reinvited co-host to be listed");
+    assert!(!reinvited.group_active);
+    let approved = editor
+        .cohosts
+        .iter()
+        .find(|cohost| cohost.group_id == cohost_approved_group_id())
+        .expect("approved co-host to be listed");
+    assert_eq!(approved.status, EventCohostStatus::Approved);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_event_kinds_deserializes() -> Result<()> {
     // Setup the contract database
     let db = contract_tests_db()?;
@@ -1150,6 +1417,21 @@ async fn db_contracts_list_event_kinds_deserializes() -> Result<()> {
     assert_eq!(kinds.len(), 3);
     assert_eq!(kinds[0].event_kind_id, "hybrid");
     assert_eq!(kinds[0].display_name, "Hybrid");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_group_admin_ids_returns_group_admins() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the co-host group admins through the Rust contract
+    let admin_ids = db.list_group_admin_ids(cohost_pending_group_id()).await?;
+
+    // Check only the seeded admin is returned
+    assert_eq!(admin_ids, vec![cohost_admin_id()]);
 
     Ok(())
 }
@@ -1198,6 +1480,7 @@ async fn db_contracts_list_group_check_in_events_deserializes() -> Result<()> {
         .iter()
         .find(|event| event.event_id == event_id())
         .expect("future contract event to be available for check-in");
+    assert!(event.cohosts.is_empty());
     assert_eq!(event.event_id, event_id());
     assert!(!event.in_progress);
     assert_eq!(event.kind, EventKind::Hybrid);
@@ -1215,6 +1498,50 @@ async fn db_contracts_list_group_check_in_events_deserializes() -> Result<()> {
         event.location.as_deref(),
         Some("Contract Hall, San Francisco, California, United States")
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_group_cohosted_events_deserializes() -> Result<()> {
+    // Setup the contract database and pagination filters
+    let db = contract_tests_db()?;
+    let filters = CohostedEventsFilters {
+        limit: Some(10),
+        offset: Some(0),
+    };
+
+    // Load the canceled event co-hosting through the Rust contract
+    let output = db
+        .list_group_cohosted_events(cohost_event_canceled_group_id(), &filters)
+        .await?;
+
+    // Check the co-hosted event row
+    assert_eq!(output.total, 1);
+    let event = &output.events[0];
+    assert!(event.canceled);
+    assert_eq!(event.event_id, cohost_canceled_event_id());
+    assert_eq!(event.event_kind, EventKind::Virtual);
+    assert!(!event.event_logo_url.is_empty());
+    assert_eq!(event.event_name, "Contract Co-host Canceled Event");
+    assert_eq!(event.event_slug, "contract-cohost-canceled-event");
+    assert_eq!(event.owner_community_display_name, "Contract Community");
+    assert_eq!(event.owner_community_name, "contract-community");
+    assert!(!event.owner_group_logo_url.is_empty());
+    assert!(!event.published);
+    assert_eq!(event.status, EventCohostStatus::EventCanceled);
+    assert_eq!(event.timezone.to_string(), "UTC");
+    assert!(event.ends_at.is_some());
+    assert!(event.responded_at.is_some());
+    assert!(event.starts_at.is_some());
+
+    // Check deleted events are not listed
+    let deleted_output = db
+        .list_group_cohosted_events(cohost_event_deleted_group_id(), &filters)
+        .await?;
+    assert_eq!(deleted_output.total, 0);
+    assert!(deleted_output.events.is_empty());
 
     Ok(())
 }
@@ -1497,6 +1824,63 @@ async fn db_contracts_list_user_groups_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_lock_event_cohost_groups_locks_in_group_id_order() -> Result<()> {
+    // Setup blocker, helper, and probe connections
+    let pool = contract_tests_pool()?;
+    let blocker_client = pool.get().await?;
+    let probe_client = pool.get().await?;
+    let lock_uow = contract_unit_of_work().await?;
+    let blocker_backend_pid = blocker_client
+        .query_one("select pg_backend_pid()", &[])
+        .await?
+        .get::<_, i32>(0);
+    let lock_backend_pid: i32 = lock_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let high_group_id = cohost_lock_order_high_group_id();
+    let low_group_id = cohost_lock_order_low_group_id();
+
+    // Hold the higher group so the helper stops after its first lock
+    blocker_client.batch_execute("begin").await?;
+    blocker_client
+        .query_one(
+            r#"select group_id from "group" where group_id = $1::uuid for update"#,
+            &[&high_group_id],
+        )
+        .await?;
+
+    // Lock both groups with the higher group as the inviting owner
+    let lock_task = tokio::spawn(async move {
+        lock_uow
+            .lock_event_cohost_groups(high_group_id, &[low_group_id])
+            .await?;
+        Box::new(lock_uow).rollback().await
+    });
+    wait_for_backend_blocker(&probe_client, blocker_backend_pid, lock_backend_pid).await?;
+
+    // Probe whether the helper already holds the lower group
+    probe_client
+        .batch_execute("begin; set local lock_timeout = '250ms'")
+        .await?;
+    let probe_result = probe_client
+        .query_one(
+            r#"select group_id from "group" where group_id = $1::uuid for update"#,
+            &[&low_group_id],
+        )
+        .await;
+
+    // Release the probe and the blocker so the helper can finish
+    probe_client.batch_execute("rollback").await?;
+    blocker_client.batch_execute("rollback").await?;
+    lock_task.await??;
+
+    // Check the lower group is locked first, so crossed invitations cannot deadlock
+    let probe_err = probe_result.expect_err("the lower group should already be locked");
+    assert_eq!(probe_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_lock_group_events_serializes_update() -> Result<()> {
     // Setup independent event-lock and update connections
     let db = contract_tests_db()?;
@@ -1542,6 +1926,114 @@ async fn db_contracts_lock_group_events_serializes_update() -> Result<()> {
         )
         .await?;
     assert!(!updated.get::<_, bool>(0));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_publish_event_rechecks_cohosts_after_concurrent_invitation() -> Result<()> {
+    // Setup owner editor, publisher, and probe connections
+    let editor_uow = contract_unit_of_work().await?;
+    let publish_uow = contract_unit_of_work().await?;
+    let probe_client = contract_tests_pool()?.get().await?;
+    let editor_backend_pid: i32 =
+        editor_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let publish_backend_pid: i32 =
+        publish_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+
+    // Invite a co-host while retaining the event lock
+    let sync = editor_uow
+        .sync_event_cohosts(
+            organizer_id(),
+            subgroup_id(),
+            cohost_publish_race_event_id(),
+            &[group_id()],
+            0,
+        )
+        .await?;
+    assert_eq!(sync.added.len(), 1);
+
+    // Start publishing while the invitation is still uncommitted
+    let publication = tokio::spawn(async move {
+        publish_uow
+            .publish_event(
+                organizer_id(),
+                subgroup_id(),
+                cohost_publish_race_event_id(),
+                None,
+                None,
+            )
+            .await
+    });
+    wait_for_backend_blocker(&probe_client, editor_backend_pid, publish_backend_pid).await?;
+
+    // Commit the invitation so the waiting publication observes it
+    Box::new(editor_uow).commit().await?;
+    let err = publication
+        .await?
+        .expect_err("the committed pending co-host should block publication");
+
+    // Check the publish gate rechecked the co-hosts under the event lock
+    assert_user_facing_error(
+        &err,
+        "co-hosts must respond before the event can be published",
+    );
+    let published = probe_client
+        .query_one(
+            "select published from event where event_id = $1::uuid",
+            &[&cohost_publish_race_event_id()],
+        )
+        .await?
+        .get::<_, bool>(0);
+    assert!(!published);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_publish_event_requires_cohost_responses() -> Result<()> {
+    // Setup a rolled-back unit of work for the publish attempt
+    let uow = contract_unit_of_work().await?;
+
+    // Check the pending co-hosts block publication
+    let err = uow
+        .publish_event(
+            organizer_id(),
+            subgroup_id(),
+            cohost_matrix_event_id(),
+            None,
+            None,
+        )
+        .await
+        .expect_err("pending co-hosts should block publication");
+    assert_user_facing_error(
+        &err,
+        "co-hosts must respond before the event can be published",
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_reject_event_cohost_deserializes() -> Result<()> {
+    // Setup a rolled-back unit of work for the rejection
+    let uow = contract_unit_of_work().await?;
+
+    // Reject the pending invitation through the Rust contract
+    let response = uow
+        .reject_event_cohost(
+            cohost_admin_id(),
+            cohost_pending_group_id(),
+            cohost_pending_invitation_id(),
+        )
+        .await?;
+
+    // Check the response identifies the owner of the co-hosted event
+    assert_eq!(response.event_id, cohost_matrix_event_id());
+    assert_eq!(response.owner_group_id, subgroup_id());
 
     Ok(())
 }
@@ -1892,6 +2384,110 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_sync_event_cohosts_deserializes() -> Result<()> {
+    // Setup a rolled-back unit of work with the co-host community active
+    let uow = contract_unit_of_work().await?;
+    uow.execute(
+        "update community set active = true where community_id = $1::uuid",
+        &[&cohost_community_id()],
+    )
+    .await?;
+
+    // Keep the approved co-host, re-invite the canceled one, drop the rest
+    let sync = uow
+        .sync_event_cohosts(
+            organizer_id(),
+            subgroup_id(),
+            cohost_matrix_event_id(),
+            &[cohost_approved_group_id(), cohost_canceled_group_id()],
+            9,
+        )
+        .await?;
+
+    // Check the added and removed references deserialize with their event
+    assert_eq!(sync.revision, 10);
+    assert_eq!(sync.added.len(), 1);
+    assert_eq!(sync.added[0].cohost_group_id, cohost_canceled_group_id());
+    assert_eq!(sync.added[0].event_id, cohost_matrix_event_id());
+    let removed_group_ids = sync
+        .removed
+        .iter()
+        .map(|reference| reference.cohost_group_id)
+        .collect::<Vec<_>>();
+    assert_eq!(removed_group_ids.len(), 3);
+    assert!(removed_group_ids.contains(&cohost_cross_community_group_id()));
+    assert!(removed_group_ids.contains(&cohost_pending_group_id()));
+    assert!(removed_group_ids.contains(&cohost_reinvited_group_id()));
+    assert!(
+        sync.removed
+            .iter()
+            .all(|reference| reference.event_id == cohost_matrix_event_id())
+    );
+
+    // Check the removed invitation can no longer be approved
+    uow.execute("savepoint removed_invitation", &[]).await?;
+    let err = uow
+        .approve_event_cohost(
+            cohost_admin_id(),
+            cohost_pending_group_id(),
+            cohost_pending_invitation_id(),
+        )
+        .await
+        .expect_err("removed invitation should not be approved");
+    assert_user_facing_error(&err, "co-hosting invitation is no longer pending");
+    uow.execute("rollback to savepoint removed_invitation", &[]).await?;
+
+    // Check a second editor on the old revision is rejected
+    let err = uow
+        .sync_event_cohosts(
+            organizer_id(),
+            subgroup_id(),
+            cohost_matrix_event_id(),
+            &[cohost_approved_group_id()],
+            9,
+        )
+        .await
+        .expect_err("stale co-hosts revision should be rejected");
+    assert_user_facing_error(
+        &err,
+        "co-hosts changed since this page was loaded; reload to continue",
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_sync_event_cohosts_rejects_published_changes() -> Result<()> {
+    // Setup a rolled-back unit of work with the matrix event published
+    let uow = contract_unit_of_work().await?;
+    uow.execute(
+        "update event set published = true where event_id = $1::uuid",
+        &[&cohost_matrix_event_id()],
+    )
+    .await?;
+
+    // Check changing the co-hosts of a published event is rejected
+    let err = uow
+        .sync_event_cohosts(
+            organizer_id(),
+            subgroup_id(),
+            cohost_matrix_event_id(),
+            &[cohost_approved_group_id()],
+            9,
+        )
+        .await
+        .expect_err("published co-hosts should be locked");
+    assert_user_facing_error(
+        &err,
+        "co-hosts cannot be changed while the event is published",
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_update_event_deserializes() -> Result<()> {
     // Setup the contract database and event schedule
     let db = contract_tests_db()?;
@@ -2004,6 +2600,18 @@ async fn db_contracts_update_event_serializes_same_group_mutations() -> Result<(
 }
 
 // Helpers.
+
+/// Asserts a database error is a user-facing rejection with the given message.
+fn assert_user_facing_error(err: &anyhow::Error, message: &str) {
+    let db_err = err
+        .downcast_ref::<tokio_postgres::Error>()
+        .expect("error to come from the database");
+    assert_eq!(db_err.as_db_error().map(DbError::message), Some(message));
+    assert_eq!(
+        db_err.code(),
+        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
+    );
+}
 
 /// Builds the dashboard editor input that echoes a stored paid event: dated
 /// windows as `DateTime<Utc>`, discount codes in reversed order without their

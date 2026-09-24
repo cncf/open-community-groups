@@ -1,0 +1,177 @@
+{% import "macros/badges.html" as badges -%}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{# Refresh co-hosts without losing the page. -#}
+<div id="cohosts-refresh"
+     hx-get="{{ refresh_url }}"
+     hx-trigger="refresh-group-cohosts from:body"
+     hx-push-url="/dashboard/group?tab=cohosts"
+     hx-target="#dashboard-content"
+     hx-swap="innerHTML"></div>
+{# End co-hosts refresh trigger -#}
+
+<div data-group-cohosts-list>
+  {# Co-hosts header -#}
+  {{ dashboard::page_title(title = "Co-hosts", docs_href = "/docs#/guides/group-dashboard?id=co-hosts-partner-events",
+    description = "Review event co-hosting invitations for this group.") -}}
+  {# End co-hosts header -#}
+
+  <div class="my-5 text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = events.len(), total = total, label = "invitation") }}
+  </div>
+
+  <div class="relative overflow-visible">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+           aria-label="Co-hosted events list">
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 py-3 xl:px-5">Event</th>
+          <th scope="col" class="hidden xl:table-cell px-3 py-3 xl:px-5">Owning group</th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 py-3 xl:px-5">Date</th>
+          <th scope="col" class="px-3 py-3 xl:px-5">Status</th>
+          <th scope="col" class="w-[72px] px-3 py-3 text-right xl:px-5">
+            <span class="sr-only">Actions</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if events.is_empty() -%}
+          <tr class="bg-white border-b border-stone-200">
+            <td colspan="3" class="xl:hidden px-8 py-14 text-center">
+              {% include "dashboard/placeholders/group_cohosts_table.html" -%}
+            </td>
+            <td colspan="4"
+                class="hidden xl:table-cell 2xl:hidden px-8 py-14 text-center">
+              {% include "dashboard/placeholders/group_cohosts_table.html" -%}
+            </td>
+            <td colspan="5" class="hidden 2xl:table-cell px-8 py-14 text-center">
+              {% include "dashboard/placeholders/group_cohosts_table.html" -%}
+            </td>
+          </tr>
+        {% else -%}
+          {% for event in events -%}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
+              <th scope="row" class="px-3 py-4 font-medium text-stone-900 xl:px-5">
+                <div class="flex min-w-0 items-center gap-3">
+                  <logo-image image-url="{{ event.event_logo_url }}" size="size-10" placeholder="{{ event.event_name }}">
+                  </logo-image>
+                  <div class="min-w-0">
+                    {% if let Some(public_url) = event.public_url() -%}
+                      <a href="{{ public_url|safe_href }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="block truncate hover:underline"
+                         title="{{ event.event_name }}">{{ event.event_name }}</a>
+                    {% else -%}
+                      <div class="truncate" title="{{ event.event_name }}">{{ event.event_name }}</div>
+                    {% endif -%}
+                    <div class="mt-1 flex flex-wrap items-center gap-1.5 xl:hidden">
+                      {{ badges::event_badge(kind = event.event_kind, extra_styles = Some("px-2.5 py-0.5")) -}}
+                      {% if event.canceled -%}
+                        {{ badges::status_badge(label = "Canceled", canceled = true, published = false) -}}
+                      {% else if event.published -%}
+                        {{ badges::status_badge(label = "Published", canceled = false, published = true) -}}
+                      {% endif -%}
+                    </div>
+                    <div class="mt-1 truncate text-xs text-stone-600 xl:hidden">
+                      {{ event.owner_group_name }} · {{ event.owner_community_display_name }}
+                    </div>
+                    {% if let Some(starts_at) = &event.starts_at -%}
+                      <div class="mt-1 truncate text-xs text-stone-500 2xl:hidden">
+                        {{ starts_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+                      </div>
+                    {% endif -%}
+                  </div>
+                </div>
+              </th>
+              <td class="hidden xl:table-cell px-3 py-4 xl:px-5">
+                <div class="flex min-w-0 items-center gap-3">
+                  <logo-image image-url="{{ event.owner_group_logo_url }}" size="size-9" placeholder="{{ event.owner_group_name }}">
+                  </logo-image>
+                  <div class="min-w-0">
+                    <div class="truncate font-medium text-stone-900">{{ event.owner_group_name }}</div>
+                    <div class="truncate text-xs text-stone-600">{{ event.owner_community_display_name }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="hidden 2xl:table-cell px-3 py-4 whitespace-nowrap xl:px-5">
+                {% if let Some(starts_at) = &event.starts_at -%}
+                  <div class="text-stone-900">{{ starts_at.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
+                  <div class="mt-1 text-xs text-stone-600">{{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}</div>
+                {% else -%}
+                  <span class="text-stone-400">TBD</span>
+                {% endif -%}
+              </td>
+              <td class="px-3 py-4 whitespace-nowrap xl:px-5">
+                {% let status_label = event.status_label() -%}
+                {% if status_label == "Approved" -%}
+                  <span class="custom-badge border-primary-700 bg-primary-50 px-2.5 py-0.5 text-primary-700">{{ status_label }}</span>
+                {% else if status_label == "Pending" -%}
+                  <span class="custom-badge border-amber-700 bg-amber-50 px-2.5 py-0.5 text-amber-800">{{ status_label }}</span>
+                {% else if status_label == "Rejected" -%}
+                  <span class="custom-badge border-red-700 bg-red-50 px-2.5 py-0.5 text-red-700">{{ status_label }}</span>
+                {% else -%}
+                  <span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">{{ status_label }}</span>
+                {% endif -%}
+              </td>
+              <td class="w-[72px] px-3 py-4 text-right xl:px-5">
+                {% if can_manage_cohosts && (event.can_respond() || event.can_cancel()) -%}
+                  <details data-actions-menu class="group relative inline-flex justify-end">
+                    <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                             aria-label="Open co-host actions for {{ event.event_name }}"
+                             title="Open co-host actions">
+                      <span class="svg-icon size-4 icon-vertical-dots" aria-hidden="true"></span>
+                    </summary>
+                    <div class="dropdown absolute end-0 top-8 z-10 w-[210px] rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                      <ul class="text-sm text-stone-700">
+                        {% if event.can_respond() -%}
+                          <li>
+                            <button type="button"
+                                    data-cohost-action="approve"
+                                    data-cohost-url="/dashboard/group/cohosts/{{ event.invitation_id }}/approve"
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                              <span class="svg-icon size-4 icon-check shrink-0 bg-stone-600"
+                                    aria-hidden="true"></span>
+                              <span>Approve</span>
+                            </button>
+                          </li>
+                          <li>
+                            <button type="button"
+                                    data-cohost-action="reject"
+                                    data-cohost-url="/dashboard/group/cohosts/{{ event.invitation_id }}/reject"
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                              <span class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"
+                                    aria-hidden="true"></span>
+                              <span>Reject</span>
+                            </button>
+                          </li>
+                        {% endif -%}
+                        {% if event.can_cancel() -%}
+                          <li>
+                            <button type="button"
+                                    data-cohost-action="cancel"
+                                    data-cohost-url="/dashboard/group/cohosts/{{ event.invitation_id }}/cancel"
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                              <span class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"
+                                    aria-hidden="true"></span>
+                              <span>Cancel co-hosting</span>
+                            </button>
+                          </li>
+                        {% endif -%}
+                      </ul>
+                    </div>
+                  </details>
+                {% endif -%}
+              </td>
+            </tr>
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+
+  {% if total > events.len() -%}
+    {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "cohosts-pagination-") }}
+  {% endif -%}
+</div>

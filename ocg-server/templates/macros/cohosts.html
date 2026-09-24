@@ -1,0 +1,46 @@
+{# Co-hosts line -#}
+{# Plain-text co-host credit used inside event cards, which are links themselves. -#}
+{% macro cohosts_line(cohosts, extra_classes = "") -%}
+  {% if !cohosts.is_empty() -%}
+    {% let names = crate::types::event::cohost_names(cohosts) -%}
+    <span class="mt-1 flex min-w-0 max-w-full items-center gap-1.5 text-[0.75rem]/4 text-stone-500 {{ extra_classes }}"
+          title="Co-hosted with {{ names }}">
+      <span class="svg-icon size-3 shrink-0 bg-stone-400 icon-groups"
+            aria-hidden="true"></span>
+      <span class="truncate">Co-hosted with {{ names }}</span>
+    </span>
+  {% endif -%}
+{% endmacro cohosts_line -%}
+{# End co-hosts line -#}
+
+{# Co-hosts box -#}
+{# Public event page box linking to each co-host group page. -#}
+{% macro cohosts_box(cohosts) -%}
+  {% if !cohosts.is_empty() -%}
+    <div class="rounded-lg border border-stone-200 bg-white px-4 py-3">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
+        <div class="shrink-0 text-base/3 font-semibold uppercase text-stone-400">Co-hosts</div>
+        <ul class="flex min-w-0 flex-wrap gap-2" aria-label="Co-hosts">
+          {% for cohost in cohosts -%}
+            <li class="min-w-0 max-w-full">
+              <a href="/{{ cohost.community_name }}/group/{{ cohost.public_slug() }}"
+                 class="flex min-w-0 max-w-full items-center gap-2 rounded-lg border border-dashed border-stone-200 bg-white py-1.5 pl-1.5 pr-3 text-sm font-medium text-stone-800 hover:border-primary-300 hover:text-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                 title="{{ cohost.name }} ({{ cohost.community_display_name }})"
+                 hx-boost="true"
+                 hx-target="body">
+                <img src="{{ cohost.logo_url }}"
+                     alt=""
+                     class="size-7 shrink-0 rounded object-contain"
+                     width="28"
+                     height="28"
+                     loading="lazy">
+                <span class="truncate">{{ cohost.name|demoji }}</span>
+              </a>
+            </li>
+          {% endfor -%}
+        </ul>
+      </div>
+    </div>
+  {% endif -%}
+{% endmacro cohosts_box -%}
+{# End co-hosts box -#}

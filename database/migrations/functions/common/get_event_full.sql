@@ -12,6 +12,7 @@ returns json as $$
             'attendee_count', coalesce(ea.attendee_count, 0),
             'canceled', e.canceled,
             'category_name', ec.name,
+            'cohosts', event_cohosts_json(e.event_id),
             'created_at', epoch_seconds(e.created_at),
             'description', e.description,
             'event_id', e.event_id,

@@ -11,6 +11,7 @@ returns json as $$
             epoch_seconds(e.starts_at) as starts_at,
             e.timezone,
 
+            event_cohosts_json(e.event_id) as cohosts,
             coalesce(e.logo_url, g.logo_url, c.logo_url) as logo_url,
             nullif(concat_ws(
                 ', ',

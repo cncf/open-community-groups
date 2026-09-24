@@ -2,6 +2,7 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
 {% import "macros/cards.html" as cards -%}
+{% import "macros/cohosts.html" as cohosts -%}
 
 {# Site Explore Events Event Card -#}
 {% block href -%}
@@ -48,6 +49,7 @@
 {%- endblock title %}
 
 {% block inline_details -%}
+  {{ cohosts::cohosts_line(event.cohosts) -}}
   {% if let Some(description_short) = &event.description_short -%}
     <div class="mt-2 hidden md:block">
       <p class="text-[0.8rem]/[1.2rem] text-stone-500 line-clamp-2">{{ description_short|demoji }}</p>

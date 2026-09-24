@@ -4,6 +4,7 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/maps.html" as maps -%}
 {% import "macros/social.html" as social -%}
+{% import "macros/cohosts.html" as cohosts -%}
 
 {% block head_title -%}
   <title>{{ self.preview_title() |demoji }}</title>
@@ -160,7 +161,7 @@
                 <div class="flex items-center justify-between mb-4 min-h-[25px]">
                   <div class="text-base/3 uppercase font-semibold text-stone-400">Next event</div>
                   {% if let Some(next_event_card) = &next_event -%}
-                    <a href="/{{ group.community.name }}/group/{{ next_event_card.event.public_group_slug() }}/event/{{ next_event_card.event.slug }}"
+                    <a href="/{{ next_event_card.event.community_name }}/group/{{ next_event_card.event.public_group_slug() }}/event/{{ next_event_card.event.slug }}"
                        class="btn-secondary-anchor btn-mini"
                        hx-boost="true"
                        hx-target="body">See details</a>
@@ -216,6 +217,7 @@
                       {{ next_event_card.event.name|demoji }}
                     </div>
                   {% endif -%}
+                  {{ cohosts::cohosts_line(next_event_card.event.cohosts, "!mt-3") -}}
 
 {% else -%}
   <div class="flex flex-col gap-3 relative">

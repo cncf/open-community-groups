@@ -35,7 +35,7 @@ describe("dashboard group event add template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert copying is part of details and appears before the event name field.
-    const detailsFormIndex = template.indexOf('<form id="details-form">');
+    const detailsFormIndex = template.indexOf('<form id="details-form" data-event-form>');
     const copySelectorIndex = template.indexOf(
       'button-id="copy-event-selector"',
     );
@@ -105,6 +105,27 @@ describe("dashboard group event add template", () => {
     expect(template).to.include(
       'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0"',
     );
+  });
+
+  it("wires the co-hosts tab and marked editor forms", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('hx-include="form[data-event-form]"');
+    expect(template).to.include('event_form::tab_option(section = "cohosts", label = "Co-hosts")');
+    expect(template).to.include(
+      'event_form::tab_button(section = "cohosts", icon = "groups", label = "Co-hosts")',
+    );
+    expect(template.indexOf('section = "cohosts"')).to.be.greaterThan(
+      template.indexOf('section = "details"'),
+    );
+    expect(template).to.include('<form id="cohosts-form" data-event-form>');
+    expect(template).to.include(
+      "Co-hosts must be added and must respond before the event can be published.",
+    );
+    expect(template).to.include(
+      '<cohosts-selector communities="{{ communities|json }}" selected-cohosts="[]" revision="0" current-group-id="{{ group_id }}"',
+    );
+    expect(template.match(/<form id="[^"]+" data-event-form/gu)).to.have.length(8);
   });
 
   it("initializes the General Admission ticket with 500 seats", async () => {
@@ -260,7 +281,7 @@ describe("dashboard group event add template", () => {
   it("starts free-only ticketing at ticket types without setup guidance", async () => {
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(
-      template.indexOf('<form id="payments-form">'),
+      template.indexOf('<form id="payments-form" data-event-form>'),
       template.indexOf("{# End Tickets Tab -#}"),
     );
 
@@ -287,7 +308,7 @@ describe("dashboard group event add template", () => {
   it("points free-only ticketing at the external payments opt-in for allowlisted groups", async () => {
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(
-      template.indexOf('<form id="payments-form">'),
+      template.indexOf('<form id="payments-form" data-event-form>'),
       template.indexOf("{# End Tickets Tab -#}"),
     );
 
@@ -323,7 +344,7 @@ describe("dashboard group event add template", () => {
     // Load and isolate the ticket form before checking section spacing.
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(
-      template.indexOf('<form id="payments-form">'),
+      template.indexOf('<form id="payments-form" data-event-form>'),
       template.indexOf("{# End Tickets Tab -#}"),
     );
 
@@ -389,7 +410,7 @@ describe("dashboard group event add template", () => {
     // Load and isolate the contributor form before checking section spacing.
     const template = normalizeWhitespace(await loadTemplate());
     const contributorForm = template.slice(
-      template.indexOf('<form id="hosts-sponsors-form">'),
+      template.indexOf('<form id="hosts-sponsors-form" data-event-form>'),
       template.indexOf("{# End Hosts & Speakers Tab -#}"),
     );
 

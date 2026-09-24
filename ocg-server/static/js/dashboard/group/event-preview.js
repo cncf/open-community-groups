@@ -15,15 +15,19 @@ import { resolveUrl } from "/static/js/common/url-utils.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/modals/images-gallery.js";
 import "/static/js/common/users/user-chip.js";
-import { EVENT_PAGE_FORM_IDS } from "/static/js/dashboard/group/event-page-shared.js";
+import { getEventPageFormIds } from "/static/js/dashboard/group/event-page-shared.js";
 
 const PREVIEW_ENDPOINT = "/dashboard/group/events/preview";
 const PREVIEW_BUTTON_ID = "event-preview-button";
 const PREVIEW_MODAL_ROOT_ID = "event-preview-modal-root";
 const LOGIN_PATH = "/log-in";
 const PREVIEW_MODAL_MARKER = "data-event-preview-modal";
-const EVENT_PREVIEW_FORM_IDS = EVENT_PAGE_FORM_IDS.filter((formId) => formId !== "payments-form");
-const EVENT_PREVIEW_CLIENT_RENDERED_FIELDS = new Set(["luma_url", "meetup_url"]);
+const EVENT_PREVIEW_CLIENT_RENDERED_FIELDS = new Set([
+  "cohost_group_ids_present",
+  "cohosts_revision",
+  "luma_url",
+  "meetup_url",
+]);
 const EVENT_PREVIEW_SOCIAL_LINKS = [
   {
     fieldName: "meetup_url",
@@ -110,8 +114,9 @@ const isLoginResponse = (response) => {
  */
 export const buildEventPreviewPayload = (pageRoot) => {
   const payload = new URLSearchParams();
+  const previewFormIds = getEventPageFormIds(pageRoot).filter((formId) => formId !== "payments-form");
 
-  for (const formId of EVENT_PREVIEW_FORM_IDS) {
+  for (const formId of previewFormIds) {
     const form = pageRoot.querySelector?.(`#${formId}`);
     if (!form) {
       continue;
@@ -137,36 +142,45 @@ const collectEventPreviewContext = (pageRoot) => {
   const kindSelect = pageRoot.querySelector?.("#kind_id");
   const categorySelect = pageRoot.querySelector?.("#category_id");
   const sessionsSection = pageRoot.querySelector?.("sessions-section");
+  const cohosts = collectCohosts(
+    pageRoot.querySelector?.("#cohosts-form cohosts-selector")?.getPreviewCohosts?.(),
+  );
 
-  return compactObject({
-    category_label: selectedOptionLabel(categorySelect),
-    community: compactObject({
-      banner_url: firstValue(
-        pageRoot.dataset?.communityBannerUrl,
-        dashboardContent?.dataset?.communityBannerUrl,
+  return {
+    ...compactObject({
+      category_label: selectedOptionLabel(categorySelect),
+      cohosts,
+      community: compactObject({
+        banner_url: firstValue(
+          pageRoot.dataset?.communityBannerUrl,
+          dashboardContent?.dataset?.communityBannerUrl,
+        ),
+        display_name: firstValue(
+          pageRoot.dataset?.communityDisplayName,
+          dashboardContent?.dataset?.communityDisplayName,
+          dashboardContent?.dataset?.community,
+        ),
+        logo_url: firstValue(pageRoot.dataset?.communityLogoUrl, dashboardContent?.dataset?.communityLogoUrl),
+        name: firstValue(pageRoot.dataset?.communityName, dashboardContent?.dataset?.community),
+      }),
+      group: compactObject({
+        banner_url: firstValue(pageRoot.dataset?.groupBannerUrl, dashboardContent?.dataset?.groupBannerUrl),
+        logo_url: firstValue(pageRoot.dataset?.groupLogoUrl, dashboardContent?.dataset?.groupLogoUrl),
+        name: firstValue(pageRoot.dataset?.groupName, dashboardContent?.dataset?.groupName),
+        slug: firstValue(pageRoot.dataset?.groupSlug, dashboardContent?.dataset?.groupSlug),
+      }),
+      hosts: collectPeople(
+        pageRoot.querySelector?.('user-search-selector[field-name="hosts"]')?.selectedUsers,
       ),
-      display_name: firstValue(
-        pageRoot.dataset?.communityDisplayName,
-        dashboardContent?.dataset?.communityDisplayName,
-        dashboardContent?.dataset?.community,
+      kind_label: selectedOptionLabel(kindSelect),
+      sessions: collectSessionContexts(sessionsSection),
+      speakers: collectPeople(
+        pageRoot.querySelector?.('speakers-selector[field-name-prefix="speakers"]')?.selectedSpeakers,
       ),
-      logo_url: firstValue(pageRoot.dataset?.communityLogoUrl, dashboardContent?.dataset?.communityLogoUrl),
-      name: firstValue(pageRoot.dataset?.communityName, dashboardContent?.dataset?.community),
+      sponsors: collectSponsors(pageRoot.querySelector?.("sponsors-section")?.selectedSponsors),
     }),
-    group: compactObject({
-      banner_url: firstValue(pageRoot.dataset?.groupBannerUrl, dashboardContent?.dataset?.groupBannerUrl),
-      logo_url: firstValue(pageRoot.dataset?.groupLogoUrl, dashboardContent?.dataset?.groupLogoUrl),
-      name: firstValue(pageRoot.dataset?.groupName, dashboardContent?.dataset?.groupName),
-      slug: firstValue(pageRoot.dataset?.groupSlug, dashboardContent?.dataset?.groupSlug),
-    }),
-    hosts: collectPeople(pageRoot.querySelector?.('user-search-selector[field-name="hosts"]')?.selectedUsers),
-    kind_label: selectedOptionLabel(kindSelect),
-    sessions: collectSessionContexts(sessionsSection),
-    speakers: collectPeople(
-      pageRoot.querySelector?.('speakers-selector[field-name-prefix="speakers"]')?.selectedSpeakers,
-    ),
-    sponsors: collectSponsors(pageRoot.querySelector?.("sponsors-section")?.selectedSponsors),
-  });
+    cohosts,
+  };
 };
 
 /**
@@ -477,6 +491,7 @@ const appendPreviewFormValue = (payload, name, value) => {
   if (
     !name ||
     name.startsWith("toggle_") ||
+    name.startsWith("cohost_group_ids[") ||
     EVENT_PREVIEW_CLIENT_RENDERED_FIELDS.has(name) ||
     value instanceof File
   ) {
@@ -619,6 +634,22 @@ const collectSponsors = (sponsors) =>
       }),
     )
     .filter((sponsor) => Object.keys(sponsor).length > 0);
+
+/**
+ * Collects co-host selector data into preview context.
+ * @param {unknown} cohosts Raw co-host data.
+ * @returns {Array<Object>} Normalized co-hosts.
+ */
+const collectCohosts = (cohosts) =>
+  readArray(cohosts)
+    .map((cohost) =>
+      compactObject({
+        logo_url: cohost?.logo_url,
+        name: cohost?.name,
+        status: cohost?.status,
+      }),
+    )
+    .filter((cohost) => Object.keys(cohost).length > 0);
 
 /**
  * Returns the first non-empty string from the provided values.

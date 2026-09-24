@@ -86,9 +86,9 @@ use crate::{
 };
 
 pub(crate) use crate::types::tests::{
-    sample_community_summary, sample_event_form, sample_event_full, sample_event_summary,
-    sample_group_category, sample_group_payment_recipient, sample_group_region,
-    sample_group_summary, sample_site_settings,
+    sample_community_summary, sample_event_cohost_group, sample_event_form, sample_event_full,
+    sample_event_summary, sample_group_category, sample_group_payment_recipient,
+    sample_group_region, sample_group_summary, sample_site_settings,
 };
 
 // Helpers.
@@ -785,6 +785,11 @@ pub(crate) fn sample_group_stats() -> GroupDashboardStats {
             per_month: vec![("2024-01".to_string(), 5)],
             running_total: vec![(1, 5)],
             total: 5,
+        },
+        cohosted_events: GroupEventsStats {
+            per_month: vec![("2024-02".to_string(), 1)],
+            running_total: vec![(1, 1)],
+            total: 1,
         },
         events: GroupEventsStats {
             per_month: vec![("2024-01".to_string(), 3)],
