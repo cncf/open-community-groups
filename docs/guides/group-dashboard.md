@@ -337,6 +337,8 @@ Typical flow:
 
 Most organizer time is spent in [Events](/dashboard/group?tab=events ':ignore'): creating drafts,
 publishing, managing CFS, reviewing submissions, and running attendance/check-in flows.
+Group team members can also open it from `Events`, listed under `Group dashboard` in the top-right
+user menu on desktop layouts.
 
 The events list keeps an event in `Upcoming events` until its end time passes. When an event has no
 end time, its start time is used instead. `Past events` contains events whose applicable time has

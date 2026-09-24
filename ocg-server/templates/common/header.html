@@ -155,70 +155,6 @@
               role="separator"
               aria-hidden="true"></li>
 
-          {# Mobile Check-In links -#}
-          <li class="md:hidden" role="none">
-            <a href="/dashboard/user?tab=check-in"
-               hx-boost="true"
-               hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-               role="menuitem">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-events bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Check in</div>
-                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
-              </div>
-            </a>
-          </li>
-
-          {% if user.belongs_to_any_group_team.unwrap_or(false) -%}
-            <li class="md:hidden" role="none">
-              <a href="/dashboard/group?tab=check-in"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-                 role="menuitem">
-                <div class="flex items-center">
-                  <div class="svg-icon size-4 icon-qr-code bg-stone-600"></div>
-                  <div class="ms-2 text-xs/6">Scan attendees</div>
-                  <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
-                </div>
-              </a>
-            </li>
-          {% endif -%}
-          {# End mobile Check-In links -#}
-
-          <li class="hidden md:block" role="none">
-            <a href="/dashboard/user?tab=groups"
-               hx-boost="true"
-               hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-               role="menuitem">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">My Groups</div>
-                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
-              </div>
-            </a>
-          </li>
-
-          <li class="hidden md:block" role="none">
-            <a href="/dashboard/user?tab=events"
-               hx-boost="true"
-               hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-               role="menuitem">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-events bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">My Events</div>
-                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
-              </div>
-            </a>
-          </li>
-
-          <li class="hidden md:block border-t border-stone-200 mt-2 pt-2"
-              role="separator"
-              aria-hidden="true"></li>
-
           {# Dashboard links -#}
           {% if user.belongs_to_community_team.unwrap_or(false) -%}
             <li class="hidden md:block" role="none">
@@ -229,7 +165,7 @@
                  role="menuitem">
                 <div class="flex items-center">
                   <div class="svg-icon size-4 icon-buildings bg-stone-600"></div>
-                  <div class="ms-2 text-xs/6">Community Dashboard</div>
+                  <div class="ms-2 text-xs/6">Community dashboard</div>
                   <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
                 </div>
               </a>
@@ -237,33 +173,107 @@
           {% endif -%}
 
           {% if user.belongs_to_any_group_team.unwrap_or(false) -%}
-            <li class="hidden md:block" role="none">
-              <a href="/dashboard/group"
+            <li role="none">
+              <a id="user-menu-group-dashboard-link"
+                 href="/dashboard/group"
                  hx-boost="true"
                  hx-target="body"
-                 class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                 class="hidden md:inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
                  role="menuitem">
                 <div class="flex items-center">
                   <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
-                  <div class="ms-2 text-xs/6">Group Dashboard</div>
+                  <div class="ms-2 text-xs/6">Group dashboard</div>
                   <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
                 </div>
               </a>
+              <ul role="group" aria-labelledby="user-menu-group-dashboard-link">
+                <li class="md:hidden" role="none">
+                  <a href="/dashboard/group?tab=check-in"
+                     hx-boost="true"
+                     hx-target="body"
+                     class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                     role="menuitem">
+                    <div class="flex items-center">
+                      <div class="svg-icon size-4 icon-qr-code bg-stone-600"></div>
+                      <div class="ms-2 text-xs/6">Scan attendees</div>
+                      <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+                    </div>
+                  </a>
+                </li>
+
+                <li class="hidden md:block" role="none">
+                  <a href="/dashboard/group?tab=events"
+                     hx-boost="true"
+                     hx-target="body"
+                     class="inline-block w-full text-start ps-10 pe-4 py-2 hover:bg-stone-100"
+                     role="menuitem">
+                    <div class="flex items-center">
+                      <div class="svg-icon size-4 icon-calendar bg-stone-600"></div>
+                      <div class="ms-2 text-xs/6">Events</div>
+                      <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+                    </div>
+                  </a>
+                </li>
+              </ul>
             </li>
           {% endif -%}
 
-          <li class="hidden md:block" role="none">
-            <a href="/dashboard/user"
+          <li role="none">
+            <a id="user-menu-user-dashboard-link"
+               href="/dashboard/user"
                hx-boost="true"
                hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               class="hidden md:inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
                role="menuitem">
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-user-small bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">User Dashboard</div>
+                <div class="ms-2 text-xs/6">User dashboard</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
+            <ul role="group" aria-labelledby="user-menu-user-dashboard-link">
+              <li class="md:hidden" role="none">
+                <a href="/dashboard/user?tab=check-in"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-events bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Check in</div>
+                    <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+                  </div>
+                </a>
+              </li>
+
+              <li class="hidden md:block" role="none">
+                <a href="/dashboard/user?tab=groups"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="inline-block w-full text-start ps-10 pe-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">My Groups</div>
+                    <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+                  </div>
+                </a>
+              </li>
+
+              <li class="hidden md:block" role="none">
+                <a href="/dashboard/user?tab=events"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="inline-block w-full text-start ps-10 pe-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-events bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">My Events</div>
+                    <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+                  </div>
+                </a>
+              </li>
+            </ul>
           </li>
           {# End dashboard links -#}
 
