@@ -14,10 +14,11 @@ use crate::{
         payments::{GroupPaymentRecipient, PaymentConfigurationValidation},
     },
     validation::{
-        MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_M,
-        MAX_LEN_S, MAX_PAGINATION_LIMIT, image_url_opt, image_url_vec, trimmed_non_empty,
-        trimmed_non_empty_opt, trimmed_non_empty_tag_vec, url_map_values, valid_group_pretty_slug,
-        valid_latitude, valid_longitude, valid_payment_recipient, web_url_opt,
+        MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME,
+        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_PAGINATION_LIMIT, image_url_opt, image_url_vec,
+        trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_tag_vec, url_map_values,
+        valid_group_pretty_slug, valid_latitude, valid_longitude, valid_payment_recipient,
+        web_url_opt,
     },
 };
 
@@ -73,6 +74,9 @@ pub(crate) struct GroupInput {
     /// Full country name.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub country_name: Option<String>,
+    /// Short description for group listings and previews.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub description_short: Option<String>,
     /// Additional links as key-value pairs.
     #[garde(custom(url_map_values))]
     pub extra_links: Option<BTreeMap<String, String>>,
