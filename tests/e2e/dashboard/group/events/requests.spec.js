@@ -40,11 +40,13 @@ import {
   submitAttendeeInvitation,
   waitForEventSectionRefresh,
 } from "./attendees-helpers.js";
+import { openDetailsSection } from "./event-form-helpers.js";
 import {
   createApprovalRequiredEvent,
   deleteEventFromList,
   openCurrentEventEditorSection,
   openEventUpdateFormByName,
+  waitForEventEditorAfterSave,
 } from "./helpers.js";
 import { expectUserColumnHasRoom, expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
@@ -125,6 +127,42 @@ test.describe("group dashboard requests tab", () => {
       await expect(requestRow).toBeVisible();
       await expect(requestRow).toContainText("Rejected");
 
+      // Search for a missing requester and verify the search empty state is shown.
+      const searchForm = requestsContent.locator("#invitation-requests-search-form");
+      await requestsContent.getByRole("textbox", { name: "Search invitation requests" }).fill("zzzzzzzzzzzz");
+      await waitForActionResponse(
+        organizerGroupPage,
+        () =>
+          searchForm.evaluate((form) => {
+            if (form instanceof HTMLFormElement) {
+              form.requestSubmit();
+            }
+          }),
+        {
+          method: "GET",
+          urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/invitation-requests`,
+        },
+      );
+      await expect(
+        requestsContent.getByRole("row", { name: /No invitation requests found matching your search\./ }),
+      ).toBeVisible();
+
+      // Clear the search and verify the reloaded list keeps every status.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/invitation-requests`) &&
+            new URL(response.url()).searchParams.get("status") === "all" &&
+            response.ok(),
+        ),
+        requestsContent.getByRole("button", { name: "Clear invitation request search" }).click(),
+      ]);
+      await expect(requestsContent.getByRole("button", { name: "Reset status filter" })).toHaveCount(0);
+      await expect(requestRow).toBeVisible();
+
       // Filter by pending status and verify the empty state names the filter.
       await requestsContent.getByLabel("Status filters").click();
       await waitForActionResponse(
@@ -156,6 +194,26 @@ test.describe("group dashboard requests tab", () => {
       await expect(requestRow).toBeVisible();
       await expect(requestRow).toContainText("Rejected");
 
+      // Filter by accepted status and verify the empty state names that filter.
+      await requestsContent.getByLabel("Status filters").click();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () =>
+          requestsContent
+            .locator("#invitation-requests-status-filter")
+            .getByRole("button", { name: "Accepted", exact: true })
+            .click(),
+        {
+          method: "GET",
+          urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/invitation-requests`,
+        },
+      );
+      await expect(
+        requestsContent.getByRole("row", { name: "No accepted invitation requests found." }),
+      ).toBeVisible();
+      await expect(requestsContent.getByRole("button", { name: "Show all statuses" })).toBeVisible();
+      await expect(requestRow).toHaveCount(0);
+
       // Remove the request and verify the reopened editor hides the tab.
       cleanupReviewedInvitationRequest();
       await openEventUpdateFormByName(
@@ -168,6 +226,60 @@ test.describe("group dashboard requests tab", () => {
       await expect(organizerGroupPage.locator('[data-content="invitation-requests"]')).toHaveCount(0);
     } finally {
       // Remove the temporary invitation request.
+      cleanupReviewedInvitationRequest();
+    }
+  });
+
+  test("requests tab status default follows the saved approval setting", async ({ organizerGroupPage }) => {
+    const eventId = TEST_EVENT_IDS.alpha.one;
+    const requestsTab = organizerGroupPage.locator('button[data-section="invitation-requests"]');
+    const requestsUrl = `/dashboard/group/events/${eventId}/invitation-requests`;
+
+    try {
+      // Record a reviewed request so the tab stays while approval is disabled.
+      setupReviewedInvitationRequest();
+
+      // Open the Alpha event editor and verify the tab loads every status.
+      await openEventUpdateFormByName(organizerGroupPage, DISABLED_APPROVAL_EVENT_NAME, eventId);
+      await expect(requestsTab).toHaveAttribute("hx-get", `${requestsUrl}?status=all`);
+
+      // Enable approval, save, and verify the reloaded tab defaults to pending requests.
+      await saveAttendeeApprovalRequired(organizerGroupPage, eventId, true);
+      await expect(requestsTab).toHaveAttribute("hx-get", requestsUrl);
+      let requestsContent = await openCurrentEventEditorSection(
+        organizerGroupPage,
+        eventId,
+        "invitation-requests",
+        "#invitation-requests-content",
+        { tableName: "Invitation requests" },
+      );
+      const requestRow = requestsContent.locator("tr", { hasText: "E2E Member Two" });
+      await expect(requestsContent.getByRole("button", { name: "Reset status filter" })).toBeVisible();
+      await expect(
+        requestsContent.getByRole("row", { name: "No pending invitation requests found." }),
+      ).toBeVisible();
+      await expect(requestRow).toHaveCount(0);
+
+      // Disable approval, save, and verify the reloaded tab lists every status again.
+      await saveAttendeeApprovalRequired(organizerGroupPage, eventId, false);
+      await expect(requestsTab).toHaveAttribute("hx-get", `${requestsUrl}?status=all`);
+      requestsContent = await openCurrentEventEditorSection(
+        organizerGroupPage,
+        eventId,
+        "invitation-requests",
+        "#invitation-requests-content",
+        { tableName: "Invitation requests" },
+      );
+      await expect(requestsContent.getByRole("button", { name: "Reset status filter" })).toHaveCount(0);
+      await expect(requestRow).toBeVisible();
+      await expect(requestRow).toContainText("Rejected");
+    } finally {
+      // Restore the seeded approval setting and remove the temporary request.
+      queryE2eDatabase(`
+        update event
+        set attendee_approval_required = false
+        where event_id = '${eventId}';
+      `);
       cleanupReviewedInvitationRequest();
     }
   });
@@ -279,6 +391,10 @@ test.describe("group dashboard requests tab", () => {
       // Verify the filtered empty result message is shown.
       await expect(noResultsMessage.first()).toBeVisible();
 
+      // Verify the search empty state wins over the pending status reset.
+      await expect(requestsContent.getByRole("button", { name: "Reset status filter" })).toBeVisible();
+      await expect(requestsContent.getByRole("button", { name: "Show all statuses" })).toHaveCount(0);
+
       // Clear the invitation request search filter.
       await requestsContent.getByRole("button", { name: "Clear invitation request search" }).click();
 
@@ -304,8 +420,27 @@ test.describe("group dashboard requests tab", () => {
       await expect(requestsContent.locator("tr", { hasText: "E2E Pending One" })).toBeVisible();
       await expect(requestsContent.locator("tr", { hasText: "E2E Pending Two" })).toBeVisible();
 
-      // Switch the table to all statuses while preserving the active sort.
+      // Filter by rejected status and verify the empty state names that filter.
       await requestsContent.getByLabel("Status filters").click();
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response.url().includes(`/dashboard/group/events/${eventId}/invitation-requests`) &&
+            response.url().includes("sort=name-desc") &&
+            response.url().includes("status=rejected") &&
+            response.ok(),
+        ),
+        requestsContent
+          .locator("#invitation-requests-status-filter")
+          .getByRole("button", { name: "Rejected", exact: true })
+          .click(),
+      ]);
+      await expect(
+        requestsContent.getByRole("row", { name: "No rejected invitation requests found." }),
+      ).toBeVisible();
+
+      // Show all statuses from the empty state while preserving the active sort.
       await Promise.all([
         organizerGroupPage.waitForResponse(
           (response) =>
@@ -315,10 +450,7 @@ test.describe("group dashboard requests tab", () => {
             response.url().includes("status=all") &&
             response.ok(),
         ),
-        requestsContent
-          .locator("#invitation-requests-status-filter")
-          .getByRole("button", { name: "All", exact: true })
-          .click(),
+        requestsContent.getByRole("button", { name: "Show all statuses" }).click(),
       ]);
 
       // Verify resetting status removes the previous badge while keeping sort.
@@ -1381,6 +1513,25 @@ const resetFutureRegistrationWindowRequest = () => {
     where event_id = '${eventId}'
     and user_id = '${TEST_USER_IDS.member1}';
   `);
+};
+
+/** Toggles attendee approval from the details section and waits for the saved editor reload. */
+const saveAttendeeApprovalRequired = async (page, eventId, required) => {
+  await openDetailsSection(page);
+
+  // Flip the approval toggle only when it differs from the requested value.
+  const approvalToggle = page.locator("#toggle_attendee_approval_required");
+  if ((await approvalToggle.isChecked()) !== required) {
+    await page.locator('[data-enrollment-toggle-label="attendee-approval"]').click();
+  }
+  await expect(page.locator("#attendee_approval_required")).toHaveValue(String(required));
+
+  await waitForEventEditorAfterSave(page, () => page.locator("#update-event-button").click(), {
+    eventId,
+    method: "PUT",
+    urlIncludes: `/dashboard/group/events/${eventId}/update`,
+  });
+  await expect(page.locator("#attendee_approval_required")).toHaveValue(String(required));
 };
 
 /** Records an accepted request with an expired approval offer on the Alpha event. */
