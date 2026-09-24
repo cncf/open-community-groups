@@ -808,7 +808,9 @@ test.describe("event attendance", () => {
         const soldOutCard = ticketModal.locator('[data-attendance-role="ticket-type-card"]', {
           hasText: "Limited conference pass",
         });
-        await expect(soldOutCard).toContainText("Sold out");
+        await expect(soldOutCard.locator('[data-attendance-role="ticket-type-status-label"]')).toHaveText(
+          "Sold out (you can join the waiting list)",
+        );
         await soldOutCard.click();
 
         // Seed stale client values that must not cross the waitlist boundary.

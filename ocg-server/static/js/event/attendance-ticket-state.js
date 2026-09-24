@@ -83,12 +83,13 @@ export const deriveTicketCardState = (ticket, meta) => {
     !meta.canceled &&
     meta.registrationWindowOpen &&
     (approvalSelectable || (meta.ticketPurchaseAvailable && purchasable) || waitlistSelectable);
+  const waitlistJoinable = selectable && waitlistSelectable && !meta.attendeeApprovalRequired;
 
   let statusClass = selectable ? "bg-green-500" : "bg-stone-300";
   let statusLabel = purchasable ? "Available now" : "Not on sale";
   if (soldOut) {
     statusClass = "bg-red-500";
-    statusLabel = "Sold out";
+    statusLabel = waitlistJoinable ? "Sold out (you can join the waiting list)" : "Sold out";
   } else if (!meta.registrationWindowOpen) {
     statusLabel = "Registration not open";
   }

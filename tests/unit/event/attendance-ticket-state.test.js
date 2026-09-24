@@ -56,7 +56,49 @@ describe("attendance ticket state", () => {
     expect(state.purchasable).to.equal(false);
     expect(state.soldOut).to.equal(true);
     expect(state.statusClass).to.equal("bg-red-500");
-    expect(state.statusLabel).to.equal("Sold out");
+    expect(state.statusLabel).to.equal("Sold out (you can join the waiting list)");
+  });
+
+  it("keeps the plain sold-out label when the waitlist cannot be joined", () => {
+    const soldOutTicket = { ...defaultTicket, is_sellable_now: false, sold_out: true };
+    const waitlistMeta = { ...defaultMeta, ticketPurchaseAvailable: false, waitlistEnabled: true };
+    const cases = [
+      {
+        name: "waitlist disabled",
+        ticket: soldOutTicket,
+        meta: { ...waitlistMeta, waitlistEnabled: false },
+      },
+      {
+        name: "approval required",
+        ticket: soldOutTicket,
+        meta: { ...waitlistMeta, attendeeApprovalRequired: true },
+      },
+      {
+        name: "event canceled",
+        ticket: soldOutTicket,
+        meta: { ...waitlistMeta, canceled: true },
+      },
+      {
+        name: "registration closed",
+        ticket: soldOutTicket,
+        meta: { ...waitlistMeta, registrationWindowOpen: false },
+      },
+      {
+        name: "inactive ticket",
+        ticket: { ...soldOutTicket, active: false },
+        meta: waitlistMeta,
+      },
+      {
+        name: "ticket without price",
+        ticket: { ...soldOutTicket, current_price_label: "" },
+        meta: waitlistMeta,
+      },
+    ];
+
+    cases.forEach(({ name, ticket, meta }) => {
+      // Verify only the plain sold-out copy is shown.
+      expect(deriveTicketCardState(ticket, meta).statusLabel, name).to.equal("Sold out");
+    });
   });
 
   it("keeps approval selection separate from ticket sales", () => {

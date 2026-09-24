@@ -241,7 +241,9 @@
                                          {% if ticket_type.sold_out %}bg-red-500{% else if ticket_type_selectable %}bg-green-500{% else %}bg-stone-300{% endif %}"></span>
                             <span data-attendance-role="ticket-type-status-label"
                                   class="text-stone-500">
-                              {% if ticket_type.sold_out -%}
+                              {% if ticket_type.sold_out && ticket_type_selectable && event.waitlist_enabled && !event.attendee_approval_required -%}
+                                Sold out (you can join the waiting list)
+                              {% else if ticket_type.sold_out -%}
                                 Sold out
                               {% else if !event.registration_window_is_open() -%}
                                 Registration not open
