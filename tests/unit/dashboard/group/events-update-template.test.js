@@ -203,7 +203,7 @@ describe("dashboard group event update template", () => {
       '<div id="attendees-content" data-group-check-in-root>',
     );
     expect(template).to.include(
-      '{% if show_invitation_requests_tab -%} {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests" hx-trigger="click once" hx-target="#invitation-requests-content"',
+      '{% if show_invitation_requests_tab -%} {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests{% if !event.attendee_approval_required %}?status=all{% endif %}" hx-trigger="click once" hx-target="#invitation-requests-content"',
     );
     expect(template).to.include(
       '{% if show_waitlist_tab -%} {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content"',

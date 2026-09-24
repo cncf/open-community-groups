@@ -120,14 +120,34 @@ test.describe("group dashboard requests tab", () => {
       );
       const requestRow = requestsContent.locator("tr", { hasText: "E2E Member Two" });
 
-      // Verify the default pending filter hides reviewed requests.
-      await expect(requestsContent.getByRole("row", { name: "No invitation requests found." })).toBeVisible();
-      await expect(requestRow).toHaveCount(0);
+      // Verify the tab opens without a status filter and lists the reviewed request.
+      await expect(requestsContent.getByRole("button", { name: "Reset status filter" })).toHaveCount(0);
+      await expect(requestRow).toBeVisible();
+      await expect(requestRow).toContainText("Rejected");
 
-      // Reset the status filter and verify the reviewed request is listed.
+      // Filter by pending status and verify the empty state names the filter.
+      await requestsContent.getByLabel("Status filters").click();
       await waitForActionResponse(
         organizerGroupPage,
-        () => requestsContent.getByRole("button", { name: "Reset status filter" }).click(),
+        () =>
+          requestsContent
+            .locator("#invitation-requests-status-filter")
+            .getByRole("button", { name: "Pending", exact: true })
+            .click(),
+        {
+          method: "GET",
+          urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/invitation-requests`,
+        },
+      );
+      await expect(
+        requestsContent.getByRole("row", { name: "No pending invitation requests found." }),
+      ).toBeVisible();
+      await expect(requestRow).toHaveCount(0);
+
+      // Show all statuses from the empty state and verify the reviewed request returns.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => requestsContent.getByRole("button", { name: "Show all statuses" }).click(),
         {
           method: "GET",
           urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/invitation-requests`,
@@ -718,9 +738,6 @@ test.describe("group dashboard requests tab", () => {
         TEST_EVENT_IDS.alpha.one,
       );
 
-      // Include accepted requests so the expired approval offer is visible.
-      await showAllInvitationRequests(organizerGroupPage, requestsContent, TEST_EVENT_IDS.alpha.one);
-
       // Verify the reissue action is disabled with the approval reason.
       const requestRow = requestsContent.locator("tr", {
         hasText: "E2E Member Two",
@@ -1189,7 +1206,6 @@ test.describe("group dashboard requests tab", () => {
       });
 
       const requestsContent = await openInvitationRequestsTab(organizerGroupPage, event.name, event.eventId);
-      await showAllInvitationRequests(organizerGroupPage, requestsContent, event.eventId);
 
       // Only the approval reason applies, so the sold-out note stays hidden.
       const requestRow = await openRequestActions(requestsContent, "E2E Pending Two");

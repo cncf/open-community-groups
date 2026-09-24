@@ -138,6 +138,30 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).not.to.include("refresh_limit");
   });
 
+  it("offers a status reset when the status filter hides every request", async () => {
+    // Load the invitation requests list template before checking empty state markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify every responsive empty cell uses the shared empty state.
+    expect(
+      template.match(
+        /\{\{ invitation_requests_empty_state\(event, limit, sort, title, status, ts_query\) -\}\}/g,
+      ),
+    ).to.have.length(3);
+
+    // Verify search, status-filtered, and unfiltered empty lists stay distinct.
+    expect(template).to.include(
+      '{% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%} {% else if status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}',
+    );
+    expect(template).to.include(
+      '<span class="text-stone-500">No {{ status }} invitation requests found.</span>',
+    );
+    expect(template).to.include(
+      '{{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_status = false) -}} <input type="hidden" name="status" value="all"> <button type="submit" class="btn-primary-outline btn-mini h-7!">Show all statuses</button>',
+    );
+    expect(template).to.include('<span class="text-stone-500">No invitation requests found.</span>');
+  });
+
   it("shows ticket request offers and exact organizer actions", async () => {
     // Load the invitation requests template before checking offer workflow markup.
     const template = normalizeWhitespace(await loadTemplate());

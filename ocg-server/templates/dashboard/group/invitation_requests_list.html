@@ -224,27 +224,15 @@
           {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
             <td class="2xl:hidden px-8 py-12 text-center" colspan="3">
-              {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
-                {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
-              {% else -%}
-                <span class="text-stone-500">No invitation requests found.</span>
-              {% endif -%}
+              {{ invitation_requests_empty_state(event, limit, sort, title, status, ts_query) -}}
             </td>
             <td class="hidden 2xl:table-cell min-[1920px]:hidden! px-8 py-12 text-center"
                 colspan="5">
-              {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
-                {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
-              {% else -%}
-                <span class="text-stone-500">No invitation requests found.</span>
-              {% endif -%}
+              {{ invitation_requests_empty_state(event, limit, sort, title, status, ts_query) -}}
             </td>
             <td class="hidden min-[1920px]:table-cell px-8 py-12 text-center"
                 colspan="7">
-              {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
-                {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
-              {% else -%}
-                <span class="text-stone-500">No invitation requests found.</span>
-              {% endif -%}
+              {{ invitation_requests_empty_state(event, limit, sort, title, status, ts_query) -}}
             </td>
           </tr>
           {# End empty state -#}
@@ -606,6 +594,28 @@
 {% endif -%}
 {% endmacro invitation_request_status_badge -%}
 {# End invitation request status badge. #}
+
+{# Invitation requests empty state for search, status filter, and empty lists. #}
+{% macro invitation_requests_empty_state(event, limit, sort, title, status, ts_query) -%}
+  {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+    {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
+  {% else if status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}
+    <div class="flex flex-col items-center gap-3">
+      <span class="text-stone-500">No {{ status }} invitation requests found.</span>
+      <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+            hx-target="#invitation-requests-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_status = false) -}}
+        <input type="hidden" name="status" value="all">
+        <button type="submit" class="btn-primary-outline btn-mini h-7!">Show all statuses</button>
+      </form>
+    </div>
+  {% else -%}
+    <span class="text-stone-500">No invitation requests found.</span>
+  {% endif -%}
+{% endmacro invitation_requests_empty_state -%}
+{# End invitation requests empty state. #}
 
 {# Invitation request table state fields for filter, sort, and search forms. #}
 {% macro invitation_requests_table_state_inputs(

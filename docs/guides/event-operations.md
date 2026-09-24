@@ -452,6 +452,8 @@ On the organizer side, the tabs work like this:
   while the waitlist is enabled. When either setting is turned off, its tab
   remains until its list is empty, so organizers can still review past requests
   or remaining waitlist entries.
+- `Requests` opens filtered to pending requests while invitation review is
+  enabled, and shows every status once it is turned off.
 - Lapsed waiting-list or approval outcomes (expired, declined, canceled) are not
   listed once the person is enrolled another way, such as an organizer
   invitation, a registration, a purchase, a new request, or a queue entry.
