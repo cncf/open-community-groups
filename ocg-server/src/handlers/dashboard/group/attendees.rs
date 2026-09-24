@@ -665,6 +665,7 @@ fn build_attendees_csv(
         "Company".to_string(),
         "Title".to_string(),
         "Invited".to_string(),
+        "Enrollment date".to_string(),
         "Payment method".to_string(),
         "Amount".to_string(),
         "Payment deadline".to_string(),
@@ -694,6 +695,7 @@ fn build_attendees_csv(
                 "No"
             }
             .to_string(),
+            csv_timestamp(attendee.created_at),
             csv_payment_method(attendee).to_string(),
             csv_payment_amount(attendee),
             csv_optional_timestamp(attendee.external_payment_deadline),
@@ -716,9 +718,7 @@ fn build_attendees_csv(
 
 /// Formats an optional timestamp for attendee CSV export.
 fn csv_optional_timestamp(value: Option<DateTime<Utc>>) -> String {
-    value
-        .map(|value| value.format("%Y-%m-%d %H:%M UTC").to_string())
-        .unwrap_or_default()
+    value.map(csv_timestamp).unwrap_or_default()
 }
 
 /// Formats a purchase amount for attendee CSV export.
@@ -735,6 +735,11 @@ fn csv_payment_method(attendee: &Attendee) -> &'static str {
         Some(EventPurchaseChargeModel::OcgFree) => "Free",
         None => "",
     }
+}
+
+/// Formats a timestamp for attendee CSV export.
+fn csv_timestamp(value: DateTime<Utc>) -> String {
+    value.format("%Y-%m-%d %H:%M UTC").to_string()
 }
 
 /// Rejects an export whose confirmed attendee count exceeds the supported size.

@@ -138,10 +138,12 @@ export const setupCancelableEvent = ({ groupId }) => {
       '${TEST_USER_IDS.organizer1}',
       current_timestamp + interval '180 days',
       current_timestamp + interval '180 days 2 hours',
-      10,
+      0,
       true
     );
 
+    -- The full tier keeps the enrollment worker from promoting the queued user
+    -- into an admission offer before the test cancels the event.
     insert into event_ticket_type (
       event_ticket_type_id,
       active,
@@ -155,7 +157,7 @@ export const setupCancelableEvent = ({ groupId }) => {
       true,
       '${eventId}',
       1,
-      10,
+      0,
       'General admission',
       'Disposable admission used by E2E notification coverage.'
     );
