@@ -1239,6 +1239,52 @@ insert into event (
     '[]'::jsonb
 );
 
+-- Mixed-tier availability fixtures: one sold-out tier next to one open tier
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, payment_currency_code, published,
+    test_event, starts_at, ends_at, capacity, waitlist_enabled,
+    attendee_approval_required, registration_questions
+) values (
+    '55555555-5555-5555-5555-555555555949',
+    'Mixed Tier Waitlist Lab',
+    'alpha-mixed-tier-waitlist',
+    'Free event with a sold-out tier, an open tier, and the waiting list enabled.',
+    'Mixed-tier waitlist availability coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '119 days',
+    now() + interval '119 days 2 hours',
+    4,
+    true,
+    false,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555950',
+    'Mixed Tier No Waitlist Lab',
+    'alpha-mixed-tier-no-waitlist',
+    'Free event with a sold-out tier, an open tier, and the waiting list disabled.',
+    'Mixed-tier availability coverage without a waiting list.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '120 days',
+    now() + interval '120 days 2 hours',
+    4,
+    false,
+    false,
+    '[]'::jsonb
+);
+
 insert into event (
     event_id, name, slug, description, description_short, timezone,
     event_category_id, event_kind_id, group_id, payment_currency_code, published,

@@ -323,6 +323,16 @@ export const TEST_TICKETING_EVENTS = {
     name: "Migrated Unlimited Capacity Event",
     slug: "alpha-migrated-unlimited-capacity",
   },
+  mixedTierNoWaitlist: {
+    id: "55555555-5555-5555-5555-555555555950",
+    name: "Mixed Tier No Waitlist Lab",
+    slug: "alpha-mixed-tier-no-waitlist",
+  },
+  mixedTierWaitlist: {
+    id: "55555555-5555-5555-5555-555555555949",
+    name: "Mixed Tier Waitlist Lab",
+    slug: "alpha-mixed-tier-waitlist",
+  },
   noAssignableTier: {
     id: "55555555-5555-5555-5555-555555555915",
     name: "No Assignable Invitation Tier Lab",
