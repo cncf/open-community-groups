@@ -35,8 +35,6 @@ import { expectUserColumnHasRoom, expectUserProfileModalFromRow } from "./user-p
 
 const DASHBOARD_WAITLIST_EVENT_NAME = "Dashboard Waitlist Table Lab";
 
-const DISABLED_WAITLIST_EVENT_NAME = "Upcoming In-Person Event";
-
 const PAST_WAITLIST_EVENT_NAME = "Past Event For Filtering";
 
 const SOLD_OUT_CONFLICT_MESSAGE =
@@ -54,16 +52,14 @@ test.describe("group dashboard waitlist tab", () => {
   test("organizer keeps the waitlist tab while a disabled waitlist has entries", async ({
     organizerGroupPage,
   }) => {
-    try {
-      // Queue a member on the Alpha event while its waitlist stays disabled.
-      setupDisabledWaitlistEntry();
+    const event = setupDisabledWaitlistEvent();
 
-      // Open the Alpha event editor.
-      await openEventUpdateFormByName(
-        organizerGroupPage,
-        DISABLED_WAITLIST_EVENT_NAME,
-        TEST_EVENT_IDS.alpha.one,
-      );
+    try {
+      // Queue a member on the full event while its waitlist stays disabled.
+      queueDisabledWaitlistMember(event);
+
+      // Open the event editor.
+      await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
       await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
 
       // Verify both section pickers still offer the waitlist.
@@ -75,40 +71,38 @@ test.describe("group dashboard waitlist tab", () => {
       // Open the waitlist tab and verify the remaining entry is listed.
       const waitlistContent = await openCurrentEventEditorSection(
         organizerGroupPage,
-        TEST_EVENT_IDS.alpha.one,
+        event.eventId,
         "waitlist",
         "#waitlist-content",
         { tableName: "Waitlist entries" },
       );
       await expect(waitlistContent.locator("tr", { hasText: "E2E Member Two" })).toBeVisible();
     } finally {
-      // Remove the temporary waitlist entry.
-      cleanupDisabledWaitlistEntry();
+      // Remove the temporary event graph.
+      cleanupEventsByIds([event.eventId]);
     }
   });
 
   test("organizer loses the waitlist tab once a disabled waitlist is empty", async ({
     organizerGroupPage,
   }) => {
+    const event = setupDisabledWaitlistEvent();
+
     try {
       // Queue a member so the disabled waitlist tab is rendered.
-      setupDisabledWaitlistEntry();
+      queueDisabledWaitlistMember(event);
 
-      // Open the Alpha event editor while the entry still exists.
-      await openEventUpdateFormByName(
-        organizerGroupPage,
-        DISABLED_WAITLIST_EVENT_NAME,
-        TEST_EVENT_IDS.alpha.one,
-      );
+      // Open the event editor while the entry still exists.
+      await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
       await expect(organizerGroupPage.locator('button[data-section="waitlist"]')).toHaveCount(1);
 
       // Remove the last entry before the waitlist tab lazy-loads.
-      cleanupDisabledWaitlistEntry();
+      removeDisabledWaitlistMember(event);
 
       // Open the waitlist tab and verify the disabled empty state.
       const waitlistContent = await openCurrentEventEditorSection(
         organizerGroupPage,
-        TEST_EVENT_IDS.alpha.one,
+        event.eventId,
         "waitlist",
         "#waitlist-content",
       );
@@ -118,20 +112,16 @@ test.describe("group dashboard waitlist tab", () => {
         }),
       ).toBeVisible();
 
-      // Reopen the Alpha event editor and verify the empty disabled waitlist has no tab.
-      await openEventUpdateFormByName(
-        organizerGroupPage,
-        DISABLED_WAITLIST_EVENT_NAME,
-        TEST_EVENT_IDS.alpha.one,
-      );
+      // Reopen the event editor and verify the empty disabled waitlist has no tab.
+      await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
       await expect(organizerGroupPage.locator('button[data-section="waitlist"]')).toHaveCount(0);
       await expect(
         organizerGroupPage.locator('#update-event-section-select option[value="waitlist"]'),
       ).toHaveCount(0);
       await expect(organizerGroupPage.locator('[data-content="waitlist"]')).toHaveCount(0);
     } finally {
-      // Remove the temporary waitlist entry if the test stopped early.
-      cleanupDisabledWaitlistEntry();
+      // Remove the temporary event graph.
+      cleanupEventsByIds([event.eventId]);
     }
   });
 
@@ -905,15 +895,6 @@ test.describe("group dashboard waitlist tab", () => {
   });
 });
 
-/** Removes the temporary queue entry used by disabled waitlist tab coverage. */
-const cleanupDisabledWaitlistEntry = () => {
-  queryE2eDatabase(`
-    delete from event_waitlist
-    where event_id = '${TEST_EVENT_IDS.alpha.one}'
-    and user_id = '${TEST_USER_IDS.member2}';
-  `);
-};
-
 /** Opens the dashboard waitlist tab and returns its content region. */
 const openDashboardWaitlist = async (page, query = "") => {
   await navigateToPath(page, "/dashboard/group?tab=events");
@@ -981,6 +962,32 @@ const openWaitlistTab = async (page, eventName, eventId, { past = false, query =
   return waitlistContent;
 };
 
+/**
+ * Fills the only seat and queues a member on a disabled waitlist event.
+ * The full tier keeps the enrollment worker from promoting the queued member.
+ * @param {{ eventId: string, ticketTypeIds: Record<string, string> }} event - Owned event.
+ */
+const queueDisabledWaitlistMember = (event) => {
+  holdSeat(event, "general", TEST_USER_IDS.admin1);
+  setupTicketWaitlistEntry({
+    eventId: event.eventId,
+    ticketTypeId: event.ticketTypeIds.general,
+    userId: TEST_USER_IDS.member2,
+  });
+};
+
+/**
+ * Removes the queued member from a disabled waitlist event.
+ * @param {{ eventId: string }} event - Owned event.
+ */
+const removeDisabledWaitlistMember = (event) => {
+  queryE2eDatabase(`
+    delete from event_waitlist
+    where event_id = '${event.eventId}'
+    and user_id = '${TEST_USER_IDS.member2}';
+  `);
+};
+
 /** Restores the invite lab waitlist fixtures mutated by organizer invitations. */
 const restoreWaitlistInviteFixtures = (notificationSnapshot) => {
   queryE2eDatabase(`
@@ -1008,24 +1015,15 @@ const restoreWaitlistInviteFixtures = (notificationSnapshot) => {
   `);
 };
 
-/** Queues a member on the Alpha event without enabling its waitlist. */
-const setupDisabledWaitlistEntry = () => {
-  queryE2eDatabase(`
-    insert into event_waitlist (event_id, event_ticket_type_id, user_id)
-    values (
-      '${TEST_EVENT_IDS.alpha.one}',
-      (
-        select event_ticket_type_id
-        from event_ticket_type
-        where event_id = '${TEST_EVENT_IDS.alpha.one}'
-        order by "order"
-        limit 1
-      ),
-      '${TEST_USER_IDS.member2}'
-    )
-    on conflict do nothing;
-  `);
-};
+/**
+ * Creates a one-seat event whose waitlist is disabled.
+ * @returns {{ eventId: string, name: string, ticketTypeIds: Record<string, string> }}
+ */
+const setupDisabledWaitlistEvent = () =>
+  setupTicketAllocationEvent({
+    groupId: TEST_GROUP_IDS.community1.alpha,
+    ticketTypes: [{ key: "general", seats: 1, title: "General admission" }],
+  });
 
 /** Returns a promise for the waitlist table refresh triggered by a completed action. */
 const waitForWaitlistRefresh = (page, eventId) =>
