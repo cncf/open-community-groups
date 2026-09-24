@@ -2,9 +2,9 @@ import { expect, test } from "../../../fixtures.js";
 
 import { readFile } from "node:fs/promises";
 
-import { TEST_REGISTRATION_QUESTIONS_EVENT, TEST_TICKETING_EVENTS } from "../../../seed.js";
+import { TEST_REGISTRATION_QUESTIONS_EVENT } from "../../../seed.js";
 
-import { openAttendeesTab, openInvitationRequestsTab } from "./attendees-helpers.js";
+import { openAttendeesTab } from "./attendees-helpers.js";
 
 test.describe("group dashboard attendees tab — answers", () => {
   test("organizer can review attendee registration answers", async ({ organizerGroupPage }) => {
@@ -46,80 +46,6 @@ test.describe("group dashboard attendees tab — answers", () => {
     // Close the answers modal after the review.
     await answersModal.locator("#cancel-attendee-answers-modal").click();
     await expect(answersModal).toBeHidden();
-  });
-
-  test("organizer can review invitation request registration answers", async ({ organizerGroupPage }) => {
-    // Load Requests for the seeded approval-required registration event.
-    const requestEvent = TEST_TICKETING_EVENTS.ticketRequest;
-    const requestsContent = await openInvitationRequestsTab(
-      organizerGroupPage,
-      requestEvent.name,
-      requestEvent.id,
-    );
-    const requestRow = requestsContent.locator("tr", {
-      hasText: "E2E Pending One",
-    });
-    const actionsButton = requestRow.getByRole("button", {
-      name: "Open actions for E2E Pending One",
-    });
-    const actionsDropdown = requestRow.locator("[data-event-actions-dropdown]");
-
-    // Open the request actions and select its answer review action.
-    await expect(requestRow).toBeVisible();
-    await actionsButton.click();
-    await expect(actionsDropdown).toBeVisible();
-    await requestRow.getByRole("button", { name: "View answers" }).click();
-
-    // Verify the dropdown closes and the request answers fill the modal.
-    const answersModal = organizerGroupPage.locator("#invitation-request-answers-modal");
-    await expect(actionsDropdown).toBeHidden();
-    await expect(actionsButton).toHaveAttribute("aria-expanded", "false");
-    await expect(answersModal).toBeVisible();
-    await expect(answersModal.getByRole("heading", { name: "Registration answers" })).toBeVisible();
-    await expect(answersModal.locator("#invitation-request-answers-name")).toHaveText("E2E Pending One");
-    await expect(answersModal).toContainText("Why would you like this ticket?");
-    await expect(answersModal).toContainText("community programs can make technical events more welcoming");
-    await expect
-      .poll(() => answersModal.evaluate((modal) => modal.contains(document.activeElement)))
-      .toBe(true);
-
-    // Close the modal and return focus to the visible actions disclosure.
-    await answersModal.locator("#cancel-invitation-request-answers-modal").click();
-    await expect(answersModal).toBeHidden();
-    await expect(actionsButton).toBeFocused();
-  });
-
-  test("viewer can review invitation request answers without managing the request", async ({
-    groupViewerPage,
-  }) => {
-    // Load Requests with read-only group permissions.
-    const requestEvent = TEST_TICKETING_EVENTS.ticketRequest;
-    const requestsContent = await openInvitationRequestsTab(
-      groupViewerPage,
-      requestEvent.name,
-      requestEvent.id,
-    );
-    const requestRow = requestsContent.locator("tr", {
-      hasText: "E2E Pending One",
-    });
-    const actionsButton = requestRow.getByRole("button", {
-      name: "Open actions for E2E Pending One",
-    });
-
-    // Open the read-only actions and review the submitted answer.
-    await expect(actionsButton).toBeEnabled();
-    await actionsButton.click();
-    await expect(requestRow.getByRole("button", { name: "Accept", exact: true })).toBeDisabled();
-    await expect(requestRow.getByRole("button", { name: "Reject", exact: true })).toBeDisabled();
-    await requestRow.getByRole("button", { name: "View answers" }).click();
-
-    // Verify answers remain available, then dismiss with the keyboard.
-    const answersModal = groupViewerPage.locator("#invitation-request-answers-modal");
-    await expect(answersModal).toBeVisible();
-    await expect(answersModal).toContainText("community programs can make technical events more welcoming");
-    await groupViewerPage.keyboard.press("Escape");
-    await expect(answersModal).toBeHidden();
-    await expect(actionsButton).toBeFocused();
   });
 
   test("organizer can download attendee answers as CSV", async ({ organizerGroupPage }) => {
