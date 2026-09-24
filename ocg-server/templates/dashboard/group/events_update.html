@@ -197,7 +197,7 @@
       {% let attendees_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content" hx-swap="innerHTML" hx-indicator="#attendees-loading"{%- endlet %}
     {{ event_form::tab_button(section = "attendees", icon = "attendees", label = "Attendees", extra_attrs = attendees_attrs) -}}
     {% if show_invitation_requests_tab -%}
-      {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests" hx-trigger="click once" hx-target="#invitation-requests-content" hx-swap="innerHTML" hx-indicator="#invitation-requests-loading"{%- endlet %}
+      {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests{% if !event.attendee_approval_required %}?status=all{% endif %}" hx-trigger="click once" hx-target="#invitation-requests-content" hx-swap="innerHTML" hx-indicator="#invitation-requests-loading"{%- endlet %}
     {{ event_form::tab_button(section = "invitation-requests", icon = "request-invitation", label = "Requests", extra_attrs = invitation_requests_attrs) -}}
   {% endif -%}
   {% if show_waitlist_tab -%}

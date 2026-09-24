@@ -331,6 +331,87 @@ async fn test_list_page_rejects_pagination_limit_above_maximum() {
 }
 
 #[tokio::test]
+async fn test_list_page_shows_status_reset_when_status_filtered_list_is_empty() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id, group_id);
+    let output = InvitationRequestsOutput {
+        invitation_requests: vec![],
+        total: 0,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    db.expect_get_event_summary_dashboard()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_search_event_invitation_requests()
+        .times(1)
+        .withf(move |gid, eid, filters| {
+            *gid == group_id
+                && *eid == event_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+                && filters.status == InvitationRequestsStatusFilter::Pending
+                && filters.ts_query.is_none()
+        })
+        .returning(move |_, _, _| Ok(output.clone()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/invitation-requests"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+
+    // Check the empty state names the status filter and offers a reset
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("No pending invitation requests found."));
+    assert!(body.contains("Show all statuses"));
+    assert!(!body.contains("No invitation requests found."));
+}
+
+#[tokio::test]
 async fn test_list_page_steps_back_to_last_page_when_offset_is_past_end() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -501,6 +582,10 @@ async fn test_list_page_with_all_status_filter() {
     );
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("status=all"));
+
+    // Check the empty list does not offer a status reset
+    assert!(body.contains("No invitation requests found."));
+    assert!(!body.contains("Show all statuses"));
 }
 
 #[tokio::test]

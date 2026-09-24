@@ -439,6 +439,9 @@ async fn test_update_page_shows_enabled_invitation_requests_tab_without_search()
     assert!(body.contains("<option value=\"invitation-requests\""));
     assert!(body.contains("data-section=\"invitation-requests\""));
     assert!(body.contains("data-content=\"invitation-requests\""));
+    assert!(body.contains(&format!(
+        "hx-get=\"/dashboard/group/events/{event_id}/invitation-requests\""
+    )));
     assert!(!body.contains("<option value=\"waitlist\""));
     assert!(!body.contains("data-section=\"waitlist\""));
     assert!(!body.contains("data-content=\"waitlist\""));
@@ -520,6 +523,11 @@ async fn test_update_page_shows_enrollment_tabs_while_rows_remain() {
     assert!(body.contains("<option value=\"invitation-requests\""));
     assert!(body.contains("data-section=\"invitation-requests\""));
     assert!(body.contains("data-content=\"invitation-requests\""));
+
+    // Check the requests tab opens with every status when no request can be pending
+    assert!(body.contains(&format!(
+        "hx-get=\"/dashboard/group/events/{event_id}/invitation-requests?status=all\""
+    )));
     assert!(body.contains("<option value=\"waitlist\""));
     assert!(body.contains("data-section=\"waitlist\""));
     assert!(body.contains("data-content=\"waitlist\""));
