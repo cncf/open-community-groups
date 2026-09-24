@@ -611,17 +611,21 @@ pub(crate) struct RefundRejectionInput {
 // Helpers.
 
 /// Converts an admission allocation outcome into the stable HTTP contract.
+///
+/// Conflicts carry the refresh trigger too, so dashboard lists show the
+/// availability that caused the rejection.
 fn admission_allocation_response(
     outcome: AdmissionAllocationOutcome,
     success_status: StatusCode,
-    success_trigger: &'static str,
+    refresh_trigger: &'static str,
 ) -> Response {
     match outcome {
         AdmissionAllocationOutcome::Allocated => {
-            (success_status, [("HX-Trigger", success_trigger)]).into_response()
+            (success_status, [("HX-Trigger", refresh_trigger)]).into_response()
         }
         AdmissionAllocationOutcome::Conflict(conflict) => (
             StatusCode::CONFLICT,
+            [("HX-Trigger", refresh_trigger)],
             Json(json!({
                 "conflict": conflict,
             })),

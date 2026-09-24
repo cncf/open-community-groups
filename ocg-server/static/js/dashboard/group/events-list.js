@@ -8,8 +8,8 @@ import {
   isElementHidden,
   setElementHidden,
 } from "/static/js/common/dom.js";
-import { parseJsonText } from "/static/js/common/utils.js";
 import { initializeAnswersModal } from "/static/js/dashboard/group/attendees/answers.js";
+import { getTicketAllocationConflictMessage } from "/static/js/dashboard/group/ticket-allocation-conflicts.js";
 
 const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
 const EVENT_ACTIONS_BUTTON_SELECTOR = ".btn-actions";
@@ -23,18 +23,6 @@ const INVITATION_REQUEST_ANSWERS_MODAL = {
 };
 // Row-level ticket allocation forms share feedback and ticket select behavior.
 const ROW_TICKET_ACTION_SELECTOR = "[data-invitation-request-action], [data-waitlist-invite-action]";
-// Maps capacity conflicts from ticket allocation to organizer guidance.
-const ROW_TICKET_CONFLICT_MESSAGES = {
-  "queue-has-priority":
-    "The remaining seats for this ticket type were offered to people on the waiting list. Add seats to allocate another ticket.",
-  "ticket-type-sold-out":
-    "This ticket type is sold out. Add seats or cancel a pending offer before allocating another ticket.",
-};
-const ROW_TICKET_CONFLICT_REFRESH_EVENTS = [
-  "refresh-event-attendees",
-  "refresh-event-invitation-requests",
-  "refresh-event-waitlist",
-];
 const ROW_TICKET_EMPTY_SELECTOR =
   "[data-invitation-request-ticket-empty], [data-waitlist-invite-ticket-empty]";
 const ROW_TICKET_SUBMIT_SELECTOR =
@@ -211,10 +199,7 @@ const handleActionsMenuClick = (button, root) => {
  */
 const handleRowTicketActionAfterRequest = (form, event) => {
   const xhr = event.detail?.xhr;
-  const conflict = xhr?.status === 409 ? parseJsonText(xhr.responseText, {})?.conflict : null;
-  const conflictMessage = Object.hasOwn(ROW_TICKET_CONFLICT_MESSAGES, conflict)
-    ? ROW_TICKET_CONFLICT_MESSAGES[conflict]
-    : null;
+  const conflictMessage = getTicketAllocationConflictMessage(xhr);
 
   handleHtmxResponse({
     xhr,
@@ -222,13 +207,6 @@ const handleRowTicketActionAfterRequest = (form, event) => {
     errorMessage:
       conflictMessage || form.dataset.errorMessage || "Something went wrong. Please try again later.",
   });
-
-  // Capacity conflicts can promote waitlist users, so refresh views to show current availability
-  if (conflictMessage) {
-    ROW_TICKET_CONFLICT_REFRESH_EVENTS.forEach((eventName) => {
-      window.htmx?.trigger?.(document.body, eventName);
-    });
-  }
 };
 
 /**

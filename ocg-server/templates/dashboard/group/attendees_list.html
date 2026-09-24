@@ -765,7 +765,7 @@
                             <form hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"
                                   hx-indicator="#dashboard-spinner"
                                   hx-disabled-elt="find button[type=submit]"
-                                  data-htmx-response
+                                  data-attendee-reissue-invitation
                                   data-success-message="Invitation reissued."
                                   data-error-message="Something went wrong reissuing this invitation. Please check capacity and ticket availability, then try again.">
                               <input type="hidden" name="email" value="{{ attendee.email }}">
@@ -775,8 +775,13 @@
                                        value="{{ event_ticket_type_id }}">
                               {% endif -%}
                               <button type="submit"
+                                      {% if let Some(event_ticket_type_id) = attendee.event_ticket_type_id -%}
+                                        {% if event.ticket_type_is_sold_out(*event_ticket_type_id) -%}
+                                          disabled title="This ticket type is sold out. Add seats or cancel a pending offer before reissuing this invitation."
+                                        {% endif -%}
+                                      {% endif -%}
                                       role="menuitem"
-                                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700">
                                 <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
                                 <span>Reissue invitation</span>
                               </button>

@@ -386,7 +386,7 @@ describe("events list page", () => {
     expect(env.current.swal.calls[1]).to.include({ text: "Invite failed.", icon: "error" });
   });
 
-  it("reports ticket allocation capacity conflicts and refreshes affected lists", () => {
+  it("reports ticket allocation capacity conflicts", () => {
     // Prepare an invitation request accept form inside the events list root.
     const root = mountEventsList();
     root.insertAdjacentHTML(
@@ -420,16 +420,6 @@ describe("events list page", () => {
       text: "The remaining seats for this ticket type were offered to people on the waiting list. Add seats to allocate another ticket.",
       icon: "error",
     });
-
-    // Verify each conflict refreshes the lists showing ticket availability.
-    const refreshEvents = [
-      "refresh-event-attendees",
-      "refresh-event-invitation-requests",
-      "refresh-event-waitlist",
-    ];
-    expect(env.current.htmx.triggerCalls).to.deep.equal(
-      [...refreshEvents, ...refreshEvents].map((eventName) => [document.body, eventName]),
-    );
   });
 
   it("falls back to the form error message for unknown ticket allocation conflicts", () => {
@@ -454,12 +444,11 @@ describe("events list page", () => {
       });
     });
 
-    // Verify the generic error is shown without refreshing lists.
+    // Verify the generic error is shown.
     expect(env.current.swal.calls).to.have.length(3);
     env.current.swal.calls.forEach((call) => {
       expect(call).to.include({ text: "Invite failed.", icon: "error" });
     });
-    expect(env.current.htmx.triggerCalls).to.have.length(0);
   });
 
   it("does not bind answers modal controls without a review modal", () => {

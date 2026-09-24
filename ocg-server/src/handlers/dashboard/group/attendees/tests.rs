@@ -37,8 +37,9 @@ use crate::{
                 },
             },
         },
-        event::EventEnrollmentReconciliationOutcome,
+        event::{EventAdmissionOfferStatus, EventEnrollmentReconciliationOutcome, EventSummary},
         notifications::NotificationKind,
+        payments::EventTicketType,
         permissions::GroupPermission,
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
@@ -101,8 +102,14 @@ async fn test_accept_invitation_request_returns_conflict_when_queue_has_priority
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the conflict payload
+    // Check the conflict payload and refresh triggers
     assert_eq!(parts.status, StatusCode::CONFLICT);
+    assert_eq!(
+        parts.headers.get("HX-Trigger").unwrap(),
+        &HeaderValue::from_static(
+            "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist"
+        ),
+    );
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
         serde_json::json!({
@@ -1093,8 +1100,14 @@ async fn test_invite_event_attendee_returns_ticket_type_sold_out_conflict() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the conflict payload
+    // Check the conflict payload and refresh triggers
     assert_eq!(parts.status, StatusCode::CONFLICT);
+    assert_eq!(
+        parts.headers.get("HX-Trigger").unwrap(),
+        &HeaderValue::from_static(
+            "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist"
+        ),
+    );
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
         serde_json::json!({
@@ -1149,6 +1162,97 @@ async fn test_invite_event_attendee_returns_unprocessable_entity_when_email_is_i
         String::from_utf8(bytes.to_vec())
             .unwrap()
             .contains("email: not a valid email")
+    );
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_list_page_disables_reissue_for_sold_out_ticket_type() {
+    // Setup identifiers and data structures
+    let available_ticket_type_id = Uuid::from_u128(1);
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let sold_out_ticket_type_id = Uuid::from_u128(2);
+    let user_id = Uuid::new_v4();
+    let event = EventSummary {
+        ticket_types: Some(vec![
+            EventTicketType {
+                active: true,
+                event_ticket_type_id: available_ticket_type_id,
+                title: "General admission".to_string(),
+                ..Default::default()
+            },
+            EventTicketType {
+                active: true,
+                event_ticket_type_id: sold_out_ticket_type_id,
+                title: "Early bird".to_string(),
+
+                sold_out: true,
+                ..Default::default()
+            },
+        ]),
+        ..sample_event_summary(event_id, group_id)
+    };
+    let mut available_attendee = sample_attendee();
+    available_attendee.checked_in = false;
+    available_attendee.enrollment_status = AttendeeEnrollmentStatus::InvitationExpired;
+    available_attendee.admission_offer_status = Some(EventAdmissionOfferStatus::Expired);
+    available_attendee.event_ticket_type_id = Some(available_ticket_type_id);
+    let mut sold_out_attendee = sample_attendee();
+    sold_out_attendee.checked_in = false;
+    sold_out_attendee.enrollment_status = AttendeeEnrollmentStatus::InvitationExpired;
+    sold_out_attendee.user.user_id = Uuid::new_v4();
+    sold_out_attendee.admission_offer_status = Some(EventAdmissionOfferStatus::Expired);
+    sold_out_attendee.event_ticket_type_id = Some(sold_out_ticket_type_id);
+    let output = crate::types::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: 2,
+        attendees: vec![available_attendee, sold_out_attendee],
+        total: 2,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_attendee_list_permissions(&mut db, community_id, group_id, user_id, true);
+    db.expect_search_event_attendees()
+        .times(1)
+        .withf(move |gid, eid, _| *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(output.clone()));
+    db.expect_get_event_summary_dashboard()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!("/dashboard/group/events/{event_id}/attendees"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check both reissue actions render and only the sold-out one is disabled
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert_eq!(body.matches("Reissue invitation").count(), 2);
+    assert_eq!(
+        body.matches(
+            "disabled title=\"This ticket type is sold out. Add seats or cancel a pending offer before reissuing this invitation.\""
+        )
+        .count(),
+        1
     );
 }
 

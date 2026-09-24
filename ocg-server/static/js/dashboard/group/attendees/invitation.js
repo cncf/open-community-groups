@@ -13,6 +13,7 @@ import {
   closeScopedModalFromEvent,
   setScopedModalVisibility,
 } from "/static/js/dashboard/group/attendees/shared.js";
+import { getTicketAllocationConflictMessage } from "/static/js/dashboard/group/ticket-allocation-conflicts.js";
 
 const invitationModalId = "attendee-invitation-modal";
 const invitationEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -324,17 +325,32 @@ export const initializeInvitationModal = (root = document) => {
 
   root.addEventListener("htmx:afterRequest", (event) => {
     const requestTarget = event.target;
+    const xhr = event.detail?.xhr;
+
+    // Reissue forms live in attendee row menus, outside the invitation modal.
+    const reissueForm = closestElementWithinRoot(requestTarget, "[data-attendee-reissue-invitation]", root);
+    if (reissueForm instanceof HTMLFormElement) {
+      handleHtmxResponse({
+        xhr,
+        successMessage: reissueForm.dataset.successMessage || "",
+        errorMessage: getTicketAllocationConflictMessage(xhr) || reissueForm.dataset.errorMessage,
+      });
+      return;
+    }
+
     if (!(requestTarget instanceof HTMLFormElement) || requestTarget.id !== "attendee-invitation-form") {
       return;
     }
 
     const ok = handleHtmxResponse({
-      xhr: event.detail?.xhr,
+      xhr,
       successMessage: "Invitation sent.",
-      errorMessage: "Something went wrong sending this invitation. Please try again later.",
+      errorMessage:
+        getTicketAllocationConflictMessage(xhr) ||
+        "Something went wrong sending this invitation. Please try again later.",
     });
-    if (ok) {
-      // The attendee list refreshes through HTMX; reset local modal state now.
+    // Successes and capacity conflicts refresh the attendee list, which re-renders this modal.
+    if (ok || xhr?.status === 409) {
       closeInvitationModal(root);
       clearInvitationState(root);
     }
