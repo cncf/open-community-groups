@@ -568,6 +568,9 @@ test.describe("community dashboard groups view", () => {
       await expect(adminCommunityPage.locator("#slug_pretty")).toHaveValue(updatedValues.slugPretty);
       await expect(adminCommunityPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
       await expect(adminCommunityPage.locator("#region_id")).toHaveValue(updatedValues.regionId);
+      await expect(adminCommunityPage.locator("#description_short")).toHaveValue(
+        updatedValues.descriptionShort,
+      );
       await expect(adminCommunityPage.locator("#group-location-search-city")).toHaveValue(updatedValues.city);
       await expect(adminCommunityPage.locator("#group-location-search-state")).toHaveValue(
         updatedValues.state,

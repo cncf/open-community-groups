@@ -16,8 +16,10 @@ use crate::{
     handlers::{auth::session_context::SELECTED_GROUP_ID_KEY, tests::*},
     services::notifications::MockNotificationsManager,
     types::{
-        dashboard::DASHBOARD_PAGINATION_LIMIT, group::GroupParentOption,
-        permissions::CommunityPermission, search::SearchGroupsOutput,
+        dashboard::DASHBOARD_PAGINATION_LIMIT,
+        group::{GroupFull, GroupParentOption},
+        permissions::CommunityPermission,
+        search::SearchGroupsOutput,
     },
 };
 
@@ -198,7 +200,10 @@ async fn test_update_page_success() {
     let user_id = Uuid::new_v4();
     let categories = vec![sample_group_category()];
     let regions = vec![sample_group_region()];
-    let group_full = sample_group_full(community_id, group_id);
+    let group_full = GroupFull {
+        description_short: Some("Short group description".to_string()),
+        ..sample_group_full(community_id, group_id)
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -253,6 +258,8 @@ async fn test_update_page_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    let html = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(html.contains(r#"value="Short group description""#));
 }
 
 #[tokio::test]
@@ -368,6 +375,7 @@ async fn test_add_success_auto_selects_group() {
                 && group.name == "Test Group"
                 && group.category_id == category_id
                 && group.description == "Group description"
+                && group.description_short.as_deref() == Some("Short group description")
         })
         .returning(move |_, _, _| Ok(new_group_id));
     db.expect_update_session()
@@ -584,6 +592,7 @@ async fn test_update_success() {
                 && *cid == community_id
                 && *gid == group_id
                 && group.category_id == category_id
+                && group.description_short.as_deref() == Some("Short group description")
         })
         .returning(|_, _, _, _| Ok(()));
 

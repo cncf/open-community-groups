@@ -712,6 +712,8 @@ pub(crate) fn sample_group_form(category_id: Uuid) -> GroupInput {
         category_id,
         description: "Group description".to_string(),
         name: "Test Group".to_string(),
+
+        description_short: Some("Short group description".to_string()),
         ..Default::default()
     }
 }
@@ -851,6 +853,7 @@ pub(crate) fn sample_group_update() -> GroupInput {
         city: Some("Test City".to_string()),
         country_code: Some("US".to_string()),
         country_name: Some("United States".to_string()),
+        description_short: Some("Updated short description".to_string()),
         extra_links: Some(BTreeMap::new()),
         bluesky_url: Some("https://bsky.app/profile/test".to_string()),
         facebook_url: Some("https://facebook.com/test".to_string()),

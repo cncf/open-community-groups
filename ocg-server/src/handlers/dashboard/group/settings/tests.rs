@@ -33,7 +33,10 @@ async fn test_update_page_success() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let group = sample_group_full(community_id, group_id);
+    let group = GroupFull {
+        description_short: Some("Short group description".to_string()),
+        ..sample_group_full(community_id, group_id)
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -71,6 +74,8 @@ async fn test_update_page_success() {
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
     assert!(!bytes.is_empty());
+    let html = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(html.contains(r#"value="Short group description""#));
 }
 
 #[tokio::test]
@@ -831,6 +836,7 @@ async fn test_update_saves_without_recipient_controls() {
             *uid == user_id
                 && *cid == community_id
                 && *gid == group_id
+                && group.description_short.as_deref() == Some("Updated short description")
                 && group.payment_recipient.is_none()
                 && group.payment_validation.is_none()
         })

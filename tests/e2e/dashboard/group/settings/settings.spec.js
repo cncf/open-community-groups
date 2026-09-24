@@ -122,6 +122,7 @@ test.describe("group dashboard settings view", () => {
       return {
         categoryId: await organizerGroupPage.locator("#category_id").inputValue(),
         description,
+        descriptionShort: await organizerGroupPage.locator("#description_short").inputValue(),
         name: await organizerGroupPage.locator("#name").inputValue(),
         regionId,
         websiteUrl: await organizerGroupPage.locator("#website_url").inputValue(),
@@ -129,12 +130,20 @@ test.describe("group dashboard settings view", () => {
     };
 
     // Submit group settings values and wait for persistence.
-    const submitSettings = async ({ categoryId, description, name, regionId, websiteUrl }) => {
+    const submitSettings = async ({
+      categoryId,
+      description,
+      descriptionShort,
+      name,
+      regionId,
+      websiteUrl,
+    }) => {
       await navigateToPath(organizerGroupPage, settingsPath);
       await organizerGroupPage.locator("#category_id").selectOption(categoryId);
       await organizerGroupPage.locator("#region_id").selectOption(regionId);
       await organizerGroupPage.locator("#name").fill(name);
       await fillMarkdownEditor(organizerGroupPage, "description", description);
+      await organizerGroupPage.locator("#description_short").fill(descriptionShort);
       await organizerGroupPage.locator("#website_url").fill(websiteUrl);
 
       // Click Update Group.
@@ -154,6 +163,7 @@ test.describe("group dashboard settings view", () => {
       ...originalFormValues,
       categoryId: originalFormValues.categoryId,
       description: "Updated primary meetup details for group settings coverage.",
+      descriptionShort: "Updated short summary for group settings coverage.",
       name: `${originalFormValues.name} Updated`,
       regionId: originalFormValues.regionId,
     };
@@ -171,6 +181,9 @@ test.describe("group dashboard settings view", () => {
     );
     await expect(organizerGroupPage.locator("#website_url")).toHaveValue(updatedValues.websiteUrl);
 
+    // Reload the settings form and verify the short description persisted.
+    expect((await readSettingsFormValues()).descriptionShort).toBe(updatedValues.descriptionShort);
+
     // Restore the original settings.
     await submitSettings(originalFormValues);
 
@@ -183,6 +196,9 @@ test.describe("group dashboard settings view", () => {
       originalFormValues.description,
     );
     await expect(organizerGroupPage.locator("#website_url")).toHaveValue(originalFormValues.websiteUrl);
+
+    // Reload the settings form and verify the original short description was restored.
+    expect((await readSettingsFormValues()).descriptionShort).toBe(originalFormValues.descriptionShort);
   });
 
   test("viewer sees read-only controls on group settings", async ({ groupViewerPage }) => {

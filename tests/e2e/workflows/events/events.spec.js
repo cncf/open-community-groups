@@ -492,9 +492,9 @@ test.describe("event management workflows", () => {
       await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedValues.name);
       await expect(organizerGroupPage.locator("#kind_id")).toHaveValue(updatedValues.kindId);
       await expect(organizerGroupPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
-      await expect
-        .poll(async () => (await organizerGroupPage.locator("#description_short").inputValue()).trim())
-        .toBe(updatedValues.descriptionShort);
+      await expect(organizerGroupPage.locator("#description_short")).toHaveValue(
+        updatedValues.descriptionShort,
+      );
       await openPaymentsSection(organizerGroupPage);
       const generalAdmissionRow = organizerGroupPage
         .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
