@@ -466,6 +466,8 @@ export const TEST_EVENT_SLUGS = {
 
 /** Pre-seeded user ids for state resets and dashboard assertions. */
 export const TEST_USER_IDS = {
+  admin1: "77777777-7777-7777-7777-777777777701",
+  admin2: "77777777-7777-7777-7777-777777777702",
   checkInManager1: "77777777-7777-7777-7777-777777777715",
   communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
   member1: "77777777-7777-7777-7777-777777777705",

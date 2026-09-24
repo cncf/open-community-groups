@@ -1423,6 +1423,107 @@ describe("dashboard group attendees", () => {
     expect(refreshedModal.classList.contains("hidden")).to.equal(true);
   });
 
+  it("reports attendee invitation capacity conflicts and closes the modal", () => {
+    // Render and open invitation controls with an email recipient.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup()}
+      </div>
+    `;
+    dispatchHtmxLoad(document.getElementById("attendees-content"));
+    document.getElementById("open-attendee-invitation-modal")?.click();
+    document.querySelector("[data-attendee-invitation-search]").dispatchEvent(
+      new CustomEvent("user-search-query-changed", {
+        bubbles: true,
+        detail: { query: "invitee@example.com" },
+      }),
+    );
+
+    // Dispatch a sold-out conflict for the invitation.
+    dispatchHtmxAfterRequest(document.getElementById("attendee-invitation-form"), {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "ticket-type-sold-out" }),
+    });
+
+    // Verify the sold-out guidance and reset modal before the list refresh swaps it.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "This ticket type is sold out. Add seats or cancel a pending offer before allocating another ticket.",
+      icon: "error",
+    });
+    expect(document.getElementById("attendee-invitation-modal").classList.contains("hidden")).to.equal(true);
+    expect(document.getElementById("attendee-invitation-email").value).to.equal("");
+  });
+
+  it("keeps the attendee invitation modal open after a generic failure", () => {
+    // Render and open invitation controls with an email recipient.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup()}
+      </div>
+    `;
+    dispatchHtmxLoad(document.getElementById("attendees-content"));
+    document.getElementById("open-attendee-invitation-modal")?.click();
+    document.querySelector("[data-attendee-invitation-search]").dispatchEvent(
+      new CustomEvent("user-search-query-changed", {
+        bubbles: true,
+        detail: { query: "invitee@example.com" },
+      }),
+    );
+
+    // Dispatch a server failure for the invitation.
+    dispatchHtmxAfterRequest(document.getElementById("attendee-invitation-form"), { status: 500 });
+
+    // Verify the generic error keeps the recipient for a retry.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Something went wrong sending this invitation. Please try again later.",
+      icon: "error",
+    });
+    expect(document.getElementById("attendee-invitation-modal").classList.contains("hidden")).to.equal(false);
+    expect(document.getElementById("attendee-invitation-email").value).to.equal("invitee@example.com");
+  });
+
+  it("reports attendee reissue invitation responses", () => {
+    // Render an expired invitation reissue form in an attendee row menu.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        <details data-actions-menu open>
+          <summary>Attendee actions</summary>
+          <form
+            data-attendee-reissue-invitation
+            data-success-message="Invitation reissued."
+            data-error-message="Reissue failed."
+          >
+            <button type="submit">Reissue invitation</button>
+          </form>
+        </details>
+      </div>
+    `;
+    initializeAttendeesUi();
+    const form = document.querySelector("[data-attendee-reissue-invitation]");
+
+    // Dispatch success, capacity conflict, and unknown conflict responses.
+    dispatchHtmxAfterRequest(form, { status: 201 });
+    dispatchHtmxAfterRequest(form, {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "queue-has-priority" }),
+    });
+    dispatchHtmxAfterRequest(form, {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "unexpected-conflict" }),
+    });
+
+    // Verify each response shows its matching guidance once.
+    expect(env.current.swal.calls).to.have.length(3);
+    expect(env.current.swal.calls[0]).to.include({ text: "Invitation reissued.", icon: "success" });
+    expect(env.current.swal.calls[1]).to.include({
+      text: "The remaining seats for this ticket type were offered to people on the waiting list. Add seats to allocate another ticket.",
+      icon: "error",
+    });
+    expect(env.current.swal.calls[2]).to.include({ text: "Reissue failed.", icon: "error" });
+  });
+
   it("requires a ticket type for multi-tier attendee invitations", () => {
     // Render multi-tier invitation controls and initialize the refreshed root.
     document.body.innerHTML = `

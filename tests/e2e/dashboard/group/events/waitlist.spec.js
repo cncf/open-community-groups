@@ -7,7 +7,13 @@ import {
 } from "../../../notifications.js";
 import { cleanupOwnedAttendee, setupOwnedAttendee } from "../../../data-graphs/attendance.js";
 import {
+  cleanupEventsByIds,
+  setupTicketAllocationEvent,
+  setupTicketWaitlistEntry,
+} from "../../../data-graphs/events.js";
+import {
   TEST_EVENT_IDS,
+  TEST_GROUP_IDS,
   TEST_INVITATION_CANCELLATION,
   TEST_USER_IDS,
   TEST_WAITLIST_INVITE_EVENT,
@@ -19,6 +25,7 @@ import {
   waitForActionResponse,
   waitForHtmxSettle,
 } from "../../../utils.js";
+import { expectErrorAlert, holdSeat } from "./attendees-helpers.js";
 import { openCurrentEventEditorSection, openEventUpdateFormByName } from "./helpers.js";
 import { expectUserColumnHasRoom, expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
@@ -27,6 +34,9 @@ const DASHBOARD_WAITLIST_EVENT_NAME = "Dashboard Waitlist Table Lab";
 const DISABLED_WAITLIST_EVENT_NAME = "Upcoming In-Person Event";
 
 const PAST_WAITLIST_EVENT_NAME = "Past Event For Filtering";
+
+const SOLD_OUT_CONFLICT_MESSAGE =
+  "This ticket type is sold out. Add seats or cancel a pending offer before allocating another ticket.";
 
 test.describe("group dashboard waitlist tab", () => {
   test("organizer can move between waitlist result pages", async ({ organizerGroupPage }) => {
@@ -590,6 +600,78 @@ test.describe("group dashboard waitlist tab", () => {
       ).toBe("waitlist:expired,organizer_invitation:pending");
     } finally {
       restoreWaitlistInviteFixtures(notificationSnapshot);
+    }
+  });
+
+  test("organizer gets sold-out guidance when a waitlist invite tier fills", async ({
+    organizerGroupPage,
+  }) => {
+    const event = setupTicketAllocationEvent({
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      ticketTypes: [
+        { key: "full", seats: 1, title: "Full tier" },
+        { key: "open", seats: 1, title: "Open tier" },
+      ],
+      waitlistEnabled: true,
+    });
+    const inviteUrl = `/dashboard/group/events/${event.eventId}/attendees/invite`;
+
+    try {
+      // Queue a member for the full tier while the open tier still has one seat left.
+      holdSeat(event, "full", TEST_USER_IDS.admin1);
+      setupTicketWaitlistEntry({
+        eventId: event.eventId,
+        ticketTypeId: event.ticketTypeIds.full,
+        userId: TEST_USER_IDS.pending1,
+      });
+      const waitlistContent = await openWaitlistTab(organizerGroupPage, event.name, event.eventId);
+
+      // Choose the open tier for the queued member.
+      const queuedRow = waitlistContent.locator("tr", { hasText: "E2E Pending One" });
+      await queuedRow.getByRole("button", { name: "Open waitlist actions for E2E Pending One" }).click();
+      const ticketTypeSelect = queuedRow.getByLabel("Ticket type");
+      await expect(ticketTypeSelect.locator("option", { hasText: "Full tier" })).toHaveCount(0);
+      await ticketTypeSelect.selectOption(event.ticketTypeIds.open);
+      const inviteButton = queuedRow.locator("[data-waitlist-invite-ticket-submit]");
+      await expect(inviteButton).toBeEnabled();
+
+      // Take the last open seat after the table rendered, then send the stale invitation.
+      holdSeat(event, "open", TEST_USER_IDS.admin2);
+      const refresh = waitForWaitlistRefresh(organizerGroupPage, event.eventId);
+      await waitForActionResponse(organizerGroupPage, () => inviteButton.click(), {
+        method: "POST",
+        urlIncludes: inviteUrl,
+        status: 409,
+      });
+      await refresh;
+
+      // The conflict explains the capacity problem and leaves the member queued.
+      await expectErrorAlert(organizerGroupPage, SOLD_OUT_CONFLICT_MESSAGE);
+      expect(
+        queryE2eDatabase(`
+          select count(*)
+          from admission_offer
+          where event_id = '${event.eventId}'
+          and user_id = '${TEST_USER_IDS.pending1}'
+        `),
+      ).toBe("0");
+      expect(
+        queryE2eDatabase(`
+          select count(*)
+          from event_waitlist
+          where event_id = '${event.eventId}'
+          and user_id = '${TEST_USER_IDS.pending1}'
+        `),
+      ).toBe("1");
+
+      // The refreshed row no longer offers a tier, so another stale invite cannot be sent.
+      const refreshedRow = waitlistContent.locator("tr", { hasText: "E2E Pending One" });
+      await refreshedRow.getByRole("button", { name: "Open waitlist actions for E2E Pending One" }).click();
+      await expect(refreshedRow.getByLabel("Ticket type")).toBeDisabled();
+      await expect(refreshedRow.locator("[data-waitlist-invite-ticket-submit]")).toBeDisabled();
+      await expect(refreshedRow.locator("[data-waitlist-invite-ticket-empty]")).toBeVisible();
+    } finally {
+      cleanupEventsByIds([event.eventId]);
     }
   });
 

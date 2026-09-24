@@ -50,6 +50,16 @@ export const deleteNotifications = (notificationIds) => {
   queryE2eDatabase(`delete from notification where notification_id in (${idList})`);
 };
 
+/** Deletes notifications of one kind created for the users after the snapshot. */
+export const deleteNotificationsSince = (snapshot, kind, userIds) => {
+  queryE2eDatabase(`
+    delete from notification
+    where created_at >= '${snapshot.createdAfter}'::timestamptz
+    and kind = '${kind}'
+    and user_id in (${userIds.map((userId) => `'${userId}'::uuid`).join(", ")});
+  `);
+};
+
 /** Returns notification rows created since the snapshot from the notification table. */
 const listNotificationsSince = ({ createdAfter }) =>
   queryE2eDatabaseRows(`

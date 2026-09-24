@@ -302,3 +302,171 @@ export const setupNotificationEvent = ({
 
   return { attendeeUserIds, eventId, name };
 };
+
+/**
+ * Creates a published future event with free ticket tiers for allocation conflict checks.
+ * @param {{
+ *   approvalRequired?: boolean,
+ *   groupId: string,
+ *   ticketTypes: { key: string, seats: number, title: string }[],
+ *   waitlistEnabled?: boolean
+ * }} options - Event shape.
+ * @returns {{ eventId: string, name: string, ticketTypeIds: Record<string, string> }}
+ */
+export const setupTicketAllocationEvent = ({
+  approvalRequired = false,
+  groupId,
+  ticketTypes,
+  waitlistEnabled = false,
+}) => {
+  const eventId = randomUUID();
+  const suffix = eventId.replace(/-/g, "").slice(0, 8);
+  const name = `E2E ticket allocation event ${suffix}`;
+  const slug = `e2e-ticket-allocation-event-${suffix}`;
+  const tiers = ticketTypes.map((ticketType, index) => ({
+    ...ticketType,
+    order: index + 1,
+    priceWindowId: randomUUID(),
+    ticketTypeId: randomUUID(),
+  }));
+  const capacity = tiers.reduce((total, tier) => total + tier.seats, 0);
+
+  queryE2eDatabase(`
+    insert into event (
+      event_id,
+      name,
+      slug,
+      description,
+      description_short,
+      timezone,
+      event_category_id,
+      event_kind_id,
+      group_id,
+      published,
+      published_at,
+      published_by,
+      starts_at,
+      ends_at,
+      capacity,
+      attendee_approval_required,
+      waitlist_enabled
+    ) values (
+      '${eventId}',
+      '${name}',
+      '${slug}',
+      'Owned ticket allocation event used by E2E coverage.',
+      'Owned ticket allocation event used by E2E coverage.',
+      'UTC',
+      '${EVENT_CATEGORY_ID}',
+      'virtual',
+      '${groupId}',
+      true,
+      current_timestamp,
+      '${TEST_USER_IDS.organizer1}',
+      current_timestamp + interval '200 days',
+      current_timestamp + interval '200 days 2 hours',
+      ${capacity},
+      ${approvalRequired},
+      ${waitlistEnabled}
+    );
+
+    insert into event_ticket_type (event_ticket_type_id, active, event_id, "order", seats_total, title)
+    values ${tiers
+      .map(
+        (tier) =>
+          `('${tier.ticketTypeId}', true, '${eventId}', ${tier.order}, ${tier.seats}, '${tier.title}')`,
+      )
+      .join(", ")};
+
+    insert into event_ticket_price_window (event_ticket_price_window_id, amount_minor, event_ticket_type_id)
+    values ${tiers.map((tier) => `('${tier.priceWindowId}', 0, '${tier.ticketTypeId}')`).join(", ")};
+
+    insert into event_organizer (event_id, user_id, "order")
+    values ('${eventId}', '${TEST_USER_IDS.organizer1}', 1);
+  `);
+
+  return {
+    eventId,
+    name,
+    ticketTypeIds: Object.fromEntries(tiers.map((tier) => [tier.key, tier.ticketTypeId])),
+  };
+};
+
+/**
+ * Records one invitation request for a ticket allocation event.
+ * @param {{
+ *   eventId: string,
+ *   status?: "accepted" | "pending",
+ *   ticketTypeId: string,
+ *   userId: string
+ * }} options - Request fields.
+ */
+export const setupTicketInvitationRequest = ({ eventId, status = "pending", ticketTypeId, userId }) => {
+  const reviewed = status === "accepted";
+
+  queryE2eDatabase(`
+    insert into event_invitation_request (
+      event_id,
+      event_ticket_type_id,
+      reviewed_at,
+      reviewed_by,
+      status,
+      user_id
+    ) values (
+      '${eventId}',
+      '${ticketTypeId}',
+      ${reviewed ? "current_timestamp - interval '2 days'" : "null"},
+      ${reviewed ? `'${TEST_USER_IDS.organizer1}'` : "null"},
+      '${status}',
+      '${userId}'
+    );
+  `);
+};
+
+/**
+ * Records one admission offer for a ticket allocation event.
+ * Pending offers reserve a seat; expired offers can be reissued.
+ * @param {{
+ *   eventId: string,
+ *   source: "approval" | "organizer_invitation",
+ *   status: "expired" | "pending",
+ *   ticketTypeId: string,
+ *   userId: string
+ * }} options - Offer fields.
+ */
+export const setupTicketOffer = ({ eventId, source, status, ticketTypeId, userId }) => {
+  const expired = status === "expired";
+
+  queryE2eDatabase(`
+    insert into admission_offer (
+      created_at,
+      event_id,
+      event_ticket_type_id,
+      expires_at,
+      organizer_user_id,
+      source,
+      status,
+      user_id
+    ) values (
+      current_timestamp - interval '${expired ? "2 days" : "1 minute"}',
+      '${eventId}',
+      '${ticketTypeId}',
+      current_timestamp ${expired ? "- interval '1 day'" : "+ interval '1 day'"},
+      '${TEST_USER_IDS.organizer1}',
+      '${source}',
+      '${status}',
+      '${userId}'
+    );
+  `);
+};
+
+/**
+ * Queues one user for a ticket tier on a ticket allocation event.
+ * @param {{ eventId: string, ticketTypeId: string, userId: string }} options - Waitlist entry fields.
+ */
+export const setupTicketWaitlistEntry = ({ eventId, ticketTypeId, userId }) => {
+  queryE2eDatabase(`
+    insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+    values ('${eventId}', '${ticketTypeId}', '${userId}');
+  `);
+};

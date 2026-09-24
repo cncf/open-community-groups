@@ -9,6 +9,7 @@ import {
   setElementHidden,
 } from "/static/js/common/dom.js";
 import { initializeAnswersModal } from "/static/js/dashboard/group/attendees/answers.js";
+import { getTicketAllocationConflictMessage } from "/static/js/dashboard/group/ticket-allocation-conflicts.js";
 
 const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
 const EVENT_ACTIONS_BUTTON_SELECTOR = ".btn-actions";
@@ -197,10 +198,14 @@ const handleActionsMenuClick = (button, root) => {
  * @returns {void}
  */
 const handleRowTicketActionAfterRequest = (form, event) => {
+  const xhr = event.detail?.xhr;
+  const conflictMessage = getTicketAllocationConflictMessage(xhr);
+
   handleHtmxResponse({
-    xhr: event.detail?.xhr,
+    xhr,
     successMessage: form.dataset.successMessage || "",
-    errorMessage: form.dataset.errorMessage || "Something went wrong. Please try again later.",
+    errorMessage:
+      conflictMessage || form.dataset.errorMessage || "Something went wrong. Please try again later.",
   });
 };
 

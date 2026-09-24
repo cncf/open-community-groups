@@ -202,6 +202,20 @@ describe("dashboard group invitation requests list template", () => {
     );
     expect(template).to.not.include("waitlist/reissue");
 
+    // Verify sold-out guidance only renders when approval actions are available and matches the action.
+    expect(template).to.include(
+      "{% if !manage_actions_unavailable && event.attendee_approval_required && event.ticket_type_is_sold_out(*requested_event_ticket_type_id) -%}",
+    );
+    expect(template).to.include(
+      '<p id="invitation-request-ticket-sold-out-{{ request.user.user_id }}" class="mx-3 my-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs/5 text-amber-900">',
+    );
+    expect(template).to.include(
+      "This ticket type is sold out. Add seats or cancel a pending offer before {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%} reissuing this offer. {% else -%} accepting this request. {% endif -%}",
+    );
+    expect(template).to.include(
+      'disabled title="This ticket type is sold out." aria-describedby="invitation-request-ticket-sold-out-{{ request.user.user_id }}"',
+    );
+
     // Verify the mixed form-control dropdown avoids ARIA menu semantics.
     const actionDisclosureStart = template.indexOf(
       'data-event-id="invitation-request-{{ request.user.user_id }}"',

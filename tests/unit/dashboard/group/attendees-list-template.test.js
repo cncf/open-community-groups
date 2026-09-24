@@ -682,6 +682,12 @@ describe("dashboard group attendees list template", () => {
       "attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)",
     );
     expect(template).to.not.include("Waitlist offer reissue");
+
+    // Verify reissue uses attendee conflict handling and blocks sold-out ticket types.
+    expect(template).to.include("data-attendee-reissue-invitation");
+    expect(template).to.include(
+      '{% if event.ticket_type_is_sold_out(*event_ticket_type_id) -%} disabled title="This ticket type is sold out. Add seats or cancel a pending offer before reissuing this invitation."',
+    );
   });
 
   it("uses all-attendee eligibility for the attendee email modal entrypoint", async () => {
