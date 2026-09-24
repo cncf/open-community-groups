@@ -264,7 +264,7 @@ test.describe("site header", () => {
     await navigateToSiteHome(member1Page);
     await member1Page.locator('#user-dropdown-button[data-logged-in="true"]').click();
     const userMenu = member1Page.locator("#user-dropdown");
-    const userShortcuts = userMenu.getByRole("group", { name: "Quick access User dashboard" });
+    const userShortcuts = userMenu.getByRole("group", { name: "User dashboard" });
 
     // Verify member destinations and permission-dependent links.
     await expect(userShortcuts.getByRole("menuitem", { name: "My Groups" })).toHaveAttribute(
@@ -281,31 +281,37 @@ test.describe("site header", () => {
     );
     await expect(userMenu.getByRole("menuitem", { name: "Community dashboard" })).toHaveCount(0);
     await expect(userMenu.getByRole("menuitem", { name: "Group dashboard" })).toHaveCount(0);
-    await expect(userMenu.getByRole("group", { name: "Quick access Group dashboard" })).toHaveCount(0);
+    await expect(userMenu.getByRole("group", { name: "Group dashboard" })).toHaveCount(0);
     await expect(userMenu.getByRole("menuitem", { name: "Events", exact: true })).toHaveCount(0);
     await expect(userMenu.getByRole("menuitem", { name: "Log out" })).toBeVisible();
   });
 
-  test("logged-in group team menu lists group shortcuts under quick access", async ({
+  test("logged-in group team menu nests shortcuts under their dashboards", async ({
     checkInManagerGroupPage,
   }) => {
     // Load the public shell with a group team session.
     await navigateToSiteHome(checkInManagerGroupPage);
     await checkInManagerGroupPage.locator('#user-dropdown-button[data-logged-in="true"]').click();
     const userMenu = checkInManagerGroupPage.locator("#user-dropdown");
-    const groupShortcuts = userMenu.getByRole("group", { name: "Quick access Group dashboard" });
+    const groupShortcuts = userMenu.getByRole("group", { name: "Group dashboard" });
 
-    // Verify the dashboards section is listed before the quick access section.
+    // Verify each dashboard link is followed by its own shortcuts.
     const menuItems = await userMenu.getByRole("menuitem").allInnerTexts();
     const labels = menuItems.map((label) => label.trim());
-    expect(labels.indexOf("User dashboard")).toBeGreaterThan(labels.indexOf("Group dashboard"));
-    expect(labels.indexOf("My Groups")).toBeGreaterThan(labels.indexOf("User dashboard"));
+    const groupDashboardIndex = labels.indexOf("Group dashboard");
+    expect(groupDashboardIndex).toBeGreaterThan(-1);
+    expect(labels.indexOf("Events")).toBe(groupDashboardIndex + 1);
+    expect(labels.indexOf("User dashboard")).toBe(groupDashboardIndex + 2);
+    expect(labels.indexOf("My Groups")).toBe(groupDashboardIndex + 3);
 
-    // Verify the group events shortcut is labeled by its dashboard.
-    await expect(userMenu.getByText("Quick access", { exact: true })).toBeVisible();
+    // Verify the group events shortcut is indented under its dashboard link.
+    const groupDashboardLink = userMenu.getByRole("menuitem", { name: "Group dashboard" });
     const eventsLink = groupShortcuts.getByRole("menuitem", { name: "Events", exact: true });
     await expect(eventsLink).toBeVisible();
     await expect(eventsLink).toHaveAttribute("href", "/dashboard/group?tab=events");
+    const labelOffset = async (link) =>
+      link.evaluate((element) => element.querySelector(".svg-icon").getBoundingClientRect().left);
+    expect(await labelOffset(eventsLink)).toBeGreaterThan(await labelOffset(groupDashboardLink));
     await eventsLink.click();
 
     // Verify the shortcut opens the group events tab.
@@ -319,25 +325,20 @@ test.describe("site header", () => {
     await checkInManagerGroupPage.setViewportSize({ width: 767, height: 900 });
     await navigateToSiteHome(checkInManagerGroupPage);
     const userMenu = checkInManagerGroupPage.locator("#user-dropdown");
-    const checkInLink = userMenu.getByRole("menuitem", { name: "Check in" });
-    const scanAttendeesLink = userMenu.getByRole("menuitem", { name: "Scan attendees" });
+    const checkInLink = userMenu
+      .getByRole("group", { name: "User dashboard" })
+      .getByRole("menuitem", { name: "Check in" });
+    const scanAttendeesLink = userMenu
+      .getByRole("group", { name: "Group dashboard" })
+      .getByRole("menuitem", { name: "Scan attendees" });
     const groupDashboardLink = userMenu.getByRole("menuitem", { name: "Group dashboard" });
     const userDashboardLink = userMenu.getByRole("menuitem", { name: "User dashboard" });
     const groupEventsLink = userMenu.getByRole("menuitem", { name: "Events", exact: true });
 
-    // Verify phones get the check-in shortcuts under quick access instead of the dashboard links.
+    // Verify phones get the check-in shortcuts instead of the dashboard links.
     await checkInManagerGroupPage.locator('#user-dropdown-button[data-logged-in="true"]').click();
-    await expect(userMenu.getByText("Quick access", { exact: true })).toBeVisible();
-    await expect(
-      userMenu.getByRole("group", { name: "Quick access User dashboard" }).getByRole("menuitem", {
-        name: "Check in",
-      }),
-    ).toBeVisible();
-    await expect(
-      userMenu.getByRole("group", { name: "Quick access Group dashboard" }).getByRole("menuitem", {
-        name: "Scan attendees",
-      }),
-    ).toBeVisible();
+    await expect(checkInLink).toBeVisible();
+    await expect(scanAttendeesLink).toBeVisible();
     await expect(groupDashboardLink).toBeHidden();
     await expect(userDashboardLink).toBeHidden();
     await expect(groupEventsLink).toBeHidden();

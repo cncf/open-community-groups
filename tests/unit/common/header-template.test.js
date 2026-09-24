@@ -50,27 +50,28 @@ describe("common header template", () => {
       '<li class="md:hidden" role="none"> <a href="/dashboard/group?tab=check-in"',
     );
 
-    // Verify every dashboard entry point and its divider show from md.
+    // Verify every dashboard entry point shows from md.
     [
       "/dashboard/community",
-      "/dashboard/group",
-      "/dashboard/user",
       "/dashboard/user?tab=groups",
       "/dashboard/user?tab=events",
       "/dashboard/group?tab=events",
     ].forEach((href) => {
       expect(loggedInMenu, href).to.include(`<li class="hidden md:block" role="none"> <a href="${href}"`);
     });
-    expect(loggedInMenu).to.include(
-      '{# End dashboard links -#} <li class="hidden md:block border-t border-stone-200 mt-2 pt-2" role="separator" aria-hidden="true"></li> {# Quick access links -#}',
-    );
+    ["group", "user"].forEach((dashboard) => {
+      expect(loggedInMenu, dashboard).to.include(
+        `<a id="user-menu-${dashboard}-dashboard-link" href="/dashboard/${dashboard}" hx-boost="true" hx-target="body" class="hidden md:inline-block w-full text-start px-4 py-2 hover:bg-stone-100" role="menuitem">`,
+      );
+    });
+    expect(loggedInMenu).not.to.include('class="hidden md:block border-t');
 
     // Verify the public destination copies still follow the lg desktop navigation.
     expect(loggedInMenu).to.include('<li class="lg:hidden" role="none"> <a href="/"');
     expect(loggedInMenu).not.to.include("hidden lg:block");
   });
 
-  it("renders the dashboard links above the labeled quick access shortcuts", async () => {
+  it("nests the dashboard shortcuts under their dashboard links", async () => {
     // Load the header template and isolate the logged-in menu.
     const template = normalizeWhitespace(await loadTemplate());
     const loggedInMenu = template.slice(
@@ -88,43 +89,49 @@ describe("common header template", () => {
       expect(loggedInMenu).to.include(`<div class="ms-2 text-xs/6">${label}</div>`);
     });
 
-    // Verify the dashboards section comes before the quick access section.
-    expect(indexOf('<a href="/dashboard/user" ')).to.be.lessThan(indexOf("{# Quick access links -#}"));
+    // Verify each shortcut group follows and is named by its dashboard link.
+    const groupLinkIndex = indexOf('<a id="user-menu-group-dashboard-link"');
+    const groupShortcutsIndex = indexOf(
+      '</a> <ul role="group" aria-labelledby="user-menu-group-dashboard-link">',
+    );
+    const userLinkIndex = indexOf('<a id="user-menu-user-dashboard-link"');
+    const userShortcutsIndex = indexOf(
+      '</a> <ul role="group" aria-labelledby="user-menu-user-dashboard-link">',
+    );
+    expect(indexOf('<a href="/dashboard/community"')).to.be.lessThan(groupLinkIndex);
+    expect(groupLinkIndex).to.be.lessThan(groupShortcutsIndex);
+    expect(groupShortcutsIndex).to.be.lessThan(userLinkIndex);
+    expect(userLinkIndex).to.be.lessThan(userShortcutsIndex);
 
-    // Verify the quick access title and subtitles use distinct heading styles.
-    expect(loggedInMenu).to.include(
-      '<li id="user-menu-quick-access-title" class="px-4 pt-1 text-[11px]/6 font-semibold uppercase tracking-wide text-stone-600" role="none">Quick access</li>',
-    );
-    expect(loggedInMenu).to.include(
-      '<div id="user-menu-quick-access-user-title" class="px-4 pt-1 text-xs/6 font-medium text-stone-500">User dashboard</div>',
-    );
-    expect(loggedInMenu).to.include(
-      '<div id="user-menu-quick-access-group-title" class="px-4 pt-1 text-xs/6 font-medium text-stone-500">Group dashboard</div>',
-    );
-
-    // Verify each shortcut group is named by the title and its subtitle.
-    const userGroupIndex = indexOf(
-      '<ul role="group" aria-labelledby="user-menu-quick-access-title user-menu-quick-access-user-title">',
-    );
-    const groupGroupIndex = indexOf(
-      '<ul role="group" aria-labelledby="user-menu-quick-access-title user-menu-quick-access-group-title">',
-    );
-
-    // Verify user shortcuts sit in the user group and group shortcuts in the group group.
+    // Verify the shortcuts sit in their dashboard group.
+    ["/dashboard/group?tab=check-in", "/dashboard/group?tab=events"].forEach((href) => {
+      const index = indexOf(`<a href="${href}"`);
+      expect(index, href).to.be.greaterThan(groupShortcutsIndex);
+      expect(index, href).to.be.lessThan(userLinkIndex);
+    });
     ["/dashboard/user?tab=check-in", "/dashboard/user?tab=groups", "/dashboard/user?tab=events"].forEach(
       (href) => {
-        const index = indexOf(`<a href="${href}"`);
-        expect(index, href).to.be.greaterThan(userGroupIndex);
-        expect(index, href).to.be.lessThan(groupGroupIndex);
+        expect(indexOf(`<a href="${href}"`), href).to.be.greaterThan(userShortcutsIndex);
       },
     );
-    ["/dashboard/group?tab=check-in", "/dashboard/group?tab=events"].forEach((href) => {
-      expect(indexOf(`<a href="${href}"`), href).to.be.greaterThan(groupGroupIndex);
+
+    // Verify the md shortcuts are indented under their parents while mobile ones are not.
+    ["/dashboard/user?tab=groups", "/dashboard/user?tab=events", "/dashboard/group?tab=events"].forEach(
+      (href) => {
+        expect(loggedInMenu, href).to.include(
+          `<a href="${href}" hx-boost="true" hx-target="body" class="inline-block w-full text-start ps-10 pe-4 py-2 hover:bg-stone-100" role="menuitem">`,
+        );
+      },
+    );
+    ["/dashboard/user?tab=check-in", "/dashboard/group?tab=check-in"].forEach((href) => {
+      expect(loggedInMenu, href).to.include(
+        `<a href="${href}" hx-boost="true" hx-target="body" class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100" role="menuitem">`,
+      );
     });
 
-    // Verify the group shortcuts are gated by group team membership.
+    // Verify the group links are gated by group team membership.
     expect(loggedInMenu).to.include(
-      '{# Group dashboard shortcuts -#} {% if user.belongs_to_any_group_team.unwrap_or(false) -%} <li role="none"> <div id="user-menu-quick-access-group-title"',
+      '{% if user.belongs_to_any_group_team.unwrap_or(false) -%} <li role="none"> <a id="user-menu-group-dashboard-link"',
     );
     expect(loggedInMenu).to.include('<div class="ms-2 text-xs/6">Events</div>');
   });
