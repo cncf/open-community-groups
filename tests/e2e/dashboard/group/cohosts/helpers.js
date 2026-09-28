@@ -113,7 +113,7 @@ export const getCohostDashboardRows = (page, eventName) =>
  * @returns {import("@playwright/test").Locator} Group search input.
  */
 export const getCohostGroupSearch = (page) =>
-  getCohostsSelector(page).getByRole("searchbox", { name: "Co-host group" });
+  getCohostsSelector(page).getByRole("combobox", { name: "Co-host group" });
 
 /**
  * Returns the co-hosts selector inside the event editor.

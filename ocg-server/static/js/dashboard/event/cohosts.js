@@ -1,4 +1,4 @@
-import { html } from "lit";
+import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
@@ -7,6 +7,10 @@ import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 // Endpoint that lists the groups of a community that can co-host events.
 const GROUP_OPTIONS_ENDPOINT = "/dashboard/group/events/cohosts/groups";
+// Element ids shared by the group search and its options.
+const GROUP_OPTIONS_ID = "cohost-group-options";
+const GROUP_OPTION_ID_PREFIX = "cohost-group-option-";
+const GROUP_SEARCH_ID = "cohost-group-search";
 // Co-host statuses shown in the editor.
 const STATUS_APPROVED = "approved";
 const STATUS_PENDING = "pending";
@@ -49,6 +53,7 @@ export class CohostsSelector extends LitWrapper {
     this.revision = 0;
     this.selectedCohosts = [];
     this._abortController = null;
+    this._focusWithoutOpen = false;
     this._groups = [];
     this._loadError = "";
     this._loadedGroupIds = [];
@@ -59,6 +64,7 @@ export class CohostsSelector extends LitWrapper {
       getItemCount: () => this._filteredGroups.length,
       isInteractionBlocked: () => this.disabled || this._loadStatus === "loading",
       canOpen: () => this._selectedCommunityId && this._groups.length > 0,
+      onActiveIndexMove: () => this._scrollActiveOptionIntoView(),
       onSelect: (index) => {
         const group = this._filteredGroups[index];
         if (group) {
@@ -127,6 +133,14 @@ export class CohostsSelector extends LitWrapper {
   get _hasChanged() {
     const currentIds = this.selectedCohosts.map((cohost) => cohost.group_id);
     return !arraysEqual(currentIds, this._loadedGroupIds);
+  }
+
+  /**
+   * Returns the group search input.
+   * @returns {HTMLInputElement|null} Search input, when rendered.
+   */
+  get _searchInput() {
+    return this.querySelector(`#${GROUP_SEARCH_ID}`);
   }
 
   render() {
@@ -205,7 +219,7 @@ export class CohostsSelector extends LitWrapper {
       this._loadStatus = "ready";
 
       // Open the options for users who kept focus on the search while loading.
-      if (this.querySelector("#cohost-group-search") === document.activeElement) {
+      if (this._searchInput === document.activeElement) {
         this._combobox.open();
       }
     } catch (error) {
@@ -227,8 +241,23 @@ export class CohostsSelector extends LitWrapper {
     if (this.disabled) {
       return;
     }
+    const index = this.selectedCohosts.findIndex((cohost) => cohost.group_id === groupId);
+    if (index === -1) {
+      return;
+    }
     this.selectedCohosts = this.selectedCohosts.filter((cohost) => cohost.group_id !== groupId);
     this._dispatchSelectionChange();
+
+    // Keep focus near the removed card instead of dropping it to the page.
+    this.updateComplete.then(() => {
+      const removeButtons = this.querySelectorAll("[data-cohost-remove]");
+      const nextButton = removeButtons[Math.min(index, removeButtons.length - 1)];
+      if (nextButton) {
+        nextButton.focus();
+      } else {
+        this._restoreSearchFocus();
+      }
+    });
   }
 
   /**
@@ -264,16 +293,22 @@ export class CohostsSelector extends LitWrapper {
    */
   _renderGroupPicker() {
     const isLoading = this._loadStatus === "loading";
+    const hasOptions = this._filteredGroups.length > 0;
+    const activeOptionId =
+      this._combobox.isOpen && hasOptions && this._combobox.activeIndex !== null
+        ? `${GROUP_OPTION_ID_PREFIX}${this._combobox.activeIndex}`
+        : nothing;
     return html`
       <div class="relative max-w-xl">
-        <label for="cohost-group-search" class="form-label">Co-host group</label>
+        <label for=${GROUP_SEARCH_ID} class="form-label">Co-host group</label>
         <div class="relative mt-2">
           <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
             <div class="svg-icon size-4 icon-search bg-stone-300"></div>
           </div>
           <input
-            id="cohost-group-search"
+            id=${GROUP_SEARCH_ID}
             type="search"
+            role="combobox"
             class="input-primary ps-9"
             placeholder=${isLoading ? "Loading groups..." : "Search groups"}
             autocomplete="off"
@@ -282,9 +317,16 @@ export class CohostsSelector extends LitWrapper {
             spellcheck="false"
             .value=${this._combobox.query}
             ?disabled=${this.disabled || !this._selectedCommunityId}
-            aria-controls="cohost-group-options"
+            aria-activedescendant=${activeOptionId}
+            aria-autocomplete="list"
+            aria-controls=${hasOptions ? GROUP_OPTIONS_ID : nothing}
             aria-expanded=${this._combobox.isOpen ? "true" : "false"}
+            aria-haspopup="listbox"
             @focus=${() => {
+              if (this._focusWithoutOpen) {
+                this._focusWithoutOpen = false;
+                return;
+              }
               if (this._loadStatus === "idle") {
                 this._loadGroups();
               }
@@ -304,9 +346,14 @@ export class CohostsSelector extends LitWrapper {
           }"
         >
           ${
-            this._filteredGroups.length > 0
+            hasOptions
               ? html`
-                  <ul id="cohost-group-options" class="max-h-72 overflow-auto py-1" role="listbox">
+                  <ul
+                    id=${GROUP_OPTIONS_ID}
+                    class="max-h-72 overflow-auto py-1"
+                    role="listbox"
+                    aria-label="Co-host groups"
+                  >
                     ${repeat(
                       this._filteredGroups,
                       (group) => group.group_id,
@@ -381,8 +428,11 @@ export class CohostsSelector extends LitWrapper {
     return html`
       <li role="presentation">
         <button
+          id=${`${GROUP_OPTION_ID_PREFIX}${index}`}
           type="button"
           role="option"
+          tabindex="-1"
+          aria-selected=${isActive ? "true" : "false"}
           class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm ${
             isActive ? "bg-stone-50 text-stone-900" : "text-stone-700 hover:bg-stone-50 hover:text-stone-900"
           }"
@@ -433,6 +483,7 @@ export class CohostsSelector extends LitWrapper {
                         type="button"
                         class="rounded-full p-1 hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                         aria-label="Remove ${cohost.name}"
+                        data-cohost-remove
                         title="Remove"
                         @click=${() => this._removeGroup(cohost.group_id)}
                       >
@@ -461,12 +512,7 @@ export class CohostsSelector extends LitWrapper {
       >
         ${
           group.logo_url
-            ? html`<img
-                src=${group.logo_url}
-                alt="${group.name} logo"
-                class="${imageSize} object-contain"
-                loading="lazy"
-              />`
+            ? html`<img src=${group.logo_url} alt="" class="${imageSize} object-contain" loading="lazy" />`
             : html`<span class="svg-icon size-6 icon-groups bg-stone-400" aria-hidden="true"></span>`
         }
       </div>
@@ -498,13 +544,41 @@ export class CohostsSelector extends LitWrapper {
   }
 
   /**
+   * Moves focus back to the search input without reopening the options.
+   * @returns {void}
+   */
+  _restoreSearchFocus() {
+    const searchInput = this._searchInput;
+    if (!searchInput || searchInput.disabled || searchInput === document.activeElement) {
+      return;
+    }
+    this._focusWithoutOpen = true;
+    searchInput.focus();
+    this._focusWithoutOpen = false;
+  }
+
+  /**
    * Retries loading the group options, keeping focus on the search input.
    * @returns {void}
    */
   _retryLoadGroups() {
     // Move focus before the retry button is replaced by the loading status.
-    this.querySelector("#cohost-group-search")?.focus();
+    this._searchInput?.focus();
     this._loadGroups();
+  }
+
+  /**
+   * Scrolls the keyboard-active option into view after the dropdown updates.
+   * @returns {void}
+   */
+  _scrollActiveOptionIntoView() {
+    this.updateComplete.then(() => {
+      const index = this._combobox.activeIndex;
+      if (index === null) {
+        return;
+      }
+      this.querySelector(`#${GROUP_OPTION_ID_PREFIX}${index}`)?.scrollIntoView({ block: "nearest" });
+    });
   }
 
   /**
@@ -546,6 +620,9 @@ export class CohostsSelector extends LitWrapper {
     ];
     this._combobox.close();
     this._dispatchSelectionChange();
+
+    // Return focus to the search after the chosen option disappears.
+    this.updateComplete.then(() => this._restoreSearchFocus());
   }
 }
 

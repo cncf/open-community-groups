@@ -187,6 +187,54 @@ describe("co-hosts templates", () => {
     expect(template).not.to.include("bg-primary-50");
   });
 
+  it("sends confirmed co-hosting actions through HTMX and refreshes in place", async () => {
+    // Load the group dashboard co-hosts list.
+    const template = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/group/cohosts_list.html"),
+    );
+
+    // Verify each action is rendered through the shared row action macro.
+    expect(template).to.include(
+      '{{ cohost_action(invitation_id = event.invitation_id, action = "approve", icon = "icon-check", label = "Approve") -}}',
+    );
+    expect(template).to.include(
+      '{{ cohost_action(invitation_id = event.invitation_id, action = "reject", icon = "icon-cancel", label = "Reject") -}}',
+    );
+    expect(template).to.include(
+      '{{ cohost_action(invitation_id = event.invitation_id, action = "cancel", icon = "icon-cancel", label = "Cancel co-hosting") -}}',
+    );
+
+    // Verify the macro waits for confirmation and blocks every action while pending.
+    const action = template.slice(
+      template.indexOf("{% macro cohost_action"),
+      template.indexOf("{% endmacro cohost_action"),
+    );
+    expect(action).to.include(
+      'data-cohost-action="{{ action }}" hx-put="/dashboard/group/cohosts/{{ invitation_id }}/{{ action }}" hx-trigger="confirmed" hx-swap="none" hx-indicator="#dashboard-spinner" hx-disabled-elt="[data-cohost-action]"',
+    );
+    expect(template).not.to.include("data-cohost-url");
+
+    // Verify the refresh keeps the pagination URL pushed by the server.
+    expect(template).to.include(
+      '<div id="cohosts-refresh" hx-get="{{ refresh_url }}" hx-trigger="refresh-group-cohosts from:body" hx-target="#dashboard-content" hx-swap="innerHTML"></div>',
+    );
+    expect(template).not.to.include("hx-push-url");
+  });
+
+  it("colors event preview co-hosting statuses like the co-hosts selector", async () => {
+    // Load the dashboard event preview.
+    const template = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/group/event_preview.html"),
+    );
+
+    // Verify the fallback icon is decorative and the statuses use green and amber.
+    expect(template).to.include(
+      '<div class="svg-icon size-5 bg-stone-400 icon-groups" aria-hidden="true"></div>',
+    );
+    expect(template).to.include('border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Approved');
+    expect(template).to.include('border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Pending');
+  });
+
   it("renders co-hosted event and owner group logos with the shared square logo", async () => {
     // Load the group dashboard co-hosts list.
     const template = normalizeWhitespace(

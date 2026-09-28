@@ -549,11 +549,11 @@ test.describe("event co-hosting workflows", () => {
       // Verify the owning group is never offered as its own co-host.
       const communitySelect = cohostsSelector.getByLabel("Community", { exact: true });
       const groupSearch = getCohostGroupSearch(organizerGroupPage);
-      await communitySelect.selectOption(TEST_COMMUNITY_IDS.community1);
       await Promise.all([
         waitForGroupOptions(organizerGroupPage, TEST_COMMUNITY_IDS.community1),
-        groupSearch.focus(),
+        communitySelect.selectOption(TEST_COMMUNITY_IDS.community1),
       ]);
+      await groupSearch.focus();
       await groupSearch.fill(TEST_GROUP_NAMES.alpha);
       await expect(cohostsSelector.getByText("No groups found")).toBeVisible();
 

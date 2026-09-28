@@ -3,11 +3,10 @@
 {% import "macros/pagination.html" as pagination -%}
 {% import "macros/ui.html" as ui -%}
 
-{# Refresh co-hosts without losing the page. -#}
+{# Refresh co-hosts without losing the current page or URL. -#}
 <div id="cohosts-refresh"
      hx-get="{{ refresh_url }}"
      hx-trigger="refresh-group-cohosts from:body"
-     hx-push-url="/dashboard/group?tab=cohosts"
      hx-target="#dashboard-content"
      hx-swap="innerHTML"></div>
 {# End co-hosts refresh trigger -#}
@@ -19,7 +18,7 @@
   {# End co-hosts header -#}
 
   <div class="my-5 text-sm text-stone-600">
-    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = events.len(), total = total, label = "invitation") }}
+    {{ pagination::range_display(offset = offset.unwrap_or(0), count = events.len(), total = total, label = "invitation") }}
   </div>
 
   <div class="relative overflow-visible">
@@ -119,38 +118,11 @@
                     <div class="dropdown absolute end-0 top-8 z-10 w-[210px] rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
                       <ul class="text-sm text-stone-700">
                         {% if event.can_respond() -%}
-                          <li>
-                            <button type="button"
-                                    data-cohost-action="approve"
-                                    data-cohost-url="/dashboard/group/cohosts/{{ event.invitation_id }}/approve"
-                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                              <span class="svg-icon size-4 icon-check shrink-0 bg-stone-600"
-                                    aria-hidden="true"></span>
-                              <span>Approve</span>
-                            </button>
-                          </li>
-                          <li>
-                            <button type="button"
-                                    data-cohost-action="reject"
-                                    data-cohost-url="/dashboard/group/cohosts/{{ event.invitation_id }}/reject"
-                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                              <span class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"
-                                    aria-hidden="true"></span>
-                              <span>Reject</span>
-                            </button>
-                          </li>
+                          {{ cohost_action(invitation_id = event.invitation_id, action = "approve", icon = "icon-check", label = "Approve") -}}
+                          {{ cohost_action(invitation_id = event.invitation_id, action = "reject", icon = "icon-cancel", label = "Reject") -}}
                         {% endif -%}
                         {% if event.can_cancel() -%}
-                          <li>
-                            <button type="button"
-                                    data-cohost-action="cancel"
-                                    data-cohost-url="/dashboard/group/cohosts/{{ event.invitation_id }}/cancel"
-                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                              <span class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"
-                                    aria-hidden="true"></span>
-                              <span>Cancel co-hosting</span>
-                            </button>
-                          </li>
+                          {{ cohost_action(invitation_id = event.invitation_id, action = "cancel", icon = "icon-cancel", label = "Cancel co-hosting") -}}
                         {% endif -%}
                       </ul>
                     </div>
@@ -168,3 +140,22 @@
     {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "cohosts-pagination-") }}
   {% endif -%}
 </div>
+
+{# Co-host dropdown action sent after confirmation. -#}
+{% macro cohost_action(invitation_id, action, icon, label) -%}
+  <li>
+    <button type="button"
+            data-cohost-action="{{ action }}"
+            hx-put="/dashboard/group/cohosts/{{ invitation_id }}/{{ action }}"
+            hx-trigger="confirmed"
+            hx-swap="none"
+            hx-indicator="#dashboard-spinner"
+            hx-disabled-elt="[data-cohost-action]"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+      <span class="svg-icon size-4 {{ icon }} shrink-0 bg-stone-600"
+            aria-hidden="true"></span>
+      <span>{{ label }}</span>
+    </button>
+  </li>
+{% endmacro cohost_action -%}
+{# End co-host dropdown action sent after confirmation. -#}

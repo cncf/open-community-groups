@@ -5,6 +5,9 @@ import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
+// Inline logo used by fixtures to avoid image requests.
+const LOGO_URL = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+
 // Communities offered by the selector fixture.
 const COMMUNITIES = [
   {
@@ -25,7 +28,7 @@ const GROUPS = [
     community_display_name: "Community One",
     community_name: "community-one",
     group_id: "group-1",
-    logo_url: "/group-one.svg",
+    logo_url: LOGO_URL,
     name: "Group One",
     slug: "group-one",
   },
@@ -33,7 +36,7 @@ const GROUPS = [
     community_display_name: "Community One",
     community_name: "community-one",
     group_id: "group-2",
-    logo_url: "/group-two.svg",
+    logo_url: LOGO_URL,
     name: "Group Two",
     slug: "group-two",
   },
@@ -176,7 +179,7 @@ describe("event co-hosts selector", () => {
         community_display_name: "Community One",
         group_active: true,
         group_id: "group-1",
-        logo_url: "/group-one.svg",
+        logo_url: LOGO_URL,
         name: "Group One",
         status: "approved",
       },
@@ -364,12 +367,136 @@ describe("event co-hosts selector", () => {
     }
   });
 
+  it("exposes the group search as an ARIA combobox tied to its options", async () => {
+    const fetchMock = mockFetch({
+      response: new Response(JSON.stringify(GROUPS), { status: 200 }),
+    });
+
+    try {
+      // Render the selector before any options exist.
+      const element = mountSelector();
+      await element.updateComplete;
+      const search = element.querySelector("#cohost-group-search");
+
+      // Verify the combobox semantics and that it points at no missing listbox.
+      expect(search.getAttribute("role")).to.equal("combobox");
+      expect(search.getAttribute("aria-autocomplete")).to.equal("list");
+      expect(search.getAttribute("aria-haspopup")).to.equal("listbox");
+      expect(search.hasAttribute("aria-controls")).to.equal(false);
+      expect(search.hasAttribute("aria-activedescendant")).to.equal(false);
+
+      // Load the options and verify they are referenced and kept out of the tab order.
+      await loadGroups(element);
+      const listbox = element.querySelector('[role="listbox"]');
+      expect(search.getAttribute("aria-controls")).to.equal(listbox.id);
+      const options = [...element.querySelectorAll('[role="option"]')];
+      expect(options.map((option) => option.id)).to.deep.equal([
+        "cohost-group-option-0",
+        "cohost-group-option-1",
+      ]);
+      expect(options.map((option) => option.getAttribute("tabindex"))).to.deep.equal(["-1", "-1"]);
+      expect(options.map((option) => option.getAttribute("aria-selected"))).to.deep.equal(["false", "false"]);
+
+      // Move the active option and verify it is announced and scrolled into view.
+      let scrolledOptionId = "";
+      options[1].scrollIntoView = () => {
+        scrolledOptionId = options[1].id;
+      };
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      search.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowDown" }));
+      search.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowDown" }));
+      await element.updateComplete;
+      await waitForMicrotask();
+      expect(search.getAttribute("aria-activedescendant")).to.equal("cohost-group-option-1");
+      expect(options[1].getAttribute("aria-selected")).to.equal("true");
+      expect(scrolledOptionId).to.equal("cohost-group-option-1");
+
+      // Close the options and verify the active descendant is cleared.
+      search.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+      await element.updateComplete;
+      expect(search.hasAttribute("aria-activedescendant")).to.equal(false);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("renders group logos as decorative images", async () => {
+    const fetchMock = mockFetch({
+      response: new Response(JSON.stringify(GROUPS), { status: 200 }),
+    });
+
+    try {
+      // Render one selected co-host and the group options.
+      const selected = [{ ...GROUPS[0], status: "approved" }];
+      const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
+      await element.updateComplete;
+      await loadGroups(element);
+
+      // Verify logos do not repeat the group names already rendered as text.
+      const images = [...element.querySelectorAll("img")];
+      expect(images).to.have.length(2);
+      expect(images.map((image) => image.getAttribute("alt"))).to.deep.equal(["", ""]);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("returns focus to the closed search after choosing an option", async () => {
+    const fetchMock = mockFetch({
+      response: new Response(JSON.stringify(GROUPS), { status: 200 }),
+    });
+
+    try {
+      // Render the selector and choose an option with the pointer.
+      const element = mountSelector();
+      await element.updateComplete;
+      await loadGroups(element);
+      const option = element.querySelector('[role="option"]');
+      option.focus();
+      option.click();
+      await element.updateComplete;
+      await waitForMicrotask();
+
+      // Verify focus returned to the search without reopening the options.
+      const search = element.querySelector("#cohost-group-search");
+      expect(document.activeElement).to.equal(search);
+      expect(search.getAttribute("aria-expanded")).to.equal("false");
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("keeps focus near removed co-hosts", async () => {
+    const selected = [
+      { ...GROUPS[0], status: "approved" },
+      { ...GROUPS[1], status: "pending" },
+    ];
+
+    // Remove the first of two selected co-hosts.
+    const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
+    await element.updateComplete;
+    element.querySelector('[aria-label="Remove Group One"]').click();
+    await element.updateComplete;
+    await waitForMicrotask();
+
+    // Verify focus moved to the next remove button.
+    expect(document.activeElement).to.equal(element.querySelector('[aria-label="Remove Group Two"]'));
+
+    // Remove the last co-host and verify focus moved to the closed search.
+    document.activeElement.click();
+    await element.updateComplete;
+    await waitForMicrotask();
+    const search = element.querySelector("#cohost-group-search");
+    expect(document.activeElement).to.equal(search);
+    expect(search.getAttribute("aria-expanded")).to.equal("false");
+  });
+
   it("submits the present marker when clearing loaded co-hosts", async () => {
     const selected = [
       {
         community_display_name: "Community One",
         group_id: "group-1",
-        logo_url: "/group-one.svg",
+        logo_url: LOGO_URL,
         name: "Group One",
         status: "pending",
       },
@@ -399,22 +526,22 @@ describe("event co-hosts selector", () => {
 
   it("returns preview co-hosts with pending and approved statuses", async () => {
     const selected = [
-      { group_id: "group-1", logo_url: "/one.svg", name: "One", status: "approved" },
-      { group_id: "group-2", logo_url: "/two.svg", name: "Two", status: "pending" },
+      { group_id: "group-1", logo_url: LOGO_URL, name: "One", status: "approved" },
+      { group_id: "group-2", logo_url: LOGO_URL, name: "Two", status: "pending" },
     ];
     const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
     await element.updateComplete;
 
     expect(element.getPreviewCohosts()).to.deep.equal([
-      { logo_url: "/one.svg", name: "One", status: "approved" },
-      { logo_url: "/two.svg", name: "Two", status: "pending" },
+      { logo_url: LOGO_URL, name: "One", status: "approved" },
+      { logo_url: LOGO_URL, name: "Two", status: "pending" },
     ]);
   });
 
   it("colors approved co-hosts green and pending co-hosts amber", async () => {
     const selected = [
-      { group_id: "group-1", logo_url: "/one.svg", name: "One", status: "approved" },
-      { group_id: "group-2", logo_url: "/two.svg", name: "Two", status: "pending" },
+      { group_id: "group-1", logo_url: LOGO_URL, name: "One", status: "approved" },
+      { group_id: "group-2", logo_url: LOGO_URL, name: "Two", status: "pending" },
     ];
 
     // Render one approved and one pending co-host.
@@ -438,7 +565,7 @@ describe("event co-hosts selector", () => {
       {
         community_display_name: "Distributed AI Forum",
         group_id: "group-1",
-        logo_url: "/one.svg",
+        logo_url: LOGO_URL,
         name: "Distributed AI Atlanta",
         status: "approved",
       },

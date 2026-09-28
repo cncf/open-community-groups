@@ -149,7 +149,6 @@ const collectEventPreviewContext = (pageRoot) => {
   return {
     ...compactObject({
       category_label: selectedOptionLabel(categorySelect),
-      cohosts,
       community: compactObject({
         banner_url: firstValue(
           pageRoot.dataset?.communityBannerUrl,

@@ -5,7 +5,6 @@ import {
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
 } from "/static/js/common/dom.js";
-import { ocgFetch } from "/static/js/common/fetch.js";
 import { escapeHtml } from "/static/js/common/trusted-html.js";
 
 // Alert shown when a co-host action request is rejected.
@@ -35,11 +34,18 @@ export const initializeGroupCohostsList = (root) => {
     return;
   }
 
-  // Delegate action clicks so swapped rows keep working.
+  // Delegate action clicks and responses so swapped rows keep working.
   root.addEventListener("click", (event) => {
     const button = closestElementWithinRoot(event.target, ACTION_SELECTOR, root);
     if (button instanceof HTMLButtonElement) {
-      void handleCohostAction(button);
+      void handleCohostActionClick(button);
+    }
+  });
+
+  root.addEventListener("htmx:afterRequest", (event) => {
+    const button = closestElementWithinRoot(event.target, ACTION_SELECTOR, root);
+    if (button instanceof HTMLButtonElement) {
+      handleCohostActionResponse(button, event);
     }
   });
 };
@@ -94,79 +100,42 @@ const confirmCohostAction = (action) => {
 };
 
 /**
- * Dispatches the events listed in the response HX-Trigger header on the body.
- * @param {Response} response Co-host action response.
- * @returns {void}
- */
-const dispatchHtmxTriggers = (response) => {
-  const triggerHeader = response.headers.get("HX-Trigger");
-  if (!triggerHeader) {
-    return;
-  }
-
-  triggerHeader
-    .split(",")
-    .map((eventName) => eventName.trim())
-    .filter(Boolean)
-    .forEach((eventName) => {
-      document.body.dispatchEvent(new Event(eventName, { bubbles: true }));
-    });
-};
-
-/**
- * Confirms and sends a co-host action, blocking repeat clicks while pending.
+ * Confirms a co-host action and lets HTMX send it.
  * @param {HTMLButtonElement} button Clicked co-host action button.
  * @returns {Promise<void>}
  */
-const handleCohostAction = async (button) => {
-  if (button.disabled) {
-    return;
-  }
-
+const handleCohostActionClick = async (button) => {
   const action = button.dataset.cohostAction;
-  const url = button.dataset.cohostUrl;
-  if (!action || !url) {
+  if (button.disabled || !action) {
     return;
   }
 
   const confirmed = await confirmCohostAction(action);
-  if (!confirmed) {
+  if (confirmed) {
+    htmx.trigger(button, "confirmed");
+  }
+};
+
+/**
+ * Shows the outcome alert for a finished co-host action request.
+ * @param {HTMLButtonElement} button Co-host action button that sent the request.
+ * @param {CustomEvent} event HTMX after request event.
+ * @returns {void}
+ */
+const handleCohostActionResponse = (button, event) => {
+  const xhr = event.detail?.xhr;
+
+  // Warn that the request may have been applied before the connection failed.
+  if (!xhr?.status) {
+    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: ACTION_UNCONFIRMED_MESSAGE });
     return;
   }
 
-  // Block repeat clicks while the request is pending.
-  button.disabled = true;
-  button.setAttribute("aria-busy", "true");
-
-  try {
-    const response = await ocgFetch(url, {
-      credentials: "same-origin",
-      method: "PUT",
-    });
-
-    // Reuse the HTMX response alerts with an xhr-like adapter.
-    const responseText = await response.text();
-    const ok = handleHtmxResponse({
-      xhr: {
-        status: response.status,
-        responseText,
-        getResponseHeader: (name) => response.headers.get(name),
-      },
-      successMessage: SUCCESS_MESSAGES[action] || "",
-      errorMessage: ACTION_ERROR_MESSAGE,
-    });
-
-    // Refresh the list only after a successful action.
-    if (ok) {
-      dispatchHtmxTriggers(response);
-    }
-  } catch {
-    // Warn that the request may have been applied before the connection failed.
-    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: ACTION_UNCONFIRMED_MESSAGE });
-  } finally {
-    button.disabled = false;
-    button.removeAttribute("aria-busy");
-  }
+  handleHtmxResponse({
+    xhr,
+    successMessage: SUCCESS_MESSAGES[button.dataset.cohostAction] || "",
+    errorMessage: ACTION_ERROR_MESSAGE,
+  });
 };
 
 /**

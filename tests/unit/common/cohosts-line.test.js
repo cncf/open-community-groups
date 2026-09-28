@@ -191,4 +191,40 @@ describe("co-hosts line", () => {
     document.dispatchEvent(new CustomEvent("htmx:beforeHistorySave", { bubbles: true }));
     expect(document.body.querySelector(":scope > [data-cohosts-panel]")).to.equal(null);
   });
+
+  it("opens the panel only when the card receives keyboard-visible focus", () => {
+    // Fit a reduced credit.
+    const { card } = renderLine({ width: "160px" });
+    fitCohostsLines(document);
+
+    // Report focus on a card that is not focus-visible.
+    card.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(document.body.querySelector(":scope > [data-cohosts-panel]")).to.equal(null);
+
+    // Focus the card as keyboard navigation does.
+    card.focus();
+    expect(card.matches(":focus-visible")).to.equal(true);
+    expect(document.body.querySelector(":scope > [data-cohosts-panel]")).to.exist;
+  });
+
+  it("dismisses the panel when the page scrolls or HTMX swaps content", () => {
+    // Open the panel from a reduced credit.
+    const { summary } = renderLine({ width: "160px" });
+    fitCohostsLines(document);
+    summary.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+    const panel = document.body.querySelector(":scope > [data-cohosts-panel]");
+
+    // Scroll inside the panel and keep it open.
+    panel.dispatchEvent(new Event("scroll"));
+    expect(panel.isConnected).to.equal(true);
+
+    // Scroll the page under the panel.
+    document.dispatchEvent(new Event("scroll"));
+    expect(document.body.querySelector(":scope > [data-cohosts-panel]")).to.equal(null);
+
+    // Reopen the panel and let HTMX swap content.
+    summary.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+    document.body.dispatchEvent(new CustomEvent("htmx:beforeSwap", { bubbles: true }));
+    expect(document.body.querySelector(":scope > [data-cohosts-panel]")).to.equal(null);
+  });
 });
