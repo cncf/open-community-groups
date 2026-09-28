@@ -10,10 +10,12 @@ import {
   shouldRefreshBodyForBackendFlash,
   showConfirmAlert,
   showDeploymentRefreshRetryAlert,
+  showDeploymentRefreshStalledAlert,
   showErrorAlert,
   showInfoAlert,
   showServerErrorAlert,
   showSuccessAlert,
+  waitForAlertToClose,
 } from "/static/js/common/alerts.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
@@ -159,6 +161,141 @@ describe("alerts", () => {
     expect(env.current.swal.calls[0].html).to.include("We're deploying an update right now.");
     expect(env.current.swal.calls[0].html).to.include("This page will reload automatically");
     expect("timer" in env.current.swal.calls[0]).to.equal(false);
+  });
+
+  it("offers a dismissible manual reload when deployment refresh retries stop", async () => {
+    // Accept the stalled deployment notice.
+    const outcome = await showDeploymentRefreshStalledAlert();
+
+    // Assert the notice is persistent but does not block the page.
+    expect(outcome).to.equal("reload");
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      icon: "info",
+      showConfirmButton: true,
+      showCancelButton: true,
+      confirmButtonText: "Reload",
+      cancelButtonText: "Dismiss",
+      position: "top-end",
+      backdrop: false,
+    });
+    expect(env.current.swal.calls[0].text).to.include("couldn't load it automatically");
+    expect("timer" in env.current.swal.calls[0]).to.equal(false);
+
+    // Dismissing the notice does not request a reload.
+    env.current.swal.setNextResult({ isConfirmed: false, isDismissed: true, dismiss: "cancel" });
+    expect(await showDeploymentRefreshStalledAlert()).to.equal("dismiss");
+
+    // Blocked requests can override the notice icon and copy.
+    await showDeploymentRefreshStalledAlert({ icon: "warning", text: "Request blocked." });
+    expect(env.current.swal.calls[2]).to.include({
+      icon: "warning",
+      text: "Request blocked.",
+      confirmButtonText: "Reload",
+    });
+  });
+
+  it("reports a stalled reload prompt replaced by another alert", async () => {
+    // Replace the prompt the way SweetAlert2 does when another alert opens.
+    const envSwal = globalThis.Swal;
+    const calls = [];
+    const pendingResults = [];
+    let popup = null;
+    globalThis.Swal = {
+      fire: (options) => {
+        calls.push(options);
+        popup = document.createElement("div");
+        pendingResults.splice(0).forEach((resolve) => resolve({ isDismissed: true }));
+        return new Promise((resolve) => pendingResults.push(resolve));
+      },
+      getPopup: () => popup,
+      isVisible: () => popup !== null,
+    };
+
+    try {
+      // Error alerts still show while the prompt is open.
+      const prompt = showDeploymentRefreshStalledAlert({ icon: "warning", text: "Blocked." });
+      showErrorAlert("Failed to save, please try again.");
+      expect(calls.map(({ text }) => text)).to.deep.equal(["Blocked.", "Failed to save, please try again."]);
+      expect(await prompt).to.equal("replaced");
+
+      // A programmatic close is not a replacement while its popup animates out.
+      const closing = showDeploymentRefreshStalledAlert();
+      pendingResults.splice(0).forEach((resolve) => resolve({ isDismissed: true }));
+      expect(await closing).to.equal("dismiss");
+
+      // A dismissal without a visible replacement is not reported as replaced.
+      const closed = showDeploymentRefreshStalledAlert();
+      pendingResults.splice(0).forEach((resolve) => resolve({ isDismissed: true }));
+      popup = null;
+      expect(await closed).to.equal("dismiss");
+    } finally {
+      globalThis.Swal = envSwal;
+    }
+  });
+
+  it("tells a replaced stalled prompt apart from a closed one with the bundled SweetAlert2", async () => {
+    // Load the SweetAlert2 bundle used by the base template.
+    const envSwal = globalThis.Swal;
+    const template = await (await fetch("/ocg-server/templates/common/base.html")).text();
+    const [sweetAlertPath] = template.match(/\/static\/vendor\/js\/sweetalert2\.v[\d.]+\.min\.js/);
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.addEventListener("load", resolve, { once: true });
+      script.addEventListener("error", reject, { once: true });
+      script.src = `/ocg-server${sweetAlertPath}`;
+      document.head.append(script);
+    });
+    const sweetAlert = globalThis.Sweetalert2;
+    globalThis.Swal = sweetAlert;
+
+    try {
+      // Another alert replaces the open prompt.
+      const replacedPrompt = showDeploymentRefreshStalledAlert();
+      showErrorAlert("Failed to save, please try again.");
+      expect(await replacedPrompt).to.equal("replaced");
+
+      // Navigation cleanup closes the prompt, which stays visible while animating out.
+      const closedPrompt = showDeploymentRefreshStalledAlert();
+      sweetAlert.close();
+      expect(sweetAlert.isVisible()).to.equal(true);
+      expect(await closedPrompt).to.equal("dismiss");
+    } finally {
+      sweetAlert.close();
+      document.querySelectorAll(".swal2-container").forEach((container) => container.remove());
+      globalThis.Swal = envSwal;
+    }
+  });
+
+  it("waits until the open alert closes", async () => {
+    // Render an open alert container.
+    const envSwal = globalThis.Swal;
+    const container = document.createElement("div");
+    container.className = "swal2-container";
+    document.body.append(container);
+    globalThis.Swal = { isVisible: () => container.isConnected };
+
+    try {
+      // The wait stays pending while the alert is visible.
+      let closed = false;
+      const waiting = waitForAlertToClose().then(() => {
+        closed = true;
+      });
+      document.body.append(document.createElement("p"));
+      await waitForMicrotask();
+      expect(closed).to.equal(false);
+
+      // Removing the alert container settles the wait.
+      container.remove();
+      await waiting;
+      expect(closed).to.equal(true);
+
+      // No visible alert settles immediately.
+      await waitForAlertToClose();
+    } finally {
+      container.remove();
+      globalThis.Swal = envSwal;
+    }
   });
 
   it("handles successful, forbidden, validation, and missing xhr responses", () => {

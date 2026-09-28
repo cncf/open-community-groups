@@ -1,5 +1,11 @@
 import { expect } from "@open-wc/testing";
 
+import {
+  createDeploymentRefreshUrl,
+  DEPLOYMENT_REFRESH_ATTRIBUTE,
+  DEPLOYMENT_REFRESH_PARAM,
+} from "/static/js/common/deployment-version.js";
+
 const litBundlePath = "/static/vendor/js/lit-all.v3.3.3.min.js";
 const expectedLitImportMap = {
   imports: {
@@ -72,6 +78,44 @@ const runViewportModeScript = (scriptBody, cookie) => {
   frame.remove();
 
   return result;
+};
+
+/** Extracts the inline deployment refresh URL cleanup from the base template source. */
+const extractDeploymentRefreshScript = (template) => {
+  const headEnd = template.indexOf("</head>");
+  const scripts = [
+    ...template.slice(0, headEnd).matchAll(/<script(?<attributes>[^>]*)>(?<body>[\s\S]*?)<\/script>/g),
+  ];
+  const inlineScript = scripts.find(({ groups }) => groups.body.includes(`"${DEPLOYMENT_REFRESH_PARAM}"`));
+
+  expect(inlineScript, "deployment refresh URL cleanup").not.to.equal(undefined);
+
+  return {
+    attributes: inlineScript.groups.attributes.trim(),
+    body: inlineScript.groups.body,
+    index: inlineScript.index,
+  };
+};
+
+/**
+ * Runs the inline deployment refresh cleanup against stubbed browser globals for
+ * the given URL, then returns the address bar rewrites and the root marker state.
+ */
+const runDeploymentRefreshScript = (scriptBody, href) => {
+  // Stub the globals the cleanup reads and rewrites.
+  const url = new URL(href);
+  const documentElement = document.createElement("html");
+  const replacedUrls = [];
+  const historyStub = {
+    state: { page: "current" },
+    replaceState: (state, _title, replacedUrl) => replacedUrls.push({ state, url: replacedUrl }),
+  };
+  const locationStub = { hash: url.hash, pathname: url.pathname, search: url.search };
+
+  // Run the extracted source with the stubs in place of the page globals.
+  new Function("document", "history", "location", scriptBody)({ documentElement }, historyStub, locationStub);
+
+  return { marked: documentElement.hasAttribute(DEPLOYMENT_REFRESH_ATTRIBUTE), replacedUrls };
 };
 
 describe("common base template", () => {
@@ -165,6 +209,53 @@ describe("common base template", () => {
       expect(runViewportModeScript(body, cookie), cookie).to.deep.equal({
         viewportMode: null,
         viewportMetaContents: [DEFAULT_VIEWPORT_CONTENT],
+      });
+    });
+  });
+
+  it("cleans the deployment refresh URL before HTMX records the history path", async () => {
+    // Load the base template and locate the inline cleanup.
+    const template = await loadTemplate();
+    const { attributes, index } = extractDeploymentRefreshScript(template);
+
+    // Verify the cleanup is a classic inline script that runs before HTMX loads.
+    expect(attributes).to.equal("");
+    const htmxScriptIndex = template.search(/<script src="\/static\/vendor\/js\/htmx\.v[\d.]+\.min\.js">/);
+    expect(htmxScriptIndex).to.be.greaterThan(-1);
+    expect(index).to.be.lessThan(htmxScriptIndex);
+  });
+
+  it("strips only the deployment refresh parameter and marks the refreshed page", async () => {
+    // Load the base template and extract the cleanup source.
+    const { body } = extractDeploymentRefreshScript(await loadTemplate());
+
+    // Verify refreshed URLs return to the page URL without re-encoding other parameters.
+    const pageUrls = [
+      "https://example.test/explore?kind[0]=a%20b&entity=events#results",
+      "https://example.test/cncf?page=2",
+      "https://example.test/cncf",
+    ];
+    pageUrls.forEach((pageUrl) => {
+      const { hash, pathname, search } = new URL(pageUrl);
+      expect(
+        runDeploymentRefreshScript(body, createDeploymentRefreshUrl(pageUrl, "t1")),
+        pageUrl,
+      ).to.deep.equal({
+        marked: true,
+        replacedUrls: [{ state: { page: "current" }, url: `${pathname}${search}${hash}` }],
+      });
+    });
+
+    // Verify URLs without the exact parameter are left untouched.
+    const untouchedUrls = [
+      "https://example.test/cncf?page=2",
+      `https://example.test/cncf?x${DEPLOYMENT_REFRESH_PARAM}=1`,
+      `https://example.test/cncf?page=${DEPLOYMENT_REFRESH_PARAM}`,
+    ];
+    untouchedUrls.forEach((untouchedUrl) => {
+      expect(runDeploymentRefreshScript(body, untouchedUrl), untouchedUrl).to.deep.equal({
+        marked: false,
+        replacedUrls: [],
       });
     });
   });

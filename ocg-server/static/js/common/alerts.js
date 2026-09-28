@@ -141,6 +141,69 @@ export const showDeploymentRefreshRetryAlert = () => {
 };
 
 /**
+ * Offers a manual reload after automatic deployment refresh retries stop.
+ * The alert does not block the page and stays open until dismissed.
+ * @param {{icon?: string, text?: string}} options Optional icon and message overrides.
+ * @returns {Promise<"reload"|"dismiss"|"replaced">} User choice, or "replaced"
+ * when another alert replaced the prompt before the user answered it.
+ */
+export const showDeploymentRefreshStalledAlert = async ({
+  icon = "info",
+  text = "A new version is available, but this page couldn't load it automatically. Reload to try again.",
+} = {}) => {
+  if (!globalThis.Swal?.fire) {
+    return "dismiss";
+  }
+
+  const pendingResult = Swal.fire({
+    text,
+    icon,
+    showConfirmButton: true,
+    showCancelButton: true,
+    confirmButtonText: "Reload",
+    cancelButtonText: "Dismiss",
+    ...getCommonAlertOptions(),
+  });
+  const popup = Swal.getPopup?.();
+  const result = await pendingResult;
+  if (result?.isConfirmed) {
+    return "reload";
+  }
+  if (!result?.isDismissed || result.dismiss) {
+    return "dismiss";
+  }
+
+  // A replacing alert dismisses this one without a reason and renders its own popup,
+  // while a programmatically closed popup stays visible as it animates out
+  const currentPopup = globalThis.Swal?.getPopup?.();
+  const replaced = Boolean(popup && currentPopup && currentPopup !== popup && Swal.isVisible?.());
+  return replaced ? "replaced" : "dismiss";
+};
+
+/**
+ * Waits until no alert is visible.
+ * SweetAlert2 removes or empties its container on close, so watching body
+ * subtree changes observes every close without polling.
+ * @param {Document} root Document that hosts the alert container.
+ * @returns {Promise<void>} Promise resolved once the open alert closes.
+ */
+export const waitForAlertToClose = (root = document) =>
+  new Promise((resolve) => {
+    if (!globalThis.Swal?.isVisible?.() || !root?.body) {
+      resolve();
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      if (!Swal.isVisible()) {
+        observer.disconnect();
+        resolve();
+      }
+    });
+    observer.observe(root.body, { childList: true, subtree: true });
+  });
+
+/**
  * Displays a server error with a warning box when available (e.g., 422 errors).
  * @param {string} baseMessage - Fallback human message.
  * @param {string} serverError - Raw server response text (optional).
