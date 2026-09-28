@@ -123,6 +123,8 @@ pub struct EventSummary {
     pub meeting_provider: Option<MeetingProvider>,
     /// Event currency used for ticket purchases.
     pub payment_currency_code: Option<String>,
+    /// Number of unanswered co-host invitations, in dashboard views.
+    pub pending_cohosts_count: Option<i32>,
     /// Pre-rendered HTML for map/calendar popovers.
     pub popover_html: Option<String>,
     /// Registration end time in UTC.
@@ -245,6 +247,13 @@ impl EventSummary {
     /// Returns the group slug to use in public URLs.
     pub fn public_group_slug(&self) -> &str {
         self.group_slug_pretty.as_deref().unwrap_or(&self.group_slug)
+    }
+
+    /// Returns the dashboard explanation when publishing is unavailable.
+    pub fn publish_unavailable_title(&self) -> Option<String> {
+        self.pending_cohosts_count
+            .filter(|count| *count > 0)
+            .map(|count| format!("Waiting for {count} co-host(s) to respond."))
     }
 
     /// Returns true when attendee registration is currently open.
@@ -764,6 +773,7 @@ impl From<&EventFull> for EventSummary {
             meeting_password: event.meeting_password.clone(),
             meeting_provider: event.meeting_provider,
             payment_currency_code: event.payment_currency_code.clone(),
+            pending_cohosts_count: None,
             popover_html: None,
             registration_ends_at: event.registration_ends_at,
             registration_starts_at: event.registration_starts_at,

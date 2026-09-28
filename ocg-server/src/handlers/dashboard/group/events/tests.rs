@@ -361,6 +361,68 @@ async fn test_list_page_success() {
 }
 
 #[tokio::test]
+async fn test_list_page_waits_for_pending_cohosts_before_publishing() {
+    // Setup identifiers and an unpublished event with pending co-hosts
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut group_events = sample_group_events(event_id, group_id);
+    group_events.past.events.clear();
+    group_events.past.total = 0;
+    group_events.upcoming.events[0].pending_cohosts_count = Some(2);
+    group_events.upcoming.events[0].published = false;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    db.expect_list_group_events()
+        .times(1)
+        .returning(move |_, _| Ok(group_events.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/group/events")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the publish action is disabled with the pending co-hosts reason
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let publish_button = body
+        .split(&format!("id=\"publish-event-{event_id}\""))
+        .nth(1)
+        .and_then(|rest| rest.split("</button>").next())
+        .expect("publish action to be rendered");
+    assert!(publish_button.contains("disabled title=\"Waiting for 2 co-host(s) to respond.\""));
+    assert!(publish_button.contains("cursor-not-allowed"));
+}
+
+#[tokio::test]
 async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases() {
     // Setup identifiers and a paid event with purchases
     let community_id = Uuid::new_v4();

@@ -629,6 +629,7 @@
   series_error_message,
   error_message
 ) -%}
+  {% let publish_unavailable_title = event.publish_unavailable_title() -%}
   <li>
     <button id="{{ action }}-event-{{ event.event_id }}"
             type="button"
@@ -659,7 +660,7 @@
             hx-indicator="#dashboard-spinner"
             hx-trigger="confirmed"
             class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
-                   {% if !can_manage_events || (action == "delete" && !event.can_delete()) -%}
+                   {% if !can_manage_events || (action == "delete" && !event.can_delete()) || (action == "publish" && publish_unavailable_title.is_some()) -%}
                      opacity-50 cursor-not-allowed
                    {% endif -%}"
             {% if !can_manage_events -%}
@@ -669,6 +670,10 @@
                 title="{{ delete_title }}"
               {% endif -%}
             disabled
+            {% else if action == "publish" -%}
+            {% if let Some(publish_title) = publish_unavailable_title -%}
+              disabled title="{{ publish_title }}"
+            {% endif -%}
             {% endif -%}>
       <div class="flex items-center">
         <div class="svg-icon size-4 icon-{{ icon }} bg-stone-600"></div>

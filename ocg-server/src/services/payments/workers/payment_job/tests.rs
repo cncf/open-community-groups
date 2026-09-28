@@ -1476,6 +1476,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         meeting_password: None,
         meeting_provider: None,
         payment_currency_code: None,
+        pending_cohosts_count: None,
         popover_html: None,
         registration_ends_at: None,
         registration_starts_at: None,

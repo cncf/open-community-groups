@@ -12,6 +12,12 @@ returns json as $$
             'created_by_display_name', coalesce(u.name, u.username),
             'created_by_username', u.username,
             'delete_eligibility', get_event_delete_eligibility(p_group_id, p_event_id),
+            'pending_cohosts_count', (
+                select count(*)::int
+                from event_cohost ec
+                where ec.event_id = e.event_id
+                and ec.event_cohost_status_id = 'pending'
+            ),
             'ticket_types', list_event_ticket_types(p_event_id)
         ))::jsonb
     )::json

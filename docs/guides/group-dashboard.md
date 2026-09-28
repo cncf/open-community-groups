@@ -298,7 +298,8 @@ Each metric includes running totals and monthly trends, so it is easier to tell 
 steady over time or mainly tied to isolated spikes.
 
 A separate `Co-hosted events` section counts published events owned by other groups that this group
-co-hosts with an approved invitation. Those events never count under `Events`.
+co-hosts with an approved invitation. Those events never count under `Events`. The section is shown
+only when there is at least one such event.
 
 The `Page views` section starts with total group and event page views, then breaks views down by
 page type with daily charts for the last month.

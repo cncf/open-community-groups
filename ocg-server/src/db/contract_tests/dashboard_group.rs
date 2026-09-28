@@ -1028,11 +1028,18 @@ async fn db_contracts_get_event_summary_dashboard_deserializes() -> Result<()> {
         event.delete_eligibility,
         Some(EventDeleteEligibility::CancelFirst)
     );
+    assert_eq!(event.pending_cohosts_count, Some(0));
 
     // Check the full ticket type inventory is included
     let ticket_types = event.ticket_types.as_deref().unwrap_or_default();
     assert_eq!(ticket_types.len(), 1);
     assert_eq!(ticket_types[0].title, "General Admission");
+
+    // Check only pending co-hosting invitations are counted
+    let cohosted_event = db
+        .get_event_summary_dashboard(community_id(), subgroup_id(), cohost_matrix_event_id())
+        .await?;
+    assert_eq!(cohosted_event.pending_cohosts_count, Some(2));
 
     Ok(())
 }
