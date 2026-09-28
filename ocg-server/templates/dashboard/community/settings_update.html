@@ -108,19 +108,19 @@
     {% let og_image_value -%}value="{%- if let Some(og_image_url) = &community.og_image_url -%}{{ og_image_url }}{%- endif -%}"{%- endlet %}
 
   {# Logo URL -#}
-  {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", help_prefix_text = "Size required 360 x 360 px.", value_attr = logo_value, extra_attrs = "required") -}}
+  {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, value_attr = logo_value, extra_attrs = "required") -}}
   {# End logo URL -#}
 
   {# Banner URL -#}
-  {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", value_attr = banner_value, extra_attrs = "required") -}}
+  {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, value_attr = banner_value, extra_attrs = "required") -}}
   {# End Banner URL -#}
 
   {# Banner Mobile URL -#}
-  {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", value_attr = banner_mobile_value, extra_attrs = "required") -}}
+  {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, value_attr = banner_mobile_value, extra_attrs = "required") -}}
   {# End Banner Mobile URL -#}
 
   {# Open Graph image URL -#}
-  {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = "open_graph", help_prefix_text = "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", legend = "Used for community, group, and event link previews when a more specific image isn't provided.", value_attr = og_image_value) -}}
+  {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = crate::types::images::ImageTarget::OpenGraph, legend = "Used for community, group, and event link previews when a more specific image isn't provided.", value_attr = og_image_value) -}}
   {# End Open Graph image URL -#}
 </div>
 </div>
@@ -219,7 +219,7 @@
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Ad banner -#}
     {% let ad_banner_value -%}value="{%- if let Some(ad_banner_url) = &community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}"{%- endlet %}
-  {{ form_fields::image_field(label = "Banner Image", name = "ad_banner_url", image_kind = "banner", crop_target = "ad_banner", help_prefix_text = "Size required 2400 x 300 px.", value_attr = ad_banner_value) -}}
+  {{ form_fields::image_field(label = "Banner Image", name = "ad_banner_url", image_kind = "banner", target = crate::types::images::ImageTarget::AdBanner, value_attr = ad_banner_value) -}}
   {# End ad banner -#}
 
   {# Ad banner link URL -#}

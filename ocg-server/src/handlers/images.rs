@@ -22,8 +22,9 @@ use crate::{
     handlers::{error::HandlerError, extractors::CurrentUser, request_headers_match_site_origin},
     services::images::{
         DynImageStorage, NewImage,
-        validation::{ImageTarget, ImageValidationError, validate_image_upload},
+        validation::{ImageValidationError, validate_image_upload},
     },
+    types::images::ImageTarget,
     util::compute_hash,
 };
 
@@ -139,7 +140,10 @@ pub(crate) async fn upload(
         match field_name.as_deref() {
             Some("target") => {
                 let target_value = field.text().await.context("error reading target field")?;
-                target = Some(ImageTarget::from_str(&target_value)?);
+                target = Some(
+                    ImageTarget::from_str(&target_value)
+                        .with_context(|| format!("unknown image target: {target_value}"))?,
+                );
             }
             Some("file") => {
                 file_name = field.file_name().map(str::to_string);

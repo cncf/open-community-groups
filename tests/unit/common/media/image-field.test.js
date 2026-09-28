@@ -114,7 +114,7 @@ describe("image-field", () => {
     expect(fetchMock.calls[0][1].body.get("target")).to.equal("logo");
   });
 
-  it("keeps client-only crop targets out of the upload payload", async () => {
+  it("uploads cropped advertisement banners with their target", async () => {
     // Mock the uploaded advertisement banner URL.
     fetchMock.setImpl(async () => ({
       status: 201,
@@ -123,9 +123,9 @@ describe("image-field", () => {
       },
     }));
     const element = await mountLitComponent("image-field", {
-      cropTarget: "ad_banner",
       label: "Banner Image",
       name: "ad_banner_url",
+      target: "ad_banner",
     });
     const croppedFile = new File(["cropped"], "advertisement-cropped.webp", {
       type: "image/webp",
@@ -133,11 +133,12 @@ describe("image-field", () => {
     const cropper = element.querySelector("image-cropper");
     cropper.edit = async () => croppedFile;
 
-    // Crop the source while preserving the target-less upload contract.
+    // Crop the source and upload it with the server-validated target.
     await element._processFile(new File(["source"], "advertisement.jpg", { type: "image/jpeg" }));
 
     expect(cropper.target).to.equal("ad_banner");
-    expect(Array.from(fetchMock.calls[0][1].body.keys())).to.deep.equal(["file"]);
+    expect(Array.from(fetchMock.calls[0][1].body.keys())).to.deep.equal(["target", "file"]);
+    expect(fetchMock.calls[0][1].body.get("target")).to.equal("ad_banner");
   });
 
   it("does not upload when mandatory cropping is cancelled", async () => {

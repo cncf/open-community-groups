@@ -10,9 +10,9 @@
   {% if let Some(og_image_url) = image_url -%}
     <meta property="og:image" content="{{ og_image_url }}">
     <meta property="og:image:width"
-          content="{{ crate::services::images::OPEN_GRAPH_IMAGE_WIDTH }}">
+          content="{{ crate::types::images::ImageTarget::OpenGraph.width() }}">
     <meta property="og:image:height"
-          content="{{ crate::services::images::OPEN_GRAPH_IMAGE_HEIGHT }}">
+          content="{{ crate::types::images::ImageTarget::OpenGraph.height() }}">
     <meta property="og:image:alt" content="{{ image_alt|demoji }}">
   {% endif -%}
 {% endmacro open_graph -%}

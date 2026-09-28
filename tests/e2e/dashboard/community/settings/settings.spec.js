@@ -356,7 +356,7 @@ test.describe("community dashboard settings view", () => {
       // Assert the expected content is visible.
       await expect(displayNameInput).toBeVisible();
       const advertisementBannerField = adminCommunityPage.locator('image-field[name="ad_banner_url"]');
-      await expect(advertisementBannerField).toHaveAttribute("crop-target", "ad_banner");
+      await expect(advertisementBannerField).toHaveAttribute("target", "ad_banner");
       await expect(advertisementBannerField).toContainText("Size required 2400 x 300 px.");
 
       // Return the values used by the caller.

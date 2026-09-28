@@ -177,15 +177,15 @@
                 {# End Event category -#}
 
                 {# Logo URL -#}
-                {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", field_class = "col-span-full lg:col-span-4", input_class = "w-full block") -}}
+                {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", field_class = "col-span-full lg:col-span-4", input_class = "w-full block") -}}
                 {# End Logo URL -#}
 
                 {# Banner URL -#}
-                {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", input_class = "w-full block") -}}
+                {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", input_class = "w-full block") -}}
                 {# End Banner URL -#}
 
                 {# Banner Mobile URL -#}
-                {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", input_class = "w-full block") -}}
+                {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", input_class = "w-full block") -}}
                 {# End Banner Mobile URL -#}
 
                 {# Short Description -#}

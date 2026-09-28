@@ -19,10 +19,7 @@ use crate::{
         TestRouterBuilder, expect_authenticated_session, sample_tracking_server_cfg,
         test_state_with_server_cfg,
     },
-    services::{
-        images::{MockImageStorage, OPEN_GRAPH_IMAGE_HEIGHT, OPEN_GRAPH_IMAGE_WIDTH},
-        notifications::MockNotificationsManager,
-    },
+    services::{images::MockImageStorage, notifications::MockNotificationsManager},
     types::images::Image,
 };
 
@@ -617,6 +614,56 @@ async fn test_upload_rejects_missing_referer_when_hotlinking_disabled() {
 }
 
 #[tokio::test]
+async fn test_upload_rejects_wrong_ad_banner_dimensions() {
+    // Setup identifiers and data structures
+    let boundary = "X-BOUNDARY";
+    let body = build_multipart_body_with_target(boundary, "ad_banner", PNG_BYTES);
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+
+    // Setup image storage mock
+    let mut storage = MockImageStorage::new();
+    storage.expect_save().never();
+
+    // Setup router and send request
+    let server_cfg = HttpServerConfig {
+        base_url: "https://example.test".to_string(),
+        ..HttpServerConfig::default()
+    };
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_image_storage(storage)
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/images")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
+        .header(REFERER, "https://example.test/dashboard")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let status = response.status();
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        std::str::from_utf8(bytes.as_ref()).unwrap(),
+        "image dimensions 1x1 do not match required 2400x300"
+    );
+}
+
+#[tokio::test]
 async fn test_upload_rejects_wrong_open_graph_dimensions() {
     // Setup identifiers and data structures
     let boundary = "X-BOUNDARY";
@@ -763,7 +810,10 @@ fn build_multipart_body_with_target_opt(
 }
 
 fn open_graph_png_bytes() -> Vec<u8> {
-    let image = RgbaImage::new(OPEN_GRAPH_IMAGE_WIDTH, OPEN_GRAPH_IMAGE_HEIGHT);
+    let image = RgbaImage::new(
+        ImageTarget::OpenGraph.width(),
+        ImageTarget::OpenGraph.height(),
+    );
     let mut bytes = Vec::new();
     image
         .write_to(&mut std::io::Cursor::new(&mut bytes), ImageFormat::Png)
