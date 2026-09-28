@@ -299,7 +299,7 @@ export const createApprovalRequiredEvent = async (page, eventName) => {
   );
   await page.locator("#toggle_attendee_approval_required").check({ force: true });
 
-  await page.locator("button[data-section-next]").click();
+  await page.locator('button[data-section="date-venue"]').click();
   await expect(page.locator('button[data-section="date-venue"]')).toHaveAttribute("data-active", "true");
   await selectTimezone(page, "UTC");
   await page.locator("#starts_at").fill("2030-06-20T10:00");

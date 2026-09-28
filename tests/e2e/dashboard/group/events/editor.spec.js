@@ -34,6 +34,7 @@ test.describe("group dashboard event editor", () => {
     // The add form exposes authoring tabs and omits review-only tabs.
     const addSectionSelect = organizerGroupPage.locator('select[aria-label="Event form section"]');
     await expect(addSectionSelect.locator('option[value="details"]')).toHaveText("Details");
+    await expect(addSectionSelect.locator('option[value="cohosts"]')).toHaveText("Co-hosts");
     await expect(addSectionSelect.locator('option[value="date-venue"]')).toHaveText("Date & Venue");
     await expect(addSectionSelect.locator('option[value="payments"], option[value="sessions"]')).toHaveText([
       "Tickets",
@@ -45,7 +46,12 @@ test.describe("group dashboard event editor", () => {
     await expect(addSectionSelect.locator('option[value="attendees"]')).toHaveCount(0);
     await expect(addSectionSelect.locator('option[value="waitlist"]')).toHaveCount(0);
 
-    // Advance the add form to the date and venue section.
+    // Advance the add form through co-hosts to the date and venue section.
+    await organizerGroupPage.locator("button[data-section-next]").click();
+    await expect(organizerGroupPage.locator('button[data-section="cohosts"]')).toHaveAttribute(
+      "data-active",
+      "true",
+    );
     await organizerGroupPage.locator("button[data-section-next]").click();
     await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
       "data-active",
@@ -205,7 +211,7 @@ test.describe("group dashboard event editor", () => {
       "description",
       "Failed save coverage keeps the draft on the add page.",
     );
-    await organizerGroupPage.locator("button[data-section-next]").click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await organizerGroupPage.locator("#starts_at").fill("2030-08-10T10:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-08-10T12:00");
@@ -269,7 +275,7 @@ test.describe("group dashboard event editor", () => {
       "description",
       "Editor save coverage keeps the organizer on the update page.",
     );
-    await organizerGroupPage.locator("button[data-section-next]").click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await organizerGroupPage.locator("#starts_at").fill("2030-08-11T10:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-08-11T12:00");
@@ -352,7 +358,7 @@ test.describe("group dashboard event editor", () => {
       "description",
       "Editor coverage for clearing the event short description.",
     );
-    await organizerGroupPage.locator("button[data-section-next]").click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await organizerGroupPage.locator("#starts_at").fill("2030-08-12T10:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-08-12T12:00");

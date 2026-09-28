@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { TEST_COMMUNITY_NAME, TEST_EVENT_NAMES } from "../seed.js";
+import {
+  TEST_COHOSTED_EVENT,
+  TEST_COMMUNITY_NAME,
+  TEST_COMMUNITY_NAME_2,
+  TEST_EVENT_NAMES,
+} from "../seed.js";
 import { expectRegionScreenshot, getExploreControlsRow, getExploreSearchRow } from "./helpers.js";
 import { navigateToPath } from "../utils.js";
 
@@ -51,4 +56,39 @@ test.describe("site explore events page visual regression @visual", () => {
       useClippedPageScreenshot: true,
     });
   });
+
+  test("matches desktop co-hosted card snapshot", async ({ page }, testInfo) => {
+    // Load the co-hosted card with its full co-host credit.
+    const eventCard = await openCohostedEventCard(page, "full");
+
+    // Capture the card with its relative date footer masked.
+    await expectRegionScreenshot(page, eventCard, "explore-events-cohosted-card-desktop.png", {
+      mask: [getEventCardFooter(eventCard)],
+      testInfo,
+    });
+  });
+
+  test("matches mobile co-hosted card snapshot @mobile", async ({ page }, testInfo) => {
+    // Load the co-hosted card with its summarized co-host credit.
+    const eventCard = await openCohostedEventCard(page, "summary");
+
+    // Capture the card with its relative date footer masked.
+    await expectRegionScreenshot(page, eventCard, "explore-events-cohosted-card-mobile.png", {
+      mask: [getEventCardFooter(eventCard)],
+      testInfo,
+      useClippedPageScreenshot: true,
+    });
+  });
 });
+
+/** Selects the event card footer whose date follows the seed load time. */
+const getEventCardFooter = (eventCard) => eventCard.locator("article > div.mt-auto");
+
+/** Opens the owner community results and returns the settled co-hosted event card. */
+const openCohostedEventCard = async (page, expectedFit) => {
+  await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME_2}`);
+
+  const eventCard = page.getByRole("link").filter({ hasText: TEST_COHOSTED_EVENT.name }).first();
+  await expect(eventCard.locator("[data-cohosts-line]")).toHaveAttribute("data-cohosts-fit", expectedFit);
+  return eventCard;
+};

@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-import { TEST_COMMUNITY_NAME, TEST_EVENT_NAMES, TEST_EVENT_SLUGS, TEST_GROUP_SLUGS } from "../seed.js";
+import {
+  TEST_COHOSTED_EVENT,
+  TEST_COMMUNITY_NAME,
+  TEST_COMMUNITY_NAME_2,
+  TEST_EVENT_NAMES,
+  TEST_EVENT_SLUGS,
+  TEST_GROUP_SLUGS,
+} from "../seed.js";
 import { expectRegionScreenshot } from "./helpers.js";
 import { getIntroSection, navigateToEvent } from "../utils.js";
 
@@ -41,4 +48,34 @@ test.describe("event page visual regression @visual", () => {
       useClippedPageScreenshot: true,
     });
   });
+
+  test("matches desktop co-hosts snapshot", async ({ page }, testInfo) => {
+    // Load the co-hosted event and capture its co-hosts box.
+    const cohostsBox = await openCohostedEventBox(page);
+    await expectRegionScreenshot(page, cohostsBox, "event-page-cohosts-desktop.png", { testInfo });
+  });
+
+  test("matches mobile co-hosts snapshot @mobile", async ({ page }, testInfo) => {
+    // Load the co-hosted event and capture its stacked co-hosts box.
+    const cohostsBox = await openCohostedEventBox(page);
+    await expectRegionScreenshot(page, cohostsBox, "event-page-cohosts-mobile.png", {
+      testInfo,
+      useClippedPageScreenshot: true,
+    });
+  });
 });
+
+/** Opens the seeded co-hosted event and returns its ready co-hosts box. */
+const openCohostedEventBox = async (page) => {
+  await navigateToEvent(
+    page,
+    TEST_COMMUNITY_NAME_2,
+    TEST_GROUP_SLUGS.community2.epsilon,
+    TEST_COHOSTED_EVENT.slug,
+  );
+  await expect(page.getByRole("heading", { level: 1, name: TEST_COHOSTED_EVENT.name })).toBeVisible();
+
+  const cohostsList = page.getByRole("list", { name: "Co-hosts" });
+  await expect(cohostsList.getByRole("listitem")).toHaveCount(3);
+  return cohostsList.locator("xpath=ancestor::div[2]");
+};

@@ -53,7 +53,8 @@
         {% else -%}
           {% for event in events -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
-              <th scope="row" class="px-3 py-4 font-medium text-stone-900 min-w-[100px] max-w-[250px] xl:px-5">
+              <th scope="row"
+                  class="px-3 py-4 font-medium text-stone-900 min-w-[100px] max-w-[250px] xl:px-5">
                 <div class="flex min-w-0 items-center gap-3">
                   {{ ui::logo(logo_url = event.event_logo_url, classes = "size-10 shrink-0", size = 40) -}}
                   <div class="min-w-0">

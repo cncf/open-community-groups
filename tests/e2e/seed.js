@@ -17,6 +17,12 @@ export const TEST_CANCELED_PUBLIC_EVENT = {
   name: "Canceled Public Event",
   slug: "alpha-canceled-public-event",
 };
+/** Epsilon-owned published event co-hosted by the Gamma, Delta, and Zeta groups. */
+export const TEST_COHOSTED_EVENT = {
+  id: "55555555-5555-5555-5555-555555555951",
+  name: "Cross Community Co-hosted Summit",
+  slug: "epsilon-cohosted-summit",
+};
 export const TEST_APPROVAL_REQUIRED_EVENT = {
   id: "55555555-5555-5555-5555-555555555530",
   name: "Approval Required Attendance",
@@ -483,6 +489,7 @@ export const TEST_USER_IDS = {
   member1: "77777777-7777-7777-7777-777777777705",
   member2: "77777777-7777-7777-7777-777777777706",
   organizer1: "77777777-7777-7777-7777-777777777703",
+  organizer2: "77777777-7777-7777-7777-777777777704",
   pending1: "77777777-7777-7777-7777-777777777707",
   pending2: "77777777-7777-7777-7777-777777777708",
 };

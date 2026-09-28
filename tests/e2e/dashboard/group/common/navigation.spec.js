@@ -80,6 +80,9 @@ test.describe("group dashboard navigation", () => {
     await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=refunds"]')).toContainText(
       "Refunds",
     );
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=cohosts"]')).toContainText(
+      "Co-hosts",
+    );
     await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=badges"]')).toContainText(
       "Badges",
     );

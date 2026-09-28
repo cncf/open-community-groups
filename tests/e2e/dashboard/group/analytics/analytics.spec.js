@@ -1,5 +1,6 @@
 import { expect, test } from "../../../fixtures.js";
-import { navigateToPath } from "../../../utils.js";
+import { TEST_COMMUNITY_IDS, TEST_GROUP_IDS } from "../../../seed.js";
+import { navigateToPath, selectGroupContext } from "../../../utils.js";
 
 const GROUP_EMPTY_CHART_COUNT = 12;
 
@@ -100,6 +101,39 @@ test.describe("group dashboard analytics view", () => {
     ]) {
       await expect(dashboardContent.getByText(summaryCopy, { exact: true })).toBeVisible();
     }
+  });
+
+  test("co-host group analytics include co-hosted events", async ({ organizerGroupPage }) => {
+    // Switch to the seeded approved co-host of the cross-community summit.
+    await selectGroupContext(
+      organizerGroupPage,
+      TEST_COMMUNITY_IDS.community1,
+      TEST_GROUP_IDS.community1.gamma,
+    );
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=analytics");
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+
+    // Verify the section renders the monthly chart for the single seeded month.
+    const cohostedSection = dashboardContent
+      .getByText("Co-hosted events", { exact: true })
+      .locator("..")
+      .locator("..");
+    await expect(cohostedSection.getByText("Running total", { exact: true })).toBeVisible();
+    await expect(cohostedSection.getByText("Per month", { exact: true })).toBeVisible();
+    await expectChartRendered(cohostedSection, "cohosted-events-monthly-chart");
+  });
+
+  test("groups without co-hosted events omit the co-hosted events section", async ({
+    organizerEmptyGroupPage,
+  }) => {
+    // Load analytics for the group without co-host invitations.
+    await navigateToPath(organizerEmptyGroupPage, "/dashboard/group?tab=analytics");
+    const dashboardContent = organizerEmptyGroupPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Analytics", { exact: true })).toBeVisible();
+    await expect(dashboardContent.getByText("Attendees", { exact: true }).last()).toBeVisible();
+
+    // Verify the optional section is not rendered.
+    await expect(dashboardContent.getByText("Co-hosted events", { exact: true })).toHaveCount(0);
   });
 
   test("organizer can include subgroup analytics", async ({ organizerGroupPage }) => {

@@ -3,10 +3,22 @@ import { queryE2eDatabase, queryE2eDatabaseRows } from "../../database.js";
 import { TEST_COMMUNITY_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../../seed.js";
 import { navigateToPath, waitForActionResponse } from "../../utils.js";
 import { fillMarkdownEditor } from "../../dashboard/form-helpers.js";
+import { cleanupCohostEvents, setupCohostEvent } from "../../data-graphs/cohosts.js";
+import { respondToCohostInvitation } from "../../dashboard/group/cohosts/helpers.js";
 
 const COMMUNITY_LOGS_PATH = "/dashboard/community?tab=logs";
 
 const GROUP_LOGS_PATH = "/dashboard/group?tab=logs";
+
+// Group-scoped co-host audit filter labels.
+const COHOST_AUDIT_ACTION_LABELS = [
+  "Event co-host approved",
+  "Event co-host canceled",
+  "Event co-host closed",
+  "Event co-host invited",
+  "Event co-host rejected",
+  "Event co-host removed",
+];
 
 const USER_ACCOUNT_PATH = "/dashboard/user?tab=account";
 
@@ -87,6 +99,54 @@ test.describe("dashboard audit workflow", () => {
     }
   });
 
+  test("co-host approval appears in owner and co-host group logs", async ({
+    organizerGroupPage,
+    organizerGroupWithoutPaymentsPage,
+  }) => {
+    const cohostGroupId = TEST_GROUP_IDS.community2.delta;
+    const scenario = setupCohostEvent({ cohosts: [{ groupId: cohostGroupId }] });
+    const auditSnapshot = snapshotAuditLogs();
+
+    try {
+      // Approve the invitation from the co-host group dashboard.
+      await respondToCohostInvitation(organizerGroupWithoutPaymentsPage, scenario.name, "approve");
+
+      // Verify each group sees the approval in its own logs.
+      for (const [page, groupId] of [
+        [organizerGroupPage, TEST_GROUP_IDS.community1.alpha],
+        [organizerGroupWithoutPaymentsPage, cohostGroupId],
+      ]) {
+        const auditLogId = latestAuditLogId({
+          action: "event_cohost_approved",
+          actorUserId: TEST_USER_IDS.organizer2,
+          createdAfter: auditSnapshot.createdAfter,
+          groupId,
+          resourceId: scenario.eventId,
+        });
+        await expectAuditRow(page, {
+          action: "event_cohost_approved",
+          actionLabel: "Event co-host approved",
+          actorUsername: "e2e-organizer-2",
+          auditLogId,
+          path: `${GROUP_LOGS_PATH}&action=event_cohost_approved`,
+          resourceName: scenario.name,
+          resourceType: "Event",
+        });
+      }
+
+      // Verify every co-host transition can be used as a group log filter.
+      await organizerGroupPage.getByRole("button", { name: "Filters" }).click();
+      const actionFilter = organizerGroupPage.locator("#audit-log-filters-modal #audit-action");
+      await expect(actionFilter).toHaveValue("event_cohost_approved");
+      for (const label of COHOST_AUDIT_ACTION_LABELS) {
+        await expect(actionFilter.getByRole("option", { name: label, exact: true })).toHaveCount(1);
+      }
+    } finally {
+      // Restore seeded state.
+      cleanupCohostEvents([scenario.eventId]);
+    }
+  });
+
   test("user profile mutation appears in user logs", async ({ member1Page }) => {
     // Snapshot the original user name and audit baseline.
     const originalName = await readUserName(member1Page);
@@ -142,8 +202,9 @@ const expectAuditRow = async (
   }
 };
 
-/** Returns the latest matching audit_log identifier created after the snapshot. */
-const latestAuditLogId = ({ action, actorUserId, createdAfter, resourceId }) => {
+/** Returns the latest matching audit_log identifier created after the snapshot, optionally per group. */
+const latestAuditLogId = ({ action, actorUserId, createdAfter, groupId, resourceId }) => {
+  const groupFilter = groupId ? `and group_id = '${groupId}'::uuid` : "";
   const [row] = queryE2eDatabaseRows(`
     select audit_log_id
     from audit_log
@@ -151,6 +212,7 @@ const latestAuditLogId = ({ action, actorUserId, createdAfter, resourceId }) => 
     and actor_user_id = '${actorUserId}'::uuid
     and created_at >= '${createdAfter}'::timestamptz
     and resource_id = '${resourceId}'::uuid
+    ${groupFilter}
     order by created_at desc, audit_log_id desc
     limit 1
   `);

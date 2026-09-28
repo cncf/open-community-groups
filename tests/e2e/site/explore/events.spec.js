@@ -3,9 +3,12 @@ import { expect, test } from "@playwright/test";
 import { queryE2eDatabase } from "../../database.js";
 import {
   TEST_CALENDAR_EVENTS,
+  TEST_COHOSTED_EVENT,
   TEST_COMMUNITY_NAME,
+  TEST_COMMUNITY_NAME_2,
   TEST_EVENT_NAMES,
   TEST_GROUP_IDS,
+  TEST_GROUP_NAMES,
   TEST_GROUP_SLUG,
 } from "../../seed.js";
 import {
@@ -16,6 +19,13 @@ import {
   uniqueName,
   waitForActionResponse,
 } from "../../utils.js";
+
+// Approved co-host names in their alphabetical display order.
+const COHOSTED_EVENT_COHOST_NAMES = [
+  "E2E Second Group Delta",
+  "E2E Second Group Zeta",
+  TEST_GROUP_NAMES.gamma,
+];
 
 const SORT_EVENT_CATEGORY_ID = "33333333-3333-3333-3333-333333333331";
 
@@ -72,6 +82,64 @@ test.describe("site explore events page", () => {
     await expect(calendarPopover).toBeVisible();
     await expect(calendarPopover.getByText("Free", { exact: true })).toHaveCount(0);
     await expect(calendarPopover.locator("[data-localized-currency]")).toHaveCount(0);
+  });
+
+  test("shows every co-host name when the card has room", async ({ page }) => {
+    // Load the seeded co-hosted event card in a desktop viewport.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME_2}`);
+    const eventCard = page.getByRole("link").filter({ hasText: TEST_COHOSTED_EVENT.name }).first();
+    await expect(eventCard).toBeVisible();
+
+    // Verify the full credit stays visible without a hover panel.
+    const cohostsLine = eventCard.locator("[data-cohosts-line]");
+    const cohostsCredit = `Co-hosted with ${COHOSTED_EVENT_COHOST_NAMES.join(", ")}`;
+    await expect(cohostsLine).toHaveAttribute("data-cohosts-fit", "full");
+    await expect(cohostsLine).toHaveAttribute("title", cohostsCredit);
+    await expect(cohostsLine.getByText(cohostsCredit, { exact: true })).toBeVisible();
+    await expect(cohostsLine.locator("[data-cohosts-summary]")).toBeHidden();
+    await cohostsLine.hover();
+    await expect(page.locator("[data-cohosts-panel]")).toHaveCount(0);
+  });
+
+  test("summarizes overflowing co-hosts and reveals them on hover or keyboard focus", async ({ page }) => {
+    // Load the seeded co-hosted event card in a narrow viewport.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME_2}`);
+    const eventCard = page.getByRole("link").filter({ hasText: TEST_COHOSTED_EVENT.name }).first();
+    await expect(eventCard).toBeVisible();
+
+    // Verify the overflowing names collapse into a count while staying accessible.
+    const cohostsLine = eventCard.locator("[data-cohosts-line]");
+    await expect(cohostsLine).toHaveAttribute("data-cohosts-fit", "summary");
+    await expect(cohostsLine).not.toHaveAttribute("title");
+    const summary = cohostsLine.locator("[data-cohosts-summary]");
+    await expect(summary).toBeVisible();
+    await expect(summary).toHaveText("Co-hosted with 3 groups");
+    await expect(cohostsLine.locator("[data-cohosts-full]")).toHaveText(
+      `Co-hosted with ${COHOSTED_EVENT_COHOST_NAMES.join(", ")}`,
+    );
+
+    // Hover the summary to open the co-hosts panel, then dismiss it with Escape.
+    const cohostsPanel = page.locator("[data-cohosts-panel]");
+    await summary.hover();
+    await expect(cohostsPanel).toBeVisible();
+    await expect(cohostsPanel.getByText("Co-hosted with", { exact: true })).toBeVisible();
+    for (const name of COHOSTED_EVENT_COHOST_NAMES) {
+      await expect(cohostsPanel.getByText(name, { exact: true })).toBeVisible();
+    }
+    await page.keyboard.press("Escape");
+    await expect(cohostsPanel).toHaveCount(0);
+
+    // Open the panel from keyboard focus and close it when focus leaves the card.
+    await page.mouse.move(0, 0);
+    await eventCard.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(eventCard).toBeFocused();
+    await expect(cohostsPanel).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(cohostsPanel).toHaveCount(0);
   });
 
   test("moves between event result pages and restores the first card", async ({ page }) => {
