@@ -32,7 +32,7 @@ describe("co-hosts templates", () => {
     // Verify the credit line keeps the full list in its title and renders no links.
     expect(line).to.include('title="Co-hosted with {{ names }}"');
     expect(line).to.include('<span class="truncate">Co-hosted with {{ names }}</span>');
-    expect(line).to.include("icon-groups");
+    expect(line).to.include("icon-cohosts");
     expect(line).not.to.include("<a ");
   });
 
@@ -81,6 +81,56 @@ describe("co-hosts templates", () => {
     // Verify the next-event link uses the event's own community.
     expect(normalizeWhitespace(groupPage)).to.include(
       'href="/{{ next_event_card.event.community_name }}/group/{{ next_event_card.event.public_group_slug() }}/event/{{ next_event_card.event.slug }}"',
+    );
+  });
+
+  it("colors dashboard co-hosting statuses with the shared status badge", async () => {
+    // Load the group dashboard co-hosts list.
+    const template = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/group/cohosts_list.html"),
+    );
+
+    // Verify approved maps to green, pending to amber, and closed statuses to red.
+    expect(template).to.include(
+      "{% let is_approved = event.status == crate::types::event::EventCohostStatus::Approved -%}",
+    );
+    expect(template).to.include(
+      "{% let is_pending = event.status == crate::types::event::EventCohostStatus::Pending -%}",
+    );
+    expect(template).to.include(
+      "{{ badges::status_badge(label = event.status_label(), canceled = !is_approved && !is_pending, published = is_approved) -}}",
+    );
+    expect(template).not.to.include("bg-primary-50");
+  });
+
+  it("renders co-hosted event and owner group logos with the shared square logo", async () => {
+    // Load the group dashboard co-hosts list.
+    const template = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/group/cohosts_list.html"),
+    );
+
+    // Verify both logos use the public page logo macro instead of round avatars.
+    expect(template).to.include(
+      '{{ ui::logo(logo_url = event.event_logo_url, classes = "size-10 shrink-0", size = 40) -}}',
+    );
+    expect(template).to.include(
+      '{{ ui::logo(logo_url = event.owner_group_logo_url, classes = "size-9 shrink-0", size = 36) -}}',
+    );
+    expect(template).not.to.include("<logo-image");
+  });
+
+  it("caps the co-hosted event cell width so long names truncate", async () => {
+    // Load the group dashboard co-hosts list.
+    const template = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/group/cohosts_list.html"),
+    );
+
+    // Verify the event cell is bounded like the events list name cell.
+    expect(template).to.include(
+      '<th scope="row" class="px-3 py-4 font-medium text-stone-900 min-w-[100px] max-w-[250px] xl:px-5">',
+    );
+    expect(template).to.include(
+      '<div class="truncate" title="{{ event.event_name }}">{{ event.event_name }}</div>',
     );
   });
 });

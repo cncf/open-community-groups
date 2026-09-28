@@ -137,6 +137,53 @@ describe("events list page", () => {
     expect(actionsButton.getAttribute("aria-expanded")).to.equal("false");
   });
 
+  it("opens event action dropdowns upward only when the viewport would clip them", () => {
+    // Render a row actions menu inside its positioned anchor.
+    document.body.innerHTML = `
+      <div id="events-list-root">
+        <div id="actions-anchor" class="relative">
+          <button
+            class="btn-actions"
+            data-event-id="123"
+            aria-controls="dropdown-actions-123"
+            aria-expanded="false"
+          >
+            Actions
+          </button>
+          <div id="dropdown-actions-123" data-event-actions-dropdown class="dropdown hidden">
+            ${scopedActionMarkup()}
+          </div>
+        </div>
+      </div>
+    `;
+    const root = document.getElementById("events-list-root");
+    initializeEventsListPage(root);
+    const actionsButton = root.querySelector(".btn-actions");
+    const anchor = document.getElementById("actions-anchor");
+    const dropdown = root.querySelector("[data-event-actions-dropdown]");
+
+    // Open the menu on a row near the bottom edge of the viewport.
+    anchor.getBoundingClientRect = () => ({ top: window.innerHeight - 60, bottom: window.innerHeight - 28 });
+    dropdown.getBoundingClientRect = () => ({ bottom: window.innerHeight + 120 });
+    actionsButton.click();
+
+    // The dropdown is anchored above its trigger.
+    expect(dropdown.classList.contains("hidden")).to.equal(false);
+    expect(dropdown.style.insetBlockStart).to.equal("auto");
+    expect(dropdown.style.insetBlockEnd).to.equal("calc(100% + 8px)");
+
+    // Close the menu and reopen it with enough room below.
+    actionsButton.click();
+    anchor.getBoundingClientRect = () => ({ top: 100, bottom: 132 });
+    dropdown.getBoundingClientRect = () => ({ bottom: 300 });
+    actionsButton.click();
+
+    // The previous upward placement is cleared.
+    expect(dropdown.classList.contains("hidden")).to.equal(false);
+    expect(dropdown.style.insetBlockStart).to.equal("");
+    expect(dropdown.style.insetBlockEnd).to.equal("");
+  });
+
   it("restores disclosure focus when a root click closes an actions dropdown", () => {
     // Open an actions dropdown and move focus into its controls.
     const root = mountEventsList();

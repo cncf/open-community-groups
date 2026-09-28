@@ -117,7 +117,7 @@ describe("dashboard group event add template", () => {
     // Verify the co-hosts tab controls follow the details tab.
     expect(template).to.include('event_form::tab_option(section = "cohosts", label = "Co-hosts")');
     expect(template).to.include(
-      'event_form::tab_button(section = "cohosts", icon = "groups", label = "Co-hosts")',
+      'event_form::tab_button(section = "cohosts", icon = "cohosts", label = "Co-hosts")',
     );
     expect(template.indexOf('section = "cohosts"')).to.be.greaterThan(
       template.indexOf('section = "details"'),

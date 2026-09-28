@@ -182,7 +182,7 @@ describe("dashboard group event update template", () => {
     // Verify the co-hosts tab controls.
     expect(template).to.include('event_form::tab_option(section = "cohosts", label = "Co-hosts")');
     expect(template).to.include(
-      'event_form::tab_button(section = "cohosts", icon = "groups", label = "Co-hosts")',
+      'event_form::tab_button(section = "cohosts", icon = "cohosts", label = "Co-hosts")',
     );
 
     // Verify pending co-hosts block publishing before the role check.

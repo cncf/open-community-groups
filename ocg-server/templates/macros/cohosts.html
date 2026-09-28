@@ -5,7 +5,7 @@
     {% let names = crate::types::event::cohost_names(cohosts) -%}
     <span class="mt-1 flex min-w-0 max-w-full items-center gap-1.5 text-[0.75rem]/4 text-stone-500 {{ extra_classes }}"
           title="Co-hosted with {{ names }}">
-      <span class="svg-icon size-3 shrink-0 bg-stone-400 icon-groups"
+      <span class="svg-icon size-3.5 shrink-0 bg-stone-400 icon-cohosts"
             aria-hidden="true"></span>
       <span class="truncate">Co-hosted with {{ names }}</span>
     </span>

@@ -671,6 +671,7 @@ input:placeholder-shown {
 .icon-check-in { --icon-url: url('/static/images/icons/check_in.svg'); }
 .icon-clock { --icon-url: url('/static/images/icons/clock.svg'); }
 .icon-close { --icon-url: url('/static/images/icons/close.svg'); }
+.icon-cohosts { --icon-url: url('/static/images/icons/cohosts.svg'); }
 .icon-copy { --icon-url: url('/static/images/icons/copy.svg'); }
 .icon-csv { --icon-url: url('/static/images/icons/csv.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }

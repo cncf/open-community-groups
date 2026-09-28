@@ -148,6 +148,24 @@ export class CohostsSelector extends LitWrapper {
   }
 
   /**
+   * Keeps Enter in the search from submitting the editor form.
+   * @param {KeyboardEvent} event - Search input keydown event.
+   * @returns {void}
+   */
+  _handleSearchKeydown(event) {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    // The combobox prevents Enter itself when it can select an option.
+    const comboboxHandlesEnter =
+      this._combobox.isOpen && this._loadStatus !== "loading" && this._filteredGroups.length > 0;
+    if (!comboboxHandlesEnter) {
+      event.preventDefault();
+    }
+  }
+
+  /**
    * Loads the group options of the selected community, ignoring stale responses.
    * @returns {Promise<void>}
    */
@@ -185,6 +203,11 @@ export class CohostsSelector extends LitWrapper {
 
       this._groups = Array.isArray(groups) ? groups : [];
       this._loadStatus = "ready";
+
+      // Open the options for users who kept focus on the search while loading.
+      if (this.querySelector("#cohost-group-search") === document.activeElement) {
+        this._combobox.open();
+      }
     } catch (error) {
       if (error?.name === "AbortError" || sequence !== this._loadSequence || !this.isConnected) {
         return;
@@ -258,7 +281,7 @@ export class CohostsSelector extends LitWrapper {
             autocapitalize="off"
             spellcheck="false"
             .value=${this._combobox.query}
-            ?disabled=${this.disabled || !this._selectedCommunityId || isLoading}
+            ?disabled=${this.disabled || !this._selectedCommunityId}
             aria-controls="cohost-group-options"
             aria-expanded=${this._combobox.isOpen ? "true" : "false"}
             @focus=${() => {
@@ -271,6 +294,7 @@ export class CohostsSelector extends LitWrapper {
               this._combobox.setQuery(event.target.value || "");
               this._combobox.open();
             }}
+            @keydown=${(event) => this._handleSearchKeydown(event)}
           />
         </div>
 
@@ -333,9 +357,16 @@ export class CohostsSelector extends LitWrapper {
     }
 
     return html`
-      <div class="max-w-xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900">
+      <div
+        class="max-w-xl rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm/6 text-red-900"
+        role="alert"
+      >
         <p>${this._loadError}</p>
-        <button type="button" class="btn-primary-outline btn-mini mt-3" @click=${() => this._loadGroups()}>
+        <button
+          type="button"
+          class="btn-primary-outline btn-mini mt-3"
+          @click=${() => this._retryLoadGroups()}
+        >
           Retry
         </button>
       </div>
@@ -452,8 +483,8 @@ export class CohostsSelector extends LitWrapper {
     const statusLabel = cohost.status === STATUS_APPROVED ? "Approved" : "Pending";
     const statusClass =
       cohost.status === STATUS_APPROVED
-        ? "border-primary-700 bg-primary-50 text-primary-700"
-        : "border-amber-700 bg-amber-50 text-amber-800";
+        ? "border-green-800 bg-green-100 text-green-800"
+        : "border-amber-800 bg-amber-100 text-amber-800";
 
     return html`
       <span class="custom-badge px-2.5 py-0.5 ${statusClass}">${statusLabel}</span>
@@ -465,6 +496,16 @@ export class CohostsSelector extends LitWrapper {
           : ""
       }
     `;
+  }
+
+  /**
+   * Retries loading the group options, keeping focus on the search input.
+   * @returns {void}
+   */
+  _retryLoadGroups() {
+    // Move focus before the retry button is replaced by the loading status.
+    this.querySelector("#cohost-group-search")?.focus();
+    this._loadGroups();
   }
 
   /**

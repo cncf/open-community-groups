@@ -1,6 +1,7 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
+{% import "macros/ui.html" as ui -%}
 
 {# Refresh co-hosts without losing the page. -#}
 <div id="cohosts-refresh"
@@ -52,10 +53,9 @@
         {% else -%}
           {% for event in events -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
-              <th scope="row" class="px-3 py-4 font-medium text-stone-900 xl:px-5">
+              <th scope="row" class="px-3 py-4 font-medium text-stone-900 min-w-[100px] max-w-[250px] xl:px-5">
                 <div class="flex min-w-0 items-center gap-3">
-                  <logo-image image-url="{{ event.event_logo_url }}" size="size-10" placeholder="{{ event.event_name }}">
-                  </logo-image>
+                  {{ ui::logo(logo_url = event.event_logo_url, classes = "size-10 shrink-0", size = 40) -}}
                   <div class="min-w-0">
                     {% if let Some(public_url) = event.public_url() -%}
                       <a href="{{ public_url|safe_href }}"
@@ -87,8 +87,7 @@
               </th>
               <td class="hidden xl:table-cell px-3 py-4 xl:px-5">
                 <div class="flex min-w-0 items-center gap-3">
-                  <logo-image image-url="{{ event.owner_group_logo_url }}" size="size-9" placeholder="{{ event.owner_group_name }}">
-                  </logo-image>
+                  {{ ui::logo(logo_url = event.owner_group_logo_url, classes = "size-9 shrink-0", size = 36) -}}
                   <div class="min-w-0">
                     <div class="truncate font-medium text-stone-900">{{ event.owner_group_name }}</div>
                     <div class="truncate text-xs text-stone-600">{{ event.owner_community_display_name }}</div>
@@ -104,16 +103,9 @@
                 {% endif -%}
               </td>
               <td class="px-3 py-4 whitespace-nowrap xl:px-5">
-                {% let status_label = event.status_label() -%}
-                {% if status_label == "Approved" -%}
-                  <span class="custom-badge border-primary-700 bg-primary-50 px-2.5 py-0.5 text-primary-700">{{ status_label }}</span>
-                {% else if status_label == "Pending" -%}
-                  <span class="custom-badge border-amber-700 bg-amber-50 px-2.5 py-0.5 text-amber-800">{{ status_label }}</span>
-                {% else if status_label == "Rejected" -%}
-                  <span class="custom-badge border-red-700 bg-red-50 px-2.5 py-0.5 text-red-700">{{ status_label }}</span>
-                {% else -%}
-                  <span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">{{ status_label }}</span>
-                {% endif -%}
+                {% let is_approved = event.status == crate::types::event::EventCohostStatus::Approved -%}
+                {% let is_pending = event.status == crate::types::event::EventCohostStatus::Pending -%}
+                {{ badges::status_badge(label = event.status_label(), canceled = !is_approved && !is_pending, published = is_approved) -}}
               </td>
               <td class="w-[72px] px-3 py-4 text-right xl:px-5">
                 {% if can_manage_cohosts && (event.can_respond() || event.can_cancel()) -%}

@@ -90,9 +90,7 @@ describe("event co-hosts selector", () => {
 
       // Switch to the second community.
       element.querySelector("#cohost-community").value = "community-2";
-      element
-        .querySelector("#cohost-community")
-        .dispatchEvent(new Event("change", { bubbles: true }));
+      element.querySelector("#cohost-community").dispatchEvent(new Event("change", { bubbles: true }));
       await waitForMicrotask();
 
       // Verify the groups lookup targets the selected community.
@@ -130,9 +128,7 @@ describe("event co-hosts selector", () => {
       element.querySelector("#cohost-group-search").dispatchEvent(new Event("focus"));
       await waitForMicrotask();
       element.querySelector("#cohost-community").value = "community-2";
-      element
-        .querySelector("#cohost-community")
-        .dispatchEvent(new Event("change", { bubbles: true }));
+      element.querySelector("#cohost-community").dispatchEvent(new Event("change", { bubbles: true }));
       await waitForMicrotask();
 
       // Resolve the stale first response last.
@@ -199,6 +195,129 @@ describe("event co-hosts selector", () => {
       expect(element.selectedCohosts[0].name).to.equal("Group One");
       expect(element.textContent).to.include("try again");
       expect(element.querySelector("button").textContent).to.include("Retry");
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("keeps the search focused while groups load and opens the options when ready", async () => {
+    // Hold the groups response to inspect the loading state.
+    let resolveGroups;
+    const pending = new Promise((resolve) => {
+      resolveGroups = resolve;
+    });
+    const fetchMock = mockFetch({ impl: () => pending });
+
+    try {
+      // Focus the search to start the first groups load.
+      const element = mountSelector();
+      await element.updateComplete;
+      const search = element.querySelector("#cohost-group-search");
+      search.focus();
+      await element.updateComplete;
+
+      // Verify the search stays enabled and focused while loading.
+      expect(element.textContent).to.include("Loading co-host groups...");
+      expect(search.disabled).to.equal(false);
+      expect(document.activeElement).to.equal(search);
+
+      // Resolve the lookup and wait for the render.
+      resolveGroups(new Response(JSON.stringify(GROUPS), { status: 200 }));
+      await waitForMicrotask();
+      await element.updateComplete;
+
+      // Verify the options open for the still focused search.
+      expect(search.getAttribute("aria-expanded")).to.equal("true");
+      expect(element.querySelectorAll('[role="option"]')).to.have.length(2);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("keeps Enter in the search from submitting the form", async () => {
+    const fetchMock = mockFetch({
+      response: new Response(JSON.stringify(GROUPS), { status: 200 }),
+    });
+
+    /**
+     * Dispatches a cancelable Enter keydown on the search and returns it.
+     * @param {HTMLInputElement} search - Group search input.
+     * @returns {KeyboardEvent} Dispatched event.
+     */
+    const pressEnter = (search) => {
+      const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" });
+      search.dispatchEvent(event);
+      return event;
+    };
+
+    try {
+      // Render the selector and load its groups.
+      const element = mountSelector();
+      await element.updateComplete;
+      const search = element.querySelector("#cohost-group-search");
+      await loadGroups(element);
+
+      // Verify Enter is blocked when the query matches no groups.
+      search.value = "missing";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      await element.updateComplete;
+      expect(pressEnter(search).defaultPrevented).to.equal(true);
+
+      // Verify Enter is blocked when the options are closed.
+      search.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+      await element.updateComplete;
+      expect(search.getAttribute("aria-expanded")).to.equal("false");
+      expect(pressEnter(search).defaultPrevented).to.equal(true);
+
+      // Verify Enter still selects the highlighted option.
+      search.value = "";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      search.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowDown" }));
+      await element.updateComplete;
+      expect(pressEnter(search).defaultPrevented).to.equal(true);
+      await element.updateComplete;
+      expect(element.selectedCohosts.map((cohost) => cohost.group_id)).to.deep.equal(["group-1"]);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("announces load errors and keeps focus on the search when retrying", async () => {
+    // Fail the first lookup and succeed on retry.
+    let fail = true;
+    const fetchMock = mockFetch({
+      impl: () =>
+        fail ? new Response("Nope", { status: 500 }) : new Response(JSON.stringify(GROUPS), { status: 200 }),
+    });
+
+    try {
+      // Render the selector and fail the first groups load.
+      const element = mountSelector();
+      await element.updateComplete;
+      await loadGroups(element);
+
+      // Verify the error is announced with a retry action.
+      const alert = element.querySelector('[role="alert"]');
+      expect(alert?.textContent).to.include("could not be loaded");
+      const retry = alert.querySelector("button");
+      retry.focus();
+
+      // Retry the lookup.
+      fail = false;
+      retry.click();
+      await element.updateComplete;
+
+      // Verify focus moved to the search before the retry button was removed.
+      const search = element.querySelector("#cohost-group-search");
+      expect(document.activeElement).to.equal(search);
+      expect(element.querySelector('[role="alert"]')).to.equal(null);
+
+      // Verify the reloaded options open for the focused search.
+      await waitForMicrotask();
+      await element.updateComplete;
+      expect(fetchMock.calls).to.have.length(2);
+      expect(search.getAttribute("aria-expanded")).to.equal("true");
+      expect(element.querySelectorAll('[role="option"]')).to.have.length(2);
     } finally {
       fetchMock.restore();
     }
@@ -284,5 +403,27 @@ describe("event co-hosts selector", () => {
       { logo_url: "/one.svg", name: "One", status: "approved" },
       { logo_url: "/two.svg", name: "Two", status: "pending" },
     ]);
+  });
+
+  it("colors approved co-hosts green and pending co-hosts amber", async () => {
+    const selected = [
+      { group_id: "group-1", logo_url: "/one.svg", name: "One", status: "approved" },
+      { group_id: "group-2", logo_url: "/two.svg", name: "Two", status: "pending" },
+    ];
+
+    // Render one approved and one pending co-host.
+    const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
+    await element.updateComplete;
+
+    // Verify the status pills use the shared dashboard status colors.
+    const [approved, pending] = element.querySelectorAll(".custom-badge");
+    expect(approved.textContent.trim()).to.equal("Approved");
+    expect([...approved.classList]).to.include.members([
+      "border-green-800",
+      "bg-green-100",
+      "text-green-800",
+    ]);
+    expect(pending.textContent.trim()).to.equal("Pending");
+    expect([...pending.classList]).to.include.members(["border-amber-800", "bg-amber-100", "text-amber-800"]);
   });
 });
