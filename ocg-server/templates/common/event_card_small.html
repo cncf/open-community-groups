@@ -22,13 +22,17 @@
   {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
 {% endblock corner_badge %}
 
-{% block top_row_classes -%}
-  pr-14 md:pr-16
-{% endblock top_row_classes %}
-
 {% block preheader -%}
   <span>{{- event.group_name -}}</span>
 {%- endblock preheader %}
+
+{% block title_line_clamp_classes -%}
+  {% if event.cohosts.is_empty() -%}
+    !line-clamp-2
+  {% else -%}
+    !line-clamp-1
+  {% endif -%}
+{% endblock title_line_clamp_classes %}
 
 {% block title -%}
   {{- event.name|demoji -}}

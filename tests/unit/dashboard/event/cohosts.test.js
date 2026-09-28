@@ -216,8 +216,13 @@ describe("event co-hosts selector", () => {
       search.focus();
       await element.updateComplete;
 
+      // Verify the loading copy stays inside the search and its dropdown without shifting the page.
+      const status = element.querySelector('[role="status"]');
+      expect(status.classList.contains("sr-only")).to.equal(true);
+      expect(status.textContent.trim()).to.equal("Loading co-host groups...");
+      expect(search.placeholder).to.equal("Loading groups...");
+
       // Verify the search stays enabled and focused while loading.
-      expect(element.textContent).to.include("Loading co-host groups...");
       expect(search.disabled).to.equal(false);
       expect(document.activeElement).to.equal(search);
 
@@ -226,9 +231,10 @@ describe("event co-hosts selector", () => {
       await waitForMicrotask();
       await element.updateComplete;
 
-      // Verify the options open for the still focused search.
+      // Verify the options open for the still focused search and the status clears.
       expect(search.getAttribute("aria-expanded")).to.equal("true");
       expect(element.querySelectorAll('[role="option"]')).to.have.length(2);
+      expect(status.textContent.trim()).to.equal("");
     } finally {
       fetchMock.restore();
     }
@@ -425,5 +431,28 @@ describe("event co-hosts selector", () => {
     ]);
     expect(pending.textContent.trim()).to.equal("Pending");
     expect([...pending.classList]).to.include.members(["border-amber-800", "bg-amber-100", "text-amber-800"]);
+  });
+
+  it("shows the community above the group name on selected co-host cards", async () => {
+    const selected = [
+      {
+        community_display_name: "Distributed AI Forum",
+        group_id: "group-1",
+        logo_url: "/one.svg",
+        name: "Distributed AI Atlanta",
+        status: "approved",
+      },
+    ];
+
+    // Render one selected co-host.
+    const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
+    await element.updateComplete;
+
+    // Verify the community label precedes the group name with the card popover styles.
+    const [community, name] = element.querySelector(".rounded-xl .min-w-0.flex-1").children;
+    expect(community.textContent.trim()).to.equal("Distributed AI Forum");
+    expect([...community.classList]).to.include.members(["uppercase", "text-stone-400", "truncate"]);
+    expect(name.textContent.trim()).to.equal("Distributed AI Atlanta");
+    expect([...name.classList]).to.include.members(["font-semibold", "text-black", "truncate"]);
   });
 });

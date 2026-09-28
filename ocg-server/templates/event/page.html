@@ -218,9 +218,6 @@
 
         {# Event date and location -#}
         <div class="py-4">
-          {% if !event.cohosts.is_empty() -%}
-            <div class="mb-5 sm:mb-8 md:mb-5 lg:mb-8">{{ cohosts::cohosts_box(event.cohosts) -}}</div>
-          {% endif -%}
           <div class="grid grid-cols-1 gap-5 sm:gap-8 md:grid-cols-2 md:gap-5 lg:gap-8">
             {# Event date -#}
             <div class="border border-stone-200 rounded-lg h-full bg-white">
@@ -359,6 +356,12 @@
 </div>
 
 {# End location -#}
+
+{# Co-hosts -#}
+{% if !event.cohosts.is_empty() -%}
+  <div class="md:col-span-2">{{ cohosts::cohosts_box(event.cohosts) -}}</div>
+{% endif -%}
+{# End co-hosts -#}
 
 {# Host -#}
 {% if event.is_paid_capable() -%}

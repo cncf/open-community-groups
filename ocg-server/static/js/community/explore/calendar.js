@@ -1,3 +1,4 @@
+import { fitCohostsLines } from "/static/js/common/cohosts-line.js";
 import { navigateWithHtmx } from "/static/js/common/htmx-navigation.js";
 import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/loading-spinner.js";
 import { getElementById, loadScriptOnce, setElementHidden } from "/static/js/common/dom.js";
@@ -268,6 +269,7 @@ const createPopoverIfNeeded = (parent, event) => {
     "beforeend",
     newEventPopover(alignData.id, event, alignData.horizontal, alignData.vertical),
   );
+  fitCohostsLines(getElementById(document, alignData.id));
 };
 
 /**

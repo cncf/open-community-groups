@@ -1,4 +1,5 @@
 import { showErrorAlert } from "/static/js/common/alerts.js";
+import { fitCohostsLines } from "/static/js/common/cohosts-line.js";
 import { navigateWithHtmx } from "/static/js/common/htmx-navigation.js";
 import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/loading-spinner.js";
 import { createMapMarker, loadMap, loadMapScript } from "/static/js/common/location/maplibre.js";
@@ -155,6 +156,7 @@ export class Map {
           tooltip.id = `explore-map-tooltip-${this.dataRevision}-${feature.properties.index}`;
           tooltip.setAttribute("role", "tooltip");
           tooltip.querySelectorAll("a[href]").forEach((link) => link.removeAttribute("href"));
+          fitCohostsLines(tooltip);
           element.setAttribute("aria-describedby", tooltip.id);
         });
       };

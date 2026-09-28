@@ -319,6 +319,7 @@ export class CohostsSelector extends LitWrapper {
                 </div>`
           }
         </div>
+        <p class="sr-only" role="status">${isLoading ? "Loading co-host groups..." : ""}</p>
       </div>
     `;
   }
@@ -344,14 +345,10 @@ export class CohostsSelector extends LitWrapper {
   }
 
   /**
-   * Renders the group options loading status or the load error with a retry action.
+   * Renders the group options load error with a retry action.
    * @returns {import("lit").TemplateResult|string}
    */
   _renderLoadState() {
-    if (this._loadStatus === "loading") {
-      return html`<p class="text-sm text-stone-500" role="status">Loading co-host groups...</p>`;
-    }
-
     if (this._loadStatus !== "error") {
       return "";
     }
@@ -422,8 +419,10 @@ export class CohostsSelector extends LitWrapper {
             <div class="flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-white p-4">
               ${this._renderLogo(cohost, "size-15 md:size-18", "size-13 md:size-16")}
               <div class="min-w-0 flex-1">
-                <div class="truncate text-sm font-semibold text-stone-900 md:text-base">${cohost.name}</div>
-                <div class="mt-1 truncate text-xs text-stone-500">${cohost.community_display_name}</div>
+                <div class="truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400">
+                  ${cohost.community_display_name}
+                </div>
+                <div class="mt-0.5 truncate text-sm/5 font-semibold text-black">${cohost.name}</div>
                 <div class="mt-2 flex flex-wrap gap-1.5">${this._renderStatusPills(cohost)}</div>
               </div>
               ${

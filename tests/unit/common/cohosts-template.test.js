@@ -31,9 +31,39 @@ describe("co-hosts templates", () => {
 
     // Verify the credit line keeps the full list in its title and renders no links.
     expect(line).to.include('title="Co-hosted with {{ names }}"');
-    expect(line).to.include('<span class="truncate">Co-hosted with {{ names }}</span>');
+    expect(line).to.include('<span class="truncate" data-cohosts-full>Co-hosted with {{ names }}</span>');
     expect(line).to.include("icon-cohosts");
     expect(line).not.to.include("<a ");
+  });
+
+  it("prepares a reduced count and panel for credits with several co-hosts", async () => {
+    // Load the shared co-hosts macros.
+    const template = normalizeWhitespace(await loadTemplate("/ocg-server/templates/macros/cohosts.html"));
+    const line = template.slice(
+      template.indexOf("{% macro cohosts_line"),
+      template.indexOf("{% endmacro cohosts_line"),
+    );
+
+    // Verify only multi co-host lines opt into fitting and carry the hidden count.
+    expect(line).to.include("{% if cohosts.len() > 1 -%}data-cohosts-line{% endif -%}");
+    expect(line).to.include(
+      '<span class="hidden truncate" data-cohosts-summary aria-hidden="true"> Co-hosted with {{ cohosts.len() }} groups </span>',
+    );
+
+    // Verify the panel template lists every co-host with its square logo.
+    expect(line).to.include("<template data-cohosts-panel-template>");
+    expect(line).to.include("data-cohosts-panel");
+    expect(line).to.include('text-stone-900"> Co-hosted with </div>');
+    expect(line).to.include("{% for cohost in cohosts.iter() -%}");
+    expect(line).to.include(
+      '{{ ui::logo(logo_url = cohost.logo_url, classes = "size-9 shrink-0", size = 36) -}}',
+    );
+    expect(line).to.include(
+      '<div class="truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400"> {{ cohost.community_display_name }} </div>',
+    );
+    expect(line).to.include(
+      '<div class="mt-0.5 truncate text-sm/5 font-semibold text-black">{{ cohost.name }}</div>',
+    );
   });
 
   it("links co-host groups from the event page box under their own community", async () => {
@@ -45,21 +75,51 @@ describe("co-hosts templates", () => {
     );
 
     // Verify each card links to the co-host group page with boosted navigation.
-    expect(box).to.include(">Co-hosts</div>");
+    expect(box).to.include(">Co-hosted with</div>");
     expect(box).to.include('href="/{{ cohost.community_name }}/group/{{ cohost.public_slug() }}"');
     expect(box).to.include('hx-boost="true"');
     expect(box).to.include('aria-label="Co-hosts"');
   });
 
-  it("renders the co-hosts box above the event date and location", async () => {
+  it("lays out co-hosts as a titled grid of equal square-logo cells", async () => {
+    // Load the shared co-hosts macros.
+    const template = normalizeWhitespace(await loadTemplate("/ocg-server/templates/macros/cohosts.html"));
+    const box = template.slice(
+      template.indexOf("{% macro cohosts_box"),
+      template.indexOf("{% endmacro cohosts_box"),
+    );
+
+    // Verify the title matches the event date and location panels.
+    expect(box).to.include(
+      '<div class="mb-4 flex min-h-[25px] items-center justify-between"> <div class="text-base/3 font-semibold uppercase text-stone-400">Co-hosted with</div>',
+    );
+
+    // Verify co-hosts share one dashed box with responsive equal-width columns.
+    expect(box).to.include('<div class="rounded-lg border border-dashed border-stone-200 bg-white p-4">');
+    expect(box).to.include("grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4");
+
+    // Verify each group shows its square logo with the community over the truncated name.
+    expect(box).to.include(
+      '{{ ui::logo(logo_url = cohost.logo_url, classes = "size-10 shrink-0", size = 40) -}}',
+    );
+    expect(box).to.include(
+      '<span class="block truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400"> {{ cohost.community_display_name }} </span>',
+    );
+    expect(box).to.include(
+      '<span class="mt-0.5 block truncate text-sm/5 font-semibold text-black group-hover:text-primary-500"> {{ cohost.name|demoji }} </span>',
+    );
+  });
+
+  it("renders the co-hosts box under the event date and location", async () => {
     // Load the public event page template.
     const template = normalizeWhitespace(await loadTemplate("/ocg-server/templates/event/page.html"));
 
-    // Verify the box renders only with co-hosts and before the date panel.
-    const boxIndex = template.indexOf("{{ cohosts::cohosts_box(event.cohosts) -}}");
-    expect(boxIndex).to.be.greaterThan(-1);
-    expect(template).to.include("{% if !event.cohosts.is_empty() -%}");
-    expect(boxIndex).to.be.lessThan(template.indexOf(">Event date</div>"));
+    // Verify the box renders only with co-hosts as a full-width row after the location panel.
+    const boxIndex = template.indexOf(
+      '{% if !event.cohosts.is_empty() -%} <div class="md:col-span-2">{{ cohosts::cohosts_box(event.cohosts) -}}</div>',
+    );
+    expect(boxIndex).to.be.greaterThan(template.indexOf("{# End location -#}"));
+    expect(boxIndex).to.be.lessThan(template.indexOf("{# Host -#}"));
   });
 
   it("credits co-hosts on shared, explore, and group page event cards", async () => {
@@ -73,9 +133,33 @@ describe("co-hosts templates", () => {
 
     // Verify the credit line and the owner preheader on co-hosted group cards.
     expect(normalizeWhitespace(smallCard)).to.include("{{ cohosts::cohosts_line(event.cohosts) -}}");
-    expect(normalizeWhitespace(exploreCard)).to.include("{{ cohosts::cohosts_line(event.cohosts) -}}");
+    expect(normalizeWhitespace(exploreCard)).to.include(
+      '<div class="mt-auto min-w-0">{{ cohosts::cohosts_line(event.cohosts) -}}</div>',
+    );
+    expect(normalizeWhitespace(exploreCard)).to.include(
+      "{% if event.cohosts.is_empty() -%}line-clamp-2{% else -%}line-clamp-1{% endif -%}",
+    );
     expect(normalizeWhitespace(groupCard)).to.include(
       "{% if cohosted_by_page_group -%} <span>Hosted by {{ event.group_name -}}</span>",
+    );
+
+    // Verify co-hosted card titles stay on one line.
+    const oneLineTitle =
+      "{% block title_line_clamp_classes -%} {% if event.cohosts.is_empty() -%} !line-clamp-2 {% else -%} !line-clamp-1 {% endif -%} {% endblock title_line_clamp_classes %}";
+    expect(normalizeWhitespace(smallCard)).to.include(oneLineTitle);
+    expect(normalizeWhitespace(exploreCard)).to.include(oneLineTitle);
+
+    // Verify card text uses the full width instead of reserving ribbon space.
+    expect(smallCard).not.to.include("top_row_classes");
+    expect(exploreCard).not.to.include("top_row_classes");
+
+    // Verify calendar popovers inherit the one-line rule with a smaller title.
+    const calendarCard = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/site/explore/events/calendar_event_card.html"),
+    );
+    expect(calendarCard).not.to.include("title_line_clamp_classes");
+    expect(calendarCard).to.include(
+      "{% block title_classes -%} !text-[0.9rem]/[1.25rem] {% endblock title_classes %}",
     );
 
     // Verify the next-event link uses the event's own community.

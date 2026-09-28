@@ -309,7 +309,7 @@ const expectPublicCohostCredit = async (page, publicEventUrl, eventName) => {
   await navigateToPath(page, publicEventUrl);
 
   const cohostsBox = page.locator('[aria-label="Co-hosts"]').locator("..").locator("..");
-  await expect(cohostsBox.getByText("Co-hosts", { exact: true })).toBeVisible();
+  await expect(cohostsBox.getByText("Co-hosted with", { exact: true })).toBeVisible();
   await expect(cohostsBox.getByRole("link", { name: COHOST_GROUP_NAME })).toHaveAttribute(
     "href",
     `/${TEST_COMMUNITY_NAME_2}/group/${COHOST_GROUP_SLUG}`,
