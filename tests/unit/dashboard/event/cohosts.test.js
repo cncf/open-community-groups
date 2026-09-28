@@ -5,6 +5,7 @@ import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
+// Communities offered by the selector fixture.
 const COMMUNITIES = [
   {
     community_id: "community-1",
@@ -18,6 +19,7 @@ const COMMUNITIES = [
   },
 ];
 
+// Group options returned by the mocked lookup endpoint.
 const GROUPS = [
   {
     community_display_name: "Community One",
@@ -37,6 +39,11 @@ const GROUPS = [
   },
 ];
 
+/**
+ * Mounts a co-hosts selector with extra attributes and returns it.
+ * @param {string} [attrs=""] - Extra attributes for the selector element.
+ * @returns {HTMLElement} Mounted selector.
+ */
 const mountSelector = (attrs = "") => {
   const selectedCohostsAttr = attrs.includes("selected-cohosts") ? "" : 'selected-cohosts="[]"';
   document.body.innerHTML = `
@@ -51,6 +58,11 @@ const mountSelector = (attrs = "") => {
   return document.querySelector("cohosts-selector");
 };
 
+/**
+ * Focuses the group search to trigger the first groups load and waits for the render.
+ * @param {HTMLElement} element - Mounted selector.
+ * @returns {Promise<void>}
+ */
 const loadGroups = async (element) => {
   element.querySelector("#cohost-group-search").dispatchEvent(new Event("focus"));
   await waitForMicrotask();
@@ -72,15 +84,18 @@ describe("event co-hosts selector", () => {
     });
 
     try {
+      // Render the selector fixture.
       const element = mountSelector();
       await element.updateComplete;
 
+      // Switch to the second community.
       element.querySelector("#cohost-community").value = "community-2";
       element
         .querySelector("#cohost-community")
         .dispatchEvent(new Event("change", { bubbles: true }));
       await waitForMicrotask();
 
+      // Verify the groups lookup targets the selected community.
       expect(fetchMock.calls).to.have.length(1);
       expect(fetchMock.calls[0][0]).to.equal(
         "/dashboard/group/events/cohosts/groups?community_id=community-2",
@@ -91,6 +106,7 @@ describe("event co-hosts selector", () => {
   });
 
   it("keeps the latest groups after rapid community switches", async () => {
+    // Hold the first community response until the second one settles.
     let resolveFirst;
     const first = new Promise((resolve) => {
       resolveFirst = resolve;
@@ -106,9 +122,11 @@ describe("event co-hosts selector", () => {
     });
 
     try {
+      // Render the selector fixture.
       const element = mountSelector();
       await element.updateComplete;
 
+      // Start loading the first community, then switch to the second one.
       element.querySelector("#cohost-group-search").dispatchEvent(new Event("focus"));
       await waitForMicrotask();
       element.querySelector("#cohost-community").value = "community-2";
@@ -116,10 +134,13 @@ describe("event co-hosts selector", () => {
         .querySelector("#cohost-community")
         .dispatchEvent(new Event("change", { bubbles: true }));
       await waitForMicrotask();
+
+      // Resolve the stale first response last.
       resolveFirst(new Response(JSON.stringify(GROUPS), { status: 200 }));
       await waitForMicrotask();
       await element.updateComplete;
 
+      // Verify the stale response did not overwrite the latest groups.
       expect(element._groups).to.deep.equal(secondGroups);
     } finally {
       fetchMock.restore();
@@ -127,6 +148,7 @@ describe("event co-hosts selector", () => {
   });
 
   it("aborts an in-flight lookup when disconnected", async () => {
+    // Capture the lookup signal and keep the request pending.
     let signal;
     const fetchMock = mockFetch({
       impl: (_url, init) => {
@@ -136,13 +158,16 @@ describe("event co-hosts selector", () => {
     });
 
     try {
+      // Render the selector and start a groups lookup.
       const element = mountSelector();
       await element.updateComplete;
       element.querySelector("#cohost-group-search").dispatchEvent(new Event("focus"));
       await waitForMicrotask();
 
+      // Disconnect the selector while the lookup is pending.
       element.remove();
 
+      // Verify the pending lookup was aborted.
       expect(signal.aborted).to.equal(true);
     } finally {
       fetchMock.restore();
@@ -165,10 +190,12 @@ describe("event co-hosts selector", () => {
     });
 
     try {
+      // Render a loaded selection and fail the groups lookup.
       const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
       await element.updateComplete;
       await loadGroups(element);
 
+      // Verify the selection is kept and a retry is offered.
       expect(element.selectedCohosts[0].name).to.equal("Group One");
       expect(element.textContent).to.include("try again");
       expect(element.querySelector("button").textContent).to.include("Retry");
@@ -183,22 +210,27 @@ describe("event co-hosts selector", () => {
     });
 
     try {
+      // Render the selector and verify no co-host fields are submitted yet.
       const element = mountSelector();
       await element.updateComplete;
       expect(element.querySelector('input[name="cohost_group_ids_present"]')).to.equal(null);
 
+      // Add the first group option.
       await loadGroups(element);
       element.querySelector('[role="option"]').click();
       await element.updateComplete;
 
+      // Verify the selection and its submitted fields.
       expect(element.selectedCohosts.map((cohost) => cohost.group_id)).to.deep.equal(["group-1"]);
       expect(element.querySelector('input[name="cohost_group_ids[0]"]')?.value).to.equal("group-1");
       expect(element.querySelector('input[name="cohost_group_ids_present"]').value).to.equal("true");
       expect(element.querySelector('input[name="cohosts_revision"]').value).to.equal("7");
 
+      // Remove the added group.
       element.querySelector('[aria-label="Remove Group One"]').click();
       await element.updateComplete;
 
+      // Verify the unchanged selection submits no co-host fields.
       expect(element.selectedCohosts).to.deep.equal([]);
       expect(element.querySelector('input[name="cohost_group_ids[0]"]')).to.equal(null);
       expect(element.querySelector('input[name="cohost_group_ids_present"]')).to.equal(null);
@@ -217,12 +249,15 @@ describe("event co-hosts selector", () => {
         status: "pending",
       },
     ];
+
+    // Render a loaded selection and remove its only co-host.
     const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
     await element.updateComplete;
 
     element.querySelector('[aria-label="Remove Group One"]').click();
     await element.updateComplete;
 
+    // Verify the cleared selection still submits the present marker.
     expect(element.selectedCohosts).to.deep.equal([]);
     expect(element.querySelector('input[name="cohost_group_ids[0]"]')).to.equal(null);
     expect(element.querySelector('input[name="cohost_group_ids_present"]').value).to.equal("true");

@@ -169,12 +169,15 @@ describe("event preview", () => {
   });
 
   it("keeps preview co-host context empty when the selector is missing", () => {
+    // Render the preview page without the co-hosts form.
     const pageRoot = mountPreviewPage();
     pageRoot.querySelector("#cohosts-form").remove();
 
+    // Build the preview payload.
     const payload = buildEventPreviewPayload(pageRoot);
     const context = JSON.parse(payload.get("preview_context"));
 
+    // Verify the co-hosts context is empty.
     expect(context.cohosts).to.deep.equal([]);
   });
 

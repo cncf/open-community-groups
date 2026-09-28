@@ -26,10 +26,13 @@ import {
   waitForActionResponse,
 } from "../../utils.js";
 
+// Cross-community group invited to co-host the scenario events.
 const COHOST_GROUP_ID = TEST_GROUP_IDS.community2.delta;
 const COHOST_GROUP_NAME = "E2E Second Group Delta";
 const COHOST_GROUP_SLUG = TEST_GROUP_SLUGS.community2.delta;
+// Co-host group admins who receive the invitation email.
 const COHOST_INVITATION_RECIPIENT_IDS = ["77777777-7777-7777-7777-777777777704"];
+// Owner group admins who receive co-host response emails.
 const OWNER_RESPONSE_RECIPIENT_IDS = [TEST_USER_IDS.organizer1];
 
 test.describe("event co-hosting workflows", () => {
@@ -43,14 +46,17 @@ test.describe("event co-hosting workflows", () => {
     let notificationIds = [];
 
     try {
+      // Create a draft event with a pending co-host invitation.
       const created = await createDraftEventWithPendingCohost(organizerGroupPage, eventName, {
         days: 240,
       });
       eventId = created.eventId;
       notificationIds = notificationIds.concat(created.notificationIds);
 
+      // Verify the pending invitation blocks publishing.
       await expectPendingCohostBlocksPublication(organizerGroupPage);
 
+      // Approve the invitation as the co-host and verify the owner is notified.
       const approveSnapshot = snapshotNotifications();
       await respondToCohostInvitation(organizerGroupWithoutPaymentsPage, eventName, "approve");
       notificationIds = notificationIds.concat(
@@ -67,6 +73,7 @@ test.describe("event co-hosting workflows", () => {
         ]),
       );
 
+      // Publish the event as the owner.
       await openEventUpdateFormByName(organizerGroupPage, eventName, eventId);
       await organizerGroupPage.locator("#publish-event-button").click();
       await waitForEventPublish(organizerGroupPage, eventId);
@@ -76,9 +83,11 @@ test.describe("event co-hosting workflows", () => {
         .getAttribute("data-event-public-url");
       expect(publicEventUrl).toBeTruthy();
 
+      // Verify the locked editor selection and the public co-host credit.
       await expectPublishedCohostsLocked(organizerGroupPage);
       await expectPublicCohostCredit(page, publicEventUrl, eventName);
 
+      // Cancel co-hosting as the co-host and verify the owner is notified.
       const cancelSnapshot = snapshotNotifications();
       await respondToCohostInvitation(organizerGroupWithoutPaymentsPage, eventName, "cancel");
       notificationIds = notificationIds.concat(
@@ -95,9 +104,11 @@ test.describe("event co-hosting workflows", () => {
         ]),
       );
 
+      // Verify the durable canceled status after a fresh load.
       await navigateToPath(organizerGroupWithoutPaymentsPage, "/dashboard/group?tab=cohosts");
       await expectCohostDashboardRow(organizerGroupWithoutPaymentsPage, eventName, "Canceled");
     } finally {
+      // Restore seeded state.
       deleteNotifications(notificationIds);
       if (eventId) {
         cleanupCohostEvent(eventId);
@@ -114,12 +125,14 @@ test.describe("event co-hosting workflows", () => {
     let notificationIds = [];
 
     try {
+      // Create a draft event with a pending co-host invitation.
       const created = await createDraftEventWithPendingCohost(organizerGroupPage, eventName, {
         days: 250,
       });
       eventId = created.eventId;
       notificationIds = notificationIds.concat(created.notificationIds);
 
+      // Reject the invitation as the co-host and verify the owner is notified.
       const rejectSnapshot = snapshotNotifications();
       await respondToCohostInvitation(organizerGroupWithoutPaymentsPage, eventName, "reject");
       notificationIds = notificationIds.concat(
@@ -136,9 +149,11 @@ test.describe("event co-hosting workflows", () => {
         ]),
       );
 
+      // Verify the durable rejected status after a fresh load.
       await navigateToPath(organizerGroupWithoutPaymentsPage, "/dashboard/group?tab=cohosts");
       await expectCohostDashboardRow(organizerGroupWithoutPaymentsPage, eventName, "Rejected");
     } finally {
+      // Restore seeded state.
       deleteNotifications(notificationIds);
       if (eventId) {
         cleanupCohostEvent(eventId);
@@ -265,7 +280,7 @@ const expectPendingCohostBlocksPublication = async (page) => {
   await expect(publishButton).toHaveAttribute("title", "Waiting for 1 co-host(s) to respond.");
 };
 
-/** Publishes the currently open event editor. */
+/** Confirms the publish dialog and waits for the editor to reload as published. */
 const waitForEventPublish = async (page, eventId) => {
   await waitForEventEditorAfterSave(page, () => page.getByRole("button", { name: "Yes" }).click(), {
     eventId,

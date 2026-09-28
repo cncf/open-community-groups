@@ -5,7 +5,9 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
+// Endpoint that lists the groups of a community that can co-host events.
 const GROUP_OPTIONS_ENDPOINT = "/dashboard/group/events/cohosts/groups";
+// Co-host statuses shown in the editor.
 const STATUS_APPROVED = "approved";
 const STATUS_PENDING = "pending";
 
@@ -17,6 +19,17 @@ const STATUS_PENDING = "pending";
  * @extends LitWrapper
  */
 export class CohostsSelector extends LitWrapper {
+  /**
+   * Component properties definition.
+   * @property {Array} communities - Communities whose groups can be invited.
+   * @property {string} currentGroupId - Owning group id, excluded from options.
+   * @property {boolean} disabled - Whether the selection is read-only.
+   * @property {number} revision - Co-hosts revision loaded with the editor.
+   * @property {Array} selectedCohosts - Co-host groups currently selected.
+   * @property {Array} _groups - Group options loaded for the selected community.
+   * @property {string} _loadStatus - Group options load status: idle, loading, ready, or error.
+   * @property {string} _selectedCommunityId - Community whose groups are listed.
+   */
   static properties = {
     communities: { type: Array },
     currentGroupId: { type: String, attribute: "current-group-id" },
@@ -56,15 +69,19 @@ export class CohostsSelector extends LitWrapper {
   }
 
   connectedCallback() {
+    // Normalize server-provided attributes.
     this.communities = normalizeArrayAttribute(this.communities);
     this.selectedCohosts = normalizeArrayAttribute(this.selectedCohosts).map(normalizeSelectedCohost);
     this.revision = Number.parseInt(this.revision, 10) || 0;
+
+    // Remember the loaded selection to submit co-host fields only after changes.
     this._loadedGroupIds = this.selectedCohosts.map((cohost) => cohost.group_id);
     this._selectedCommunityId = this.communities[0]?.community_id || "";
     super.connectedCallback();
   }
 
   disconnectedCallback() {
+    // Abort any in-flight group options request.
     this._abortController?.abort();
     super.disconnectedCallback();
   }
@@ -84,8 +101,8 @@ export class CohostsSelector extends LitWrapper {
   }
 
   /**
-   * Available groups matching the current search and selection.
-   * @returns {Array<object>}
+   * Returns loaded groups matching the search, excluding the owner and selected groups.
+   * @returns {Array<object>} Filtered group options.
    */
   get _filteredGroups() {
     const query = (this._combobox.query || "").trim().toLowerCase();
@@ -104,8 +121,8 @@ export class CohostsSelector extends LitWrapper {
   }
 
   /**
-   * Whether the current selection differs from the loaded editor state.
-   * @returns {boolean}
+   * Checks whether the current selection differs from the loaded editor state.
+   * @returns {boolean} True when the selected group ids changed.
    */
   get _hasChanged() {
     const currentIds = this.selectedCohosts.map((cohost) => cohost.group_id);
@@ -121,16 +138,25 @@ export class CohostsSelector extends LitWrapper {
     `;
   }
 
+  /**
+   * Dispatches input and change events so editor pending-changes tracking notices the selection.
+   * @returns {void}
+   */
   _dispatchSelectionChange() {
     this.dispatchEvent(new Event("input", { bubbles: true }));
     this.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
+  /**
+   * Loads the group options of the selected community, ignoring stale responses.
+   * @returns {Promise<void>}
+   */
   async _loadGroups() {
     if (!this._selectedCommunityId || this.disabled) {
       return;
     }
 
+    // Start a new load, aborting the previous one.
     const sequence = this._loadSequence + 1;
     this._loadSequence = sequence;
     this._abortController?.abort();
@@ -151,6 +177,8 @@ export class CohostsSelector extends LitWrapper {
       }
 
       const groups = await response.json();
+
+      // Ignore responses superseded by a newer load or a disconnect.
       if (sequence !== this._loadSequence || !this.isConnected) {
         return;
       }
@@ -167,6 +195,11 @@ export class CohostsSelector extends LitWrapper {
     }
   }
 
+  /**
+   * Removes a group from the selection.
+   * @param {string} groupId - Group id to remove.
+   * @returns {void}
+   */
   _removeGroup(groupId) {
     if (this.disabled) {
       return;
@@ -175,6 +208,10 @@ export class CohostsSelector extends LitWrapper {
     this._dispatchSelectionChange();
   }
 
+  /**
+   * Renders the community picker used to scope group options.
+   * @returns {import("lit").TemplateResult}
+   */
   _renderCommunityPicker() {
     return html`
       <div class="max-w-xl">
@@ -198,6 +235,10 @@ export class CohostsSelector extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders the group search input and its options dropdown.
+   * @returns {import("lit").TemplateResult}
+   */
   _renderGroupPicker() {
     const isLoading = this._loadStatus === "loading";
     return html`
@@ -258,6 +299,10 @@ export class CohostsSelector extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders the submitted co-host fields only when the selection changed.
+   * @returns {import("lit").TemplateResult|string}
+   */
   _renderHiddenFields() {
     if (!this._hasChanged) {
       return "";
@@ -274,6 +319,10 @@ export class CohostsSelector extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders the group options loading status or the load error with a retry action.
+   * @returns {import("lit").TemplateResult|string}
+   */
   _renderLoadState() {
     if (this._loadStatus === "loading") {
       return html`<p class="text-sm text-stone-500" role="status">Loading co-host groups...</p>`;
@@ -293,6 +342,12 @@ export class CohostsSelector extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders one group option in the dropdown.
+   * @param {Object} group - Group option.
+   * @param {number} index - Option index in the filtered list.
+   * @returns {import("lit").TemplateResult}
+   */
   _renderOption(group, index) {
     const isActive = this._combobox.activeIndex === index;
     return html`
@@ -316,6 +371,10 @@ export class CohostsSelector extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders the selected co-host cards or the empty selection state.
+   * @returns {import("lit").TemplateResult}
+   */
   _renderSelectedCohosts() {
     if (this.selectedCohosts.length === 0) {
       return html`
@@ -358,6 +417,13 @@ export class CohostsSelector extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders a group logo, falling back to the groups icon.
+   * @param {Object} group - Group or co-host with name and logo URL.
+   * @param {string} wrapperSize - Size classes for the logo frame.
+   * @param {string} imageSize - Size classes for the logo image.
+   * @returns {import("lit").TemplateResult}
+   */
   _renderLogo(group, wrapperSize, imageSize) {
     return html`
       <div
@@ -377,6 +443,11 @@ export class CohostsSelector extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders the status pill and, for inactive groups, the inactive pill.
+   * @param {Object} cohost - Selected co-host.
+   * @returns {import("lit").TemplateResult}
+   */
   _renderStatusPills(cohost) {
     const statusLabel = cohost.status === STATUS_APPROVED ? "Approved" : "Pending";
     const statusClass =
@@ -396,6 +467,11 @@ export class CohostsSelector extends LitWrapper {
     `;
   }
 
+  /**
+   * Switches the listed community and loads its groups.
+   * @param {string} communityId - Selected community id.
+   * @returns {void}
+   */
   _selectCommunity(communityId) {
     this._selectedCommunityId = communityId || "";
     this._groups = [];
@@ -404,6 +480,11 @@ export class CohostsSelector extends LitWrapper {
     this._loadGroups();
   }
 
+  /**
+   * Adds a group to the selection as a pending co-host, skipping the owner and duplicates.
+   * @param {Object} group - Group option to add.
+   * @returns {void}
+   */
   _selectGroup(group) {
     if (this.disabled || !group?.group_id) {
       return;
@@ -428,14 +509,30 @@ export class CohostsSelector extends LitWrapper {
   }
 }
 
+/**
+ * Checks whether two arrays contain the same values in the same order.
+ * @param {Array} left - First array.
+ * @param {Array} right - Second array.
+ * @returns {boolean} True when both arrays are equal.
+ */
 const arraysEqual = (left, right) =>
   left.length === right.length && left.every((value, index) => value === right[index]);
 
+/**
+ * Parses a JSON array attribute, returning an empty array for invalid values.
+ * @param {unknown} value - Attribute value or already parsed property.
+ * @returns {Array} Parsed array.
+ */
 const normalizeArrayAttribute = (value) => {
   const parsed = parseJsonAttribute(value, []);
   return Array.isArray(parsed) ? parsed : [];
 };
 
+/**
+ * Normalizes a co-host entry into the shape used by the selector.
+ * @param {Object} cohost - Raw co-host or group option.
+ * @returns {Object} Normalized co-host with string ids and a pending or approved status.
+ */
 const normalizeSelectedCohost = (cohost) => ({
   community_display_name: cohost?.community_display_name || "",
   community_name: cohost?.community_name || "",

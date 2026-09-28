@@ -1,5 +1,10 @@
 import { expect } from "@open-wc/testing";
 
+/**
+ * Fetches a template source file and returns its text.
+ * @param {string} path - Template path served by the test runner.
+ * @returns {Promise<string>} Template source.
+ */
 const loadTemplate = async (path) => {
   const response = await fetch(path);
 
@@ -8,6 +13,11 @@ const loadTemplate = async (path) => {
   return response.text();
 };
 
+/**
+ * Collapses whitespace runs so template assertions ignore formatting.
+ * @param {string} value - Template source.
+ * @returns {string} Normalized source.
+ */
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("co-hosts templates", () => {

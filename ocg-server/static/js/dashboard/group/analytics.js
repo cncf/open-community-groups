@@ -151,7 +151,7 @@ const initEventsCharts = (stats = {}, palette) =>
   });
 
 /**
- * Build charts for co-hosted events metrics.
+ * Builds charts for co-hosted events metrics.
  * @param {Object} stats - Co-hosted events stats payload.
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.

@@ -108,9 +108,13 @@ describe("dashboard group event add template", () => {
   });
 
   it("wires the co-hosts tab and marked editor forms", async () => {
+    // Load the event add template.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify the save action includes every marked editor form.
     expect(template).to.include('hx-include="form[data-event-form]"');
+
+    // Verify the co-hosts tab controls follow the details tab.
     expect(template).to.include('event_form::tab_option(section = "cohosts", label = "Co-hosts")');
     expect(template).to.include(
       'event_form::tab_button(section = "cohosts", icon = "groups", label = "Co-hosts")',
@@ -118,6 +122,8 @@ describe("dashboard group event add template", () => {
     expect(template.indexOf('section = "cohosts"')).to.be.greaterThan(
       template.indexOf('section = "details"'),
     );
+
+    // Verify the co-hosts form, its guidance, and the empty selector.
     expect(template).to.include('<form id="cohosts-form" data-event-form>');
     expect(template).to.include(
       "Co-hosts must be added and must respond before the event can be published.",

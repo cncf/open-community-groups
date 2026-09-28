@@ -8,12 +8,17 @@ import {
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { escapeHtml } from "/static/js/common/trusted-html.js";
 
+// Alert shown when a co-host action request is rejected.
 const ACTION_ERROR_MESSAGE =
   "Something went wrong updating this co-hosting invitation. Please try again later.";
+// Selector for co-host action buttons in the list.
 const ACTION_SELECTOR = "[data-cohost-action]";
+// Alert shown when the connection fails and the action outcome is unknown.
 const ACTION_UNCONFIRMED_MESSAGE =
   "We could not confirm this co-hosting update. Please refresh the page before trying again.";
+// Selector for the co-hosts list root.
 const COHOSTS_LIST_SELECTOR = "[data-group-cohosts-list]";
+// Success alerts by co-host action.
 const SUCCESS_MESSAGES = {
   approve: "Co-hosting invitation approved.",
   cancel: "Co-hosting canceled.",
@@ -30,6 +35,7 @@ export const initializeGroupCohostsList = (root) => {
     return;
   }
 
+  // Delegate action clicks so swapped rows keep working.
   root.addEventListener("click", (event) => {
     const button = closestElementWithinRoot(event.target, ACTION_SELECTOR, root);
     if (button instanceof HTMLButtonElement) {
@@ -38,6 +44,10 @@ export const initializeGroupCohostsList = (root) => {
   });
 };
 
+/**
+ * Builds the approval confirmation HTML listing what approving implies.
+ * @returns {string} Escaped confirmation HTML.
+ */
 const buildApproveConfirmationHtml = () => {
   const consequences = [
     "The event appears on your group page and credits you on its page and cards.",
@@ -55,6 +65,11 @@ const buildApproveConfirmationHtml = () => {
   </div>`;
 };
 
+/**
+ * Asks the user to confirm a co-host action.
+ * @param {string} action Co-host action: approve, cancel, or reject.
+ * @returns {Promise<boolean>} True when the user confirms.
+ */
 const confirmCohostAction = (action) => {
   if (action === "approve") {
     return confirmAction({
@@ -78,6 +93,11 @@ const confirmCohostAction = (action) => {
   });
 };
 
+/**
+ * Dispatches the events listed in the response HX-Trigger header on the body.
+ * @param {Response} response Co-host action response.
+ * @returns {void}
+ */
 const dispatchHtmxTriggers = (response) => {
   const triggerHeader = response.headers.get("HX-Trigger");
   if (!triggerHeader) {
@@ -93,6 +113,11 @@ const dispatchHtmxTriggers = (response) => {
     });
 };
 
+/**
+ * Confirms and sends a co-host action, blocking repeat clicks while pending.
+ * @param {HTMLButtonElement} button Clicked co-host action button.
+ * @returns {Promise<void>}
+ */
 const handleCohostAction = async (button) => {
   if (button.disabled) {
     return;
@@ -109,6 +134,7 @@ const handleCohostAction = async (button) => {
     return;
   }
 
+  // Block repeat clicks while the request is pending.
   button.disabled = true;
   button.setAttribute("aria-busy", "true");
 
@@ -117,6 +143,8 @@ const handleCohostAction = async (button) => {
       credentials: "same-origin",
       method: "PUT",
     });
+
+    // Reuse the HTMX response alerts with an xhr-like adapter.
     const responseText = await response.text();
     const ok = handleHtmxResponse({
       xhr: {
@@ -128,11 +156,12 @@ const handleCohostAction = async (button) => {
       errorMessage: ACTION_ERROR_MESSAGE,
     });
 
+    // Refresh the list only after a successful action.
     if (ok) {
       dispatchHtmxTriggers(response);
     }
   } catch {
-    // The request may have been applied before the connection failed
+    // Warn that the request may have been applied before the connection failed.
     handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: ACTION_UNCONFIRMED_MESSAGE });
   } finally {
     button.disabled = false;
@@ -140,6 +169,11 @@ const handleCohostAction = async (button) => {
   }
 };
 
+/**
+ * Initializes every co-hosts list inside a root.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
 const initializeGroupCohostsRoots = (root = document) => {
   initializeMatchingRoots(root, COHOSTS_LIST_SELECTOR, initializeGroupCohostsList);
 };

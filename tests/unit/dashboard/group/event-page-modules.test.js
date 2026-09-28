@@ -157,9 +157,11 @@ describe("event page modules", () => {
   });
 
   it("reads event form ids from template markers", () => {
+    // Render the add page shell with marked editor forms.
     mountAddPageShell();
     const pageRoot = document.querySelector('[data-event-page="add"]');
 
+    // Verify marked forms are returned in document order.
     expect(getEventPageFormIds(pageRoot)).to.deep.equal([
       "details-form",
       "cohosts-form",

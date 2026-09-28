@@ -172,20 +172,28 @@ describe("dashboard group event update template", () => {
   });
 
   it("wires the co-hosts tab, publish gate tooltip, and marked editor forms", async () => {
+    // Load the event update template.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify the publish gate count and the save action form markers.
     expect(template).to.include("{% let pending_cohosts_count = self.pending_cohosts_count() -%}");
     expect(template).to.include('hx-include="form[data-event-form]"');
+
+    // Verify the co-hosts tab controls.
     expect(template).to.include('event_form::tab_option(section = "cohosts", label = "Co-hosts")');
     expect(template).to.include(
       'event_form::tab_button(section = "cohosts", icon = "groups", label = "Co-hosts")',
     );
+
+    // Verify pending co-hosts block publishing before the role check.
     expect(template).to.include(
       'disabled title="Waiting for {{ pending_cohosts_count }} co-host(s) to respond."',
     );
     expect(template.indexOf("pending_cohosts_count > 0")).to.be.lessThan(
       template.indexOf('disabled title="Your role cannot publish events."'),
     );
+
+    // Verify the co-hosts form, the published warning, and the loaded selector.
     expect(template).to.include('<form id="cohosts-form" data-event-form>');
     expect(template).to.include(
       "Co-hosts can't be changed while the event is published. If you unpublish it to change them, it can't be published again until every newly added group responds.",
