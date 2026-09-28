@@ -199,6 +199,38 @@ test.describe("group dashboard Events tab", () => {
     );
   });
 
+  test("row actions open upward when the viewport would clip them", async ({ organizerGroupPage }) => {
+    // Load the upcoming events list with room below the first row.
+    await organizerGroupPage.setViewportSize({ width: 1280, height: 900 });
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events&events_tab=upcoming");
+    const rows = organizerGroupPage.locator("#dashboard-content table tbody tr").filter({ visible: true });
+    await expect(rows.first()).toBeVisible();
+
+    // Verify a row with room below keeps the dropdown under its trigger.
+    const firstRow = rows.first();
+    const firstButton = firstRow.locator(".btn-actions");
+    await firstButton.click();
+    const firstDropdown = firstRow.locator("[data-event-actions-dropdown]");
+    await expect(firstDropdown).toBeVisible();
+    const firstButtonBox = await firstButton.boundingBox();
+    const firstDropdownBox = await firstDropdown.boundingBox();
+    expect(firstDropdownBox.y).toBeGreaterThan(firstButtonBox.y);
+    await firstButton.click();
+    await expect(firstDropdown).toBeHidden();
+
+    // Verify a row at the viewport bottom flips the dropdown above its trigger.
+    const lastRow = rows.last();
+    await lastRow.evaluate((row) => row.scrollIntoView({ block: "end" }));
+    const lastButton = lastRow.locator(".btn-actions");
+    await lastButton.click();
+    const lastDropdown = lastRow.locator("[data-event-actions-dropdown]");
+    await expect(lastDropdown).toBeVisible();
+    const lastButtonBox = await lastButton.boundingBox();
+    const lastDropdownBox = await lastDropdown.boundingBox();
+    expect(lastDropdownBox.y + lastDropdownBox.height).toBeLessThanOrEqual(lastButtonBox.y);
+    expect(lastDropdownBox.y).toBeGreaterThanOrEqual(0);
+  });
+
   test("organizer can cancel an event from the list", async ({ organizerGroupPage }) => {
     // Create an owned event graph with attendees, waitlist, and speaker recipients.
     const scenario = setupCancelableEvent({ groupId: "44444444-4444-4444-4444-444444444441" });

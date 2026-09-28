@@ -14,9 +14,10 @@ export const snapshotNotifications = () => {
 
 /**
  * Asserts that exactly the expected notifications were enqueued after the snapshot and returns
- * their IDs. Each expectation names a kind, the full recipient set for that kind, and optional
- * JSON fragments that must be contained in the template data. Unexpected kinds or recipients
- * fail the assertion so silent fan-out regressions are caught.
+ * their IDs. Each expectation names a kind, its recipients, and optional JSON fragments that must
+ * be contained in the template data of those recipients' rows. A kind may be split across several
+ * expectations when recipient groups receive different template data. Unexpected kinds or
+ * recipients fail the assertion so silent fan-out regressions are caught.
  */
 export const expectNewNotifications = (snapshot, expectations) => {
   const rows = listNotificationsSince(snapshot);
@@ -27,12 +28,15 @@ export const expectNewNotifications = (snapshot, expectations) => {
 
   expect(actual, formatNotificationRows(rows)).toEqual(expected);
 
-  for (const { kind, templateDataContains } of expectations) {
+  for (const { kind, templateDataContains, userIds } of expectations) {
     if (templateDataContains === undefined) {
       continue;
     }
 
-    for (const row of rows.filter((candidate) => candidate.kind === kind)) {
+    const expectationRows = rows.filter(
+      (candidate) => candidate.kind === kind && userIds.includes(candidate.userId),
+    );
+    for (const row of expectationRows) {
       expect(row.templateData, `template data for ${kind}`).toMatchObject(templateDataContains);
     }
   }

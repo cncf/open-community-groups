@@ -11,10 +11,7 @@ use uuid::Uuid;
 
 use crate::db::{DB, DBExt, DBUnitOfWork, PgDB, PgExecutor, PgUnitOfWork, group::DBGroup};
 
-use super::helpers::{
-    community_id, contract_tests_config, contract_tests_db, contract_tests_pool, event_category_id,
-    group_id, lifecycle_cancelee_id, lifecycle_rollback_cancelee_id,
-};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]

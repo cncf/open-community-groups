@@ -16,6 +16,7 @@ import {
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
 import { initializeNavigationState } from "/static/js/common/navigation-state.js";
+import "/static/js/common/cohosts-line.js";
 import "/static/js/common/media/broken-images.js";
 import "/static/js/common/profile-completion-alert.js";
 

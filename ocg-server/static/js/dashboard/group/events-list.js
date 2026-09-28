@@ -1,3 +1,4 @@
+import { positionActionsDropdown } from "/static/js/common/actions-menu.js";
 import { confirmAction, confirmSeriesAction, handleHtmxResponse } from "/static/js/common/alerts.js";
 import {
   closestElement,
@@ -189,6 +190,11 @@ const handleActionsMenuClick = (button, root) => {
   const shouldOpen = isElementHidden(dropdown);
   closeDropdowns(root, dropdown);
   setActionsDropdownExpanded(root, dropdown, shouldOpen);
+
+  // Flip the menu upward when rows near the bottom would clip it
+  if (shouldOpen) {
+    positionActionsDropdown(dropdown.parentElement, dropdown);
+  }
 };
 
 /**

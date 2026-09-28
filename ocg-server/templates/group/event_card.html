@@ -2,5 +2,10 @@
 
 {# Group Event Card -#}
 {% block preheader -%}
-  <span>{{- event.group_category_name -}}</span>{%- endblock preheader %}
+  {% if cohosted_by_page_group -%}
+    <span>Hosted by {{ event.group_name -}}</span>
+  {% else -%}
+    <span>{{- event.group_category_name -}}</span>
+  {% endif -%}
+{%- endblock preheader %}
 {# End group event card -#}

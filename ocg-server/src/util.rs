@@ -334,6 +334,7 @@ mod tests {
         EventSummary {
             attendee_approval_required: false,
             canceled,
+            cohosts: vec![],
             community_display_name: "Test Community".to_string(),
             community_name: "test-community".to_string(),
             event_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
@@ -367,6 +368,7 @@ mod tests {
             meeting_password: Some("secret123".to_string()),
             meeting_provider: None,
             payment_currency_code: None,
+            pending_cohosts_count: None,
             popover_html: None,
             registration_ends_at: None,
             registration_starts_at: None,

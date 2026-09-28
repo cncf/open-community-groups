@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -78,6 +78,19 @@ select fx_event(:'event7ID', :'group2ID', :'eventCategoryID', jsonb_build_object
     'starts_at', now() + interval '3 months'
 ));
 
+-- Approved co-host credit that must not duplicate community upcoming events
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id
+) values (
+    current_timestamp,
+    'approved',
+    :'event2ID',
+    :'group2ID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -97,6 +110,23 @@ select is(
     get_community_upcoming_events(:'unknownCommunityID'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[]'::jsonb,
     'Should return empty array for non-existing community'
+);
+
+-- Should show a co-hosted event once under its owner
+select is(
+    (
+        select count(*)::int
+        from jsonb_array_elements(
+            get_community_upcoming_events(
+                :'communityID'::uuid,
+                array['in-person', 'virtual', 'hybrid']
+            )::jsonb
+        ) event_item
+        where event_item->>'event_id' = :'event2ID'
+        and event_item->>'group_slug' = (select slug from "group" where group_id = :'group1ID'::uuid)
+    ),
+    1,
+    'Should show a co-hosted event once under its owner'
 );
 
 -- Intentional mid-test seed: creates a tied future event after baseline assertions.

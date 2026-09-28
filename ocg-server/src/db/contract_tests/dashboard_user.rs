@@ -28,17 +28,7 @@ use crate::{
     util::compute_hash,
 };
 
-use super::helpers::{
-    attendee_id, cfs_delete_lock_proposal_id, cfs_update_lock_proposal_id, claim_group_id,
-    co_speaker_proposal_id, community_id, contract_tests_db, contract_tests_pool,
-    document_credit_note_id, document_purchase_id, event_id, external_completed_purchase_id,
-    external_completed_user_id, external_event_id, external_pending_purchase_id,
-    external_pending_user_id, free_buyer_id, group_id, invitation_offer_id,
-    invitation_ticket_type_id, offer_decline_event_id, offer_decline_offer_id, offer_decliner_id,
-    organizer_id, pre_registered_id, rebind_user_badge_id, refund_rejected_buyer_id,
-    status_event_id, status_pending_payment_user_id, status_ticket_type_id, subgroup_id,
-    wait_for_backend_blocker, waitlist_id,
-};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
@@ -199,6 +189,7 @@ async fn db_contracts_list_user_check_in_events_deserializes() -> Result<()> {
     assert_eq!(events.len(), 1);
     let event = &events[0];
     assert!(event.checked_in);
+    assert!(event.cohosts.is_empty());
     assert_eq!(event.event_id, event_id());
     assert!(!event.in_progress);
     assert_eq!(event.kind, EventKind::Hybrid);

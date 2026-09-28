@@ -2,6 +2,7 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
 {% import "macros/cards.html" as cards -%}
+{% import "macros/cohosts.html" as cohosts -%}
 
 {# Site Explore Events Event Card -#}
 {% block href -%}
@@ -21,10 +22,6 @@
   {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
 {% endblock corner_badge %}
 
-{% block top_row_classes -%}
-  pr-14 md:pr-20
-{% endblock top_row_classes %}
-
 {% block content_stack_classes -%}
   md:min-h-[88px]
 {% endblock content_stack_classes %}
@@ -43,6 +40,14 @@
   </span>
 {%- endblock preheader %}
 
+{% block title_line_clamp_classes -%}
+  {% if event.cohosts.is_empty() -%}
+    !line-clamp-2
+  {% else -%}
+    !line-clamp-1
+  {% endif -%}
+{% endblock title_line_clamp_classes %}
+
 {% block title -%}
   {{- event.name|demoji -}}
 {%- endblock title %}
@@ -50,8 +55,15 @@
 {% block inline_details -%}
   {% if let Some(description_short) = &event.description_short -%}
     <div class="mt-2 hidden md:block">
-      <p class="text-[0.8rem]/[1.2rem] text-stone-500 line-clamp-2">{{ description_short|demoji }}</p>
+      <p class="text-[0.8rem]/[1.2rem] text-stone-500
+                {% if event.cohosts.is_empty() -%}line-clamp-2{% else -%}line-clamp-1{% endif -%}">
+        {{ description_short|demoji }}
+      </p>
     </div>
+  {% endif -%}
+  {% if !event.cohosts.is_empty() -%}
+    {# One-line title and description keep the co-hosts credit on the logo bottom edge. -#}
+    <div class="mt-auto min-w-0">{{ cohosts::cohosts_line(event.cohosts) -}}</div>
   {% endif -%}
 {% endblock inline_details %}
 

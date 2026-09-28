@@ -1737,3 +1737,53 @@ insert into event (
     false,
     '[]'::jsonb
 );
+
+-- ============================================================================
+-- EVENT CO-HOSTS
+-- ============================================================================
+
+-- Published cross-community event co-hosted by several approved groups.
+-- It is the next event of the Gamma co-host, so its public link must use the owner community.
+insert into event (
+    event_id, name, slug, description, description_short, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at
+) values (
+    '55555555-5555-5555-5555-555555555951',
+    'Cross Community Co-hosted Summit',
+    'epsilon-cohosted-summit',
+    'Published Epsilon event co-hosted by groups from both communities.',
+    'Co-hosted summit used by public co-host credit coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333332',
+    'virtual',
+    '44444444-4444-4444-4444-444444444445',
+    true,
+    now() + interval '9 days',
+    now() + interval '9 days 2 hours'
+);
+
+-- Approved co-hosts credited on the public event page and cards.
+insert into event_cohost (
+    event_id, group_id, event_cohost_status_id, invitation_id, approved_at, responded_at
+) values (
+    '55555555-5555-5555-5555-555555555951',
+    '44444444-4444-4444-4444-444444444443',
+    'approved',
+    '65555555-5555-5555-5555-555555555951',
+    now() - interval '2 days',
+    now() - interval '2 days'
+), (
+    '55555555-5555-5555-5555-555555555951',
+    '44444444-4444-4444-4444-444444444444',
+    'approved',
+    '65555555-5555-5555-5555-555555555952',
+    now() - interval '2 days',
+    now() - interval '2 days'
+), (
+    '55555555-5555-5555-5555-555555555951',
+    '44444444-4444-4444-4444-444444444446',
+    'approved',
+    '65555555-5555-5555-5555-555555555953',
+    now() - interval '2 days',
+    now() - interval '2 days'
+);

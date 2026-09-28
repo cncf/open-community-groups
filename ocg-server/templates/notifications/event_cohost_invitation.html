@@ -1,0 +1,63 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event Co-host Invitation Notification -#}
+{% block subject -%}
+  {{ owner_group_name }} invited {{ cohost_group_name }} to co-host
+{% endblock subject -%}
+
+{% block preheader -%}
+  {% if events.len() == 1 -%}
+    {{ owner_group_name }} invited your group to co-host an event.
+  {% else -%}
+    {{ owner_group_name }} invited your group to co-host {{ events.len() }} events.
+  {% endif -%}
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    <strong>{{ owner_group_name }}</strong> ({{ owner_community_display_name }}) invited
+    <strong>{{ cohost_group_name }}</strong> ({{ cohost_community_display_name }}) to co-host
+    {% if events.len() == 1 -%}
+      the following event:
+    {% else -%}
+      the following events:
+    {% endif -%}
+  </p>
+
+  {% for event in events -%}
+    <p class="default mb-15" style="margin-bottom: 15px">
+      <strong>{{ event.name }}</strong>
+      {% if let Some(starts_at) = &event.starts_at -%}
+        <br />
+        {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %Y · %I:%M %p %Z") }}
+      {% endif -%}
+    </p>
+  {% endfor -%}
+
+  <p class="default mt-30 mb-15"
+     style="margin-top: 30px;
+            margin-bottom: 15px">If your group approves:</p>
+  <ul class="default mb-30" style="margin-bottom: 30px">
+    <li>The event appears on your group page and credits your group on its page and cards.</li>
+    <li>When it is published, your members are notified as if it were your own event.</li>
+    <li>{{ owner_group_name }} keeps managing and operating the event; your group gets no access to it.</li>
+    <li>It is counted only under "Co-hosted events" in your analytics.</li>
+    <li>You can cancel later, and the admins of {{ owner_group_name }} will be notified.</li>
+  </ul>
+
+  <p class="default mb-30" style="margin-bottom: 30px">
+    To review the invitation, select {{ cohost_group_name }} ({{ cohost_community_display_name }})
+    in the group dashboard, then open Events › Co-hosts.
+    {% if events.len() > 1 -%}
+      Each event is approved separately.
+    {% endif -%}
+  </p>
+
+  {{ email::button(link = link, text = "Review invitation", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you're an admin of {{ cohost_group_name }}.
+{% endblock footer -%}
+{# End event co-host invitation notification -#}

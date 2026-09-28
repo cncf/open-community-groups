@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(109);
+select plan(113);
 
 -- ============================================================================
 -- TESTS
@@ -242,6 +242,22 @@ select indexes_are('event_category', array[
     'event_category_slug_community_id_key',
     'event_category_community_id_idx'
 ]);
+
+-- Test: event co-host indexes should match expected
+select indexes_are('event_cohost', array[
+    'event_cohost_pkey',
+    'event_cohost_invitation_id_key',
+    'event_cohost_event_id_status_idx',
+    'event_cohost_group_id_status_idx'
+]);
+select index_is_unique('event_cohost', 'event_cohost_invitation_id_key');
+
+-- Test: event co-host status indexes should match expected
+select indexes_are('event_cohost_status', array[
+    'event_cohost_status_pkey',
+    'event_cohost_status_display_name_key'
+]);
+select index_is_unique('event_cohost_status', 'event_cohost_status_display_name_key');
 
 -- Test: event_discount_code indexes should match expected
 select indexes_are('event_discount_code', array[

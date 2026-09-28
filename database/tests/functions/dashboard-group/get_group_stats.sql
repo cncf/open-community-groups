@@ -215,6 +215,11 @@ select is(
                     jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
                 )
             ),
+            'cohosted_events', jsonb_build_object(
+                'total', 0,
+                'running_total', jsonb_build_array(),
+                'per_month', jsonb_build_array()
+            ),
             'attendees', jsonb_build_object(
                 'total', 2,
                 'running_total', jsonb_build_array(
@@ -312,6 +317,11 @@ select is(
                     jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
                 )
             ),
+            'cohosted_events', jsonb_build_object(
+                'total', 0,
+                'running_total', jsonb_build_array(),
+                'per_month', jsonb_build_array()
+            ),
             'attendees', jsonb_build_object(
                 'total', 2,
                 'running_total', jsonb_build_array(
@@ -374,6 +384,11 @@ select is(
             "per_month": []
         },
         "events": {
+            "total": 0,
+            "running_total": [],
+            "per_month": []
+        },
+        "cohosted_events": {
             "total": 0,
             "running_total": [],
             "per_month": []

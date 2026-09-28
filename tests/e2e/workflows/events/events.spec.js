@@ -89,7 +89,7 @@ test.describe("event management workflows", () => {
       await setAutomaticMeetingCapacity(organizerGroupPage);
 
       // Fill schedule and online meeting details.
-      await organizerGroupPage.locator("button[data-section-next]").click();
+      await organizerGroupPage.locator('button[data-section="date-venue"]').click();
       await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
         "data-active",
         "true",
@@ -685,7 +685,7 @@ test.describe("event management workflows", () => {
       await organizerGroupPage.locator("#meetup_url").fill(values.meetupUrl);
 
       // Fill date values in the date and venue tab.
-      await organizerGroupPage.locator("button[data-section-next]").click();
+      await organizerGroupPage.locator('button[data-section="date-venue"]').click();
       await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
         "data-active",
         "true",

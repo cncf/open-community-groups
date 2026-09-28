@@ -11,7 +11,9 @@ use crate::{
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
     types::{
-        dashboard::{DASHBOARD_PAGINATION_LIMIT, common::AuditLogSort},
+        dashboard::{
+            DASHBOARD_PAGINATION_LIMIT, common::AuditLogSort, group::cohosts::CohostedEventsOutput,
+        },
         payments::GroupExternalPaymentsContext,
         permissions::GroupPermission::{self, CheckInsWrite},
     },
@@ -252,6 +254,81 @@ async fn test_page_check_in_tab_falls_back_without_management_permission() {
     assert!(body.contains("You cannot manage check-ins for the selected group."));
     assert!(body.contains(&format!("selected-community-id=\"{community_id}\"")));
     assert!(body.contains(&format!("selected-group-id=\"{group_id}\"")));
+}
+
+#[tokio::test]
+async fn test_page_cohosts_tab_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let groups = sample_user_groups_by_community(community_id, group_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &CheckInsWrite)
+        })
+        .returning(|_, _, _, _| Ok(false));
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(groups.clone()));
+    db.expect_list_group_cohosted_events()
+        .times(1)
+        .withf(move |id, filters| {
+            *id == group_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+        })
+        .returning(|_, _| Ok(CohostedEventsOutput::default()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/group?tab=cohosts")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the co-hosts section is rendered
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("data-group-cohosts-list"));
 }
 
 #[tokio::test]

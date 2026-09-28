@@ -1,12 +1,16 @@
 import { expect, test } from "@playwright/test";
 import {
   TEST_CANCELED_PUBLIC_EVENT,
+  TEST_COHOSTED_EVENT,
   TEST_COMMUNITY_NAME,
+  TEST_COMMUNITY_NAME_2,
   TEST_EVENT_NAME,
   TEST_EVENT_PAGE_BADGE_EVENT,
   TEST_EVENT_SLUG,
   TEST_GROUP_NAME,
+  TEST_GROUP_NAMES,
   TEST_GROUP_SLUG,
+  TEST_GROUP_SLUGS,
   TEST_MULTI_DAY_EVENT,
 } from "../../seed.js";
 import {
@@ -17,6 +21,25 @@ import {
   waitForAttendanceState,
 } from "./helpers.js";
 import { buildE2eUrl, getIntroSection, navigateToEvent } from "../../utils.js";
+
+// Approved co-hosts seeded for the cross-community summit.
+const COHOSTED_EVENT_COHOSTS = [
+  {
+    communityDisplayName: "Platform Engineering Community",
+    href: `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.gamma}`,
+    name: TEST_GROUP_NAMES.gamma,
+  },
+  {
+    communityDisplayName: "Developer Experience Community",
+    href: `/${TEST_COMMUNITY_NAME_2}/group/${TEST_GROUP_SLUGS.community2.delta}`,
+    name: "E2E Second Group Delta",
+  },
+  {
+    communityDisplayName: "Developer Experience Community",
+    href: `/${TEST_COMMUNITY_NAME_2}/group/${TEST_GROUP_SLUGS.community2.zeta}`,
+    name: "E2E Second Group Zeta",
+  },
+];
 
 const DASHBOARD_WAITLIST_EVENT_SLUG = "alpha-dashboard-waitlist-lab";
 
@@ -626,6 +649,38 @@ test.describe("event page - test event badge", () => {
     await expect(eventTypeBadge).toBeVisible();
     await expect(testBadge).toBeVisible();
     await expect(testBadge).toHaveClass(/custom-badge/);
+  });
+});
+
+test.describe("event page - co-hosts", () => {
+  test("lists approved co-hosts with links to their community group pages", async ({ page }) => {
+    // Load the seeded cross-community co-hosted event.
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME_2,
+      TEST_GROUP_SLUGS.community2.epsilon,
+      TEST_COHOSTED_EVENT.slug,
+    );
+
+    // Verify each co-host links to its own community group page.
+    await expect(page.getByText("Co-hosted with", { exact: true })).toBeVisible();
+    const cohostsList = page.getByRole("list", { name: "Co-hosts" });
+    await expect(cohostsList.getByRole("listitem")).toHaveCount(COHOSTED_EVENT_COHOSTS.length);
+    for (const cohost of COHOSTED_EVENT_COHOSTS) {
+      const cohostLink = cohostsList.getByRole("link", { name: new RegExp(cohost.name, "u") });
+      await expect(cohostLink).toHaveAttribute("href", cohost.href);
+      await expect(cohostLink).toContainText(cohost.communityDisplayName);
+    }
+  });
+
+  test("events without co-hosts omit the co-hosts box", async ({ page }) => {
+    // Load an event without co-hosts.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+
+    // Verify the co-hosts box is not rendered.
+    await expect(page.getByRole("heading", { level: 1, name: TEST_EVENT_NAME })).toBeVisible();
+    await expect(page.getByText("Co-hosted with", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("list", { name: "Co-hosts" })).toHaveCount(0);
   });
 });
 

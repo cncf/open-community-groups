@@ -1,0 +1,78 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event Co-host Removed Notification -#}
+{% block subject -%}
+  {% match reason -%}
+  {% when EventCohostRemovalReason::EventCanceled -%}
+  Co-hosted events canceled by {{ owner_group_name }}
+  {% when EventCohostRemovalReason::EventDeleted -%}
+  Co-hosted events deleted by {{ owner_group_name }}
+  {% when EventCohostRemovalReason::Removed -%}
+  {{ cohost_group_name }} was removed as a co-host
+{% endmatch -%}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {% match reason -%}
+  {% when EventCohostRemovalReason::EventCanceled -%}
+  {{ owner_group_name }} canceled events your group was co-hosting.
+  {% when EventCohostRemovalReason::EventDeleted -%}
+  {{ owner_group_name }} deleted events your group was co-hosting.
+  {% when EventCohostRemovalReason::Removed -%}
+  {{ owner_group_name }} removed your group as a co-host.
+{% endmatch -%}
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    {% match reason -%}
+    {% when EventCohostRemovalReason::EventCanceled -%}
+    <strong>{{ owner_group_name }}</strong> ({{ owner_community_display_name }}) canceled
+    {% if events.len() == 1 -%}
+      an event
+    {% else -%}
+      events
+    {% endif -%}
+    <strong>{{ cohost_group_name }}</strong> was invited to co-host or was co-hosting.
+    Groups that had approved stay credited on the canceled event.
+    {% when EventCohostRemovalReason::EventDeleted -%}
+    <strong>{{ owner_group_name }}</strong> ({{ owner_community_display_name }}) deleted
+    {% if events.len() == 1 -%}
+      an event
+    {% else -%}
+      events
+    {% endif -%}
+    <strong>{{ cohost_group_name }}</strong> was invited to co-host or was co-hosting.
+    {% when EventCohostRemovalReason::Removed -%}
+    <strong>{{ owner_group_name }}</strong> ({{ owner_community_display_name }}) removed
+    <strong>{{ cohost_group_name }}</strong> as a co-host of
+    {% if events.len() == 1 -%}
+      the following event.
+    {% else -%}
+      the following events.
+    {% endif -%}
+{% endmatch -%}
+</p>
+
+{% for event in events -%}
+  <p class="default mb-15" style="margin-bottom: 15px">
+    <strong>{{ event.name }}</strong>
+    {% if let Some(starts_at) = &event.starts_at -%}
+      <br />
+      {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %Y · %I:%M %p %Z") }}
+    {% endif -%}
+  </p>
+{% endfor -%}
+
+{% if let Some(link) = link -%}
+  <div style="margin-top: 30px">
+    {{ email::button(link = link, text = "View co-hosted events", color = theme.primary_color) }}
+  </div>
+{% endif -%}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you're an admin of {{ cohost_group_name }}.
+{% endblock footer -%}
+{# End event co-host removed notification -#}

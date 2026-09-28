@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(213);
+select plan(220);
 
 -- ============================================================================
 -- TESTS
@@ -38,6 +38,8 @@ select has_pk('email_verification_code');
 select has_pk('event');
 select has_pk('event_attendee');
 select has_pk('event_category');
+select has_pk('event_cohost');
+select has_pk('event_cohost_status');
 select has_pk('event_discount_code');
 select has_pk('event_host');
 select has_pk('event_kind');
@@ -136,6 +138,11 @@ select col_is_fk('event_attendee', 'attendance_canceled_by_user_id', 'user');
 select col_is_fk('event_attendee', 'event_id', 'event');
 select col_is_fk('event_attendee', 'user_id', 'user');
 select col_is_fk('event_category', 'community_id', 'community');
+select col_is_fk('event_cohost', 'event_cohost_status_id', 'event_cohost_status');
+select col_is_fk('event_cohost', 'event_id', 'event');
+select col_is_fk('event_cohost', 'group_id', 'group');
+select col_is_fk('event_cohost', 'invited_by', 'user');
+select col_is_fk('event_cohost', 'responded_by', 'user');
 select col_is_fk('event_discount_code', 'event_id', 'event');
 select col_is_fk('event_host', 'event_id', 'event');
 select col_is_fk('event_host', 'user_id', 'user');

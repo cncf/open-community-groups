@@ -108,6 +108,12 @@ pub(crate) enum NotificationKind {
     EventAttendanceCanceled,
     /// Notification for an event canceled.
     EventCanceled,
+    /// Notification inviting a group's admins to co-host events.
+    EventCohostInvitation,
+    /// Notification that a group's co-hosting of events ended.
+    EventCohostRemoved,
+    /// Notification that a co-host group responded to a co-hosting invitation.
+    EventCohostResponded,
     /// Notification for a custom event message.
     EventCustom,
     /// Notification that an external payment window expired.

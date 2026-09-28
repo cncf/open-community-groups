@@ -7,6 +7,12 @@ use serde_with::skip_serializing_none;
 
 use crate::templates::filters;
 
+/// Preview status of a co-host that approved the invitation.
+const COHOST_STATUS_APPROVED: &str = "approved";
+
+/// Preview status of a co-host that has not responded yet.
+const COHOST_STATUS_PENDING: &str = "pending";
+
 // Pages templates.
 
 /// Event preview modal template.
@@ -24,6 +30,8 @@ pub(crate) struct Page {
 pub(crate) struct Event {
     /// Banner image URL selected for the preview.
     pub banner_url: Option<String>,
+    /// Co-hosts selected in the editor, with pending or approved status.
+    pub cohosts: Vec<ContextCohost>,
     /// Community display name.
     pub community_display_name: Option<String>,
     /// Event description.
@@ -195,6 +203,7 @@ impl From<Input> for Event {
         ]);
 
         // Normalize submitted collections for rendering
+        let cohosts = build_cohosts(&context.cohosts);
         let photos = input
             .photos_urls
             .clone()
@@ -215,6 +224,7 @@ impl From<Input> for Event {
         // Assemble the render model
         Self {
             banner_url,
+            cohosts,
             community_display_name,
             description: normalize_text(input.description.clone()),
             hosts: context.hosts.clone(),
@@ -383,6 +393,9 @@ pub(crate) struct InputSessionSpeaker {
 pub(crate) struct Context {
     /// Category display label selected in the editor.
     pub category_label: Option<String>,
+    /// Co-hosts selected in the editor.
+    #[serde(default)]
+    pub cohosts: Vec<ContextCohost>,
     /// Community details for fallback branding.
     pub community: Option<ContextCommunity>,
     /// Group details for fallback branding.
@@ -401,6 +414,30 @@ pub(crate) struct Context {
     /// Event sponsors selected in the editor.
     #[serde(default)]
     pub sponsors: Vec<ContextSponsor>,
+}
+
+/// Preview co-host display context.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct ContextCohost {
+    /// Co-host group logo URL.
+    pub logo_url: Option<String>,
+    /// Co-host group name.
+    pub name: Option<String>,
+    /// Co-hosting status (pending or approved).
+    pub status: Option<String>,
+}
+
+impl ContextCohost {
+    /// Returns true when the co-host approved the invitation.
+    pub(crate) fn is_approved(&self) -> bool {
+        self.status.as_deref() == Some(COHOST_STATUS_APPROVED)
+    }
+
+    /// Returns the co-host display name.
+    pub(crate) fn name_label(&self) -> String {
+        normalize_text(self.name.clone()).unwrap_or_default()
+    }
 }
 
 /// Preview community display context.
@@ -507,6 +544,27 @@ impl ContextSponsor {
 }
 
 // Helpers.
+
+/// Keeps named co-hosts with a supported status and normalizes their values.
+fn build_cohosts(cohosts: &[ContextCohost]) -> Vec<ContextCohost> {
+    cohosts
+        .iter()
+        .filter_map(|cohost| {
+            let name = normalize_text(cohost.name.clone())?;
+            let status = normalize_text(cohost.status.clone())
+                .map(|status| status.to_lowercase())
+                .filter(|status| {
+                    status == COHOST_STATUS_APPROVED || status == COHOST_STATUS_PENDING
+                })?;
+
+            Some(ContextCohost {
+                logo_url: normalize_text(cohost.logo_url.clone()),
+                name: Some(name),
+                status: Some(status),
+            })
+        })
+        .collect()
+}
 
 /// Builds a display-friendly location string from submitted venue fields.
 fn build_location(input: &Input) -> Option<String> {
@@ -743,5 +801,60 @@ fn session_time_label(
         }
         (Some(starts_at), None) => format!("{} {}", starts_at.format("%-I:%M %p"), timezone),
         (None, _) => "Missing start time".to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Event, Input};
+
+    #[test]
+    fn context_defaults_cohosts_when_key_is_missing() {
+        let input = Input {
+            preview_context: Some(r#"{"kind_label":"Virtual"}"#.to_string()),
+            ..Input::default()
+        };
+
+        assert!(input.context().cohosts.is_empty());
+        assert!(Event::from(input).cohosts.is_empty());
+    }
+
+    #[test]
+    fn context_keeps_empty_cohosts_list() {
+        let input = Input {
+            preview_context: Some(r#"{"cohosts":[]}"#.to_string()),
+            ..Input::default()
+        };
+
+        assert!(Event::from(input).cohosts.is_empty());
+    }
+
+    #[test]
+    fn event_normalizes_cohost_entries() {
+        let input = Input {
+            preview_context: Some(
+                r#"{"cohosts":[
+                    {"name":" Alpha ","status":"Approved","logo_url":"https://example.test/a.png"},
+                    {"name":"Beta","status":"pending","logo_url":" "},
+                    {"name":"Gamma","status":"rejected"},
+                    {"name":"  ","status":"pending"}
+                ]}"#
+                .to_string(),
+            ),
+            ..Input::default()
+        };
+
+        let cohosts = Event::from(input).cohosts;
+
+        assert_eq!(cohosts.len(), 2);
+        assert_eq!(cohosts[0].name_label(), "Alpha");
+        assert!(cohosts[0].is_approved());
+        assert_eq!(
+            cohosts[0].logo_url.as_deref(),
+            Some("https://example.test/a.png")
+        );
+        assert_eq!(cohosts[1].name_label(), "Beta");
+        assert!(!cohosts[1].is_approved());
+        assert!(cohosts[1].logo_url.is_none());
     }
 }

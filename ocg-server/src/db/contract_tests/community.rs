@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use crate::{db::community::DBCommunity, types::event::EventKind};
 
-use super::helpers::{community_id, contract_tests_db, event_id, group_id, subgroup_id};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]

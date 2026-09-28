@@ -5,13 +5,21 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::{DBOperations, auth::EmailVerificationNotification},
-    templates::notifications::{
-        EmailVerification, EventAttendanceCanceled, EventCanceled, EventPaidConfigured,
-        EventPaidConfiguredItem, EventPublished, EventRefundApproved, EventRefundRejected,
-        EventRescheduled, EventWaitlistJoined, EventWaitlistLeft, EventWelcome, SpeakerWelcome,
+    db::{
+        DBOperations, auth::EmailVerificationNotification,
+        dashboard::group::EventCohostNotificationData,
     },
-    types::{event::EventSummary, site::SiteSettings},
+    templates::notifications::{
+        EmailVerification, EventAttendanceCanceled, EventCanceled, EventCohostEmailEvent,
+        EventCohostInvitation, EventCohostRemovalReason, EventCohostRemoved, EventCohostResponded,
+        EventPaidConfigured, EventPaidConfiguredItem, EventPublished, EventRefundApproved,
+        EventRefundRejected, EventRescheduled, EventWaitlistJoined, EventWaitlistLeft,
+        EventWelcome, SpeakerWelcome,
+    },
+    types::{
+        event::{EventCohostStatus, EventSummary},
+        site::SiteSettings,
+    },
     util::{
         base_url_without_trailing_slash, build_event_calendar_attachment, build_event_page_link,
         build_user_dashboard_events_link,
@@ -94,6 +102,107 @@ pub(crate) fn build_event_canceled_notification(
     })
 }
 
+/// Builds a co-hosting invitation notification for one co-host group.
+///
+/// Every item must belong to the same co-host group.
+pub(super) fn build_event_cohost_invitation_notification(
+    items: &[EventCohostNotificationData],
+    recipients: Vec<Uuid>,
+    server_cfg: &HttpServerConfig,
+    site_settings: &SiteSettings,
+) -> Result<NewNotification> {
+    // Require common group context before building the aggregate payload
+    let first_item = items
+        .first()
+        .ok_or_else(|| anyhow!("co-hosting invitation requires at least one event"))?;
+
+    // Snapshot the invited group, the owner group, and the events
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
+    let template_data = EventCohostInvitation {
+        cohost_community_display_name: first_item.cohost_community_display_name.clone(),
+        cohost_group_name: first_item.cohost_group_name.clone(),
+        events: items.iter().map(cohost_email_event).collect(),
+        link: build_group_dashboard_cohosts_link(base_url),
+        owner_community_display_name: first_item.owner_community_display_name.clone(),
+        owner_group_name: first_item.owner_group_name.clone(),
+        theme: site_settings.theme.clone(),
+    };
+
+    Ok(NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::EventCohostInvitation,
+        recipients,
+        template_data: Some(serde_json::to_value(&template_data)?),
+    })
+}
+
+/// Builds a notification telling a co-host group its co-hosting ended.
+///
+/// Every item must belong to the same co-host group.
+pub(super) fn build_event_cohost_removed_notification(
+    items: &[EventCohostNotificationData],
+    reason: EventCohostRemovalReason,
+    recipients: Vec<Uuid>,
+    server_cfg: &HttpServerConfig,
+    site_settings: &SiteSettings,
+) -> Result<NewNotification> {
+    // Require common group context before building the aggregate payload
+    let first_item = items
+        .first()
+        .ok_or_else(|| anyhow!("co-hosting removal requires at least one event"))?;
+
+    // Deleted events are no longer listed in the dashboard, so omit the link
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
+    let link = (reason != EventCohostRemovalReason::EventDeleted)
+        .then(|| build_group_dashboard_cohosts_link(base_url));
+
+    // Snapshot the co-host group, the owner group, and the events
+    let template_data = EventCohostRemoved {
+        cohost_group_name: first_item.cohost_group_name.clone(),
+        events: items.iter().map(cohost_email_event).collect(),
+        owner_community_display_name: first_item.owner_community_display_name.clone(),
+        owner_group_name: first_item.owner_group_name.clone(),
+        reason,
+        theme: site_settings.theme.clone(),
+
+        link,
+    };
+
+    Ok(NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::EventCohostRemoved,
+        recipients,
+        template_data: Some(serde_json::to_value(&template_data)?),
+    })
+}
+
+/// Builds a notification telling the owner group a co-host responded.
+pub(super) fn build_event_cohost_responded_notification(
+    item: &EventCohostNotificationData,
+    status: EventCohostStatus,
+    recipients: Vec<Uuid>,
+    server_cfg: &HttpServerConfig,
+    site_settings: &SiteSettings,
+) -> Result<NewNotification> {
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
+    let template_data = EventCohostResponded {
+        cohost_community_display_name: item.cohost_community_display_name.clone(),
+        cohost_group_name: item.cohost_group_name.clone(),
+        event: cohost_email_event(item),
+        link: format!("{base_url}/dashboard/group?tab=events"),
+        owner_group_name: item.owner_group_name.clone(),
+        status,
+        theme: site_settings.theme.clone(),
+    };
+
+    Ok(NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::EventCohostResponded,
+        recipients,
+        template_data: Some(serde_json::to_value(&template_data)?),
+    })
+}
+
 /// Builds a paid event configuration notification for community admins.
 pub(super) fn build_event_paid_configured_notification(
     events: &[EventSummary],
@@ -134,8 +243,11 @@ pub(super) fn build_event_paid_configured_notification(
 }
 
 /// Builds an event publication notification.
+///
+/// `cohost_group_name` is set for the copy sent to a co-host group's audience.
 pub(crate) fn build_event_published_notification(
     event: &EventSummary,
+    cohost_group_name: Option<&str>,
     recipients: Vec<Uuid>,
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
@@ -145,6 +257,8 @@ pub(crate) fn build_event_published_notification(
         event: event.clone(),
         link: build_event_page_link(base_url, event),
         theme: site_settings.theme.clone(),
+
+        cohost_group_name: cohost_group_name.map(ToString::to_string),
     };
 
     Ok(NewNotification {
@@ -313,6 +427,21 @@ pub(crate) fn build_speaker_welcome_notification(
 
 // Helpers.
 
+/// Returns the link to the co-hosts section of the group dashboard.
+fn build_group_dashboard_cohosts_link(base_url: &str) -> String {
+    format!("{base_url}/dashboard/group?tab=cohosts")
+}
+
+/// Snapshots the event details shown in co-hosting notifications.
+fn cohost_email_event(item: &EventCohostNotificationData) -> EventCohostEmailEvent {
+    EventCohostEmailEvent {
+        name: item.event_name.clone(),
+        timezone: item.timezone,
+
+        starts_at: item.starts_at,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use uuid::Uuid;
@@ -395,6 +524,7 @@ mod tests {
         .expect("notification to be built");
         let published = build_event_published_notification(
             &event,
+            None,
             vec![recipient_user_id],
             &server_cfg,
             &site_settings,

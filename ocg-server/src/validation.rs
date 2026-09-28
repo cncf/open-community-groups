@@ -39,6 +39,10 @@ pub const MAX_LEN_S: usize = 100;
 
 // Purpose-specific limits
 
+/// Maximum number of groups that can co-host one event. The bound keeps the
+/// co-host selector, invitation emails, and public credit lines small.
+pub const MAX_EVENT_COHOSTS: usize = 10;
+
 /// Maximum number of labels allowed per event.
 pub const MAX_EVENT_LABELS_PER_EVENT: usize = 200;
 

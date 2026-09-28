@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-use super::helpers::{community_id, contract_tests_db, organizer_id, waitlist_id};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]

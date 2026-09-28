@@ -644,7 +644,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels' - 'ticket_types'
+        )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels' - 'ticket_types'
     )),
     '{
         "attendee_count": 0,
@@ -1235,7 +1235,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels' - 'ticket_types'
+        )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels' - 'ticket_types'
     )),
     '{
         "attendee_count": 0,

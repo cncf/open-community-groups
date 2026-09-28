@@ -1,0 +1,46 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event Co-host Responded Notification -#}
+{% block subject -%}
+  {{ cohost_group_name }} {{ self.decision() }} co-hosting {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ cohost_group_name }} {{ self.decision() }} co-hosting {{ event.name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    <strong>{{ cohost_group_name }}</strong> ({{ cohost_community_display_name }})
+    {{ self.decision() }} co-hosting <strong>{{ event.name }}</strong>.
+    {% if let Some(starts_at) = &event.starts_at -%}
+      <br />
+      <br />
+      Date: {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %Y · %I:%M %p %Z") }}
+    {% endif -%}
+  </p>
+
+  {% match status -%}
+  {% when EventCohostStatus::Approved -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    {{ cohost_group_name }} is now credited as a co-host of the event.
+  </p>
+  {% when EventCohostStatus::Canceled -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    {{ cohost_group_name }} is no longer credited as a co-host of the event.
+  </p>
+{% else -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    {{ cohost_group_name }} won't be credited as a co-host of the event.
+    The event can be published once every co-host has responded.
+  </p>
+{% endmatch -%}
+
+{{ email::button(link = link, text = "Open events dashboard", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you're an admin of {{ owner_group_name }}.
+{% endblock footer -%}
+{# End event co-host responded notification -#}

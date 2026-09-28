@@ -20,7 +20,9 @@
             {% block preheader %}{% endblock %}
           </div>
 
-          <div class="card-title !mt-0.5 !mb-0 !h-auto !line-clamp-2 text-[0.98rem]/[1.4rem] md:text-[1.02rem]/[1.4rem]
+          <div class="card-title !mt-0.5 !mb-0 !h-auto
+                      {% block title_line_clamp_classes %}!line-clamp-2{% endblock %}
+                      text-[0.98rem]/[1.4rem] md:text-[1.02rem]/[1.4rem]
                       {% block title_classes %}{% endblock %}">
             {% block title %}{% endblock %}
           </div>

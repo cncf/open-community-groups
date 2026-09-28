@@ -7,7 +7,11 @@
 {% endblock subject -%}
 
 {% block preheader -%}
-  A new event from {{ event.group_name }} is live.
+  {% if let Some(cohost_group_name) = cohost_group_name -%}
+    A new event co-hosted by {{ cohost_group_name }} is live.
+  {% else -%}
+    A new event from {{ event.group_name }} is live.
+  {% endif -%}
 {% endblock preheader -%}
 
 {% block content -%}
@@ -16,6 +20,10 @@
     <strong>{{ event.group_name }}</strong> on <strong>Open Community Groups</strong>.
     <br />
     <br />
+    {% if !event.cohosts.is_empty() -%}
+      Co-hosted by: {{ event.cohost_names() }}
+      <br />
+    {% endif -%}
     {% if let Some(starts_at) = &event.starts_at -%}
       Date: {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
       <br />
@@ -43,7 +51,12 @@
 {% endblock content -%}
 
 {% block footer -%}
-  You received this email notification because you're a member of
-  {{ event.group_name }} in the {{ event.community_display_name }} community.
+  {% if let Some(cohost_group_name) = cohost_group_name -%}
+    You received this email notification because you're a member of
+    {{ cohost_group_name }}, which co-hosts this event with {{ event.group_name }}.
+  {% else -%}
+    You received this email notification because you're a member of
+    {{ event.group_name }} in the {{ event.community_display_name }} community.
+  {% endif -%}
 {% endblock footer -%}
 {# End event published notification -#}

@@ -2,6 +2,11 @@
 {% import "macros/cards.html" as cards -%}
 
 {# Site Explore Events Calendar Event Card -#}
+{# Calendar popovers use a smaller title to fit more of it in one line. -#}
+{% block title_classes -%}
+  !text-[0.9rem]/[1.25rem]
+{% endblock title_classes %}
+
 {% block footer_top -%}
   {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
     {% if ticket_price_badge != "Free" -%}

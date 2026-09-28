@@ -44,6 +44,9 @@ pub struct EventSummary {
     pub attendee_approval_required: bool,
     /// Whether the event has been canceled.
     pub canceled: bool,
+    /// Groups publicly credited as co-hosts of the event.
+    #[serde(default)]
+    pub cohosts: Vec<EventCohostGroup>,
     /// Human-readable display name of the community this event belongs to.
     pub community_display_name: String,
     /// Name of the community this event belongs to (slug for URLs).
@@ -120,6 +123,8 @@ pub struct EventSummary {
     pub meeting_provider: Option<MeetingProvider>,
     /// Event currency used for ticket purchases.
     pub payment_currency_code: Option<String>,
+    /// Number of unanswered co-host invitations, in dashboard views.
+    pub pending_cohosts_count: Option<i32>,
     /// Pre-rendered HTML for map/calendar popovers.
     pub popover_html: Option<String>,
     /// Registration end time in UTC.
@@ -158,6 +163,11 @@ impl EventSummary {
     pub fn can_delete(&self) -> bool {
         self.delete_eligibility
             .is_none_or(|eligibility| eligibility == EventDeleteEligibility::Allowed)
+    }
+
+    /// Returns the comma-separated names of the event co-hosts.
+    pub fn cohost_names(&self) -> String {
+        cohost_names(&self.cohosts)
     }
 
     /// Returns dashboard tooltip text for the user who created the event.
@@ -201,6 +211,11 @@ impl EventSummary {
         self.starts_at.is_some_and(|starts_at| starts_at <= Utc::now())
     }
 
+    /// Returns true when the given group is credited as a co-host of the event.
+    pub fn is_cohosted_by(&self, group_id: Uuid) -> bool {
+        self.cohosts.iter().any(|cohost| cohost.group_id == group_id)
+    }
+
     /// Check if the event is in the past.
     pub fn is_past(&self) -> bool {
         self.is_past_at(Utc::now())
@@ -232,6 +247,13 @@ impl EventSummary {
     /// Returns the group slug to use in public URLs.
     pub fn public_group_slug(&self) -> &str {
         self.group_slug_pretty.as_deref().unwrap_or(&self.group_slug)
+    }
+
+    /// Returns the dashboard explanation when publishing is unavailable.
+    pub fn publish_unavailable_title(&self) -> Option<String> {
+        self.pending_cohosts_count
+            .filter(|count| *count > 0)
+            .map(|count| format!("Waiting for {count} co-host(s) to respond."))
     }
 
     /// Returns true when attendee registration is currently open.
@@ -296,6 +318,9 @@ pub struct EventFull {
     /// Call for speakers labels.
     #[serde(default)]
     pub cfs_labels: Vec<EventCfsLabel>,
+    /// Groups publicly credited as co-hosts of the event.
+    #[serde(default)]
+    pub cohosts: Vec<EventCohostGroup>,
     /// Community this event belongs to.
     pub community: CommunitySummary,
     /// When the event was created.
@@ -711,6 +736,7 @@ impl From<&EventFull> for EventSummary {
         EventSummary {
             attendee_approval_required: event.attendee_approval_required,
             canceled: event.canceled,
+            cohosts: event.cohosts.clone(),
             community_display_name: event.community.display_name.clone(),
             community_name: event.community.name.clone(),
             event_id: event.event_id,
@@ -747,6 +773,7 @@ impl From<&EventFull> for EventSummary {
             meeting_password: event.meeting_password.clone(),
             meeting_provider: event.meeting_provider,
             payment_currency_code: event.payment_currency_code.clone(),
+            pending_cohosts_count: None,
             popover_html: None,
             registration_ends_at: event.registration_ends_at,
             registration_starts_at: event.registration_starts_at,
@@ -861,6 +888,72 @@ pub struct EventCfsLabel {
     #[serde(default)]
     #[garde(skip)]
     pub event_cfs_label_id: Option<Uuid>,
+}
+
+/// Group credited as a co-host of an event.
+#[skip_serializing_none]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EventCohostGroup {
+    /// Human-readable display name of the co-host group's community.
+    pub community_display_name: String,
+    /// Name of the co-host group's community (slug for URLs).
+    pub community_name: String,
+    /// Co-host group identifier.
+    pub group_id: Uuid,
+    /// URL to the co-host group's logo, falling back to its community logo.
+    pub logo_url: String,
+    /// Co-host group display name.
+    pub name: String,
+    /// Generated URL-friendly identifier for the co-host group.
+    pub slug: String,
+
+    /// Admin-managed URL-friendly identifier for the co-host group.
+    pub slug_pretty: Option<String>,
+}
+
+impl EventCohostGroup {
+    /// Returns the group slug to use in public URLs.
+    pub fn public_slug(&self) -> &str {
+        self.slug_pretty.as_deref().unwrap_or(&self.slug)
+    }
+}
+
+/// Status of a group's co-hosting of an event.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum EventCohostStatus {
+    /// The co-host group approved the invitation.
+    Approved,
+    /// The co-host group withdrew after approving.
+    Canceled,
+    /// The event was canceled while the co-hosting was open.
+    EventCanceled,
+    /// The event was deleted while the co-hosting was open.
+    EventDeleted,
+    /// The invitation awaits the co-host group's response.
+    Pending,
+    /// The co-host group rejected the invitation.
+    Rejected,
+    /// The owning group removed the co-host.
+    Removed,
+}
+
+impl EventCohostStatus {
+    /// Returns the user-facing label for the status.
+    pub fn display_name(self) -> &'static str {
+        match self {
+            EventCohostStatus::Approved => "Approved",
+            EventCohostStatus::Canceled => "Canceled",
+            EventCohostStatus::EventCanceled => "Event canceled",
+            EventCohostStatus::EventDeleted => "Event deleted",
+            EventCohostStatus::Pending => "Pending",
+            EventCohostStatus::Rejected => "Rejected",
+            EventCohostStatus::Removed => "Removed by organizer",
+        }
+    }
 }
 
 /// Dashboard eligibility for deleting an event.
@@ -1157,6 +1250,15 @@ pub struct Speaker {
 }
 
 // Helpers.
+
+/// Returns the comma-separated names of the given co-host groups.
+pub(crate) fn cohost_names(cohosts: &[EventCohostGroup]) -> String {
+    cohosts
+        .iter()
+        .map(|cohost| cohost.name.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
 
 /// Returns a local datetime label for registration window copy.
 fn format_registration_window_time(time: DateTime<Utc>, timezone: Tz) -> String {

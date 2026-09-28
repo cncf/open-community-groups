@@ -23,6 +23,9 @@ begin
         raise exception 'event must be canceled and all payment work settled before deletion' using errcode = 'OCG01';
     end if;
 
+    -- Close open and event-canceled co-host invitations before deleting the event
+    perform close_event_cohosts(p_actor_user_id, p_event_id, 'event-deleted');
+
     -- Update event to mark as deleted
     -- If meeting was requested, mark meeting_in_sync as false to trigger deletion
     update event set

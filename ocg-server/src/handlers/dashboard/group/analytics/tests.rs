@@ -14,6 +14,54 @@ use crate::{
 };
 
 #[tokio::test]
+async fn test_page_hides_cohosted_events_without_cohosted_events() {
+    // Setup identifiers and stats without co-hosted events
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut stats = sample_group_stats();
+    stats.cohosted_events.per_month.clear();
+    stats.cohosted_events.running_total.clear();
+    stats.cohosted_events.total = 0;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_group_stats()
+        .times(1)
+        .returning(move |_, _, _| Ok(stats.clone()));
+    db.expect_group_has_active_subgroups()
+        .times(1)
+        .returning(|_, _| Ok(false));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/group/analytics")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the co-hosted events section is omitted
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("id=\"events-monthly-chart\""));
+    assert!(!body.contains("Co-hosted events"));
+    assert!(!body.contains("cohosted-events-monthly-chart"));
+}
+
+#[tokio::test]
 async fn test_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -67,4 +115,6 @@ async fn test_page_success() {
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("Include subgroups"));
     assert!(body.contains("checked"));
+    assert!(body.contains("Co-hosted events"));
+    assert!(body.contains("id=\"cohosted-events-monthly-chart\""));
 }

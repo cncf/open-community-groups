@@ -1,0 +1,7 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Group co-hosts table placeholder -#}
+{% call dashboard::empty_state("No co-hosted events found", title_margin = "mb-4") -%}
+<p class="text-sm lg:text-md text-stone-700">This group has no event co-hosting invitations yet.</p>
+{% endcall -%}
+{# End group co-hosts table placeholder -#}

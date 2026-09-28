@@ -35,13 +35,14 @@ use crate::{
     templates::notifications::{
         BadgeAwarded, BadgeRevoked, CfsSubmissionUpdated, CommunityTeamInvitation,
         EmailVerification, EventAdmissionOfferCanceled, EventAdmissionOfferCreated,
-        EventAdmissionOfferDeclined, EventAttendanceCanceled, EventCanceled, EventCustom,
-        EventExternalPaymentExpired, EventExternalPaymentPending, EventExternalPaymentReminder,
-        EventInvitation, EventPaidConfigured, EventPublished, EventRefundApproved,
-        EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
-        EventSeriesCanceled, EventSeriesPublished, EventTicketRequestApproved,
-        EventTicketWaitlistOffer, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted,
-        EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome, NotificationTemplate,
+        EventAdmissionOfferDeclined, EventAttendanceCanceled, EventCanceled, EventCohostInvitation,
+        EventCohostRemoved, EventCohostResponded, EventCustom, EventExternalPaymentExpired,
+        EventExternalPaymentPending, EventExternalPaymentReminder, EventInvitation,
+        EventPaidConfigured, EventPublished, EventRefundApproved, EventRefundRejected,
+        EventRefundRequested, EventReminder, EventRescheduled, EventSeriesCanceled,
+        EventSeriesPublished, EventTicketRequestApproved, EventTicketWaitlistOffer,
+        EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome, GroupCustom,
+        GroupTeamInvitation, GroupWelcome, NotificationTemplate,
         SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
     },
     types::{
@@ -370,6 +371,15 @@ impl DeliveryWorker {
             }
             NotificationKind::EventCanceled => {
                 Self::render_template::<EventCanceled>(template_data, base_url)
+            }
+            NotificationKind::EventCohostInvitation => {
+                Self::render_template::<EventCohostInvitation>(template_data, base_url)
+            }
+            NotificationKind::EventCohostRemoved => {
+                Self::render_template::<EventCohostRemoved>(template_data, base_url)
+            }
+            NotificationKind::EventCohostResponded => {
+                Self::render_template::<EventCohostResponded>(template_data, base_url)
             }
             NotificationKind::EventCustom => {
                 Self::render_template::<EventCustom>(template_data, base_url)

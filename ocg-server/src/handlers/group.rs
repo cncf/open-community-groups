@@ -76,20 +76,27 @@ pub(crate) async fn page(
     // Only display featured sponsors on the group page
     group.sponsors.retain(|sponsor| sponsor.featured);
 
-    // Prepare the page template
+    // Prepare the page template, flagging events the group only co-hosts
+    let group_id = group.group_id;
     let template = Page {
         base_url: server_cfg.base_url,
         group,
         page_id: PageId::Group,
         past_events: past_events
             .into_iter()
-            .map(|event| group::PastEventCard { event })
+            .map(|event| group::PastEventCard {
+                cohosted_by_page_group: event.is_cohosted_by(group_id),
+                event,
+            })
             .collect(),
         path: uri.path().to_string(),
         site_settings,
         upcoming_events: upcoming_events
             .into_iter()
-            .map(|event| group::UpcomingEventCard { event })
+            .map(|event| group::UpcomingEventCard {
+                cohosted_by_page_group: event.is_cohosted_by(group_id),
+                event,
+            })
             .collect(),
         user: UserMenuState::default(),
     };

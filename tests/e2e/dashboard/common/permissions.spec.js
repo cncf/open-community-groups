@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "../../fixtures.js";
 import { queryE2eDatabase, queryE2eDatabaseRows } from "../../database.js";
+import { cleanupCohostEvents, readCohostStatus, setupCohostEvent } from "../../data-graphs/cohosts.js";
 import { cleanupEventsByIds } from "../../data-graphs/events.js";
 import { cleanupOwnedPaymentPurchase, setupExternalRefundRequestGraph } from "../../data-graphs/payments.js";
 import {
@@ -258,6 +259,20 @@ const GROUP_BUCKETS = [
     successStatus: 204,
     createOperation: createGroupRefundsOperation,
   },
+  // Co-host responses are guarded by group settings access.
+  {
+    key: "settings",
+    name: "co-host responses",
+    successStatus: 204,
+    createOperation: createGroupCohostResponseOperation,
+  },
+  // Co-host group options are guarded by group events access.
+  {
+    key: "events",
+    name: "co-host group options",
+    successStatus: 200,
+    createOperation: createGroupCohostOptionsOperation,
+  },
 ];
 
 /** Returns community permission cases for the requested fixture. */
@@ -477,6 +492,57 @@ function createGroupEventsOperation(role, expectedStatus) {
       group?.cleanup();
     },
     readEffect: () => countEventsByName(eventName),
+  };
+}
+
+/** Builds a co-host group options GET operation that lists another community's groups. */
+function createGroupCohostOptionsOperation(role, expectedStatus) {
+  const allowed = isAllowed(expectedStatus);
+  const group = allowed ? setupTemporaryGroup(role) : null;
+  const communityId = TEST_COMMUNITY_IDS.community2;
+  let optionIds = [];
+
+  return {
+    groupId: group?.groupId ?? (role.redirectsWithoutContext ? null : PRIMARY_GROUP_ID),
+    method: "GET",
+    path: `/dashboard/group/events/cohosts/groups?community_id=${communityId}`,
+    assertEffect: () => {},
+    assertResponse: async (response) => {
+      if (!allowed) {
+        return;
+      }
+
+      optionIds = (await response.json()).map((option) => option.group_id);
+      expect(optionIds).toContain(TEST_GROUP_IDS.community2.delta);
+    },
+    cleanup: () => group?.cleanup(),
+    readEffect: () => null,
+  };
+}
+
+/** Builds a co-host response PUT operation that rejects a pending invitation and cleans up. */
+function createGroupCohostResponseOperation(role, expectedStatus) {
+  const allowed = isAllowed(expectedStatus);
+  const group = allowed ? setupTemporaryGroup(role) : null;
+  const cohostGroupId = group?.groupId ?? PRIMARY_GROUP_ID;
+  const scenario = setupCohostEvent({
+    cohosts: [{ groupId: cohostGroupId }],
+    ownerGroupId: allowed ? PRIMARY_GROUP_ID : TEST_GROUP_IDS.community1.gamma,
+  });
+
+  return {
+    groupId: role.redirectsWithoutContext ? null : cohostGroupId,
+    method: "PUT",
+    path: `/dashboard/group/cohosts/${scenario.invitationIds[cohostGroupId]}/reject`,
+    assertEffect: (before) => {
+      const after = readCohostStatus(scenario.eventId, cohostGroupId);
+      expect(after).toBe(allowed ? "rejected" : before);
+    },
+    cleanup: () => {
+      cleanupCohostEvents([scenario.eventId]);
+      group?.cleanup();
+    },
+    readEffect: () => readCohostStatus(scenario.eventId, cohostGroupId),
   };
 }
 
@@ -1130,6 +1196,7 @@ const runGroupCase = async (matrixCase, page) => {
     const response = await sendDashboardRequest(page, operation, matrixCase.expectedStatus);
 
     expect(response.status(), await response.text()).toBe(matrixCase.expectedStatus);
+    await operation.assertResponse?.(response);
     operation.assertEffect(before, matrixCase.expectedStatus);
   } finally {
     operation.cleanup?.();

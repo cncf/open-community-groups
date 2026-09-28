@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(182);
+select plan(187);
 
 -- ============================================================================
 -- VARIABLES
@@ -208,6 +208,12 @@ select has_check('event', 'event_meeting_requested_times_chk');
 select has_check('event', 'event_registration_end_before_event_start_chk');
 select has_check('event', 'event_registration_start_before_event_start_chk');
 select has_check('event', 'event_registration_window_order_chk');
+select col_default_is('event', 'cohosts_revision', '0');
+select col_not_null('event', 'cohosts_revision');
+
+-- Test: event co-host table expected constraints exist
+select has_check('event_cohost', 'event_cohost_approved_at_chk');
+select has_check('event_cohost', 'event_cohost_pending_approval_chk');
 
 -- Test: event invitation requests may defer the ticket tier to organizer approval
 select has_check('event_invitation_request');
@@ -566,6 +572,21 @@ select results_eq(
     'Event kinds should exist'
 );
 
+-- Test: event co-host statuses should match expected values
+select results_eq(
+    'select * from event_cohost_status order by event_cohost_status_id',
+    $$ values
+        ('approved', 'Approved'),
+        ('canceled', 'Canceled'),
+        ('event-canceled', 'Event canceled'),
+        ('event-deleted', 'Event deleted'),
+        ('pending', 'Pending'),
+        ('rejected', 'Rejected'),
+        ('removed', 'Removed')
+    $$,
+    'Event co-host statuses should exist'
+);
+
 -- Test: meeting auto end check outcome should match expected values
 select results_eq(
     'select * from meeting_auto_end_check_outcome order by meeting_auto_end_check_outcome_id',
@@ -631,6 +652,9 @@ select results_eq(
         ('event-admission-offer-declined', false),
         ('event-attendance-canceled', false),
         ('event-canceled', false),
+        ('event-cohost-invitation', false),
+        ('event-cohost-removed', false),
+        ('event-cohost-responded', false),
         ('event-custom', true),
         ('event-external-payment-expired', false),
         ('event-external-payment-pending', false),

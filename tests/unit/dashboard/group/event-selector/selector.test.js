@@ -243,6 +243,7 @@ describe("event-selector", () => {
       <multiple-inputs field-name="tags"></multiple-inputs>
       <user-search-selector field-name="hosts"></user-search-selector>
       <sponsors-section></sponsors-section>
+      <cohosts-selector></cohosts-selector>
       <sessions-section></sessions-section>
       <timezone-selector name="timezone"></timezone-selector>
       <online-event-details></online-event-details>
@@ -268,6 +269,10 @@ describe("event-selector", () => {
     // Stub sponsor updates while copied sponsors are applied.
     const sponsors = document.querySelector("sponsors-section");
     sponsors.requestUpdate = () => {};
+
+    // Keep existing co-host selection stable while copied details are applied.
+    const cohosts = document.querySelector("cohosts-selector");
+    cohosts.selectedCohosts = [{ group_id: "existing-cohost", name: "Existing co-host" }];
 
     // Stub session updates while copied sessions are applied.
     const sessionsSection = document.querySelector("sessions-section");
@@ -378,6 +383,7 @@ describe("event-selector", () => {
       longitude: -4.4214,
       hosts: [{ user: { user_id: "1", username: "alice" } }],
       sponsors: [{ name: "ACME", level: 2 }],
+      cohosts: [{ group_id: "copied-cohost", name: "Copied co-host" }],
     });
 
     // Wait for the component to finish rendering.
@@ -475,6 +481,7 @@ describe("event-selector", () => {
     ]);
     expect(hosts.selectedUsers).to.deep.equal([{ user_id: "1", username: "alice" }]);
     expect(sponsors.selectedSponsors).to.deep.equal([{ name: "ACME", level: "2" }]);
+    expect(cohosts.selectedCohosts).to.deep.equal([{ group_id: "existing-cohost", name: "Existing co-host" }]);
     expect(sessionsSection.sessions).to.deep.equal([]);
     expect(timezoneSelector.value).to.equal("Europe/Madrid");
     expect(resetCalls).to.equal(1);

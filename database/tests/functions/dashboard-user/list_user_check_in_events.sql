@@ -192,6 +192,7 @@ select results_eq(
     $$
         values
             ('checked_in'),
+            ('cohosts'),
             ('event_id'),
             ('in_progress'),
             ('kind'),

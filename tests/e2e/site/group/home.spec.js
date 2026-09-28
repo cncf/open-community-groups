@@ -2,7 +2,9 @@ import { expect, test } from "../../fixtures.js";
 
 import { queryE2eDatabase } from "../../database.js";
 import {
+  TEST_COHOSTED_EVENT,
   TEST_COMMUNITY_NAME,
+  TEST_COMMUNITY_NAME_2,
   TEST_COMMUNITY_TITLE,
   TEST_EVENT_NAMES,
   TEST_GROUP_IDS,
@@ -10,6 +12,9 @@ import {
   TEST_GROUP_SLUGS,
 } from "../../seed.js";
 import { buildE2eUrl, getSectionLink, navigateToGroup } from "../../utils.js";
+
+// Owner group credited on co-host group event cards.
+const COHOSTED_EVENT_OWNER_GROUP_NAME = "E2E Second Group Epsilon";
 
 test.describe("group page", () => {
   test.beforeEach(async ({ page }) => {
@@ -361,6 +366,30 @@ test.describe("group page", () => {
       "href",
       `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}`,
     );
+  });
+});
+
+test.describe("group page - co-hosted events", () => {
+  test("co-host group page credits the owner and links to the owner event page", async ({ page }) => {
+    const ownerEventPath = `/${TEST_COMMUNITY_NAME_2}/group/${TEST_GROUP_SLUGS.community2.epsilon}/event/${TEST_COHOSTED_EVENT.slug}`;
+
+    // Load the seeded co-host group page.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
+
+    // Verify the next event links to the owner community event page with co-host credit.
+    const nextEventSection = page
+      .getByText("Next event", { exact: true })
+      .locator("xpath=ancestor::div[contains(@class, 'rounded-lg')][1]");
+    await expect(nextEventSection.getByRole("link", { name: "See details" })).toHaveAttribute(
+      "href",
+      ownerEventPath,
+    );
+    await expect(nextEventSection.getByText(/^Co-hosted with /u).first()).toBeAttached();
+
+    // Verify the upcoming card names the owner group instead of the category.
+    const eventCard = page.locator(`a[href="${ownerEventPath}"]`, { hasText: TEST_COHOSTED_EVENT.name });
+    await expect(eventCard).toBeVisible();
+    await expect(eventCard).toContainText(`Hosted by ${COHOSTED_EVENT_OWNER_GROUP_NAME}`);
   });
 });
 

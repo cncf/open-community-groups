@@ -47,6 +47,46 @@ const CHECK_IN_CODE: &str = "00000000-0000-0000-0000-00000000c084";
 const CHECKOUT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e1";
 const CLAIM_GROUP_ID: &str = "00000000-0000-0000-0000-00000000c0a0";
 const CO_SPEAKER_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c2";
+/// Group admin notified about co-hosting lifecycle changes.
+const COHOST_ADMIN_ID: &str = "00000000-0000-0000-0000-00000000d401";
+/// Group with an approved co-hosting of the matrix event.
+const COHOST_APPROVED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d022";
+/// Canceled event with an event-canceled co-hosting.
+const COHOST_CANCELED_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d202";
+/// Group that withdrew its co-hosting of the matrix event.
+const COHOST_CANCELED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d023";
+/// Inactive community holding every co-host group fixture.
+const COHOST_COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000d101";
+/// Active cross-community group with an approved co-hosting.
+const COHOST_CROSS_COMMUNITY_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d121";
+/// Approved invitation of the cross-community co-host.
+const COHOST_CROSS_COMMUNITY_INVITATION_ID: &str = "00000000-0000-0000-0000-00000000d309";
+/// Deleted event with an event-deleted co-hosting.
+const COHOST_DELETED_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d203";
+/// Group whose co-hosting ended with the event cancellation.
+const COHOST_EVENT_CANCELED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d024";
+/// Group whose co-hosting ended with the event deletion.
+const COHOST_EVENT_DELETED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d025";
+/// Invitation closed by the event deletion.
+const COHOST_EVENT_DELETED_INVITATION_ID: &str = "00000000-0000-0000-0000-00000000d305";
+/// Group sorting after the low lock-order group.
+const COHOST_LOCK_ORDER_HIGH_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d02a";
+/// Group sorting before the high lock-order group.
+const COHOST_LOCK_ORDER_LOW_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d029";
+/// Unpublished event holding one co-hosting per editable status.
+const COHOST_MATRIX_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d201";
+/// Group with a pending co-hosting invitation.
+const COHOST_PENDING_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d021";
+/// Pending invitation of the matrix event.
+const COHOST_PENDING_INVITATION_ID: &str = "00000000-0000-0000-0000-00000000d301";
+/// Unpublished event without co-hosts used to race publication against an invitation.
+const COHOST_PUBLISH_RACE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d204";
+/// Inactive group re-invited to co-host the matrix event.
+const COHOST_REINVITED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d028";
+/// Unpublished event whose pending co-host is re-invited while an approval waits.
+const COHOST_REINVITE_RACE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d205";
+/// Pending invitation rotated by the re-invite race.
+const COHOST_REINVITE_RACE_INVITATION_ID: &str = "00000000-0000-0000-0000-00000000d310";
 const COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000c001";
 const DOCUMENT_ADJUSTMENT_ID: &str = "00000000-0000-0000-0000-00000000c11d";
 const DOCUMENT_ADJUSTMENT_JOB_ID: &str = "00000000-0000-0000-0000-00000000c134";
@@ -407,6 +447,106 @@ pub(super) fn co_speaker_proposal_id() -> Uuid {
     parse_uuid(CO_SPEAKER_PROPOSAL_ID)
 }
 
+/// Returns the group admin notified about co-hosting lifecycle changes.
+pub(super) fn cohost_admin_id() -> Uuid {
+    parse_uuid(COHOST_ADMIN_ID)
+}
+
+/// Returns the group with an approved co-hosting of the matrix event.
+pub(super) fn cohost_approved_group_id() -> Uuid {
+    parse_uuid(COHOST_APPROVED_GROUP_ID)
+}
+
+/// Returns the canceled event with an event-canceled co-hosting.
+pub(super) fn cohost_canceled_event_id() -> Uuid {
+    parse_uuid(COHOST_CANCELED_EVENT_ID)
+}
+
+/// Returns the group that withdrew its co-hosting of the matrix event.
+pub(super) fn cohost_canceled_group_id() -> Uuid {
+    parse_uuid(COHOST_CANCELED_GROUP_ID)
+}
+
+/// Returns the inactive community holding every co-host group fixture.
+pub(super) fn cohost_community_id() -> Uuid {
+    parse_uuid(COHOST_COMMUNITY_ID)
+}
+
+/// Returns the active cross-community group with an approved co-hosting.
+pub(super) fn cohost_cross_community_group_id() -> Uuid {
+    parse_uuid(COHOST_CROSS_COMMUNITY_GROUP_ID)
+}
+
+/// Returns the approved invitation of the cross-community co-host.
+pub(super) fn cohost_cross_community_invitation_id() -> Uuid {
+    parse_uuid(COHOST_CROSS_COMMUNITY_INVITATION_ID)
+}
+
+/// Returns the deleted event with an event-deleted co-hosting.
+pub(super) fn cohost_deleted_event_id() -> Uuid {
+    parse_uuid(COHOST_DELETED_EVENT_ID)
+}
+
+/// Returns the group whose co-hosting ended with the event cancellation.
+pub(super) fn cohost_event_canceled_group_id() -> Uuid {
+    parse_uuid(COHOST_EVENT_CANCELED_GROUP_ID)
+}
+
+/// Returns the group whose co-hosting ended with the event deletion.
+pub(super) fn cohost_event_deleted_group_id() -> Uuid {
+    parse_uuid(COHOST_EVENT_DELETED_GROUP_ID)
+}
+
+/// Returns the invitation closed by the event deletion.
+pub(super) fn cohost_event_deleted_invitation_id() -> Uuid {
+    parse_uuid(COHOST_EVENT_DELETED_INVITATION_ID)
+}
+
+/// Returns the group sorting after the low lock-order group.
+pub(super) fn cohost_lock_order_high_group_id() -> Uuid {
+    parse_uuid(COHOST_LOCK_ORDER_HIGH_GROUP_ID)
+}
+
+/// Returns the group sorting before the high lock-order group.
+pub(super) fn cohost_lock_order_low_group_id() -> Uuid {
+    parse_uuid(COHOST_LOCK_ORDER_LOW_GROUP_ID)
+}
+
+/// Returns the unpublished event holding one co-hosting per editable status.
+pub(super) fn cohost_matrix_event_id() -> Uuid {
+    parse_uuid(COHOST_MATRIX_EVENT_ID)
+}
+
+/// Returns the group with a pending co-hosting invitation.
+pub(super) fn cohost_pending_group_id() -> Uuid {
+    parse_uuid(COHOST_PENDING_GROUP_ID)
+}
+
+/// Returns the pending invitation of the matrix event.
+pub(super) fn cohost_pending_invitation_id() -> Uuid {
+    parse_uuid(COHOST_PENDING_INVITATION_ID)
+}
+
+/// Returns the unpublished event used to race publication against an invitation.
+pub(super) fn cohost_publish_race_event_id() -> Uuid {
+    parse_uuid(COHOST_PUBLISH_RACE_EVENT_ID)
+}
+
+/// Returns the inactive group re-invited to co-host the matrix event.
+pub(super) fn cohost_reinvited_group_id() -> Uuid {
+    parse_uuid(COHOST_REINVITED_GROUP_ID)
+}
+
+/// Returns the event whose pending co-host is re-invited while an approval waits.
+pub(super) fn cohost_reinvite_race_event_id() -> Uuid {
+    parse_uuid(COHOST_REINVITE_RACE_EVENT_ID)
+}
+
+/// Returns the pending invitation rotated by the re-invite race.
+pub(super) fn cohost_reinvite_race_invitation_id() -> Uuid {
+    parse_uuid(COHOST_REINVITE_RACE_INVITATION_ID)
+}
+
 /// Returns the community identifier used by the contract fixture.
 pub(crate) fn community_id() -> Uuid {
     parse_uuid(COMMUNITY_ID)
@@ -444,6 +584,16 @@ pub(crate) fn contract_tests_db() -> Result<PgDB> {
 /// Creates an independent `PostgreSQL` connection pool for concurrency tests.
 pub(crate) fn contract_tests_pool() -> Result<Pool> {
     Ok(contract_tests_config()?.create_pool(Some(Runtime::Tokio1), NoTls)?)
+}
+
+/// Begins a unit of work that rolls back when dropped.
+pub(super) async fn contract_unit_of_work() -> Result<crate::db::PgUnitOfWork> {
+    let client = contract_tests_pool()?.get().await?;
+    client.batch_execute("begin").await?;
+
+    Ok(crate::db::PgUnitOfWork {
+        client: Some(client),
+    })
 }
 
 /// Returns an environment value or its contract-test default.

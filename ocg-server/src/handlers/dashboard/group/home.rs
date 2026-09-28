@@ -31,7 +31,8 @@ use crate::{
 };
 
 use super::{
-    badges, check_in, events, logs, members, payments_ready, refunds, settings, sponsors, team,
+    badges, check_in, cohosts, events, logs, members, payments_ready, refunds, settings, sponsors,
+    team,
 };
 
 #[cfg(test)]
@@ -142,6 +143,17 @@ pub(crate) async fn page(
             Content::Badges(Box::new(template))
         }
         Tab::CheckIn => Content::CheckIn(check_in::prepare_list_page(&db, group_id).await?),
+        Tab::Cohosts => {
+            let (_, template) = cohosts::prepare_list_page(
+                &db,
+                community_id,
+                group_id,
+                user.user_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Cohosts(template)
+        }
         Tab::Events => {
             let (_, template) = events::prepare_list_page(
                 &db,

@@ -26,6 +26,9 @@ begin
         raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
+    -- Close pending and approved co-host invitations before canceling the event
+    perform close_event_cohosts(p_actor_user_id, p_event_id, 'event-canceled');
+
     -- Cancel active offers, expire checkouts, and clear enrollment queues
     perform close_event_enrollment(p_actor_user_id, p_event_id);
 

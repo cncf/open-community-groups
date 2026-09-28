@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(84);
+select plan(86);
 
 -- ============================================================================
 -- TESTS
@@ -274,6 +274,7 @@ select columns_are('email_verification_code', array[
 select columns_are('event', array[
     'event_id',
     'canceled',
+    'cohosts_revision',
     'created_at',
     'deleted',
     'description',
@@ -370,6 +371,27 @@ select is(
     'NO',
     'Event meeting recording publication should be required'
 );
+
+-- Test: event co-host columns should match expected
+select columns_are('event_cohost', array[
+    'event_id',
+    'event_cohost_status_id',
+    'group_id',
+    'invitation_id',
+    'invited_at',
+    'updated_at',
+
+    'approved_at',
+    'invited_by',
+    'responded_at',
+    'responded_by'
+]);
+
+-- Test: event co-host status columns should match expected
+select columns_are('event_cohost_status', array[
+    'event_cohost_status_id',
+    'display_name'
+]);
 
 -- Test: event_invitation_request columns should match expected
 select columns_are('event_invitation_request', array[

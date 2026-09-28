@@ -666,6 +666,27 @@ fn event_summary_has_started_is_true_after_event_start() {
 }
 
 #[test]
+fn event_summary_publish_unavailable_title_reports_pending_cohosts() {
+    let mut event = sample_event_summary(vec![]);
+    event.pending_cohosts_count = Some(2);
+
+    assert_eq!(
+        event.publish_unavailable_title().as_deref(),
+        Some("Waiting for 2 co-host(s) to respond.")
+    );
+}
+
+#[test]
+fn event_summary_publish_unavailable_title_returns_none_without_pending_cohosts() {
+    let mut event = sample_event_summary(vec![]);
+    event.pending_cohosts_count = Some(0);
+
+    assert!(event.publish_unavailable_title().is_none());
+    event.pending_cohosts_count = None;
+    assert!(event.publish_unavailable_title().is_none());
+}
+
+#[test]
 fn event_summary_single_public_ticket_type_requires_exactly_one_visible_tier() {
     let single = sample_event_summary(vec![sample_ticket_type(true, Some(0), false, "General")]);
     let multiple = sample_event_summary(vec![
@@ -742,6 +763,7 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
     EventSummary {
         attendee_approval_required: false,
         canceled: false,
+        cohosts: vec![],
         community_display_name: "Community".to_string(),
         community_name: "community".to_string(),
         event_id: Uuid::nil(),
@@ -780,6 +802,7 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         meeting_join_url: None,
         meeting_password: None,
         meeting_provider: None,
+        pending_cohosts_count: None,
         popover_html: None,
         remaining_capacity: None,
         starts_at: None,

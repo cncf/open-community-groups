@@ -29,13 +29,13 @@ describe("event card templates", () => {
       await loadTemplate("/ocg-server/templates/macros/cards.html"),
     );
 
-    // Verify compact title typography precedes the caller-provided status.
+    // Verify compact title typography and co-host credit precede the caller-provided status.
     expect(template).to.include(
       "text-[0.85rem]/[1.05rem] text-stone-900 md:text-[0.9rem]/[1.1rem]",
     );
     expect(template).not.to.include("group-hover:text-primary-600");
     expect(template).to.include(
-      '{{ event.name }} </span> <span class="mt-auto flex min-h-[17px] flex-wrap items-end gap-2">{{ caller() }}</span>',
+      '{{ event.name }} </span> {{ cohosts::cohosts_line(event.cohosts) -}} <span class="mt-auto flex min-h-[17px] flex-wrap items-end gap-2">{{ caller() }}</span>',
     );
     expect(template).not.to.include("status_before_title");
   });

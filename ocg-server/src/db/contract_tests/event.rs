@@ -15,15 +15,7 @@ use crate::{
     },
 };
 
-use super::helpers::{
-    attendee_id, cancellation_lock_attendee_id, cancellation_lock_event_id,
-    cfs_add_lock_proposal_id, community_id, contract_tests_db, contract_tests_pool, event_id,
-    external_event_id, external_pending_purchase_id, external_pending_user_id, invitation_offer_id,
-    invitation_ticket_type_id, leaver_id, mutation_event_id, organizer_id, pre_registered_id,
-    refund_event_id, refund_offer_user_id, refund_rejected_buyer_id, rejected_request_user_id,
-    session_proposal_id, status_event_id, status_expired_user_id, status_pending_payment_user_id,
-    subgroup_id,
-};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]

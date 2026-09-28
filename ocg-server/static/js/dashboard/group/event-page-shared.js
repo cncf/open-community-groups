@@ -2,7 +2,7 @@ export { initializeSharedEventPageControls } from "/static/js/dashboard/group/ev
 export {
   consumeStashedActiveEventSection,
   createSessionsDateRangeSync,
-  EVENT_PAGE_FORM_IDS,
+  getEventPageFormIds,
   initializeEventPageContext,
   initializeEventPagePendingChanges,
   resolveSharedEventPageControls,

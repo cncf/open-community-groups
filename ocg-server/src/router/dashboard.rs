@@ -217,6 +217,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     let dashboard_read = Router::new()
         .route("/", get(dashboard::group::home::page))
         .route("/analytics", get(dashboard::group::analytics::page))
+        .route("/cohosts", get(dashboard::group::cohosts::list_page))
         .route("/events", get(dashboard::group::events::list_page))
         .route("/events/add", get(dashboard::group::events::add_page))
         .route(
@@ -320,6 +321,24 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             GroupPermission::CheckInsWrite,
         ));
 
+    // Group co-hosting response endpoints
+    let cohosts_management = Router::new()
+        .route(
+            "/cohosts/{invitation_id}/approve",
+            put(dashboard::group::cohosts::approve),
+        )
+        .route(
+            "/cohosts/{invitation_id}/cancel",
+            put(dashboard::group::cohosts::cancel),
+        )
+        .route(
+            "/cohosts/{invitation_id}/reject",
+            put(dashboard::group::cohosts::reject),
+        )
+        .route_layer(check_selected_group_permission(
+            GroupPermission::SettingsWrite,
+        ));
+
     // Group events management endpoints
     let events_management = Router::new()
         .route(
@@ -327,6 +346,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::group::attendees::cancel_event_admission_offer),
         )
         .route("/events/add", post(dashboard::group::events::add))
+        .route(
+            "/events/cohosts/groups",
+            get(dashboard::group::cohosts::group_options),
+        )
         .route("/events/preview", post(dashboard::group::events::preview))
         .route(
             "/events/{event_id}/attendees/invite",
@@ -463,6 +486,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .merge(dashboard_read)
         .merge(badges_management)
         .merge(check_ins_management)
+        .merge(cohosts_management)
         .merge(events_management)
         .merge(members_management)
         .merge(settings_management)

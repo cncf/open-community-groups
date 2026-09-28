@@ -302,6 +302,7 @@ select is(
         "canceled": false,
         "community_display_name": "Cloud Native Seattle Event Summary",
         "community_name": "cloud-native-seattle-event-summary",
+        "cohosts": [],
         "event_id": "%s",
         "group_category_name": "Technology",
         "group_name": "Seattle Kubernetes Meetup",

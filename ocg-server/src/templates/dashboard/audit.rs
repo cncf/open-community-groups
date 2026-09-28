@@ -193,6 +193,36 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "event_category_updated",
     },
     AuditActionDefinition {
+        label: "Event co-host approved",
+        scopes: GROUP_SCOPES,
+        value: "event_cohost_approved",
+    },
+    AuditActionDefinition {
+        label: "Event co-host canceled",
+        scopes: GROUP_SCOPES,
+        value: "event_cohost_canceled",
+    },
+    AuditActionDefinition {
+        label: "Event co-host closed",
+        scopes: GROUP_SCOPES,
+        value: "event_cohost_closed",
+    },
+    AuditActionDefinition {
+        label: "Event co-host invited",
+        scopes: GROUP_SCOPES,
+        value: "event_cohost_invited",
+    },
+    AuditActionDefinition {
+        label: "Event co-host rejected",
+        scopes: GROUP_SCOPES,
+        value: "event_cohost_rejected",
+    },
+    AuditActionDefinition {
+        label: "Event co-host removed",
+        scopes: GROUP_SCOPES,
+        value: "event_cohost_removed",
+    },
+    AuditActionDefinition {
         label: "Event credit note recovery completed",
         scopes: GROUP_SCOPES,
         value: "event_credit_note_recovery_completed",

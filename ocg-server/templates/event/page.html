@@ -4,6 +4,7 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/maps.html" as maps -%}
 {% import "macros/social.html" as social -%}
+{% import "macros/cohosts.html" as cohosts -%}
 
 {% block head_title -%}
   <title>{{ self.preview_title() |demoji }}</title>
@@ -355,6 +356,12 @@
 </div>
 
 {# End location -#}
+
+{# Co-hosts -#}
+{% if !event.cohosts.is_empty() -%}
+  <div class="md:col-span-2">{{ cohosts::cohosts_box(event.cohosts) -}}</div>
+{% endif -%}
+{# End co-hosts -#}
 
 {# Host -#}
 {% if event.is_paid_capable() -%}

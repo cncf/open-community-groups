@@ -176,6 +176,37 @@ Waitlist control also lives here:
 - If capacity is full and waitlist is on, people can join that tier's waiting
   list instead of starting checkout.
 
+### Co-hosts
+
+Co-hosts credit other groups, including groups in other communities, as partners of the event.
+Co-hosting is only about visibility and credit: your group keeps managing and operating the event,
+and co-host groups get no access to its editor, attendees, tickets, payments, check-in, speakers,
+or meetings.
+
+In this tab, you pick a community, then search its active groups and add them to the event. Each
+selected group shows its current state: `Pending` until its admins respond, `Approved` once they
+accept, or `Inactive group` when the group can no longer co-host. Saving the event sends one
+invitation email to the admins of each newly selected group, and removing a group notifies its
+admins. For a recurring series created with co-hosts, every occurrence gets its own invitation,
+each co-host group receives one combined email, and each occurrence is approved separately.
+
+- Co-hosts must be set up, and must respond, before the event can be published.
+- While the event is published, the co-host selection is read-only. Changing it requires
+  unpublishing the event, which keeps existing approvals, but the event cannot be published again
+  until every newly added group responds. Try to finish co-host setup before publishing so you
+  do not have to take a live event offline.
+- You can add again a group that rejected, canceled, or was removed. It receives a new invitation
+  and must respond again.
+- If co-hosts changed since you opened the editor (for example, a co-host responded), saving your
+  co-host changes fails with a message asking you to reload. Saves that do not change co-hosts are
+  not affected.
+- Canceling or deleting the event ends every pending or approved co-hosting and notifies the
+  co-host admins. Groups that had approved stay credited on a canceled event's page.
+- Copying an event never copies its co-hosts.
+
+The editor preview shows a `Co-hosts` box with the `Pending` or `Approved` state of each selected
+group. Only approved co-hosts are shown on the public event page.
+
 ### Questions
 
 Use the `Questions` tab to define registration questions for attendees. Supported question types
@@ -784,8 +815,9 @@ Notification behavior differs per action:
 !> `Publish` and `Cancel` can notify large participant sets.
 `Unpublish` and `Delete` do not send broad attendee updates in this flow.
 
-- `Publish` on a future unpublished event can notify group members/team members and listed
-  speakers.
+- `Publish` on a future unpublished event can notify group members/team members, the members and
+  team members of approved co-host groups, and listed speakers. Each person receives one email per
+  event.
 - `Cancel` on a future published event notifies attendees, speakers, and waitlisted users.
 - Series `Publish` and `Cancel` actions aggregate affected events into grouped notifications
   instead of sending one email per event. Aggregate notifications include links to the affected
@@ -805,6 +837,11 @@ Automatic meetings follow these actions too: `Publish` triggers creation/sync fo
 automatic meetings (event and session meetings), while `Unpublish`, `Cancel`, and `Delete`
 trigger removal/sync for them.
 
+An event cannot be published while any co-host invitation is still pending. The editor `Publish`
+button stays disabled with a `Waiting for N co-host(s) to respond` tooltip, and publishing a whole
+series is rejected while any of its occurrences has a pending co-host. An occurrence whose co-hosts
+have all responded can still be published on its own.
+
 If an event belongs to a recurring series, `Publish`, `Unpublish`, `Cancel`, and `Delete` ask
 whether to apply the action to only the selected event or the linked series. Series cancellation
 targets only occurrences that are not completed or already canceled. Series actions are applied
@@ -823,6 +860,10 @@ Use the least destructive action that matches your operational goal.
 
 The public event page is the delivery surface of all organizer decisions: enrollment controls, logistics,
 CFS visibility, and final agenda experience. You can reach it through [Explore](/explore ':ignore').
+
+Approved co-hosts appear in a `Co-hosts` box on the event page, linking to each co-host group,
+and in a `Co-hosted with` line on event cards. Co-hosted events are also listed on each co-host
+group's page.
 
 For attendee/member perspective, see [Public Site Guide](public-site.md).
 

@@ -8,6 +8,16 @@ const VIEWPORT_GAP = 8;
 const CLIPPING_OVERFLOW_VALUES = new Set(["auto", "clip", "hidden", "scroll"]);
 
 /**
+ * Clears inline placement so a dropdown uses its template position.
+ * @param {HTMLElement} dropdown Action menu dropdown.
+ * @returns {void}
+ */
+const clearDropdownPlacement = (dropdown) => {
+  dropdown.style.insetBlockStart = "";
+  dropdown.style.insetBlockEnd = "";
+};
+
+/**
  * Finds the visible vertical bounds imposed by the viewport and ancestors.
  * @param {HTMLElement} menu Action menu trigger wrapper.
  * @returns {{top: number, bottom: number}} Visible vertical bounds.
@@ -33,6 +43,32 @@ const getVisibleVerticalBounds = (menu) => {
 };
 
 /**
+ * Opens a visible dropdown above its anchor when it would cross the visible edge.
+ * @param {HTMLElement} anchor Positioned element the dropdown is placed against.
+ * @param {HTMLElement} dropdown Visible dropdown element.
+ * @returns {void}
+ */
+export const positionActionsDropdown = (anchor, dropdown) => {
+  if (!(anchor instanceof HTMLElement) || !(dropdown instanceof HTMLElement)) {
+    return;
+  }
+
+  // Measure the template position before choosing a direction
+  clearDropdownPlacement(dropdown);
+  const anchorBounds = anchor.getBoundingClientRect();
+  const dropdownBounds = dropdown.getBoundingClientRect();
+  const visibleBounds = getVisibleVerticalBounds(anchor);
+  const availableAbove = anchorBounds.top - visibleBounds.top;
+  const availableBelow = visibleBounds.bottom - anchorBounds.bottom;
+
+  // Open upward only when that side has more room
+  if (dropdownBounds.bottom > visibleBounds.bottom && availableAbove > availableBelow) {
+    dropdown.style.insetBlockStart = "auto";
+    dropdown.style.insetBlockEnd = `calc(100% + ${VIEWPORT_GAP}px)`;
+  }
+};
+
+/**
  * Opens an action menu above its trigger when it would cross the viewport edge.
  * @param {HTMLDetailsElement} menu Open action menu.
  * @returns {void}
@@ -47,21 +83,12 @@ export const positionActionsMenu = (menu) => {
     return;
   }
 
-  dropdown.style.insetBlockStart = "";
-  dropdown.style.insetBlockEnd = "";
   if (!menu.open) {
+    clearDropdownPlacement(dropdown);
     return;
   }
 
-  const menuBounds = menu.getBoundingClientRect();
-  const dropdownBounds = dropdown.getBoundingClientRect();
-  const visibleBounds = getVisibleVerticalBounds(menu);
-  const availableAbove = menuBounds.top - visibleBounds.top;
-  const availableBelow = visibleBounds.bottom - menuBounds.bottom;
-  if (dropdownBounds.bottom > visibleBounds.bottom && availableAbove > availableBelow) {
-    dropdown.style.insetBlockStart = "auto";
-    dropdown.style.insetBlockEnd = `calc(100% + ${VIEWPORT_GAP}px)`;
-  }
+  positionActionsDropdown(menu, dropdown);
 };
 
 /**

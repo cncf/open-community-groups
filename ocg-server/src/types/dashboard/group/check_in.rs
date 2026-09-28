@@ -5,11 +5,14 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::types::event::EventKind;
+use crate::types::event::{EventCohostGroup, EventKind};
 
 /// Event available to a group's check-in scanner.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupCheckInEvent {
+    /// Groups publicly credited as co-hosts of the event.
+    #[serde(default)]
+    pub cohosts: Vec<EventCohostGroup>,
     /// Event identifier.
     pub event_id: Uuid,
     /// Whether the event is currently in progress.

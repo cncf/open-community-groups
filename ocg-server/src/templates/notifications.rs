@@ -8,7 +8,12 @@ use uuid::Uuid;
 
 use crate::{
     templates::{filters, helpers},
-    types::{event::EventSummary, group::GroupSummary, payments::format_amount_minor, site::Theme},
+    types::{
+        event::{EventCohostStatus, EventSummary},
+        group::GroupSummary,
+        payments::format_amount_minor,
+        site::Theme,
+    },
 };
 
 /// Behavior every email template provides to the delivery worker.
@@ -318,6 +323,142 @@ impl NotificationTemplate for EventCanceled {
     }
 }
 
+/// Template inviting a group's admins to co-host events.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_cohost_invitation.html")]
+pub(crate) struct EventCohostInvitation {
+    /// Display name of the invited group's community.
+    pub cohost_community_display_name: String,
+    /// Invited group display name.
+    pub cohost_group_name: String,
+    /// Events the group is invited to co-host.
+    pub events: Vec<EventCohostEmailEvent>,
+    /// Link to the co-hosts section of the group dashboard.
+    pub link: String,
+    /// Display name of the owner group's community.
+    pub owner_community_display_name: String,
+    /// Owner group display name.
+    pub owner_group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+impl NotificationTemplate for EventCohostInvitation {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.cohost_group_name,
+            &format!("{} invited your group to co-host", self.owner_group_name),
+        )
+    }
+}
+
+/// Reason a group's co-hosting of events ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum EventCohostRemovalReason {
+    /// The events were canceled.
+    EventCanceled,
+    /// The events were deleted.
+    EventDeleted,
+    /// The owner group removed the co-host.
+    Removed,
+}
+
+/// Template telling a group's admins that its co-hosting of events ended.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_cohost_removed.html")]
+pub(crate) struct EventCohostRemoved {
+    /// Co-host group display name.
+    pub cohost_group_name: String,
+    /// Events whose co-hosting ended.
+    pub events: Vec<EventCohostEmailEvent>,
+    /// Display name of the owner group's community.
+    pub owner_community_display_name: String,
+    /// Owner group display name.
+    pub owner_group_name: String,
+    /// Reason the co-hosting ended.
+    pub reason: EventCohostRemovalReason,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+
+    /// Link to the co-hosts section of the group dashboard.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link: Option<String>,
+}
+
+impl NotificationTemplate for EventCohostRemoved {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        let subject = match self.reason {
+            EventCohostRemovalReason::EventCanceled => "Co-hosted events canceled",
+            EventCohostRemovalReason::EventDeleted => "Co-hosted events deleted",
+            EventCohostRemovalReason::Removed => "Your group was removed as a co-host",
+        };
+        scoped_subject(&self.cohost_group_name, subject)
+    }
+}
+
+/// Template telling the owner group's admins that a co-host responded.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_cohost_responded.html")]
+pub(crate) struct EventCohostResponded {
+    /// Display name of the co-host group's community.
+    pub cohost_community_display_name: String,
+    /// Co-host group display name.
+    pub cohost_group_name: String,
+    /// Event the co-host responded about.
+    pub event: EventCohostEmailEvent,
+    /// Link to the events section of the group dashboard.
+    pub link: String,
+    /// Owner group display name.
+    pub owner_group_name: String,
+    /// Co-hosting decision (approved, rejected, or canceled).
+    pub status: EventCohostStatus,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+impl EventCohostResponded {
+    /// Returns the verb describing the co-host's decision.
+    pub(crate) fn decision(&self) -> &'static str {
+        match self.status {
+            EventCohostStatus::Approved => "approved",
+            EventCohostStatus::Canceled => "canceled",
+            _ => "rejected",
+        }
+    }
+}
+
+impl NotificationTemplate for EventCohostResponded {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        let subject = match self.status {
+            EventCohostStatus::Approved => "approved co-hosting",
+            EventCohostStatus::Canceled => "canceled co-hosting",
+            _ => "declined co-hosting",
+        };
+        scoped_subject(
+            &self.owner_group_name,
+            &format!("{} {subject} {}", self.cohost_group_name, self.event.name),
+        )
+    }
+}
+
+/// Event item included in co-hosting notifications.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventCohostEmailEvent {
+    /// Event display name.
+    pub name: String,
+    /// Timezone used to display the event start.
+    pub timezone: Tz,
+
+    /// UTC timestamp when the event starts.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
+}
+
 /// Template for event custom notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_custom.html")]
@@ -576,12 +717,19 @@ pub(crate) struct EventPublished {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+
+    /// Co-host group whose members receive this copy of the notification.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cohost_group_name: Option<String>,
 }
 
 impl NotificationTemplate for EventPublished {
     /// [`NotificationTemplate::subject`].
     fn subject(&self) -> String {
-        scoped_subject(&self.event.group_name, "New event published")
+        scoped_subject(
+            self.cohost_group_name.as_deref().unwrap_or(&self.event.group_name),
+            "New event published",
+        )
     }
 }
 
@@ -738,12 +886,19 @@ pub(crate) struct EventSeriesPublished {
     pub group_name: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+
+    /// Co-host group whose members receive this copy of the notification.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cohost_group_name: Option<String>,
 }
 
 impl NotificationTemplate for EventSeriesPublished {
     /// [`NotificationTemplate::subject`].
     fn subject(&self) -> String {
-        scoped_subject(&self.group_name, "New events published")
+        scoped_subject(
+            self.cohost_group_name.as_deref().unwrap_or(&self.group_name),
+            "New events published",
+        )
     }
 }
 

@@ -4,9 +4,7 @@ use anyhow::Result;
 
 use crate::db::dashboard::common::DBDashboardCommon;
 
-use super::helpers::{
-    attendee_id, community_id, contract_tests_db, group_id, organizer_id, subgroup_id,
-};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]

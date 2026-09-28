@@ -1,0 +1,667 @@
+import { html, nothing } from "lit";
+import { repeat } from "lit/directives/repeat.js";
+import { ComboboxController } from "/static/js/common/combobox.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
+import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
+
+// Endpoint that lists the groups of a community that can co-host events.
+const GROUP_OPTIONS_ENDPOINT = "/dashboard/group/events/cohosts/groups";
+// Element ids shared by the group search and its options.
+const GROUP_OPTIONS_ID = "cohost-group-options";
+const GROUP_OPTION_ID_PREFIX = "cohost-group-option-";
+const GROUP_SEARCH_ID = "cohost-group-search";
+// Co-host statuses shown in the editor.
+const STATUS_APPROVED = "approved";
+const STATUS_PENDING = "pending";
+
+/**
+ * Event co-host selector.
+ *
+ * Lets organizers choose co-host groups by community, submits the co-host
+ * selection only after it changes, and exposes display-only preview context.
+ * @extends LitWrapper
+ */
+export class CohostsSelector extends LitWrapper {
+  /**
+   * Component properties definition.
+   * @property {Array} communities - Communities whose groups can be invited.
+   * @property {string} currentGroupId - Owning group id, excluded from options.
+   * @property {boolean} disabled - Whether the selection is read-only.
+   * @property {number} revision - Co-hosts revision loaded with the editor.
+   * @property {Array} selectedCohosts - Co-host groups currently selected.
+   * @property {Array} _groups - Group options loaded for the selected community.
+   * @property {string} _loadStatus - Group options load status: idle, loading, ready, or error.
+   * @property {string} _selectedCommunityId - Community whose groups are listed.
+   */
+  static properties = {
+    communities: { type: Array },
+    currentGroupId: { type: String, attribute: "current-group-id" },
+    disabled: { type: Boolean },
+    revision: { type: Number },
+    selectedCohosts: { type: Array, attribute: "selected-cohosts" },
+    _groups: { state: true },
+    _loadStatus: { state: true },
+    _selectedCommunityId: { state: true },
+  };
+
+  constructor() {
+    super();
+    this.communities = [];
+    this.currentGroupId = "";
+    this.disabled = false;
+    this.revision = 0;
+    this.selectedCohosts = [];
+    this._abortController = null;
+    this._focusWithoutOpen = false;
+    this._groups = [];
+    this._loadError = "";
+    this._loadedGroupIds = [];
+    this._loadSequence = 0;
+    this._loadStatus = "idle";
+    this._selectedCommunityId = "";
+    this._combobox = new ComboboxController(this, {
+      getItemCount: () => this._filteredGroups.length,
+      isInteractionBlocked: () => this.disabled || this._loadStatus === "loading",
+      canOpen: () => this._selectedCommunityId && this._groups.length > 0,
+      onActiveIndexMove: () => this._scrollActiveOptionIntoView(),
+      onSelect: (index) => {
+        const group = this._filteredGroups[index];
+        if (group) {
+          this._selectGroup(group);
+        }
+      },
+    });
+  }
+
+  connectedCallback() {
+    // Normalize server-provided attributes.
+    this.communities = normalizeArrayAttribute(this.communities);
+    this.selectedCohosts = normalizeArrayAttribute(this.selectedCohosts).map(normalizeSelectedCohost);
+    this.revision = Number.parseInt(this.revision, 10) || 0;
+
+    // Remember the loaded selection to submit co-host fields only after changes.
+    this._loadedGroupIds = this.selectedCohosts.map((cohost) => cohost.group_id);
+    this._selectedCommunityId = this.communities[0]?.community_id || "";
+    super.connectedCallback();
+  }
+
+  disconnectedCallback() {
+    // Abort any in-flight group options request.
+    this._abortController?.abort();
+    super.disconnectedCallback();
+  }
+
+  /**
+   * Returns display-only co-host data for the event preview.
+   * @returns {{name: string, logo_url: string, status: string}[]}
+   */
+  getPreviewCohosts() {
+    return this.selectedCohosts
+      .map((cohost) => ({
+        logo_url: cohost.logo_url || "",
+        name: cohost.name || "",
+        status: cohost.status === STATUS_APPROVED ? STATUS_APPROVED : STATUS_PENDING,
+      }))
+      .filter((cohost) => cohost.name);
+  }
+
+  /**
+   * Returns loaded groups matching the search, excluding the owner and selected groups.
+   * @returns {Array<object>} Filtered group options.
+   */
+  get _filteredGroups() {
+    const query = (this._combobox.query || "").trim().toLowerCase();
+    const selectedIds = new Set(this.selectedCohosts.map((cohost) => cohost.group_id));
+    return this._groups.filter((group) => {
+      if (String(group.group_id) === String(this.currentGroupId) || selectedIds.has(group.group_id)) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      return [group.name, group.community_display_name, group.slug_pretty, group.slug]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    });
+  }
+
+  /**
+   * Checks whether the current selection differs from the loaded editor state.
+   * @returns {boolean} True when the selected group ids changed.
+   */
+  get _hasChanged() {
+    const currentIds = this.selectedCohosts.map((cohost) => cohost.group_id);
+    return !arraysEqual(currentIds, this._loadedGroupIds);
+  }
+
+  /**
+   * Returns the group search input.
+   * @returns {HTMLInputElement|null} Search input, when rendered.
+   */
+  get _searchInput() {
+    return this.querySelector(`#${GROUP_SEARCH_ID}`);
+  }
+
+  render() {
+    return html`
+      <div class="space-y-5">
+        ${this._renderCommunityPicker()} ${this._renderGroupPicker()} ${this._renderLoadState()}
+        ${this._renderSelectedCohosts()} ${this._renderHiddenFields()}
+      </div>
+    `;
+  }
+
+  /**
+   * Dispatches input and change events so editor pending-changes tracking notices the selection.
+   * @returns {void}
+   */
+  _dispatchSelectionChange() {
+    this.dispatchEvent(new Event("input", { bubbles: true }));
+    this.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  /**
+   * Keeps Enter in the search from submitting the editor form.
+   * @param {KeyboardEvent} event - Search input keydown event.
+   * @returns {void}
+   */
+  _handleSearchKeydown(event) {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    // The combobox prevents Enter itself when it can select an option.
+    const comboboxHandlesEnter =
+      this._combobox.isOpen && this._loadStatus !== "loading" && this._filteredGroups.length > 0;
+    if (!comboboxHandlesEnter) {
+      event.preventDefault();
+    }
+  }
+
+  /**
+   * Loads the group options of the selected community, ignoring stale responses.
+   * @returns {Promise<void>}
+   */
+  async _loadGroups() {
+    if (!this._selectedCommunityId || this.disabled) {
+      return;
+    }
+
+    // Start a new load, aborting the previous one.
+    const sequence = this._loadSequence + 1;
+    this._loadSequence = sequence;
+    this._abortController?.abort();
+    this._abortController = new AbortController();
+    this._loadError = "";
+    this._loadStatus = "loading";
+
+    try {
+      const url = new URL(GROUP_OPTIONS_ENDPOINT, window.location.origin);
+      url.searchParams.set("community_id", this._selectedCommunityId);
+      const response = await ocgFetch(`${url.pathname}${url.search}`, {
+        credentials: "same-origin",
+        signal: this._abortController.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load co-host groups: ${response.status}`);
+      }
+
+      const groups = await response.json();
+
+      // Ignore responses superseded by a newer load or a disconnect.
+      if (sequence !== this._loadSequence || !this.isConnected) {
+        return;
+      }
+
+      this._groups = Array.isArray(groups) ? groups : [];
+      this._loadStatus = "ready";
+
+      // Open the options for users who kept focus on the search while loading.
+      if (this._searchInput === document.activeElement) {
+        this._combobox.open();
+      }
+    } catch (error) {
+      if (error?.name === "AbortError" || sequence !== this._loadSequence || !this.isConnected) {
+        return;
+      }
+      this._groups = [];
+      this._loadError = "Co-host groups could not be loaded. Keep your current selection or try again.";
+      this._loadStatus = "error";
+    }
+  }
+
+  /**
+   * Removes a group from the selection.
+   * @param {string} groupId - Group id to remove.
+   * @returns {void}
+   */
+  _removeGroup(groupId) {
+    if (this.disabled) {
+      return;
+    }
+    const index = this.selectedCohosts.findIndex((cohost) => cohost.group_id === groupId);
+    if (index === -1) {
+      return;
+    }
+    this.selectedCohosts = this.selectedCohosts.filter((cohost) => cohost.group_id !== groupId);
+    this._dispatchSelectionChange();
+
+    // Keep focus near the removed card instead of dropping it to the page.
+    this.updateComplete.then(() => {
+      const removeButtons = this.querySelectorAll("[data-cohost-remove]");
+      const nextButton = removeButtons[Math.min(index, removeButtons.length - 1)];
+      if (nextButton) {
+        nextButton.focus();
+      } else {
+        this._restoreSearchFocus();
+      }
+    });
+  }
+
+  /**
+   * Renders the community picker used to scope group options.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderCommunityPicker() {
+    return html`
+      <div class="max-w-xl">
+        <label for="cohost-community" class="form-label">Community</label>
+        <select
+          id="cohost-community"
+          class="select-primary mt-2"
+          ?disabled=${this.disabled || this.communities.length === 0}
+          .value=${this._selectedCommunityId}
+          @change=${(event) => this._selectCommunity(event.target.value)}
+        >
+          ${this.communities.map(
+            (community) =>
+              html`<option value=${community.community_id}>
+                ${community.display_name || community.name}
+              </option>`,
+          )}
+        </select>
+        <p class="form-legend">Choose a community, then search for a group to invite.</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders the group search input and its options dropdown.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderGroupPicker() {
+    const isLoading = this._loadStatus === "loading";
+    const hasOptions = this._filteredGroups.length > 0;
+    const activeOptionId =
+      this._combobox.isOpen && hasOptions && this._combobox.activeIndex !== null
+        ? `${GROUP_OPTION_ID_PREFIX}${this._combobox.activeIndex}`
+        : nothing;
+    return html`
+      <div class="relative max-w-xl">
+        <label for=${GROUP_SEARCH_ID} class="form-label">Co-host group</label>
+        <div class="relative mt-2">
+          <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+          </div>
+          <input
+            id=${GROUP_SEARCH_ID}
+            type="search"
+            role="combobox"
+            class="input-primary ps-9"
+            placeholder=${isLoading ? "Loading groups..." : "Search groups"}
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            .value=${this._combobox.query}
+            ?disabled=${this.disabled || !this._selectedCommunityId}
+            aria-activedescendant=${activeOptionId}
+            aria-autocomplete="list"
+            aria-controls=${hasOptions ? GROUP_OPTIONS_ID : nothing}
+            aria-expanded=${this._combobox.isOpen ? "true" : "false"}
+            aria-haspopup="listbox"
+            @focus=${() => {
+              if (this._focusWithoutOpen) {
+                this._focusWithoutOpen = false;
+                return;
+              }
+              if (this._loadStatus === "idle") {
+                this._loadGroups();
+              }
+              this._combobox.open();
+            }}
+            @input=${(event) => {
+              this._combobox.setQuery(event.target.value || "");
+              this._combobox.open();
+            }}
+            @keydown=${(event) => this._handleSearchKeydown(event)}
+          />
+        </div>
+
+        <div
+          class="absolute start-0 end-0 z-10 mt-1 rounded-lg border border-stone-200 bg-white shadow ${
+            this._combobox.isOpen ? "" : "hidden"
+          }"
+        >
+          ${
+            hasOptions
+              ? html`
+                  <ul
+                    id=${GROUP_OPTIONS_ID}
+                    class="max-h-72 overflow-auto py-1"
+                    role="listbox"
+                    aria-label="Co-host groups"
+                  >
+                    ${repeat(
+                      this._filteredGroups,
+                      (group) => group.group_id,
+                      (group, index) => this._renderOption(group, index),
+                    )}
+                  </ul>
+                `
+              : html`<div class="px-4 py-3 text-sm text-stone-500">
+                  ${this._selectedCommunityId ? "No groups found" : "Choose a community first"}
+                </div>`
+          }
+        </div>
+        <p class="sr-only" role="status">${isLoading ? "Loading co-host groups..." : ""}</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders the submitted co-host fields only when the selection changed.
+   * @returns {import("lit").TemplateResult|string}
+   */
+  _renderHiddenFields() {
+    if (!this._hasChanged) {
+      return "";
+    }
+
+    return html`
+      ${this.selectedCohosts.map(
+        (cohost, index) => html`
+          <input type="hidden" name="cohost_group_ids[${index}]" value=${cohost.group_id} />
+        `,
+      )}
+      <input type="hidden" name="cohost_group_ids_present" value="true" />
+      <input type="hidden" name="cohosts_revision" value=${String(this.revision)} />
+    `;
+  }
+
+  /**
+   * Renders the group options load error with a retry action.
+   * @returns {import("lit").TemplateResult|string}
+   */
+  _renderLoadState() {
+    if (this._loadStatus !== "error") {
+      return "";
+    }
+
+    return html`
+      <div
+        class="max-w-xl rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm/6 text-red-900"
+        role="alert"
+      >
+        <p>${this._loadError}</p>
+        <button
+          type="button"
+          class="btn-primary-outline btn-mini mt-3"
+          @click=${() => this._retryLoadGroups()}
+        >
+          Retry
+        </button>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders one group option in the dropdown.
+   * @param {Object} group - Group option.
+   * @param {number} index - Option index in the filtered list.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderOption(group, index) {
+    const isActive = this._combobox.activeIndex === index;
+    return html`
+      <li role="presentation">
+        <button
+          id=${`${GROUP_OPTION_ID_PREFIX}${index}`}
+          type="button"
+          role="option"
+          tabindex="-1"
+          aria-selected=${isActive ? "true" : "false"}
+          class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm ${
+            isActive ? "bg-stone-50 text-stone-900" : "text-stone-700 hover:bg-stone-50 hover:text-stone-900"
+          }"
+          @click=${() => this._selectGroup(group)}
+          @mouseover=${() => this._combobox.setActiveIndex(index)}
+        >
+          ${this._renderLogo(group, "size-9", "size-7")}
+          <span class="min-w-0">
+            <span class="block truncate font-medium">${group.name}</span>
+            <span class="block truncate text-xs text-stone-500">${group.community_display_name}</span>
+          </span>
+        </button>
+      </li>
+    `;
+  }
+
+  /**
+   * Renders the selected co-host cards or the empty selection state.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderSelectedCohosts() {
+    if (this.selectedCohosts.length === 0) {
+      return html`
+        <div class="max-w-xl rounded-lg border border-dashed border-stone-200 p-4 text-sm text-stone-500">
+          No co-hosts selected.
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+        ${this.selectedCohosts.map(
+          (cohost) => html`
+            <div class="flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-white p-4">
+              ${this._renderLogo(cohost, "size-15 md:size-18", "size-13 md:size-16")}
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400">
+                  ${cohost.community_display_name}
+                </div>
+                <div class="mt-0.5 truncate text-sm/5 font-semibold text-black">${cohost.name}</div>
+                <div class="mt-2 flex flex-wrap gap-1.5">${this._renderStatusPills(cohost)}</div>
+              </div>
+              ${
+                this.disabled
+                  ? ""
+                  : html`
+                      <button
+                        type="button"
+                        class="rounded-full p-1 hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                        aria-label="Remove ${cohost.name}"
+                        data-cohost-remove
+                        title="Remove"
+                        @click=${() => this._removeGroup(cohost.group_id)}
+                      >
+                        <span class="svg-icon block size-4 icon-close bg-stone-600" aria-hidden="true"></span>
+                      </button>
+                    `
+              }
+            </div>
+          `,
+        )}
+      </div>
+    `;
+  }
+
+  /**
+   * Renders a group logo, falling back to the groups icon.
+   * @param {Object} group - Group or co-host with name and logo URL.
+   * @param {string} wrapperSize - Size classes for the logo frame.
+   * @param {string} imageSize - Size classes for the logo image.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderLogo(group, wrapperSize, imageSize) {
+    return html`
+      <div
+        class="relative flex ${wrapperSize} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-stone-200 bg-white"
+      >
+        ${
+          group.logo_url
+            ? html`<img src=${group.logo_url} alt="" class="${imageSize} object-contain" loading="lazy" />`
+            : html`<span class="svg-icon size-6 icon-groups bg-stone-400" aria-hidden="true"></span>`
+        }
+      </div>
+    `;
+  }
+
+  /**
+   * Renders the status pill and, for inactive groups, the inactive pill.
+   * @param {Object} cohost - Selected co-host.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderStatusPills(cohost) {
+    const statusLabel = cohost.status === STATUS_APPROVED ? "Approved" : "Pending";
+    const statusClass =
+      cohost.status === STATUS_APPROVED
+        ? "border-green-800 bg-green-100 text-green-800"
+        : "border-amber-800 bg-amber-100 text-amber-800";
+
+    return html`
+      <span class="custom-badge px-2.5 py-0.5 ${statusClass}">${statusLabel}</span>
+      ${
+        cohost.group_active === false
+          ? html`<span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">
+              Inactive group
+            </span>`
+          : ""
+      }
+    `;
+  }
+
+  /**
+   * Moves focus back to the search input without reopening the options.
+   * @returns {void}
+   */
+  _restoreSearchFocus() {
+    const searchInput = this._searchInput;
+    if (!searchInput || searchInput.disabled || searchInput === document.activeElement) {
+      return;
+    }
+    this._focusWithoutOpen = true;
+    searchInput.focus();
+    this._focusWithoutOpen = false;
+  }
+
+  /**
+   * Retries loading the group options, keeping focus on the search input.
+   * @returns {void}
+   */
+  _retryLoadGroups() {
+    // Move focus before the retry button is replaced by the loading status.
+    this._searchInput?.focus();
+    this._loadGroups();
+  }
+
+  /**
+   * Scrolls the keyboard-active option into view after the dropdown updates.
+   * @returns {void}
+   */
+  _scrollActiveOptionIntoView() {
+    this.updateComplete.then(() => {
+      const index = this._combobox.activeIndex;
+      if (index === null) {
+        return;
+      }
+      this.querySelector(`#${GROUP_OPTION_ID_PREFIX}${index}`)?.scrollIntoView({ block: "nearest" });
+    });
+  }
+
+  /**
+   * Switches the listed community and loads its groups.
+   * @param {string} communityId - Selected community id.
+   * @returns {void}
+   */
+  _selectCommunity(communityId) {
+    this._selectedCommunityId = communityId || "";
+    this._groups = [];
+    this._loadStatus = this._selectedCommunityId ? "idle" : "ready";
+    this._combobox.close();
+    this._loadGroups();
+  }
+
+  /**
+   * Adds a group to the selection as a pending co-host, skipping the owner and duplicates.
+   * @param {Object} group - Group option to add.
+   * @returns {void}
+   */
+  _selectGroup(group) {
+    if (this.disabled || !group?.group_id) {
+      return;
+    }
+    if (String(group.group_id) === String(this.currentGroupId)) {
+      return;
+    }
+    if (this.selectedCohosts.some((cohost) => cohost.group_id === group.group_id)) {
+      return;
+    }
+
+    this.selectedCohosts = [
+      ...this.selectedCohosts,
+      normalizeSelectedCohost({
+        ...group,
+        group_active: true,
+        status: STATUS_PENDING,
+      }),
+    ];
+    this._combobox.close();
+    this._dispatchSelectionChange();
+
+    // Return focus to the search after the chosen option disappears.
+    this.updateComplete.then(() => this._restoreSearchFocus());
+  }
+}
+
+/**
+ * Checks whether two arrays contain the same values in the same order.
+ * @param {Array} left - First array.
+ * @param {Array} right - Second array.
+ * @returns {boolean} True when both arrays are equal.
+ */
+const arraysEqual = (left, right) =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
+/**
+ * Parses a JSON array attribute, returning an empty array for invalid values.
+ * @param {unknown} value - Attribute value or already parsed property.
+ * @returns {Array} Parsed array.
+ */
+const normalizeArrayAttribute = (value) => {
+  const parsed = parseJsonAttribute(value, []);
+  return Array.isArray(parsed) ? parsed : [];
+};
+
+/**
+ * Normalizes a co-host entry into the shape used by the selector.
+ * @param {Object} cohost - Raw co-host or group option.
+ * @returns {Object} Normalized co-host with string ids and a pending or approved status.
+ */
+const normalizeSelectedCohost = (cohost) => ({
+  community_display_name: cohost?.community_display_name || "",
+  community_name: cohost?.community_name || "",
+  group_active: cohost?.group_active !== false,
+  group_id: String(cohost?.group_id || ""),
+  invitation_id: cohost?.invitation_id || "",
+  invited_at: cohost?.invited_at || "",
+  logo_url: cohost?.logo_url || "",
+  name: cohost?.name || "",
+  slug: cohost?.slug || "",
+  slug_pretty: cohost?.slug_pretty || "",
+  status: cohost?.status === STATUS_APPROVED ? STATUS_APPROVED : STATUS_PENDING,
+});
+
+customElements.define("cohosts-selector", CohostsSelector);

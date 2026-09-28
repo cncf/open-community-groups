@@ -160,7 +160,7 @@ select ok(
                 :'groupID'::uuid,
                 '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
             )
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels' - 'ticket_types'
+        )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels' - 'ticket_types'
     )) = '{
         "attendee_count": 0,
         "canceled": false,
@@ -367,7 +367,7 @@ select ok(
         :'communityID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
-    )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'cfs_labels' - 'ticket_types') = '{
+    )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'cfs_labels' - 'ticket_types') = '{
         "attendee_count": 0,
         "canceled": false,
         "category_name": "Conference",

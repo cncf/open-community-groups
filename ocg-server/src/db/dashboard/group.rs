@@ -5,7 +5,10 @@ use std::collections::HashMap;
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::cached;
+use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -23,8 +26,10 @@ use crate::{
                 analytics::GroupDashboardStats,
                 attendees::{AttendeesFilters, AttendeesOutput},
                 check_in::{CheckInScanResult, GroupCheckInEvent},
+                cohosts::{CohostedEventsFilters, CohostedEventsOutput},
                 events::{
-                    ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
+                    ApprovedSubmissionSummary, CfsSubmissionStatus, EventCohostsEditor,
+                    EventsListFilters, GroupEvents,
                 },
                 home::UserGroupsByCommunity,
                 invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
@@ -40,8 +45,9 @@ use crate::{
             },
         },
         event::{
-            EventCategory, EventEnrollmentReconciliationOutcome, EventKindSummary as EventKind,
-            EventSummary, SessionKindSummary as SessionKind,
+            EventCategory, EventCohostGroup, EventCohostStatus,
+            EventEnrollmentReconciliationOutcome, EventKindSummary as EventKind, EventSummary,
+            SessionKindSummary as SessionKind,
         },
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
         meetings::MeetingProvider,
@@ -122,6 +128,14 @@ pub(crate) trait DBDashboardGroup {
         role: &GroupRole,
     ) -> Result<()>;
 
+    /// Approves a pending co-hosting invitation for the co-host group.
+    async fn approve_event_cohost(
+        &self,
+        actor_user_id: Uuid,
+        cohost_group_id: Uuid,
+        invitation_id: Uuid,
+    ) -> Result<EventCohostResponse>;
+
     /// Queues a badge for an explicit, atomically validated recipient list.
     async fn award_badge(
         &self,
@@ -153,6 +167,14 @@ pub(crate) trait DBDashboardGroup {
         user_id: Uuid,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<EventAttendeeCancellationOutcome>;
+
+    /// Withdraws an approved co-hosting for the co-host group.
+    async fn cancel_event_cohost(
+        &self,
+        actor_user_id: Uuid,
+        cohost_group_id: Uuid,
+        invitation_id: Uuid,
+    ) -> Result<EventCohostResponse>;
 
     /// Cancels event series events atomically.
     async fn cancel_event_series_events(
@@ -243,6 +265,12 @@ pub(crate) trait DBDashboardGroup {
         cfs_submission_id: Uuid,
     ) -> Result<CfsSubmissionNotificationData>;
 
+    /// Gets co-hosting notification content for the given event and group pairs.
+    async fn get_event_cohost_notification_data(
+        &self,
+        items: &[EventCohostRef],
+    ) -> Result<Vec<EventCohostNotificationData>>;
+
     /// Gets summary event details extended with dashboard-only information.
     async fn get_event_summary_dashboard(
         &self,
@@ -325,6 +353,13 @@ pub(crate) trait DBDashboardGroup {
     /// Lists reviewer-available CFS submission statuses.
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>>;
 
+    /// Lists the groups of a community that can be invited to co-host events.
+    async fn list_cohost_group_options(
+        &self,
+        community_id: Uuid,
+        exclude_group_id: Uuid,
+    ) -> Result<Vec<EventCohostGroup>>;
+
     /// Lists accepted, email-verified community admin user ids.
     async fn list_community_admin_ids(&self, community_id: Uuid) -> Result<Vec<Uuid>>;
 
@@ -353,6 +388,13 @@ pub(crate) trait DBDashboardGroup {
         filters: &CfsSubmissionsFilters,
     ) -> Result<CfsSubmissionsOutput>;
 
+    /// Lists the pending and approved co-hosts of an event owned by the group.
+    async fn list_event_cohosts(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventCohostsEditor>;
+
     /// Lists all available event kinds.
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>>;
 
@@ -380,6 +422,9 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all verified waitlisted user ids for an event.
     async fn list_event_waitlist_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
 
+    /// Lists accepted, email-verified group admin user ids.
+    async fn list_group_admin_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
+
     /// Lists group dashboard audit log rows.
     async fn list_group_audit_logs(
         &self,
@@ -396,6 +441,13 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists current and upcoming events available to the group's scanner.
     async fn list_group_check_in_events(&self, group_id: Uuid) -> Result<Vec<GroupCheckInEvent>>;
+
+    /// Lists the events the group was invited to co-host.
+    async fn list_group_cohosted_events(
+        &self,
+        group_id: Uuid,
+        filters: &CohostedEventsFilters,
+    ) -> Result<CohostedEventsOutput>;
 
     /// Lists all events for a group for management.
     async fn list_group_events(
@@ -452,6 +504,13 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all groups where the user is a team member, grouped by community.
     async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>>;
 
+    /// Locks the owner group and the co-host groups in a stable order.
+    async fn lock_event_cohost_groups(
+        &self,
+        group_id: Uuid,
+        cohost_group_ids: &[Uuid],
+    ) -> Result<()>;
+
     /// Locks active event cancellation targets for the current transaction.
     async fn lock_events_for_cancellation(&self, group_id: Uuid, event_ids: &[Uuid]) -> Result<()>;
 
@@ -477,6 +536,14 @@ pub(crate) trait DBDashboardGroup {
         payment_provider: Option<PaymentProvider>,
         payment_validation: Option<PaymentConfigurationValidation>,
     ) -> Result<()>;
+
+    /// Rejects a pending co-hosting invitation for the co-host group.
+    async fn reject_event_cohost(
+        &self,
+        actor_user_id: Uuid,
+        cohost_group_id: Uuid,
+        invitation_id: Uuid,
+    ) -> Result<EventCohostResponse>;
 
     /// Rejects a pending event invitation request.
     async fn reject_event_invitation_request(
@@ -530,6 +597,16 @@ pub(crate) trait DBDashboardGroup {
         event_id: Uuid,
         filters: &WaitlistFilters,
     ) -> Result<WaitlistOutput>;
+
+    /// Synchronizes the co-hosts of an event with the organizer's selection.
+    async fn sync_event_cohosts(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        cohost_group_ids: &[Uuid],
+        expected_revision: i32,
+    ) -> Result<EventCohostsSync>;
 
     /// Unpublishes an event (sets published=false and clears publication metadata).
     async fn unpublish_event(
@@ -758,6 +835,21 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::approve_event_cohost`].
+    #[instrument(skip(self), err)]
+    async fn approve_event_cohost(
+        &self,
+        actor_user_id: Uuid,
+        cohost_group_id: Uuid,
+        invitation_id: Uuid,
+    ) -> Result<EventCohostResponse> {
+        self.fetch_json_one(
+            "select approve_event_cohost($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &cohost_group_id, &invitation_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::award_badge`].
     #[instrument(skip(self), err)]
     async fn award_badge(
@@ -843,6 +935,21 @@ where
                 &user_id,
                 &payment_provider.map(|provider| provider.to_string()),
             ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::cancel_event_cohost`].
+    #[instrument(skip(self), err)]
+    async fn cancel_event_cohost(
+        &self,
+        actor_user_id: Uuid,
+        cohost_group_id: Uuid,
+        invitation_id: Uuid,
+    ) -> Result<EventCohostResponse> {
+        self.fetch_json_one(
+            "select cancel_event_cohost($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &cohost_group_id, &invitation_id],
         )
         .await
     }
@@ -1019,6 +1126,19 @@ where
         self.fetch_json_one(
             "select get_cfs_submission_notification_data($1::uuid, $2::uuid)",
             &[&event_id, &cfs_submission_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_event_cohost_notification_data`].
+    #[instrument(skip(self, items), fields(entries = items.len()), err)]
+    async fn get_event_cohost_notification_data(
+        &self,
+        items: &[EventCohostRef],
+    ) -> Result<Vec<EventCohostNotificationData>> {
+        self.fetch_json_one(
+            "select get_event_cohost_notification_data($1::jsonb)",
+            &[&Json(items)],
         )
         .await
     }
@@ -1227,6 +1347,20 @@ where
             .await
     }
 
+    /// [`DBDashboardGroup::list_cohost_group_options`].
+    #[instrument(skip(self), err)]
+    async fn list_cohost_group_options(
+        &self,
+        community_id: Uuid,
+        exclude_group_id: Uuid,
+    ) -> Result<Vec<EventCohostGroup>> {
+        self.fetch_json_one(
+            "select list_cohost_group_options($1::uuid, $2::uuid)",
+            &[&community_id, &exclude_group_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::list_community_admin_ids`].
     #[instrument(skip(self), err)]
     async fn list_community_admin_ids(&self, community_id: Uuid) -> Result<Vec<Uuid>> {
@@ -1282,6 +1416,20 @@ where
         self.fetch_json_one(
             "select list_event_cfs_submissions($1::uuid, $2::jsonb)",
             &[&event_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_event_cohosts`].
+    #[instrument(skip(self), err)]
+    async fn list_event_cohosts(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventCohostsEditor> {
+        self.fetch_json_one(
+            "select list_event_cohosts($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
         )
         .await
     }
@@ -1358,6 +1506,13 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::list_group_admin_ids`].
+    #[instrument(skip(self), err)]
+    async fn list_group_admin_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one("select list_group_admin_ids($1::uuid)", &[&group_id])
+            .await
+    }
+
     /// [`DBDashboardGroup::list_group_audit_logs`]
     #[instrument(skip(self, filters), err)]
     async fn list_group_audit_logs(
@@ -1391,6 +1546,20 @@ where
     async fn list_group_check_in_events(&self, group_id: Uuid) -> Result<Vec<GroupCheckInEvent>> {
         self.fetch_json_one("select list_group_check_in_events($1::uuid)", &[&group_id])
             .await
+    }
+
+    /// [`DBDashboardGroup::list_group_cohosted_events`].
+    #[instrument(skip(self, filters), err)]
+    async fn list_group_cohosted_events(
+        &self,
+        group_id: Uuid,
+        filters: &CohostedEventsFilters,
+    ) -> Result<CohostedEventsOutput> {
+        self.fetch_json_one(
+            "select list_group_cohosted_events($1::uuid, $2::jsonb)",
+            &[&group_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardGroup::list_group_events`]
@@ -1545,6 +1714,20 @@ where
             .await
     }
 
+    /// [`DBDashboardGroup::lock_event_cohost_groups`].
+    #[instrument(skip(self, cohost_group_ids), fields(entries = cohost_group_ids.len()), err)]
+    async fn lock_event_cohost_groups(
+        &self,
+        group_id: Uuid,
+        cohost_group_ids: &[Uuid],
+    ) -> Result<()> {
+        self.execute(
+            "select lock_event_cohost_groups($1::uuid, $2::uuid[])",
+            &[&group_id, &cohost_group_ids],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::lock_events_for_cancellation`].
     #[instrument(skip(self), err)]
     async fn lock_events_for_cancellation(&self, group_id: Uuid, event_ids: &[Uuid]) -> Result<()> {
@@ -1607,6 +1790,21 @@ where
                 &payment_provider.map(|provider| provider.to_string()),
                 &payment_validation.as_ref().map(Json),
             ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::reject_event_cohost`].
+    #[instrument(skip(self), err)]
+    async fn reject_event_cohost(
+        &self,
+        actor_user_id: Uuid,
+        cohost_group_id: Uuid,
+        invitation_id: Uuid,
+    ) -> Result<EventCohostResponse> {
+        self.fetch_json_one(
+            "select reject_event_cohost($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &cohost_group_id, &invitation_id],
         )
         .await
     }
@@ -1707,6 +1905,29 @@ where
         self.fetch_json_one(
             "select search_event_waitlist($1::uuid, $2::uuid, $3::jsonb)",
             &[&group_id, &event_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::sync_event_cohosts`].
+    #[instrument(skip(self, cohost_group_ids), fields(entries = cohost_group_ids.len()), err)]
+    async fn sync_event_cohosts(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        cohost_group_ids: &[Uuid],
+        expected_revision: i32,
+    ) -> Result<EventCohostsSync> {
+        self.fetch_json_one(
+            "select sync_event_cohosts($1::uuid, $2::uuid, $3::uuid, $4::uuid[], $5::int)",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_id,
+                &cohost_group_ids,
+                &expected_revision,
+            ],
         )
         .await
     }
@@ -1945,4 +2166,77 @@ pub(crate) struct EventAttendeeInvitationInput {
     pub event_ticket_type_id: Option<Uuid>,
     /// Existing registered user identifier.
     pub user_id: Option<Uuid>,
+}
+
+/// Co-hosting notification content for one event and co-host group.
+#[skip_serializing_none]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct EventCohostNotificationData {
+    /// Whether the event has been canceled.
+    pub canceled: bool,
+    /// Display name of the co-host group's community.
+    pub cohost_community_display_name: String,
+    /// Co-host group identifier.
+    pub cohost_group_id: Uuid,
+    /// Co-host group display name.
+    pub cohost_group_name: String,
+    /// Event identifier.
+    pub event_id: Uuid,
+    /// Event name.
+    pub event_name: String,
+    /// Current invitation identifier.
+    pub invitation_id: Uuid,
+    /// Display name of the owner group's community.
+    pub owner_community_display_name: String,
+    /// Owner group's community identifier.
+    pub owner_community_id: Uuid,
+    /// Owner group identifier.
+    pub owner_group_id: Uuid,
+    /// Owner group display name.
+    pub owner_group_name: String,
+    /// Current co-hosting status.
+    pub status: EventCohostStatus,
+    /// Timezone in which the event times are displayed.
+    pub timezone: Tz,
+
+    /// Event start time in UTC.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
+}
+
+/// Reference to one co-hosting invitation of an event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub(crate) struct EventCohostRef {
+    /// Co-host group identifier.
+    pub cohost_group_id: Uuid,
+    /// Event identifier.
+    pub event_id: Uuid,
+    /// Invitation identifier.
+    pub invitation_id: Uuid,
+}
+
+/// Result of a co-host group responding to a co-hosting invitation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub(crate) struct EventCohostResponse {
+    /// Co-host group identifier.
+    pub cohost_group_id: Uuid,
+    /// Event identifier.
+    pub event_id: Uuid,
+    /// Invitation identifier.
+    pub invitation_id: Uuid,
+    /// Owner group's community identifier.
+    pub owner_community_id: Uuid,
+    /// Owner group identifier.
+    pub owner_group_id: Uuid,
+}
+
+/// Result of synchronizing the co-hosts of an event.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub(crate) struct EventCohostsSync {
+    /// Invitations created or renewed by the synchronization.
+    pub added: Vec<EventCohostRef>,
+    /// Co-hosts removed by the synchronization.
+    pub removed: Vec<EventCohostRef>,
+    /// Co-hosts revision after the synchronization.
+    pub revision: i32,
 }

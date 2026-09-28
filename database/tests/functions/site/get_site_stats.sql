@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -117,6 +117,19 @@ select fx_event(:'event5ID', :'group4ID', :'eventCategory3ID', jsonb_build_objec
     'published', true,
     'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '9 days'
 ));
+
+-- Approved co-host credit that must not affect owner-scoped site stats
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id
+) values (
+    current_timestamp,
+    'approved',
+    :'event1ID',
+    :'group2ID'
+);
 
 -- Event attendees
 -- month_4: attendee1
@@ -241,6 +254,13 @@ select is(
     (get_site_stats()::jsonb->'members'->>'total')::int,
     3,
     'Should exclude members of groups in inactive communities from totals'
+);
+
+-- Should not add co-host rows to site event totals
+select is(
+    (get_site_stats()::jsonb->'events'->>'total')::int,
+    3,
+    'Should not add co-host rows to site event totals'
 );
 
 -- ============================================================================

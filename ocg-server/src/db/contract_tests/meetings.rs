@@ -6,7 +6,7 @@ use anyhow::Result;
 
 use crate::{db::meetings::DBMeetings, types::meetings::MeetingProvider};
 
-use super::helpers::{auto_end_meeting_id, contract_tests_db, sync_event_id};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]

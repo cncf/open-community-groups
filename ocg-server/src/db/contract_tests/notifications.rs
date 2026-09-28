@@ -5,7 +5,7 @@ use chrono::Utc;
 
 use crate::db::notifications::DBNotifications;
 
-use super::helpers::{contract_tests_db, notification_id};
+use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
