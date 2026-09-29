@@ -72,6 +72,8 @@ export class MarkdownEditor extends LitWrapper {
       initialValue: this.content,
       status: false,
       previewClass: "markdown",
+      // Match server-side rendering, where single line breaks are soft breaks
+      renderingConfig: { singleLineBreaks: false },
       // Fix for hidden textarea
       autoRefresh: { delay: 300 },
     });
