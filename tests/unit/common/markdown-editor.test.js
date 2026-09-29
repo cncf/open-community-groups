@@ -58,6 +58,16 @@ describe("markdown-editor", () => {
     expect(element.querySelector("textarea").style.display).to.equal("block");
   });
 
+  it("renders single line breaks in the preview like the server does", async () => {
+    // Render the markdown-editor fixture.
+    await mountLitComponent("markdown-editor");
+
+    // The preview treats single line breaks as soft breaks.
+    expect(latestEditor.options.renderingConfig).to.deep.equal({
+      singleLineBreaks: false,
+    });
+  });
+
   it("forwards editor changes through the onChange callback", async () => {
     // Track values emitted from the EasyMDE change handler.
     const values = [];
