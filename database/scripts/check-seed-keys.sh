@@ -1,10 +1,11 @@
 #!/bin/sh
 #
-# Checks that no two pgTAP function tests write the same unique key value.
+# Checks that no two parallel pgTAP tests (schema and function tests) write the
+# same unique key value.
 #
 # The suite runs in parallel against one database. Two files inserting the same
 # value into a unique index block each other until one rolls back, and a pair
-# doing that for two values in opposite order deadlocks. Every function test
+# doing that for two values in opposite order deadlocks. Every test file
 # therefore owns its unique key values (usernames, emails, community names,
 # provider references, idempotency keys, ...), just as it owns its UUID prefix.
 #
@@ -18,7 +19,7 @@
 
 set -u
 
-tests_dir=$(cd "$(dirname "$0")/../tests/functions" && pwd)
+tests_dir=$(cd "$(dirname "$0")/../tests" && pwd)
 workdir=$(mktemp -d)
 trap 'rm -rf "$workdir"' EXIT
 
@@ -66,7 +67,7 @@ printf '%s;\n' "$key_query" | psql "$@" -qtAX -v ON_ERROR_STOP=1 | sort -u >"$wo
 
 status=0
 : >"$workdir/keys"
-for file in $(find "$tests_dir" -name '*.sql' | sort); do
+for file in $(find "$tests_dir/schema" "$tests_dir/functions" -name '*.sql' | sort); do
     # Run the whole file with its rollback deferred, then read the written keys
     {
         sed '/^rollback;$/d' "$file"
@@ -87,7 +88,7 @@ duplicates=$(sort -u "$workdir/keys" | awk -F '\t' '
 ' | sort)
 if [ -n "$duplicates" ]; then
     printf '%s\n' "$duplicates" | while read -r line; do
-        echo "error: unique key ${line%%:*} is seeded by more than one function test:${line#*:}" >&2
+        echo "error: unique key ${line%%:*} is seeded by more than one test:${line#*:}" >&2
     done
     status=1
 fi

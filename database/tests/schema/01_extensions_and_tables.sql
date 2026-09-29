@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(84);
+select plan(87);
 
 -- ============================================================================
 -- TESTS
@@ -75,6 +75,9 @@ select has_table('group_sponsor');
 select has_table('group_team');
 select has_table('group_views');
 select has_table('images');
+select has_table('inbox_conversation');
+select has_table('inbox_conversation_status');
+select has_table('inbox_message');
 select has_table('legacy_event_host');
 select has_table('legacy_event_speaker');
 select has_table('meeting');

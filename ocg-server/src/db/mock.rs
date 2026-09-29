@@ -1160,6 +1160,76 @@ mock! {
     }
 
     #[async_trait]
+    impl crate::db::inbox::DBInbox for DB {
+        async fn add_inbox_group_reply(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            inbox_conversation_id: Uuid,
+            body: &str,
+        ) -> Result<crate::db::inbox::PostedInboxMessage>;
+        async fn add_inbox_user_message(
+            &self,
+            actor_user_id: Uuid,
+            inbox_conversation_id: Uuid,
+            body: &str,
+        ) -> Result<crate::db::inbox::PostedInboxMessage>;
+        async fn close_inbox_conversation(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            inbox_conversation_id: Uuid,
+        ) -> Result<()>;
+        async fn count_group_open_inbox_conversations(&self, group_id: Uuid) -> Result<usize>;
+        async fn get_group_inbox_conversation(
+            &self,
+            group_id: Uuid,
+            inbox_conversation_id: Uuid,
+        ) -> Result<Option<crate::types::inbox::InboxConversation>>;
+        async fn get_inbox_contact_context(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
+            user_id: Option<Uuid>,
+        ) -> Result<Option<crate::types::inbox::InboxContactContext>>;
+        async fn get_user_inbox_conversation(
+            &self,
+            user_id: Uuid,
+            inbox_conversation_id: Uuid,
+        ) -> Result<Option<crate::types::inbox::InboxConversation>>;
+        async fn list_group_inbox_conversations(
+            &self,
+            group_id: Uuid,
+            filters: &crate::types::inbox::InboxConversationsFilters,
+        ) -> Result<crate::types::inbox::InboxConversationsOutput>;
+        async fn list_inbox_recipient_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
+        async fn list_user_inbox_conversations(
+            &self,
+            user_id: Uuid,
+            filters: &crate::types::inbox::InboxConversationsFilters,
+        ) -> Result<crate::types::inbox::InboxConversationsOutput>;
+        async fn mark_inbox_conversation_as_spam(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            inbox_conversation_id: Uuid,
+        ) -> Result<()>;
+        async fn start_inbox_conversation(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            event_id: Uuid,
+            body: &str,
+        ) -> Result<crate::db::inbox::StartInboxConversationResult>;
+        async fn unmark_inbox_conversation_as_spam(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            inbox_conversation_id: Uuid,
+        ) -> Result<()>;
+    }
+
+    #[async_trait]
     impl crate::db::meetings::DBMeetings for DB {
         async fn add_meeting(
             &self,

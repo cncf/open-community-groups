@@ -17,6 +17,7 @@ If you prefer a faster task-oriented run-through first, use
 - [Get Tickets, RSVP, and Attend Events](#get-tickets-rsvp-and-attend-events)
 - [Check In on Event Day](#check-in-on-event-day)
 - [Submit to Call for Speakers (CFS)](#submit-to-call-for-speakers-cfs)
+- [Contact Organizers](#contact-organizers)
 - [Use Stats for Platform Context](#use-stats-for-platform-context)
 - [Recommended Member Flow](#recommended-member-flow)
 
@@ -223,6 +224,25 @@ For full speaker workflow detail, continue with
 lifecycle controls, see [Event Operations](event-operations.md).
 
 ![Event page CFS](../screenshots/event-page-cfs.png)
+
+## Contact Organizers
+
+Every event page has a `Contact organizers` button below its organizers. It opens a form to
+send a plain-text question to the group that owns the event; for co-hosted events the message
+always goes to the owning group.
+
+- Sign in first. Visitors who are not signed in see a sign-in prompt that returns to the event.
+- If you already have an open conversation with the group, the form links to it instead, so you
+  can continue it from your dashboard.
+- Group organizers see a note pointing to their group Inbox instead of the form.
+- If the group marked one of your conversations as spam, or three groups of the community did,
+  the form is replaced by a notice that you can no longer contact the group.
+- You can start up to 3 conversations and send up to 10 follow-ups in any 24 hours, with up to
+  5000 characters per message.
+
+Replies arrive by email and in
+[User Dashboard -> Inbox](/dashboard/user?tab=inbox ':ignore'). For the full conversation flow,
+see [Inbox: Conversations with Organizers](user-dashboard.md#inbox-conversations-with-organizers).
 
 ## Use Stats for Platform Context
 

@@ -44,6 +44,7 @@
     {{ dashboard::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account") -}}
     {{ dashboard::menu_item(name = "Badges", icon = "certificate", is_active = content.is_badges() , href = "/dashboard/user?tab=badges") -}}
     {{ dashboard::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations") -}}
+    {{ dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/user?tab=inbox") -}}
   </div>
   {# End User -#}
   {# Call for Speakers -#}
@@ -67,7 +68,7 @@
   {# djlint:off #}
   <div id="dashboard-content"
        {% if !content.is_account() -%}
-         hx-get="/dashboard/user/{%- if content.is_badges() -%}badges{%- elif content.is_check_in() -%}check-in{%- elif content.is_events() -%}events{%- elif content.is_groups() -%}groups{%- elif content.is_invitations() -%}invitations{%- elif content.is_logs() -%}logs{%- elif content.is_purchases() -%}purchases{%- elif content.is_session_proposals() -%}session-proposals{%- else -%}submissions{%- endif -%}"
+         hx-get="/dashboard/user/{{ content.refresh_path() }}"
        {% endif -%}
        hx-trigger="refresh-user-dashboard-content"
        hx-swap="innerHTML show:window:top"

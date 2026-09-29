@@ -6,5 +6,7 @@ pub(crate) mod audit;
 pub(crate) mod community;
 /// Group dashboard templates.
 pub(crate) mod group;
+/// Shared dashboard inbox templates.
+pub(crate) mod inbox;
 /// User dashboard templates.
 pub(crate) mod user;

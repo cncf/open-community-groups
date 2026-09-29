@@ -12,6 +12,7 @@ mod dashboard_user;
 mod event;
 mod group;
 pub(crate) mod helpers;
+mod inbox;
 mod lifecycle;
 mod meetings;
 mod notifications;

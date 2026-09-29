@@ -388,6 +388,41 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "group_updated",
     },
     AuditActionDefinition {
+        label: "Inbox conversation closed",
+        scopes: GROUP_SCOPES,
+        value: "inbox_conversation_closed",
+    },
+    AuditActionDefinition {
+        label: "Inbox conversation marked as spam",
+        scopes: GROUP_SCOPES,
+        value: "inbox_conversation_marked_as_spam",
+    },
+    AuditActionDefinition {
+        label: "Inbox conversation reopened",
+        scopes: GROUP_SCOPES,
+        value: "inbox_conversation_reopened",
+    },
+    AuditActionDefinition {
+        label: "Inbox conversation started",
+        scopes: USER_SCOPES,
+        value: "inbox_conversation_started",
+    },
+    AuditActionDefinition {
+        label: "Inbox conversation unmarked as spam",
+        scopes: GROUP_SCOPES,
+        value: "inbox_conversation_unmarked_as_spam",
+    },
+    AuditActionDefinition {
+        label: "Inbox message sent",
+        scopes: USER_SCOPES,
+        value: "inbox_message_sent",
+    },
+    AuditActionDefinition {
+        label: "Inbox reply sent",
+        scopes: GROUP_SCOPES,
+        value: "inbox_reply_sent",
+    },
+    AuditActionDefinition {
         label: "Region added",
         scopes: COMMUNITY_SCOPES,
         value: "region_added",
@@ -648,6 +683,7 @@ fn resource_type_label(resource_type: &str) -> &'static str {
         "group" => "Group",
         "group_category" => "Group category",
         "group_sponsor" => "Group sponsor",
+        "inbox_conversation" => "Inbox conversation",
         "region" => "Region",
         "session_proposal" => "Session proposal",
         "user" => "User",

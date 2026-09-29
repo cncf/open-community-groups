@@ -15,11 +15,12 @@ describe("dashboard group home template", () => {
     // Load the group dashboard shell before checking responsive content ownership.
     const template = await loadTemplate();
 
-    // Verify Check-In and its fallback stay visible while other content is hidden.
+    // Verify Check-In and its fallback stay visible while other content, including Inbox, is hidden.
     expect(template).to.include('{% extends "dashboard/dashboard_base.html" -%}');
     expect(template).to.include(
       "{% if content.is_check_in() || is_check_in_fallback %}block{% else %}hidden md:block{% endif %}",
     );
+    expect(template).not.to.include("content.is_inbox() %}block");
   });
 
   it("keeps the check-in fallback warning inside the main content wrapper", async () => {
@@ -30,6 +31,7 @@ describe("dashboard group home template", () => {
     expect(template).to.include(
       'dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden")',
     );
+    expect(template).to.include("{% if is_check_in_fallback -%}");
     expect(template).to.include('<div class="max-md:hidden">{{ content|safe }}</div>');
     expect(template).to.include("{% if !content.is_check_in() && !is_check_in_fallback -%}");
     expect(template).not.to.include("Open Check-In</a>");
@@ -123,7 +125,7 @@ describe("dashboard group home template", () => {
     expect(template).to.include("{% if content.is_refunds() && !payments_ready -%}");
     expect(template).to.include("Automatic payment processing is unavailable");
     expect(template).to.include("external refunds can still be recorded");
-    expect(template).to.include("else if content.is_refunds() -%}refunds");
+    expect(template).to.include('hx-get="/dashboard/group/{{ content.refresh_path() }}"');
     expect(template).not.to.include("refresh-group-refunds");
 
     const refundsWarningIndex = template.indexOf("{% if content.is_refunds() && !payments_ready -%}");
@@ -156,6 +158,32 @@ describe("dashboard group home template", () => {
 
     expect(template).to.include('src="/static/js/dashboard/event/cohosts.js"');
     expect(template).to.include('src="/static/js/dashboard/group/cohosts.js"');
-    expect(template).to.include("else if content.is_cohosts() -%}cohosts");
+    expect(template).to.include('hx-get="/dashboard/group/{{ content.refresh_path() }}"');
+  });
+
+  it("shows the Inbox to inbox managers on desktop only", async () => {
+    // Load the group dashboard shell before checking the inbox navigation.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the menu item is permission gated and carries the open count.
+    const inboxSection = template.indexOf("{% if can_manage_inbox -%}");
+    expect(inboxSection).to.be.greaterThan(-1);
+    expect(template).to.include(
+      'dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/group?tab=inbox", items_count = inbox_open_count)',
+    );
+    // Verify the item sits between Team and the group public site link, in the desktop-only block.
+    const desktopBlock = template.indexOf('<div class="mt-6 grid gap-y-0.5 max-md:hidden">');
+    const teamItem = template.indexOf('dashboard::menu_item(name = "Team"');
+    const publicSiteLink = template.indexOf("Group public site");
+    expect(teamItem).to.be.greaterThan(desktopBlock);
+    expect(inboxSection).to.be.greaterThan(teamItem);
+    expect(inboxSection).to.be.lessThan(publicSiteLink);
+    expect(template).not.to.include('dashboard::menu_title(text = "Inbox"');
+
+    // Verify the recoverable fallback warning stays page level, outside partial content swaps.
+    const fallbackWarning = template.indexOf("{% if is_inbox_fallback -%}");
+    const dashboardContent = template.indexOf('<div id="dashboard-content"');
+    expect(fallbackWarning).to.be.greaterThan(-1);
+    expect(fallbackWarning).to.be.lessThan(dashboardContent);
   });
 });

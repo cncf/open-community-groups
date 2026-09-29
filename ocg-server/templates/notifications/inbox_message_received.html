@@ -1,0 +1,34 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Inbox Message Received Notification -#}
+{% block subject -%}
+  New message from {{ sender_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ sender_name }} wrote to {{ group_name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-15" style="margin-bottom: 15px">
+    <strong>{{ sender_name }}</strong> sent a message to <strong>{{ group_name }}</strong>
+    {%- if let Some(event_name) = event_name %} about <strong>{{ event_name }}</strong>{% endif -%}
+    :
+  </p>
+  <p class="default mb-30 preline" style="margin-bottom: 30px">{{ body }}</p>
+
+  <p class="default mb-30" style="margin-bottom: 30px">
+    This message was sent to {{ group_name }} in the {{ community_display_name }} community.
+    If you manage several groups, select {{ group_name }} in the group dashboard to see it in its Inbox.
+    Replies must be sent from the dashboard; replying to this email does not reach {{ sender_name }}.
+  </p>
+
+  {{ email::button(link = link, text = "Open Inbox", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you're an organizer of {{ group_name }} in the
+  {{ community_display_name }} community.
+{% endblock footer -%}
+{# End inbox message received notification -#}

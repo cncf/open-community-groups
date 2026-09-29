@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(487);
+select plan(509);
 
 -- ============================================================================
 -- VARIABLES
@@ -39,8 +39,8 @@ insert into community (
     logo_url
 ) values (
     :'communityID',
-    'test-community',
-    'Test Community',
+    'schema-functions-community',
+    'Schema Functions Community',
     'A test community',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
@@ -109,9 +109,12 @@ select has_function('add_group', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('add_group_category', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('add_group_sponsor', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('add_group_team_member', array['uuid', 'uuid', 'uuid', 'text']::name[]);
+select has_function('add_inbox_group_reply', array['uuid', 'uuid', 'uuid', 'text']::name[]);
+select has_function('add_inbox_user_message', array['uuid', 'uuid', 'text']::name[]);
 select has_function('add_meeting', array['text', 'text', 'text', 'text', 'text', 'uuid', 'uuid', 'timestamp with time zone', 'text']::name[]);
 select has_function('add_region', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('add_session_proposal', array['uuid', 'jsonb']::name[]);
+select has_function('append_inbox_message', array['inbox_conversation', 'uuid', 'text', 'text', 'timestamp with time zone']::name[]);
 select hasnt_function(
     'approve_external_event_refund_request',
     array['uuid', 'uuid', 'uuid', 'text']::name[]
@@ -144,6 +147,7 @@ select has_function(
     array['uuid', 'text', 'text', 'text', 'text']::name[]
 );
 select has_function('attend_event', array['uuid', 'uuid', 'uuid', 'jsonb', 'uuid']::name[]);
+select has_function('audit_log_resource_name', array['text', 'uuid']::name[]);
 select has_function(
     'award_badge',
     array['uuid', 'uuid', 'uuid', 'uuid', 'uuid[]', 'uuid']::name[]
@@ -178,6 +182,7 @@ select has_function('claim_pending_notification', array['integer', 'integer']::n
 select has_function('cleanup_badge_award_jobs', array['bigint']::name[]);
 select has_function('close_event_cohosts', array['uuid', 'uuid', 'text']::name[]);
 select has_function('close_event_enrollment', array['uuid', 'uuid']::name[]);
+select has_function('close_inbox_conversation', array['uuid', 'uuid', 'uuid']::name[]);
 select hasnt_function(
     'complete_event_purchase_application_fee_adjustment_recovery',
     array['uuid', 'uuid', 'uuid', 'text', 'text', 'text']::name[]
@@ -204,6 +209,7 @@ select has_function(
     'complete_payment_job_recovery',
     array['uuid', 'uuid', 'uuid', 'text', 'text', 'text']::name[]
 );
+select has_function('count_group_open_inbox_conversations', array['uuid']::name[]);
 select has_function('deactivate_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function(
     'decline_event_admission_offer',
@@ -289,14 +295,17 @@ select has_function('get_group_external_payments_context', array['uuid', 'uuid']
 select has_function('get_group_external_payments_eligibility', array['uuid', 'uuid', 'text']::name[]);
 select has_function('get_group_full', array['uuid', 'uuid']::name[]);
 select has_function('get_group_full_by_slug', array['uuid', 'text']::name[]);
+select has_function('get_group_inbox_conversation', array['uuid', 'uuid']::name[]);
 select has_function('get_group_past_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
 select has_function('get_group_sponsor', array['uuid', 'uuid']::name[]);
 select has_function('get_group_stats', array['uuid', 'uuid', 'boolean']::name[]);
 select has_function('get_group_summary', array['uuid', 'uuid']::name[]);
 select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
+select has_function('get_inbox_contact_context', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_public_event_full', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_public_user_badge', array['uuid']::name[]);
 select has_function('get_public_user_provider', array['jsonb']::name[]);
+select has_function('get_user_inbox_conversation', array['uuid', 'uuid']::name[]);
 select has_function('get_worker_queue_health', '{}'::name[]);
 select has_function('group_belongs_to_community', array['uuid', 'uuid']::name[]);
 select has_function('group_has_active_subgroups', array['uuid', 'uuid']::name[]);
@@ -324,7 +333,9 @@ select has_function(
     array['uuid', 'uuid', 'uuid']::name[]
 );
 select has_function('i_array_to_string', array['text[]', 'text']::name[]);
-select has_function('insert_audit_log', array['text', 'uuid', 'text', 'uuid', 'uuid', 'uuid', 'uuid', 'jsonb']::name[]);
+select has_function('inbox_conversation_json', array['uuid']::name[]);
+select has_function('inbox_user_rate_limits', array['uuid', 'timestamp with time zone']::name[]);
+select has_function('insert_audit_log', array['text', 'uuid', 'text', 'uuid', 'uuid', 'uuid', 'uuid', 'jsonb', 'timestamptz']::name[]);
 select has_function(
     'insert_event_cohost_audit',
     array['text', 'uuid', 'uuid', 'uuid', 'uuid', 'uuid', 'text', 'text']::name[]
@@ -345,6 +356,8 @@ select has_function('is_event_ticketing_payload_paid_capable', array['jsonb']::n
 select has_function('is_group_external_payments_ready', array['uuid']::name[]);
 select has_function('is_group_external_payments_selected', array['uuid']::name[]);
 select has_function('is_group_member', array['uuid', 'uuid', 'uuid']::name[]);
+select has_function('is_inbox_event_public', array['event', '"group"']::name[]);
+select has_function('is_inbox_user_blocked', array['uuid', 'uuid']::name[]);
 select has_function('is_open_graph_image', array['text']::name[]);
 select has_function(
     'is_registration_window_open',
@@ -389,6 +402,7 @@ select has_function(
     array['uuid', 'jsonb']::name[]
 );
 select has_function('list_group_events', array['uuid', 'jsonb']::name[]);
+select has_function('list_group_inbox_conversations', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_members', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_members_ids', array['uuid']::name[]);
 select has_function('list_group_parent_options', array['uuid', 'uuid', 'uuid']::name[]);
@@ -397,6 +411,7 @@ select has_function('list_group_roles', '{}'::name[]);
 select has_function('list_group_sponsors', array['uuid', 'jsonb', 'boolean']::name[]);
 select has_function('list_group_team_members', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_team_members_ids', array['uuid']::name[]);
+select has_function('list_inbox_recipient_ids', array['uuid']::name[]);
 select has_function('list_public_event_ticket_types', array['uuid']::name[]);
 select has_function('list_payment_currency_codes', '{}'::name[]);
 select has_function('list_redirect_communities', '{}'::name[]);
@@ -413,6 +428,7 @@ select has_function('list_user_community_team_invitations', array['uuid']::name[
 select has_function('list_user_dashboard_groups', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_event_invitations', array['uuid']::name[]);
 select has_function('list_user_events', array['uuid', 'jsonb']::name[]);
+select has_function('list_user_inbox_conversations', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_purchase_documents', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_group_team_invitations', array['uuid']::name[]);
 select has_function('list_user_groups', array['uuid']::name[]);
@@ -433,6 +449,7 @@ select has_function('lock_events_for_cancellation', array['uuid', 'uuid[]']::nam
 select has_function('lock_group_events', array['uuid', 'uuid[]']::name[]);
 select hasnt_function('manual_check_in_event', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
 select has_function('manual_requeue_notifications', array['uuid[]', 'text']::name[]);
+select has_function('mark_inbox_conversation_as_spam', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function(
     'mark_notification_delivery_unknown',
     array['uuid', 'text', 'timestamp with time zone']::name[]
@@ -582,6 +599,7 @@ select has_function('resolve_event_payload', array['jsonb', 'event', 'boolean', 
 select has_function('resolve_event_payment_rail', array['event', 'jsonb', 'boolean', 'boolean']::name[]);
 select hasnt_function('resolve_event_payload', array['jsonb', 'event', 'boolean']::name[]);
 select hasnt_function('resolve_event_payment_rail', array['event', 'jsonb', 'boolean']::name[]);
+select has_function('resolve_inbox_contact_event', array['uuid', 'uuid']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
 select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);
 select has_function('revoke_group_user_badge', array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]);
@@ -591,10 +609,12 @@ select has_function('search_event_invitation_requests', array['uuid', 'uuid', 'j
 select has_function('search_event_waitlist', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('search_events', array['jsonb']::name[]);
 select has_function('search_groups', array['jsonb']::name[]);
+select has_function('search_inbox_conversations', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('search_user', array['text']::name[]);
 select has_function('set_meeting_auto_end_check_outcome', array['timestamp with time zone', 'uuid', 'text']::name[]);
 select has_function('set_meeting_error', array['text', 'uuid', 'uuid', 'uuid', 'timestamp with time zone', 'text']::name[]);
 select has_function('sign_up_user', array['jsonb', 'boolean', 'uuid', 'jsonb']::name[]);
+select has_function('start_inbox_conversation', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('stats_label_count_series', array['jsonb']::name[]);
 select has_function('stats_label_count_series_by_name', array['jsonb']::name[]);
 select has_function('stats_running_total_series', array['jsonb']::name[]);
@@ -612,6 +632,7 @@ select has_function(
     array['text[]', 'integer', 'integer']::name[]
 );
 select has_function('track_custom_notification', array['uuid', 'uuid', 'uuid', 'integer', 'text', 'text']::name[]);
+select has_function('unmark_inbox_conversation_as_spam', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('unpublish_event', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('unpublish_event_series_events', array['uuid', 'uuid', 'uuid[]']::name[]);
 select has_function('update_badge', array['uuid', 'uuid', 'uuid', 'uuid', 'jsonb']::name[]);
@@ -653,6 +674,7 @@ select has_function('upsert_payment_provider_tax_location', array['text', 'text'
 select has_function('upsert_pending_registration_answers', array['uuid', 'uuid', 'jsonb', 'jsonb']::name[]);
 select has_function('user_has_community_permission', array['uuid', 'uuid', 'text']::name[]);
 select has_function('user_has_group_permission', array['uuid', 'uuid', 'uuid', 'text']::name[]);
+select has_function('user_is_group_team_member', array['uuid', 'uuid']::name[]);
 select has_function('validate_add_event_dates', array['jsonb']::name[]);
 select has_function('validate_cfs_submission_label_ids', array['uuid', 'uuid[]']::name[]);
 select has_function('validate_event_capacity', array['jsonb', 'jsonb', 'uuid', 'integer']::name[]);

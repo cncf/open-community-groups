@@ -1,9 +1,11 @@
+-- Tests inserting audit log entries.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -67,6 +69,32 @@ select is(
         "resource_type": "community"
     }', :'userID', :'communityID', :'communityID')::jsonb,
     'Should persist the actor snapshot and normalized details'
+);
+
+select is(
+    (select created_at from audit_log where action = 'community_updated'),
+    now(),
+    'Should default the creation time to the transaction time'
+);
+
+-- Should store an explicit creation time
+select lives_ok(
+    format($$select insert_audit_log(
+        'group_updated',
+        %L::uuid,
+        'group',
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        p_created_at => '2030-01-02 03:04:05+00'::timestamptz
+    )$$, :'userID', :'groupID', :'communityID', :'groupID'),
+    'Should insert an audit row with an explicit creation time'
+);
+
+select is(
+    (select created_at from audit_log where action = 'group_updated'),
+    '2030-01-02 03:04:05+00'::timestamptz,
+    'Should store an explicit creation time'
 );
 
 -- Should store optional scope ids and explicit details

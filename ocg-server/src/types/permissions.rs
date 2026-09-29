@@ -43,6 +43,8 @@ pub(crate) enum GroupPermission {
     CheckInsWrite,
     /// Permission to manage events in a group.
     EventsWrite,
+    /// Permission to read and answer the group inbox.
+    InboxWrite,
     /// Permission to manage group members.
     MembersWrite,
     /// Permission to read the group dashboard.
@@ -62,6 +64,7 @@ impl GroupPermission {
             Self::BadgesWrite => "group.badges.write",
             Self::CheckInsWrite => "group.check-ins.write",
             Self::EventsWrite => "group.events.write",
+            Self::InboxWrite => "group.inbox.write",
             Self::MembersWrite => "group.members.write",
             Self::Read => "group.read",
             Self::SettingsWrite => "group.settings.write",

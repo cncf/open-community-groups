@@ -32,6 +32,24 @@
 {% endmacro event_badge -%}
 {# End event badge -#}
 
+{# Inbox status badge -#}
+{# Used by inbox lists and threads; the visible label carries the status. -#}
+{% macro inbox_status_badge(status, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+  {% let label = status.label() -%}
+
+  {% if label.as_bytes() == "Open".as_bytes() -%}
+    <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800 {{ extra_styles_ }}">{{ label }}</span>
+  {% else if label.as_bytes() == "Answered".as_bytes() -%}
+    <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800 {{ extra_styles_ }}">{{ label }}</span>
+  {% else if label.as_bytes() == "Spam".as_bytes() -%}
+    <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800 {{ extra_styles_ }}">{{ label }}</span>
+  {% else -%}
+    <span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700 {{ extra_styles_ }}">{{ label }}</span>
+  {% endif -%}
+{% endmacro inbox_status_badge -%}
+{# End inbox status badge -#}
+
 {# Invitation badge -#}
 {# Used by dashboard attendee and team invitation states. -#}
 {% macro invitation_badge(label, tone = "pending", with_border = false, extra_styles = None) -%}

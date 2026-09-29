@@ -1,8 +1,8 @@
 //! This module defines the templates for the event page.
 
 use askama::Template;
+use uuid::Uuid;
 
-use crate::types::event::SessionProposal;
 use crate::{
     templates::{
         PageId,
@@ -11,7 +11,8 @@ use crate::{
         helpers::{self, user_initials},
     },
     types::{
-        event::{EventCfsLabel, EventFull, EventKind, EventSummary},
+        event::{EventCfsLabel, EventFull, EventKind, EventSummary, SessionProposal},
+        inbox::InboxContactContext,
         site::SiteSettings,
     },
 };
@@ -94,6 +95,19 @@ pub(crate) struct CfsModal {
 
     /// Notice message displayed after submissions.
     pub notice: Option<String>,
+}
+
+/// Contact organizers modal template.
+#[derive(Debug, Clone, Template)]
+#[template(path = "event/contact_modal.html")]
+pub(crate) struct ContactModal {
+    /// Authenticated user information.
+    pub user: UserMenuState,
+
+    /// Contact context of the event, absent after a message was sent.
+    pub context: Option<InboxContactContext>,
+    /// Conversation started by the sent message.
+    pub sent_inbox_conversation_id: Option<Uuid>,
 }
 
 #[cfg(test)]

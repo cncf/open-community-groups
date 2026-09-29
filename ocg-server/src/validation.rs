@@ -79,6 +79,10 @@ pub const MAX_LEN_EVENT_LABEL_NAME: usize = 80;
 /// Maximum length for group pretty slugs.
 pub const MAX_LEN_GROUP_PRETTY_SLUG: usize = 50;
 
+/// Maximum length, in characters, for inbox message bodies. Matches the
+/// character limit enforced by the database on stored messages.
+pub const MAX_LEN_INBOX_MESSAGE: usize = 5000;
+
 /// Maximum length for link labels in custom link maps.
 pub const MAX_LEN_LINK_LABEL: usize = 80;
 

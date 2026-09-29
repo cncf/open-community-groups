@@ -181,6 +181,11 @@ Every side effect chooses its durability at the call site.
   context, builds its payload, enqueues, and logs, so the caller passes
   identifiers only.
 
+A transaction exists only to commit two or more database calls together,
+such as a write and its required notification. A single database call with no
+required work is already atomic, because the database function runs as one
+statement, so it is called directly on `DynDB` without `DBExt::transaction`.
+
 Enqueue helpers own the notification content; callers pass identifiers and
 configuration. Content assertions live with the helper, not with the caller.
 Pure payload builders live in `services::notifications::payloads`. No handler
@@ -258,9 +263,8 @@ A handler does extraction, delegation, and response shaping, in this order:
 3. **Reads**: page, details, list, and lookup handlers read through `DynDB`
    directly.
 4. **Action**: one call to a manager or a `services/` function. A handler
-   never calls a provider or builds `db/` operation types. A handler opens a
-   transaction directly only for a single write with no side effects; every
-   multi-step workflow is behind a manager.
+   never calls a provider or builds `db/` operation types. A handler never
+   opens a transaction; every multi-step workflow is behind a manager.
 5. **Side effects**: best-effort work after the action, following
    [Side-effect durability](#side-effect-durability).
 6. **Response**: status, headers (`HX-Trigger`, `HX-Redirect`,

@@ -63,7 +63,12 @@ returns json as $$
                 'group_team_member_added',
                 'group_team_member_removed',
                 'group_team_member_role_updated',
-                'group_updated'
+                'group_updated',
+                'inbox_conversation_closed',
+                'inbox_conversation_marked_as_spam',
+                'inbox_conversation_reopened',
+                'inbox_conversation_unmarked_as_spam',
+                'inbox_reply_sent'
             ]::text[])
             and (f.action_value is null or al.action = f.action_value)
             and (
@@ -97,59 +102,7 @@ returns json as $$
                 fl.resource_type,
 
                 fl.actor_username,
-                case fl.resource_type
-                    when 'cfs_submission' then (
-                        select sp.title
-                        from cfs_submission cs
-                        join session_proposal sp using (session_proposal_id)
-                        where cs.cfs_submission_id = fl.resource_id
-                    )
-                    when 'community' then (
-                        select c.display_name
-                        from community c
-                        where c.community_id = fl.resource_id
-                    )
-                    when 'event' then (
-                        select e.name
-                        from event e
-                        where e.event_id = fl.resource_id
-                    )
-                    when 'event_category' then (
-                        select ec.name
-                        from event_category ec
-                        where ec.event_category_id = fl.resource_id
-                    )
-                    when 'group' then (
-                        select g.name
-                        from "group" g
-                        where g.group_id = fl.resource_id
-                    )
-                    when 'group_category' then (
-                        select gc.name
-                        from group_category gc
-                        where gc.group_category_id = fl.resource_id
-                    )
-                    when 'group_sponsor' then (
-                        select gs.name
-                        from group_sponsor gs
-                        where gs.group_sponsor_id = fl.resource_id
-                    )
-                    when 'region' then (
-                        select r.name
-                        from region r
-                        where r.region_id = fl.resource_id
-                    )
-                    when 'session_proposal' then (
-                        select sp.title
-                        from session_proposal sp
-                        where sp.session_proposal_id = fl.resource_id
-                    )
-                    when 'user' then (
-                        select coalesce(u.name, u.username)
-                        from "user" u
-                        where u.user_id = fl.resource_id
-                    )
-                end as resource_name
+                audit_log_resource_name(fl.resource_type, fl.resource_id) as resource_name
             from filtered_logs fl
             cross join filters f
             order by

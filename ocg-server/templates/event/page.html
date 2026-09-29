@@ -422,6 +422,7 @@
          aria-labelledby="cfs-modal-title"
          class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
       <div id="overlay-cfs-modal"
+           data-modal-toggle="cfs-modal"
            class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
       <div class="modal-panel p-4 max-w-2xl">
         <div class="modal-card rounded-lg modal-overflow-visible">
@@ -429,12 +430,14 @@
             <h3 id="cfs-modal-title" class="text-xl font-semibold text-stone-900">Submit a proposal</h3>
             <button id="close-cfs-modal"
                     type="button"
+                    data-modal-toggle="cfs-modal"
                     class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
               <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
               <span class="sr-only">Close modal</span>
             </button>
           </div>
           <div id="cfs-modal-root"
+               data-modal-open-on-swap="cfs-modal"
                class="modal-body p-4 md:p-6 space-y-6 modal-overflow-visible"></div>
         </div>
       </div>
@@ -685,11 +688,11 @@
 {# End event speakers section -#}
 
 {# Organizers section -#}
-{% if !event.organizers.is_empty() -%}
-  <div>
-    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-      Organizers
-    </div>
+<div>
+  <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+    Organizers
+  </div>
+  {% if !event.organizers.is_empty() -%}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {% for organizer in event.organizers -%}
         {% if organizer.name.is_some() -%}
@@ -697,8 +700,51 @@
         {% endif -%}
       {% endfor -%}
     </div>
+  {% endif -%}
+
+  {# Contact organizers (static markup; the modal content is loaded per visitor) -#}
+  <div class="{% if !event.organizers.is_empty() %}pt-6{% endif %}">
+    <button id="open-contact-modal"
+            type="button"
+            hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/contact-modal"
+            hx-target="#contact-modal-root"
+            hx-swap="innerHTML"
+            hx-disabled-elt="#open-contact-modal"
+            data-htmx-response
+            data-error-message="Something went wrong loading the contact form. Please try again later."
+            class="btn-primary-outline h-10 md:h-[30px] px-4 inline-flex items-center justify-center gap-2">
+      <span class="svg-icon size-3 icon-email bg-current" aria-hidden="true"></span>
+      <span>Contact organizers</span>
+    </button>
   </div>
-{% endif -%}
+  <div id="contact-modal"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="contact-modal-title"
+       class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+    <div id="overlay-contact-modal"
+         data-modal-toggle="contact-modal"
+         class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+    <div class="modal-panel p-4 max-w-2xl">
+      <div class="modal-card rounded-lg">
+        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+          <h3 id="contact-modal-title" class="text-xl font-semibold text-stone-900">Contact organizers</h3>
+          <button id="close-contact-modal"
+                  type="button"
+                  data-modal-toggle="contact-modal"
+                  class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+            <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+            <span class="sr-only">Close modal</span>
+          </button>
+        </div>
+        <div id="contact-modal-root"
+             data-modal-open-on-swap="contact-modal"
+             class="modal-body p-4 md:p-6 space-y-6"></div>
+      </div>
+    </div>
+  </div>
+  {# End contact organizers -#}
+</div>
 {# End organizers section -#}
 
 {# Sponsors section -#}

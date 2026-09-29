@@ -32,6 +32,7 @@ use crate::{
         enrollment::{DynEnrollmentManager, MockEnrollmentManager},
         events::{DynEventsManager, MockEventsManager},
         images::{DynImageStorage, MockImageStorage},
+        inbox::{DynInboxManager, MockInboxManager},
         notifications::{DynNotificationsManager, MockNotificationsManager},
         payments::{DynPaymentsManager, MockPaymentsManager},
     },
@@ -88,7 +89,8 @@ use crate::{
 pub(crate) use crate::types::tests::{
     sample_community_summary, sample_event_cohost_group, sample_event_form, sample_event_full,
     sample_event_summary, sample_group_category, sample_group_payment_recipient,
-    sample_group_region, sample_group_summary, sample_site_settings,
+    sample_group_region, sample_group_summary, sample_inbox_conversation,
+    sample_inbox_conversation_summary, sample_site_settings,
 };
 
 // Helpers.
@@ -271,13 +273,6 @@ pub(crate) fn expect_group_permission(
                 && permission == expected_permission
         })
         .returning(|_, _, _, _| Ok(true));
-}
-
-/// Expect a transaction to commit without rolling back.
-pub(crate) fn expect_successful_transaction(db: &mut MockDB, mut tx: MockDB) {
-    tx.expect_commit().times(1).returning(|| Ok(()));
-    tx.expect_rollback().never();
-    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
 }
 
 // Sample data helpers.
@@ -1289,6 +1284,7 @@ pub(crate) fn test_state_with_server_cfg(
         enrollment_manager: Arc::new(MockEnrollmentManager::new()),
         events_manager: Arc::new(MockEventsManager::new()),
         image_storage,
+        inbox_manager: Arc::new(MockInboxManager::new()),
         meetings_cfg: None,
         notifications_manager,
         payments_cfg: None,
@@ -1305,6 +1301,7 @@ pub(crate) struct TestRouterBuilder {
     enrollment_manager: Option<MockEnrollmentManager>,
     events_manager: Option<MockEventsManager>,
     image_storage: Option<MockImageStorage>,
+    inbox_manager: Option<MockInboxManager>,
     meetings_cfg: Option<crate::config::MeetingsConfig>,
     nm: MockNotificationsManager,
     payments_cfg: Option<PaymentsConfig>,
@@ -1321,6 +1318,7 @@ impl TestRouterBuilder {
             enrollment_manager: None,
             events_manager: None,
             image_storage: None,
+            inbox_manager: None,
             meetings_cfg: None,
             nm,
             payments_cfg: None,
@@ -1353,6 +1351,7 @@ impl TestRouterBuilder {
         let enrollment_manager =
             Arc::new(self.enrollment_manager.unwrap_or_default()) as DynEnrollmentManager;
         let events_manager = Arc::new(self.events_manager.unwrap_or_default()) as DynEventsManager;
+        let inbox_manager = Arc::new(self.inbox_manager.unwrap_or_default()) as DynInboxManager;
 
         router::setup(
             activity_tracker,
@@ -1360,6 +1359,7 @@ impl TestRouterBuilder {
             enrollment_manager,
             events_manager,
             is,
+            inbox_manager,
             self.meetings_cfg,
             self.payments_cfg,
             payments_manager,
@@ -1397,6 +1397,12 @@ impl TestRouterBuilder {
     /// Sets a custom image storage.
     pub(crate) fn with_image_storage(mut self, is: MockImageStorage) -> Self {
         self.image_storage = Some(is);
+        self
+    }
+
+    /// Sets a custom inbox manager.
+    pub(crate) fn with_inbox_manager(mut self, inbox_manager: MockInboxManager) -> Self {
+        self.inbox_manager = Some(inbox_manager);
         self
     }
 

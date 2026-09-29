@@ -218,7 +218,7 @@ db-tests: db-recreate-tests db-install-tests-fixtures
 db-tests-file file: db-migrate-tests db-install-tests-fixtures
     @pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -f {{ file }}
 
-# Check that function tests seed distinct unique key values (required for parallel runs).
+# Check that parallel pgTAP tests seed distinct unique key values.
 db-tests-seed-keys: db-migrate-tests db-install-tests-fixtures
     @PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" sh "{{ source_dir }}/database/scripts/check-seed-keys.sh" {{ pg_conn }} {{ db_name_tests }}
 

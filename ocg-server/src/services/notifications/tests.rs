@@ -1862,6 +1862,80 @@ fn test_delivery_worker_prepare_content_group_welcome() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_inbox_message_received() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "organizer@example.test".to_string(),
+        kind: NotificationKind::InboxMessageReceived,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_inbox_message_received_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Inbox Group] New message from Uma User");
+    assert!(body.contains("Is there parking &#60;nearby&#62;?"));
+    assert!(body.contains("about <strong>Inbox Event</strong>"));
+    assert!(
+        body.contains("This message was sent to Inbox Group in the Inbox Community community.")
+    );
+    assert!(body.contains("https://example.test/dashboard/group?tab=inbox"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_inbox_message_received_without_event() {
+    // Setup notification without the removed event
+    let mut template_data = sample_inbox_message_received_template_data();
+    template_data
+        .as_object_mut()
+        .expect("inbox message payload is an object")
+        .remove("event_name");
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "organizer@example.test".to_string(),
+        kind: NotificationKind::InboxMessageReceived,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Inbox Group] New message from Uma User");
+    assert!(!body.contains("Inbox Event"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_inbox_reply_received() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::InboxReplyReceived,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_inbox_reply_received_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Inbox Group] New reply to your message");
+    assert!(body.contains("Yes, there is a car park."));
+    assert!(body.contains("about <strong>Inbox Event</strong>"));
+    assert!(body.contains(
+        "https://example.test/dashboard/user?tab=inbox&#38;conversation_id=44444444-4444-4444-4444-444444444444"
+    ));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_missing_data() {
     // Setup notification
     let notification = Notification {
@@ -2718,4 +2792,33 @@ fn sample_group_custom_legacy_template_data() -> serde_json::Value {
     object.remove("subject");
     object.insert("title".to_string(), json!("Custom group title"));
     payload
+}
+
+/// Sample template payload for inbox message notifications.
+fn sample_inbox_message_received_template_data() -> serde_json::Value {
+    json!({
+        "body": "Is there parking <nearby>?",
+        "community_display_name": "Inbox Community",
+        "event_name": "Inbox Event",
+        "group_name": "Inbox Group",
+        "link": "/dashboard/group?tab=inbox",
+        "sender_name": "Uma User",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
+}
+
+/// Sample template payload for inbox reply notifications.
+fn sample_inbox_reply_received_template_data() -> serde_json::Value {
+    json!({
+        "body": "Yes, there is a car park.",
+        "community_display_name": "Inbox Community",
+        "event_name": "Inbox Event",
+        "group_name": "Inbox Group",
+        "link": "/dashboard/user?tab=inbox&conversation_id=44444444-4444-4444-4444-444444444444",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
 }

@@ -10,13 +10,16 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    types::dashboard::{
-        DASHBOARD_PAGINATION_LIMIT,
-        common::AuditLogSort,
-        user::{
-            events::UserEventsOutput, groups::UserGroupsOutput, purchases::PurchaseDocumentsOutput,
-            session_proposals::SessionProposalsOutput,
+    types::{
+        dashboard::{
+            DASHBOARD_PAGINATION_LIMIT,
+            common::AuditLogSort,
+            user::{
+                events::UserEventsOutput, groups::UserGroupsOutput,
+                purchases::PurchaseDocumentsOutput, session_proposals::SessionProposalsOutput,
+            },
         },
+        inbox::InboxConversationsOutput,
     },
 };
 
@@ -141,6 +144,119 @@ async fn test_page_groups_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_page_inbox_tab_opens_owned_conversation() {
+    // Setup identifiers and a conversation of the user
+    let inbox_conversation_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let conversation = sample_inbox_conversation(inbox_conversation_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_user_inbox_conversation()
+        .times(1)
+        .withf(move |uid, cid| *uid == user_id && *cid == inbox_conversation_id)
+        .returning(move |_, _| Ok(Some(conversation.clone())));
+    db.expect_list_user_inbox_conversations().never();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Request the conversation through the full dashboard route
+    let (parts, bytes) = send_home_request(
+        db,
+        session_id,
+        &format!("/dashboard/user?tab=inbox&conversation_id={inbox_conversation_id}"),
+    )
+    .await;
+
+    // Check the thread renders and stays desktop only
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("id=\"inbox-conversation\""));
+    assert!(body.contains("hx-get=\"/dashboard/user/inbox\""));
+    assert!(body.contains("This dashboard is not optimized yet for mobile devices"));
+}
+
+#[tokio::test]
+async fn test_page_inbox_tab_success() {
+    // Setup identifiers and data structures
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let summary = sample_inbox_conversation_summary(Uuid::new_v4());
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_list_user_inbox_conversations()
+        .times(1)
+        .withf(move |uid, filters| {
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+        })
+        .returning(move |_, _| {
+            Ok(InboxConversationsOutput {
+                conversations: vec![summary.clone()],
+                total: 1,
+            })
+        });
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Request the inbox through the full dashboard route
+    let (parts, bytes) = send_home_request(db, session_id, "/dashboard/user?tab=inbox").await;
+
+    // Check the list, desktop menu item and mobile notice
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert_eq!(
+        body.matches("href=\"/dashboard/user?tab=inbox\"").count(),
+        1
+    );
+    assert!(body.contains("When do doors open?"));
+    assert!(body.contains("<main id=\"dashboard-main-content\""));
+    assert!(body.contains("This dashboard is not optimized yet for mobile devices"));
+}
+
+#[tokio::test]
+async fn test_page_inbox_tab_warns_about_conversation_of_another_user() {
+    // Setup identifiers and a conversation the user does not own
+    let inbox_conversation_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_user_inbox_conversation()
+        .times(1)
+        .returning(|_, _| Ok(None));
+    db.expect_list_user_inbox_conversations()
+        .times(1)
+        .returning(|_, _| Ok(InboxConversationsOutput::default()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Request the conversation through the full dashboard route
+    let (parts, bytes) = send_home_request(
+        db,
+        session_id,
+        &format!("/dashboard/user?tab=inbox&conversation_id={inbox_conversation_id}"),
+    )
+    .await;
+
+    // Check the list renders with the warning
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("This conversation isn&#39;t in your Inbox."));
+    assert!(body.contains("No conversations yet"));
 }
 
 #[tokio::test]
@@ -372,4 +488,28 @@ async fn test_page_submissions_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+// Helpers.
+
+/// Sends a user dashboard home request through the router.
+async fn send_home_request(
+    db: MockDB,
+    session_id: session::Id,
+    uri: &str,
+) -> (axum::http::response::Parts, axum::body::Bytes) {
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(uri)
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    (parts, bytes)
 }

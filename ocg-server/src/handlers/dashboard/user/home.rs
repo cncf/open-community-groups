@@ -14,7 +14,9 @@ use tracing::instrument;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CurrentUser},
+    handlers::{
+        dashboard::inbox::requested_conversation_id, error::HandlerError, extractors::CurrentUser,
+    },
     templates::{
         PageId,
         auth::{self, UserMenuState},
@@ -24,11 +26,15 @@ use crate::{
 };
 
 use super::{
-    badges, check_in, events, groups, invitations, logs, purchases, session_proposals, submissions,
+    badges, check_in, events, groups, inbox, invitations, logs, purchases, session_proposals,
+    submissions,
 };
 
 #[cfg(test)]
 mod tests;
+
+/// Warning shown when a requested conversation is not one of the user's.
+const INBOX_CONVERSATION_NOT_FOUND_WARNING: &str = "This conversation isn't in your Inbox.";
 
 /// Handler that returns the user dashboard home page.
 ///
@@ -71,6 +77,25 @@ pub(crate) async fn page(
         Tab::Groups => {
             let (_, template) = groups::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::Groups(template)
+        }
+        Tab::Inbox => {
+            // Load the requested conversation when the user owns it
+            let inbox_conversation_id = requested_conversation_id(&query);
+            let conversation = match inbox_conversation_id {
+                Some(id) => inbox::prepare_conversation_page(&db, user.user_id, id, false).await?,
+                None => None,
+            };
+
+            // Show the conversation, or the list warning about an unavailable one
+            if let Some(template) = conversation {
+                Content::InboxConversation(Box::new(template))
+            } else {
+                let (_, mut template) =
+                    inbox::prepare_list_page(&db, user.user_id, raw_query).await?;
+                template.warning =
+                    inbox_conversation_id.map(|_| INBOX_CONVERSATION_NOT_FOUND_WARNING.to_string());
+                Content::Inbox(template)
+            }
         }
         Tab::Invitations => {
             Content::Invitations(invitations::prepare_list_page(&db, user.user_id).await?)

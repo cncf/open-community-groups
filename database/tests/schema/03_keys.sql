@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(220);
+select plan(229);
 
 -- ============================================================================
 -- TESTS
@@ -68,6 +68,9 @@ select has_pk('group_sponsor');
 select has_pk('group_team');
 select hasnt_pk('group_views');
 select has_pk('images');
+select has_pk('inbox_conversation');
+select has_pk('inbox_conversation_status');
+select has_pk('inbox_message');
 select has_pk('legacy_event_host');
 select has_pk('legacy_event_speaker');
 select has_pk('meeting');
@@ -204,6 +207,17 @@ select col_is_fk('group_team', 'role', 'group_role');
 select col_is_fk('group_team', 'user_id', 'user');
 select col_is_fk('group_views', 'group_id', 'group');
 select col_is_fk('images', 'created_by', 'user');
+select fk_ok(
+    'inbox_conversation',
+    array['event_id', 'group_id']::name[],
+    'event',
+    array['event_id', 'group_id']::name[]
+);
+select col_is_fk('inbox_conversation', 'group_id', 'group');
+select col_is_fk('inbox_conversation', 'inbox_conversation_status_id', 'inbox_conversation_status');
+select col_is_fk('inbox_conversation', 'user_id', 'user');
+select col_is_fk('inbox_message', 'author_user_id', 'user');
+select col_is_fk('inbox_message', 'inbox_conversation_id', 'inbox_conversation');
 select col_is_fk('legacy_event_host', 'event_id', 'event');
 select col_is_fk('legacy_event_speaker', 'event_id', 'event');
 select col_is_fk('meeting', 'auto_end_check_outcome', 'meeting_auto_end_check_outcome');

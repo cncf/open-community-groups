@@ -5,7 +5,19 @@ const RESTORABLE_MODAL_SELECTOR = '[data-restorable-modal], [role="dialog"][aria
 const MODAL_FOCUS_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), ' +
   'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const modalCloseCleanups = new WeakMap();
 const modalFocusOrigins = new WeakMap();
+
+/**
+ * Runs and forgets the close cleanup registered for a modal.
+ * @param {Element} modal Modal element.
+ * @returns {void}
+ */
+const runModalCloseCleanup = (modal) => {
+  const cleanup = modalCloseCleanups.get(modal);
+  modalCloseCleanups.delete(modal);
+  cleanup?.();
+};
 
 /**
  * Returns available keyboard focus targets inside a modal.
@@ -190,9 +202,23 @@ export const toggleModalVisibility = (modalTarget, trigger = null) => {
     lockBodyScroll();
     focusModal(modal, trigger);
   } else {
+    runModalCloseCleanup(modal);
     unlockBodyScroll();
     restoreModalFocus(modal);
   }
+};
+
+/**
+ * Registers a cleanup that runs once when the modal next closes through
+ * toggleModalVisibility or resetRestoredModalState. A cleanup already
+ * registered for the modal runs before it is replaced.
+ * @param {Element} modal Modal element.
+ * @param {() => void} cleanup Cleanup callback.
+ * @returns {void}
+ */
+export const setModalCloseCleanup = (modal, cleanup) => {
+  runModalCloseCleanup(modal);
+  modalCloseCleanups.set(modal, cleanup);
 };
 
 /**
@@ -286,6 +312,7 @@ export const resetRestoredModalState = (root = document) => {
   });
 
   new Set(restorableModals).forEach((modal) => {
+    runModalCloseCleanup(modal);
     setElementHidden(modal, true);
     modal.setAttribute("aria-hidden", "true");
   });

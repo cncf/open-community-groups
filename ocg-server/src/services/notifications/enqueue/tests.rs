@@ -9,15 +9,17 @@ use crate::{
     db::mock::MockDB,
     templates::notifications::{
         EventCohostInvitation, EventCohostRemoved, EventPaidConfigured, EventPublished,
-        EventRescheduled, EventSeriesCanceled, EventSeriesPublished, SpeakerSeriesWelcome,
-        SpeakerWelcome,
+        EventRescheduled, EventSeriesCanceled, EventSeriesPublished, InboxMessageReceived,
+        InboxReplyReceived, SpeakerSeriesWelcome, SpeakerWelcome,
     },
     types::{
         event::{EventFull, EventSummary, Speaker},
+        inbox::InboxMessageKind,
         notifications::{NewNotification, NotificationKind},
         tests::{
             sample_event_cohost_group, sample_event_full, sample_event_summary,
-            sample_group_summary, sample_site_settings, sample_template_user_with_id,
+            sample_group_summary, sample_inbox_conversation, sample_site_settings,
+            sample_template_user, sample_template_user_with_id,
         },
     },
 };
@@ -1231,6 +1233,217 @@ async fn test_enqueue_event_rescheduled_notification_sends_to_attendees_and_spea
 }
 
 #[tokio::test]
+async fn test_enqueue_inbox_message_received_notification_excludes_author() {
+    // Setup the posted message and its conversation
+    let recipient_id = Uuid::new_v4();
+    let posted = sample_posted_inbox_message();
+    let mut conversation = sample_inbox_conversation(posted.inbox_conversation_id);
+    conversation.messages[0].inbox_message_id = posted.inbox_message_id;
+    let author_id = conversation.messages[0].author.as_ref().unwrap().user_id;
+
+    // Setup database expectations
+    let mut db = MockDB::new();
+    db.expect_get_group_inbox_conversation()
+        .times(1)
+        .withf(move |gid, cid| *gid == posted.group_id && *cid == posted.inbox_conversation_id)
+        .returning(move |_, _| Ok(Some(conversation.clone())));
+    db.expect_list_inbox_recipient_ids()
+        .times(1)
+        .withf(move |gid| *gid == posted.group_id)
+        .returning(move |_| Ok(vec![author_id, recipient_id]));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::InboxMessageReceived)
+                && notification.recipients == vec![recipient_id]
+                && notification.attachments.is_empty()
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<InboxMessageReceived>(value.clone()).is_ok_and(|template| {
+                        template.body == "When do doors open?"
+                            && template.community_display_name == "Test Community"
+                            && template.group_name == "Test Group"
+                            && template.link == "/dashboard/group?tab=inbox"
+                            && template.sender_name == "Inbox User"
+                            && template.event_name.as_deref() == Some("Test Event")
+                    })
+                })
+        })
+        .returning(|_| Ok(()));
+
+    // Run the workflow
+    let result = enqueue_inbox_message_received_notification(&db, &posted).await;
+
+    // Check the notification was enqueued
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_enqueue_inbox_message_received_notification_keeps_message_without_recipients() {
+    // Setup the posted message and its conversation
+    let posted = sample_posted_inbox_message();
+    let mut conversation = sample_inbox_conversation(posted.inbox_conversation_id);
+    conversation.messages[0].inbox_message_id = posted.inbox_message_id;
+
+    // Setup database expectations without recipients to email
+    let mut db = MockDB::new();
+    db.expect_get_group_inbox_conversation()
+        .times(1)
+        .returning(move |_, _| Ok(Some(conversation.clone())));
+    db.expect_list_inbox_recipient_ids()
+        .times(1)
+        .returning(|_| Ok(vec![]));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    let result = enqueue_inbox_message_received_notification(&db, &posted).await;
+
+    // Check the message is kept without an email
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_enqueue_inbox_message_received_notification_propagates_enqueue_failure() {
+    // Setup the posted message and its conversation
+    let posted = sample_posted_inbox_message();
+    let mut conversation = sample_inbox_conversation(posted.inbox_conversation_id);
+    conversation.messages[0].inbox_message_id = posted.inbox_message_id;
+
+    // Setup database expectations with a failing enqueue
+    let mut db = MockDB::new();
+    db.expect_get_group_inbox_conversation()
+        .times(1)
+        .returning(move |_, _| Ok(Some(conversation.clone())));
+    db.expect_list_inbox_recipient_ids()
+        .times(1)
+        .returning(|_| Ok(vec![Uuid::new_v4()]));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_enqueue_notification()
+        .times(1)
+        .returning(|_| Err(anyhow!("enqueue failed")));
+
+    // Run the workflow
+    let result = enqueue_inbox_message_received_notification(&db, &posted).await;
+
+    // Check the failure is propagated
+    assert_eq!(result.unwrap_err().to_string(), "enqueue failed");
+}
+
+#[tokio::test]
+async fn test_enqueue_inbox_message_received_notification_rejects_missing_conversation() {
+    // Setup the posted message
+    let posted = sample_posted_inbox_message();
+
+    // Setup database expectations without the conversation
+    let mut db = MockDB::new();
+    db.expect_get_group_inbox_conversation()
+        .times(1)
+        .returning(|_, _| Ok(None));
+    db.expect_list_inbox_recipient_ids()
+        .times(1)
+        .returning(|_| Ok(vec![Uuid::new_v4()]));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    let result = enqueue_inbox_message_received_notification(&db, &posted).await;
+
+    // Check the missing conversation fails the workflow
+    assert_eq!(
+        result.unwrap_err().to_string(),
+        "inbox conversation not found"
+    );
+}
+
+#[tokio::test]
+async fn test_enqueue_inbox_reply_received_notification_notifies_conversation_user() {
+    // Setup the posted reply and its conversation
+    let posted = sample_posted_inbox_message();
+    let mut conversation = sample_inbox_conversation(posted.inbox_conversation_id);
+    let user_id = conversation.user.as_ref().unwrap().user_id;
+    conversation.messages.push(InboxMessage {
+        body: "Doors open at 6pm.".to_string(),
+        created_at: conversation.created_at,
+        inbox_message_id: posted.inbox_message_id,
+        kind: InboxMessageKind::GroupReply,
+
+        author: Some(sample_template_user()),
+    });
+
+    // Setup database expectations
+    let mut db = MockDB::new();
+    db.expect_get_group_inbox_conversation()
+        .times(1)
+        .withf(move |gid, cid| *gid == posted.group_id && *cid == posted.inbox_conversation_id)
+        .returning(move |_, _| Ok(Some(conversation.clone())));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::InboxReplyReceived)
+                && notification.recipients == vec![user_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<InboxReplyReceived>(value.clone()).is_ok_and(|template| {
+                        template.body == "Doors open at 6pm."
+                            && template.group_name == "Test Group"
+                            && template.link
+                                == format!(
+                                    "/dashboard/user?tab=inbox&conversation_id={}",
+                                    posted.inbox_conversation_id
+                                )
+                            && template.event_name.as_deref() == Some("Test Event")
+                    })
+                })
+        })
+        .returning(|_| Ok(()));
+
+    // Run the workflow
+    let result = enqueue_inbox_reply_received_notification(&db, &posted).await;
+
+    // Check the notification was enqueued
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_enqueue_inbox_reply_received_notification_rejects_deleted_user() {
+    // Setup the posted reply to a conversation whose user was deleted
+    let posted = sample_posted_inbox_message();
+    let mut conversation = sample_inbox_conversation(posted.inbox_conversation_id);
+    conversation.messages[0].inbox_message_id = posted.inbox_message_id;
+    conversation.user = None;
+
+    // Setup database expectations
+    let mut db = MockDB::new();
+    db.expect_get_group_inbox_conversation()
+        .times(1)
+        .returning(move |_, _| Ok(Some(conversation.clone())));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    let result = enqueue_inbox_reply_received_notification(&db, &posted).await;
+
+    // Check the missing recipient fails the workflow
+    assert_eq!(
+        result.unwrap_err().to_string(),
+        "inbox conversation user not found"
+    );
+}
+
+#[tokio::test]
 async fn test_enqueue_tracked_event_custom_notification_builds_content_and_tracking() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
@@ -1509,6 +1722,15 @@ fn sample_future_event_summary(event_id: Uuid, group_id: Uuid) -> EventSummary {
         ends_at: Some(starts_at + Duration::hours(1)),
         starts_at: Some(starts_at),
         ..sample_event_summary(event_id, group_id)
+    }
+}
+
+/// Builds the identifiers of a posted inbox message.
+fn sample_posted_inbox_message() -> PostedInboxMessage {
+    PostedInboxMessage {
+        group_id: Uuid::new_v4(),
+        inbox_conversation_id: Uuid::new_v4(),
+        inbox_message_id: Uuid::new_v4(),
     }
 }
 

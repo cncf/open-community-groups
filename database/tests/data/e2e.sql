@@ -18,5 +18,6 @@ set local timezone to 'UTC';
 \ir e2e/70_payments.sql
 \ir e2e/80_meetings.sql
 \ir e2e/90_audit_sessions.sql
+\ir e2e/95_inbox.sql
 
 commit;

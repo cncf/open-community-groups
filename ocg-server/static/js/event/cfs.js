@@ -1,14 +1,15 @@
-import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
-import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 
 const ROOT_ID = "cfs-modal-root";
-const MODAL_ID = "cfs-modal";
-const DATA_KEY = "cfsModalReady";
 const SELECT_DATA_KEY = "cfsSubmitReady";
 
-const initializeSubmitControls = (modal) => {
-  const select = getElementById(modal, "session_proposal_id");
-  const submit = getElementById(modal, "cfs-submit-button");
+/**
+ * Enables the submit button only while a session proposal is selected.
+ * @returns {void}
+ */
+const initializeSubmitControls = () => {
+  const select = getElementById(document, "session_proposal_id");
+  const submit = getElementById(document, "cfs-submit-button");
   if (!select || !submit) {
     return;
   }
@@ -28,39 +29,16 @@ const initializeSubmitControls = (modal) => {
   select.addEventListener("change", syncSubmitState);
 };
 
-const initializeCfsModal = () => {
-  const modal = getElementById(document, MODAL_ID);
-  if (!modal) {
-    return;
-  }
-
-  if (markDatasetReady(modal, DATA_KEY)) {
-    const closeButton = getElementById(modal, "close-cfs-modal");
-    const overlay = getElementById(modal, "overlay-cfs-modal");
-    const toggleModal = () => toggleModalVisibility(MODAL_ID);
-
-    closeButton?.addEventListener("click", toggleModal);
-    overlay?.addEventListener("click", toggleModal);
-    modal.addEventListener("click", (event) => {
-      if (closestElement(event.target, "#cancel-cfs-modal")) {
-        toggleModal();
-      }
-    });
-  }
-
-  initializeSubmitControls(modal);
-};
-
+/**
+ * Re-runs the submit state logic after the modal content is swapped.
+ * @param {CustomEvent} event HTMX after-swap event.
+ * @returns {void}
+ */
 const handleModalSwap = (event) => {
   if (event?.target?.id !== ROOT_ID) {
     return;
   }
-  initializeCfsModal();
-
-  const modal = getElementById(document, MODAL_ID);
-  if (isElementHidden(modal)) {
-    toggleModalVisibility(MODAL_ID);
-  }
+  initializeSubmitControls();
 };
 
 if (markDatasetReady(document.documentElement, "cfsModalSwapReady")) {

@@ -1,4 +1,4 @@
--- Tests admission offer deadline and price snapshot invariants.
+-- Tests admission offer deadline and price snapshot constraints.
 
 -- ============================================================================
 -- SETUP
@@ -11,110 +11,38 @@ select plan(12);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '7a010000-0000-0000-0000-000000000001'
-\set discountCodeID '7a010000-0000-0000-0000-000000000002'
-\set eventCategoryID '7a010000-0000-0000-0000-000000000003'
-\set eventID '7a010000-0000-0000-0000-000000000004'
-\set groupCategoryID '7a010000-0000-0000-0000-000000000005'
-\set groupID '7a010000-0000-0000-0000-000000000006'
-\set offerID '7a010000-0000-0000-0000-00000000000a'
-\set priceWindowID '7a010000-0000-0000-0000-000000000007'
-\set ticketTypeID '7a010000-0000-0000-0000-000000000008'
-\set userID '7a010000-0000-0000-0000-000000000009'
+\set communityID 'c0010000-0000-0000-0000-000000000001'
+\set discountCodeID 'c0010000-0000-0000-0000-000000000002'
+\set eventCategoryID 'c0010000-0000-0000-0000-000000000003'
+\set eventID 'c0010000-0000-0000-0000-000000000004'
+\set groupCategoryID 'c0010000-0000-0000-0000-000000000005'
+\set groupID 'c0010000-0000-0000-0000-000000000006'
+\set offerID 'c0010000-0000-0000-0000-000000000007'
+\set priceWindowID 'c0010000-0000-0000-0000-000000000008'
+\set ticketTypeID 'c0010000-0000-0000-0000-000000000009'
+\set userID 'c0010000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'offer-constraint-community',
-    'Offer Constraint Community',
-    'Community for admission offer constraint tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Offer Constraint Group',
-    'offer-constraint-group'
-);
+select fx_community(:'communityID');
 
 -- Recipient
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash-user', 'offer@example.test', true, 'offer-user');
+select fx_user(:'userID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Paid-capable event with a discount
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values (
-    :'eventID',
-    'Event for admission offer constraints',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Offer Constraint Event',
-    'USD',
-    'offer-constraint-event',
-    'UTC'
-);
-
--- Ticket tier snapshotted by the offers
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
-
--- Paid price window for the ticket tier
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    1000,
-    :'ticketTypeID'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', '{"payment_currency_code": "USD"}');
 
 -- Discount code covering the full ticket price
 insert into event_discount_code (
@@ -132,6 +60,12 @@ insert into event_discount_code (
     'fixed_amount',
     'Complimentary discount'
 );
+
+-- Ticket tier snapshotted by the offers
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', '{"title": "General admission"}');
+
+-- Paid price window for the ticket tier
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', '{"amount_minor": 1000}');
 
 -- ============================================================================
 -- TESTS

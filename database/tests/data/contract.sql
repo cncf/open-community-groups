@@ -3849,6 +3849,468 @@ insert into event_cohost (
         null
     );
 
+-- ============================================================================
+-- INBOX
+-- ============================================================================
+
+-- Inactive inbox community, so public listings and counts of the contract community are unchanged
+insert into community (
+    active,
+    banner_mobile_url,
+    banner_url,
+    community_id,
+    description,
+    display_name,
+    logo_url,
+    name
+) values (
+    false,
+    'https://example.com/inbox-community-banner-mobile.png',
+    'https://example.com/inbox-community-banner.png',
+    '00000000-0000-0000-0000-00000000e001',
+    'An inbox community used by Rust database contract tests',
+    'Contract Inbox Community',
+    'https://example.com/inbox-community-logo.png',
+    'contract-inbox-community'
+);
+
+-- Inbox group category
+insert into group_category (
+    community_id,
+    group_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000e001',
+    '00000000-0000-0000-0000-00000000e002',
+    'Inbox groups'
+);
+
+-- Inbox event category
+insert into event_category (
+    community_id,
+    event_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000e001',
+    '00000000-0000-0000-0000-00000000e003',
+    'Inbox events'
+);
+
+-- Inbox groups: read-only projections, write workflows, and a co-host that
+-- also receives the cross-group starts
+insert into "group" (
+    community_id,
+    group_category_id,
+    group_id,
+    name,
+    slug,
+    slug_pretty
+) values
+    (
+        '00000000-0000-0000-0000-00000000e001',
+        '00000000-0000-0000-0000-00000000e002',
+        '00000000-0000-0000-0000-00000000e011',
+        'Contract Inbox Read Group',
+        'contract-inbox-read-group',
+        'inbox-read'
+    ),
+    (
+        '00000000-0000-0000-0000-00000000e001',
+        '00000000-0000-0000-0000-00000000e002',
+        '00000000-0000-0000-0000-00000000e012',
+        'Contract Inbox Write Group',
+        'contract-inbox-write-group',
+        null
+    ),
+    (
+        '00000000-0000-0000-0000-00000000e001',
+        '00000000-0000-0000-0000-00000000e002',
+        '00000000-0000-0000-0000-00000000e013',
+        'Contract Inbox Cohost Group',
+        'contract-inbox-cohost-group',
+        null
+    );
+
+-- Inbox users: group team members in every role, conversation owners, the user
+-- deleted below, and users near the daily limits
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values
+    (
+        'contract_hash_inbox_admin',
+        'inbox.admin.contract@example.com',
+        true,
+        'Inbox Admin',
+        '00000000-0000-0000-0000-00000000e021',
+        'contract-inbox-admin'
+    ),
+    (
+        'contract_hash_inbox_events_manager',
+        'inbox.events-manager.contract@example.com',
+        true,
+        'Inbox Events Manager',
+        '00000000-0000-0000-0000-00000000e022',
+        'contract-inbox-events-manager'
+    ),
+    (
+        'contract_hash_inbox_viewer',
+        'inbox.viewer.contract@example.com',
+        true,
+        'Inbox Viewer',
+        '00000000-0000-0000-0000-00000000e023',
+        'contract-inbox-viewer'
+    ),
+    (
+        'contract_hash_inbox_user',
+        'inbox.user.contract@example.com',
+        true,
+        'Inbox User',
+        '00000000-0000-0000-0000-00000000e024',
+        'contract-inbox-user'
+    ),
+    (
+        'contract_hash_inbox_deleted',
+        'inbox.deleted.contract@example.com',
+        true,
+        'Inbox Deleted',
+        '00000000-0000-0000-0000-00000000e025',
+        'contract-inbox-deleted'
+    ),
+    (
+        'contract_hash_inbox_start_limit',
+        'inbox.start-limit.contract@example.com',
+        true,
+        'Inbox Start Limit',
+        '00000000-0000-0000-0000-00000000e026',
+        'contract-inbox-start-limit'
+    ),
+    (
+        'contract_hash_inbox_start_race',
+        'inbox.start-race.contract@example.com',
+        true,
+        'Inbox Start Race',
+        '00000000-0000-0000-0000-00000000e027',
+        'contract-inbox-start-race'
+    ),
+    (
+        'contract_hash_inbox_follow_up_limit',
+        'inbox.follow-up-limit.contract@example.com',
+        true,
+        'Inbox Follow-up Limit',
+        '00000000-0000-0000-0000-00000000e028',
+        'contract-inbox-follow-up-limit'
+    ),
+    (
+        'contract_hash_inbox_race',
+        'inbox.race.contract@example.com',
+        true,
+        'Inbox Race',
+        '00000000-0000-0000-0000-00000000e029',
+        'contract-inbox-race'
+    ),
+    (
+        'contract_hash_inbox_manager',
+        'inbox.manager.contract@example.com',
+        true,
+        'Inbox Manager',
+        '00000000-0000-0000-0000-00000000e02a',
+        'contract-inbox-manager'
+    ),
+    (
+        'contract_hash_inbox_spam',
+        'inbox.spam.contract@example.com',
+        true,
+        'Inbox Spam',
+        '00000000-0000-0000-0000-00000000e02b',
+        'contract-inbox-spam'
+    );
+
+-- Inbox team members of the read and write groups
+insert into group_team (
+    accepted,
+    group_id,
+    role,
+    user_id
+) values
+    (true, '00000000-0000-0000-0000-00000000e011', 'admin', '00000000-0000-0000-0000-00000000e021'),
+    (true, '00000000-0000-0000-0000-00000000e011', 'events-manager', '00000000-0000-0000-0000-00000000e022'),
+    (true, '00000000-0000-0000-0000-00000000e011', 'viewer', '00000000-0000-0000-0000-00000000e023'),
+    (true, '00000000-0000-0000-0000-00000000e012', 'admin', '00000000-0000-0000-0000-00000000e021'),
+    (true, '00000000-0000-0000-0000-00000000e012', 'events-manager', '00000000-0000-0000-0000-00000000e022'),
+    (true, '00000000-0000-0000-0000-00000000e012', 'viewer', '00000000-0000-0000-0000-00000000e023');
+
+-- Published inbox events owned by each group
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    timezone
+) values
+    (
+        'Event contacted by the inbox read contracts',
+        '00000000-0000-0000-0000-00000000e003',
+        '00000000-0000-0000-0000-00000000e031',
+        'virtual',
+        '00000000-0000-0000-0000-00000000e011',
+        'Contract Inbox Read Event',
+        true,
+        '2024-01-01 00:00:00+00',
+        'contract-inbox-read-event',
+        '2030-01-10 10:00:00+00',
+        'UTC'
+    ),
+    (
+        'Event contacted by the inbox write contracts',
+        '00000000-0000-0000-0000-00000000e003',
+        '00000000-0000-0000-0000-00000000e032',
+        'virtual',
+        '00000000-0000-0000-0000-00000000e012',
+        'Contract Inbox Write Event',
+        true,
+        '2024-01-01 00:00:00+00',
+        'contract-inbox-write-event',
+        '2030-01-10 10:00:00+00',
+        'UTC'
+    ),
+    (
+        'Event of the co-host group contacted by the inbox write contracts',
+        '00000000-0000-0000-0000-00000000e003',
+        '00000000-0000-0000-0000-00000000e033',
+        'virtual',
+        '00000000-0000-0000-0000-00000000e013',
+        'Contract Inbox Cohost Event',
+        true,
+        '2024-01-01 00:00:00+00',
+        'contract-inbox-cohost-event',
+        '2030-01-10 10:00:00+00',
+        'UTC'
+    );
+
+-- Approved co-host of the read event, which never receives its inbox contact
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id
+) values (
+    '2024-01-01 00:00:00+00',
+    'approved',
+    '00000000-0000-0000-0000-00000000e031',
+    '00000000-0000-0000-0000-00000000e013'
+);
+
+-- Inbox conversations: open and closed threads of the inbox user, the thread
+-- of the user deleted below, the reply-close race thread, the follow-up limit
+-- thread, the conversations started today by the start-limit user, and the
+-- spam user's thread marked as spam by the read group and open thread with the
+-- write group
+insert into inbox_conversation (
+    created_at,
+    group_id,
+    inbox_conversation_id,
+    inbox_conversation_status_id,
+    last_message_at,
+
+    event_id,
+    user_id
+) values
+    (
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e011',
+        '00000000-0000-0000-0000-00000000e041',
+        'open',
+        '2024-02-01 12:00:00+00',
+        '00000000-0000-0000-0000-00000000e031',
+        '00000000-0000-0000-0000-00000000e024'
+    ),
+    (
+        '2024-01-15 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e011',
+        '00000000-0000-0000-0000-00000000e042',
+        'closed',
+        '2024-01-15 10:00:00+00',
+        null,
+        '00000000-0000-0000-0000-00000000e024'
+    ),
+    (
+        '2024-01-20 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e011',
+        '00000000-0000-0000-0000-00000000e043',
+        'open',
+        '2024-01-20 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e031',
+        '00000000-0000-0000-0000-00000000e025'
+    ),
+    (
+        '2024-01-20 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e012',
+        '00000000-0000-0000-0000-00000000e044',
+        'open',
+        '2024-01-20 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e032',
+        '00000000-0000-0000-0000-00000000e029'
+    ),
+    (
+        current_timestamp - interval '3 hours',
+        '00000000-0000-0000-0000-00000000e013',
+        '00000000-0000-0000-0000-00000000e045',
+        'open',
+        current_timestamp - interval '3 hours',
+        '00000000-0000-0000-0000-00000000e033',
+        '00000000-0000-0000-0000-00000000e028'
+    ),
+    (
+        current_timestamp - interval '2 hours',
+        '00000000-0000-0000-0000-00000000e013',
+        '00000000-0000-0000-0000-00000000e046',
+        'answered',
+        current_timestamp - interval '2 hours',
+        null,
+        '00000000-0000-0000-0000-00000000e026'
+    ),
+    (
+        current_timestamp - interval '1 hour',
+        '00000000-0000-0000-0000-00000000e013',
+        '00000000-0000-0000-0000-00000000e047',
+        'answered',
+        current_timestamp - interval '1 hour',
+        null,
+        '00000000-0000-0000-0000-00000000e026'
+    ),
+    (
+        '2024-02-02 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e011',
+        '00000000-0000-0000-0000-00000000e048',
+        'spam',
+        '2024-02-02 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e031',
+        '00000000-0000-0000-0000-00000000e02b'
+    ),
+    (
+        '2024-01-25 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e012',
+        '00000000-0000-0000-0000-00000000e049',
+        'open',
+        '2024-01-25 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e032',
+        '00000000-0000-0000-0000-00000000e02b'
+    );
+
+-- Inbox messages of the fixed threads
+insert into inbox_message (
+    body,
+    created_at,
+    inbox_conversation_id,
+    inbox_message_id,
+    kind,
+
+    author_user_id
+) values
+    (
+        'When do doors open?',
+        '2024-02-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e041',
+        '00000000-0000-0000-0000-00000000e051',
+        'initial',
+        '00000000-0000-0000-0000-00000000e024'
+    ),
+    (
+        'Doors open at 6pm.',
+        '2024-02-01 11:00:00+00',
+        '00000000-0000-0000-0000-00000000e041',
+        '00000000-0000-0000-0000-00000000e052',
+        'group-reply',
+        '00000000-0000-0000-0000-00000000e021'
+    ),
+    (
+        'Is there parking nearby?',
+        '2024-02-01 12:00:00+00',
+        '00000000-0000-0000-0000-00000000e041',
+        '00000000-0000-0000-0000-00000000e053',
+        'user-reply',
+        '00000000-0000-0000-0000-00000000e024'
+    ),
+    (
+        'Thanks for the event.',
+        '2024-01-15 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e042',
+        '00000000-0000-0000-0000-00000000e054',
+        'initial',
+        '00000000-0000-0000-0000-00000000e024'
+    ),
+    (
+        'Please remove my data.',
+        '2024-01-20 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e043',
+        '00000000-0000-0000-0000-00000000e055',
+        'initial',
+        '00000000-0000-0000-0000-00000000e025'
+    ),
+    (
+        'Will there be a recording?',
+        '2024-01-20 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e044',
+        '00000000-0000-0000-0000-00000000e056',
+        'initial',
+        '00000000-0000-0000-0000-00000000e029'
+    ),
+    (
+        'Hello',
+        current_timestamp - interval '3 hours',
+        '00000000-0000-0000-0000-00000000e045',
+        '00000000-0000-0000-0000-00000000e057',
+        'initial',
+        '00000000-0000-0000-0000-00000000e028'
+    ),
+    (
+        'Cheap tickets here.',
+        '2024-02-02 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e048',
+        '00000000-0000-0000-0000-00000000e058',
+        'initial',
+        '00000000-0000-0000-0000-00000000e02b'
+    ),
+    (
+        'Is the venue accessible?',
+        '2024-01-25 10:00:00+00',
+        '00000000-0000-0000-0000-00000000e049',
+        '00000000-0000-0000-0000-00000000e059',
+        'initial',
+        '00000000-0000-0000-0000-00000000e02b'
+    );
+
+-- Nine follow-ups sent today by the follow-up limit user
+insert into inbox_message (
+    body,
+    created_at,
+    inbox_conversation_id,
+    kind,
+
+    author_user_id
+)
+select
+    'Follow-up ' || n,
+    current_timestamp - make_interval(mins => 150 - n),
+    '00000000-0000-0000-0000-00000000e045',
+    'user-reply',
+    '00000000-0000-0000-0000-00000000e028'
+from generate_series(1, 9) n;
+
+-- Delete the account whose conversation stays readable with null references
+delete from "user" where user_id = '00000000-0000-0000-0000-00000000e025';
+
 -- Every remaining event uses a default free tier in the contract fixture
 insert into event_ticket_type (
     event_id,

@@ -486,12 +486,20 @@ export const TEST_USER_IDS = {
   admin2: "77777777-7777-7777-7777-777777777702",
   checkInManager1: "77777777-7777-7777-7777-777777777715",
   communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
+  eventsManager1: "77777777-7777-7777-7777-777777777711",
   member1: "77777777-7777-7777-7777-777777777705",
   member2: "77777777-7777-7777-7777-777777777706",
   organizer1: "77777777-7777-7777-7777-777777777703",
   organizer2: "77777777-7777-7777-7777-777777777704",
   pending1: "77777777-7777-7777-7777-777777777707",
   pending2: "77777777-7777-7777-7777-777777777708",
+};
+
+/** Answered inbox conversation between the second member and the primary group. */
+export const TEST_INBOX_CONVERSATION = {
+  id: "fbfbfbfb-fbfb-fbfb-fbfb-fbfbfbfbfb01",
+  question: "Is the venue step-free?",
+  reply: "Yes, there is a lift at the main entrance.",
 };
 
 /** Pre-seeded user credentials for e2e tests. */

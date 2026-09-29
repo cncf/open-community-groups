@@ -3,6 +3,7 @@
 -- alphabetized within each group unless a `language sql` function needs its
 -- dependency defined first.
 
+{{ template "internal/audit/audit_log_resource_name.sql" }}
 {{ template "internal/audit/insert_audit_log.sql" }}
 
 {{ template "internal/cohosts/close_event_cohosts.sql" }}
@@ -52,6 +53,14 @@
 
 {{ template "internal/groups/list_group_page_events.sql" }}
 {{ template "internal/groups/lock_active_group.sql" }}
+{{ template "internal/groups/user_is_group_team_member.sql" }}
+
+{{ template "internal/inbox/append_inbox_message.sql" }}
+{{ template "internal/inbox/inbox_user_rate_limits.sql" }}
+{{ template "internal/inbox/is_inbox_event_public.sql" }}
+{{ template "internal/inbox/is_inbox_user_blocked.sql" }}
+{{ template "internal/inbox/resolve_inbox_contact_event.sql" }}
+{{ template "internal/inbox/search_inbox_conversations.sql" }}
 
 {{ template "internal/json/epoch_seconds.sql" }}
 {{ template "internal/json/jsonb_geography_point.sql" }}
@@ -139,6 +148,7 @@
 
 {{ template "internal/users/get_public_user_provider.sql" }}
 {{ template "internal/users/public_user_summary.sql" }}
+{{ template "internal/inbox/inbox_conversation_json.sql" }} -- Depends on public_user_summary
 {{ template "internal/users/resolve_unique_username.sql" }}
 
 {{ template "auth/get_user_by_id.sql" }} -- Dependency for get_user_by_email and get_user_by_email_for_external_auth
@@ -359,6 +369,20 @@
 
 {{ template "images/is_badge_image.sql" }}
 {{ template "images/is_open_graph_image.sql" }}
+
+{{ template "inbox/add_inbox_group_reply.sql" }}
+{{ template "inbox/add_inbox_user_message.sql" }}
+{{ template "inbox/close_inbox_conversation.sql" }}
+{{ template "inbox/count_group_open_inbox_conversations.sql" }}
+{{ template "inbox/get_group_inbox_conversation.sql" }}
+{{ template "inbox/get_inbox_contact_context.sql" }}
+{{ template "inbox/get_user_inbox_conversation.sql" }}
+{{ template "inbox/list_group_inbox_conversations.sql" }}
+{{ template "inbox/list_inbox_recipient_ids.sql" }}
+{{ template "inbox/list_user_inbox_conversations.sql" }}
+{{ template "inbox/mark_inbox_conversation_as_spam.sql" }}
+{{ template "inbox/start_inbox_conversation.sql" }}
+{{ template "inbox/unmark_inbox_conversation_as_spam.sql" }}
 
 {{ template "meetings/add_meeting.sql" }}
 {{ template "meetings/append_meeting_recording_url.sql" }}

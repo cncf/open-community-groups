@@ -30,15 +30,17 @@ use crate::{
             AttendEventInput, AttendOutcome, DynEnrollmentManager, LeaveEventInput,
             StartCheckoutInput,
         },
+        inbox::{DynInboxManager, StartConversationInput},
         payments::{DynPaymentsManager, RequestRefundInput},
     },
     templates::{
         PageId,
         auth::UserMenuState,
-        event::{CfsModal, Page},
+        event::{CfsModal, ContactModal, Page},
     },
     types::{
         event::{EventAttendanceInput, EventEnrollmentStatus, EventFull},
+        inbox::InboxMessageInput,
         payments::{CheckoutInput, EventTicketType, PreparedEventCheckout},
     },
     validation::{
@@ -113,7 +115,7 @@ pub(crate) async fn cfs_modal(
     Path((_, event_id)): Path<(String, Uuid)>,
     CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
+    // Get user from session (endpoint is public; anonymous visitors get a sign-in prompt)
     let user_id = auth_session.user.as_ref().map(|user| user.user_id);
     let user = UserMenuState::from_session(auth_session).await?;
 
@@ -137,6 +139,36 @@ pub(crate) async fn cfs_modal(
         session_proposals,
         user,
         notice: None,
+    };
+
+    Ok(Html(template.render()?))
+}
+
+/// Handler that renders the contact organizers modal.
+///
+/// The endpoint is public and its response is never cached, so the event page
+/// itself stays identical for every visitor.
+#[instrument(skip_all)]
+pub(crate) async fn contact_modal(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is public; anonymous visitors get a sign-in prompt)
+    let user_id = auth_session.user.as_ref().map(|user| user.user_id);
+    let user = UserMenuState::from_session(auth_session).await?;
+
+    // Load the contact context, rejecting events that do not accept contact
+    let Some(context) = db.get_inbox_contact_context(community_id, event_id, user_id).await? else {
+        return Err(HandlerError::NotFound);
+    };
+
+    // Prepare template
+    let template = ContactModal {
+        user,
+        context: Some(context),
+        sent_inbox_conversation_id: None,
     };
 
     Ok(Html(template.render()?))
@@ -306,6 +338,36 @@ pub(crate) async fn request_refund(
             "status": "refund-requested",
         })),
     ))
+}
+
+/// Handler that sends a first message to the group that owns an event.
+#[instrument(skip_all)]
+pub(crate) async fn send_contact_message(
+    CurrentUser(user): CurrentUser,
+    auth_session: AuthSession,
+    State(inbox_manager): State<DynInboxManager>,
+    Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
+    ValidatedForm(input): ValidatedForm<InboxMessageInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Start the conversation and queue the email to the group team
+    let inbox_conversation_id = inbox_manager
+        .start_conversation(&StartConversationInput {
+            body: input.body,
+            community_id,
+            event_id,
+            user_id: user.user_id,
+        })
+        .await?;
+
+    // Render the sent notice, which needs no read after the commit
+    let template = ContactModal {
+        user: UserMenuState::from_session(auth_session).await?,
+        context: None,
+        sent_inbox_conversation_id: Some(inbox_conversation_id),
+    };
+
+    Ok(Html(template.render()?))
 }
 
 /// Handler for starting or resuming event checkout.

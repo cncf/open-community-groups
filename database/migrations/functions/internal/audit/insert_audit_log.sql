@@ -1,4 +1,4 @@
--- Inserts an audit log entry for a successful mutation.
+-- Inserts an audit log entry for a successful mutation at the given or transaction time.
 create or replace function insert_audit_log(
     p_action text,
     p_actor_user_id uuid,
@@ -7,7 +7,8 @@ create or replace function insert_audit_log(
     p_community_id uuid default null,
     p_group_id uuid default null,
     p_event_id uuid default null,
-    p_details jsonb default null
+    p_details jsonb default null,
+    p_created_at timestamptz default null
 )
 returns void as $$
 declare
@@ -27,6 +28,7 @@ begin
         actor_user_id,
         actor_username,
         community_id,
+        created_at,
         details,
         event_id,
         group_id,
@@ -37,6 +39,7 @@ begin
         p_actor_user_id,
         v_actor_username,
         p_community_id,
+        coalesce(p_created_at, current_timestamp),
         coalesce(p_details, '{}'::jsonb),
         p_event_id,
         p_group_id,

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -34,6 +34,10 @@ select plan(11);
 \set eventID '3a1f0000-0000-0000-0000-000000000051'
 \set groupCategoryID '3a1f0000-0000-0000-0000-000000000021'
 \set groupID '3a1f0000-0000-0000-0000-000000000031'
+\set inboxAuditID '3a1f0000-0000-0000-0000-000000000118'
+\set inboxConversationID '3a1f0000-0000-0000-0000-000000000061'
+\set inboxSpamMarkedAuditID '3a1f0000-0000-0000-0000-000000000119'
+\set inboxSpamUnmarkedAuditID '3a1f0000-0000-0000-0000-000000000120'
 \set otherGroupID '3a1f0000-0000-0000-0000-000000000032'
 \set targetUserID '3a1f0000-0000-0000-0000-000000000041'
 \set wildcardActorID '3a1f0000-0000-0000-0000-000000000013'
@@ -63,6 +67,10 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
 
 -- Event
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('name', 'Recovery Event'));
+
+-- Inbox conversation answered by the group
+insert into inbox_conversation (inbox_conversation_id, group_id, inbox_conversation_status_id, user_id)
+values (:'inboxConversationID', :'groupID', 'answered', :'targetUserID');
 
 -- Audit log rows
 insert into audit_log (
@@ -270,6 +278,42 @@ insert into audit_log (
         'event'
     ),
     (
+        :'inboxAuditID',
+        'inbox_reply_sent',
+        :'actor1ID',
+        'alice-list-group-audit-logs',
+        :'communityID',
+        '2024-02-15 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'inboxConversationID',
+        'inbox_conversation'
+    ),
+    (
+        :'inboxSpamMarkedAuditID',
+        'inbox_conversation_marked_as_spam',
+        :'actor2ID',
+        'bob-list-group-audit-logs',
+        :'communityID',
+        '2024-02-14 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'inboxConversationID',
+        'inbox_conversation'
+    ),
+    (
+        :'inboxSpamUnmarkedAuditID',
+        'inbox_conversation_unmarked_as_spam',
+        :'actor2ID',
+        'bob-list-group-audit-logs',
+        :'communityID',
+        '2024-02-13 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'inboxConversationID',
+        'inbox_conversation'
+    ),
+    (
         :'wildcardAuditID',
         'group_updated',
         :'wildcardActorID',
@@ -444,12 +488,68 @@ select is(
                 "resource_id": "3a1f0000-0000-0000-0000-000000000031",
                 "resource_name": "Platform",
                 "resource_type": "group"
+            },
+            {
+                "action": "inbox_reply_sent",
+                "actor_username": "alice-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000118",
+                "created_at": 1707991200,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000061",
+                "resource_name": "Platform",
+                "resource_type": "inbox_conversation"
+            },
+            {
+                "action": "inbox_conversation_marked_as_spam",
+                "actor_username": "bob-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000119",
+                "created_at": 1707904800,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000061",
+                "resource_name": "Platform",
+                "resource_type": "inbox_conversation"
+            },
+            {
+                "action": "inbox_conversation_unmarked_as_spam",
+                "actor_username": "bob-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000120",
+                "created_at": 1707818400,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000061",
+                "resource_name": "Platform",
+                "resource_type": "inbox_conversation"
             }
         ]'::jsonb,
         'total',
-        15
+        18
     ),
     'Should return only group dashboard actions for the selected group'
+);
+
+-- Should filter group audit logs by inbox reply action
+select is(
+    list_group_audit_logs(
+        :'groupID'::uuid,
+        '{"action": "inbox_reply_sent", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        '[
+            {
+                "action": "inbox_reply_sent",
+                "actor_username": "alice-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000118",
+                "created_at": 1707991200,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000061",
+                "resource_name": "Platform",
+                "resource_type": "inbox_conversation"
+            }
+        ]'::jsonb,
+        'total',
+        1
+    ),
+    'Should filter group audit logs by inbox reply action'
 );
 
 -- Should filter group audit logs by refund recovery completion

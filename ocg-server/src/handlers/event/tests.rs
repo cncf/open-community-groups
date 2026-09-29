@@ -16,14 +16,16 @@ use crate::{
     activity_tracker::{Activity, MockActivityTracker},
     db::mock::MockDB,
     handlers::tests::*,
-    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
+    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     services::{
         enrollment::{AttendOutcome, EnrollmentError, MockEnrollmentManager},
+        inbox::{InboxError, MockInboxManager},
         notifications::MockNotificationsManager,
         payments::MockPaymentsManager,
     },
     types::{
         event::{EventEnrollmentState, EventEnrollmentStatus, EventLeaveOutcome},
+        inbox::{InboxContactContext, InboxContactViewer},
         payments::{
             EventPurchaseChargeModel, EventPurchaseStatus, EventTicketCurrentPrice,
             EventTicketType, EventTicketTypeAvailability, PreparedEventCheckout,
@@ -363,6 +365,11 @@ async fn test_page_success() {
     assert!(body.contains(
         r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#
     ));
+    assert!(body.contains(&format!(
+        "hx-get=\"/test-community/event/{event_id}/contact-modal\""
+    )));
+    assert!(body.contains("data-modal-open-on-swap=\"contact-modal\""));
+    assert!(!body.contains("data-contact-"));
 }
 
 #[tokio::test]
@@ -491,6 +498,283 @@ async fn test_cfs_modal_success_authenticated() {
         &HeaderValue::from_static("text/html; charset=utf-8")
     );
     assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_contact_modal_rejects_ineligible_event() {
+    // Setup identifiers and an event that does not accept contact
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_test_community(&mut db, community_id);
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && uid.is_none())
+        .returning(|_, _, _| Ok(None));
+
+    // Request the modal
+    let (parts, bytes) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        None,
+        "GET",
+        &format!("/test-community/event/{event_id}/contact-modal"),
+        None,
+    )
+    .await;
+
+    // Check the event is not found
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_contact_modal_rejects_invalid_event_id() {
+    // Prevent community resolution for an invalid event identifier
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name().never();
+
+    // Request the modal with a malformed event identifier
+    let (parts, _) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        None,
+        "GET",
+        "/test-community/event/not-a-uuid/contact-modal",
+        None,
+    )
+    .await;
+
+    // Check path validation rejects the request
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_contact_modal_renders_blocked_notice() {
+    // Setup a signed-in viewer blocked by spam reports
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let context = sample_contact_context(
+        event_id,
+        Some(sample_contact_viewer(true, true, false, None)),
+    );
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .withf(move |_, _, uid| *uid == Some(user_id))
+        .returning(move |_, _, _| Ok(Some(context.clone())));
+
+    // Request the modal
+    let (parts, bytes) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        Some(session_id),
+        "GET",
+        &format!("/test-community/event/{event_id}/contact-modal"),
+        None,
+    )
+    .await;
+
+    // Check the blocked notice replaces the form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("data-contact-blocked"));
+    assert!(body.contains("You can no longer contact Test Group."));
+    assert!(!body.contains("id=\"contact-form\""));
+}
+
+#[tokio::test]
+async fn test_contact_modal_renders_daily_limit_notice() {
+    // Setup a signed-in viewer who reached the daily limit
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let context = sample_contact_context(
+        event_id,
+        Some(sample_contact_viewer(false, false, false, None)),
+    );
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .withf(move |_, _, uid| *uid == Some(user_id))
+        .returning(move |_, _, _| Ok(Some(context.clone())));
+
+    // Request the modal
+    let (parts, bytes) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        Some(session_id),
+        "GET",
+        &format!("/test-community/event/{event_id}/contact-modal"),
+        None,
+    )
+    .await;
+
+    // Check the limit notice replaces the form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("data-contact-limit-reached"));
+    assert!(!body.contains("id=\"contact-form\""));
+}
+
+#[tokio::test]
+async fn test_contact_modal_renders_form_for_signed_in_users() {
+    // Setup a signed-in viewer allowed to start a conversation
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let context = sample_contact_context(
+        event_id,
+        Some(sample_contact_viewer(true, false, false, None)),
+    );
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .withf(move |cid, eid, uid| {
+            *cid == community_id && *eid == event_id && *uid == Some(user_id)
+        })
+        .returning(move |_, _, _| Ok(Some(context.clone())));
+
+    // Request the modal
+    let (parts, bytes) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        Some(session_id),
+        "GET",
+        &format!("/test-community/event/{event_id}/contact-modal"),
+        None,
+    )
+    .await;
+
+    // Check the form contract and the private cache policy
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE)
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("id=\"contact-form\""));
+    assert!(body.contains(&format!(
+        "hx-post=\"/test-community/event/{event_id}/contact\""
+    )));
+    assert!(body.contains("name=\"body\""));
+    assert!(!body.contains("maxlength="));
+    assert!(body.contains("data-htmx-response"));
+}
+
+#[tokio::test]
+async fn test_contact_modal_renders_open_conversation_link() {
+    // Setup a signed-in viewer with an open conversation
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let inbox_conversation_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let context = sample_contact_context(
+        event_id,
+        Some(sample_contact_viewer(
+            true,
+            false,
+            false,
+            Some(inbox_conversation_id),
+        )),
+    );
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .returning(move |_, _, _| Ok(Some(context.clone())));
+
+    // Request the modal
+    let (parts, bytes) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        Some(session_id),
+        "GET",
+        &format!("/test-community/event/{event_id}/contact-modal"),
+        None,
+    )
+    .await;
+
+    // Check the open conversation link replaces the form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("data-contact-open-conversation"));
+    assert!(body.contains(&format!(
+        "/dashboard/user?tab=inbox&conversation_id={inbox_conversation_id}"
+    )));
+    assert!(!body.contains("id=\"contact-form\""));
+}
+
+#[tokio::test]
+async fn test_contact_modal_renders_organizer_note() {
+    // Setup a signed-in group team member
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let context = sample_contact_context(
+        event_id,
+        Some(sample_contact_viewer(true, false, true, None)),
+    );
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .returning(move |_, _, _| Ok(Some(context.clone())));
+
+    // Request the modal
+    let (parts, bytes) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        Some(session_id),
+        "GET",
+        &format!("/test-community/event/{event_id}/contact-modal"),
+        None,
+    )
+    .await;
+
+    // Check the organizer note replaces the form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("You organize Test Group."));
+    assert!(body.contains("href=\"/dashboard/group?tab=inbox\""));
+    assert!(!body.contains("id=\"contact-form\""));
+}
+
+#[tokio::test]
+async fn test_contact_modal_renders_sign_in_prompt_for_anonymous_visitors() {
+    // Setup an anonymous request
+    let (community_id, event_id, _, _) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_test_community(&mut db, community_id);
+    let context = sample_contact_context(event_id, None);
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && uid.is_none())
+        .returning(move |_, _, _| Ok(Some(context.clone())));
+
+    // Request the modal
+    let (parts, bytes) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        None,
+        "GET",
+        &format!("/test-community/event/{event_id}/contact-modal"),
+        None,
+    )
+    .await;
+
+    // Check the sign-in prompt and the private cache policy
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE)
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("data-contact-sign-in"));
+    assert!(
+        body.contains(
+            "href=\"/log-in?next_url=/test-community/group/test-group/event/test-event\""
+        )
+    );
+    assert!(!body.contains("id=\"contact-form\""));
 }
 
 #[tokio::test]
@@ -1395,6 +1679,206 @@ async fn test_request_refund_returns_internal_server_error_when_payments_manager
 }
 
 #[tokio::test]
+async fn test_send_contact_message_redirects_anonymous_visitors_to_log_in() {
+    // Setup an anonymous request without manager calls
+    let event_id = Uuid::new_v4();
+    let mut inbox_manager = MockInboxManager::new();
+    inbox_manager.expect_start_conversation().never();
+
+    // Send the message
+    let (parts, _) = send_contact_request(
+        MockDB::new(),
+        inbox_manager,
+        None,
+        "POST",
+        &format!("/test-community/event/{event_id}/contact"),
+        Some("body=Hello"),
+    )
+    .await;
+
+    // Check the visitor is sent to the log-in page
+    assert!(parts.status.is_redirection());
+    assert!(
+        parts
+            .headers
+            .get(LOCATION)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with("/log-in?next_url=")
+    );
+}
+
+#[tokio::test]
+async fn test_send_contact_message_rejects_invalid_bodies() {
+    // Setup the signed-in sender and invalid bodies
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let too_long = format!("body={}", "é".repeat(5001));
+
+    for body in ["body=+%0A%09+", too_long.as_str()] {
+        // Setup session and community expectations without manager calls
+        let mut db = MockDB::new();
+        expect_authenticated_session(&mut db, session_id, user_id);
+        expect_test_community(&mut db, community_id);
+        let mut inbox_manager = MockInboxManager::new();
+        inbox_manager.expect_start_conversation().never();
+
+        // Send the message
+        let (parts, _) = send_contact_request(
+            db,
+            inbox_manager,
+            Some(session_id),
+            "POST",
+            &format!("/test-community/event/{event_id}/contact"),
+            Some(body),
+        )
+        .await;
+
+        // Check the validation failure
+        assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+}
+
+#[tokio::test]
+async fn test_send_contact_message_returns_database_rejection_message() {
+    // Setup the signed-in sender and a database rejection
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let mut inbox_manager = MockInboxManager::new();
+    inbox_manager.expect_start_conversation().times(1).returning(|_| {
+        Box::pin(async {
+            Err(InboxError::Other(
+                HandlerError::Database("daily limit of new conversations reached".to_string())
+                    .into(),
+            ))
+        })
+    });
+
+    // Send the message
+    let (parts, bytes) = send_contact_request(
+        db,
+        inbox_manager,
+        Some(session_id),
+        "POST",
+        &format!("/test-community/event/{event_id}/contact"),
+        Some("body=Hello"),
+    )
+    .await;
+
+    // Check the rejection message is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "daily limit of new conversations reached"
+    );
+}
+
+#[tokio::test]
+async fn test_send_contact_message_returns_internal_error_without_body() {
+    // Setup the signed-in sender and an internal failure
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let mut inbox_manager = MockInboxManager::new();
+    inbox_manager
+        .expect_start_conversation()
+        .times(1)
+        .returning(|_| Box::pin(async { Err(InboxError::Other(anyhow!("db error"))) }));
+
+    // Send the message
+    let (parts, bytes) = send_contact_request(
+        db,
+        inbox_manager,
+        Some(session_id),
+        "POST",
+        &format!("/test-community/event/{event_id}/contact"),
+        Some("body=Hello"),
+    )
+    .await;
+
+    // Check the internal error hides the detail
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
+async fn test_send_contact_message_returns_rejected_message() {
+    // Setup the signed-in sender and an open conversation rejection
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let mut inbox_manager = MockInboxManager::new();
+    inbox_manager.expect_start_conversation().times(1).returning(|_| {
+        Box::pin(async {
+            Err(InboxError::Rejected(
+                "you already have an open conversation with this group".to_string(),
+            ))
+        })
+    });
+
+    // Send the message
+    let (parts, bytes) = send_contact_request(
+        db,
+        inbox_manager,
+        Some(session_id),
+        "POST",
+        &format!("/test-community/event/{event_id}/contact"),
+        Some("body=Hello"),
+    )
+    .await;
+
+    // Check the rejection message is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "you already have an open conversation with this group"
+    );
+}
+
+#[tokio::test]
+async fn test_send_contact_message_starts_conversation() {
+    // Setup the signed-in sender and the started conversation
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let inbox_conversation_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let mut inbox_manager = MockInboxManager::new();
+    inbox_manager
+        .expect_start_conversation()
+        .times(1)
+        .withf(move |input| {
+            input.body == "Is there parking?"
+                && input.community_id == community_id
+                && input.event_id == event_id
+                && input.user_id == user_id
+        })
+        .returning(move |_| Box::pin(async move { Ok(inbox_conversation_id) }));
+
+    // Send the message
+    let (parts, bytes) = send_contact_request(
+        db,
+        inbox_manager,
+        Some(session_id),
+        "POST",
+        &format!("/test-community/event/{event_id}/contact"),
+        Some("body=Is+there+parking%3F"),
+    )
+    .await;
+
+    // Check the sent notice links to the conversation
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("data-contact-sent-notice"));
+    assert!(body.contains(&format!(
+        "/dashboard/user?tab=inbox&conversation_id={inbox_conversation_id}"
+    )));
+}
+
+#[tokio::test]
 async fn test_start_checkout_returns_checkout_redirect() {
     // Setup identifiers and the redirect outcome
     let admission_offer_id = Uuid::new_v4();
@@ -1825,4 +2309,88 @@ async fn test_track_view_rejects_missing_origin_request() {
     // Check missing same-origin evidence is forbidden
     assert_eq!(parts.status, StatusCode::FORBIDDEN);
     assert!(bytes.is_empty());
+}
+
+// Helpers.
+
+/// Expects the test community to resolve to the given identifier.
+fn expect_test_community(db: &mut MockDB, community_id: Uuid) {
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+}
+
+/// Returns community, event, session and user identifiers for contact tests.
+fn sample_contact_ids() -> (Uuid, Uuid, session::Id, Uuid) {
+    (
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        session::Id::default(),
+        Uuid::new_v4(),
+    )
+}
+
+/// Builds the contact context of the test event.
+fn sample_contact_context(
+    event_id: Uuid,
+    viewer: Option<InboxContactViewer>,
+) -> InboxContactContext {
+    InboxContactContext {
+        community_name: "test-community".to_string(),
+        event_id,
+        event_name: "Test Event".to_string(),
+        event_slug: "test-event".to_string(),
+        group_name: "Test Group".to_string(),
+        group_slug: "test-group".to_string(),
+
+        group_slug_pretty: None,
+        viewer,
+    }
+}
+
+/// Builds the signed-in viewer state of the contact modal.
+fn sample_contact_viewer(
+    can_start_conversation: bool,
+    is_blocked: bool,
+    is_group_team_member: bool,
+    open_inbox_conversation_id: Option<Uuid>,
+) -> InboxContactViewer {
+    InboxContactViewer {
+        can_start_conversation,
+        is_blocked,
+        is_group_team_member,
+
+        open_inbox_conversation_id,
+    }
+}
+
+/// Sends a contact request through the router.
+async fn send_contact_request(
+    db: MockDB,
+    inbox_manager: MockInboxManager,
+    session_id: Option<session::Id>,
+    method: &str,
+    uri: &str,
+    form: Option<&str>,
+) -> (axum::http::response::Parts, axum::body::Bytes) {
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_inbox_manager(inbox_manager)
+        .build()
+        .await;
+    let mut request = Request::builder().method(method).uri(uri);
+    if let Some(session_id) = session_id {
+        request = request.header(COOKIE, format!("id={session_id}"));
+    }
+    if form.is_some() {
+        request = request.header(CONTENT_TYPE, "application/x-www-form-urlencoded");
+    }
+    let request = request
+        .body(Body::from(form.unwrap_or_default().to_string()))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    (parts, bytes)
 }

@@ -160,6 +160,10 @@ pub(crate) enum NotificationKind {
     GroupTeamInvitation,
     /// Notification welcoming a new group member.
     GroupWelcome,
+    /// Notification telling group team members that a user wrote to the group inbox.
+    InboxMessageReceived,
+    /// Notification telling a user that the group replied to their inbox conversation.
+    InboxReplyReceived,
     /// Notification inviting a co-speaker to respond to a session proposal invitation.
     SessionProposalCoSpeakerInvitation,
     /// Notification welcoming a speaker to multiple events in a linked series.

@@ -29,6 +29,7 @@ database/
     lint.sh       Convention checks run by `just db-lint` and CI
   tests/
     schema/       pgTAP catalog tests
+      constraints/  Constraint behavior tests, one file per table
     functions/    pgTAP tests mirroring migrations/functions one to one
     fixtures/     fx_* fixture functions installed into the test database
                   by the test recipes, never by the application loader
@@ -85,8 +86,8 @@ definition after a deploy.
   contains `create or replace function`.
 - `create trigger` statements live in schema migrations (see
   [Trigger functions](#trigger-functions)).
-- Every schema change updates the catalog tests under `tests/schema/` in the
-  same change.
+- Every schema change updates the tests under `tests/schema/` in the same
+  change.
 
 ## Error contract
 
@@ -275,19 +276,14 @@ soft-delete flag, ownership) lives in a function with a mirrored pgTAP test.
 
 ## Tests
 
-### pgTAP function tests
+### pgTAP tests
 
-- Every function file has a test at the same path under `tests/functions/`;
-  changing a function updates its test in the same change. A group of
-  scenarios may live in a sibling `<function>_<suffix>.sql` file when its
-  precondition contradicts the base file's seed data (for example, a
-  singleton configuration row that must be absent) or when the base file
-  would otherwise grow unwieldy; the sibling's header names the base file and
-  the reason for the split, and `just db-lint` accepts these splits.
+`tests/schema/` and `tests/functions/` form one pgTAP suite that runs in
+parallel against one database. These rules apply to every file in it:
+
 - Each file is an independent `begin; ... rollback;` transaction with an
-  exact `plan` count. The suite runs in parallel against one database, so
-  files never take table-level locks (`alter table`, `lock table`,
-  `truncate`).
+  exact `plan` count and never takes table-level locks (`alter table`,
+  `lock table`, `truncate`).
 - Each file owns its identifiers and unique key values: the UUID prefix of
   its variables is used by no other file (`just db-lint`), and no two files
   seed the same value into a unique index (`just db-tests-seed-keys`, also
@@ -302,6 +298,16 @@ soft-delete flag, ownership) lives in a function with a mirrored pgTAP test.
   [error contract](#error-contract).
 
 Existing test files are the reference for file layout and naming.
+
+### Function tests
+
+Every function file has a test at the same path under `tests/functions/`;
+changing a function updates its test in the same change. A group of
+scenarios may live in a sibling `<function>_<suffix>.sql` file when its
+precondition contradicts the base file's seed data (for example, a singleton
+configuration row that must be absent) or when the base file would otherwise
+grow unwieldy; the sibling's header names the base file and the reason for
+the split, and `just db-lint` accepts these splits.
 
 ### Fixture functions
 
@@ -319,9 +325,15 @@ fixtures after the migrations; the application loader never loads them.
 
 ### Schema tests
 
-`tests/schema/` asserts the catalog: tables and extensions, columns, keys,
-indexes, functions and triggers, constraints and reference data. Every
-migration updates the relevant file.
+The numbered files in `tests/schema/` assert the catalog: tables and
+extensions, columns, keys, indexes, functions and triggers, constraints and
+reference data. `tests/schema/constraints/` exercises what the catalog cannot
+show: check predicates, unique and partial unique indexes, composite foreign
+keys, and `on delete` actions. Each constraint test is named after the table
+whose constraints it exercises (`just db-lint` checks the name) and proves
+the accepted and rejected writes directly. A constraint enforced by a trigger
+function is tested under `tests/functions/triggers/` instead. Every migration
+updates the relevant files.
 
 ### Migration tests
 

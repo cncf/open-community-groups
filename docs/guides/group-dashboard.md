@@ -24,6 +24,7 @@ Path: [/dashboard/group](/dashboard/group ':ignore')
   - [Sponsors: Reusable Profiles](#sponsors-reusable-profiles)
   - [Events: Operations Hub](#events-operations-hub)
   - [Co-hosts: Partner Events](#co-hosts-partner-events)
+  - [Inbox: Questions from Users](#inbox-questions-from-users)
   - [Badges: Portable Recognition](#badges-portable-recognition)
   - [Refunds: Operational Queue](#refunds-operational-queue)
   - [Audit: Logs](#audit-logs)
@@ -43,6 +44,8 @@ Main areas:
   check-in fallback.
 - [Co-hosts](/dashboard/group?tab=cohosts ':ignore'): invitations from other groups to co-host
   their events.
+- [Inbox](/dashboard/group?tab=inbox ':ignore'): questions users send to the group from its event
+  pages.
 - `Badges`: a main-menu section below `Events` with full-width
   [Badges](/dashboard/group?tab=badges ':ignore'),
   [Artwork](/dashboard/group?tab=artwork ':ignore'), and
@@ -63,18 +66,18 @@ until you pick them.
 
 Group role permissions are fixed:
 
-| Group role         | Group read | Check-in  | Events    | Members   | Settings  | Sponsors  | Team      |
-| ------------------ | ---------- | --------- | --------- | --------- | --------- | --------- | --------- |
-| `admin`            | Yes        | Write     | Write     | Write     | Write     | Write     | Write     |
-| `check-in-manager` | Yes        | Write     | Read only | Read only | Read only | Read only | Read only |
-| `events-manager`   | Yes        | Write     | Write     | Read only | Read only | Read only | Read only |
-| `viewer`           | Yes        | Read only | Read only | Read only | Read only | Read only | Read only |
+| Group role         | Group read | Check-in  | Events    | Inbox     | Members   | Settings  | Sponsors  | Team      |
+| ------------------ | ---------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- |
+| `admin`            | Yes        | Write     | Write     | Write     | Write     | Write     | Write     | Write     |
+| `check-in-manager` | Yes        | Write     | Read only | No access | Read only | Read only | Read only | Read only |
+| `events-manager`   | Yes        | Write     | Write     | Write     | Read only | Read only | Read only | Read only |
+| `viewer`           | Yes        | Read only | Read only | No access | Read only | Read only | Read only | Read only |
 
 ![Group roles](../screenshots/dashboard-group-members-list-roles.png)
 
 Community roles interact with this dashboard too. Community `admin` and `groups-manager` also
-have group write permissions inside that community, while community `viewer` remains read-only at
-group scope. In addition, communities can restrict group team management so that only the
+have group write permissions inside that community, including the Inbox, while community `viewer`
+remains read-only at group scope and has no Inbox access. In addition, communities can restrict group team management so that only the
 community `admin` and `groups-manager` roles can add, update, or remove group team members.
 
 Controls are disabled in the UI when your role does not allow an action, and OCG enforces the
@@ -475,6 +478,56 @@ For recurring series, each occurrence is a separate invitation that is approved 
 
 Public pages are cached, so co-hosting changes can take a few minutes to appear there.
 
+## Inbox: Questions from Users
+
+Signed-in users can contact the organizers from `Contact organizers` on any published event page.
+Each message starts a conversation with the group that owns the event; for co-hosted events the
+owning group receives it, never the co-hosts. Conversations appear in
+[Inbox](/dashboard/group?tab=inbox ':ignore'), newest activity first, and you can filter them by
+status: `Open`, `Answered`, `Closed`, or `Spam`. Conversations marked as spam only appear with the
+`Spam` filter.
+
+Statuses follow the latest action:
+
+- `Open`: the user wrote last, including when they write again after the conversation was closed,
+  which reopens it.
+- `Answered`: an organizer replied, including a reply to a closed conversation.
+- `Closed`: an organizer closed the conversation. Closing an already closed conversation changes
+  nothing.
+- `Spam`: an organizer marked the conversation as spam. Neither side can write to it until it is
+  unmarked.
+
+The `Inbox` menu item shows the number of open conversations of the selected group. After you
+reply, close, or mark a conversation as spam, `Back to inbox` refreshes that number.
+
+Use `Mark as spam` for unwanted messages:
+
+- The user keeps the conversation in their Inbox, sees that it was marked as spam, and can no
+  longer write to it or start new conversations with the group. Their other conversations keep
+  working.
+- A user whose conversations were marked as spam by three different groups of the community can
+  no longer contact any group of that community.
+- `Not spam` unmarks the conversation and lifts the report. The conversation returns to `Answered`
+  when an organizer wrote last, or `Open` otherwise.
+- Marking or unmarking a conversation as spam sends no email.
+
+Opening the Inbox, replying, closing, and marking conversations as spam require Inbox access:
+group `admin` and `events-manager` roles, and community `admin` and `groups-manager` roles.
+Messages are plain text of up to 5000 characters and cannot be edited or deleted.
+
+Email notifications:
+
+- When a user writes, the accepted, email-verified group team members with Inbox access receive
+  the message by email. Community roles can open the Inbox but are not emailed.
+- The email names the group and its community and links to the group dashboard Inbox. If you
+  manage several groups, select the group named in the email; with another group selected, the
+  dashboard shows a warning and keeps the group selector available.
+- When an organizer replies, the user receives the reply by email and in their own Inbox.
+- Replies are always written in the dashboard; replying to an email does not reach the other side.
+
+If a user deletes their account, the conversation stays in the Inbox under `Deleted user` and
+becomes read-only. You can still close it.
+
 ## Badges: Portable Recognition
 
 `Badges` is where groups create reusable badge definitions, manage artwork, and review active or
@@ -563,6 +616,8 @@ Coverage in this view includes:
 - Check-ins, CFS submission reviews, and custom notification sends.
 - Payment actions such as refund requests, approvals, rejections, recoveries, and external
   payments marked as received.
+- Inbox replies, closed conversations, conversations marked or unmarked as spam, and
+  conversations reopened by users.
 
 Rows are ordered by newest first by default, and you can switch the ordering to oldest first. You
 can filter by `Action`, `Actor`, and date range, and pagination keeps the active filters applied.

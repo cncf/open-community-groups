@@ -91,6 +91,11 @@
       <div class="mt-6 grid gap-y-0.5 max-md:hidden">
         {{ dashboard::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings() , href = "/dashboard/group?tab=settings") -}}
         {{ dashboard::menu_item(name = "Team", icon = "team", is_active = content.is_team() , href = "/dashboard/group?tab=team") -}}
+        {% if can_manage_inbox -%}
+          {# Inbox -#}
+          {{ dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/group?tab=inbox", items_count = inbox_open_count) -}}
+          {# End inbox -#}
+        {% endif -%}
         <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors">
           <a href="{{ group_public_url }}"
              target="_blank"
@@ -164,6 +169,9 @@
     {% if content.is_refunds() && !payments_ready -%}
       {{ dashboard::permission_warning(message = "Automatic payment processing is unavailable. Historical records remain accessible, and external refunds can still be recorded after the money is returned outside OCG.") -}}
     {% endif -%}
+    {% if is_inbox_fallback -%}
+      {{ dashboard::permission_warning(message = "You don't have Inbox access for the selected group. If you came from an email, select the group it mentions in the group selector.") -}}
+    {% endif -%}
     <div id="dashboard-content"
          data-community="{{ current_selection.0.name }}"
          data-community-name="{{ current_selection.0.name }}"
@@ -173,7 +181,7 @@
          data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
          data-group-name="{{ current_selection.1.name }}"
          data-group-slug="{{ current_selection.1.public_slug() }}"
-         hx-get="/dashboard/group/{%- if content.is_artwork() -%}artwork{%- else if content.is_awards() -%}awards{%- else if content.is_badges() -%}badges{%- else if content.is_check_in() -%}check-in{%- else if content.is_cohosts() -%}cohosts{%- else if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_refunds() -%}refunds{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
+         hx-get="/dashboard/group/{{ content.refresh_path() }}"
          hx-trigger="refresh-group-dashboard-table"
          hx-swap="innerHTML show:window:top"
          hx-indicator="#dashboard-spinner"

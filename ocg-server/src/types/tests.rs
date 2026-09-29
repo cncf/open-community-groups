@@ -11,6 +11,10 @@ use crate::types::{
     dashboard::group::events::EventInput,
     event::{EventCohostGroup, EventFull, EventKind, EventSummary},
     group::{GroupCategory, GroupRegion, GroupSummary},
+    inbox::{
+        InboxConversation, InboxConversationStatus, InboxConversationSummary, InboxEvent,
+        InboxMessage, InboxMessageKind,
+    },
     payments::{GroupPaymentRecipient, PaymentProvider},
     site::{SiteSettings, Theme},
     user::User,
@@ -224,6 +228,77 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         region: Some(sample_group_region()),
         slug_pretty: None,
         state: Some("CA".to_string()),
+    }
+}
+
+/// Sample open inbox conversation started from a public event.
+pub(crate) fn sample_inbox_conversation(inbox_conversation_id: Uuid) -> InboxConversation {
+    let created_at = Utc.with_ymd_and_hms(2030, 1, 10, 10, 0, 0).unwrap();
+    let user = User {
+        user_id: Uuid::new_v4(),
+        username: "inbox-user".to_string(),
+
+        name: Some("Inbox User".to_string()),
+        ..Default::default()
+    };
+
+    InboxConversation {
+        community_display_name: "Test Community".to_string(),
+        community_name: "test".to_string(),
+        created_at,
+        group_name: "Test Group".to_string(),
+        group_slug: "test-group".to_string(),
+        inbox_conversation_id,
+        last_message_at: created_at,
+        messages: vec![InboxMessage {
+            body: "When do doors open?".to_string(),
+            created_at,
+            inbox_message_id: Uuid::new_v4(),
+            kind: InboxMessageKind::Initial,
+
+            author: Some(user.clone()),
+        }],
+        status: InboxConversationStatus::Open,
+
+        event: Some(InboxEvent {
+            is_public: true,
+            name: "Test Event".to_string(),
+
+            slug: Some("test-event".to_string()),
+        }),
+        group_slug_pretty: None,
+        user: Some(user),
+    }
+}
+
+/// Sample open inbox conversation summary used by list pages.
+pub(crate) fn sample_inbox_conversation_summary(
+    inbox_conversation_id: Uuid,
+) -> InboxConversationSummary {
+    let last_message_at = Utc.with_ymd_and_hms(2030, 1, 10, 10, 0, 0).unwrap();
+
+    InboxConversationSummary {
+        community_display_name: "Test Community".to_string(),
+        group_name: "Test Group".to_string(),
+        inbox_conversation_id,
+        last_message_at,
+        last_message_excerpt: "When do doors open?".to_string(),
+        last_message_kind: InboxMessageKind::Initial,
+        status: InboxConversationStatus::Open,
+
+        event: Some(InboxEvent {
+            is_public: true,
+            name: "Test Event".to_string(),
+
+            slug: None,
+        }),
+        user: Some(User {
+            user_id: Uuid::new_v4(),
+            username: "inbox-user".to_string(),
+
+            name: Some("Inbox User".to_string()),
+            ..Default::default()
+        }),
     }
 }
 

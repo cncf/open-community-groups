@@ -14,8 +14,9 @@ use crate::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT, common::AuditLogSort, group::cohosts::CohostedEventsOutput,
         },
+        inbox::InboxConversationsOutput,
         payments::GroupExternalPaymentsContext,
-        permissions::GroupPermission::{self, CheckInsWrite},
+        permissions::GroupPermission::{self, CheckInsWrite, InboxWrite},
     },
 };
 
@@ -46,6 +47,7 @@ async fn test_page_analytics_tab_success() {
                 && permission == GroupPermission::BadgesWrite
         })
         .returning(|_, _, _, _| Ok(false));
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     expect_group_permission(
         &mut db,
@@ -96,6 +98,7 @@ async fn test_page_analytics_tab_success() {
     assert!(!body.contains("id-prefix=\"mobile-community\""));
     assert!(!body.contains("id-prefix=\"mobile-group\""));
     assert!(body.contains("tab=refunds"));
+    assert!(body.contains("hx-get=\"/dashboard/group/analytics\""));
 }
 
 #[tokio::test]
@@ -132,6 +135,7 @@ async fn test_page_badge_tabs_require_management_permission() {
                 && permission == GroupPermission::BadgesWrite
         })
         .returning(|_, _, _, _| Ok(false));
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 3);
     db.expect_get_session()
         .times(3)
         .withf(move |id| *id == session_id)
@@ -207,6 +211,7 @@ async fn test_page_check_in_tab_falls_back_without_management_permission() {
                 && permission == GroupPermission::BadgesWrite
         })
         .returning(|_, _, _, _| Ok(false));
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     expect_group_permission(
         &mut db,
@@ -280,6 +285,7 @@ async fn test_page_cohosts_tab_success() {
         user_id,
         GroupPermission::BadgesWrite,
     );
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     expect_group_permission(
         &mut db,
@@ -357,6 +363,7 @@ async fn test_page_events_tab_success() {
         user_id,
         GroupPermission::BadgesWrite,
     );
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_group_permission(
         &mut db,
         community_id,
@@ -419,6 +426,157 @@ async fn test_page_events_tab_success() {
 }
 
 #[tokio::test]
+async fn test_page_inbox_tab_falls_back_without_inbox_permission() {
+    // Setup a readable group session without inbox access
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let stats = sample_group_stats();
+
+    // Setup dashboard context and fallback analytics expectations
+    let mut db = MockDB::new();
+    expect_inbox_home_context(&mut db, session_id, user_id, community_id, group_id, false);
+    db.expect_count_group_open_inbox_conversations().never();
+    db.expect_list_group_inbox_conversations().never();
+    db.expect_get_group_stats()
+        .times(1)
+        .returning(move |_, _, _| Ok(stats.clone()));
+    db.expect_group_has_active_subgroups()
+        .times(1)
+        .returning(|_, _| Ok(false));
+
+    // Request the inbox through the full dashboard route
+    let (parts, bytes) = send_home_request(db, session_id, "/dashboard/group?tab=inbox").await;
+
+    // Check the recoverable warning, selectors and hidden menu item
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("You don&#39;t have Inbox access for the selected group."));
+    assert!(body.contains(&format!("selected-group-id=\"{group_id}\"")));
+    assert!(!body.contains("href=\"/dashboard/group?tab=inbox\""));
+    assert!(body.contains("This dashboard is not optimized yet for mobile devices"));
+}
+
+#[tokio::test]
+async fn test_page_inbox_tab_opens_conversation_of_selected_group() {
+    // Setup a group session with inbox access and a conversation of the group
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let inbox_conversation_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let conversation = sample_inbox_conversation(inbox_conversation_id);
+
+    // Setup dashboard context and thread expectations
+    let mut db = MockDB::new();
+    expect_inbox_home_context(&mut db, session_id, user_id, community_id, group_id, true);
+    db.expect_count_group_open_inbox_conversations()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(|_| Ok(0));
+    db.expect_get_group_inbox_conversation()
+        .times(1)
+        .withf(move |gid, cid| *gid == group_id && *cid == inbox_conversation_id)
+        .returning(move |_, _| Ok(Some(conversation.clone())));
+    db.expect_list_group_inbox_conversations().never();
+
+    // Request the conversation through the full dashboard route
+    let (parts, bytes) = send_home_request(
+        db,
+        session_id,
+        &format!("/dashboard/group?tab=inbox&conversation_id={inbox_conversation_id}"),
+    )
+    .await;
+
+    // Check the thread renders inside the dashboard
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("id=\"inbox-conversation\""));
+    assert!(body.contains("hx-get=\"/dashboard/group/inbox\""));
+}
+
+#[tokio::test]
+async fn test_page_inbox_tab_renders_list_with_open_count_badge() {
+    // Setup a group session with inbox access
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let summary = sample_inbox_conversation_summary(Uuid::new_v4());
+
+    // Setup dashboard context, badge count and list expectations
+    let mut db = MockDB::new();
+    expect_inbox_home_context(&mut db, session_id, user_id, community_id, group_id, true);
+    db.expect_count_group_open_inbox_conversations()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(|_| Ok(7));
+    db.expect_list_group_inbox_conversations()
+        .times(1)
+        .withf(move |gid, filters| *gid == group_id && filters.status.is_none())
+        .returning(move |_, _| {
+            Ok(InboxConversationsOutput {
+                conversations: vec![summary.clone()],
+                total: 1,
+            })
+        });
+
+    // Request the inbox through the full dashboard route
+    let (parts, bytes) = send_home_request(db, session_id, "/dashboard/group?tab=inbox").await;
+
+    // Check the menu badge, list and mobile notice
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    let inbox_menu_item = body
+        .split("href=\"/dashboard/group?tab=inbox\"")
+        .nth(1)
+        .and_then(|rest| rest.split("</a>").next())
+        .expect("inbox menu item to render");
+    assert!(inbox_menu_item.contains("Inbox"));
+    assert!(inbox_menu_item.split_whitespace().any(|token| token == "7"));
+    assert!(body.contains("When do doors open?"));
+    assert!(body.contains("This dashboard is not optimized yet for mobile devices"));
+}
+
+#[tokio::test]
+async fn test_page_inbox_tab_warns_about_conversation_of_another_group() {
+    // Setup a group session with inbox access and a foreign conversation
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let inbox_conversation_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup dashboard context, missing thread and list expectations
+    let mut db = MockDB::new();
+    expect_inbox_home_context(&mut db, session_id, user_id, community_id, group_id, true);
+    db.expect_count_group_open_inbox_conversations()
+        .times(1)
+        .returning(|_| Ok(0));
+    db.expect_get_group_inbox_conversation()
+        .times(1)
+        .returning(|_, _| Ok(None));
+    db.expect_list_group_inbox_conversations()
+        .times(1)
+        .returning(|_, _| Ok(InboxConversationsOutput::default()));
+
+    // Request the conversation through the full dashboard route
+    let (parts, bytes) = send_home_request(
+        db,
+        session_id,
+        &format!("/dashboard/group?tab=inbox&conversation_id={inbox_conversation_id}"),
+    )
+    .await;
+
+    // Check the list renders with the warning
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("This conversation isn&#39;t in the selected group."));
+    assert!(body.contains("No conversations yet"));
+}
+
+#[tokio::test]
 async fn test_page_logs_tab_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -443,6 +601,7 @@ async fn test_page_logs_tab_success() {
         user_id,
         GroupPermission::BadgesWrite,
     );
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     expect_group_permission(
         &mut db,
@@ -517,6 +676,7 @@ async fn test_page_members_tab_success() {
         user_id,
         GroupPermission::BadgesWrite,
     );
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     expect_group_permission(
         &mut db,
@@ -572,6 +732,7 @@ async fn test_page_members_tab_success() {
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("name=\"subject\""));
     assert!(body.contains("value=\"Test Group\""));
+    assert!(body.contains("hx-get=\"/dashboard/group/members\""));
 }
 
 #[tokio::test]
@@ -602,6 +763,7 @@ async fn test_page_settings_tab_success() {
         user_id,
         GroupPermission::BadgesWrite,
     );
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     expect_group_permission(
         &mut db,
@@ -709,6 +871,7 @@ async fn test_page_sponsors_tab_success() {
         user_id,
         GroupPermission::BadgesWrite,
     );
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     expect_group_permission(
         &mut db,
@@ -795,6 +958,7 @@ async fn test_page_team_tab_success() {
                 && permission == GroupPermission::BadgesWrite
         })
         .returning(|_, _, _, _| Ok(true));
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     expect_group_permission(
         &mut db,
@@ -899,6 +1063,7 @@ async fn test_page_refunds_tab_preserves_history_without_payments_setup() {
         user_id,
         GroupPermission::BadgesWrite,
     );
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_group_permission(
         &mut db,
         community_id,
@@ -968,6 +1133,7 @@ async fn test_page_refunds_tab_success() {
         user_id,
         GroupPermission::BadgesWrite,
     );
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
     expect_group_permission(
         &mut db,
         community_id,
@@ -1023,4 +1189,86 @@ async fn test_page_refunds_tab_success() {
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("tab=refunds"));
+}
+
+// Helpers.
+
+/// Expects the dashboard context reads shared by the inbox tab scenarios.
+fn expect_inbox_home_context(
+    db: &mut MockDB,
+    session_id: session::Id,
+    user_id: Uuid,
+    community_id: Uuid,
+    group_id: Uuid,
+    can_manage_inbox: bool,
+) {
+    let groups = sample_user_groups_by_community(community_id, group_id);
+    expect_authenticated_group_session(db, session_id, user_id, community_id, group_id);
+    expect_group_permission(db, community_id, group_id, user_id, GroupPermission::Read);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &CheckInsWrite)
+        })
+        .returning(|_, _, _, _| Ok(false));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(false));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &InboxWrite)
+        })
+        .returning(move |_, _, _, _| Ok(can_manage_inbox));
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(groups.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+}
+
+/// Expects the dashboard's inbox permission check to be denied.
+fn expect_inbox_permission_denied(
+    db: &mut MockDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    times: usize,
+) {
+    db.expect_user_has_group_permission()
+        .times(times)
+        .withf(move |cid, gid, uid, permission| {
+            (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &InboxWrite)
+        })
+        .returning(|_, _, _, _| Ok(false));
+}
+
+/// Sends a group dashboard home request through the router.
+async fn send_home_request(
+    db: MockDB,
+    session_id: session::Id,
+    uri: &str,
+) -> (axum::http::response::Parts, axum::body::Bytes) {
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(uri)
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    (parts, bytes)
 }
