@@ -9,7 +9,12 @@ import {
   waitForActionResponse,
 } from "../../../utils.js";
 import { fillMarkdownEditor } from "../../form-helpers.js";
-import { openEventUpdateFormByName, waitForEventEditorAfterSave } from "./helpers.js";
+import {
+  expectSearchDropdownInViewport,
+  openEventUpdateFormByName,
+  scrollToViewportBottom,
+  waitForEventEditorAfterSave,
+} from "./helpers.js";
 
 const HIDDEN_SPONSOR_ID = "66666666-6666-6666-6666-666666666602";
 
@@ -133,6 +138,40 @@ test.describe("group dashboard event contributors", () => {
       // Delete the copied event used for contributor visibility checks.
       cleanupEventsByIds(eventId ? [eventId] : []);
     }
+  });
+
+  test("contributor search dropdowns stay inside the viewport near its bottom", async ({
+    organizerGroupPage,
+  }) => {
+    // Open the add form contributors section in a short viewport.
+    await organizerGroupPage.setViewportSize({ width: 1280, height: 600 });
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await organizerGroupPage.locator("#dashboard-content").getByRole("button", { name: "Add Event" }).click();
+    await expect(organizerGroupPage.locator("#name")).toBeVisible();
+    await organizerGroupPage.locator('button[data-section="hosts-sponsors"]').click();
+
+    // Search hosts with the input as low in the viewport as the page allows.
+    const hostsSelector = organizerGroupPage.locator("#event-hosts-selector");
+    const hostInput = hostsSelector.locator("[data-user-search-input]");
+    const hostDropdown = hostsSelector.locator("[data-user-search-dropdown]");
+    await scrollToViewportBottom(hostInput);
+    await hostInput.fill("e2e-");
+    await expect(hostDropdown.locator("h3").first()).toBeVisible();
+
+    // Verify the host results stay next to the input inside the viewport.
+    await expectSearchDropdownInViewport(organizerGroupPage, hostInput, hostDropdown);
+
+    // Open the sponsor suggestions with the search input at the viewport bottom.
+    const sponsorsSection = organizerGroupPage.locator("sponsors-section");
+    const sponsorInput = sponsorsSection.getByPlaceholder("Search sponsors");
+    const sponsorDropdown = sponsorsSection.locator("[data-sponsor-search-dropdown]");
+    await scrollToViewportBottom(sponsorInput);
+    await sponsorInput.click();
+    await expect(sponsorDropdown.getByText("Hidden Sponsor", { exact: true })).toBeVisible();
+
+    // Verify the sponsor suggestions stay next to the input inside the viewport.
+    await expectSearchDropdownInViewport(organizerGroupPage, sponsorInput, sponsorDropdown);
+    await expect(hostDropdown).toHaveCount(0);
   });
 });
 

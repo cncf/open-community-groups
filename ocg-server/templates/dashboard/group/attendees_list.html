@@ -1055,11 +1055,11 @@
   <div id="overlay-attendee-invitation-modal"
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
   <div class="modal-panel p-4 max-w-2xl">
-    <div class="modal-card rounded-lg modal-overflow-visible">
+    <div class="modal-card rounded-lg">
       {{ dashboard::modal_header(title_id = "attendee-invitation-modal-title",
         title = "Invite attendee",
         close_id = "close-attendee-invitation-modal") -}}
-      <div class="modal-body p-4 md:p-8 modal-overflow-visible">
+      <div class="modal-body p-4 md:p-8">
         <form id="attendee-invitation-form"
               hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"
               hx-indicator="#dashboard-spinner"

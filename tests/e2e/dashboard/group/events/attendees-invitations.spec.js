@@ -6,9 +6,9 @@ import {
   expectNewNotifications,
   snapshotNotifications,
 } from "../../../notifications.js";
-import { TEST_USER_IDS } from "../../../seed.js";
+import { TEST_EVENT_IDS, TEST_EVENT_NAMES, TEST_USER_IDS } from "../../../seed.js";
 import { uniqueName, waitForActionResponse } from "../../../utils.js";
-import { getVisibleStatusBadge, submitAttendeeInvitation } from "./attendees-helpers.js";
+import { getVisibleStatusBadge, openAttendeesTab, submitAttendeeInvitation } from "./attendees-helpers.js";
 import {
   createApprovalRequiredEvent,
   deleteEventFromList,
@@ -177,5 +177,48 @@ test.describe("group dashboard attendees tab — invitations", () => {
       deleteNotifications(notificationIds);
       await deleteEventFromList(organizerGroupPage, eventId);
     }
+  });
+
+  test("invitation modal keeps its form inside the card in a short viewport", async ({
+    organizerGroupPage,
+  }) => {
+    // Open a seeded event attendees tab in a short viewport.
+    await organizerGroupPage.setViewportSize({ width: 1280, height: 480 });
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      TEST_EVENT_NAMES.alpha[0],
+      TEST_EVENT_IDS.alpha.one,
+    );
+
+    // Open the invitation modal from the attendee actions menu.
+    await attendeesContent.getByRole("button", { name: "Open attendee actions menu" }).click();
+    await attendeesContent.getByRole("menuitem", { name: "Invite attendee" }).click();
+    const modal = organizerGroupPage.locator("#attendee-invitation-modal");
+    const modalBody = modal.locator(".modal-body");
+    await expect(modal.getByRole("heading", { name: "Invite attendee" })).toBeVisible();
+
+    // Verify the card fits the viewport and the backdrop layer does not scroll.
+    const cardBox = await modal.locator(".modal-card").boundingBox();
+    expect(cardBox.y).toBeGreaterThanOrEqual(0);
+    expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(480);
+    expect(await modal.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
+
+    // Verify the send button is reachable by scrolling the modal body.
+    const sendButton = modal.locator("#submit-attendee-invitation");
+    await sendButton.scrollIntoViewIfNeeded();
+    await expect(sendButton).toBeInViewport();
+
+    // Search users from the top of the modal body.
+    const searchInput = modal.locator("#attendee-invitation-search-input");
+    const searchDropdown = modal.locator("[data-user-search-dropdown]");
+    await searchInput.scrollIntoViewIfNeeded();
+    await searchInput.fill("e2e-");
+    await expect(searchDropdown.locator("h3").first()).toBeVisible();
+
+    // Verify the results stay inside the visible modal body.
+    const bodyBox = await modalBody.boundingBox();
+    const dropdownBox = await searchDropdown.boundingBox();
+    expect(dropdownBox.y).toBeGreaterThanOrEqual(bodyBox.y);
+    expect(dropdownBox.y + dropdownBox.height).toBeLessThanOrEqual(bodyBox.y + bodyBox.height);
   });
 });

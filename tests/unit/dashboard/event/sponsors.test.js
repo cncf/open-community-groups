@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/sponsors.js";
+import { renderViewportBottomLayout } from "/tests/unit/test-utils/dom.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("sponsors-section", () => {
@@ -131,5 +132,28 @@ describe("sponsors-section", () => {
     expect(element.showLevelModal).to.equal(true);
     expect(element.pendingSponsor.group_sponsor_id).to.equal("sponsor-1");
     expect(element.pendingLevel).to.equal("");
+  });
+
+  it("opens the suggestions above the search input near the viewport bottom", async () => {
+    // Render the component near the bottom of the viewport.
+    renderViewportBottomLayout(100);
+    const element = await mountLitComponent("sponsors-section", {
+      sponsors: Array.from({ length: 12 }, (_, index) => ({
+        group_sponsor_id: `sponsor-${index}`,
+        name: `Sponsor ${index}`,
+        logo_url: "",
+      })),
+    });
+
+    // Open the suggestions from the search input.
+    const input = element.querySelector("[data-sponsor-search-input]");
+    input.dispatchEvent(new Event("focus"));
+    await element.updateComplete;
+
+    // The suggestions open upward and stay inside the viewport.
+    const dropdownBounds = element.querySelector("[data-sponsor-search-dropdown]").getBoundingClientRect();
+    expect(dropdownBounds.height).to.be.greaterThan(0);
+    expect(dropdownBounds.bottom).to.be.at.most(input.getBoundingClientRect().top);
+    expect(dropdownBounds.top).to.be.at.least(0);
   });
 });

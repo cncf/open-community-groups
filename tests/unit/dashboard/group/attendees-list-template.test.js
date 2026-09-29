@@ -391,6 +391,19 @@ describe("dashboard group attendees list template", () => {
     expect(ticketType).to.not.include("(<span data-localized-currency>");
   });
 
+  it("scrolls the invitation modal content inside its card", async () => {
+    // Load the invitation modal markup.
+    const template = await loadTemplate();
+    const invitationModal = normalizeWhitespace(
+      sliceTemplateSection(template, "{# Invitation modal -#}", "{# End invitation modal -#}"),
+    );
+
+    // Verify the card keeps its height cap and the body scrolls the form.
+    expect(invitationModal).to.include('<div class="modal-card rounded-lg">');
+    expect(invitationModal).to.include('<div class="modal-body p-4 md:p-8">');
+    expect(invitationModal).to.not.include("modal-overflow-visible");
+  });
+
   it("explains when invitations have no assignable ticket type", async () => {
     // Load the invitation modal before checking its ticket empty state.
     const template = normalizeWhitespace(await loadTemplate());

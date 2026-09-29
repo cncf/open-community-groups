@@ -2,7 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/common/location/search-field.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { renderViewportBottomLayout, resetDom } from "/tests/unit/test-utils/dom.js";
 import {
   mountLitComponent,
   useMountedElementsCleanup,
@@ -545,5 +545,27 @@ describe("location-search-field", () => {
       options: { duration: 0 },
     });
     expect(jumpToCalls).to.deep.equal([]);
+  });
+
+  it("opens the results above the search input near the viewport bottom", async () => {
+    // Render the field near the bottom of the viewport.
+    renderViewportBottomLayout(80);
+    const element = await renderField();
+
+    // Show a long list of search results.
+    element._searchQuery = "Málaga";
+    element._showDropdown = true;
+    element._searchResults = Array.from({ length: 12 }, (_, index) => ({
+      place_id: index,
+      display_name: `Málaga ${index}, Andalusia, Spain`,
+    }));
+    await element.updateComplete;
+
+    // The results open upward and stay inside the viewport.
+    const input = element.querySelector("#location-search-input");
+    const dropdownBounds = element.querySelector("[data-location-search-dropdown]").getBoundingClientRect();
+    expect(dropdownBounds.height).to.be.greaterThan(0);
+    expect(dropdownBounds.bottom).to.be.at.most(input.getBoundingClientRect().top);
+    expect(dropdownBounds.top).to.be.at.least(0);
   });
 });
