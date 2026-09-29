@@ -176,6 +176,7 @@ describe("alerts", () => {
       showCancelButton: true,
       confirmButtonText: "Reload",
       cancelButtonText: "Dismiss",
+      focusCancel: true,
       position: "top-end",
       backdrop: false,
     });

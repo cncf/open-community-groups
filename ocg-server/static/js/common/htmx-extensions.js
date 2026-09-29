@@ -287,7 +287,7 @@ export const handleCommitShaBeforeOnLoad = (event, root = document) => {
     return;
   }
 
-  if (reloadIfDeploymentChanged(event.detail.xhr, root)) {
+  if (reloadIfDeploymentChanged(event.detail.xhr, root, getDeploymentRefreshOptions(event))) {
     event.preventDefault();
   }
 };
@@ -303,7 +303,10 @@ export const handleCommitShaBeforeSwap = (event, root = document) => {
     return;
   }
 
-  if (isDeploymentReloadRequested() || reloadIfDeploymentChanged(event.detail.xhr, root)) {
+  if (
+    isDeploymentReloadRequested() ||
+    reloadIfDeploymentChanged(event.detail.xhr, root, getDeploymentRefreshOptions(event))
+  ) {
     event.detail.shouldSwap = false;
   }
 };
@@ -420,3 +423,14 @@ export const registerHtmxResponseHandlers = (root = document) => {
   eventRoot.addEventListener("htmx:afterRequest", handleDeclarativeHtmxResponse);
   responseHandlerRoots.add(eventRoot);
 };
+
+/**
+ * Builds deployment refresh options for an HTMX response event.
+ * HTMX issues load-triggered and polling requests without a triggering event,
+ * so those count as background requests the user did not start.
+ * @param {CustomEvent} event HTMX beforeOnLoad or beforeSwap event.
+ * @returns {{background: boolean}} Deployment refresh options.
+ */
+const getDeploymentRefreshOptions = (event) => ({
+  background: !event.detail?.requestConfig?.triggeringEvent,
+});

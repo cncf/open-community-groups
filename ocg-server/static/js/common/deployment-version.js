@@ -95,6 +95,21 @@ export const consumePendingDeploymentRefreshAlert = () => {
 };
 
 /**
+ * Adds a unique cache-busting parameter to a deployment reload URL.
+ * Existing query parameters keep their original encoding.
+ * @param {string} href Current page URL.
+ * @param {string} token Unique reload token.
+ * @returns {string} URL that misses shared caches for the current page.
+ */
+export const createDeploymentRefreshUrl = (href, token = Date.now().toString(36)) => {
+  const url = new URL(href);
+  const search = removeDeploymentRefreshParamFromSearch(url.search);
+  const refreshParam = `${DEPLOYMENT_REFRESH_PARAM}=${encodeURIComponent(token)}`;
+  url.search = search ? `${search}&${refreshParam}` : refreshParam;
+  return url.toString();
+};
+
+/**
  * Returns whether the response is a stale-client refresh intercept.
  * @param {XMLHttpRequest|Headers|object|null|undefined} headersSource Response headers source.
  * @returns {boolean} Whether the server asked the client to refresh without running the handler.
@@ -107,12 +122,15 @@ export const isForcedDeploymentRefresh = (headersSource) =>
  * Handles deployment refresh signals from response headers and reports the outcome.
  * A forced-refresh intercept that cannot reload is blocked, so callers do not
  * treat the empty 204 as a successful mutation. A reloading outcome means the
- * page is navigating away until the pending reload is released.
+ * page is navigating away until the pending reload is released. Background
+ * requests, which started without a user action, never claim that a user
+ * request did not complete.
  * @param {XMLHttpRequest|Headers|object|null|undefined} headersSource Response headers source.
  * @param {Document} root Document used to read the loaded commit SHA.
+ * @param {{background?: boolean}} options Whether the request started without a user action.
  * @returns {"blocked"|"none"|"reloading"} One of the DEPLOYMENT_REFRESH_OUTCOME values.
  */
-export const processDeploymentRefresh = (headersSource, root = document) => {
+export const processDeploymentRefresh = (headersSource, root = document, { background = false } = {}) => {
   const forcedRefresh = isForcedDeploymentRefresh(headersSource);
   const dirty = hasVisiblePendingChanges(root);
   const unhandledOutcome = forcedRefresh
@@ -141,7 +159,7 @@ export const processDeploymentRefresh = (headersSource, root = document) => {
 
   // Once this commit exhausted its retry window, only a manual reload is offered
   if (hasDeploymentRefreshRetryExpired(root)) {
-    stopDeploymentRefreshRetry({ blocked: forcedRefresh });
+    stopDeploymentRefreshRetry({ blocked: forcedRefresh && !background });
     return unhandledOutcome;
   }
 
@@ -160,25 +178,11 @@ export const processDeploymentRefresh = (headersSource, root = document) => {
  * HX-Refresh and callers do not treat the empty 204 as a successful mutation.
  * @param {XMLHttpRequest|Headers|object|null|undefined} headersSource Response headers source.
  * @param {Document} root Document used to read the loaded commit SHA.
+ * @param {{background?: boolean}} options Whether the request started without a user action.
  * @returns {boolean} Whether a refresh signal was handled or a reload is pending.
  */
-export const reloadIfDeploymentChanged = (headersSource, root = document) =>
-  processDeploymentRefresh(headersSource, root) !== DEPLOYMENT_REFRESH_OUTCOME.NONE;
-
-/**
- * Adds a unique cache-busting parameter to a deployment reload URL.
- * Existing query parameters keep their original encoding.
- * @param {string} href Current page URL.
- * @param {string} token Unique reload token.
- * @returns {string} URL that misses shared caches for the current page.
- */
-export const createDeploymentRefreshUrl = (href, token = Date.now().toString(36)) => {
-  const url = new URL(href);
-  const search = removeDeploymentRefreshParamFromSearch(url.search);
-  const refreshParam = `${DEPLOYMENT_REFRESH_PARAM}=${encodeURIComponent(token)}`;
-  url.search = search ? `${search}&${refreshParam}` : refreshParam;
-  return url.toString();
-};
+export const reloadIfDeploymentChanged = (headersSource, root = document, options = {}) =>
+  processDeploymentRefresh(headersSource, root, options) !== DEPLOYMENT_REFRESH_OUTCOME.NONE;
 
 /**
  * Resets deployment reload state for isolated unit tests.
@@ -416,6 +420,9 @@ const markDeploymentReloadPending = () => {
 
 /**
  * Navigates to a cache-busting copy of the current page.
+ * Unlike location.reload(), this navigates to a new URL, so the browser does not
+ * restore scroll position or form field values. Forms with visible pending
+ * changes are never reloaded automatically.
  * @returns {void}
  */
 const navigateToDeploymentRefresh = () => {

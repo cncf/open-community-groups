@@ -626,6 +626,48 @@ describe("deployment version", () => {
     }
   });
 
+  it("offers a passive reload when a background request is intercepted after the retry window", () => {
+    let reloads = 0;
+    const handler = () => {
+      reloads += 1;
+    };
+    const swal = mockSwal();
+    swal.setNextResult({ isConfirmed: false, isDismissed: true });
+    const retryTimer = captureDeploymentRefreshRetryTimer();
+
+    try {
+      // Exhaust the retry window and simulate the next navigation.
+      enterDeploymentRefreshRetry(1_000, handler);
+      resetDeploymentReloadState({ clearRefreshHistory: false, clearRetryState: false });
+      setDeploymentReloadHandler(handler);
+      Date.now = () => 1_000 + RETRY_WINDOW_MS;
+      const callsBeforeIntercept = swal.calls.length;
+
+      // A background intercept stays blocked but uses the passive prompt once.
+      const refreshHeaders = new Headers({ [HTMX_REFRESH_HEADER]: "true" });
+      expect(processDeploymentRefresh(refreshHeaders, document, { background: true })).to.equal(
+        DEPLOYMENT_REFRESH_OUTCOME.BLOCKED,
+      );
+      expect(processDeploymentRefresh(refreshHeaders, document, { background: true })).to.equal(
+        DEPLOYMENT_REFRESH_OUTCOME.BLOCKED,
+      );
+      expect(reloads).to.equal(1);
+      expect(swal.calls).to.have.length(callsBeforeIntercept + 1);
+      expect(swal.calls.at(-1)).to.include({ confirmButtonText: "Reload", icon: "info" });
+
+      // A user-started intercept still explains that its request did not complete.
+      expect(processDeploymentRefresh(refreshHeaders)).to.equal(DEPLOYMENT_REFRESH_OUTCOME.BLOCKED);
+      expect(swal.calls).to.have.length(callsBeforeIntercept + 2);
+      expect(swal.calls.at(-1)).to.include({
+        icon: "warning",
+        text: DEPLOYMENT_REFRESH_STALLED_BLOCKED_MESSAGE,
+      });
+    } finally {
+      retryTimer.restore();
+      swal.restore();
+    }
+  });
+
   it("does not restart automatic reloads for an expired commit after the cooldown", () => {
     let reloads = 0;
     const handler = () => {

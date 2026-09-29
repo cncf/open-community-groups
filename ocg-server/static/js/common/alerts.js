@@ -96,8 +96,6 @@ export const showErrorAlert = (message, withHtml = false, persist = false) => {
   Swal.fire(alertOptions);
 };
 
-initializeOnReadyAndHtmxLoad(initializePageAlerts);
-
 /**
  * Displays the deployment refresh retry alert while cached HTML expires.
  * @returns {void}
@@ -162,6 +160,7 @@ export const showDeploymentRefreshStalledAlert = async ({
     showCancelButton: true,
     confirmButtonText: "Reload",
     cancelButtonText: "Dismiss",
+    focusCancel: true,
     ...getCommonAlertOptions(),
   });
   const popup = Swal.getPopup?.();
@@ -179,29 +178,6 @@ export const showDeploymentRefreshStalledAlert = async ({
   const replaced = Boolean(popup && currentPopup && currentPopup !== popup && Swal.isVisible?.());
   return replaced ? "replaced" : "dismiss";
 };
-
-/**
- * Waits until no alert is visible.
- * SweetAlert2 removes or empties its container on close, so watching body
- * subtree changes observes every close without polling.
- * @param {Document} root Document that hosts the alert container.
- * @returns {Promise<void>} Promise resolved once the open alert closes.
- */
-export const waitForAlertToClose = (root = document) =>
-  new Promise((resolve) => {
-    if (!globalThis.Swal?.isVisible?.() || !root?.body) {
-      resolve();
-      return;
-    }
-
-    const observer = new MutationObserver(() => {
-      if (!Swal.isVisible()) {
-        observer.disconnect();
-        resolve();
-      }
-    });
-    observer.observe(root.body, { childList: true, subtree: true });
-  });
 
 /**
  * Displays a server error with a warning box when available (e.g., 422 errors).
@@ -467,3 +443,28 @@ export const showConfirmAlert = (message, buttonId, confirmText, cancelText = "N
     }
   });
 };
+
+/**
+ * Waits until no alert is visible.
+ * SweetAlert2 removes or empties its container on close, so watching body
+ * subtree changes observes every close without polling.
+ * @param {Document} root Document that hosts the alert container.
+ * @returns {Promise<void>} Promise resolved once the open alert closes.
+ */
+export const waitForAlertToClose = (root = document) =>
+  new Promise((resolve) => {
+    if (!globalThis.Swal?.isVisible?.() || !root?.body) {
+      resolve();
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      if (!Swal.isVisible()) {
+        observer.disconnect();
+        resolve();
+      }
+    });
+    observer.observe(root.body, { childList: true, subtree: true });
+  });
+
+initializeOnReadyAndHtmxLoad(initializePageAlerts);

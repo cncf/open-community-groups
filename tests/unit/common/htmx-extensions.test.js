@@ -27,6 +27,7 @@ import {
 import {
   COMMIT_SHA_HEADER,
   consumePendingDeploymentRefreshAlert,
+  DEPLOYMENT_REFRESH_STALLED_BLOCKED_MESSAGE,
   DIRTY_DEPLOYMENT_BLOCKED_MESSAGE,
   HTMX_REFRESH_HEADER,
   REFRESH_HEADER,
@@ -565,6 +566,48 @@ describe("htmx extensions", () => {
     expect(swal.calls).to.have.length(2);
     expect(swal.calls[0].text).to.equal(DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
     expect(swal.calls[1].text).to.equal(DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
+  });
+
+  it("uses passive wording for background htmx refresh intercepts after the retry window", () => {
+    // Load a page whose commit already exhausted its refresh retry window.
+    Date.now = () => 1_000 + 7 * 60 * 1000;
+    setLoadedCommitSha("old");
+    window.sessionStorage.setItem("ocg.deploymentRefreshRetryStaleCommitSha", "old");
+    window.sessionStorage.setItem("ocg.deploymentRefreshRetryStartedAt", "1000");
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    const buildOnLoadEvent = (triggeringEvent) =>
+      new CustomEvent("htmx:beforeOnLoad", {
+        cancelable: true,
+        detail: {
+          requestConfig: { triggeringEvent },
+          xhr: {
+            getResponseHeader: (name) => (name === HTMX_REFRESH_HEADER ? "true" : null),
+          },
+        },
+      });
+
+    // Intercept a load-triggered request, which HTMX sends without a triggering event.
+    const backgroundEvent = buildOnLoadEvent(undefined);
+    handleCommitShaBeforeOnLoad(backgroundEvent);
+
+    // The refresh stays owned but only offers a passive reload.
+    expect(backgroundEvent.defaultPrevented).to.equal(true);
+    expect(reloads).to.equal(0);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({ confirmButtonText: "Reload", icon: "info" });
+
+    // Intercept a request started by a user event.
+    const userEvent = buildOnLoadEvent(new Event("change"));
+    handleCommitShaBeforeOnLoad(userEvent);
+
+    // The user is told that their request did not complete.
+    expect(userEvent.defaultPrevented).to.equal(true);
+    expect(reloads).to.equal(0);
+    expect(swal.calls).to.have.length(2);
+    expect(swal.calls[1]).to.include({ icon: "warning", text: DEPLOYMENT_REFRESH_STALLED_BLOCKED_MESSAGE });
   });
 
   it("cancels the swap and reloads when an htmx response comes from a newer commit", () => {
