@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { TEST_COMMUNITY_NAME, TEST_GROUP_NAMES, TEST_GROUP_SLUGS } from "../../seed.js";
-import { expectPaginationNavigation, navigateToPath } from "../../utils.js";
+import { expectPaginationNavigation, navigateToPath, routeEmptyBasemap } from "../../utils.js";
 
 test.describe("site explore groups page", () => {
   test("moves between group result pages and restores the first card", async ({ page }) => {
@@ -128,12 +128,7 @@ test.describe("site explore groups page", () => {
 
   test("supports searching groups and switching to map view", async ({ page }) => {
     // Keep the real map runtime while removing external basemap dependencies.
-    await page.route("https://tiles.openfreemap.org/styles/bright", (route) =>
-      route.fulfill({
-        headers: { "access-control-allow-origin": "*" },
-        json: { version: 8, sources: {}, layers: [] },
-      }),
-    );
+    await routeEmptyBasemap(page);
 
     // Load the groups explore page with the community filter applied.
     await navigateToPath(page, `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`);
@@ -194,6 +189,47 @@ test.describe("site explore groups page", () => {
         name: TEST_GROUP_NAMES.gamma,
       }),
     ).toBeVisible();
+  });
+
+  test("keeps every map location when zooming from a paginated URL", async ({ page }) => {
+    // Keep the real map runtime while removing external basemap dependencies.
+    await routeEmptyBasemap(page);
+
+    // Load the map with list pagination that would hide one seeded location.
+    await navigateToPath(
+      page,
+      `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}&view_mode=map&limit=1&offset=1`,
+    );
+
+    // Verify the initial map renders both located groups.
+    const externalPaymentsMarker = page.locator(
+      `.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.externalPayments}`,
+    );
+    const gammaMarker = page.locator(`.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.gamma}`);
+    await expect(externalPaymentsMarker).toBeVisible();
+    await expect(gammaMarker).toBeVisible();
+
+    // Zoom out and wait for the viewport search to refresh the locations.
+    const [searchResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/explore/groups/search") &&
+          response.ok(),
+      ),
+      page.getByRole("button", { name: "Zoom out" }).click(),
+    ]);
+
+    // Verify the refresh uses map mode and keeps both located groups.
+    const searchUrl = new URL(searchResponse.url());
+    expect(searchUrl.searchParams.getAll("view_mode")).toEqual(["map"]);
+    expect(searchUrl.searchParams.get("bbox_sw_lat")).not.toBeNull();
+    const searchData = await searchResponse.json();
+    expect(searchData.groups.map((group) => group.slug).sort()).toEqual(
+      [TEST_GROUP_SLUGS.community1.externalPayments, TEST_GROUP_SLUGS.community1.gamma].sort(),
+    );
+    await expect(externalPaymentsMarker).toBeVisible();
+    await expect(gammaMarker).toBeVisible();
   });
 
   test("shows an empty state when no groups match the search", async ({ page }) => {

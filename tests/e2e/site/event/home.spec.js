@@ -259,6 +259,22 @@ test.describe("event page", () => {
       await expect(mapModal).toBeVisible();
       await expect(modalMap).toHaveClass(/maplibregl-map/);
 
+      // Verify only the modal map exposes zoom controls.
+      const zoomInButton = modalMap.getByRole("button", { name: "Zoom in" });
+      await expect(zoomInButton).toBeVisible();
+      await expect(modalMap.getByRole("button", { name: "Zoom out" })).toBeVisible();
+      await expect(page.locator("#event-map").getByRole("button", { name: "Zoom in" })).toHaveCount(0);
+
+      // Zoom in until MapLibre disables the control at its maximum zoom.
+      for (let clicks = 0; clicks < 20 && (await zoomInButton.isEnabled()); clicks += 1) {
+        await zoomInButton.click();
+      }
+      await expect(zoomInButton).toBeDisabled();
+      await expect(modalMap.getByRole("button", { name: "Zoom out" })).toBeEnabled();
+
+      // Verify zooming keeps the modal open.
+      await expect(mapModal).toBeVisible();
+
       // Close the map modal and verify it is hidden again.
       await page.locator("#close-event-map-modal").click();
       await expect(mapModal).toBeHidden();
