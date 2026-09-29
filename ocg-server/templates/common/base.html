@@ -18,6 +18,22 @@
         document.querySelector('meta[name="viewport"]').setAttribute("content", "width=1280");
       }
     </script>
+    {# Deployment refresh: drop the cache-busting parameter before HTMX records the page path for
+       history, keeping other parameters as sent. Parameter and attribute names mirror
+       static/js/common/deployment-version.js, which reads the marker. -#}
+    <script>
+      (() => {
+        const params = location.search.slice(1).split("&").filter(Boolean);
+        const keptParams = params.filter((param) => param.split("=")[0] !== "ocg_refresh");
+        if (keptParams.length === params.length) {
+          return;
+        }
+
+        document.documentElement.setAttribute("data-deployment-refresh", "");
+        const search = keptParams.length ? `?${keptParams.join("&")}` : "";
+        history.replaceState(history.state, "", `${location.pathname}${search}${location.hash}`);
+      })();
+    </script>
 
     {# Page title -#}
     {% block head_title -%}

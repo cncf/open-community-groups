@@ -4,8 +4,9 @@ import {
 } from "/static/js/common/dashboard-context.js";
 import {
   addLoadedCommitShaHeader,
-  isDeploymentReloadRequested,
-  reloadIfDeploymentChanged,
+  DEPLOYMENT_REFRESH_OUTCOME,
+  processDeploymentRefresh,
+  waitForDeploymentReloadRelease,
 } from "/static/js/common/deployment-version.js";
 
 /**
@@ -27,10 +28,13 @@ export const ocgFetch = async (input, init = {}) => {
     ...init,
     headers,
   });
-  if (reloadIfDeploymentChanged(response.headers)) {
-    if (isDeploymentReloadRequested()) {
-      return waitForPageReload();
-    }
+  // Stay pending while the page reloads; re-check the latest deployment state if the reload is cancelled
+  let deploymentOutcome = processDeploymentRefresh(response.headers);
+  while (deploymentOutcome === DEPLOYMENT_REFRESH_OUTCOME.RELOADING) {
+    await waitForDeploymentReloadRelease();
+    deploymentOutcome = processDeploymentRefresh(response.headers);
+  }
+  if (deploymentOutcome === DEPLOYMENT_REFRESH_OUTCOME.BLOCKED) {
     return createBlockedDeploymentRefreshResponse(response);
   }
 

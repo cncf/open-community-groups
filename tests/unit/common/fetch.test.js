@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { showErrorAlert } from "/static/js/common/alerts.js";
 import {
   resetDashboardContextReloadState,
   SELECTED_COMMUNITY_ID_HEADER,
@@ -16,6 +17,7 @@ import {
   resetDeploymentReloadState,
   setDeploymentReloadHandler,
 } from "/static/js/common/deployment-version.js";
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
@@ -35,6 +37,50 @@ const getSettledStateAfterCurrentTask = (promise) =>
       setTimeout(() => resolve("pending"), 0);
     }),
   ]);
+
+// Mock SweetAlert2 so a new alert replaces and dismisses the open one.
+const mockReplacingSwal = () => {
+  const originalSwal = globalThis.Swal;
+  const calls = [];
+  let container = null;
+  let resolveOpen = null;
+
+  const close = (result) => {
+    const resolve = resolveOpen;
+    resolveOpen = null;
+    container?.remove();
+    container = null;
+    resolve?.(result);
+  };
+
+  globalThis.Swal = {
+    fire: (options) => {
+      calls.push(options);
+      const resolveReplaced = resolveOpen;
+      container?.remove();
+      container = document.createElement("div");
+      container.className = "swal2-container";
+      document.body.append(container);
+      resolveReplaced?.({ isDismissed: true });
+      return new Promise((resolve) => {
+        resolveOpen = resolve;
+      });
+    },
+    getPopup: () => container,
+    isVisible: () => Boolean(container?.isConnected),
+  };
+
+  return {
+    calls,
+    close(result = { isConfirmed: false, isDismissed: true, dismiss: "close" }) {
+      close(result);
+    },
+    restore() {
+      close({ isConfirmed: false, isDismissed: true, dismiss: "cancel" });
+      globalThis.Swal = originalSwal;
+    },
+  };
+};
 
 describe("ocgFetch", () => {
   const originalDateNow = Date.now;
@@ -326,6 +372,236 @@ describe("ocgFetch", () => {
       expect(isDeploymentReloadRequested()).to.equal(false);
       expect(reloads).to.equal(1);
     } finally {
+      swal.restore();
+    }
+  });
+
+  it("settles pending callers when deployment refresh retries stop", async () => {
+    // Capture the retry timer while keeping other timers working.
+    const originalSetTimeout = window.setTimeout;
+    let retryCallback = null;
+    window.setTimeout = (handler, timeout, ...args) => {
+      if (timeout === 30_000) {
+        retryCallback = handler;
+        return 0;
+      }
+      return originalSetTimeout(handler, timeout, ...args);
+    };
+    const swal = mockSwal();
+    swal.setNextResult({ isConfirmed: false, isDismissed: true });
+
+    try {
+      // Enter retry mode while stale HTML is still loaded.
+      Date.now = () => 1_000;
+      setLoadedCommitSha("old");
+      setDeploymentReloadHandler(() => {});
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+      resetDeploymentReloadState({ clearRefreshHistory: false });
+      setDeploymentReloadHandler(() => {});
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+      fetchMock.setImpl(async (url) =>
+        url === "/blocked"
+          ? { headers: new Headers({ [REFRESH_HEADER]: "true" }), ok: true, status: 204 }
+          : { headers: new Headers({ [COMMIT_SHA_HEADER]: "new" }), ok: true, status: 200 },
+      );
+      const blocked = ocgFetch("/blocked");
+      const processed = ocgFetch("/processed");
+      expect(await getSettledStateAfterCurrentTask(blocked)).to.equal("pending");
+      expect(await getSettledStateAfterCurrentTask(processed)).to.equal("pending");
+
+      // Expire the retry window so the page stays loaded.
+      Date.now = () => 1_000 + 7 * 60 * 1000;
+      retryCallback();
+
+      // Blocked requests fail closed and handled responses reach their callers.
+      const blockedResponse = await blocked;
+      expect(blockedResponse.status).to.equal(409);
+      expect(blockedResponse.ok).to.equal(false);
+      expect((await processed).status).to.equal(200);
+      expect(isDeploymentReloadRequested()).to.equal(false);
+    } finally {
+      window.setTimeout = originalSetTimeout;
+      swal.restore();
+    }
+  });
+
+  it("runs stale dashboard context checks on responses released by stopped retries", async () => {
+    // Capture the retry timer while keeping other timers working.
+    const originalSetTimeout = window.setTimeout;
+    let retryCallback = null;
+    window.setTimeout = (handler, timeout, ...args) => {
+      if (timeout === 30_000) {
+        retryCallback = handler;
+        return 0;
+      }
+      return originalSetTimeout(handler, timeout, ...args);
+    };
+    const swal = mockSwal();
+    swal.setNextResult({ isConfirmed: false, isDismissed: true });
+    let dashboardReloads = 0;
+    setDashboardContextReloadHandler(() => {
+      dashboardReloads += 1;
+    });
+
+    try {
+      // Hold a stale dashboard context intercept while the deployment retry is pending.
+      Date.now = () => 1_000;
+      setLoadedCommitSha("old");
+      setDeploymentReloadHandler(() => {});
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+      resetDeploymentReloadState({ clearRefreshHistory: false });
+      setDeploymentReloadHandler(() => {});
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+      fetchMock.setImpl(async () => ({
+        headers: new Headers({ [COMMIT_SHA_HEADER]: "new", [STALE_DASHBOARD_CONTEXT_HEADER]: "true" }),
+        ok: true,
+        status: 204,
+      }));
+      const staleContext = ocgFetch("/dashboard/group/sponsors/1/featured");
+      expect(await getSettledStateAfterCurrentTask(staleContext)).to.equal("pending");
+
+      // Expire the retry window so the held response is released.
+      Date.now = () => 1_000 + 7 * 60 * 1000;
+      retryCallback();
+
+      // The handler never ran, so the dashboard reloads and the caller stays pending.
+      expect(await getSettledStateAfterCurrentTask(staleContext)).to.equal("pending");
+      expect(dashboardReloads).to.equal(1);
+    } finally {
+      window.setTimeout = originalSetTimeout;
+      swal.restore();
+    }
+  });
+
+  it("releases held callers when a pending retry is deferred for a dirty form", async () => {
+    // Capture the retry timer while keeping other timers working.
+    const originalSetTimeout = window.setTimeout;
+    let retryCallback = null;
+    window.setTimeout = (handler, timeout, ...args) => {
+      if (timeout === 30_000) {
+        retryCallback = handler;
+        return 0;
+      }
+      return originalSetTimeout(handler, timeout, ...args);
+    };
+    const swal = mockSwal();
+
+    try {
+      // Hold a processed response while the deployment retry is pending.
+      Date.now = () => 1_000;
+      setLoadedCommitSha("old");
+      setDeploymentReloadHandler(() => {});
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+      resetDeploymentReloadState({ clearRefreshHistory: false });
+      setDeploymentReloadHandler(() => {});
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+      fetchMock.setImpl(async () => ({
+        headers: new Headers({ [COMMIT_SHA_HEADER]: "new" }),
+        ok: true,
+        status: 200,
+      }));
+      const processed = ocgFetch("/processed");
+      expect(await getSettledStateAfterCurrentTask(processed)).to.equal("pending");
+
+      // Dirty the form before the next retry fires.
+      document.body.innerHTML = '<div id="pending-changes-alert"></div>';
+      retryCallback();
+
+      // The retry is deferred and the held response reaches its caller.
+      expect((await processed).status).to.equal(200);
+      expect(isDeploymentReloadRequested()).to.equal(false);
+    } finally {
+      window.setTimeout = originalSetTimeout;
+      swal.restore();
+    }
+  });
+
+  it("restores the blocked-request reload prompt after the caller's error alert closes", async () => {
+    // Record an expired retry window for the loaded commit.
+    const swal = mockReplacingSwal();
+    Date.now = () => 1_000 + 7 * 60 * 1000;
+    setLoadedCommitSha("old");
+    window.sessionStorage.setItem("ocg.deploymentRefreshRetryStaleCommitSha", "old");
+    window.sessionStorage.setItem("ocg.deploymentRefreshRetryStartedAt", "1000");
+    fetchMock.setImpl(async () => ({
+      headers: new Headers({ [REFRESH_HEADER]: "true" }),
+      ok: true,
+      status: 204,
+    }));
+
+    try {
+      // A caller shows its generic failure alert for the blocked response.
+      const response = await ocgFetch("/dashboard/group/sponsors/1/featured");
+      expect(response.status).to.equal(409);
+      showErrorAlert("Failed to update sponsor visibility. Please try again.");
+      await waitForMicrotask();
+
+      // The caller's error replaces the Reload prompt instead of being dropped.
+      expect(swal.calls).to.have.length(2);
+      expect(swal.calls[0]).to.include({ confirmButtonText: "Reload", icon: "warning" });
+      expect(swal.calls[1]).to.include({
+        icon: "error",
+        text: "Failed to update sponsor visibility. Please try again.",
+      });
+
+      // Closing the error alert brings the Reload prompt back.
+      swal.close({ isConfirmed: false, isDismissed: true, dismiss: "timer" });
+      await waitForMicrotask();
+      expect(swal.calls).to.have.length(3);
+      expect(swal.calls[2]).to.include({ confirmButtonText: "Reload", icon: "warning" });
+    } finally {
+      swal.restore();
+    }
+  });
+
+  it("offers the blocked-request reload prompt to callers released by an expired retry timer", async () => {
+    // Capture the retry timer while keeping other timers working.
+    const originalSetTimeout = window.setTimeout;
+    let retryCallback = null;
+    window.setTimeout = (handler, timeout, ...args) => {
+      if (timeout === 30_000) {
+        retryCallback = handler;
+        return 0;
+      }
+      return originalSetTimeout(handler, timeout, ...args);
+    };
+    const swal = mockReplacingSwal();
+
+    try {
+      // Hold a forced-refresh intercept while the deployment retry is pending.
+      Date.now = () => 1_000;
+      setLoadedCommitSha("old");
+      setDeploymentReloadHandler(() => {});
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+      resetDeploymentReloadState({ clearRefreshHistory: false });
+      setDeploymentReloadHandler(() => {});
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+      fetchMock.setImpl(async () => ({
+        headers: new Headers({ [REFRESH_HEADER]: "true" }),
+        ok: true,
+        status: 204,
+      }));
+      const blocked = ocgFetch("/event/1/availability");
+      expect(await getSettledStateAfterCurrentTask(blocked)).to.equal("pending");
+
+      // Expire the retry window from the timer.
+      Date.now = () => 1_000 + 7 * 60 * 1000;
+      retryCallback();
+      const response = await blocked;
+
+      // The released intercept opens the blocked-request prompt, not the passive notice.
+      expect(response.status).to.equal(409);
+      expect(swal.calls.at(-1)).to.include({ confirmButtonText: "Reload", icon: "warning" });
+
+      // The caller's error alert shows, and the prompt returns once it closes.
+      showErrorAlert("Something went wrong loading event availability.");
+      await waitForMicrotask();
+      expect(swal.calls.at(-1)).to.include({ icon: "error" });
+      swal.close();
+      await waitForMicrotask();
+      expect(swal.calls.at(-1)).to.include({ confirmButtonText: "Reload", icon: "warning" });
+    } finally {
+      window.setTimeout = originalSetTimeout;
       swal.restore();
     }
   });
