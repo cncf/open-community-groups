@@ -108,9 +108,11 @@ test.describe("deployment refresh", () => {
     await expect(stalledPrompt).toBeVisible();
     await expect(page.locator(".swal2-popup").filter({ hasText: STALLED_BLOCKED_MESSAGE })).toHaveCount(0);
 
-    // The prompt does not block the page.
+    // The prompt does not block the page. It sits top-end and may cover the input's
+    // center, so click near the input's left edge.
     const searchInput = page.getByPlaceholder("Search events");
-    await searchInput.click();
+    const searchInputBox = await searchInput.boundingBox();
+    await searchInput.click({ position: { x: 8, y: searchInputBox.height / 2 } });
     await expect(searchInput).toBeFocused();
   });
 
