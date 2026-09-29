@@ -93,12 +93,19 @@ test.describe("event page call for speakers", () => {
     await member1Page.getByRole("button", { name: "Submit session proposal" }).click();
 
     // Verify the proposal modal separates eligible and submitted proposals.
-    await expect(member1Page.getByRole("dialog", { name: "Submit a proposal" })).toBeVisible();
-    await expect(member1Page.locator("#session_proposal_id")).toBeVisible();
-    await expect(member1Page.locator("cfs-label-selector")).toBeVisible();
+    const modal = member1Page.getByRole("dialog", { name: "Submit a proposal" });
+    await expect(modal).toBeVisible();
+    await expect(modal.locator("#session_proposal_id")).toBeVisible();
+    await expect(modal.locator("cfs-label-selector")).toBeVisible();
     await expect(
-      member1Page.getByText("Proposals already submitted to this event will appear disabled."),
+      modal.getByText("Proposals already submitted to this event will appear disabled."),
     ).toBeVisible();
+
+    // Verify members with proposals can reach proposal management.
+    await expect(modal.getByRole("link", { name: "Session proposals" })).toHaveAttribute(
+      "href",
+      "/dashboard/user?tab=session-proposals",
+    );
 
     // Find the ready option.
     const readyOption = member1Page.locator('option[value="99999999-9999-9999-9999-999999999801"]');
