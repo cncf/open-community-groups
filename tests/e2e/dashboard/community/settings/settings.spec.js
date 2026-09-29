@@ -33,16 +33,21 @@ test.describe("community dashboard settings view", () => {
       "hidden",
     );
 
-    // Verify every community image field is available.
-    for (const imageFieldName of [
-      "logo_url",
-      "banner_url",
-      "banner_mobile_url",
-      "og_image_url",
-      "ad_banner_url",
+    // Verify every community image field is available with its required size guidance.
+    for (const { helpText, name } of [
+      { helpText: "Images must be 360 x 360 px (square).", name: "logo_url" },
+      { helpText: "Size required 2428 x 192 px.", name: "banner_url" },
+      { helpText: "Size required 1220 x 192 px.", name: "banner_mobile_url" },
+      { helpText: "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", name: "og_image_url" },
+      { helpText: "Size required 2400 x 300 px.", name: "ad_banner_url" },
     ]) {
-      await expect(adminCommunityPage.locator(`image-field[name="${imageFieldName}"]`)).toBeVisible();
+      const imageField = adminCommunityPage.locator(`image-field[name="${name}"]`);
+      await expect(imageField).toBeVisible();
+      await expect(imageField).toContainText(helpText);
     }
+    await expect(adminCommunityPage.locator('image-field[name="logo_url"]')).not.toContainText(
+      "Size required",
+    );
 
     // Verify social and advertisement destinations use URL inputs.
     for (const socialLabel of [
@@ -131,6 +136,7 @@ test.describe("community dashboard settings view", () => {
           if (uploadFile instanceof File) {
             window.imageUploadMetadata = {
               name: uploadFile.name,
+              target: init.body.get("target"),
               type: uploadFile.type,
             };
           }
@@ -150,10 +156,11 @@ test.describe("community dashboard settings view", () => {
     await cropper.getByRole("button", { name: "Apply crop" }).click();
     await uploadResponsePromise;
 
-    // Verify the generated file and the uploaded preview dimensions.
+    // Verify the generated file, its validated target, and the uploaded preview dimensions.
     const uploadMetadata = await adminCommunityPage.evaluate(() => window.imageUploadMetadata);
     expect(uploadMetadata).toEqual({
       name: "community-secondary-ad-banner-cropped.webp",
+      target: "ad_banner",
       type: "image/webp",
     });
     await expect(dialog).toBeHidden();
@@ -356,7 +363,7 @@ test.describe("community dashboard settings view", () => {
       // Assert the expected content is visible.
       await expect(displayNameInput).toBeVisible();
       const advertisementBannerField = adminCommunityPage.locator('image-field[name="ad_banner_url"]');
-      await expect(advertisementBannerField).toHaveAttribute("crop-target", "ad_banner");
+      await expect(advertisementBannerField).toHaveAttribute("target", "ad_banner");
       await expect(advertisementBannerField).toContainText("Size required 2400 x 300 px.");
 
       // Return the values used by the caller.

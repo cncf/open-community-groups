@@ -1,13 +1,13 @@
 //! Upload validation for images: format detection, extension checks, SVG
 //! sanitization, and target dimension requirements.
 
-use std::{borrow::Cow, io::Cursor, str::FromStr};
+use std::{borrow::Cow, io::Cursor};
 
 use anyhow::{Context, Result, anyhow};
 use image::{ImageFormat, ImageReader};
 use quick_xml::{Reader, XmlVersion, events::Event};
 
-use super::{OPEN_GRAPH_IMAGE_HEIGHT, OPEN_GRAPH_IMAGE_WIDTH};
+use crate::types::images::ImageTarget;
 
 #[cfg(test)]
 mod tests;
@@ -55,7 +55,7 @@ pub(crate) fn validate_image_upload(
 
 /// Validates that the image dimensions match the target requirements.
 pub(crate) fn validate_image_dimensions(bytes: &[u8], target: ImageTarget) -> Result<()> {
-    let (expected_width, expected_height) = target.dimensions();
+    let (expected_width, expected_height) = (target.width(), target.height());
     let reader = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .context("failed to detect image format")?;
@@ -71,65 +71,6 @@ pub(crate) fn validate_image_dimensions(bytes: &[u8], target: ImageTarget) -> Re
 }
 
 // Types.
-
-/// Image target defining expected dimensions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ImageTarget {
-    /// Square Open Badges artwork.
-    Badge,
-    /// Desktop banner image.
-    Banner,
-    /// Mobile banner image.
-    BannerMobile,
-    /// Square logo image.
-    Logo,
-    /// Open Graph preview image.
-    OpenGraph,
-}
-
-impl ImageTarget {
-    /// Returns (width, height) for the target.
-    pub(crate) fn dimensions(self) -> (u32, u32) {
-        match self {
-            ImageTarget::Badge => (512, 512),
-            ImageTarget::Banner => (2428, 192),
-            ImageTarget::BannerMobile => (1220, 192),
-            ImageTarget::Logo => (360, 360),
-            ImageTarget::OpenGraph => (OPEN_GRAPH_IMAGE_WIDTH, OPEN_GRAPH_IMAGE_HEIGHT),
-        }
-    }
-
-    /// Returns the user-facing name used in validation messages.
-    fn display_name(self) -> &'static str {
-        match self {
-            ImageTarget::Badge => "Badge",
-            ImageTarget::Banner => "Banner",
-            ImageTarget::BannerMobile => "Mobile banner",
-            ImageTarget::Logo => "Logo",
-            ImageTarget::OpenGraph => "Open Graph",
-        }
-    }
-
-    /// Returns whether the target is served publicly and requires a raster format.
-    fn requires_public_format(self) -> bool {
-        matches!(self, ImageTarget::Badge | ImageTarget::OpenGraph)
-    }
-}
-
-impl FromStr for ImageTarget {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "badge" => Ok(ImageTarget::Badge),
-            "banner" => Ok(ImageTarget::Banner),
-            "banner_mobile" => Ok(ImageTarget::BannerMobile),
-            "logo" => Ok(ImageTarget::Logo),
-            "open_graph" => Ok(ImageTarget::OpenGraph),
-            _ => Err(anyhow!("unknown image target: {s}")),
-        }
-    }
-}
 
 /// Reasons an uploaded image is rejected.
 #[derive(Debug, thiserror::Error)]

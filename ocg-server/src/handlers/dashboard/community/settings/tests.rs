@@ -62,6 +62,20 @@ async fn test_update_page_success() {
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
     assert!(!bytes.is_empty());
+
+    // Check image fields render target sizes and validated upload targets
+    let html = std::str::from_utf8(&bytes).unwrap();
+    let logo_field = html
+        .split(r#"name="logo_url""#)
+        .nth(1)
+        .and_then(|rest| rest.split('>').next())
+        .unwrap();
+    assert!(logo_field.contains(r#"target="logo""#));
+    assert!(!logo_field.contains("help-prefix-text"));
+    assert!(html.contains(r#"help-prefix-text="Size required 2400 x 300 px." target="ad_banner""#));
+    assert!(html.contains(
+        r#"help-prefix-text="Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP." target="open_graph""#
+    ));
 }
 
 #[tokio::test]

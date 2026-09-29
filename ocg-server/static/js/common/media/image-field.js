@@ -55,11 +55,10 @@ export class ImageField extends LitWrapper {
    * @property {boolean} hideUploadButton - Whether to hide the secondary upload button.
    * @property {boolean} hideRemoveButton - Whether to hide the remove image button.
    * @property {string} acceptedFormats - Optional accepted file formats.
-   * @property {string} cropTarget - Optional client-side crop dimension target.
    * @property {boolean} directUpload - Whether to submit the selected file with the parent form.
    * @property {string} helpText - Optional replacement for the default help text.
    * @property {string} submitLabel - Optional label for a form submit action.
-   * @property {string} target - Upload target and default crop dimension target.
+   * @property {string} target - Upload target and crop dimension target.
    * @property {string} legend - Optional legend text displayed under the image preview area.
    */
   static properties = {
@@ -74,7 +73,6 @@ export class ImageField extends LitWrapper {
     hideUploadButton: { type: Boolean, attribute: "hide-upload-button" },
     hideRemoveButton: { type: Boolean, attribute: "hide-remove-button" },
     acceptedFormats: { type: String, attribute: "accepted-formats" },
-    cropTarget: { type: String, attribute: "crop-target" },
     directUpload: { type: Boolean, attribute: "direct-upload" },
     helpText: { type: String, attribute: "help-text" },
     submitLabel: { type: String, attribute: "submit-label" },
@@ -106,7 +104,6 @@ export class ImageField extends LitWrapper {
     this.hideUploadButton = false;
     this.hideRemoveButton = false;
     this.acceptedFormats = "";
-    this.cropTarget = "";
     this.directUpload = false;
     this.helpText = "";
     this.submitLabel = "";
@@ -166,7 +163,7 @@ export class ImageField extends LitWrapper {
     if (this.target === IMAGE_TARGET.OPEN_GRAPH || this.target === IMAGE_TARGET.BADGE) {
       return `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${OPEN_GRAPH_IMAGE_SUPPORTED_FORMATS_TEXT}`;
     }
-    if (ImageCropper.hasRequiredSize(this.cropTarget || this.target)) {
+    if (ImageCropper.hasRequiredSize(this.target)) {
       return `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${CROP_IMAGE_SUPPORTED_FORMATS_TEXT}`;
     }
     return IMAGE_UPLOAD_ERROR_DETAILS;
@@ -499,11 +496,10 @@ export class ImageField extends LitWrapper {
     const isWide = bannerLikeKinds.includes(this.imageKind);
     const isOpenGraphTarget = this.target === IMAGE_TARGET.OPEN_GRAPH;
     const isBadgeTarget = this.target === IMAGE_TARGET.BADGE;
-    const cropTarget = this.cropTarget || this.target;
     const removeDisabled = !this._hasImage || this._isPending;
     const submitDisabled = !this._hasImage || this._isPending;
     const helpPrefixText = (this.helpPrefixText || "").trim();
-    const requiresCropping = ImageCropper.hasRequiredSize(cropTarget);
+    const requiresCropping = ImageCropper.hasRequiredSize(this.target);
     const supportedFormatsText = requiresCropping
       ? CROP_IMAGE_SUPPORTED_FORMATS_TEXT
       : IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT;
@@ -658,7 +654,7 @@ export class ImageField extends LitWrapper {
               <image-cropper
                 id=${this._cropperId}
                 .label=${this.label}
-                .target=${cropTarget}
+                .target=${this.target}
                 @editor-open=${() => {
                   this._isEditorOpen = true;
                 }}

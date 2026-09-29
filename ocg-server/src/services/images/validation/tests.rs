@@ -1,6 +1,8 @@
 use image::{ImageFormat, RgbaImage};
 
-use super::{ImageTarget, is_svg, validate_image_dimensions};
+use crate::types::images::ImageTarget;
+
+use super::{is_svg, validate_image_dimensions};
 
 const PNG_BYTES: &[u8] = &[
     0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
@@ -148,6 +150,24 @@ fn test_is_svg_rejects_script_element() {
         <script>alert('xss')</script>
     </svg>"#;
     assert!(!is_svg(svg, "svg"));
+}
+#[test]
+fn test_validate_ad_banner_image_dimensions() {
+    // Build an exact-size advertisement banner image
+    let image = RgbaImage::new(2400, 300);
+    let mut bytes = Vec::new();
+    image
+        .write_to(&mut std::io::Cursor::new(&mut bytes), ImageFormat::Png)
+        .unwrap();
+
+    // Check exact advertisement banner dimensions pass and the 1x1 fixture fails
+    assert!(validate_image_dimensions(&bytes, ImageTarget::AdBanner).is_ok());
+    assert_eq!(
+        validate_image_dimensions(PNG_BYTES, ImageTarget::AdBanner)
+            .unwrap_err()
+            .to_string(),
+        "image dimensions 1x1 do not match required 2400x300"
+    );
 }
 #[test]
 fn test_validate_badge_image_dimensions() {

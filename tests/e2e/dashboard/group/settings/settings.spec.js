@@ -33,10 +33,20 @@ test.describe("group dashboard settings view", () => {
     await expect(organizerGroupPage.getByLabel("Short Description")).toBeVisible();
     await expect(organizerGroupPage.locator("markdown-editor#description")).toHaveAttribute("required", "");
 
-    // Verify every group image field is available.
-    for (const imageFieldName of ["logo_url", "banner_url", "banner_mobile_url", "og_image_url"]) {
-      await expect(organizerGroupPage.locator(`image-field[name="${imageFieldName}"]`)).toBeVisible();
+    // Verify every group image field is available with its required size guidance.
+    for (const { helpText, name } of [
+      { helpText: "Images must be 360 x 360 px (square).", name: "logo_url" },
+      { helpText: "Size required 2428 x 192 px.", name: "banner_url" },
+      { helpText: "Size required 1220 x 192 px.", name: "banner_mobile_url" },
+      { helpText: "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", name: "og_image_url" },
+    ]) {
+      const imageField = organizerGroupPage.locator(`image-field[name="${name}"]`);
+      await expect(imageField).toBeVisible();
+      await expect(imageField).toContainText(helpText);
     }
+    await expect(organizerGroupPage.locator('image-field[name="logo_url"]')).not.toContainText(
+      "Size required",
+    );
 
     // Verify the group location controls are available.
     await expect(organizerGroupPage.locator("location-search-field#group-location-search")).toBeVisible();
