@@ -4,7 +4,7 @@ use askama::Template;
 use uuid::Uuid;
 
 use crate::{
-    templates::filters,
+    templates::{filters, helpers::user_initials},
     types::{
         inbox::{InboxConversation, InboxConversationStatus, InboxConversationSummary},
         pagination,

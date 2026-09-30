@@ -1,0 +1,19 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Inbox Table Placeholder -#}
+{% if is_unfiltered() -%}
+  {% call dashboard::empty_state("No conversations yet", title_margin = "mb-4") -%}
+  <p class="text-sm lg:text-md text-stone-700">
+    {% if scope.is_group() -%}
+      Questions users send from this group's event pages will appear here.
+    {% else -%}
+      Use Contact organizers on an event page to ask a question.
+    {% endif -%}
+  </p>
+  {% endcall -%}
+{% else -%}
+  {% call dashboard::empty_state("No conversations with this status", title_margin = "mb-4") -%}
+  <p class="text-sm lg:text-md text-stone-700">Choose another status to see more conversations.</p>
+  {% endcall -%}
+{% endif -%}
+{# End inbox table placeholder -#}

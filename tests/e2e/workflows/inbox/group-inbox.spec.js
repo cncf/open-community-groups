@@ -69,7 +69,10 @@ test.describe("group inbox workflow", () => {
         .locator("#dashboard-menu")
         .getByRole("link", { name: /Inbox/ });
       await expect(inboxMenuItem).toContainText("1");
-      await organizerGroupPage.getByRole("link", { name: new RegExp(question) }).click();
+      await organizerGroupPage
+        .locator("[data-inbox-list] tbody tr", { hasText: question })
+        .getByRole("link", { name: "View conversation with E2E Member One" })
+        .click();
       const organizerThread = organizerGroupPage.locator("#inbox-conversation");
       await expect(organizerThread.getByRole("heading", { name: "E2E Member One" })).toBeVisible();
       await expect(organizerThread).toContainText(question);

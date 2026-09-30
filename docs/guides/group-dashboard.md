@@ -484,8 +484,8 @@ Signed-in users can contact the organizers from `Contact organizers` on any publ
 Each message starts a conversation with the group that owns the event; for co-hosted events the
 owning group receives it, never the co-hosts. Conversations appear in
 [Inbox](/dashboard/group?tab=inbox ':ignore'), newest activity first, and you can filter them by
-status: `Open`, `Answered`, `Closed`, or `Spam`. Conversations marked as spam only appear with the
-`Spam` filter.
+status from the `Status` column header: `Open`, `Answered`, `Closed`, or `Spam`. Conversations
+marked as spam only appear with the `Spam` filter.
 
 Statuses follow the latest action:
 

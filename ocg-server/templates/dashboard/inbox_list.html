@@ -18,103 +18,199 @@
   {% endif -%}
   {# End inbox header -#}
 
-  {# Status filter -#}
-  <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-    <form class="flex flex-wrap items-center gap-2"
-          hx-get="{{ scope.list_url() }}"
-          hx-target="#dashboard-content"
-          hx-swap="innerHTML"
-          hx-indicator="#dashboard-spinner">
-      <div class="rounded-md bg-stone-100 text-stone-700">
-        {% call dashboard::table_filter_menu(id = "inbox-status-filter-options", label = "Status", is_active = !is_unfiltered()) -%}
-        <div class="py-1">
-          {{ dashboard::table_filter_option_button(label = "All", name = "status", value = "", is_active = is_unfiltered(), is_clear_option = true) -}}
-          {{ dashboard::table_filter_option_button(label = "Open", name = "status", value = "open", is_active = is_status("open")) -}}
-          {{ dashboard::table_filter_option_button(label = "Answered", name = "status", value = "answered", is_active = is_status("answered")) -}}
-          {{ dashboard::table_filter_option_button(label = "Closed", name = "status", value = "closed", is_active = is_status("closed")) -}}
-          {% if scope.is_group() -%}
-            {{ dashboard::table_filter_option_button(label = "Spam", name = "status", value = "spam", is_active = is_status("spam")) -}}
-          {% endif -%}
-        </div>
-        {% endcall -%}
-      </div>
-      {% if let Some(status) = status -%}
+  {% if let Some(status) = status -%}
+    {# Active filters -#}
+    <div class="mt-5 flex flex-wrap items-center gap-2">
+      <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
+      <form class="inline-flex"
+            hx-get="{{ scope.list_url() }}"
+            hx-target="#dashboard-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
         {% call dashboard::active_table_filter_badge("Status", status.label()) -%}
         {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
         {% endcall -%}
-      {% endif -%}
-    </form>
-    <div class="text-sm text-stone-600">
-      {{ pagination::range_display(offset = offset.unwrap_or(0), count = conversations.len(), total = total, label = "conversation") }}
+      </form>
+      <form class="inline-flex"
+            hx-get="{{ scope.list_url() }}"
+            hx-target="#dashboard-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        <button type="submit" class="btn-primary-outline btn-mini h-7!">Reset all</button>
+      </form>
     </div>
-  </div>
-  {# End status filter -#}
-
-  {% if conversations.is_empty() -%}
-    {# Empty state -#}
-    <div class="mt-6 rounded-lg border border-dashed border-stone-300 px-6 py-12 text-center">
-      <div class="mx-auto size-8 svg-icon icon-email bg-stone-400"
-           aria-hidden="true"></div>
-      {% if is_unfiltered() -%}
-        <h2 class="mt-4 text-lg font-semibold text-stone-900">No conversations yet</h2>
-        {% if scope.is_group() -%}
-          <p class="mt-2 text-sm text-stone-600">Questions users send from this group's event pages will appear here.</p>
-        {% else -%}
-          <p class="mt-2 text-sm text-stone-600">Use Contact organizers on an event page to ask a question.</p>
-        {% endif -%}
-      {% else -%}
-        <h2 class="mt-4 text-lg font-semibold text-stone-900">No conversations with this status</h2>
-        <p class="mt-2 text-sm text-stone-600">Choose another status to see more conversations.</p>
-      {% endif -%}
-    </div>
-    {# End empty state -#}
-  {% else -%}
-    {# Conversations -#}
-    <ul class="mt-4 divide-y divide-stone-200 overflow-hidden rounded-lg border border-stone-200"
-        role="list">
-      {% for conversation in conversations -%}
-        <li>
-          <a href="{{ scope.conversation_dashboard_url(conversation.inbox_conversation_id) }}"
-             hx-get="{{ scope.conversation_url(conversation.inbox_conversation_id) }}"
-             hx-target="#dashboard-content"
-             hx-swap="innerHTML show:window:top"
-             hx-indicator="#dashboard-spinner"
-             class="flex flex-col gap-2 bg-white px-4 py-4 transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-500 sm:flex-row sm:items-start sm:justify-between">
-            <div class="min-w-0">
-              <div class="flex min-w-0 flex-wrap items-center gap-x-2">
-                <span class="truncate font-medium text-stone-900">{{ counterpart_label(conversation) }}</span>
-                {% if !scope.is_group() -%}
-                  <span class="truncate text-xs text-stone-500">{{ conversation.community_display_name }}</span>
-                {% endif -%}
-              </div>
-              {% if let Some(event) = conversation.event -%}
-                <div class="mt-1 truncate text-xs text-stone-600">About {{ event.name }}</div>
-              {% endif -%}
-              <p class="mt-1 line-clamp-2 break-words text-sm text-stone-600">
-                {% if conversation.last_message_kind.is_from_group() -%}
-                  <span class="font-medium text-stone-700">Organizers:</span>
-                {% endif -%}
-                {{ conversation.last_message_excerpt }}
-              </p>
-            </div>
-            <div class="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end">
-              {{ badges::inbox_status_badge(status = conversation.status) -}}
-              <time datetime="{{ conversation.last_message_at.to_rfc3339() }}"
-                    class="whitespace-nowrap text-xs text-stone-500">
-                {{ conversation.last_message_at.format("%b %d, %Y · %I:%M %p UTC") }}
-              </time>
-            </div>
-          </a>
-        </li>
-      {% endfor -%}
-    </ul>
-    {# End conversations -#}
-
-    {% if total > conversations.len() -%}
-      <div class="mt-6">
-        {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "inbox-pagination-") }}
-      </div>
-    {% endif -%}
+    {# End active filters -#}
   {% endif -%}
+
+  {# Results summary -#}
+  <div class="my-5 text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0), count = conversations.len(), total = total, label = "conversation") }}
+  </div>
+  {# End results summary -#}
+
+  {# Conversations table -#}
+  <div class="relative overflow-visible">
+    <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+           aria-label="Inbox conversations">
+      {# Table columns -#}
+      <colgroup>
+        <col class="w-[200px] 2xl:w-[240px]" />
+        <col class="w-[200px] 2xl:w-[240px]" />
+        <col />
+        <col class="w-[130px]" />
+        <col class="hidden 2xl:table-column w-[190px]" />
+        <col class="w-[72px]" />
+      </colgroup>
+      {# End table columns -#}
+      {# Table header -#}
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 xl:px-5 py-1.5">
+            {% if scope.is_group() -%}
+              User
+            {% else -%}
+              Group
+            {% endif -%}
+          </th>
+          <th scope="col" class="px-3 xl:px-5 py-1.5">Event</th>
+          <th scope="col" class="px-3 xl:px-5 py-1.5">Last message</th>
+          <th scope="col" class="px-3 xl:px-5 py-1.5">
+            {% call dashboard::table_filter_menu(id = "inbox-status-filter-options", label = "Status", is_active = !is_unfiltered()) -%}
+            <div class="py-2">
+              <form hx-get="{{ scope.list_url() }}"
+                    hx-target="#dashboard-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#dashboard-spinner">
+                {{ dashboard::table_filter_option_button(label = "All", name = "status", value = "", is_active = is_unfiltered(), is_clear_option = true) -}}
+                {{ dashboard::table_filter_option_button(label = "Open", name = "status", value = "open", is_active = is_status("open")) -}}
+                {{ dashboard::table_filter_option_button(label = "Answered", name = "status", value = "answered", is_active = is_status("answered")) -}}
+                {{ dashboard::table_filter_option_button(label = "Closed", name = "status", value = "closed", is_active = is_status("closed")) -}}
+                {% if scope.is_group() -%}
+                  {{ dashboard::table_filter_option_button(label = "Spam", name = "status", value = "spam", is_active = is_status("spam")) -}}
+                {% endif -%}
+              </form>
+            </div>
+            {% endcall -%}
+          </th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">Last activity</th>
+          <th scope="col" class="px-3 xl:px-5 py-1.5">
+            <span class="sr-only">Actions</span>
+          </th>
+        </tr>
+      </thead>
+      {# End table header -#}
+      <tbody>
+        {% if conversations.is_empty() -%}
+          {# Empty state -#}
+          <tr class="bg-white border-b border-stone-200">
+            <td class="2xl:hidden px-8 py-16 text-center" colspan="5">
+              {% include "dashboard/placeholders/inbox_table.html" -%}
+            </td>
+            <td class="hidden 2xl:table-cell px-8 py-16 text-center" colspan="6">
+              {% include "dashboard/placeholders/inbox_table.html" -%}
+            </td>
+          </tr>
+          {# End empty state -#}
+        {% else -%}
+          {% for conversation in conversations -%}
+            {# Conversation row -#}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              {# Counterpart -#}
+              <th scope="row" class="px-3 xl:px-5 py-4 font-medium text-stone-900">
+                <div class="flex min-w-0 items-center gap-3">
+                  {% if scope.is_group() -%}
+                    {% if let Some(user) = conversation.user -%}
+                      <logo-image class="shrink-0" {% if let Some(photo_url) = &user.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-8" placeholder="{{ self::user_initials(user.name.as_deref() , user.username.as_str()) }}">
+                      </logo-image>
+                    {% else -%}
+                      {# Deleted user avatar -#}
+                      <div class="flex size-8 shrink-0 items-center justify-center rounded-full border border-dashed border-stone-300 bg-stone-50"
+                           aria-hidden="true">
+                        <div class="svg-icon size-4 icon-user bg-stone-300"></div>
+                      </div>
+                    {% endif -%}
+                  {% endif -%}
+                  <div class="min-w-0">
+                    <div class="truncate
+                                {% if scope.is_group() && conversation.user.is_none() -%}
+                                  font-normal italic text-stone-500
+                                {% else -%}
+                                  font-medium text-stone-900
+                                {% endif -%}">{{ counterpart_label(conversation) }}</div>
+                    {% if !scope.is_group() -%}
+                      <div class="truncate text-xs font-normal text-stone-500">{{ conversation.community_display_name }}</div>
+                    {% endif -%}
+                  </div>
+                </div>
+              </th>
+              {# End counterpart -#}
+              {# Event -#}
+              <td class="px-3 xl:px-5 py-4">
+                {% if let Some(event) = conversation.event -%}
+                  <div class="line-clamp-2 break-words font-medium text-stone-900">{{ event.name }}</div>
+                {% else -%}
+                  <span class="text-stone-400">-</span>
+                {% endif -%}
+              </td>
+              {# End event -#}
+              {# Last message -#}
+              <td class="px-3 xl:px-5 py-4">
+                <p class="line-clamp-2 break-words text-stone-600">
+                  {% if conversation.last_message_kind.is_from_group() -%}
+                    <span class="font-medium not-italic text-stone-700">Organizers:</span>
+                  {% else if !scope.is_group() -%}
+                    <span class="font-medium not-italic text-stone-700">You:</span>
+                  {% endif -%}
+                  <span class="italic">“{{ conversation.last_message_excerpt }}”</span>
+                </p>
+                <time datetime="{{ conversation.last_message_at.to_rfc3339() }}"
+                      class="mt-1 block truncate text-xs text-stone-500 2xl:hidden">
+                  {{ conversation.last_message_at.format("%b %d, %Y · %I:%M %p UTC") }}
+                </time>
+              </td>
+              {# End last message -#}
+              {# Status -#}
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                {{ badges::inbox_status_badge(status = conversation.status) -}}
+              </td>
+              {# End status -#}
+              {# Last activity -#}
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+                <time datetime="{{ conversation.last_message_at.to_rfc3339() }}">
+                  <span class="block">{{ conversation.last_message_at.format("%b %d, %Y") }}</span>
+                  <span class="block text-xs text-stone-400">{{ conversation.last_message_at.format("%I:%M %p UTC") }}</span>
+                </time>
+              </td>
+              {# End last activity -#}
+              {# Actions -#}
+              <td class="px-3 xl:px-5 py-4">
+                <div class="flex items-center justify-end">
+                  <a href="{{ scope.conversation_dashboard_url(conversation.inbox_conversation_id) }}"
+                     hx-get="{{ scope.conversation_url(conversation.inbox_conversation_id) }}"
+                     hx-target="#dashboard-content"
+                     hx-swap="innerHTML show:window:top"
+                     hx-indicator="#dashboard-spinner"
+                     class="btn-tertiary-anchor p-2 inline-flex items-center justify-center"
+                     title="View conversation"
+                     aria-label="View conversation with {{ counterpart_label(conversation) }}">
+                    <div class="svg-icon size-4 icon-eye" aria-hidden="true"></div>
+                  </a>
+                </div>
+              </td>
+              {# End actions -#}
+            </tr>
+            {# End conversation row -#}
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+  {# End conversations table -#}
+
+  {# Pagination -#}
+  {% if total > conversations.len() -%}
+    {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "inbox-pagination-") }}
+  {% endif -%}
+  {# End pagination -#}
 </section>
 {# End inbox conversations list -#}

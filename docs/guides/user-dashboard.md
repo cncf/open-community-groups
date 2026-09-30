@@ -230,10 +230,10 @@ If organizer dashboards still do not appear, see
 ## Inbox: Conversations with Organizers
 
 [Inbox](/dashboard/user?tab=inbox ':ignore') lists the conversations you started with group
-organizers from `Contact organizers` on event pages, newest activity first. Each conversation
-shows the group, its community, the event you wrote about, and its status: `Open` while the
-organizers have not answered your latest message, `Answered` after they reply, `Closed` when
-they close it, and `Spam` when they mark it as spam.
+organizers from `Contact organizers` on event pages, newest activity first. Each row shows the
+group, its community, the latest message, the event you wrote about, and the status: `Open`
+while the organizers have not answered your latest message, `Answered` after they reply,
+`Closed` when they close it, and `Spam` when they mark it as spam.
 
 Open a conversation to read the whole thread and send a follow-up. Writing to a closed
 conversation reopens it. When organizers reply, you receive the reply by email with a link to the
