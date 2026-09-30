@@ -585,45 +585,8 @@ describe("event page modules", () => {
     expect(additionalOccurrencesInput.value).to.equal("");
   });
 
-  it("re-syncs session bounds after rejecting an add page start date change", async () => {
-    // Rejected add-page changes keep session bounds unchanged.
-    mountAddPageShell();
-    document
-      .querySelector('[data-event-page="add"]')
-      .insertAdjacentHTML(
-        "beforeend",
-        '<sessions-section></sessions-section><online-event-details id="online-event-details"></online-event-details>',
-      );
-
-    // Read the add page event and session date fields.
-    const sessionsSection = document.querySelector("sessions-section");
-    const onlineEventDetails = document.querySelector("online-event-details");
-    const startsAtInput = document.getElementById("starts_at");
-    const endsAtInput = document.getElementById("ends_at");
-
-    // Set the event start date.
-    startsAtInput.value = "2026-05-10T09:00";
-    endsAtInput.value = "2026-05-10T11:00";
-    onlineEventDetails.trySetStartsAt = async () => false;
-
-    // Session bounds are restored after rejecting add-page changes.
-    initializeEventAddPage();
-
-    // Try moving the session outside the event date.
-    startsAtInput.value = "2026-05-11T09:00";
-    startsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
-
-    // Wait for queued event handlers to finish.
-    await waitForMicrotask();
-
-    // Rejected add-page start changes restore session bounds.
-    expect(startsAtInput.value).to.equal("2026-05-10T09:00");
-    expect(sessionsSection.eventStartsAt).to.equal("2026-05-10T09:00");
-    expect(sessionsSection.eventEndsAt).to.equal("2026-05-10T11:00");
-  });
-
-  it("re-syncs session bounds after rejecting an update page end date change", async () => {
-    // Rejected update-page changes keep session bounds unchanged.
+  it("syncs event date changes to online event details without confirmation", async () => {
+    // Mount the update page with sessions and online event details.
     mountUpdatePageShell();
     document
       .querySelector('[data-event-page="update"]')
@@ -632,31 +595,38 @@ describe("event page modules", () => {
         '<sessions-section></sessions-section><online-event-details id="online-event-details"></online-event-details>',
       );
 
-    // Read the update page event and session date fields.
+    // Read the event date fields and the components that follow them.
     const sessionsSection = document.querySelector("sessions-section");
     const onlineEventDetails = document.querySelector("online-event-details");
     const startsAtInput = document.getElementById("starts_at");
     const endsAtInput = document.getElementById("ends_at");
-
-    // Set the event start date.
     startsAtInput.value = "2026-05-10T09:00";
     endsAtInput.value = "2026-05-10T11:00";
-    onlineEventDetails.trySetEndsAt = async () => false;
-
-    // Session bounds are restored after rejecting update-page changes.
     initializeEventUpdatePage();
 
-    // Try moving the session outside the updated end time.
-    endsAtInput.value = "2026-05-10T12:30";
+    // Type an intermediate end time before the start time.
+    endsAtInput.value = "2026-05-10T01:00";
     endsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
-
-    // Wait for queued event handlers to finish.
     await waitForMicrotask();
 
-    // Rejected update-page end changes restore session bounds.
-    expect(endsAtInput.value).to.equal("2026-05-10T11:00");
-    expect(sessionsSection.eventStartsAt).to.equal("2026-05-10T09:00");
-    expect(sessionsSection.eventEndsAt).to.equal("2026-05-10T11:00");
+    // Intermediate values are synced without prompting or reverting.
+    expect(swal.calls).to.have.length(0);
+    expect(endsAtInput.value).to.equal("2026-05-10T01:00");
+    expect(onlineEventDetails.endsAt).to.equal("2026-05-10T01:00");
+
+    // Move the event to another day.
+    startsAtInput.value = "2026-05-11T09:00";
+    startsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
+    endsAtInput.value = "2026-05-11T11:00";
+    endsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
+    await waitForMicrotask();
+
+    // Online details and session bounds follow the final schedule.
+    expect(swal.calls).to.have.length(0);
+    expect(onlineEventDetails.startsAt).to.equal("2026-05-11T09:00");
+    expect(onlineEventDetails.endsAt).to.equal("2026-05-11T11:00");
+    expect(sessionsSection.eventStartsAt).to.equal("2026-05-11T09:00");
+    expect(sessionsSection.eventEndsAt).to.equal("2026-05-11T11:00");
   });
 
   it("initializes the update page and respects the page data contract", () => {

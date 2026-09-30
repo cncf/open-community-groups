@@ -182,12 +182,12 @@ const bindSharedEventDateFieldListeners = ({
   cfsEndsAtInput,
   onlineEventDetails,
 }) => {
-  let previousStartsAt = startsAtInput?.value || "";
-  let previousEndsAt = endsAtInput?.value || "";
-
   if (startsAtInput) {
     startsAtInput.addEventListener("change", () => {
       startsAtInput.setCustomValidity("");
+      if (onlineEventDetails) {
+        onlineEventDetails.startsAt = startsAtInput.value;
+      }
       clearCfsWindowValidity({
         cfsStartsInput: cfsStartsAtInput,
         cfsEndsInput: cfsEndsAtInput,
@@ -206,6 +206,9 @@ const bindSharedEventDateFieldListeners = ({
   if (endsAtInput) {
     endsAtInput.addEventListener("change", () => {
       endsAtInput.setCustomValidity("");
+      if (onlineEventDetails) {
+        onlineEventDetails.endsAt = endsAtInput.value;
+      }
       clearCfsWindowValidity({
         cfsStartsInput: cfsStartsAtInput,
         cfsEndsInput: cfsEndsAtInput,
@@ -248,30 +251,6 @@ const bindSharedEventDateFieldListeners = ({
         registrationStartsInput: registrationStartsAtInput,
         registrationEndsInput: registrationEndsAtInput,
       });
-    });
-  }
-
-  if (startsAtInput && onlineEventDetails) {
-    startsAtInput.addEventListener("change", async () => {
-      const accepted = await onlineEventDetails.trySetStartsAt(startsAtInput.value);
-      if (!accepted) {
-        startsAtInput.value = previousStartsAt;
-        syncSessionsDateRange();
-        return;
-      }
-      previousStartsAt = startsAtInput.value;
-    });
-  }
-
-  if (endsAtInput && onlineEventDetails) {
-    endsAtInput.addEventListener("change", async () => {
-      const accepted = await onlineEventDetails.trySetEndsAt(endsAtInput.value);
-      if (!accepted) {
-        endsAtInput.value = previousEndsAt;
-        syncSessionsDateRange();
-        return;
-      }
-      previousEndsAt = endsAtInput.value;
     });
   }
 };

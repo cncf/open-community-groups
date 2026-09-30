@@ -226,7 +226,10 @@ describe("online-event-details", () => {
     element._providerId = "zoom";
     configuredSeatTotal = 150;
     ticketTypesEditor.dispatchEvent(
-      new CustomEvent("ticket-types-changed", { bubbles: true, composed: true }),
+      new CustomEvent("ticket-types-changed", {
+        bubbles: true,
+        composed: true,
+      }),
     );
     await element.updateComplete;
 
@@ -341,6 +344,49 @@ describe("online-event-details", () => {
       meeting_requested: true,
       meeting_provider_id: "zoom",
     });
+  });
+
+  it("keeps a synced automatic meeting selected when the schedule exceeds meeting limits", async () => {
+    // Create the capacity fixture required by automatic meeting validation.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "75";
+    document.body.append(capacity);
+    const swal = mockSwal();
+
+    try {
+      // Render a synced automatic meeting with a valid schedule.
+      const element = await mountLitComponent("online-event-details", {
+        endsAt: "2030-05-10T12:00",
+        kind: "virtual",
+        meetingInSync: true,
+        meetingJoinUrl: "https://zoom.us/j/synced",
+        meetingMaxParticipants: { zoom: 100 },
+        meetingProviderId: "zoom",
+        meetingRequested: true,
+        startsAt: "2030-05-10T10:00",
+      });
+
+      // Move the end time beyond the meeting provider limit.
+      element.endsAt = "2030-05-11T10:00";
+      await element.updateComplete;
+
+      // Automatic mode stays selected and explains the unmet requirement.
+      const automaticModeInput = element.renderRoot.querySelector('input[type="radio"][value="automatic"]');
+      expect(automaticModeInput.checked).to.equal(true);
+      expect(automaticModeInput.disabled).to.equal(true);
+      expect(element.textContent).to.include("Duration must be 5-720 minutes.");
+      expect(swal.calls).to.have.length(0);
+
+      // Saving is blocked until the schedule or meeting mode changes.
+      expect(element.validate()).to.equal(false);
+      expect(swal.calls).to.have.length(1);
+      expect(swal.calls[0].text).to.include("must last between 5 and 720 minutes");
+      expect(element.getMeetingData()).to.include({ meeting_requested: true });
+    } finally {
+      swal.restore();
+      capacity.remove();
+    }
   });
 
   it("does not render an unsafe synced meeting URL", async () => {
