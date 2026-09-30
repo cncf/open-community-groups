@@ -365,7 +365,7 @@ test.describe("group dashboard attendees tab", () => {
       await expect(attendeesContent.getByRole("button", { name: "Send email" })).toBeDisabled();
       await expect(attendeesContent.getByRole("button", { name: "Send email" })).toHaveAttribute(
         "title",
-        "No attendees with verified email addresses and email notifications enabled.",
+        "No attendees with verified email addresses who accept messages from event organizers.",
       );
     } finally {
       // Delete the temporary event without attendees.

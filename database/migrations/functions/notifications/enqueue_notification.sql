@@ -1,42 +1,65 @@
 -- enqueue_notification inserts notifications, templates, and attachments and
--- returns the identifiers of the notifications created.
+-- returns the identifiers of the notifications created. Recipient preferences
+-- (category opt-outs and group mutes) are applied here, when the notification
+-- is queued; group-mutable kinds must name the groups the notification is about.
 create or replace function enqueue_notification(
     p_kind text,
     p_template_data jsonb,
     p_attachments jsonb,
-    p_recipients uuid[]
+    p_recipients uuid[],
+    p_group_ids uuid[] default null
 )
 returns uuid[] as $$
 declare
     v_attachment jsonb;
     v_attachment_id uuid;
     v_data bytea;
+    v_group_mutable boolean;
+    v_notification_category_id text;
     v_notification_ids uuid[];
     v_notification_template_data_id uuid;
-    v_optional_notification boolean;
     v_recipients uuid[];
     v_template_hash text;
 begin
     -- Resolve notification kind metadata before creating notification data
-    select optional_notification into v_optional_notification from notification_kind where name = p_kind;
+    select
+        nc.group_mutable,
+        nk.notification_category_id
+    into
+        v_group_mutable,
+        v_notification_category_id
+    from notification_kind nk
+    left join notification_category nc using (notification_category_id)
+    where nk.name = p_kind;
 
+    -- Reject unknown notification kinds
     if not found then
         raise exception 'notification kind does not exist: %', p_kind
             using errcode = 'foreign_key_violation';
     end if;
 
-    -- Filter optional notifications for users who opted out before creating rows
-    if v_optional_notification then
-        select coalesce(array_agg(recipient_id), '{}')
-        into v_recipients
-        from unnest(p_recipients) as recipient_id
-        left join "user" u on u.user_id = recipient_id
-        where coalesce(u.optional_notifications_enabled, true) = true;
+    -- Require a complete group scope for group-mutable kinds
+    if coalesce(v_group_mutable, false)
+       and (
+           p_group_ids is null
+           or cardinality(p_group_ids) = 0
+           or array_position(p_group_ids, null) is not null
+       ) then
+        raise exception 'group ids are required for notification kind: %', p_kind;
+    end if;
 
-        -- Nothing to enqueue when every recipient opted out
+    -- Filter recipients who do not accept optional notifications of this kind
+    if v_notification_category_id is not null then
+        select coalesce(array_agg(a.user_id order by a.ordinal), '{}')
+        into v_recipients
+        from users_accepting_notification(p_kind, p_recipients, p_group_ids) a;
+
+        -- Nothing to enqueue when every recipient declined
         if cardinality(v_recipients) = 0 then
             return '{}'::uuid[];
         end if;
+
+    -- Send kinds without a category to every recipient
     else
         v_recipients := p_recipients;
     end if;

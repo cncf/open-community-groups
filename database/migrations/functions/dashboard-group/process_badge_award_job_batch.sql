@@ -24,10 +24,12 @@ declare
     v_theme jsonb;
     v_user_badge_id uuid;
 begin
-    -- Validate worker-controlled processing limits
+    -- Reject non-positive batch sizes
     if p_batch_size <= 0 then
         raise exception 'badge award batch size must be positive';
     end if;
+
+    -- Reject non-positive rate limits
     if p_rate_limit <= 0 then
         raise exception 'badge award rate limit must be positive';
     end if;
@@ -44,6 +46,7 @@ begin
     and baj.status = 'processing'
     for update;
 
+    -- Reject stale or missing claims
     if not found then
         raise exception 'badge award job claim not found';
     end if;
@@ -61,8 +64,8 @@ begin
         v_remaining_count
     );
 
+    -- Release rate-limited work without consuming its failure budget
     if v_allowed_count = 0 and v_remaining_count > 0 then
-        -- Release rate-limited work without consuming its failure budget
         update badge_award_job
         set
             claim_id = null,
@@ -72,6 +75,7 @@ begin
             updated_at = current_timestamp
         where badge_award_job_id = p_badge_award_job_id;
 
+        -- Report the rate-limited outcome
         return jsonb_build_object(
             'completed', false,
             'processed_count', 0,
@@ -92,15 +96,19 @@ begin
             limit v_allowed_count
         ) recipient;
 
+        -- Reject jobs whose recipient slice is incomplete
         if cardinality(v_batch_recipient_ids) <> v_allowed_count then
             raise exception 'badge award job recipients are incomplete';
         end if;
 
+        -- Lock the recipients in a stable order
         perform 1
         from "user" u
         where u.user_id = any(v_batch_recipient_ids)
         order by u.user_id
         for update;
+
+    -- Use an empty slice when no work remains
     else
         v_batch_recipient_ids := '{}'::uuid[];
     end if;
@@ -108,6 +116,7 @@ begin
     -- Insert issued credentials while preserving idempotent skips
     foreach v_recipient_user_id in array v_batch_recipient_ids
     loop
+        -- Skip deleted users and users who already hold the active badge
         if not exists (
             select 1
             from "user" u
@@ -143,6 +152,7 @@ begin
             limit 1
             for update;
 
+            -- Create a new list when every existing list is full
             if not found then
                 insert into badge_status_list (group_id)
                 values (v_job.group_id)
@@ -188,6 +198,7 @@ begin
         )
         returning user_badge_id into v_user_badge_id;
 
+        -- Track the award for progress and notifications
         v_awarded_count := v_awarded_count + 1;
         v_notification_recipient_ids := array_append(
             v_notification_recipient_ids,
@@ -227,11 +238,13 @@ begin
 
     -- Queue notifications only for credentials inserted by this transaction
     if v_awarded_count > 0 then
+        -- Load the site theme used by the notification
         select theme
         into v_theme
         from site
         limit 1;
 
+        -- Enqueue the award notification scoped to the issuing group
         perform enqueue_notification(
             'badge-awarded',
             jsonb_build_object(
@@ -240,7 +253,8 @@ begin
                 'theme', v_theme
             ),
             '[]'::jsonb,
-            v_notification_recipient_ids
+            v_notification_recipient_ids,
+            array[v_job.group_id]
         );
     end if;
 
@@ -248,11 +262,13 @@ begin
     v_next_recipient_offset := v_job.next_recipient_offset + v_allowed_count;
     v_is_complete := v_next_recipient_offset >= v_job.accepted_count;
 
+    -- Drop the recipient list once the job completes
     if v_is_complete then
         delete from badge_award_job_recipient
         where badge_award_job_id = p_badge_award_job_id;
     end if;
 
+    -- Record progress and release or complete the claim
     update badge_award_job
     set
         awarded_count = awarded_count + v_awarded_count,
@@ -270,6 +286,7 @@ begin
         updated_at = current_timestamp
     where badge_award_job_id = p_badge_award_job_id;
 
+    -- Report the batch outcome
     return jsonb_build_object(
         'completed', v_is_complete,
         'processed_count', v_allowed_count,

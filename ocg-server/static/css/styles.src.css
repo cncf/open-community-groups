@@ -653,6 +653,7 @@ input:placeholder-shown {
 .icon-attendees { --icon-url: url('/static/images/icons/attendees.svg'); }
 .icon-ban { --icon-url: url('/static/images/icons/ban.svg'); }
 .icon-broken-image { --icon-url: url('/static/images/icons/broken_image.svg'); }
+.icon-bell { --icon-url: url('/static/images/icons/bell.svg'); }
 .icon-bluesky { --icon-url: url('/static/images/icons/bluesky.svg'); }
 .icon-buildings { --icon-url: url('/static/images/icons/buildings.svg'); }
 .icon-handshake { --icon-url: url('/static/images/icons/handshake.svg'); }

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(187);
+select plan(188);
 
 -- ============================================================================
 -- TESTS
@@ -509,6 +509,23 @@ select has_check('notification', 'notification_delivery_attempts_chk');
 select has_check('notification', 'notification_delivery_status_chk');
 select has_check('notification', 'notification_next_delivery_attempt_at_chk');
 
+-- Test: notification categories should match expected values
+select results_eq(
+    'select notification_category_id, display_name, group_mutable from notification_category order by notification_category_id',
+    $$ values
+        ('attendee-activity', 'Attendee activity', false),
+        ('badges', 'Badges', true),
+        ('cohosting-updates', 'Co-hosting updates', false),
+        ('event-reminders', 'Event reminders', true),
+        ('group-announcements', 'Group announcements', true),
+        ('group-inbox', 'Group inbox', false),
+        ('new-events', 'New events', true),
+        ('organizer-messages', 'Messages from event organizers', true),
+        ('paid-event-setups', 'Paid event setups', false)
+    $$,
+    'Notification categories should exist'
+);
+
 -- Test: payment providers should match expected values
 select results_eq(
     'select * from payment_provider order by payment_provider_id',
@@ -533,49 +550,49 @@ select results_eq(
 
 -- Test: notification kinds should match expected values
 select results_eq(
-    'select name, optional_notification from notification_kind order by name',
+    'select name, notification_category_id from notification_kind order by name',
     $$ values
-        ('badge-awarded', false),
-        ('badge-revoked', false),
-        ('cfs-submission-updated', false),
-        ('community-team-invitation', false),
-        ('email-verification', false),
-        ('event-admission-offer-canceled', false),
-        ('event-admission-offer-created', false),
-        ('event-admission-offer-declined', false),
-        ('event-attendance-canceled', false),
-        ('event-canceled', false),
-        ('event-cohost-invitation', false),
-        ('event-cohost-removed', false),
-        ('event-cohost-responded', false),
-        ('event-custom', true),
-        ('event-external-payment-expired', false),
-        ('event-external-payment-pending', false),
-        ('event-external-payment-reminder', false),
-        ('event-invitation', false),
-        ('event-paid-configured', false),
-        ('event-published', true),
-        ('event-refund-approved', false),
-        ('event-refund-rejected', false),
-        ('event-refund-requested', false),
-        ('event-reminder', true),
-        ('event-rescheduled', false),
-        ('event-series-canceled', false),
-        ('event-series-published', true),
-        ('event-ticket-request-approved', false),
-        ('event-ticket-waitlist-offer', false),
-        ('event-waitlist-joined', false),
-        ('event-waitlist-left', false),
-        ('event-waitlist-promoted', false),
-        ('event-welcome', false),
-        ('group-custom', true),
-        ('group-team-invitation', false),
-        ('group-welcome', false),
-        ('inbox-message-received', false),
-        ('inbox-reply-received', false),
-        ('session-proposal-co-speaker-invitation', false),
-        ('speaker-series-welcome', false),
-        ('speaker-welcome', false)
+        ('badge-awarded', 'badges'::text),
+        ('badge-revoked', 'badges'::text),
+        ('cfs-submission-updated', null::text),
+        ('community-team-invitation', null::text),
+        ('email-verification', null::text),
+        ('event-admission-offer-canceled', null::text),
+        ('event-admission-offer-created', null::text),
+        ('event-admission-offer-declined', 'attendee-activity'::text),
+        ('event-attendance-canceled', null::text),
+        ('event-canceled', null::text),
+        ('event-cohost-invitation', null::text),
+        ('event-cohost-removed', 'cohosting-updates'::text),
+        ('event-cohost-responded', 'cohosting-updates'::text),
+        ('event-custom', 'organizer-messages'::text),
+        ('event-external-payment-expired', null::text),
+        ('event-external-payment-pending', null::text),
+        ('event-external-payment-reminder', null::text),
+        ('event-invitation', null::text),
+        ('event-paid-configured', 'paid-event-setups'::text),
+        ('event-published', 'new-events'::text),
+        ('event-refund-approved', null::text),
+        ('event-refund-rejected', null::text),
+        ('event-refund-requested', null::text),
+        ('event-reminder', 'event-reminders'::text),
+        ('event-rescheduled', null::text),
+        ('event-series-canceled', null::text),
+        ('event-series-published', 'new-events'::text),
+        ('event-ticket-request-approved', null::text),
+        ('event-ticket-waitlist-offer', null::text),
+        ('event-waitlist-joined', null::text),
+        ('event-waitlist-left', null::text),
+        ('event-waitlist-promoted', null::text),
+        ('event-welcome', null::text),
+        ('group-custom', 'group-announcements'::text),
+        ('group-team-invitation', null::text),
+        ('group-welcome', null::text),
+        ('inbox-message-received', 'group-inbox'::text),
+        ('inbox-reply-received', null::text),
+        ('session-proposal-co-speaker-invitation', null::text),
+        ('speaker-series-welcome', null::text),
+        ('speaker-welcome', null::text)
     $$,
     'Notification kinds should exist'
 );

@@ -1,0 +1,35 @@
+{% if muted_groups.is_empty() -%}
+  {# Empty state -#}
+  <p class="text-sm text-stone-500">You haven't muted any groups.</p>
+  {# End empty state -#}
+{% else -%}
+  <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white"
+      aria-labelledby="muted-groups-title">
+    {% for group in muted_groups -%}
+      {# Muted group row -#}
+      <li class="flex items-center gap-4 px-4 py-3"
+          data-muted-group-id="{{ group.group_id }}">
+        <logo-image {% if let Some(logo_url) = group.logo_url -%} image-url="{{ logo_url }}" {% endif -%} size="size-10" placeholder="{{ self::user_initials(Some(group.name.as_str()), group.name.as_str()) }}">
+        </logo-image>
+        <div class="min-w-0 flex-1">
+          <div class="truncate text-sm font-medium text-stone-900">{{ group.name }}</div>
+          <div class="truncate text-xs text-stone-500">{{ group.community_display_name }}</div>
+          {% if !group.available -%}
+            <div class="mt-1 text-xs font-medium text-amber-700">No longer available</div>
+          {% endif -%}
+        </div>
+        <button type="button"
+                class="btn-primary-outline btn-mini shrink-0"
+                hx-delete="/dashboard/user/notifications/muted-groups/{{ group.group_id }}"
+                hx-swap="none"
+                hx-disabled-elt="this"
+                hx-indicator="#dashboard-spinner"
+                data-htmx-response
+                data-success-message="{{ group.name }} unmuted."
+                data-error-message="Something went wrong unmuting this group. Please try again later."
+                aria-label="Unmute {{ group.name }}">Unmute</button>
+      </li>
+      {# End muted group row -#}
+    {% endfor -%}
+  </ul>
+{% endif -%}

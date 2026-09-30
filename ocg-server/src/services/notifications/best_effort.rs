@@ -15,6 +15,7 @@ use crate::{
     services::notifications::{DynNotificationsManager, load_event_notification_context},
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, GroupTeamInvitation,
+        SessionProposalCoSpeakerInvitation,
     },
     types::{
         event::EventSummary,
@@ -26,6 +27,22 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
+
+/// Co-speaker invitation created or retargeted on a session proposal.
+#[derive(Debug, Clone)]
+pub(crate) struct CoSpeakerInvitationNotice<'a> {
+    /// User who created or updated the session proposal.
+    pub actor_user_id: Uuid,
+    /// User invited to co-speak.
+    pub co_speaker_user_id: Uuid,
+    /// Title of the session proposal.
+    pub session_proposal_title: &'a str,
+    /// Display name of the proposing speaker.
+    pub speaker_name: &'a str,
+
+    /// Session proposal identifier, when the proposal already existed.
+    pub session_proposal_id: Option<Uuid>,
+}
 
 /// Enqueues the speaker notification for a reviewed CFS submission best-effort.
 ///
@@ -59,6 +76,7 @@ pub(crate) async fn enqueue_cfs_submission_updated_best_effort(
         };
         let notification = NewNotification {
             attachments: vec![],
+            group_ids: vec![],
             kind: NotificationKind::CfsSubmissionUpdated,
             recipients: vec![notification_data.user_id],
             template_data: Some(serde_json::to_value(&template_data)?),
@@ -107,6 +125,7 @@ pub(crate) async fn enqueue_community_team_invitation_best_effort(
         };
         let notification = NewNotification {
             attachments: vec![],
+            group_ids: vec![],
             kind: NotificationKind::CommunityTeamInvitation,
             recipients: vec![user_id],
             template_data: Some(serde_json::to_value(&template_data)?),
@@ -120,55 +139,6 @@ pub(crate) async fn enqueue_community_team_invitation_best_effort(
             %community_id,
             %user_id,
             "failed to enqueue community team invitation notification"
-        );
-    }
-}
-
-/// Enqueues the group team invitation notification best-effort.
-///
-/// The group summary and site settings are loaded, and the invitation is
-/// addressed to the invited user. Failures are logged with the community,
-/// group, and user identifiers and swallowed.
-pub(crate) async fn enqueue_group_team_invitation_best_effort(
-    db: &dyn DBOperations,
-    notifications_manager: &DynNotificationsManager,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    group_id: Uuid,
-    user_id: Uuid,
-) {
-    if let Err(err) = async {
-        // Load the group and site context
-        let (site_settings, group) = tokio::try_join!(
-            db.get_site_settings(),
-            db.get_group_summary(community_id, group_id)
-        )?;
-
-        // Build the notification with its invitations dashboard link
-        let template_data = GroupTeamInvitation {
-            group,
-            link: format!(
-                "{}/dashboard/user?tab=invitations",
-                base_url_without_trailing_slash(&server_cfg.base_url)
-            ),
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::GroupTeamInvitation,
-            recipients: vec![user_id],
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await
-    }
-    .await
-    {
-        warn!(
-            error = %format_args!("{err:#}"),
-            %community_id,
-            %group_id,
-            %user_id,
-            "failed to enqueue group team invitation notification"
         );
     }
 }
@@ -228,5 +198,110 @@ pub(crate) async fn enqueue_event_notification_best_effort<F>(
             kind = ?notification.kind,
             "failed to enqueue event notification"
         );
+    }
+}
+
+/// Enqueues the group team invitation notification best-effort.
+///
+/// The group summary and site settings are loaded, and the invitation is
+/// addressed to the invited user. Failures are logged with the community,
+/// group, and user identifiers and swallowed.
+pub(crate) async fn enqueue_group_team_invitation_best_effort(
+    db: &dyn DBOperations,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+) {
+    if let Err(err) = async {
+        // Load the group and site context
+        let (site_settings, group) = tokio::try_join!(
+            db.get_site_settings(),
+            db.get_group_summary(community_id, group_id)
+        )?;
+
+        // Build the notification with its invitations dashboard link
+        let template_data = GroupTeamInvitation {
+            group,
+            link: format!(
+                "{}/dashboard/user?tab=invitations",
+                base_url_without_trailing_slash(&server_cfg.base_url)
+            ),
+            theme: site_settings.theme,
+        };
+        let notification = NewNotification {
+            attachments: vec![],
+            group_ids: vec![],
+            kind: NotificationKind::GroupTeamInvitation,
+            recipients: vec![user_id],
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await
+    }
+    .await
+    {
+        warn!(
+            error = %format_args!("{err:#}"),
+            %community_id,
+            %group_id,
+            %user_id,
+            "failed to enqueue group team invitation notification"
+        );
+    }
+}
+
+/// Enqueues the session proposal co-speaker invitation notification
+/// best-effort.
+///
+/// The site settings are loaded and the invitation is addressed to the invited
+/// co-speaker. Failures are logged with the actor, co-speaker, and (when
+/// known) session proposal identifiers and swallowed.
+pub(crate) async fn enqueue_session_proposal_co_speaker_invitation_best_effort(
+    db: &dyn DBOperations,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    invitation: CoSpeakerInvitationNotice<'_>,
+) {
+    if let Err(err) = async {
+        // Load the site context
+        let site_settings = db.get_site_settings().await?;
+
+        // Build the notification with its session proposals dashboard link
+        let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
+        let template_data = SessionProposalCoSpeakerInvitation {
+            link: format!("{base_url}/dashboard/user?tab=session-proposals"),
+            session_proposal_title: invitation.session_proposal_title.to_string(),
+            speaker_name: invitation.speaker_name.to_string(),
+            theme: site_settings.theme,
+        };
+        let notification = NewNotification {
+            attachments: vec![],
+            group_ids: vec![],
+            kind: NotificationKind::SessionProposalCoSpeakerInvitation,
+            recipients: vec![invitation.co_speaker_user_id],
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await
+    }
+    .await
+    {
+        // Log the failure with the identifiers of the invitation
+        if let Some(session_proposal_id) = invitation.session_proposal_id {
+            warn!(
+                error = %format_args!("{err:#}"),
+                user_id = %invitation.actor_user_id,
+                co_speaker_user_id = %invitation.co_speaker_user_id,
+                %session_proposal_id,
+                "failed to enqueue session proposal co-speaker invitation notification"
+            );
+        } else {
+            warn!(
+                error = %format_args!("{err:#}"),
+                user_id = %invitation.actor_user_id,
+                co_speaker_user_id = %invitation.co_speaker_user_id,
+                "failed to enqueue session proposal co-speaker invitation notification"
+            );
+        }
     }
 }

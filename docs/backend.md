@@ -262,8 +262,10 @@ A handler does extraction, delegation, and response shaping, in this order:
    route cannot express, such as ownership of a specific row.
 3. **Reads**: page, details, list, and lookup handlers read through `DynDB`
    directly.
-4. **Action**: one call to a manager or a `services/` function. A handler
-   never calls a provider or builds `db/` operation types. A handler never
+4. **Action**: one call to a manager, a `services/` function, or a single
+   atomic `DynDB` method whose database function validates, mutates, and
+   audits on its own. A handler never calls a provider or builds `db/`
+   operation types. A handler never
    opens a transaction; every multi-step workflow is behind a manager.
 5. **Side effects**: best-effort work after the action, following
    [Side-effect durability](#side-effect-durability).

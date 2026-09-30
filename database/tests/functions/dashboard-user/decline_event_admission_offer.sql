@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,9 @@ select plan(15);
 \set eventID '4a160000-0000-0000-0000-000000000003'
 \set expiredOfferID '4a160000-0000-0000-0000-000000000010'
 \set expiredRecipientID '4a160000-0000-0000-0000-000000000011'
+\set filteredOfferID '4a160000-0000-0000-0000-000000000019'
+\set filteredOrganizerID '4a160000-0000-0000-0000-00000000001a'
+\set filteredRecipientID '4a160000-0000-0000-0000-00000000001b'
 \set groupCategoryID '4a160000-0000-0000-0000-000000000004'
 \set groupID '4a160000-0000-0000-0000-000000000005'
 \set invitationOfferID '4a160000-0000-0000-0000-000000000012'
@@ -46,6 +49,8 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_user(:'organizerID');
 select fx_user(:'expiredRecipientID');
+select fx_user(:'filteredOrganizerID');
+select fx_user(:'filteredRecipientID');
 select fx_user(:'invitationRecipientID');
 select fx_user(:'linkedRecipientID');
 select fx_user(:'terminalRecipientID');
@@ -64,6 +69,10 @@ values (
 -- Organizer, offer recipients, and a non-owner user
 
 select fx_user(:'recipientID', jsonb_build_object('username', 'recipient-decline-event-admission-offer'));
+
+-- Attendee activity opt-out used by a filtered organizer notification scenario
+insert into user_notification_opt_out (notification_category_id, user_id)
+values ('attendee-activity', :'filteredOrganizerID');
 
 -- Group hosting the ticketed event
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Offer Decline Group'));
@@ -112,6 +121,23 @@ insert into admission_offer (
     'approval',
     'pending',
     :'recipientID',
+
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+), (
+    :'filteredOfferID',
+    current_timestamp,
+    :'eventID',
+    :'ticketTypeID',
+    current_timestamp + interval '1 hour',
+    :'filteredOrganizerID',
+    'approval',
+    'pending',
+    :'filteredRecipientID',
 
     null,
     null,
@@ -503,6 +529,34 @@ select is(
     ),
     0,
     'Should skip organizer notifications for waitlist-sourced offers'
+);
+
+-- Should decline an offer whose organizer opted out of attendee activity
+select is(
+    decline_event_admission_offer(
+        :'filteredRecipientID'::uuid,
+        :'filteredOfferID'::uuid
+    )::jsonb,
+    jsonb_build_object(
+        'community_id', :'communityID'::uuid,
+        'event_id', :'eventID'::uuid,
+        'group_id', :'groupID'::uuid
+    ),
+    'Should decline an offer whose organizer opted out of attendee activity'
+);
+
+-- Should store the decline without notifying the opted-out organizer
+select ok(
+    (select status from admission_offer where admission_offer_id = :'filteredOfferID') = 'declined'
+    and not exists (
+        select 1
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-admission-offer-declined'
+        and n.user_id = :'filteredOrganizerID'
+        and (ntd.data->>'admission_offer_id')::uuid = :'filteredOfferID'
+    ),
+    'Should store the decline without notifying the opted-out organizer'
 );
 
 -- ============================================================================

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(89);
+select plan(92);
 
 -- ============================================================================
 -- TESTS
@@ -1011,12 +1011,19 @@ select columns_are('notification_attachment', array[
     'attachment_id'
 ]);
 
+-- Test: notification category columns should match expected
+select columns_are('notification_category', array[
+    'notification_category_id',
+    'display_name',
+    'group_mutable'
+]);
+
 -- Test: notification_kind columns should match expected
 select columns_are('notification_kind', array[
     'notification_kind_id',
 
     'name',
-    'optional_notification'
+    'notification_category_id'
 ]);
 
 -- Test: notification_template_data columns should match expected
@@ -1127,7 +1134,6 @@ select columns_are('user', array[
     'legacy_id',
     'linkedin_url',
     'name',
-    'optional_notifications_enabled',
     'password',
     'photo_url',
     'provider',
@@ -1157,6 +1163,20 @@ select columns_are('user_badge', array[
     'revocation_reason',
     'revoked_at',
     'revoked_by_user_id',
+    'user_id'
+]);
+
+-- Test: user group notification mute columns should match expected
+select columns_are('user_group_notification_mute', array[
+    'created_at',
+    'group_id',
+    'user_id'
+]);
+
+-- Test: user notification opt-out columns should match expected
+select columns_are('user_notification_opt_out', array[
+    'created_at',
+    'notification_category_id',
     'user_id'
 ]);
 

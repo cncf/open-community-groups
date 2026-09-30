@@ -62,8 +62,8 @@ organizations.
 - Automated notifications for registrations, reminders, event changes,
   cancellations, waitlists, speaker submissions, and refunds
 - Calendar attachments for event confirmations and updates
-- Custom emails to event attendees and group members, with user preferences for
-  optional notifications
+- Custom emails to event attendees and group members, with per-category
+  notification preferences and per-group muting
 
 ### Users
 

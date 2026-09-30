@@ -26,8 +26,8 @@ use crate::{
 };
 
 use super::{
-    badges, check_in, events, groups, inbox, invitations, logs, purchases, session_proposals,
-    submissions,
+    badges, check_in, events, groups, inbox, invitations, logs, notifications, purchases,
+    session_proposals, submissions,
 };
 
 #[cfg(test)]
@@ -103,6 +103,9 @@ pub(crate) async fn page(
         Tab::Logs => {
             let (_, template) = logs::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::Logs(template)
+        }
+        Tab::Notifications => {
+            Content::Notifications(Box::new(notifications::prepare_page(&db, &user).await?))
         }
         Tab::Purchases => {
             let (_, template) = purchases::prepare_list_page(&db, user.user_id, raw_query).await?;

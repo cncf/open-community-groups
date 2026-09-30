@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -25,6 +25,10 @@ select plan(9);
 \set duplicateUserID 'b3030000-0000-0000-0000-000000000012'
 \set groupCategoryID 'b3030000-0000-0000-0000-000000000013'
 \set groupID 'b3030000-0000-0000-0000-000000000014'
+\set filteredClaimID 'b3030000-0000-0000-0000-000000000025'
+\set filteredJobID 'b3030000-0000-0000-0000-000000000026'
+\set filteredMutedUserID 'b3030000-0000-0000-0000-000000000027'
+\set filteredOptOutUserID 'b3030000-0000-0000-0000-000000000028'
 \set partialClaimID 'b3030000-0000-0000-0000-000000000015'
 \set partialJobID 'b3030000-0000-0000-0000-000000000016'
 \set rateClaimID 'b3030000-0000-0000-0000-000000000017'
@@ -52,9 +56,19 @@ select fx_user(:'batchOneID');
 select fx_user(:'batchTwoID');
 select fx_user(:'completeUserID');
 select fx_user(:'duplicateUserID');
+select fx_user(:'filteredMutedUserID');
+select fx_user(:'filteredOptOutUserID');
 select fx_user(:'rateUserID');
 select fx_user(:'recentAwardUserID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Badge category opt-out used by the all-filtered notification scenario
+insert into user_notification_opt_out (notification_category_id, user_id)
+values ('badges', :'filteredOptOutUserID');
+
+-- Issuing group mute used by the all-filtered notification scenario
+insert into user_group_notification_mute (group_id, user_id)
+values (:'groupID', :'filteredMutedUserID');
 
 -- Badge definition used to detect duplicate active credentials
 insert into badge (badge_id, criteria, description, group_id, image_file_name, name)
@@ -101,6 +115,7 @@ insert into badge_award_job (
 ) values
     (:'completeJobID', 1, 'process-actor', '{"name":"Process Badge"}', :'communityID', :'groupID', 1, 'processing', :'actorID', :'badgeID', :'completeClaimID', current_timestamp),
     (:'duplicateJobID', 1, 'process-actor', '{"name":"Process Badge"}', :'communityID', :'groupID', 1, 'processing', :'actorID', :'badgeID', :'duplicateClaimID', current_timestamp),
+    (:'filteredJobID', 2, 'process-actor', '{"name":"Process Badge"}', :'communityID', :'groupID', 2, 'processing', :'actorID', :'badgeID', :'filteredClaimID', current_timestamp),
     (:'partialJobID', 2, 'process-actor', '{"name":"Process Badge"}', :'communityID', :'groupID', 2, 'processing', :'actorID', :'badgeID', :'partialClaimID', current_timestamp),
     (:'rateJobID', 1, 'process-actor', '{"name":"Process Badge"}', :'communityID', :'groupID', 1, 'processing', :'actorID', :'badgeID', :'rateClaimID', current_timestamp),
     (:'wrongJobID', 1, 'process-actor', '{"name":"Process Badge"}', :'communityID', :'groupID', 1, 'processing', :'actorID', :'badgeID', :'wrongClaimID', current_timestamp);
@@ -110,6 +125,8 @@ insert into badge_award_job_recipient (badge_award_job_id, position, user_id)
 values
     (:'completeJobID', 0, :'completeUserID'),
     (:'duplicateJobID', 0, :'duplicateUserID'),
+    (:'filteredJobID', 0, :'filteredOptOutUserID'),
+    (:'filteredJobID', 1, :'filteredMutedUserID'),
     (:'partialJobID', 0, :'batchOneID'),
     (:'partialJobID', 1, :'batchTwoID'),
     (:'rateJobID', 0, :'rateUserID'),
@@ -254,6 +271,49 @@ select ok(
         where badge_award_job_id = :'completeJobID'
     ),
     'Should persist completion and remove recipient rows'
+);
+
+-- Should complete badge issuance when every notification recipient is filtered
+select is(
+    process_badge_award_job_batch(:'filteredJobID', :'filteredClaimID', 25, 1000000),
+    jsonb_build_object(
+        'completed', true,
+        'processed_count', 2,
+        'rate_limited', false
+    ),
+    'Should complete badge issuance when every notification recipient is filtered'
+);
+
+-- Should award badges and record progress without notifications for filtered recipients
+select ok(
+    (
+        select status = 'completed'
+            and awarded_count = 2
+            and completed_at is not null
+            and next_recipient_offset = 2
+            and (
+                select count(*)::integer
+                from user_badge ub
+                where ub.badge_id = :'badgeID'
+                and ub.revoked_at is null
+                and ub.user_id in (:'filteredMutedUserID', :'filteredOptOutUserID')
+            ) = 2
+            and not exists (
+                select 1
+                from notification n
+                where n.kind = 'badge-awarded'
+                and n.user_id in (:'filteredMutedUserID', :'filteredOptOutUserID')
+            )
+            and exists (
+                select 1
+                from notification n
+                where n.kind = 'badge-awarded'
+                and n.user_id = :'completeUserID'
+            )
+        from badge_award_job
+        where badge_award_job_id = :'filteredJobID'
+    ),
+    'Should award badges and record progress without notifications for filtered recipients'
 );
 
 -- ============================================================================

@@ -161,9 +161,9 @@ external payments, keep every price window at zero. Complete
 [group settings](group-dashboard.md#external-payments) before configuring a
 positive price.
 
-?> Accepted community admins with verified email addresses receive an email when a non-test paid
-event or paid recurring series is created, and whenever an existing event becomes both non-test and
-paid-capable.
+?> Accepted community admins with verified email addresses who haven't turned off
+`Paid event setups` receive an email when a non-test paid event or paid recurring series is
+created, and whenever an existing event becomes both non-test and paid-capable.
 
 Waitlist control also lives here:
 
@@ -689,7 +689,8 @@ The waitlist table can be sorted by entry name or joined date and filtered by ti
 queue column still shows the FIFO promotion order. An exhausted transient refund can be retried from
 its attendee row; terminal provider failures remain visible for operator recovery.
 
-`Send email` in this tab sends operational updates to attendees who receive optional notifications.
+`Send email` in this tab sends operational updates to attendees who haven't turned off
+`Messages from event organizers` or muted the group.
 Organizers can send to all eligible attendees, including confirmed attendees and attendees who still
 need to complete registration questions, or enter email selection mode to choose eligible attendees
 directly from the table. Eligible attendee rows also include `Send email` for starting with that

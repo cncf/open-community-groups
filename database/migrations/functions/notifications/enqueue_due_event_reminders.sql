@@ -1,4 +1,6 @@
 -- enqueue_due_event_reminders enqueues reminders for events starting within 24h.
+-- It returns the number of reminder recipients attempted, before recipient
+-- preferences are applied.
 create or replace function enqueue_due_event_reminders(p_base_url text)
 returns int as $$
 declare
@@ -110,7 +112,8 @@ begin
                     'event-reminder',
                     v_template_data || jsonb_build_object('show_attendance_cancellation_copy', true),
                     '[]'::jsonb,
-                    v_attendee_recipients
+                    v_attendee_recipients,
+                    array[v_event.group_id]
                 );
             end if;
 
@@ -120,7 +123,8 @@ begin
                     'event-reminder',
                     v_template_data || jsonb_build_object('show_attendance_cancellation_copy', false),
                     '[]'::jsonb,
-                    v_speaker_only_recipients
+                    v_speaker_only_recipients,
+                    array[v_event.group_id]
                 );
             end if;
 
@@ -132,6 +136,8 @@ begin
 
             -- Track notifications created for both reminder recipient groups
             v_reminders_enqueued := v_reminders_enqueued + v_recipient_count;
+
+        -- Record the evaluation for events without recipients
         else
             -- Mark the current start time as evaluated when there are no recipients
             update event set
@@ -140,6 +146,7 @@ begin
         end if;
     end loop;
 
+    -- Return the number of reminder recipients attempted
     return v_reminders_enqueued;
 end;
 $$ language plpgsql;

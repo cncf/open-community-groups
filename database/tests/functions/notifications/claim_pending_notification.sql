@@ -11,6 +11,9 @@ select plan(20);
 -- VARIABLES
 -- ============================================================================
 
+\set communityID '8a010000-0000-0000-0000-000000000026'
+\set groupCategoryID '8a010000-0000-0000-0000-000000000027'
+\set groupID '8a010000-0000-0000-0000-000000000028'
 \set attachmentID1 '8a010000-0000-0000-0000-000000000001'
 \set attachmentID2 '8a010000-0000-0000-0000-000000000002'
 \set notificationAlreadyClaimedID '8a010000-0000-0000-0000-000000000003'
@@ -40,6 +43,15 @@ select plan(20);
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Community containing the group muted after queueing
+select fx_community(:'communityID');
+
+-- Group category containing the group muted after queueing
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group muted after the event notification has been queued
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
 select fx_user(:'userVerifiedID', jsonb_build_object(
@@ -255,6 +267,14 @@ insert into notification (
         :'userPreRegisteredID'
     );
 
+-- Category opt-out written after the event-published notification was queued
+insert into user_notification_opt_out (notification_category_id, user_id)
+values ('new-events', :'userVerifiedID');
+
+-- Group mute written after the event-published notification was queued
+insert into user_group_notification_mute (group_id, user_id)
+values (:'groupID', :'userVerifiedID');
+
 -- Notification attachments
 insert into attachment (attachment_id, content_type, data, file_name, hash) values
     (:'attachmentID1', 'text/calendar', 'BEGIN:VCALENDAR'::bytea, 'event.ics', 'hash1'),
@@ -349,7 +369,7 @@ select is(
 );
 
 -- The group-welcome row is now processing; the next verified row is event-published
--- Should claim event-published notifications for verified users
+-- Should claim already-queued event-published notifications despite later preferences
 select is(
     (select row_to_json(r)::jsonb from claim_pending_notification() r),
     jsonb_build_object(
@@ -360,7 +380,7 @@ select is(
         'notification_id', :'notificationEventPublishedID',
         'template_data', '{"event": "test"}'::jsonb
     ),
-    'Should claim event-published notifications for verified users'
+    'Should claim already-queued event-published notifications despite later preferences'
 );
 
 -- The next claim is the attachment notification, so assert its id and attachments

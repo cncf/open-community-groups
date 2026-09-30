@@ -474,6 +474,46 @@ insert into "user" (
         'Contract Reconcile Promotee',
         '00000000-0000-0000-0000-00000000c0ff',
         'contract-reconcile-promotee'
+    ),
+    (
+        'contract_hash_notification_preferences',
+        'notification-preferences.contract@example.com',
+        true,
+        'Contract Notification Preferences',
+        '00000000-0000-0000-0000-00000000f001',
+        'contract-notification-preferences'
+    ),
+    (
+        'contract_hash_notification_eligible',
+        'notification-eligible.contract@example.com',
+        true,
+        'Contract Notification Eligible',
+        '00000000-0000-0000-0000-00000000f002',
+        'contract-notification-eligible'
+    ),
+    (
+        'contract_hash_notification_update',
+        'notification-update.contract@example.com',
+        true,
+        'Contract Notification Update',
+        '00000000-0000-0000-0000-00000000f003',
+        'contract-notification-update'
+    ),
+    (
+        'contract_hash_notification_concurrency',
+        'notification-concurrency.contract@example.com',
+        true,
+        'Contract Notification Concurrency',
+        '00000000-0000-0000-0000-00000000f004',
+        'contract-notification-concurrency'
+    ),
+    (
+        'contract_hash_notification_unmute_concurrency',
+        'notification-unmute-concurrency.contract@example.com',
+        true,
+        'Contract Notification Unmute Concurrency',
+        '00000000-0000-0000-0000-00000000f005',
+        'contract-notification-unmute-concurrency'
     );
 
 -- ============================================================================
@@ -646,6 +686,27 @@ insert into group_team (
     'admin',
     '00000000-0000-0000-0000-00000000c042',
     1
+), (
+    true,
+    '2024-01-04 11:00:00+00',
+    '00000000-0000-0000-0000-00000000c022',
+    'admin',
+    '00000000-0000-0000-0000-00000000f001',
+    2
+), (
+    true,
+    '2024-01-04 12:00:00+00',
+    '00000000-0000-0000-0000-00000000c022',
+    'admin',
+    '00000000-0000-0000-0000-00000000f004',
+    3
+), (
+    true,
+    '2024-01-04 13:00:00+00',
+    '00000000-0000-0000-0000-00000000c022',
+    'admin',
+    '00000000-0000-0000-0000-00000000f005',
+    4
 );
 
 -- ============================================================================
@@ -673,6 +734,32 @@ insert into community_team (
         'viewer',
         '00000000-0000-0000-0000-00000000c043'
     );
+
+-- ============================================================================
+-- NOTIFICATION PREFERENCES
+-- ============================================================================
+
+-- Category opt-out used by notification preference contract tests
+insert into user_notification_opt_out (
+    created_at,
+    notification_category_id,
+    user_id
+) values (
+    '2024-01-01 00:00:00+00',
+    'badges',
+    '00000000-0000-0000-0000-00000000f001'
+);
+
+-- Connected group mute used by notification preference contract tests
+insert into user_group_notification_mute (
+    created_at,
+    group_id,
+    user_id
+) values (
+    '2024-01-01 00:00:00+00',
+    '00000000-0000-0000-0000-00000000c022',
+    '00000000-0000-0000-0000-00000000f001'
+);
 
 -- ============================================================================
 -- GROUP SPONSORS
@@ -3626,6 +3713,17 @@ insert into group_team (
         1
     );
 
+-- Unavailable group mute used by notification preference contract tests
+insert into user_group_notification_mute (
+    created_at,
+    group_id,
+    user_id
+) values (
+    '2024-01-02 00:00:00+00',
+    '00000000-0000-0000-0000-00000000d028',
+    '00000000-0000-0000-0000-00000000f001'
+);
+
 insert into event (
     cohosts_revision,
     description,
@@ -3929,6 +4027,14 @@ insert into "group" (
         'Contract Inbox Cohost Group',
         'contract-inbox-cohost-group',
         null
+    ),
+    (
+        '00000000-0000-0000-0000-00000000e001',
+        '00000000-0000-0000-0000-00000000e002',
+        '00000000-0000-0000-0000-00000000e014',
+        'Contract Inbox Opt-out Group',
+        'contract-inbox-opt-out-group',
+        null
     );
 
 -- Inbox users: group team members in every role, conversation owners, the user
@@ -4028,6 +4134,30 @@ insert into "user" (
         'Inbox Spam',
         '00000000-0000-0000-0000-00000000e02b',
         'contract-inbox-spam'
+    ),
+    (
+        'contract_hash_inbox_opt_out_admin',
+        'inbox.opt-out-admin.contract@example.com',
+        true,
+        'Inbox Opt-out Admin',
+        '00000000-0000-0000-0000-00000000e02c',
+        'contract-inbox-opt-out-admin'
+    ),
+    (
+        'contract_hash_inbox_opt_out_events_manager',
+        'inbox.opt-out-events-manager.contract@example.com',
+        true,
+        'Inbox Opt-out Events Manager',
+        '00000000-0000-0000-0000-00000000e02d',
+        'contract-inbox-opt-out-events-manager'
+    ),
+    (
+        'contract_hash_inbox_opt_out_user',
+        'inbox.opt-out-user.contract@example.com',
+        true,
+        'Inbox Opt-out User',
+        '00000000-0000-0000-0000-00000000e02e',
+        'contract-inbox-opt-out-user'
     );
 
 -- Inbox team members of the read and write groups
@@ -4042,7 +4172,17 @@ insert into group_team (
     (true, '00000000-0000-0000-0000-00000000e011', 'viewer', '00000000-0000-0000-0000-00000000e023'),
     (true, '00000000-0000-0000-0000-00000000e012', 'admin', '00000000-0000-0000-0000-00000000e021'),
     (true, '00000000-0000-0000-0000-00000000e012', 'events-manager', '00000000-0000-0000-0000-00000000e022'),
-    (true, '00000000-0000-0000-0000-00000000e012', 'viewer', '00000000-0000-0000-0000-00000000e023');
+    (true, '00000000-0000-0000-0000-00000000e012', 'viewer', '00000000-0000-0000-0000-00000000e023'),
+    (true, '00000000-0000-0000-0000-00000000e014', 'admin', '00000000-0000-0000-0000-00000000e02c'),
+    (true, '00000000-0000-0000-0000-00000000e014', 'events-manager', '00000000-0000-0000-0000-00000000e02d');
+
+-- Inbox recipients who turned off group-inbox emails
+insert into user_notification_opt_out (
+    notification_category_id,
+    user_id
+) values
+    ('group-inbox', '00000000-0000-0000-0000-00000000e02c'),
+    ('group-inbox', '00000000-0000-0000-0000-00000000e02d');
 
 -- Published inbox events owned by each group
 insert into event (
@@ -4094,6 +4234,19 @@ insert into event (
         true,
         '2024-01-01 00:00:00+00',
         'contract-inbox-cohost-event',
+        '2030-01-10 10:00:00+00',
+        'UTC'
+    ),
+    (
+        'Event whose inbox recipients opted out of group-inbox emails',
+        '00000000-0000-0000-0000-00000000e003',
+        '00000000-0000-0000-0000-00000000e034',
+        'virtual',
+        '00000000-0000-0000-0000-00000000e014',
+        'Contract Inbox Opt-out Event',
+        true,
+        '2024-01-01 00:00:00+00',
+        'contract-inbox-opt-out-event',
         '2030-01-10 10:00:00+00',
         'UTC'
     );

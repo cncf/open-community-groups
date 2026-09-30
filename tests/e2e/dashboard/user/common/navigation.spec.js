@@ -15,6 +15,9 @@ test.describe("user dashboard navigation", () => {
     await expect(member1Page.locator('a[hx-get="/dashboard/user?tab=events"]')).toContainText("My Events");
     await expect(member1Page.locator('a[hx-get="/dashboard/user?tab=groups"]')).toContainText("My Groups");
     await expect(member1Page.locator('a[hx-get="/dashboard/user?tab=account"]')).toContainText("Profile");
+    await expect(member1Page.locator('a[hx-get="/dashboard/user?tab=notifications"]')).toContainText(
+      "Notifications",
+    );
     await expect(member1Page.locator('a[hx-get="/dashboard/user?tab=invitations"]')).toContainText(
       "Invitations",
     );

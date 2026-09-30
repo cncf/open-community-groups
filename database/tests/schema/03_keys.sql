@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(229);
+select plan(237);
 
 -- ============================================================================
 -- TESTS
@@ -78,6 +78,7 @@ select has_pk('meeting_auto_end_check_outcome');
 select has_pk('meeting_provider');
 select has_pk('notification');
 select has_pk('notification_attachment');
+select has_pk('notification_category');
 select has_pk('notification_kind');
 select has_pk('notification_template_data');
 select has_pk('payment_job');
@@ -94,6 +95,8 @@ select has_pk('session_speaker');
 select has_pk('site');
 select has_pk('user');
 select has_pk('user_badge');
+select has_pk('user_group_notification_mute');
+select has_pk('user_notification_opt_out');
 
 -- Test: check tables have expected foreign keys
 select col_is_fk('admission_offer', 'event_discount_code_id', 'event_discount_code');
@@ -229,6 +232,7 @@ select col_is_fk('notification', 'notification_template_data_id', 'notification_
 select col_is_fk('notification', 'user_id', 'user');
 select col_is_fk('notification_attachment', 'attachment_id', 'attachment');
 select col_is_fk('notification_attachment', 'notification_id', 'notification');
+select col_is_fk('notification_kind', 'notification_category_id', 'notification_category');
 select col_is_fk('payment_job', 'event_purchase_id', 'event_purchase');
 select col_is_fk('payment_job', 'payment_provider_id', 'payment_provider');
 select col_is_fk('payment_job', 'recovery_completed_by_user_id', 'user');
@@ -266,6 +270,10 @@ select fk_ok(
 select col_is_fk('user_badge', 'group_id', 'group');
 select col_is_fk('user_badge', 'revoked_by_user_id', 'user');
 select col_is_fk('user_badge', 'user_id', 'user');
+select col_is_fk('user_group_notification_mute', 'group_id', 'group');
+select col_is_fk('user_group_notification_mute', 'user_id', 'user');
+select col_is_fk('user_notification_opt_out', 'notification_category_id', 'notification_category');
+select col_is_fk('user_notification_opt_out', 'user_id', 'user');
 select fk_ok(
     'admission_offer',
     array['event_id', 'event_discount_code_id']::name[],

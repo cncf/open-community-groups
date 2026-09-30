@@ -1610,11 +1610,9 @@ async fn test_list_page_with_pagination_params() {
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(
-        body.contains(
-            "No attendees with verified email addresses and email notifications enabled."
-        )
-    );
+    assert!(body.contains(
+        "No attendees with verified email addresses who accept messages from event organizers."
+    ));
 }
 
 #[tokio::test]
@@ -2558,7 +2556,7 @@ async fn test_send_event_custom_notification_no_recipients() {
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "No attendees with verified email addresses and email notifications enabled."
+        "No attendees with verified email addresses who accept messages from event organizers."
     );
 }
 

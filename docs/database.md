@@ -222,6 +222,18 @@ a follow-up, not a requirement of the change. The test of a good extraction
 is that a contributor can understand and safely change the workflow with
 less context, not that the caller became shorter.
 
+## Notification preferences
+
+- Recipient preferences (category opt-outs and group mutes) are applied only
+  when `enqueue_notification` queues a notification, through one internal
+  rule that every eligibility check delegates to. Queued notifications are
+  not re-checked at delivery.
+- Producers of kinds in a group-mutable category pass the IDs of every group
+  the email names; `enqueue_notification` rejects a missing, empty, or
+  null-containing group scope for those kinds.
+- Every new notification kind is assigned a category, or none when it is
+  always sent.
+
 ## Prior state, row types and phases
 
 - **Write paths read prior state from rows.** A mutation locks the rows it

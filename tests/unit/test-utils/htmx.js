@@ -18,6 +18,29 @@ export const dispatchHtmxBeforeRequest = (target, detail = {}, { cancelable = fa
 };
 
 /**
+ * Dispatches an HTMX before-on-load event with a configurable xhr payload.
+ * @param {Element} target - Request element that emits the event.
+ * @param {object} options - Event detail and XHR fixture options.
+ * @param {number} options.status - Mock XHR status.
+ * @param {string} options.responseText - Mock XHR response text.
+ */
+export const dispatchHtmxBeforeOnLoad = (target, { status = 200, responseText = "", ...detail } = {}) => {
+  target.dispatchEvent(
+    new CustomEvent("htmx:beforeOnLoad", {
+      bubbles: true,
+      detail: {
+        elt: target,
+        ...detail,
+        xhr: {
+          status,
+          responseText,
+        },
+      },
+    }),
+  );
+};
+
+/**
  * Dispatches an HTMX after-request event with a configurable xhr payload.
  * @param {EventTarget} target - Target that emits the event.
  * @param {object} options - Event detail and XHR fixture options.

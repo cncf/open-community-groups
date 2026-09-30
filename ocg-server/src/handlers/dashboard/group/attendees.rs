@@ -428,7 +428,7 @@ pub(crate) async fn send_event_custom_notification(
     if event_attendees_ids.is_empty() {
         let message = match notification.recipient_scope {
             EventCustomNotificationRecipientScope::All => {
-                "No attendees with verified email addresses and email notifications enabled."
+                "No attendees with verified email addresses who accept messages from event organizers."
             }
             EventCustomNotificationRecipientScope::Selected => {
                 "No selected attendees can receive this email."

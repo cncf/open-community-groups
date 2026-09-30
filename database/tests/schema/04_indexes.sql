@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(118);
+select plan(121);
 
 -- ============================================================================
 -- TESTS
@@ -605,6 +605,12 @@ select indexes_are('notification_attachment', array[
     'notification_attachment_attachment_id_idx'
 ]);
 
+-- Test: notification category indexes should match expected
+select indexes_are('notification_category', array[
+    'notification_category_pkey',
+    'notification_category_display_name_key'
+]);
+
 -- Test: notification_kind indexes should match expected
 select indexes_are('notification_kind', array[
     'notification_kind_name_key',
@@ -719,6 +725,17 @@ select index_is_unique('user_badge', 'user_badge_status_list_index_key');
 select index_is_unique('user', 'user_email_lower_idx');
 select index_is_unique('user', 'user_linuxfoundation_identity_idx');
 select index_is_unique('user', 'user_username_lower_idx');
+
+-- Test: user group notification mute indexes should match expected
+select indexes_are('user_group_notification_mute', array[
+    'user_group_notification_mute_pkey',
+    'user_group_notification_mute_group_id_idx'
+]);
+
+-- Test: user notification opt-out indexes should match expected
+select indexes_are('user_notification_opt_out', array[
+    'user_notification_opt_out_pkey'
+]);
 
 -- ============================================================================
 -- CLEANUP

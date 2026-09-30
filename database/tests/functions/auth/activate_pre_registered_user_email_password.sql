@@ -41,10 +41,11 @@ values (:'verificationCodeID', :'userID', '2024-01-01 00:00:00+00');
 -- TESTS
 -- ============================================================================
 
--- Should activate a pre-registered user and resolve username collisions.
-select is(
+-- Should activate a pre-registered user, resolve username collisions, and omit notification flag.
+select ok(
     (
-        select "user"::jsonb->>'username'
+        select "user"::jsonb->>'username' = 'alice2'
+        and not ("user"::jsonb ? 'optional_notifications_enabled')
         from activate_pre_registered_user_email_password(
             '{
                 "email": "INVITED@example.com",
@@ -59,8 +60,7 @@ select is(
             )
         )
     ),
-    'alice2',
-    'Should return the activated user with a unique username'
+    'Should return the activated user with a unique username and no notification flag'
 );
 
 -- Should promote the placeholder row into an unverified registered user with password.

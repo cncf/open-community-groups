@@ -16,7 +16,8 @@ use crate::{
             common::AuditLogSort,
             user::{
                 events::UserEventsOutput, groups::UserGroupsOutput,
-                purchases::PurchaseDocumentsOutput, session_proposals::SessionProposalsOutput,
+                notifications::NotificationPreferences, purchases::PurchaseDocumentsOutput,
+                session_proposals::SessionProposalsOutput,
             },
         },
         inbox::InboxConversationsOutput,
@@ -54,8 +55,11 @@ async fn test_page_account_tab_success() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
+    // Check the profile no longer carries notification toggles
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(!body.contains("optional_notifications_enabled"));
+    assert!(body.contains("href=\"/dashboard/user?tab=notifications\""));
 }
 
 #[tokio::test]
@@ -348,6 +352,36 @@ async fn test_page_logs_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_page_notifications_tab_success() {
+    // Setup identifiers and data structures
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_user_notification_preferences()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(|_| Ok(NotificationPreferences::default()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Request the notifications tab through the full dashboard route
+    let (parts, bytes) =
+        send_home_request(db, session_id, "/dashboard/user?tab=notifications").await;
+
+    // Check the notifications content and refresh route render
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("id=\"notification-preferences-form\""));
+    assert!(body.contains("hx-get=\"/dashboard/user/notifications\""));
+    assert!(body.contains("/static/js/dashboard/user/notification-group-mutes."));
+    assert!(body.contains("/static/js/dashboard/user/notification-preferences."));
 }
 
 #[tokio::test]

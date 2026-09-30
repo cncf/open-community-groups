@@ -9,6 +9,7 @@ mod dashboard_common;
 mod dashboard_community;
 mod dashboard_group;
 mod dashboard_user;
+mod dashboard_user_notifications;
 mod event;
 mod group;
 pub(crate) mod helpers;

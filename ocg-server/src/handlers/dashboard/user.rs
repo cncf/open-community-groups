@@ -8,6 +8,7 @@ pub(crate) mod home;
 pub(crate) mod inbox;
 pub(crate) mod invitations;
 pub(crate) mod logs;
+pub(crate) mod notifications;
 pub(crate) mod purchases;
 pub(crate) mod session_proposals;
 pub(crate) mod submissions;

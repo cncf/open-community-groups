@@ -56,6 +56,9 @@ pub(crate) struct GroupCustomNotificationInput {
 pub(crate) struct NewNotification {
     /// Files to include in the notification email.
     pub attachments: Vec<Attachment>,
+    /// Groups named in the notification; recipients who muted any of them skip
+    /// group-mutable categories.
+    pub group_ids: Vec<Uuid>,
     /// The type of notification to send.
     pub kind: NotificationKind,
     /// The user IDs to notify.

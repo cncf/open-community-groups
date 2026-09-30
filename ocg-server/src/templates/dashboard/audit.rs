@@ -338,6 +338,16 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "group_external_payments_updated",
     },
     AuditActionDefinition {
+        label: "Group notifications muted",
+        scopes: USER_SCOPES,
+        value: "group_notifications_muted",
+    },
+    AuditActionDefinition {
+        label: "Group notifications unmuted",
+        scopes: USER_SCOPES,
+        value: "group_notifications_unmuted",
+    },
+    AuditActionDefinition {
         label: "Group payment recipient updated",
         scopes: COMMUNITY_GROUP_SCOPES,
         value: "group_payment_recipient_updated",
@@ -476,6 +486,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         label: "User details updated",
         scopes: USER_SCOPES,
         value: "user_details_updated",
+    },
+    AuditActionDefinition {
+        label: "Notification preferences updated",
+        scopes: USER_SCOPES,
+        value: "user_notification_preferences_updated",
     },
     AuditActionDefinition {
         label: "User password updated",

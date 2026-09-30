@@ -1,6 +1,7 @@
 //! Contract tests for the `DBAuth` functions.
 
 use anyhow::Result;
+use tokio_postgres::types::Json;
 
 use crate::{auth::ExternalUserProfile, db::auth::DBAuth, types::user::UserProvider};
 
@@ -62,14 +63,19 @@ async fn db_contracts_get_user_by_email_for_external_auth_pre_registered_deseria
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_user_by_id_deserializes() -> Result<()> {
-    // Setup the contract database and user identifier
+    // Setup the contract database, raw JSON probe, and user identifier
     let db = contract_tests_db()?;
+    let client = contract_tests_pool()?.get().await?;
 
     // Load the user by identifier through the Rust contract
     let user = db
         .get_user_by_id(&attendee_id())
         .await?
         .expect("contract attendee should exist");
+    let raw_row = client
+        .query_one("select get_user_by_id($1::uuid, true)", &[&attendee_id()])
+        .await?;
+    let Json(raw): Json<serde_json::Value> = raw_row.get(0);
 
     // Check account and provider profile fields
     assert!(user.email_verified);
@@ -80,6 +86,11 @@ async fn db_contracts_get_user_by_id_deserializes() -> Result<()> {
     );
     assert_eq!(user.user_id, attendee_id());
     assert_eq!(user.username, "contract-attendee");
+    assert!(
+        !raw.as_object()
+            .unwrap()
+            .contains_key("optional_notifications_enabled")
+    );
 
     Ok(())
 }

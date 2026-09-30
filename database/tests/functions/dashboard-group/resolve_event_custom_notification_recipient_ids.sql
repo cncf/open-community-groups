@@ -18,6 +18,7 @@ select plan(7);
 \set otherGroupID '3a080000-0000-0000-0000-000000000007'
 \set eligibleUserID '3a080000-0000-0000-0000-000000000008'
 \set optedOutUserID '3a080000-0000-0000-0000-000000000009'
+\set ownerMutedUserID '3a080000-0000-0000-0000-000000000018'
 \set otherEventUserID '3a080000-0000-0000-0000-000000000012'
 \set pendingCheckoutEventID '3a080000-0000-0000-0000-000000000014'
 \set pendingCheckoutPurchaseID '3a080000-0000-0000-0000-000000000016'
@@ -25,6 +26,7 @@ select plan(7);
 \set pendingCheckoutUserID '3a080000-0000-0000-0000-000000000017'
 \set pendingQuestionsUserID '3a080000-0000-0000-0000-000000000013'
 \set pendingUserID '3a080000-0000-0000-0000-000000000011'
+\set unrelatedMutedUserID '3a080000-0000-0000-0000-000000000019'
 \set unverifiedUserID '3a080000-0000-0000-0000-000000000010'
 
 -- ============================================================================
@@ -54,10 +56,12 @@ select fx_event_ticket_type(:'pendingCheckoutTicketTypeID', :'pendingCheckoutEve
 
 -- Users
 select fx_user(:'eligibleUserID', jsonb_build_object('username', 'eligible'));
-select fx_user(:'optedOutUserID', jsonb_build_object('optional_notifications_enabled', false));
+select fx_user(:'optedOutUserID');
 select fx_user(:'otherEventUserID', jsonb_build_object('username', 'other'));
+select fx_user(:'ownerMutedUserID');
 select fx_user(:'pendingQuestionsUserID', jsonb_build_object('username', 'questions-pending'));
 select fx_user(:'pendingUserID', jsonb_build_object('username', 'pending'));
+select fx_user(:'unrelatedMutedUserID');
 select fx_user(:'unverifiedUserID', jsonb_build_object(
     'email_verified', false,
     'username', 'unverified-resolve-event-custom-notification-recipient-ids'
@@ -68,11 +72,25 @@ insert into event_attendee (event_id, user_id, status)
 values
     (:'eventID', :'eligibleUserID', 'confirmed'),
     (:'eventID', :'optedOutUserID', 'confirmed'),
+    (:'eventID', :'ownerMutedUserID', 'confirmed'),
     (:'otherEventID', :'otherEventUserID', 'confirmed'),
     (:'pendingCheckoutEventID', :'pendingCheckoutUserID', 'registration-questions-pending'),
     (:'eventID', :'pendingQuestionsUserID', 'registration-questions-pending'),
     (:'eventID', :'pendingUserID', 'invitation-pending'),
+    (:'eventID', :'unrelatedMutedUserID', 'confirmed'),
     (:'eventID', :'unverifiedUserID', 'confirmed');
+
+-- Organizer messages opt-out used by recipient preference filtering
+insert into user_notification_opt_out (notification_category_id, user_id)
+values ('organizer-messages', :'optedOutUserID');
+
+-- Owner group mute used by recipient preference filtering
+insert into user_group_notification_mute (group_id, user_id)
+values (:'groupID', :'ownerMutedUserID');
+
+-- Unrelated group mute that should not affect this event
+insert into user_group_notification_mute (group_id, user_id)
+values (:'otherGroupID', :'unrelatedMutedUserID');
 
 -- Pending checkout purchase
 insert into event_purchase (
@@ -111,7 +129,7 @@ select is(
         'all-attendees',
         null::uuid[]
     ),
-    array[:'eligibleUserID'::uuid, :'pendingQuestionsUserID'::uuid],
+    array[:'eligibleUserID'::uuid, :'pendingQuestionsUserID'::uuid, :'unrelatedMutedUserID'::uuid],
     'Should resolve all eligible custom notification recipients'
 );
 
@@ -123,12 +141,14 @@ select is(
         'selected-attendees',
         array[
             :'eligibleUserID'::uuid,
+            :'ownerMutedUserID'::uuid,
             :'optedOutUserID'::uuid,
             :'pendingQuestionsUserID'::uuid,
-            :'pendingUserID'::uuid
+            :'pendingUserID'::uuid,
+            :'unrelatedMutedUserID'::uuid
         ]
     ),
-    array[:'eligibleUserID'::uuid, :'pendingQuestionsUserID'::uuid],
+    array[:'eligibleUserID'::uuid, :'pendingQuestionsUserID'::uuid, :'unrelatedMutedUserID'::uuid],
     'Should resolve only requested eligible custom notification recipients'
 );
 
@@ -150,7 +170,7 @@ select is(
         :'groupID'::uuid,
         :'eventID'::uuid,
         'selected-attendees',
-        array[:'optedOutUserID'::uuid, :'unverifiedUserID'::uuid, :'pendingUserID'::uuid]
+        array[:'optedOutUserID'::uuid, :'ownerMutedUserID'::uuid, :'unverifiedUserID'::uuid, :'pendingUserID'::uuid]
     ),
     array[]::uuid[],
     'Should return empty list when requested recipients are not eligible'

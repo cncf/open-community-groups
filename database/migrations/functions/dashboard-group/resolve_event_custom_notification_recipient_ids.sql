@@ -26,7 +26,10 @@ returns uuid[] as $$
         and e.group_id = p_group_id
         and ea.status in ('confirmed', 'registration-questions-pending')
         and u.email_verified = true
-        and coalesce(u.optional_notifications_enabled, true) = true
+        and exists (
+            select 1
+            from users_accepting_notification('event-custom', array[ea.user_id], array[p_group_id])
+        )
         and pending_ep.event_purchase_id is null
         and (
             (

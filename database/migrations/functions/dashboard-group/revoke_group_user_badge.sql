@@ -15,6 +15,8 @@ declare
 begin
     -- Normalize the private audit reason
     v_reason := nullif(btrim(p_reason), '');
+
+    -- Require a revocation reason
     if v_reason is null then
         raise exception 'badge revocation reason is required' using errcode = 'OCG01';
     end if;
@@ -26,9 +28,12 @@ begin
     where user_badge_id = p_user_badge_id
     and group_id = p_group_id;
 
+    -- Reject badges not issued by this group
     if not found then
         raise exception 'awarded badge not found' using errcode = 'OCG01';
     end if;
+
+    -- Lock the recipient when the account still exists
     if v_recipient_user_id is not null then
         perform 1
         from "user"
@@ -44,9 +49,12 @@ begin
     and group_id = p_group_id
     for update;
 
+    -- Reject badges removed while waiting for the lock
     if not found then
         raise exception 'awarded badge not found' using errcode = 'OCG01';
     end if;
+
+    -- Treat already revoked badges as a no-op
     if v_user_badge.revoked_at is not null then
         return;
     end if;
@@ -60,6 +68,8 @@ begin
         revoked_by_user_id = p_actor_user_id
     where user_badge_id = p_user_badge_id
     returning * into v_user_badge;
+
+    -- Load the site theme used by the notification
     select theme into v_theme from site limit 1;
 
     -- Enqueue the recipient notification inside the same database operation
@@ -72,7 +82,8 @@ begin
             'theme', v_theme
         ),
         '[]'::jsonb,
-        array[v_user_badge.user_id]
+        array[v_user_badge.user_id],
+        array[v_user_badge.group_id]
     );
 
     -- Record the actor and private reason only after the transition succeeds

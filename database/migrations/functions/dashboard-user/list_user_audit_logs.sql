@@ -28,6 +28,8 @@ returns json as $$
                 'community_team_invitation_rejected',
                 'event_attendee_invitation_accepted',
                 'event_attendee_invitation_rejected',
+                'group_notifications_muted',
+                'group_notifications_unmuted',
                 'group_team_invitation_accepted',
                 'group_team_invitation_rejected',
                 'inbox_conversation_started',
@@ -40,6 +42,7 @@ returns json as $$
                 'submission_resubmitted',
                 'submission_withdrawn',
                 'user_details_updated',
+                'user_notification_preferences_updated',
                 'user_password_updated'
             ]::text[])
             and (f.action_value is null or al.action = f.action_value)

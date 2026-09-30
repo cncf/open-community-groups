@@ -4,6 +4,7 @@ pub mod check_in;
 pub mod events;
 pub mod groups;
 pub mod invitations;
+pub mod notifications;
 pub mod purchases;
 pub mod session_proposals;
 pub mod submissions;
