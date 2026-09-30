@@ -4,6 +4,18 @@ const ROOT_ID = "cfs-modal-root";
 const SELECT_DATA_KEY = "cfsSubmitReady";
 
 /**
+ * Re-runs the submit state logic after the modal content is swapped.
+ * @param {CustomEvent} event HTMX after-swap event.
+ * @returns {void}
+ */
+const handleModalSwap = (event) => {
+  if (event?.target?.id !== ROOT_ID) {
+    return;
+  }
+  initializeSubmitControls();
+};
+
+/**
  * Enables the submit button only while a session proposal is selected.
  * @returns {void}
  */
@@ -27,18 +39,6 @@ const initializeSubmitControls = () => {
   }
 
   select.addEventListener("change", syncSubmitState);
-};
-
-/**
- * Re-runs the submit state logic after the modal content is swapped.
- * @param {CustomEvent} event HTMX after-swap event.
- * @returns {void}
- */
-const handleModalSwap = (event) => {
-  if (event?.target?.id !== ROOT_ID) {
-    return;
-  }
-  initializeSubmitControls();
 };
 
 if (markDatasetReady(document.documentElement, "cfsModalSwapReady")) {

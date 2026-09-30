@@ -51,6 +51,7 @@ test.describe("group inbox workflow", () => {
         urlEndsWith: `/event/${TEST_EVENT_IDS.alpha.one}/contact`,
       });
       await expect(modal.locator("[data-contact-sent-notice]")).toBeVisible();
+      await expect(modal.locator("[data-contact-sent-notice]")).toBeFocused();
       notificationIds.push(
         ...expectNewNotifications(snapshot, [
           {
