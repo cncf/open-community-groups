@@ -262,6 +262,37 @@ test.describe("group inbox workflow", () => {
     await expect(opener).toBeFocused();
   });
 
+  test("group team member gets the organizer note", async ({ organizerGroupPage }) => {
+    // Open the contact modal as an organizer of the event group
+    await navigateToEvent(organizerGroupPage, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    await organizerGroupPage.getByRole("button", { name: "Contact organizers" }).click();
+    const modal = organizerGroupPage.getByRole("dialog", { name: "Contact organizers" });
+
+    // Verify the modal points to the group inbox instead of the contact form
+    await expect(modal.locator("[data-contact-organizer-note]")).toBeVisible();
+    await expect(modal.getByRole("link", { name: "Open group Inbox" })).toBeVisible();
+    await expect(modal.getByLabel("Message")).toHaveCount(0);
+  });
+
+  test("user over the daily conversation limit gets the limit notice", async ({ member1Page }) => {
+    try {
+      // Start today's maximum number of conversations for the first member
+      insertClosedMemberConversations(3);
+
+      // Open the contact modal from the public event page
+      await navigateToEvent(member1Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+      await member1Page.getByRole("button", { name: "Contact organizers" }).click();
+      const modal = member1Page.getByRole("dialog", { name: "Contact organizers" });
+
+      // Verify the modal shows the limit notice instead of the contact form
+      await expect(modal.locator("[data-contact-limit-reached]")).toBeVisible();
+      await expect(modal.getByLabel("Message")).toHaveCount(0);
+    } finally {
+      // Remove the member conversations
+      deleteMemberConversations();
+    }
+  });
+
   test("inbox stays desktop only on mobile @mobile", async ({ member2Page, organizerGroupPage }) => {
     // Verify the user inbox shows the mobile notice instead of the list
     await navigateToPath(member2Page, "/dashboard/user?tab=inbox");
@@ -310,3 +341,16 @@ const findMemberConversationId = () =>
     where user_id = '${TEST_USER_IDS.member1}'
     and group_id = '${TEST_GROUP_IDS.community1.alpha}'
   `);
+
+/**
+ * Inserts closed conversations started today by the first member with the
+ * primary group, so they count towards the daily limit without an open thread.
+ * @param {number} count Number of conversations to insert.
+ */
+const insertClosedMemberConversations = (count) => {
+  queryE2eDatabase(`
+    insert into inbox_conversation (group_id, inbox_conversation_status_id, user_id)
+    select '${TEST_GROUP_IDS.community1.alpha}', 'closed', '${TEST_USER_IDS.member1}'
+    from generate_series(1, ${count});
+  `);
+};
