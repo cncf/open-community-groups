@@ -519,9 +519,10 @@ Email notifications:
 
 - When a user writes, the accepted, email-verified group team members with Inbox access receive
   the message by email. Community roles can open the Inbox but are not emailed.
-- The email names the group and its community and links to the group dashboard Inbox. If you
-  manage several groups, select the group named in the email; with another group selected, the
-  dashboard shows a warning and keeps the group selector available.
+- The email names the group and its community and links to the conversation in the group
+  dashboard Inbox. If you manage several groups, select the group named in the email; with
+  another group selected, the dashboard shows the Inbox list with a warning and keeps the group
+  selector available.
 - When an organizer replies, the user receives the reply by email and in their own Inbox.
 - Replies are always written in the dashboard; replying to an email does not reach the other side.
 

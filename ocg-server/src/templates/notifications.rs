@@ -1159,7 +1159,7 @@ pub(crate) struct InboxMessageReceived {
     pub community_display_name: String,
     /// Name of the group the message was sent to.
     pub group_name: String,
-    /// Link to the Inbox of the group dashboard.
+    /// Link to the conversation in the group dashboard Inbox.
     pub link: String,
     /// Name shown for the user who wrote the message.
     pub sender_name: String,

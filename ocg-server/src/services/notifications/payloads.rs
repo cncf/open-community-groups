@@ -427,8 +427,9 @@ pub(crate) fn build_speaker_welcome_notification(
 }
 
 /// Builds the notification telling group team members that a user wrote to
-/// the group inbox. The link opens the Inbox of the group dashboard; the email
-/// names the group because the link cannot select it.
+/// the group inbox. The link opens the conversation in the group dashboard
+/// when its group is selected; the email names the group because the link
+/// cannot select it.
 pub(crate) fn build_inbox_message_received_notification(
     conversation: &InboxConversation,
     message: &InboxMessage,
@@ -446,7 +447,10 @@ pub(crate) fn build_inbox_message_received_notification(
         body: message.body.clone(),
         community_display_name: conversation.community_display_name.clone(),
         group_name: conversation.group_name.clone(),
-        link: "/dashboard/group?tab=inbox".to_string(),
+        link: format!(
+            "/dashboard/group?tab=inbox&conversation_id={}",
+            conversation.inbox_conversation_id
+        ),
         sender_name: author.name.clone().unwrap_or_else(|| author.username.clone()),
         theme: site_settings.theme.clone(),
 
@@ -891,7 +895,13 @@ mod tests {
         assert_eq!(template.body, "When do doors open?");
         assert_eq!(template.community_display_name, "Test Community");
         assert_eq!(template.group_name, "Test Group");
-        assert_eq!(template.link, "/dashboard/group?tab=inbox");
+        assert_eq!(
+            template.link,
+            format!(
+                "/dashboard/group?tab=inbox&conversation_id={}",
+                conversation.inbox_conversation_id
+            )
+        );
         assert_eq!(template.sender_name, "Inbox User");
         assert_eq!(template.event_name.as_deref(), Some("Test Event"));
     }

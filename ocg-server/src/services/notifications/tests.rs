@@ -1883,7 +1883,10 @@ fn test_delivery_worker_prepare_content_inbox_message_received() {
     assert!(
         body.contains("This message was sent to Inbox Group in the Inbox Community community.")
     );
-    assert!(body.contains("https://example.test/dashboard/group?tab=inbox"));
+    assert!(body.contains(
+        "https://example.test/dashboard/group?tab=inbox&#38;conversation_id=44444444-4444-4444-4444-444444444444"
+    ));
+    assert!(body.contains("View conversation"));
 }
 
 #[test]
@@ -2801,7 +2804,7 @@ fn sample_inbox_message_received_template_data() -> serde_json::Value {
         "community_display_name": "Inbox Community",
         "event_name": "Inbox Event",
         "group_name": "Inbox Group",
-        "link": "/dashboard/group?tab=inbox",
+        "link": "/dashboard/group?tab=inbox&conversation_id=44444444-4444-4444-4444-444444444444",
         "sender_name": "Uma User",
         "theme": {
             "primary_color": "#000000"

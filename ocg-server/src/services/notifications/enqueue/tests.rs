@@ -1265,7 +1265,11 @@ async fn test_enqueue_inbox_message_received_notification_excludes_author() {
                         template.body == "When do doors open?"
                             && template.community_display_name == "Test Community"
                             && template.group_name == "Test Group"
-                            && template.link == "/dashboard/group?tab=inbox"
+                            && template.link
+                                == format!(
+                                    "/dashboard/group?tab=inbox&conversation_id={}",
+                                    posted.inbox_conversation_id
+                                )
                             && template.sender_name == "Inbox User"
                             && template.event_name.as_deref() == Some("Test Event")
                     })
