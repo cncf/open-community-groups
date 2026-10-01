@@ -21,6 +21,8 @@ const INBOX_COMMUNITY_ID: Uuid = Uuid::from_u128(0xe001);
 const INBOX_ADMIN_ID: Uuid = Uuid::from_u128(0xe021);
 /// Group team member with the events-manager role in the read and write groups.
 const INBOX_EVENTS_MANAGER_ID: Uuid = Uuid::from_u128(0xe022);
+/// Group team member with the viewer role in the read and write groups.
+const INBOX_VIEWER_ID: Uuid = Uuid::from_u128(0xe023);
 /// Group whose conversations are only read by the contracts.
 const INBOX_READ_GROUP_ID: Uuid = Uuid::from_u128(0xe011);
 /// Group receiving conversations written by the contracts.
@@ -321,7 +323,7 @@ async fn db_contracts_get_inbox_contact_context_deserializes() -> Result<()> {
     // Setup the contract database
     let db = contract_tests_db()?;
 
-    // Load the contact context for anonymous, group team member and regular viewers
+    // Load the contact context for anonymous, team member, read-only member and regular viewers
     let anonymous = db
         .get_inbox_contact_context(INBOX_COMMUNITY_ID, INBOX_READ_EVENT_ID, None)
         .await?
@@ -331,6 +333,14 @@ async fn db_contracts_get_inbox_contact_context_deserializes() -> Result<()> {
             INBOX_COMMUNITY_ID,
             INBOX_READ_EVENT_ID,
             Some(INBOX_ADMIN_ID),
+        )
+        .await?
+        .expect("contact context to exist");
+    let read_only_member = db
+        .get_inbox_contact_context(
+            INBOX_COMMUNITY_ID,
+            INBOX_READ_EVENT_ID,
+            Some(INBOX_VIEWER_ID),
         )
         .await?
         .expect("contact context to exist");
@@ -357,13 +367,19 @@ async fn db_contracts_get_inbox_contact_context_deserializes() -> Result<()> {
     assert_eq!(anonymous.group_slug_pretty.as_deref(), Some("inbox-read"));
     assert!(anonymous.viewer.is_none());
 
-    // Check the group team member, regular and blocked viewer states
+    // Check the team member, read-only member, regular and blocked viewer states
     let team_member_viewer = team_member.viewer.expect("team member viewer to exist");
+    assert!(team_member_viewer.can_manage_inbox);
     assert!(team_member_viewer.can_start_conversation);
     assert!(!team_member_viewer.is_blocked);
     assert!(team_member_viewer.is_group_team_member);
     assert_eq!(team_member_viewer.open_inbox_conversation_id, None);
+    let read_only_member_viewer =
+        read_only_member.viewer.expect("read-only member viewer to exist");
+    assert!(!read_only_member_viewer.can_manage_inbox);
+    assert!(read_only_member_viewer.is_group_team_member);
     let user_viewer = user.viewer.expect("user viewer to exist");
+    assert!(!user_viewer.can_manage_inbox);
     assert!(user_viewer.can_start_conversation);
     assert!(!user_viewer.is_blocked);
     assert!(!user_viewer.is_group_team_member);

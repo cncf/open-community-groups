@@ -24,7 +24,10 @@ const MOBILE_NOTICE = "This dashboard is not optimized yet for mobile devices";
 const NO_INBOX_ACCESS_WARNING = "You don't have Inbox access for the selected group.";
 
 test.describe("group inbox workflow", () => {
-  test("user contact is answered, closed and reopened", async ({ member1Page, organizerGroupPage }) => {
+  test("user contact is answered, closed, reopened and marked as spam", async ({
+    member1Page,
+    organizerGroupPage,
+  }) => {
     // Prepare unique messages and the recipients of user messages
     const question = uniqueName("inbox question");
     const reply = uniqueName("inbox reply");
@@ -99,6 +102,7 @@ test.describe("group inbox workflow", () => {
         () => confirmAlert.getByRole("button", { name: "Close conversation" }).click(),
         { method: "PUT", urlEndsWith: `/dashboard/group/inbox/${inboxConversationId}/close` },
       );
+      await expectActionNotice(organizerGroupPage, "Conversation closed.");
       await expect(organizerGroupPage.locator("#inbox-conversation")).toContainText("Closed");
 
       // Reopen the conversation with a follow-up from the user dashboard
@@ -126,11 +130,65 @@ test.describe("group inbox workflow", () => {
           },
         ]),
       );
+
+      // Mark the conversation as spam after confirming
+      await organizerGroupPage.getByRole("button", { name: "Mark as spam" }).click();
+      await expect(confirmAlert).toContainText("Mark this conversation as spam?");
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => confirmAlert.getByRole("button", { name: "Mark as spam" }).click(),
+        { method: "PUT", urlEndsWith: `/dashboard/group/inbox/${inboxConversationId}/mark-spam` },
+      );
+      await expectActionNotice(organizerGroupPage, "Conversation marked as spam.");
+      await expect(organizerGroupPage.locator("[data-inbox-spam-notice]")).toBeVisible();
+
+      // Unmark the conversation as spam after confirming
+      await organizerGroupPage.getByRole("button", { name: "Not spam" }).click();
+      await expect(confirmAlert).toContainText("Unmark this conversation as spam?");
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => confirmAlert.getByRole("button", { name: "Not spam" }).click(),
+        { method: "PUT", urlEndsWith: `/dashboard/group/inbox/${inboxConversationId}/unmark-spam` },
+      );
+      await expectActionNotice(organizerGroupPage, "Conversation unmarked as spam.");
+      await expect(organizerGroupPage.locator("[data-inbox-spam-notice]")).toHaveCount(0);
+      await expect(organizerGroupPage.locator("#inbox-conversation")).toContainText("Open");
     } finally {
       // Remove the notifications and the member conversation
       deleteNotifications(notificationIds);
       deleteMemberConversations();
     }
+  });
+
+  test("organizer contact modal links to the group inbox", async ({ organizerGroupPage }) => {
+    // Open the contact modal of an event of the organized group
+    await navigateToEvent(organizerGroupPage, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    await organizerGroupPage.getByRole("button", { name: "Contact organizers" }).click();
+    const modal = organizerGroupPage.getByRole("dialog", { name: "Contact organizers" });
+
+    // Verify the organizer note links to the group inbox instead of the form
+    await expect(modal.locator("[data-contact-organizer-note]")).toContainText(
+      `You organize ${TEST_GROUP_NAME}.`,
+    );
+    await expect(modal.getByRole("link", { name: "Open group Inbox" })).toHaveAttribute(
+      "href",
+      "/dashboard/group?tab=inbox",
+    );
+    await expect(modal.locator("#contact-form")).toHaveCount(0);
+  });
+
+  test("group viewer contact modal has no inbox link", async ({ groupViewerPage }) => {
+    // Open the contact modal of an event of the viewed group
+    await navigateToEvent(groupViewerPage, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    await groupViewerPage.getByRole("button", { name: "Contact organizers" }).click();
+    const modal = groupViewerPage.getByRole("dialog", { name: "Contact organizers" });
+
+    // Verify the team note replaces the form without linking to the inbox
+    await expect(modal.locator("[data-contact-organizer-note]")).toContainText(
+      `You're on the ${TEST_GROUP_NAME} team.`,
+    );
+    await expect(modal.getByRole("link", { name: "Open group Inbox" })).toHaveCount(0);
+    await expect(modal.locator("#contact-form")).toHaveCount(0);
   });
 
   test("group viewer has no inbox access", async ({ groupViewerPage }) => {
@@ -227,6 +285,20 @@ const deleteMemberConversations = () => {
     );
     delete from inbox_conversation where user_id = '${TEST_USER_IDS.member1}';
   `);
+};
+
+/**
+ * Verifies the focused notice reporting a conversation action.
+ * @param {import("@playwright/test").Page} page - Page showing the conversation
+ * @param {string} message - Expected notice message
+ * @returns {Promise<void>}
+ */
+const expectActionNotice = async (page, message) => {
+  const notice = page.locator("#inbox-conversation [data-inbox-action-notice]");
+  await expect(notice).toBeVisible();
+  await expect(notice).toHaveText(message);
+  await expect(notice).toBeFocused();
+  await expect(page.locator(".swal2-popup")).toBeHidden();
 };
 
 /** Returns the conversation the first member started with the primary group. */

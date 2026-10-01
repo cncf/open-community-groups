@@ -557,7 +557,10 @@ async fn test_contact_modal_renders_blocked_notice() {
     expect_test_community(&mut db, community_id);
     let context = sample_contact_context(
         event_id,
-        Some(sample_contact_viewer(true, true, false, None)),
+        Some(InboxContactViewer {
+            is_blocked: true,
+            ..sample_contact_viewer()
+        }),
     );
     db.expect_get_inbox_contact_context()
         .times(1)
@@ -592,7 +595,10 @@ async fn test_contact_modal_renders_daily_limit_notice() {
     expect_test_community(&mut db, community_id);
     let context = sample_contact_context(
         event_id,
-        Some(sample_contact_viewer(false, false, false, None)),
+        Some(InboxContactViewer {
+            can_start_conversation: false,
+            ..sample_contact_viewer()
+        }),
     );
     db.expect_get_inbox_contact_context()
         .times(1)
@@ -624,10 +630,7 @@ async fn test_contact_modal_renders_form_for_signed_in_users() {
     let mut db = MockDB::new();
     expect_authenticated_session(&mut db, session_id, user_id);
     expect_test_community(&mut db, community_id);
-    let context = sample_contact_context(
-        event_id,
-        Some(sample_contact_viewer(true, false, false, None)),
-    );
+    let context = sample_contact_context(event_id, Some(sample_contact_viewer()));
     db.expect_get_inbox_contact_context()
         .times(1)
         .withf(move |cid, eid, uid| {
@@ -672,12 +675,10 @@ async fn test_contact_modal_renders_open_conversation_link() {
     expect_test_community(&mut db, community_id);
     let context = sample_contact_context(
         event_id,
-        Some(sample_contact_viewer(
-            true,
-            false,
-            false,
-            Some(inbox_conversation_id),
-        )),
+        Some(InboxContactViewer {
+            open_inbox_conversation_id: Some(inbox_conversation_id),
+            ..sample_contact_viewer()
+        }),
     );
     db.expect_get_inbox_contact_context()
         .times(1)
@@ -713,7 +714,11 @@ async fn test_contact_modal_renders_organizer_note() {
     expect_test_community(&mut db, community_id);
     let context = sample_contact_context(
         event_id,
-        Some(sample_contact_viewer(true, false, true, None)),
+        Some(InboxContactViewer {
+            can_manage_inbox: true,
+            is_group_team_member: true,
+            ..sample_contact_viewer()
+        }),
     );
     db.expect_get_inbox_contact_context()
         .times(1)
@@ -733,6 +738,44 @@ async fn test_contact_modal_renders_organizer_note() {
     // Check the organizer note replaces the form
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("You organize Test Group."));
+    assert!(body.contains("href=\"/dashboard/group?tab=inbox\""));
+    assert!(!body.contains("id=\"contact-form\""));
+}
+
+#[tokio::test]
+async fn test_contact_modal_renders_organizer_note_for_community_inbox_managers() {
+    // Setup a signed-in community team member with Inbox access
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let context = sample_contact_context(
+        event_id,
+        Some(InboxContactViewer {
+            can_manage_inbox: true,
+            ..sample_contact_viewer()
+        }),
+    );
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .returning(move |_, _, _| Ok(Some(context.clone())));
+
+    // Request the modal
+    let (parts, bytes) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        Some(session_id),
+        "GET",
+        &format!("/test-community/event/{event_id}/contact-modal"),
+        None,
+    )
+    .await;
+
+    // Check the organizer note with the Inbox link replaces the form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("data-contact-organizer-note"));
     assert!(body.contains("You organize Test Group."));
     assert!(body.contains("href=\"/dashboard/group?tab=inbox\""));
     assert!(!body.contains("id=\"contact-form\""));
@@ -774,6 +817,47 @@ async fn test_contact_modal_renders_sign_in_prompt_for_anonymous_visitors() {
             "href=\"/log-in?next_url=/test-community/group/test-group/event/test-event\""
         )
     );
+    assert!(!body.contains("id=\"contact-form\""));
+}
+
+#[tokio::test]
+async fn test_contact_modal_renders_team_note_without_inbox_link_for_viewers() {
+    // Setup a signed-in group team member without Inbox access
+    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_test_community(&mut db, community_id);
+    let context = sample_contact_context(
+        event_id,
+        Some(InboxContactViewer {
+            is_group_team_member: true,
+            ..sample_contact_viewer()
+        }),
+    );
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .returning(move |_, _, _| Ok(Some(context.clone())));
+
+    // Request the modal
+    let (parts, bytes) = send_contact_request(
+        db,
+        MockInboxManager::new(),
+        Some(session_id),
+        "GET",
+        &format!("/test-community/event/{event_id}/contact-modal"),
+        None,
+    )
+    .await;
+
+    // Check the team note replaces the form without the Inbox link
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("data-contact-organizer-note"));
+    assert!(body.contains(
+        "You're on the Test Group team. Organizers with Inbox access answer messages sent to this group."
+    ));
+    assert!(!body.contains("You organize Test Group."));
+    assert!(!body.contains("/dashboard/group?tab=inbox"));
     assert!(!body.contains("id=\"contact-form\""));
 }
 
@@ -2349,19 +2433,15 @@ fn sample_contact_context(
     }
 }
 
-/// Builds the signed-in viewer state of the contact modal.
-fn sample_contact_viewer(
-    can_start_conversation: bool,
-    is_blocked: bool,
-    is_group_team_member: bool,
-    open_inbox_conversation_id: Option<Uuid>,
-) -> InboxContactViewer {
+/// Builds the state of a signed-in viewer allowed to start a conversation.
+fn sample_contact_viewer() -> InboxContactViewer {
     InboxContactViewer {
-        can_start_conversation,
-        is_blocked,
-        is_group_team_member,
+        can_manage_inbox: false,
+        can_start_conversation: true,
+        is_blocked: false,
+        is_group_team_member: false,
 
-        open_inbox_conversation_id,
+        open_inbox_conversation_id: None,
     }
 }
 

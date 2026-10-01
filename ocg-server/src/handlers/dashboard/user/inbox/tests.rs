@@ -157,11 +157,12 @@ async fn test_send_message_passes_identifiers_and_renders_focused_thread() {
     )
     .await;
 
-    // Check the refreshed thread focuses the message field
+    // Check the refreshed thread focuses the message field without a notice
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(html.contains("id=\"inbox-conversation\""));
     assert!(html.contains("autofocus"));
+    assert!(!html.contains("data-inbox-action-notice"));
 }
 
 #[tokio::test]

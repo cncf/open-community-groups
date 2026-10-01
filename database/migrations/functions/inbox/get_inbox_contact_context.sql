@@ -19,6 +19,12 @@ returns json as $$
         'viewer', case
             when p_user_id is null then null
             else json_build_object(
+                'can_manage_inbox', user_has_group_permission(
+                    c.community_id,
+                    g.group_id,
+                    p_user_id,
+                    'group.inbox.write'
+                ),
                 'can_start_conversation', (
                     select l.can_start_conversation
                     from inbox_user_rate_limits(p_user_id, current_timestamp) l

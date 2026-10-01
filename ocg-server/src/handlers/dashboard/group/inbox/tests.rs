@@ -58,11 +58,13 @@ async fn test_close_passes_identifiers_and_renders_thread() {
     )
     .await;
 
-    // Check the refreshed thread is rendered
+    // Check the refreshed thread reports the close in a focused notice
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(html.contains("id=\"inbox-conversation\""));
     assert!(html.contains("When do doors open?"));
+    assert!(html.contains("data-inbox-action-notice>Conversation closed.</div>"));
+    assert!(html.contains("autofocus"));
 }
 
 #[tokio::test]
@@ -246,6 +248,7 @@ async fn test_conversation_page_renders_thread_with_push_url() {
     let html = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(html.contains("Inbox User"));
     assert!(html.contains("id=\"inbox-message-form\""));
+    assert!(!html.contains("data-inbox-action-notice"));
 }
 
 #[tokio::test]
@@ -326,11 +329,13 @@ async fn test_mark_spam_passes_identifiers_and_renders_thread() {
     )
     .await;
 
-    // Check the refreshed thread is rendered
+    // Check the refreshed thread reports the spam mark in a focused notice
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(html.contains("id=\"inbox-conversation\""));
     assert!(html.contains("data-inbox-spam-notice"));
+    assert!(html.contains("data-inbox-action-notice>Conversation marked as spam.</div>"));
+    assert!(html.contains("autofocus"));
 }
 
 #[tokio::test]
@@ -462,11 +467,12 @@ async fn test_reply_passes_identifiers_and_renders_focused_thread() {
     )
     .await;
 
-    // Check the refreshed thread focuses the reply field
+    // Check the refreshed thread focuses the reply field without a notice
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(html.contains("id=\"inbox-conversation\""));
     assert!(html.contains("autofocus"));
+    assert!(!html.contains("data-inbox-action-notice"));
 }
 
 #[tokio::test]
@@ -649,11 +655,13 @@ async fn test_unmark_spam_passes_identifiers_and_renders_thread() {
     )
     .await;
 
-    // Check the refreshed thread is rendered
+    // Check the refreshed thread reports the spam unmark in a focused notice
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(html.contains("id=\"inbox-conversation\""));
     assert!(html.contains("id=\"inbox-message-form\""));
+    assert!(html.contains("data-inbox-action-notice>Conversation unmarked as spam.</div>"));
+    assert!(html.contains("autofocus"));
 }
 
 #[tokio::test]

@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
-        dashboard::inbox::render_after_action,
+        dashboard::inbox::{ActionFeedback, render_after_action},
         error::HandlerError,
         extractors::{CurrentUser, SelectedGroupId, ValidatedForm, ValidatedQuery},
     },
@@ -93,13 +93,14 @@ pub(crate) async fn close(
         })
         .await?;
 
-    // Render the updated thread
+    // Render the updated thread with a focused notice reporting the action
     let loaded = prepare_conversation_page(&db, group_id, inbox_conversation_id, false).await;
     render_after_action(
         loaded,
         InboxScope::Group,
         inbox_conversation_id,
         "Conversation closed.",
+        ActionFeedback::Notice,
     )
 }
 
@@ -121,13 +122,14 @@ pub(crate) async fn mark_spam(
         })
         .await?;
 
-    // Render the updated thread
+    // Render the updated thread with a focused notice reporting the action
     let loaded = prepare_conversation_page(&db, group_id, inbox_conversation_id, false).await;
     render_after_action(
         loaded,
         InboxScope::Group,
         inbox_conversation_id,
         "Conversation marked as spam.",
+        ActionFeedback::Notice,
     )
 }
 
@@ -158,6 +160,7 @@ pub(crate) async fn reply(
         InboxScope::Group,
         inbox_conversation_id,
         "Message sent.",
+        ActionFeedback::Alert,
     )
 }
 
@@ -179,13 +182,14 @@ pub(crate) async fn unmark_spam(
         })
         .await?;
 
-    // Render the updated thread
+    // Render the updated thread with a focused notice reporting the action
     let loaded = prepare_conversation_page(&db, group_id, inbox_conversation_id, false).await;
     render_after_action(
         loaded,
         InboxScope::Group,
         inbox_conversation_id,
         "Conversation unmarked as spam.",
+        ActionFeedback::Notice,
     )
 }
 
@@ -208,6 +212,8 @@ pub(crate) async fn prepare_conversation_page(
         conversation,
         focus_message,
         scope: InboxScope::Group,
+
+        action_notice: None,
     }))
 }
 

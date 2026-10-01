@@ -75,6 +75,19 @@ fn test_conversation_page_cannot_reply_to_spam() {
 }
 
 #[test]
+fn test_conversation_page_renders_action_notice_when_set() {
+    let mut page = sample_conversation_page(InboxScope::Group);
+    page.action_notice = Some("Conversation closed.".to_string());
+
+    let body = page.render().unwrap();
+
+    assert!(body.contains("data-inbox-action-notice>Conversation closed.</div>"));
+    assert!(body.contains("role=\"status\""));
+    assert!(body.contains("tabindex=\"-1\""));
+    assert!(body.contains("autofocus"));
+}
+
+#[test]
 fn test_conversation_page_renders_deleted_author_label() {
     let mut page = sample_conversation_page(InboxScope::Group);
     page.conversation.messages[0].author = None;
@@ -114,6 +127,8 @@ fn test_conversation_page_renders_group_thread_with_reply_and_close() {
     assert!(body.contains("hx-target=\"#dashboard-layout\""));
     assert!(!body.contains("maxlength="));
     assert!(!body.contains("autofocus"));
+    assert!(!body.contains("data-inbox-action-notice"));
+    assert!(!body.contains("data-success-message=\"Conversation"));
 }
 
 #[test]
@@ -311,6 +326,8 @@ fn sample_conversation_page(scope: InboxScope) -> ConversationPage {
         conversation: sample_inbox_conversation(Uuid::new_v4()),
         focus_message: false,
         scope,
+
+        action_notice: None,
     }
 }
 

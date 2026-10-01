@@ -41,6 +41,9 @@ pub(crate) struct ConversationPage {
     pub focus_message: bool,
     /// Dashboard rendering the conversation.
     pub scope: InboxScope,
+
+    /// Focused notice reporting the action that refreshed the thread.
+    pub action_notice: Option<String>,
 }
 
 impl ConversationPage {

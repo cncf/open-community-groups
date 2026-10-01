@@ -22,6 +22,16 @@
   </a>
   {# End back to inbox -#}
 
+  {% if let Some(notice) = action_notice -%}
+    {# Action notice (focused after the swap that replaces the action button) -#}
+    <div role="status"
+         tabindex="-1"
+         autofocus
+         class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+         data-inbox-action-notice>{{ notice }}</div>
+    {# End action notice -#}
+  {% endif -%}
+
   {# Conversation header -#}
   <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
     <div class="min-w-0">
@@ -65,7 +75,6 @@
                   data-confirm-action
                   data-confirm-message="Close this conversation? The user can reopen it by writing again."
                   data-confirm-text="Close conversation"
-                  data-success-message="Conversation closed."
                   data-error-message="Something went wrong closing the conversation. Please try again later."
                   hx-put="{{ close_url }}"
                   hx-trigger="confirmed"
@@ -83,7 +92,6 @@
                   data-confirm-action
                   data-confirm-message="Mark this conversation as spam? The user will no longer be able to write to it or contact this group. Users reported by three groups of this community can no longer contact any of its groups."
                   data-confirm-text="Mark as spam"
-                  data-success-message="Conversation marked as spam."
                   data-error-message="Something went wrong marking the conversation as spam. Please try again later."
                   hx-put="{{ mark_spam_url }}"
                   hx-trigger="confirmed"
@@ -101,7 +109,6 @@
                   data-confirm-action
                   data-confirm-message="Unmark this conversation as spam? It returns to your inbox and the user can write to it again."
                   data-confirm-text="Not spam"
-                  data-success-message="Conversation unmarked as spam."
                   data-error-message="Something went wrong unmarking the conversation as spam. Please try again later."
                   hx-put="{{ unmark_spam_url }}"
                   hx-trigger="confirmed"

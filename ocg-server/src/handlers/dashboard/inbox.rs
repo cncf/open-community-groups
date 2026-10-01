@@ -15,6 +15,17 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+/// How a refreshed inbox thread reports a committed action.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ActionFeedback {
+    /// The request element shows its own success alert, which survives the
+    /// swap because it is handled before the thread is replaced.
+    Alert,
+    /// The thread renders the done message as a focused notice, because the
+    /// request element is replaced before it can show an alert.
+    Notice,
+}
+
 /// Renders an inbox thread after a committed action. When the thread cannot
 /// be loaded again, the committed action is still reported as done, with a
 /// link that reloads the conversation.
@@ -23,10 +34,17 @@ pub(crate) fn render_after_action(
     scope: InboxScope,
     inbox_conversation_id: Uuid,
     done_message: &str,
+    feedback: ActionFeedback,
 ) -> Result<Html<String>, HandlerError> {
     // Render the refreshed thread when it was loaded
     let reason = match loaded {
-        Ok(Some(template)) => return Ok(Html(template.render()?)),
+        Ok(Some(mut template)) => {
+            // Report the action inside the thread when it replaces the trigger
+            if feedback == ActionFeedback::Notice {
+                template.action_notice = Some(done_message.to_string());
+            }
+            return Ok(Html(template.render()?));
+        }
         Ok(None) => "conversation not found".to_string(),
         Err(err) => format!("{err:#}"),
     };

@@ -110,13 +110,16 @@ impl InboxContactContext {
 }
 
 /// Signed-in viewer state for the event page contact modal.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct InboxContactViewer {
+    /// Whether the viewer can answer the group's Inbox.
+    pub can_manage_inbox: bool,
     /// Whether the viewer is below the daily limit of new conversations.
     pub can_start_conversation: bool,
     /// Whether spam reports block the viewer from contacting the group.
     pub is_blocked: bool,
-    /// Whether the viewer organizes the group that owns the event.
+    /// Whether the viewer is an accepted member of the group team.
     pub is_group_team_member: bool,
 
     /// The viewer's most recently active open conversation with the group.

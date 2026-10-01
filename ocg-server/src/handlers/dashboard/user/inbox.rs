@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
-        dashboard::inbox::render_after_action,
+        dashboard::inbox::{ActionFeedback, render_after_action},
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm, ValidatedQuery},
     },
@@ -100,6 +100,7 @@ pub(crate) async fn send_message(
         InboxScope::User,
         inbox_conversation_id,
         "Message sent.",
+        ActionFeedback::Alert,
     )
 }
 
@@ -120,6 +121,8 @@ pub(crate) async fn prepare_conversation_page(
         conversation,
         focus_message,
         scope: InboxScope::User,
+
+        action_notice: None,
     }))
 }
 
