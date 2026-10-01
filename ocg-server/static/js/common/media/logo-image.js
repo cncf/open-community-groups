@@ -18,6 +18,8 @@ export class LogoImage extends LitWrapper {
    * @property {boolean} hideOnError - If true, hides the component when image fails
    *   to load
    * @property {boolean} hideBorder - If true, removes the border from the image
+   * @property {string} colorClass - Tailwind background and text color classes
+   *   for the placeholder and image
    * @property {boolean} _hasError - Internal state tracking if image failed to load
    * @property {boolean} _hasLoaded - Internal state tracking if image loaded
    *   successfully
@@ -30,6 +32,7 @@ export class LogoImage extends LitWrapper {
       fontSize: { type: String, attribute: "font-size" },
       hideOnError: { type: Boolean, attribute: "hide-on-error" },
       hideBorder: { type: Boolean, attribute: "hide-border" },
+      colorClass: { type: String, attribute: "color-class" },
       _hasError: { type: Boolean },
       _hasLoaded: { type: Boolean },
     };
@@ -43,6 +46,7 @@ export class LogoImage extends LitWrapper {
     this.fontSize = "text-sm";
     this.hideOnError = false; // Default to showing placeholder on error
     this.hideBorder = false; // Default to showing border
+    this.colorClass = "bg-stone-200 text-stone-700";
     this._hasError = false;
     this._hasLoaded = false;
   }
@@ -113,7 +117,7 @@ export class LogoImage extends LitWrapper {
         <div
           class="${
             showPlaceholder ? "flex" : "hidden"
-          } absolute inset-0 items-center justify-center rounded-full bg-stone-200 ${borderClass} text-stone-700 font-semibold ${
+          } absolute inset-0 items-center justify-center rounded-full ${borderClass} ${this.colorClass} font-semibold ${
             this.fontSize
           }"
         >
@@ -131,7 +135,7 @@ export class LogoImage extends LitWrapper {
                   @error=${this._handleImageError}
                   class="${
                     showImage ? "" : "opacity-0 pointer-events-none"
-                  } absolute inset-0 w-full h-full object-cover rounded-full ${borderClass} bg-stone-200"
+                  } absolute inset-0 w-full h-full object-cover rounded-full ${borderClass} ${this.colorClass}"
                   loading="lazy"
                 />
               `

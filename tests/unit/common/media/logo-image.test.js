@@ -65,4 +65,42 @@ describe("logo-image", () => {
     // The component clears its content after the image error.
     expect(element.children.length).to.equal(0);
   });
+
+  it("applies the default stone colors to the placeholder and image", async () => {
+    // Render the logo-image fixture.
+    const element = await mountLitComponent("logo-image", {
+      imageUrl: "https://example.com/avatar.png",
+      placeholder: "OC",
+    });
+
+    // Collect the placeholder and image elements.
+    const placeholder = element.querySelector(".absolute.inset-0");
+    const image = element.querySelector("img");
+
+    // Both layers use the default bordered stone colors.
+    for (const layer of [placeholder, image]) {
+      expect(layer?.classList.contains("border")).to.equal(true);
+      expect(layer?.classList.contains("border-stone-200")).to.equal(true);
+      expect(layer?.classList.contains("bg-stone-200")).to.equal(true);
+    }
+  });
+
+  it("applies custom color classes to the placeholder and image", async () => {
+    // Render the logo-image fixture.
+    const element = await mountLitComponent("logo-image", {
+      imageUrl: "https://example.com/avatar.png",
+      placeholder: "OC",
+      colorClass: "bg-primary-100 text-primary-700",
+    });
+
+    // Collect the placeholder and image elements.
+    const placeholder = element.querySelector(".absolute.inset-0");
+    const image = element.querySelector("img");
+
+    // Both layers use the custom colors instead of the stone defaults.
+    for (const layer of [placeholder, image]) {
+      expect(layer?.classList.contains("bg-primary-100")).to.equal(true);
+      expect(layer?.classList.contains("bg-stone-200")).to.equal(false);
+    }
+  });
 });
