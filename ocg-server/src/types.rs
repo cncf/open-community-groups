@@ -7,6 +7,7 @@ pub mod dashboard;
 pub mod event;
 pub mod group;
 pub mod images;
+pub mod inbox;
 pub mod location;
 pub mod meetings;
 pub mod notifications;

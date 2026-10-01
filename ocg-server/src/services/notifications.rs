@@ -42,8 +42,9 @@ use crate::{
         EventRefundRequested, EventReminder, EventRescheduled, EventSeriesCanceled,
         EventSeriesPublished, EventTicketRequestApproved, EventTicketWaitlistOffer,
         EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome, GroupCustom,
-        GroupTeamInvitation, GroupWelcome, NotificationTemplate,
-        SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
+        GroupTeamInvitation, GroupWelcome, InboxMessageReceived, InboxReplyReceived,
+        NotificationTemplate, SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome,
+        SpeakerWelcome,
     },
     types::{
         event::EventSummary,
@@ -449,6 +450,12 @@ impl DeliveryWorker {
             }
             NotificationKind::GroupWelcome => {
                 Self::render_template::<GroupWelcome>(template_data, base_url)
+            }
+            NotificationKind::InboxMessageReceived => {
+                Self::render_template::<InboxMessageReceived>(template_data, base_url)
+            }
+            NotificationKind::InboxReplyReceived => {
+                Self::render_template::<InboxReplyReceived>(template_data, base_url)
             }
             NotificationKind::SessionProposalCoSpeakerInvitation => {
                 Self::render_template::<SessionProposalCoSpeakerInvitation>(template_data, base_url)

@@ -5,6 +5,7 @@ pub(crate) mod check_in;
 pub(crate) mod events;
 pub(crate) mod groups;
 pub(crate) mod home;
+pub(crate) mod inbox;
 pub(crate) mod invitations;
 pub(crate) mod logs;
 pub(crate) mod purchases;

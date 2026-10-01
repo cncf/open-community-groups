@@ -467,6 +467,62 @@ async fn test_health_check_returns_ok() {
 }
 
 #[tokio::test]
+async fn test_inbox_routes_require_inbox_write_permission() {
+    // Setup a session with read and events access but without inbox access
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .returning(|_, _, _, permission| {
+            Ok(matches!(
+                permission,
+                GroupPermission::EventsWrite | GroupPermission::Read
+            ))
+        });
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Check both inbox read routes reject the session
+    for uri in [
+        "/dashboard/group/inbox".to_string(),
+        format!("/dashboard/group/inbox/{}", Uuid::new_v4()),
+    ] {
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri(&uri)
+                    .header(COOKIE, format!("id={session_id}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            response.status(),
+            StatusCode::FORBIDDEN,
+            "{uri} is not protected by the inbox write permission"
+        );
+    }
+}
+
+#[tokio::test]
 async fn test_log_out_route_rejects_get() {
     // Setup the application router
     let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())

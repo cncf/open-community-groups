@@ -16,6 +16,7 @@ use crate::{
     config::PaymentsConfig,
     db::DynDB,
     handlers::{
+        dashboard::inbox::requested_conversation_id,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
     },
@@ -31,12 +32,15 @@ use crate::{
 };
 
 use super::{
-    badges, check_in, cohosts, events, logs, members, payments_ready, refunds, settings, sponsors,
-    team,
+    badges, check_in, cohosts, events, inbox, logs, members, payments_ready, refunds, settings,
+    sponsors, team,
 };
 
 #[cfg(test)]
 mod tests;
+
+/// Warning shown when a requested conversation belongs to another group.
+const INBOX_CONVERSATION_ELSEWHERE_WARNING: &str = "This conversation isn't in the selected group.";
 
 /// Handler that returns the group dashboard home page.
 ///
@@ -61,7 +65,7 @@ pub(crate) async fn page(
         .get("tab")
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
-    // Load dashboard context and payment readiness
+    // Load dashboard context, payment readiness, inbox access and its open-count badge
     let payment_recipient = async {
         if matches!(&requested_tab, Tab::Refunds) {
             db.get_group_payment_recipient(community_id, group_id).await
@@ -69,9 +73,26 @@ pub(crate) async fn page(
             Ok(None)
         }
     };
+    let inbox_state = async {
+        let can_manage_inbox = db
+            .user_has_group_permission(
+                &community_id,
+                &group_id,
+                &user.user_id,
+                GroupPermission::InboxWrite,
+            )
+            .await?;
+        let inbox_open_count = if can_manage_inbox {
+            db.count_group_open_inbox_conversations(group_id).await?
+        } else {
+            0
+        };
+        Ok((can_manage_inbox, inbox_open_count))
+    };
     let (
         can_manage_badges,
         can_manage_check_ins,
+        (can_manage_inbox, inbox_open_count),
         groups_by_community,
         payment_recipient,
         site_settings,
@@ -88,6 +109,7 @@ pub(crate) async fn page(
             &user.user_id,
             GroupPermission::CheckInsWrite
         ),
+        inbox_state,
         db.list_user_groups(&user.user_id),
         payment_recipient,
         db.get_site_settings()
@@ -99,9 +121,10 @@ pub(crate) async fn page(
         return Err(HandlerError::Forbidden);
     }
 
-    // Fall back internally so check-in users can recover their group selection
+    // Fall back internally so check-in and inbox users can recover their group selection
     let is_check_in_fallback = !can_manage_check_ins && matches!(&requested_tab, Tab::CheckIn);
-    let effective_tab = if is_check_in_fallback {
+    let is_inbox_fallback = !can_manage_inbox && matches!(&requested_tab, Tab::Inbox);
+    let effective_tab = if is_check_in_fallback || is_inbox_fallback {
         Tab::default()
     } else {
         requested_tab
@@ -164,6 +187,25 @@ pub(crate) async fn page(
             )
             .await?;
             Content::Events(Box::new(template))
+        }
+        Tab::Inbox => {
+            // Load the requested conversation when it is in the selected group
+            let inbox_conversation_id = requested_conversation_id(&query);
+            let conversation = match inbox_conversation_id {
+                Some(id) => inbox::prepare_conversation_page(&db, group_id, id, false).await?,
+                None => None,
+            };
+
+            // Show the conversation, or the list warning about an unavailable one
+            if let Some(template) = conversation {
+                Content::InboxConversation(Box::new(template))
+            } else {
+                let raw_query = raw_query.as_deref().unwrap_or_default();
+                let (_, mut template) = inbox::prepare_list_page(&db, group_id, raw_query).await?;
+                template.warning =
+                    inbox_conversation_id.map(|_| INBOX_CONVERSATION_ELSEWHERE_WARNING.to_string());
+                Content::Inbox(template)
+            }
         }
         Tab::Logs => {
             let (_, template) =
@@ -232,9 +274,12 @@ pub(crate) async fn page(
     let page = Page {
         can_manage_badges,
         can_manage_check_ins,
+        can_manage_inbox,
         content,
         groups_by_community,
+        inbox_open_count,
         is_check_in_fallback,
+        is_inbox_fallback,
         messages: messages.into_iter().collect(),
         page_id: PageId::GroupDashboard,
         path: "/dashboard/group".to_string(),

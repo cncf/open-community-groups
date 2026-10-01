@@ -1149,6 +1149,75 @@ impl NotificationTemplate for GroupWelcome {
     }
 }
 
+/// Template telling group team members that a user wrote to the group inbox.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/inbox_message_received.html")]
+pub(crate) struct InboxMessageReceived {
+    /// Plain-text message written by the user.
+    pub body: String,
+    /// Display name of the group's community.
+    pub community_display_name: String,
+    /// Name of the group the message was sent to.
+    pub group_name: String,
+    /// Link to the conversation in the group dashboard Inbox.
+    pub link: String,
+    /// Name shown for the user who wrote the message.
+    pub sender_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+
+    /// Name of the event the conversation started from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event_name: Option<String>,
+}
+
+impl NotificationTemplate for InboxMessageReceived {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.link, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.group_name,
+            &format!("New message from {}", self.sender_name),
+        )
+    }
+}
+
+/// Template telling a user that the group replied to their message.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/inbox_reply_received.html")]
+pub(crate) struct InboxReplyReceived {
+    /// Plain-text reply written on behalf of the group.
+    pub body: String,
+    /// Display name of the group's community.
+    pub community_display_name: String,
+    /// Name of the group that replied.
+    pub group_name: String,
+    /// Link to the conversation in the user dashboard.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+
+    /// Name of the event the conversation started from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event_name: Option<String>,
+}
+
+impl NotificationTemplate for InboxReplyReceived {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.link, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(&self.group_name, "New reply to your message")
+    }
+}
+
 /// Template for session proposal co-speaker invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/session_proposal_co_speaker_invitation.html")]

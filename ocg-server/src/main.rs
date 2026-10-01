@@ -29,6 +29,7 @@ use crate::{
         enrollment::{DynEnrollmentManager, PgEnrollmentManager, start_enrollment_workers},
         events::{DynEventsManager, PgEventsManager},
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
+        inbox::{DynInboxManager, PgInboxManager},
         meetings::{DynMeetingsProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
         payments::{
@@ -140,6 +141,7 @@ async fn main() -> Result<()> {
         payments_manager.clone(),
         &cfg.server,
     );
+    let inbox_manager = setup_inbox_manager(db.clone());
 
     // Serve HTTP requests until a shutdown signal is received
     run_server(
@@ -148,6 +150,7 @@ async fn main() -> Result<()> {
         enrollment_manager,
         events_manager,
         image_storage,
+        inbox_manager,
         cfg.meetings.clone(),
         cfg.payments.clone(),
         payments_manager,
@@ -170,6 +173,7 @@ async fn run_server(
     enrollment_manager: DynEnrollmentManager,
     events_manager: DynEventsManager,
     image_storage: DynImageStorage,
+    inbox_manager: DynInboxManager,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: DynPaymentsManager,
@@ -183,6 +187,7 @@ async fn run_server(
         enrollment_manager,
         events_manager,
         image_storage,
+        inbox_manager,
         meetings_cfg,
         payments_cfg,
         payments_manager,
@@ -272,6 +277,11 @@ fn setup_image_storage(cfg: &Config, db: Arc<PgDB>) -> DynImageStorage {
         ImageStorageConfig::Db => Arc::new(DbImageStorage::new(db)),
         ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
     }
+}
+
+/// Configure the inbox manager.
+fn setup_inbox_manager(db: Arc<PgDB>) -> DynInboxManager {
+    Arc::new(PgInboxManager::new(db))
 }
 
 /// Configure the notifications manager and start its workers.

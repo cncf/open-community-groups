@@ -1,5 +1,6 @@
 import { expect } from "@open-wc/testing";
 
+import "/static/js/common/modals/modal-toggle-bindings.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
@@ -28,14 +29,36 @@ describe("event cfs modal", () => {
     expect(template).to.include("Complete your profile");
   });
 
+  it("keeps the declarative modal contract in the event templates", async () => {
+    // Load the event page and CFS modal templates
+    const [pageTemplate, modalTemplate] = await Promise.all([
+      fetch("/ocg-server/templates/event/page.html").then((response) => response.text()),
+      loadCfsModalTemplate(),
+    ]);
+
+    // Verify the root opens the modal and every close control toggles it
+    expect(normalizeWhitespace(pageTemplate)).to.include(
+      '<div id="cfs-modal-root" data-modal-open-on-swap="cfs-modal"',
+    );
+    expect(normalizeWhitespace(pageTemplate)).to.include(
+      '<div id="overlay-cfs-modal" data-modal-toggle="cfs-modal"',
+    );
+    expect(normalizeWhitespace(pageTemplate)).to.include(
+      '<button id="close-cfs-modal" type="button" data-modal-toggle="cfs-modal"',
+    );
+    expect(normalizeWhitespace(modalTemplate)).to.include(
+      '<button id="cancel-cfs-modal" type="button" data-modal-toggle="cfs-modal"',
+    );
+  });
+
   it("opens after the modal root is swapped and enables or disables submit as the selection changes", async () => {
     // Build the modal fixture after the root is swapped.
     document.body.innerHTML = `
-      <div id="cfs-modal-root"></div>
+      <div id="cfs-modal-root" data-modal-open-on-swap="cfs-modal"></div>
       <div id="cfs-modal" class="hidden">
-        <button id="close-cfs-modal" type="button">Close</button>
-        <div id="overlay-cfs-modal"></div>
-        <button id="cancel-cfs-modal" type="button">Cancel</button>
+        <button id="close-cfs-modal" type="button" data-modal-toggle="cfs-modal">Close</button>
+        <div id="overlay-cfs-modal" data-modal-toggle="cfs-modal"></div>
+        <button id="cancel-cfs-modal" type="button" data-modal-toggle="cfs-modal">Cancel</button>
         <select id="session_proposal_id">
           <option value="">Pick one</option>
           <option value="12">Proposal</option>
@@ -78,11 +101,11 @@ describe("event cfs modal", () => {
   it("closes from the close button, overlay, and cancel button without duplicating listeners", async () => {
     // Render the DOM fixture for closing from the close button, overlay.
     document.body.innerHTML = `
-      <div id="cfs-modal-root"></div>
+      <div id="cfs-modal-root" data-modal-open-on-swap="cfs-modal"></div>
       <div id="cfs-modal" class="hidden">
-        <button id="close-cfs-modal" type="button">Close</button>
-        <div id="overlay-cfs-modal"></div>
-        <button id="cancel-cfs-modal" type="button">Cancel</button>
+        <button id="close-cfs-modal" type="button" data-modal-toggle="cfs-modal">Close</button>
+        <div id="overlay-cfs-modal" data-modal-toggle="cfs-modal"></div>
+        <button id="cancel-cfs-modal" type="button" data-modal-toggle="cfs-modal">Cancel</button>
         <select id="session_proposal_id">
           <option value="">Pick one</option>
           <option value="12">Proposal</option>
@@ -125,11 +148,11 @@ describe("event cfs modal", () => {
     // Prepare a replacement body for the HTMX swap.
     const replacementBody = document.createElement("body");
     replacementBody.innerHTML = `
-      <div id="cfs-modal-root"></div>
+      <div id="cfs-modal-root" data-modal-open-on-swap="cfs-modal"></div>
       <div id="cfs-modal" class="hidden">
-        <button id="close-cfs-modal" type="button">Close</button>
-        <div id="overlay-cfs-modal"></div>
-        <button id="cancel-cfs-modal" type="button">Cancel</button>
+        <button id="close-cfs-modal" type="button" data-modal-toggle="cfs-modal">Close</button>
+        <div id="overlay-cfs-modal" data-modal-toggle="cfs-modal"></div>
+        <button id="cancel-cfs-modal" type="button" data-modal-toggle="cfs-modal">Cancel</button>
         <select id="session_proposal_id">
           <option value="">Pick one</option>
           <option value="12">Proposal</option>
@@ -158,11 +181,11 @@ describe("event cfs modal", () => {
         >
           Submit session proposal
         </button>
-        <div id="cfs-modal-root"></div>
+        <div id="cfs-modal-root" data-modal-open-on-swap="cfs-modal"></div>
         <div id="cfs-modal" class="hidden">
-          <button id="close-cfs-modal" type="button">Close</button>
-          <div id="overlay-cfs-modal"></div>
-          <button id="cancel-cfs-modal" type="button">Cancel</button>
+          <button id="close-cfs-modal" type="button" data-modal-toggle="cfs-modal">Close</button>
+          <div id="overlay-cfs-modal" data-modal-toggle="cfs-modal"></div>
+          <button id="cancel-cfs-modal" type="button" data-modal-toggle="cfs-modal">Cancel</button>
           <select id="session_proposal_id">
             <option value="">Pick one</option>
             <option value="12">Proposal</option>
@@ -204,7 +227,7 @@ describe("event cfs modal", () => {
     try {
       swal.setNextResult({ isConfirmed: false });
       document.body.innerHTML = `
-        <div id="cfs-modal-root"></div>
+        <div id="cfs-modal-root" data-modal-open-on-swap="cfs-modal"></div>
         <div id="cfs-modal">
           <form
             id="cfs-submission-form"

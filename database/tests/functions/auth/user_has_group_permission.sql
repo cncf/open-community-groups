@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(176);
+select plan(195);
 
 -- ============================================================================
 -- VARIABLES
@@ -184,6 +184,7 @@ with tested_permissions (
         ('group.badges.write'),
         ('group.check-ins.write'),
         ('group.events.write'),
+        ('group.inbox.write'),
         ('group.members.write'),
         ('group.read'),
         ('group.settings.write'),
@@ -243,6 +244,7 @@ with actors (
                 'group.badges.write',
                 'group.check-ins.write',
                 'group.events.write',
+                'group.inbox.write',
                 'group.members.write',
                 'group.read',
                 'group.settings.write',
@@ -259,6 +261,7 @@ with actors (
                 'group.badges.write',
                 'group.check-ins.write',
                 'group.events.write',
+                'group.inbox.write',
                 'group.members.write',
                 'group.read',
                 'group.settings.write',
@@ -275,6 +278,7 @@ with actors (
                 'group.badges.write',
                 'group.check-ins.write',
                 'group.events.write',
+                'group.inbox.write',
                 'group.members.write',
                 'group.read',
                 'group.settings.write',
@@ -321,6 +325,7 @@ with actors (
                 'group.badges.write',
                 'group.check-ins.write',
                 'group.events.write',
+                'group.inbox.write',
                 'group.members.write',
                 'group.read',
                 'group.settings.write',
@@ -337,6 +342,7 @@ with actors (
                 'group.badges.write',
                 'group.check-ins.write',
                 'group.events.write',
+                'group.inbox.write',
                 'group.members.write',
                 'group.read',
                 'group.settings.write',
@@ -353,6 +359,7 @@ with actors (
                 'group.badges.write',
                 'group.check-ins.write',
                 'group.events.write',
+                'group.inbox.write',
                 'group.read'
             ]::text[]
         ),
@@ -381,6 +388,7 @@ with actors (
                 'group.badges.write',
                 'group.check-ins.write',
                 'group.events.write',
+                'group.inbox.write',
                 'group.members.write',
                 'group.read',
                 'group.settings.write',
@@ -430,6 +438,7 @@ with actors (
         ('group.badges.write'),
         ('group.check-ins.write'),
         ('group.events.write'),
+        ('group.inbox.write'),
         ('group.members.write'),
         ('group.read'),
         ('group.settings.write'),

@@ -1,0 +1,215 @@
+{% import "macros/badges.html" as badges -%}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{# Event cell -#}
+{# Used by conversation rows, where the column position depends on the inbox scope. -#}
+{% macro event_cell(conversation) -%}
+  <td class="px-3 xl:px-5 py-4">
+    {% if let Some(event) = conversation.event -%}
+      <div class="line-clamp-2 break-words font-medium text-stone-900">{{ event.name }}</div>
+    {% else -%}
+      <span class="text-stone-400">-</span>
+    {% endif -%}
+  </td>
+{% endmacro event_cell -%}
+{# End event cell -#}
+
+{# Inbox conversations list -#}
+<section class="min-w-0" aria-label="Inbox" data-inbox-list>
+  {% if let Some(warning) = warning -%}
+    {{ dashboard::permission_warning(message = warning) -}}
+  {% endif -%}
+
+  {# Inbox header -#}
+  {% if scope.is_group() -%}
+    {{ dashboard::page_title(title = "Inbox", docs_href = "/docs#/guides/group-dashboard?id=inbox-questions-from-users",
+      description = "Questions users sent to this group from its event pages.") -}}
+  {% else -%}
+    {{ dashboard::page_title(title = "Inbox", docs_href = "/docs#/guides/user-dashboard?id=inbox-conversations-with-organizers",
+      description = "Your conversations with group organizers.") -}}
+  {% endif -%}
+  {# End inbox header -#}
+
+  {% if let Some(status) = status -%}
+    {# Active filters -#}
+    <div class="mt-5 flex flex-wrap items-center gap-2">
+      <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
+      <form class="inline-flex"
+            hx-get="{{ scope.list_url() }}"
+            hx-target="#dashboard-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {% call dashboard::active_table_filter_badge("Status", status.label()) -%}
+        {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
+        {% endcall -%}
+      </form>
+      <form class="inline-flex"
+            hx-get="{{ scope.list_url() }}"
+            hx-target="#dashboard-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        <button type="submit" class="btn-primary-outline btn-mini h-7!">Reset all</button>
+      </form>
+    </div>
+    {# End active filters -#}
+  {% endif -%}
+
+  {# Results summary -#}
+  <div class="my-5 text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0), count = conversations.len(), total = total, label = "conversation") }}
+  </div>
+  {# End results summary -#}
+
+  {# Conversations table -#}
+  <div class="relative overflow-visible">
+    <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+           aria-label="Inbox conversations">
+      {# Table columns -#}
+      <colgroup>
+        <col class="w-[200px] 2xl:w-[240px]" />
+        <col class="w-[200px] 2xl:w-[240px]" />
+        <col />
+        <col class="w-[130px]" />
+        <col class="hidden 2xl:table-column w-[190px]" />
+      </colgroup>
+      {# End table columns -#}
+      {# Table header -#}
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          {% if scope.is_group() -%}
+            <th scope="col" class="px-3 xl:px-5 py-1.5">Event</th>
+            <th scope="col" class="px-3 xl:px-5 py-1.5">User</th>
+          {% else -%}
+            <th scope="col" class="px-3 xl:px-5 py-1.5">Group</th>
+            <th scope="col" class="px-3 xl:px-5 py-1.5">Event</th>
+          {% endif -%}
+          <th scope="col" class="px-3 xl:px-5 py-1.5">Last message</th>
+          <th scope="col" class="px-3 xl:px-5 py-1.5">
+            {% call dashboard::table_filter_menu(id = "inbox-status-filter-options", label = "Status", is_active = !is_unfiltered()) -%}
+            <div class="py-2">
+              <form hx-get="{{ scope.list_url() }}"
+                    hx-target="#dashboard-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#dashboard-spinner">
+                {{ dashboard::table_filter_option_button(label = "All", name = "status", value = "", is_active = is_unfiltered(), is_clear_option = true) -}}
+                {{ dashboard::table_filter_option_button(label = "Open", name = "status", value = "open", is_active = is_status("open")) -}}
+                {{ dashboard::table_filter_option_button(label = "Answered", name = "status", value = "answered", is_active = is_status("answered")) -}}
+                {{ dashboard::table_filter_option_button(label = "Closed", name = "status", value = "closed", is_active = is_status("closed")) -}}
+                {% if scope.is_group() -%}
+                  {{ dashboard::table_filter_option_button(label = "Spam", name = "status", value = "spam", is_active = is_status("spam")) -}}
+                {% endif -%}
+              </form>
+            </div>
+            {% endcall -%}
+          </th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">Last activity</th>
+        </tr>
+      </thead>
+      {# End table header -#}
+      <tbody>
+        {% if conversations.is_empty() -%}
+          {# Empty state -#}
+          <tr class="bg-white border-b border-stone-200">
+            <td class="2xl:hidden px-8 py-16 text-center" colspan="4">
+              {% include "dashboard/placeholders/inbox_table.html" -%}
+            </td>
+            <td class="hidden 2xl:table-cell px-8 py-16 text-center" colspan="5">
+              {% include "dashboard/placeholders/inbox_table.html" -%}
+            </td>
+          </tr>
+          {# End empty state -#}
+        {% else -%}
+          {% for conversation in conversations -%}
+            {# Conversation row -#}
+            <tr class="cursor-pointer odd:bg-white even:bg-stone-50/50 border-b border-stone-200 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:bg-stone-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400 motion-reduce:transition-none"
+                tabindex="0"
+                hx-get="{{ scope.conversation_url(conversation.inbox_conversation_id) }}"
+                hx-trigger="click, keydown[key=='Enter']"
+                hx-target="#dashboard-content"
+                hx-swap="innerHTML show:window:top"
+                hx-indicator="#dashboard-spinner"
+                title="View conversation with {{ counterpart_label(conversation) }}"
+                data-inbox-conversation-row>
+              {% if scope.is_group() -%}
+                {{ event_cell(conversation) -}}
+              {% endif -%}
+              {# Counterpart -#}
+              <th scope="row" class="px-3 xl:px-5 py-4 font-medium text-stone-900">
+                <div class="flex min-w-0 items-center gap-3">
+                  {% if scope.is_group() -%}
+                    {% if let Some(user) = conversation.user -%}
+                      <logo-image class="shrink-0" {% if let Some(photo_url) = &user.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-8" placeholder="{{ self::user_initials(user.name.as_deref() , user.username.as_str()) }}">
+                      </logo-image>
+                    {% else -%}
+                      {# Deleted user avatar -#}
+                      <div class="flex size-8 shrink-0 items-center justify-center rounded-full border border-dashed border-stone-300 bg-stone-50"
+                           aria-hidden="true">
+                        <div class="svg-icon size-4 icon-user bg-stone-300"></div>
+                      </div>
+                    {% endif -%}
+                  {% endif -%}
+                  <div class="min-w-0">
+                    <div class="truncate
+                                {% if scope.is_group() && conversation.user.is_none() -%}
+                                  font-normal text-stone-500
+                                {% else -%}
+                                  font-medium text-stone-900
+                                {% endif -%}">{{ counterpart_label(conversation) }}</div>
+                    {% if !scope.is_group() -%}
+                      <div class="truncate text-xs font-normal text-stone-500">{{ conversation.community_display_name }}</div>
+                    {% endif -%}
+                  </div>
+                </div>
+              </th>
+              {# End counterpart -#}
+              {% if !scope.is_group() -%}
+                {{ event_cell(conversation) -}}
+              {% endif -%}
+              {# Last message -#}
+              <td class="px-3 xl:px-5 py-4">
+                <p class="line-clamp-2 break-words text-xs text-stone-600">
+                  {% if conversation.last_message_kind.is_from_group() -%}
+                    <span class="font-medium text-stone-700">Organizers:</span>
+                  {% else if scope.is_group() -%}
+                    <span class="font-medium text-stone-700">User:</span>
+                  {% else -%}
+                    <span class="font-medium text-stone-700">You:</span>
+                  {% endif -%}
+                  <span>“{{ conversation.last_message_excerpt }}”</span>
+                </p>
+                <time datetime="{{ conversation.last_message_at.to_rfc3339() }}"
+                      class="mt-1 block truncate text-xs text-stone-500 2xl:hidden">
+                  {{ conversation.last_message_at.format("%b %d, %Y · %I:%M %p UTC") }}
+                </time>
+              </td>
+              {# End last message -#}
+              {# Status -#}
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                {{ badges::inbox_status_badge(status = conversation.status) -}}
+              </td>
+              {# End status -#}
+              {# Last activity -#}
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+                <time datetime="{{ conversation.last_message_at.to_rfc3339() }}">
+                  <span class="block">{{ conversation.last_message_at.format("%b %d, %Y") }}</span>
+                  <span class="block text-xs text-stone-400">{{ conversation.last_message_at.format("%I:%M %p UTC") }}</span>
+                </time>
+              </td>
+              {# End last activity -#}
+            </tr>
+            {# End conversation row -#}
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+  {# End conversations table -#}
+
+  {# Pagination -#}
+  {% if total > conversations.len() -%}
+    {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "inbox-pagination-") }}
+  {% endif -%}
+  {# End pagination -#}
+</section>
+{# End inbox conversations list -#}

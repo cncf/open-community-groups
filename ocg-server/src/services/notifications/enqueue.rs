@@ -12,6 +12,7 @@ use crate::{
     db::{
         DBOperations,
         dashboard::group::{EventCohostNotificationData, EventCohostRef, EventCohostResponse},
+        inbox::PostedInboxMessage,
         notifications::CustomNotificationTracking,
     },
     services::notifications::{
@@ -21,6 +22,7 @@ use crate::{
             build_event_cohost_invitation_notification, build_event_cohost_removed_notification,
             build_event_cohost_responded_notification, build_event_paid_configured_notification,
             build_event_published_notification, build_event_rescheduled_notification,
+            build_inbox_message_received_notification, build_inbox_reply_received_notification,
             build_speaker_welcome_notification,
         },
     },
@@ -30,6 +32,7 @@ use crate::{
     },
     types::{
         event::{EventCohostStatus, EventFull, EventSummary},
+        inbox::{InboxConversation, InboxMessage},
         notifications::{
             EventCustomNotificationInput, GroupCustomNotificationInput, NewNotification,
             NotificationKind,
@@ -607,6 +610,75 @@ pub(crate) async fn enqueue_event_series_published_notifications(
     Ok(())
 }
 
+/// Enqueues the email telling group team members that a user wrote to the
+/// group inbox. Required: it runs in the caller's transaction and its failure
+/// rolls the message back.
+pub(crate) async fn enqueue_inbox_message_received_notification(
+    db: &dyn DBOperations,
+    posted: &PostedInboxMessage,
+) -> Result<()> {
+    // Load the conversation, the group team members to email and the site theme
+    let (conversation, recipient_ids, site_settings) = tokio::try_join!(
+        db.get_group_inbox_conversation(posted.group_id, posted.inbox_conversation_id),
+        db.list_inbox_recipient_ids(posted.group_id),
+        db.get_site_settings()
+    )?;
+    let conversation = conversation.ok_or_else(|| anyhow!("inbox conversation not found"))?;
+    let message = find_inbox_message(&conversation, posted.inbox_message_id)?;
+
+    // Never email the author of the message
+    let author_user_id = message.author.as_ref().map(|author| author.user_id);
+    let recipients: Vec<Uuid> = recipient_ids
+        .into_iter()
+        .filter(|user_id| Some(*user_id) != author_user_id)
+        .collect();
+
+    // Keep the message when the group has nobody to email; the open badge still shows it
+    if recipients.is_empty() {
+        warn!(
+            group_id = %posted.group_id,
+            inbox_conversation_id = %posted.inbox_conversation_id,
+            inbox_message_id = %posted.inbox_message_id,
+            "inbox message has no recipient to notify"
+        );
+        return Ok(());
+    }
+
+    // Build and enqueue the notification
+    let notification = build_inbox_message_received_notification(
+        &conversation,
+        message,
+        recipients,
+        &site_settings,
+    )?;
+    db.enqueue_notification(&notification).await?;
+
+    Ok(())
+}
+
+/// Enqueues the email telling the user of a conversation that the group
+/// replied. Required: it runs in the caller's transaction and its
+/// failure rolls the reply back.
+pub(crate) async fn enqueue_inbox_reply_received_notification(
+    db: &dyn DBOperations,
+    posted: &PostedInboxMessage,
+) -> Result<()> {
+    // Load the conversation and the site theme
+    let (conversation, site_settings) = tokio::try_join!(
+        db.get_group_inbox_conversation(posted.group_id, posted.inbox_conversation_id),
+        db.get_site_settings()
+    )?;
+    let conversation = conversation.ok_or_else(|| anyhow!("inbox conversation not found"))?;
+    let message = find_inbox_message(&conversation, posted.inbox_message_id)?;
+
+    // Build and enqueue the notification for the conversation user
+    let notification =
+        build_inbox_reply_received_notification(&conversation, message, &site_settings)?;
+    db.enqueue_notification(&notification).await?;
+
+    Ok(())
+}
+
 /// Enqueues an organizer-authored event notification with its tracking record.
 ///
 /// The caller resolves the recipients; the notification content and the
@@ -763,6 +835,18 @@ fn event_series_notification_item(
     let link = build_event_page_link(base_url, &event);
 
     EventSeriesNotificationItem { event, link }
+}
+
+/// Returns the message with the given identifier from a conversation thread.
+fn find_inbox_message(
+    conversation: &InboxConversation,
+    inbox_message_id: Uuid,
+) -> Result<&InboxMessage> {
+    conversation
+        .messages
+        .iter()
+        .find(|message| message.inbox_message_id == inbox_message_id)
+        .ok_or_else(|| anyhow!("inbox message not found"))
 }
 
 /// Returns the members and accepted team members of a group, deduplicated.

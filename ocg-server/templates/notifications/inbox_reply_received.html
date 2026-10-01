@@ -1,0 +1,35 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Inbox Reply Received Notification -#}
+{% block subject -%}
+  New reply from {{ group_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ group_name }} replied to your message.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-15" style="margin-bottom: 15px">
+    <strong>{{ group_name }}</strong> replied to your message
+    {%- if let Some(event_name) = event_name %} about <strong>{{ event_name }}</strong>{% endif -%}
+    :
+  </p>
+  <blockquote class="quote" style="margin: 0 0 15px">
+    {{- body -}}
+  </blockquote>
+
+  <p class="default text-muted mb-30" style="margin-bottom: 30px">
+    To continue the conversation, use the Inbox in your dashboard. Messages sent to this email
+    address aren't delivered.
+  </p>
+
+  {{ email::button(link = link, text = "View conversation", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you contacted {{ group_name }} in the
+  {{ community_display_name }} community.
+{% endblock footer -%}
+{# End inbox reply received notification -#}

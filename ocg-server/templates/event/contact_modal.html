@@ -1,0 +1,155 @@
+{% import "macros/ui.html" as ui -%}
+
+{# Event contact modal -#}
+{% if let Some(inbox_conversation_id) = sent_inbox_conversation_id -%}
+  {# Sent notice -#}
+  <div data-contact-sent-notice
+       role="status"
+       tabindex="-1"
+       autofocus
+       class="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
+    <div class="svg-icon size-4 mt-0.5 bg-emerald-700 icon-check"
+         aria-hidden="true"></div>
+    <div class="text-sm">
+      <div>Your message was sent to the organizers. Their replies arrive by email and in your dashboard Inbox.</div>
+      <a href="/dashboard/user?tab=inbox&conversation_id={{ inbox_conversation_id }}"
+         class="mt-2 inline-block font-semibold text-emerald-950 underline underline-offset-2 hover:text-primary-700">View conversation</a>
+    </div>
+  </div>
+  {# End sent notice -#}
+{% else if let Some(context) = context -%}
+  {% if !user.logged_in -%}
+    {# Sign-in prompt -#}
+    <div class="space-y-3" data-contact-sign-in>
+      <p class="text-base text-stone-600">
+        You need to sign in to contact the organizers of <span class="font-semibold text-stone-900">{{ context.group_name }}</span>.
+      </p>
+      <div class="flex justify-center mt-9">
+        <a class="btn-primary-outline-anchor inline-flex items-center"
+           href="/log-in?next_url={{ context.event_path() }}">
+          <div class="svg-icon size-3 me-2 icon-user-plus" aria-hidden="true"></div>
+          Sign in
+        </a>
+      </div>
+    </div>
+    {# End sign-in prompt -#}
+  {% else if let Some(viewer) = context.viewer -%}
+    {% if viewer.can_manage_inbox || viewer.is_group_team_member -%}
+      {# Organizer note -#}
+      <div class="space-y-3" data-contact-organizer-note>
+        {% if viewer.can_manage_inbox -%}
+          <p class="text-base text-stone-600">
+            You organize <span class="font-semibold text-stone-900">{{ context.group_name }}</span>. Messages to this group appear in its Inbox in the group dashboard.
+          </p>
+          <div class="flex justify-center mt-9">
+            <a class="btn-primary-outline-anchor inline-flex items-center"
+               href="/dashboard/group?tab=inbox">Open group Inbox</a>
+          </div>
+        {% else -%}
+          <p class="text-base text-stone-600">
+            You're a team member of the <span class="font-semibold text-stone-900">{{ context.group_name }}</span> group.
+          </p>
+        {% endif -%}
+      </div>
+      {# End organizer note -#}
+    {% else if let Some(open_inbox_conversation_id) = viewer.open_inbox_conversation_id -%}
+      {# Open conversation note -#}
+      <div class="space-y-3" data-contact-open-conversation>
+        <p class="text-base text-stone-600">
+          You already have an open conversation with <span class="font-semibold text-stone-900">{{ context.group_name }}</span> about this event. Continue it from your Inbox.
+        </p>
+        <div class="flex justify-center mt-9">
+          <a class="btn-primary-outline-anchor inline-flex items-center"
+             href="/dashboard/user?tab=inbox&conversation_id={{ open_inbox_conversation_id }}">Open conversation</a>
+        </div>
+      </div>
+      {# End open conversation note -#}
+    {% else if viewer.is_blocked -%}
+      {# Blocked notice -#}
+      <p class="text-base text-stone-600" data-contact-blocked>
+        You can no longer contact <span class="font-semibold text-stone-900">{{ context.group_name }}</span>. Your messages were marked as spam by its organizers or by other groups of this community.
+      </p>
+      {# End blocked notice -#}
+    {% else if !viewer.can_start_conversation -%}
+      {# Daily limit notice -#}
+      <p class="text-base text-stone-600" data-contact-limit-reached>
+        You've reached today's limit of new conversations. Please try again tomorrow.
+      </p>
+      {# End daily limit notice -#}
+    {% else -%}
+      {# Contact form -#}
+      <form id="contact-form"
+            hx-post="/{{ context.community_name }}/event/{{ context.event_id }}/contact"
+            hx-target="#contact-modal-root"
+            hx-swap="innerHTML"
+            hx-disabled-elt="#contact-submit-button"
+            hx-indicator="#contact-submit-spinner"
+            data-htmx-response
+            data-error-message="Something went wrong sending your message. Please try again later.">
+        <div class="space-y-4">
+          {# Recipient field (display only, not submitted) -#}
+          <div>
+            <label for="contact-recipient" class="form-label">Group</label>
+            <div class="mt-2">
+              <input id="contact-recipient"
+                     type="text"
+                     value="{{ context.group_name }}"
+                     class="input-primary"
+                     disabled>
+            </div>
+          </div>
+          {# End recipient field -#}
+
+          {# Event field (display only, not submitted) -#}
+          <div>
+            <label for="contact-event" class="form-label">Event</label>
+            <div class="mt-2">
+              <input id="contact-event"
+                     type="text"
+                     value="{{ context.event_name }}"
+                     class="input-primary"
+                     disabled>
+            </div>
+          </div>
+          {# End event field -#}
+
+          {# Message field (no maxlength: browsers count UTF-16 units, the server counts characters) -#}
+          <div>
+            <label for="contact-body" class="form-label">Message</label>
+            <div class="mt-2">
+              <textarea id="contact-body"
+                        name="body"
+                        rows="6"
+                        required
+                        aria-describedby="contact-body-help"
+                        class="input-primary min-h-28"
+                        autofocus></textarea>
+            </div>
+            <p id="contact-body-help" class="form-legend">
+              Plain text, up to {{ crate::validation::MAX_LEN_INBOX_MESSAGE }} characters. Up to 3 new conversations and 10 follow-ups per day.
+            </p>
+          </div>
+          {# End message field -#}
+
+          {# Form actions -#}
+          <div class="flex items-center justify-end gap-3">
+            <button id="cancel-contact-modal"
+                    type="button"
+                    data-modal-toggle="contact-modal"
+                    class="btn-primary-outline">Cancel</button>
+            <button id="contact-submit-button"
+                    type="submit"
+                    class="btn-primary inline-flex items-center">
+              <span>Send</span>
+              <span id="contact-submit-spinner"
+                    class="ms-2 hidden hx-spinner">{{ ui::spinner(size = "size-4") -}}</span>
+            </button>
+          </div>
+          {# End form actions -#}
+        </div>
+      </form>
+      {# End contact form -#}
+    {% endif -%}
+  {% endif -%}
+{% endif -%}
+{# End event contact modal -#}

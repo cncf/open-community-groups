@@ -9,7 +9,7 @@ use crate::{
         PageId,
         auth::{self, UserMenuState},
         dashboard::{
-            audit,
+            audit, inbox,
             user::{
                 badges, check_in, events, groups, invitations, purchases, session_proposals,
                 submissions,
@@ -52,6 +52,10 @@ pub(crate) enum Content {
     Events(events::ListPage),
     /// User groups page.
     Groups(groups::ListPage),
+    /// Inbox conversations page.
+    Inbox(inbox::ListPage),
+    /// Inbox conversation thread page.
+    InboxConversation(Box<inbox::ConversationPage>),
     /// Invitations page.
     Invitations(invitations::ListPage),
     /// Audit logs page.
@@ -90,6 +94,11 @@ impl Content {
         matches!(self, Content::Groups(_))
     }
 
+    /// Check if the content is an inbox page.
+    fn is_inbox(&self) -> bool {
+        matches!(self, Content::Inbox(_) | Content::InboxConversation(_))
+    }
+
     /// Check if the content is the invitations page.
     fn is_invitations(&self) -> bool {
         matches!(self, Content::Invitations(_))
@@ -114,6 +123,23 @@ impl Content {
     fn is_submissions(&self) -> bool {
         matches!(self, Content::Submissions(_))
     }
+
+    /// Returns the partial path used to refresh the dashboard content.
+    fn refresh_path(&self) -> &'static str {
+        match self {
+            // The account page has no list route and keeps the submissions fallback
+            Content::Account(_) | Content::Submissions(_) => "submissions",
+            Content::Badges(_) => "badges",
+            Content::CheckIn(_) => "check-in",
+            Content::Events(_) => "events",
+            Content::Groups(_) => "groups",
+            Content::Inbox(_) | Content::InboxConversation(_) => "inbox",
+            Content::Invitations(_) => "invitations",
+            Content::Logs(_) => "logs",
+            Content::Purchases(_) => "purchases",
+            Content::SessionProposals(_) => "session-proposals",
+        }
+    }
 }
 
 impl std::fmt::Display for Content {
@@ -124,6 +150,8 @@ impl std::fmt::Display for Content {
             Content::CheckIn(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
+            Content::Inbox(template) => write!(f, "{}", template.render()?),
+            Content::InboxConversation(template) => write!(f, "{}", template.render()?),
             Content::Invitations(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Purchases(template) => write!(f, "{}", template.render()?),
@@ -151,6 +179,8 @@ pub(crate) enum Tab {
     Events,
     /// Groups tab.
     Groups,
+    /// Inbox tab.
+    Inbox,
     /// Invitations tab.
     Invitations,
     /// Audit logs tab.
@@ -161,4 +191,35 @@ pub(crate) enum Tab {
     SessionProposals,
     /// Submissions tab.
     Submissions,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::pagination::NavigationLinks;
+
+    use super::*;
+
+    #[test]
+    fn test_refresh_path_uses_events_route_for_events_content() {
+        let content = Content::Events(events::ListPage {
+            events: vec![],
+            navigation_links: NavigationLinks::default(),
+            total: 0,
+
+            offset: None,
+        });
+
+        assert_eq!(content.refresh_path(), "events");
+    }
+
+    #[test]
+    fn test_refresh_path_uses_invitations_route_for_invitations_content() {
+        let content = Content::Invitations(invitations::ListPage {
+            community_invitations: vec![],
+            event_invitations: vec![],
+            group_invitations: vec![],
+        });
+
+        assert_eq!(content.refresh_path(), "invitations");
+    }
 }

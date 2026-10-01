@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(113);
+select plan(118);
 
 -- ============================================================================
 -- TESTS
@@ -526,6 +526,32 @@ select indexes_are('group_views', array[
 select indexes_are('images', array[
     'images_pkey'
 ]);
+
+-- Test: inbox_conversation indexes should match expected
+select indexes_are('inbox_conversation', array[
+    'inbox_conversation_pkey',
+    'inbox_conversation_event_id_idx',
+    'inbox_conversation_group_id_last_message_at_idx',
+    'inbox_conversation_group_id_open_idx',
+    'inbox_conversation_user_id_created_at_idx',
+    'inbox_conversation_user_id_last_message_at_idx'
+]);
+
+-- Test: inbox_conversation_status indexes should match expected
+select indexes_are('inbox_conversation_status', array[
+    'inbox_conversation_status_pkey',
+    'inbox_conversation_status_display_name_key'
+]);
+select index_is_unique('inbox_conversation_status', 'inbox_conversation_status_display_name_key');
+
+-- Test: inbox_message indexes should match expected
+select indexes_are('inbox_message', array[
+    'inbox_message_pkey',
+    'inbox_message_author_user_id_kind_created_at_idx',
+    'inbox_message_inbox_conversation_id_created_at_idx',
+    'inbox_message_inbox_conversation_id_initial_idx'
+]);
+select index_is_unique('inbox_message', 'inbox_message_inbox_conversation_id_initial_idx');
 
 -- Test: legacy_event_host indexes should match expected
 select indexes_are('legacy_event_host', array[

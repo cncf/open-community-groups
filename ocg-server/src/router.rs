@@ -49,6 +49,7 @@ use crate::{
         enrollment::DynEnrollmentManager,
         events::DynEventsManager,
         images::DynImageStorage,
+        inbox::DynInboxManager,
         notifications::DynNotificationsManager,
         payments::DynPaymentsManager,
     },
@@ -130,6 +131,8 @@ pub(crate) struct State {
     pub events_manager: DynEventsManager,
     /// Image storage provider handle.
     pub image_storage: DynImageStorage,
+    /// Inbox manager handle.
+    pub inbox_manager: DynInboxManager,
     /// Meetings configuration.
     pub meetings_cfg: Option<MeetingsConfig>,
     /// Notifications manager handle.
@@ -157,6 +160,7 @@ pub(crate) async fn setup(
     enrollment_manager: DynEnrollmentManager,
     events_manager: DynEventsManager,
     image_storage: DynImageStorage,
+    inbox_manager: DynInboxManager,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: DynPaymentsManager,
@@ -188,6 +192,7 @@ pub(crate) async fn setup(
         enrollment_manager,
         events_manager,
         image_storage,
+        inbox_manager,
         meetings_cfg,
         notifications_manager,
         payments_cfg,
@@ -231,6 +236,10 @@ pub(crate) async fn setup(
         .route(
             "/{community}/event/{event_id}/cfs-submissions",
             post(event::submit_cfs_submission),
+        )
+        .route(
+            "/{community}/event/{event_id}/contact",
+            post(event::send_contact_message),
         )
         .route(
             "/{community}/group/{group_id}/join",
@@ -324,6 +333,10 @@ pub(crate) async fn setup(
         .route(
             "/{community}/event/{event_id}/cfs-modal",
             get(event::cfs_modal),
+        )
+        .route(
+            "/{community}/event/{event_id}/contact-modal",
+            get(event::contact_modal),
         )
         .route(
             "/{community}/group/{group_slug}/event/{event_slug}/availability",

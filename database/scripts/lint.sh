@@ -20,13 +20,15 @@
 #     payments/refund_worker_lifecycle.sql lifecycle suite are allowed).
 #   - Functions under functions/internal/ are SQL-only helpers: the Rust
 #     crates never call them (contract tests excepted).
+#   - Every test under tests/schema/constraints is named after a table created
+#     by a schema migration.
 #
 # Test rules:
-#   - pgTAP function tests run in parallel against one database, so they must
-#     not take table-level locks (alter table, lock table, truncate).
+#   - pgTAP schema and function tests run in parallel against one database, so
+#     they must not take table-level locks (alter table, lock table, truncate).
 #   - Fixture functions (fx_*) are installed by the test recipes only; nothing
 #     under migrations/ may reference them.
-#   - Each function test owns its UUID prefix (the first segment of its \set
+#   - Each parallel test owns its UUID prefix (the first segment of its \set
 #     identifiers); two files sharing a prefix would insert the same primary
 #     keys and block or deadlock each other when run in parallel.
 
@@ -71,6 +73,14 @@ for file in $(cd "$tests_dir/functions" && find . -name '*.sql' | sed 's|^\./||'
     done
     if [ "$matched" -eq 0 ]; then
         fail "$tests_dir/functions/$file does not mirror a function file under $functions_dir/$dir"
+    fi
+done
+
+# Constraint tests are named after the table whose constraints they exercise
+for file in $(find "$tests_dir/schema/constraints" -name '*.sql' | sort); do
+    table=$(basename "$file" .sql)
+    if ! grep -qE "^create table (if not exists )?\"?$table\"? \(" "$schema_dir"/*.sql; then
+        fail "$file is not named after a table created by a schema migration"
     fi
 done
 
@@ -148,20 +158,20 @@ for file in $(find "$functions_dir" -name '*.sql' -exec grep -lE 'create (constr
     fail "$file creates a trigger; create trigger statements belong to schema migrations"
 done
 
-# Function tests run in parallel and must not take table-level locks
-for file in $(find "$tests_dir/functions" -name '*.sql' -exec grep -liE '^[[:space:]]*(alter table|lock table|truncate) ' {} +); do
-    fail "$file takes a table-level lock; function tests run in parallel and must stay transactional"
+# Parallel tests must not take table-level locks
+for file in $(find "$tests_dir/schema" "$tests_dir/functions" -name '*.sql' -exec grep -liE '^[[:space:]]*(alter table|lock table|truncate) ' {} +); do
+    fail "$file takes a table-level lock; pgTAP tests run in parallel and must stay transactional"
 done
 
-# Function tests must not share UUID prefixes
-shared_prefixes=$(grep -rHoE '\\set [A-Za-z0-9_]+ '"'"'[0-9a-f]{8}-0000-0000-0000-' "$tests_dir/functions" --include='*.sql' \
+# Parallel tests must not share UUID prefixes
+shared_prefixes=$(grep -rHoE '\\set [A-Za-z0-9_]+ '"'"'[0-9a-f]{8}-0000-0000-0000-' "$tests_dir/schema" "$tests_dir/functions" --include='*.sql' \
     | sed -E "s/^([^:]+):.*'([0-9a-f]{8})-.*/\2 \1/" \
     | sort -u \
     | awk '{ files[$1] = files[$1] " " $2; count[$1]++ } END { for (p in count) if (count[p] > 1) print p ":" files[p] }' \
     | sort)
 if [ -n "$shared_prefixes" ]; then
     printf '%s\n' "$shared_prefixes" | while read -r line; do
-        echo "error: UUID prefix ${line%%:*} is used by more than one function test:${line#*:}" >&2
+        echo "error: UUID prefix ${line%%:*} is used by more than one test:${line#*:}" >&2
     done
     status=1
 fi

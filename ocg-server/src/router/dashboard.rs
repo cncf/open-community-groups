@@ -432,6 +432,31 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             GroupPermission::EventsWrite,
         ));
 
+    // Group inbox endpoints
+    let inbox_management = Router::new()
+        .route("/inbox", get(dashboard::group::inbox::list_page))
+        .route(
+            "/inbox/{inbox_conversation_id}",
+            get(dashboard::group::inbox::conversation_page),
+        )
+        .route(
+            "/inbox/{inbox_conversation_id}/close",
+            put(dashboard::group::inbox::close),
+        )
+        .route(
+            "/inbox/{inbox_conversation_id}/mark-spam",
+            put(dashboard::group::inbox::mark_spam),
+        )
+        .route(
+            "/inbox/{inbox_conversation_id}/replies",
+            post(dashboard::group::inbox::reply),
+        )
+        .route(
+            "/inbox/{inbox_conversation_id}/unmark-spam",
+            put(dashboard::group::inbox::unmark_spam),
+        )
+        .route_layer(check_selected_group_permission(GroupPermission::InboxWrite));
+
     // Group member management endpoints
     let members_management = Router::new()
         .route(
@@ -488,6 +513,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .merge(check_ins_management)
         .merge(cohosts_management)
         .merge(events_management)
+        .merge(inbox_management)
         .merge(members_management)
         .merge(settings_management)
         .merge(sponsors_management)
@@ -504,6 +530,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
 }
 
 /// Sets up the user dashboard router and its routes.
+#[allow(clippy::too_many_lines)]
 pub(super) fn setup_user_dashboard_router() -> Router<State> {
     // Setup router
     Router::new()
@@ -540,6 +567,15 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         .route(
             "/groups/{community_name}/{group_id}/membership",
             delete(dashboard::user::groups::leave_group),
+        )
+        .route("/inbox", get(dashboard::user::inbox::list_page))
+        .route(
+            "/inbox/{inbox_conversation_id}",
+            get(dashboard::user::inbox::conversation_page),
+        )
+        .route(
+            "/inbox/{inbox_conversation_id}/messages",
+            post(dashboard::user::inbox::send_message),
         )
         .route("/invitations", get(dashboard::user::invitations::list_page))
         .route(

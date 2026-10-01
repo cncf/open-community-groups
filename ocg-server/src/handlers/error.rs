@@ -13,6 +13,7 @@ use crate::{
     services::{
         enrollment::EnrollmentError,
         events::EventsError,
+        inbox::InboxError,
         payments::{AutomaticTaxReadinessError, FiscalSponsorReadinessError, PaymentsError},
     },
     types::search::FilterError,
@@ -181,6 +182,15 @@ impl From<FiscalSponsorReadinessError> for HandlerError {
         match err {
             FiscalSponsorReadinessError::NotReady(message) => HandlerError::Rejected(message),
             FiscalSponsorReadinessError::Unexpected(err) => HandlerError::from(err),
+        }
+    }
+}
+
+impl From<InboxError> for HandlerError {
+    fn from(err: InboxError) -> Self {
+        match err {
+            InboxError::Other(err) => HandlerError::from(err),
+            InboxError::Rejected(message) => HandlerError::Rejected(message),
         }
     }
 }

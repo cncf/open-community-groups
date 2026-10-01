@@ -1,0 +1,303 @@
+{% import "macros/badges.html" as badges -%}
+{% import "macros/ui.html" as ui -%}
+
+{# Author avatar -#}
+{# Used by the conversation header and messages for user photos or initials. -#}
+{% macro author_avatar(author, size, font_size = "text-sm", color_class = "bg-stone-200 text-stone-600", extra_styles = "") -%}
+  {% if let Some(user) = author -%}
+    <logo-image class="shrink-0 {{ extra_styles }}" aria-hidden="true" {% if let Some(photo_url) = &user.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="{{ size }}" font-size="{{ font_size }}" color-class="{{ color_class }}" hide-border placeholder="{{ self::user_initials(user.name.as_deref() , user.username.as_str()) }}">
+    </logo-image>
+  {% else -%}
+    {# Deleted user avatar -#}
+    <div class="flex {{ size }} shrink-0 items-center justify-center rounded-full bg-stone-100 {{ extra_styles }}"
+         aria-hidden="true">
+      <div class="svg-icon size-1/2 icon-user bg-stone-300"></div>
+    </div>
+  {% endif -%}
+{% endmacro author_avatar -%}
+{# End author avatar -#}
+
+{# Inbox conversation thread -#}
+<section id="inbox-conversation"
+         class="min-w-0"
+         aria-labelledby="inbox-conversation-title">
+  {# Back to inbox, reloading the dashboard layout so the open-count badge refreshes -#}
+  <a href="{{ scope.dashboard_url() }}"
+     hx-get="{{ scope.dashboard_url() }}"
+     {% if scope.is_group() -%}
+       hx-target="#dashboard-layout" hx-select="#dashboard-layout" hx-select-oob="#mobile-dashboard-view:outerHTML" hx-swap="outerHTML show:window:top"
+     {% else -%}
+       hx-target="body"
+     {% endif -%}
+     hx-push-url="true"
+     hx-indicator="#dashboard-spinner"
+     class="mb-4 flex w-fit items-center gap-1 text-sm font-medium text-primary-500 hover:underline">
+    <span class="svg-icon size-4 icon-arrow-left bg-primary-500"
+          aria-hidden="true"></span>
+    Back to inbox
+  </a>
+  {# End back to inbox -#}
+
+  {# Conversation header, with actions overlaid on its facts row except on xl screens -#}
+  <div class="relative">
+    <header class="rounded-lg border border-stone-200 bg-white">
+      {# Conversation title -#}
+      <div class="px-4 py-4 sm:px-6 sm:py-5">
+        <div class="break-words text-sm font-semibold uppercase tracking-wide text-stone-500">
+          {{ conversation.group_name }} · {{ conversation.community_display_name }}
+        </div>
+        <h1 id="inbox-conversation-title"
+            class="mt-1 break-words text-xl font-semibold leading-tight text-stone-900 lg:text-2xl">
+          {% if let Some(event) = conversation.event -%}
+            {% if let Some(event_url) = conversation.event_url() -%}
+              <a href="{{ event_url|safe_href }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="hover:underline">{{ event.name|demoji }}</a>
+            {%- else -%}
+              {{ event.name|demoji }}
+            {%- endif -%}
+          {% else if scope.is_group() -%}
+            {{ user_label() }}
+          {% else -%}
+            {{ conversation.group_name }}
+          {% endif -%}
+        </h1>
+      </div>
+      {# End conversation title -#}
+
+      {# Conversation facts -#}
+      <div class="flex min-h-12.5 flex-wrap items-center gap-x-6 gap-y-2 border-t border-stone-200 px-4 py-3 text-xs text-stone-600 sm:px-6 xl:max-2xl:min-h-0">
+        {{ badges::inbox_status_badge(status = conversation.status) -}}
+        <span class="hidden items-center gap-1.5 xl:flex">
+          <span class="svg-icon size-3.5 shrink-0 icon-calendar bg-stone-500"
+                aria-hidden="true"></span>
+          <span>Started <time datetime="{{ conversation.created_at.to_rfc3339() }}">{{ conversation.created_at.format("%b %d, %Y") }}</time></span>
+        </span>
+        <span class="hidden items-center gap-1.5 xl:flex">
+          <span class="svg-icon size-3.5 shrink-0 icon-clock bg-stone-500"
+                aria-hidden="true"></span>
+          <span>Last message <time datetime="{{ conversation.last_message_at.to_rfc3339() }}">{{ conversation.last_message_at.format("%b %d, %Y · %I:%M %p UTC") }}</time></span>
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span class="svg-icon size-3.5 shrink-0 icon-email bg-stone-500"
+                aria-hidden="true"></span>
+          <span>{{ conversation.messages.len() }} message{{ conversation.messages.len()|pluralize }}</span>
+        </span>
+      </div>
+      {# End conversation facts -#}
+    </header>
+
+    {% if can_close() || can_mark_spam() || can_unmark_spam() -%}
+      {# Conversation actions -#}
+      <div class="absolute bottom-px end-4.25 flex h-12.5 flex-wrap items-center justify-end gap-3 sm:end-6.25 xl:max-2xl:static xl:max-2xl:mt-3 xl:max-2xl:h-auto">
+        {% if can_close() -%}
+          {% if let Some(close_url) = scope.close_url(conversation.inbox_conversation_id) -%}
+            <button id="inbox-close-button"
+                    type="button"
+                    class="btn-primary-outline btn-mini"
+                    data-confirm-action
+                    data-confirm-message="Close this conversation? The user can reopen it by writing again."
+                    data-confirm-text="Close conversation"
+                    data-error-message="Something went wrong closing the conversation. Please try again later."
+                    hx-put="{{ close_url }}"
+                    hx-trigger="confirmed"
+                    hx-target="#inbox-conversation"
+                    hx-swap="outerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#dashboard-spinner">Close conversation</button>
+          {% endif -%}
+        {% endif -%}
+        {% if can_mark_spam() -%}
+          {% if let Some(mark_spam_url) = scope.mark_spam_url(conversation.inbox_conversation_id) -%}
+            <button id="inbox-mark-spam-button"
+                    type="button"
+                    class="btn-primary-outline btn-mini"
+                    data-confirm-action
+                    data-confirm-message="Mark this conversation as spam? The user will no longer be able to write to it or contact this group. Users reported by three groups of this community can no longer contact any of its groups."
+                    data-confirm-text="Mark as spam"
+                    data-error-message="Something went wrong marking the conversation as spam. Please try again later."
+                    hx-put="{{ mark_spam_url }}"
+                    hx-trigger="confirmed"
+                    hx-target="#inbox-conversation"
+                    hx-swap="outerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#dashboard-spinner">Mark as spam</button>
+          {% endif -%}
+        {% endif -%}
+        {% if can_unmark_spam() -%}
+          {% if let Some(unmark_spam_url) = scope.unmark_spam_url(conversation.inbox_conversation_id) -%}
+            <button id="inbox-unmark-spam-button"
+                    type="button"
+                    class="btn-primary-outline btn-mini"
+                    data-confirm-action
+                    data-confirm-message="Unmark this conversation as spam? It returns to your inbox and the user can write to it again."
+                    data-confirm-text="Not spam"
+                    data-error-message="Something went wrong unmarking the conversation as spam. Please try again later."
+                    hx-put="{{ unmark_spam_url }}"
+                    hx-trigger="confirmed"
+                    hx-target="#inbox-conversation"
+                    hx-swap="outerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#dashboard-spinner">Not spam</button>
+          {% endif -%}
+        {% endif -%}
+      </div>
+      {# End conversation actions -#}
+    {% endif -%}
+  </div>
+  {# End conversation header -#}
+
+  {% if let Some(notice) = action_notice -%}
+    {# Action notice (focused after the swap that replaces the action button) -#}
+    <div role="status"
+         tabindex="-1"
+         autofocus
+         class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+         data-inbox-action-notice>{{ notice }}</div>
+    {# End action notice -#}
+  {% endif -%}
+
+  {# Messages -#}
+  <ol class="mt-8 space-y-5 sm:px-2" aria-label="Messages">
+    {% for message in conversation.messages -%}
+      {% if loop.first || message.created_at.date_naive().ne(conversation.messages[loop.index0 - 1].created_at.date_naive()) -%}
+        {# Day divider -#}
+        <li class="flex items-center gap-3 py-4 text-xs text-stone-500"
+            aria-hidden="true">
+          <span class="h-px flex-1 bg-stone-200"></span>
+          {{ message.created_at.format("%b %d, %Y") }}
+          <span class="h-px flex-1 bg-stone-200"></span>
+        </li>
+        {# End day divider -#}
+      {% endif -%}
+      <li class="flex flex-col gap-1
+                 {% if message.kind.is_from_group() -%}
+                   items-end
+                 {% else -%}
+                   items-start
+                 {% endif -%}">
+        {# Message meta, indented past the avatar -#}
+        <div class="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500
+                    {% if message.kind.is_from_group() -%}
+                      justify-end pe-11
+                    {% else -%}
+                      ps-11
+                    {% endif -%}">
+          <span class="break-words font-medium text-stone-700">{{ self::user_label(message.author.as_ref()) }}</span>
+          {% if message.kind.is_from_group() -%}
+            <span aria-hidden="true">·</span>
+            <span class="text-nowrap text-[10px] font-medium uppercase text-stone-500">Organizer</span>
+          {% endif -%}
+          <span aria-hidden="true">·</span>
+          <time datetime="{{ message.created_at.to_rfc3339() }}"
+                class="whitespace-nowrap">
+            <span class="sr-only">{{ message.created_at.format("%b %d, %Y") }} ·</span>
+            {{ message.created_at.format("%I:%M %p UTC") }}
+          </time>
+        </div>
+        {# End message meta -#}
+        {# Message bubble (mt-2.25 centers the avatar on a one-line bubble) -#}
+        <div class="flex max-w-[90%] items-start gap-3 lg:max-w-[70%]
+                    {% if message.kind.is_from_group() -%}
+                      flex-row-reverse
+                    {% endif -%}">
+          {% if message.kind.is_from_group() -%}
+            {{ author_avatar(message.author.as_ref(), "size-8", "text-xs", "bg-primary-100 text-primary-700", "mt-2.25") -}}
+          {% else -%}
+            {{ author_avatar(message.author.as_ref(), "size-8", "text-xs", "bg-stone-200 text-stone-600", "mt-2.25") -}}
+          {% endif -%}
+          <p class="min-w-0 whitespace-pre-line break-words rounded-lg border px-4 py-3 text-sm/6 text-stone-800
+                    {% if message.kind.is_from_group() -%}
+                      border-primary-100 bg-primary-50/60
+                    {% else -%}
+                      border-stone-200 bg-stone-50
+                    {% endif -%}">{{ message.body }}</p>
+        </div>
+        {# End message bubble -#}
+      </li>
+    {% endfor -%}
+  </ol>
+  {# End messages -#}
+
+  {% if is_spam() -%}
+    {# Spam notice -#}
+    <div class="mt-10 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+         data-inbox-spam-notice>
+      {% if scope.is_group() -%}
+        This conversation is marked as spam. The user can no longer write to it or contact this group. Users reported by three groups of this community can no longer contact any of its groups.
+      {% else -%}
+        The organizers marked this conversation as spam, so it no longer accepts messages and you can no longer contact this group. Users reported by three groups of this community can no longer contact any of its groups.
+      {% endif -%}
+    </div>
+    {# End spam notice -#}
+  {% else if can_reply() -%}
+    {% if is_closed() -%}
+      {# Closed notice -#}
+      <div class="mt-10 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700"
+           data-inbox-closed-notice>
+        {% if scope.is_group() -%}
+          This conversation is closed. It reopens if the user writes again, and you can still reply.
+        {% else -%}
+          The organizers closed this conversation. Sending a new message reopens it.
+        {% endif -%}
+      </div>
+      {# End closed notice -#}
+    {% endif -%}
+
+    {# Message form (no maxlength: browsers count UTF-16 units, the server counts characters) -#}
+    <form id="inbox-message-form"
+          class="{% if is_closed() %}mt-4{% else %}mt-10{% endif %}"
+          hx-post="{{ scope.message_url(conversation.inbox_conversation_id) }}"
+          hx-target="#inbox-conversation"
+          hx-swap="outerHTML"
+          hx-disabled-elt="#inbox-message-submit"
+          hx-indicator="#inbox-message-spinner"
+          data-htmx-response
+          data-success-message="Message sent."
+          data-error-message="Something went wrong sending your message. Please try again later.">
+      <label for="inbox-message-body" class="form-label">
+        {% if scope.is_group() -%}
+          Reply
+        {% else -%}
+          New message
+        {% endif -%}
+      </label>
+      <div class="mt-2">
+        <textarea id="inbox-message-body"
+                  name="body"
+                  rows="5"
+                  required
+                  aria-describedby="inbox-message-help"
+                  class="input-primary min-h-28"
+                  {% if focus_message -%}autofocus{%- endif %}></textarea>
+      </div>
+      <p id="inbox-message-help" class="form-legend">
+        {% if scope.is_group() -%}
+          The user receives your reply by email and in their dashboard. Plain text, up to {{ crate::validation::MAX_LEN_INBOX_MESSAGE }} characters.
+        {% else -%}
+          The organizers receive your message by email and in their dashboard. Plain text, up to {{ crate::validation::MAX_LEN_INBOX_MESSAGE }} characters; you can send up to 10 follow-ups per day.
+        {% endif -%}
+      </p>
+      <div class="mt-4 flex justify-end">
+        <button id="inbox-message-submit"
+                type="submit"
+                class="btn-primary inline-flex items-center">
+          <span>Send</span>
+          <span id="inbox-message-spinner"
+                class="ms-2 hidden hx-spinner">{{ ui::spinner(size = "size-4") -}}</span>
+        </button>
+      </div>
+    </form>
+    {# End message form -#}
+  {% else -%}
+    {# Read-only notice -#}
+    <div class="mt-10 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700"
+         data-inbox-read-only-notice>
+      The user deleted their account, so this conversation is read-only.
+      {% if can_close() -%}You can still close it.{%- endif %}
+    </div>
+    {# End read-only notice -#}
+  {% endif -%}
+</section>
+{# End inbox conversation thread -#}

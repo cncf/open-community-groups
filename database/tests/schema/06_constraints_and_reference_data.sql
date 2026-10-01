@@ -8,14 +8,6 @@ begin;
 select plan(187);
 
 -- ============================================================================
--- VARIABLES
--- ============================================================================
-
-\set redirectInvalidCommunityID 'f0060000-0000-0000-0000-000000000001'
-\set redirectPathCommunityID 'f0060000-0000-0000-0000-000000000002'
-\set redirectValidCommunityID 'f0060000-0000-0000-0000-000000000003'
-
--- ============================================================================
 -- TESTS
 -- ============================================================================
 
@@ -74,121 +66,6 @@ select has_check(
 
 -- Test: custom_notification table expected constraints exist
 select has_check('custom_notification');
-
--- Test: community redirect settings should accept absolute legacy origin URLs
-select lives_ok(
-    format($$
-        with inserted_community as (
-            insert into community (
-                community_id,
-                name,
-                display_name,
-                description,
-                logo_url,
-                banner_mobile_url,
-                banner_url
-            ) values (
-                %L,
-                'redirect-settings-valid',
-                'Redirect Settings Valid',
-                'A community with valid redirect settings',
-                'https://example.com/logo-valid.png',
-                'https://example.com/banner-mobile-valid.png',
-                'https://example.com/banner-valid.png'
-            )
-            returning community_id
-        )
-        insert into community_redirect_settings (
-            community_id,
-
-            base_legacy_url
-        )
-        select
-            community_id,
-
-            'https://legacy.example.org'
-        from inserted_community
-    $$, :'redirectValidCommunityID'),
-    'Community redirect settings should accept absolute legacy origin URLs'
-);
-
--- Test: community redirect settings should reject legacy URLs with paths
-select throws_ok(
-    format($$
-        with inserted_community as (
-            insert into community (
-                community_id,
-                name,
-                display_name,
-                description,
-                logo_url,
-                banner_mobile_url,
-                banner_url
-            ) values (
-                %L,
-                'redirect-settings-path',
-                'Redirect Settings Path',
-                'A community with invalid redirect settings',
-                'https://example.com/logo-path.png',
-                'https://example.com/banner-mobile-path.png',
-                'https://example.com/banner-path.png'
-            )
-            returning community_id
-        )
-        insert into community_redirect_settings (
-            community_id,
-
-            base_legacy_url
-        )
-        select
-            community_id,
-
-            'https://legacy.example.org/path'
-        from inserted_community
-    $$, :'redirectPathCommunityID'),
-    '23514',
-    'new row for relation "community_redirect_settings" violates check constraint "community_redirect_settings_base_legacy_url_chk"',
-    'Community redirect settings should reject legacy URLs with paths'
-);
-
--- Test: community redirect settings should reject relative legacy URLs
-select throws_ok(
-    format($$
-        with inserted_community as (
-            insert into community (
-                community_id,
-                name,
-                display_name,
-                description,
-                logo_url,
-                banner_mobile_url,
-                banner_url
-            ) values (
-                %L,
-                'redirect-settings-invalid',
-                'Redirect Settings Invalid',
-                'A community with invalid redirect settings',
-                'https://example.com/logo-invalid.png',
-                'https://example.com/banner-mobile-invalid.png',
-                'https://example.com/banner-invalid.png'
-            )
-            returning community_id
-        )
-        insert into community_redirect_settings (
-            community_id,
-
-            base_legacy_url
-        )
-        select
-            community_id,
-
-            'legacy.example.org'
-        from inserted_community
-    $$, :'redirectInvalidCommunityID'),
-    '23514',
-    'new row for relation "community_redirect_settings" violates check constraint "community_redirect_settings_base_legacy_url_chk"',
-    'Community redirect settings should reject relative legacy URLs'
-);
 
 -- Test: event table expected constraints exist
 select has_check('event', 'event_check');
@@ -587,6 +464,22 @@ select results_eq(
     'Event co-host statuses should exist'
 );
 
+-- Test: inbox conversation statuses should match expected values
+select results_eq(
+    'select * from inbox_conversation_status order by inbox_conversation_status_id',
+    $$ values
+        ('answered', 'Answered'),
+        ('closed', 'Closed'),
+        ('open', 'Open'),
+        ('spam', 'Spam')
+    $$,
+    'Inbox conversation statuses should exist'
+);
+
+-- Test: inbox message table expected constraints exist
+select has_check('inbox_message', 'inbox_message_body_chk');
+select has_check('inbox_message', 'inbox_message_kind_chk');
+
 -- Test: meeting auto end check outcome should match expected values
 select results_eq(
     'select * from meeting_auto_end_check_outcome order by meeting_auto_end_check_outcome_id',
@@ -678,6 +571,8 @@ select results_eq(
         ('group-custom', true),
         ('group-team-invitation', false),
         ('group-welcome', false),
+        ('inbox-message-received', false),
+        ('inbox-reply-received', false),
         ('session-proposal-co-speaker-invitation', false),
         ('speaker-series-welcome', false),
         ('speaker-welcome', false)
@@ -772,6 +667,7 @@ select results_eq(
         ('admin', 'group.badges.write'),
         ('admin', 'group.check-ins.write'),
         ('admin', 'group.events.write'),
+        ('admin', 'group.inbox.write'),
         ('admin', 'group.members.write'),
         ('admin', 'group.read'),
         ('admin', 'group.settings.write'),
@@ -780,6 +676,7 @@ select results_eq(
         ('groups-manager', 'group.badges.write'),
         ('groups-manager', 'group.check-ins.write'),
         ('groups-manager', 'group.events.write'),
+        ('groups-manager', 'group.inbox.write'),
         ('groups-manager', 'group.members.write'),
         ('groups-manager', 'group.read'),
         ('groups-manager', 'group.settings.write'),
@@ -797,6 +694,7 @@ select results_eq(
         ('group.badges.write', 'Badges Write'),
         ('group.check-ins.write', 'Check-Ins Write'),
         ('group.events.write', 'Events Write'),
+        ('group.inbox.write', 'Inbox Write'),
         ('group.members.write', 'Members Write'),
         ('group.read', 'Read'),
         ('group.settings.write', 'Settings Write'),
@@ -829,6 +727,8 @@ select results_eq(
         ('group.check-ins.write', 'events-manager'),
         ('group.events.write', 'admin'),
         ('group.events.write', 'events-manager'),
+        ('group.inbox.write', 'admin'),
+        ('group.inbox.write', 'events-manager'),
         ('group.members.write', 'admin'),
         ('group.read', 'admin'),
         ('group.read', 'check-in-manager'),

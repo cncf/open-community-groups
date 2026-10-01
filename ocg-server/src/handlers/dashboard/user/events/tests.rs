@@ -374,9 +374,9 @@ async fn test_submit_registration_answers_success() {
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
 
-    // Setup transaction mock
-    let mut tx = MockDB::new();
-    tx.expect_submit_event_registration_answers()
+    // Setup the registration answers write without a transaction
+    db.expect_begin().never();
+    db.expect_submit_event_registration_answers()
         .times(1)
         .withf(move |actor_uid, cid, eid, registration_answers| {
             *actor_uid == user_id
@@ -388,7 +388,6 @@ async fn test_submit_registration_answers_success() {
                     .is_some_and(|answer| answer.question_id == question_id)
         })
         .returning(|_, _, _, _| Ok(()));
-    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -444,9 +443,9 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
 
-    // Setup transaction mock
-    let mut tx = MockDB::new();
-    tx.expect_submit_event_registration_answers()
+    // Setup the registration answers write without a transaction
+    db.expect_begin().never();
+    db.expect_submit_event_registration_answers()
         .times(1)
         .withf(move |actor_uid, cid, eid, registration_answers| {
             *actor_uid == user_id
@@ -458,9 +457,8 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
                     .is_some_and(|answer| answer.question_id == question_id)
         })
         .returning(|_, _, _, _| Ok(()));
-    tx.expect_get_site_settings().times(0);
-    tx.expect_get_event_summary_by_id().times(0);
-    expect_successful_transaction(&mut db, tx);
+    db.expect_get_site_settings().times(0);
+    db.expect_get_event_summary_by_id().times(0);
 
     // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();

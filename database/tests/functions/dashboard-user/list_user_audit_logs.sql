@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,8 +15,15 @@ select plan(4);
 \set audit3ID '4a080000-0000-0000-0000-000000000004'
 \set audit4ID '4a080000-0000-0000-0000-000000000005'
 \set audit5ID '4a080000-0000-0000-0000-000000000006'
+\set audit6ID '4a080000-0000-0000-0000-000000000012'
+\set audit7ID '4a080000-0000-0000-0000-000000000013'
+\set communityID '4a080000-0000-0000-0000-000000000014'
 \set eventAcceptedID '4a080000-0000-0000-0000-000000000007'
 \set eventRejectedID '4a080000-0000-0000-0000-000000000008'
+\set groupCategoryID '4a080000-0000-0000-0000-000000000015'
+\set groupID '4a080000-0000-0000-0000-000000000016'
+\set inboxActorID '4a080000-0000-0000-0000-000000000017'
+\set inboxConversationID '4a080000-0000-0000-0000-000000000018'
 \set otherActorID '4a080000-0000-0000-0000-000000000009'
 \set sessionProposalID '4a080000-0000-0000-0000-000000000010'
 \set sessionProposalLevelID 'beginner'
@@ -32,6 +39,12 @@ select fx_user(:'actorID', jsonb_build_object(
     'username', 'alice-user-audit-logs'
 ));
 select fx_user(:'otherActorID', jsonb_build_object('username', 'bob-user-audit-logs'));
+select fx_user(:'inboxActorID', jsonb_build_object('username', 'carol-user-audit-logs'));
+
+-- Community, group category and group contacted through the inbox
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Inbox Audit Group'));
 
 -- Session proposal
 insert into session_proposal (
@@ -51,6 +64,10 @@ insert into session_proposal (
     'Rust for Communities',
     :'actorID'
 );
+
+-- Inbox conversation started by the inbox actor
+insert into inbox_conversation (inbox_conversation_id, group_id, user_id)
+values (:'inboxConversationID', :'groupID', :'inboxActorID');
 
 -- Audit log rows
 insert into audit_log (
@@ -112,6 +129,26 @@ insert into audit_log (
         '{"status": "withdrawn"}',
         :'submissionID',
         'cfs_submission'
+    ),
+    (
+        :'audit6ID',
+        'inbox_message_sent',
+        :'inboxActorID',
+        'carol-user-audit-logs',
+        '2024-04-04 11:00:00+00',
+        '{}'::jsonb,
+        :'inboxConversationID',
+        'inbox_conversation'
+    ),
+    (
+        :'audit7ID',
+        'inbox_conversation_started',
+        :'inboxActorID',
+        'carol-user-audit-logs',
+        '2024-04-04 10:00:00+00',
+        '{}'::jsonb,
+        :'inboxConversationID',
+        'inbox_conversation'
     );
 
 -- ============================================================================
@@ -218,6 +255,50 @@ select is(
         1
     ),
     'Should filter user audit logs by action and date range'
+);
+
+-- Should list inbox actions of the user
+select is(
+    list_user_audit_logs(
+        :'inboxActorID'::uuid,
+        '{"limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        format(
+            $json$
+                [
+                    {
+                        "action": "inbox_message_sent",
+                        "actor_username": "carol-user-audit-logs",
+                        "audit_log_id": "%s",
+                        "created_at": 1712228400,
+                        "details": {},
+                        "resource_id": "%s",
+                        "resource_name": "Inbox Audit Group",
+                        "resource_type": "inbox_conversation"
+                    },
+                    {
+                        "action": "inbox_conversation_started",
+                        "actor_username": "carol-user-audit-logs",
+                        "audit_log_id": "%s",
+                        "created_at": 1712224800,
+                        "details": {},
+                        "resource_id": "%s",
+                        "resource_name": "Inbox Audit Group",
+                        "resource_type": "inbox_conversation"
+                    }
+                ]
+            $json$,
+            :'audit6ID',
+            :'inboxConversationID',
+            :'audit7ID',
+            :'inboxConversationID'
+        )::jsonb,
+        'total',
+        2
+    ),
+    'Should list inbox actions of the user'
 );
 
 -- Should return user audit logs in ascending order with pagination

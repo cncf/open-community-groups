@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(86);
+select plan(89);
 
 -- ============================================================================
 -- TESTS
@@ -845,6 +845,35 @@ select columns_are('images', array[
     'created_at',
     'created_by',
     'data'
+]);
+
+-- Test: inbox conversation columns should match expected
+select columns_are('inbox_conversation', array[
+    'inbox_conversation_id',
+    'created_at',
+    'group_id',
+    'inbox_conversation_status_id',
+    'last_message_at',
+
+    'event_id',
+    'user_id'
+]);
+
+-- Test: inbox conversation status columns should match expected
+select columns_are('inbox_conversation_status', array[
+    'inbox_conversation_status_id',
+    'display_name'
+]);
+
+-- Test: inbox message columns should match expected
+select columns_are('inbox_message', array[
+    'inbox_message_id',
+    'body',
+    'created_at',
+    'inbox_conversation_id',
+    'kind',
+
+    'author_user_id'
 ]);
 
 -- Test: session columns should match expected

@@ -10,7 +10,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{DBExt, DynDB},
+    db::DynDB,
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm, ValidatedQuery},
@@ -108,22 +108,13 @@ pub(crate) async fn submit_registration_answers(
         .ok_or(HandlerError::NotFound)?;
 
     // Persist answers; checkout retains ownership of pending confirmation
-    let registration_answers = input.registration_answers;
-    db.as_ref()
-        .transaction(|tx| {
-            Box::pin(async move {
-                tx.submit_event_registration_answers(
-                    user.user_id,
-                    community_id,
-                    event_id,
-                    &registration_answers,
-                )
-                .await?;
-
-                Ok(())
-            })
-        })
-        .await?;
+    db.submit_event_registration_answers(
+        user.user_id,
+        community_id,
+        event_id,
+        &input.registration_answers,
+    )
+    .await?;
 
     Ok((
         StatusCode::NO_CONTENT,

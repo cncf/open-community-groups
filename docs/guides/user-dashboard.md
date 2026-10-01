@@ -21,6 +21,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 - [Profile: Public Identity](#profile-public-identity)
 - [Badges: Portable Credentials](#badges-portable-credentials)
 - [Invitations: Access and Attendance](#invitations-access-and-attendance)
+- [Inbox: Conversations with Organizers](#inbox-conversations-with-organizers)
 - [Session Proposals: Reusable Talks](#session-proposals-reusable-talks)
 - [Submissions: Track and Respond](#submissions-track-and-respond)
 - [Audit: Logs](#audit-logs)
@@ -28,7 +29,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The dashboard is organized into ten areas:
+The dashboard is organized into eleven areas:
 
 - [My Groups](/dashboard/user?tab=groups ':ignore')
 - [My Events](/dashboard/user?tab=events ':ignore')
@@ -37,12 +38,14 @@ The dashboard is organized into ten areas:
 - [Profile](/dashboard/user?tab=account ':ignore')
 - [Badges](/dashboard/user?tab=badges ':ignore')
 - [Invitations](/dashboard/user?tab=invitations ':ignore')
+- [Inbox](/dashboard/user?tab=inbox ':ignore')
 - [Session proposals](/dashboard/user?tab=session-proposals ':ignore')
 - [Submissions](/dashboard/user?tab=submissions ':ignore')
 - [Logs](/dashboard/user?tab=logs ':ignore')
 
 Each area supports a different part of your participation in OCG: groups, events, attendee
-check-in, profile, portable credentials, access, proposals, submissions, and audit visibility.
+check-in, profile, portable credentials, access, conversations with organizers, proposals,
+submissions, and audit visibility.
 
 ## My Groups
 
@@ -224,6 +227,28 @@ If organizer dashboards still do not appear, see
 
 ![Invitations area](../screenshots/dashboard-user-invitations.png)
 
+## Inbox: Conversations with Organizers
+
+[Inbox](/dashboard/user?tab=inbox ':ignore') lists the conversations you started with group
+organizers from `Contact` in the Organizers section of event pages, newest activity first. Each
+row shows the group, its community, the latest message, the event you wrote about, and the
+status: `Open` while the organizers have not answered your latest message, `Answered` after they
+reply, `Closed` when they close it, and `Spam` when they mark it as spam.
+
+Open a conversation to read the whole thread and send a follow-up. Writing to a closed
+conversation reopens it. When organizers reply, you receive the reply by email with a link to the
+conversation; answer from the Inbox, since replying to the email does not reach the organizers.
+
+A conversation marked as spam stays readable but no longer accepts messages, and you can no
+longer contact that group. If three different groups of the same community mark conversations of
+yours as spam, you can no longer contact any group of that community. Your other conversations
+keep working.
+
+Limits keep conversations manageable:
+
+- Up to 3 new conversations and 10 follow-up messages in any 24 hours.
+- Plain-text messages of up to 5000 characters, which cannot be edited or deleted.
+
 ## Session Proposals: Reusable Talks
 
 `Session proposals` is where you manage talk proposals you can reuse across
@@ -313,6 +338,7 @@ trail for actions you performed from the user dashboard and account settings.
 Coverage in this view includes:
 
 - Invitation accept and reject actions.
+- Inbox conversations you started and messages you sent.
 - Session proposal create, update, delete, and co-speaker invitation decisions.
 - Submission resubmits and withdrawals.
 - Account profile and password updates.

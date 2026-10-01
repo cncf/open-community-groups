@@ -5,7 +5,6 @@ use axum_messages::{Level, Message};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::types::dashboard::group::home::UserGroupsByCommunity;
 use crate::{
     templates::{
         PageId,
@@ -16,11 +15,15 @@ use crate::{
                 analytics, badges, check_in, cohosts, events, members, refunds, settings, sponsors,
                 team,
             },
+            inbox,
         },
         filters,
         helpers::user_initials,
     },
-    types::{community::CommunitySummary, group::GroupMinimal, site::SiteSettings},
+    types::{
+        community::CommunitySummary, dashboard::group::home::UserGroupsByCommunity,
+        group::GroupMinimal, site::SiteSettings,
+    },
 };
 
 /// Home page template for the group dashboard.
@@ -32,12 +35,18 @@ pub(crate) struct Page {
     pub can_manage_badges: bool,
     /// Whether the current user can process attendee check-ins.
     pub can_manage_check_ins: bool,
+    /// Whether the current user can read and answer the group inbox.
+    pub can_manage_inbox: bool,
     /// Main content section for the page.
     pub content: Content,
     /// Groups organized by community.
     pub groups_by_community: Vec<UserGroupsByCommunity>,
+    /// Number of open inbox conversations shown in the menu badge.
+    pub inbox_open_count: usize,
     /// Whether Check-In content fell back because the selected group is not manageable.
     pub is_check_in_fallback: bool,
+    /// Whether Inbox content fell back because the selected group's inbox is not accessible.
+    pub is_inbox_fallback: bool,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
@@ -104,6 +113,10 @@ pub(crate) enum Content {
     Cohosts(cohosts::ListPage),
     /// Events management page.
     Events(Box<events::ListPage>),
+    /// Inbox conversations page.
+    Inbox(inbox::ListPage),
+    /// Inbox conversation thread page.
+    InboxConversation(Box<inbox::ConversationPage>),
     /// Audit logs page.
     Logs(audit::ListPage),
     /// Members list page.
@@ -154,6 +167,11 @@ impl Content {
         matches!(self, Content::Events(_))
     }
 
+    /// Check if the content is an inbox page.
+    fn is_inbox(&self) -> bool {
+        matches!(self, Content::Inbox(_) | Content::InboxConversation(_))
+    }
+
     /// Check if the content is the logs page.
     fn is_logs(&self) -> bool {
         matches!(self, Content::Logs(_))
@@ -183,6 +201,26 @@ impl Content {
     fn is_team(&self) -> bool {
         matches!(self, Content::Team(_))
     }
+
+    /// Returns the partial path used to refresh the dashboard content.
+    fn refresh_path(&self) -> &'static str {
+        match self {
+            Content::Analytics(_) => "analytics",
+            Content::Artwork(_) => "artwork",
+            Content::Awards(_) => "awards",
+            Content::Badges(_) => "badges",
+            Content::CheckIn(_) => "check-in",
+            Content::Cohosts(_) => "cohosts",
+            Content::Events(_) => "events",
+            Content::Inbox(_) | Content::InboxConversation(_) => "inbox",
+            Content::Logs(_) => "logs",
+            Content::Members(_) => "members",
+            Content::Refunds(_) => "refunds",
+            Content::Settings(_) => "settings",
+            Content::Sponsors(_) => "sponsors",
+            Content::Team(_) => "team",
+        }
+    }
 }
 
 impl std::fmt::Display for Content {
@@ -195,6 +233,8 @@ impl std::fmt::Display for Content {
             Content::CheckIn(template) => write!(f, "{}", template.render()?),
             Content::Cohosts(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
+            Content::Inbox(template) => write!(f, "{}", template.render()?),
+            Content::InboxConversation(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Refunds(template) => write!(f, "{}", template.render()?),
@@ -227,6 +267,8 @@ pub(crate) enum Tab {
     Cohosts,
     /// Events management tab.
     Events,
+    /// Inbox tab.
+    Inbox,
     /// Audit logs tab.
     Logs,
     /// Members list tab.
@@ -239,4 +281,26 @@ pub(crate) enum Tab {
     Sponsors,
     /// Team management tab.
     Team,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::pagination::NavigationLinks;
+
+    use super::*;
+
+    #[test]
+    fn test_refresh_path_uses_members_route_for_members_content() {
+        let content = Content::Members(members::ListPage {
+            can_manage_members: false,
+            default_notification_subject: String::new(),
+            members: vec![],
+            navigation_links: NavigationLinks::default(),
+            total: 0,
+
+            offset: None,
+        });
+
+        assert_eq!(content.refresh_path(), "members");
+    }
 }

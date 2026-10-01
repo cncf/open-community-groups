@@ -18,6 +18,9 @@ pub(crate) mod events;
 /// Images service module.
 pub(crate) mod images;
 
+/// Group inbox service module.
+pub(crate) mod inbox;
+
 /// Meetings service module.
 pub(crate) mod meetings;
 
