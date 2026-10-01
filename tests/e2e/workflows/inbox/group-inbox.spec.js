@@ -5,6 +5,7 @@ import {
   TEST_COMMUNITY_IDS,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
+  TEST_EVENT_NAME,
   TEST_EVENT_SLUG,
   TEST_GROUP_IDS,
   TEST_GROUP_NAME,
@@ -77,7 +78,9 @@ test.describe("group inbox workflow", () => {
       await expect(conversationRow).toHaveAttribute("title", "View conversation with E2E Member One");
       await conversationRow.click();
       const organizerThread = organizerGroupPage.locator("#inbox-conversation");
-      await expect(organizerThread.getByRole("heading", { name: "E2E Member One" })).toBeVisible();
+      await expect(organizerThread.getByRole("heading", { name: TEST_EVENT_NAME })).toBeVisible();
+      await expect(organizerThread).toContainText(`${TEST_GROUP_NAME} · `);
+      await expect(organizerThread).toContainText("E2E Member One");
       await expect(organizerThread).toContainText(question);
 
       // Reply to the user and check the reply email
@@ -179,7 +182,8 @@ test.describe("group inbox workflow", () => {
     // Verify Enter opens the conversation thread
     await organizerGroupPage.keyboard.press("Enter");
     const organizerThread = organizerGroupPage.locator("#inbox-conversation");
-    await expect(organizerThread.getByRole("heading", { name: "E2E Member Two" })).toBeVisible();
+    await expect(organizerThread.getByRole("heading", { name: TEST_EVENT_NAME })).toBeVisible();
+    await expect(organizerThread).toContainText("E2E Member Two");
     await expect(organizerThread).toContainText(TEST_INBOX_CONVERSATION.question);
   });
 

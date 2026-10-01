@@ -21,151 +21,131 @@
 <section id="inbox-conversation"
          class="min-w-0"
          aria-labelledby="inbox-conversation-title">
-  {# Conversation header -#}
-  <header class="rounded-lg border border-stone-200 bg-stone-50 px-4 py-4 sm:px-6 sm:py-5">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      {# Back to inbox, reloading the dashboard layout so the open-count badge refreshes -#}
-      <a href="{{ scope.dashboard_url() }}"
-         hx-get="{{ scope.dashboard_url() }}"
-         {% if scope.is_group() -%}
-           hx-target="#dashboard-layout" hx-select="#dashboard-layout" hx-select-oob="#mobile-dashboard-view:outerHTML" hx-swap="outerHTML show:window:top"
-         {% else -%}
-           hx-target="body"
-         {% endif -%}
-         hx-push-url="true"
-         hx-indicator="#dashboard-spinner"
-         class="inline-flex items-center gap-1 text-sm font-medium text-primary-500 hover:underline">
-        <span class="svg-icon size-4 icon-arrow-left bg-primary-500"
-              aria-hidden="true"></span>
-        Back to inbox
-      </a>
-      {# End back to inbox -#}
+  {# Back to inbox, reloading the dashboard layout so the open-count badge refreshes -#}
+  <a href="{{ scope.dashboard_url() }}"
+     hx-get="{{ scope.dashboard_url() }}"
+     {% if scope.is_group() -%}
+       hx-target="#dashboard-layout" hx-select="#dashboard-layout" hx-select-oob="#mobile-dashboard-view:outerHTML" hx-swap="outerHTML show:window:top"
+     {% else -%}
+       hx-target="body"
+     {% endif -%}
+     hx-push-url="true"
+     hx-indicator="#dashboard-spinner"
+     class="mb-4 flex w-fit items-center gap-1 text-sm font-medium text-primary-500 hover:underline">
+    <span class="svg-icon size-4 icon-arrow-left bg-primary-500"
+          aria-hidden="true"></span>
+    Back to inbox
+  </a>
+  {# End back to inbox -#}
 
-      {% if can_close() || can_mark_spam() || can_unmark_spam() -%}
-        {# Conversation actions -#}
-        <div class="flex flex-wrap items-center gap-3">
-          {% if can_close() -%}
-            {% if let Some(close_url) = scope.close_url(conversation.inbox_conversation_id) -%}
-              <button id="inbox-close-button"
-                      type="button"
-                      class="btn-primary-outline"
-                      data-confirm-action
-                      data-confirm-message="Close this conversation? The user can reopen it by writing again."
-                      data-confirm-text="Close conversation"
-                      data-error-message="Something went wrong closing the conversation. Please try again later."
-                      hx-put="{{ close_url }}"
-                      hx-trigger="confirmed"
-                      hx-target="#inbox-conversation"
-                      hx-swap="outerHTML"
-                      hx-disabled-elt="this"
-                      hx-indicator="#dashboard-spinner">Close conversation</button>
-            {% endif -%}
-          {% endif -%}
-          {% if can_mark_spam() -%}
-            {% if let Some(mark_spam_url) = scope.mark_spam_url(conversation.inbox_conversation_id) -%}
-              <button id="inbox-mark-spam-button"
-                      type="button"
-                      class="btn-primary-outline"
-                      data-confirm-action
-                      data-confirm-message="Mark this conversation as spam? The user will no longer be able to write to it or contact this group. Users reported by three groups of this community can no longer contact any of its groups."
-                      data-confirm-text="Mark as spam"
-                      data-error-message="Something went wrong marking the conversation as spam. Please try again later."
-                      hx-put="{{ mark_spam_url }}"
-                      hx-trigger="confirmed"
-                      hx-target="#inbox-conversation"
-                      hx-swap="outerHTML"
-                      hx-disabled-elt="this"
-                      hx-indicator="#dashboard-spinner">Mark as spam</button>
-            {% endif -%}
-          {% endif -%}
-          {% if can_unmark_spam() -%}
-            {% if let Some(unmark_spam_url) = scope.unmark_spam_url(conversation.inbox_conversation_id) -%}
-              <button id="inbox-unmark-spam-button"
-                      type="button"
-                      class="btn-primary-outline"
-                      data-confirm-action
-                      data-confirm-message="Unmark this conversation as spam? It returns to your inbox and the user can write to it again."
-                      data-confirm-text="Not spam"
-                      data-error-message="Something went wrong unmarking the conversation as spam. Please try again later."
-                      hx-put="{{ unmark_spam_url }}"
-                      hx-trigger="confirmed"
-                      hx-target="#inbox-conversation"
-                      hx-swap="outerHTML"
-                      hx-disabled-elt="this"
-                      hx-indicator="#dashboard-spinner">Not spam</button>
-            {% endif -%}
-          {% endif -%}
+  {# Conversation header, with actions overlaid on its facts row except on xl screens -#}
+  <div class="relative">
+    <header class="rounded-lg border border-stone-200 bg-white">
+      {# Conversation title -#}
+      <div class="px-4 py-4 sm:px-6 sm:py-5">
+        <div class="break-words text-sm font-semibold uppercase tracking-wide text-stone-500">
+          {{ conversation.group_name }} · {{ conversation.community_display_name }}
         </div>
-        {# End conversation actions -#}
-      {% endif -%}
-    </div>
-
-    {# Participants -#}
-    <div class="mt-5 flex items-center gap-4">
-      {% if scope.is_group() -%}
-        {{ author_avatar(conversation.user.as_ref(), "size-12", "text-base") -}}
-      {% else -%}
-        {# Group avatar -#}
-        <div class="flex size-12 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white"
-             aria-hidden="true">
-          <div class="svg-icon size-6 icon-groups bg-stone-400"></div>
-        </div>
-      {% endif -%}
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 id="inbox-conversation-title"
-              class="min-w-0 break-words text-xl font-medium leading-tight text-stone-900 lg:text-2xl">
-            {% if scope.is_group() -%}
-              {{ user_label() }}
-            {% else -%}
-              {{ conversation.group_name }}
-            {% endif -%}
-          </h1>
-          {{ badges::inbox_status_badge(status = conversation.status) -}}
-        </div>
-        <p class="mt-1 break-words text-sm/6 text-stone-600">
-          {% if scope.is_group() -%}
-            Conversation with the {{ conversation.group_name }} organizers
-          {%- else -%}
-            {{ conversation.community_display_name }} · Conversation with the organizers
-          {%- endif -%}
-          {% if let Some(event) = conversation.event %}
-            about
+        <h1 id="inbox-conversation-title"
+            class="mt-1 break-words text-xl font-semibold leading-tight text-stone-900 lg:text-2xl">
+          {% if let Some(event) = conversation.event -%}
             {% if let Some(event_url) = conversation.event_url() -%}
               <a href="{{ event_url|safe_href }}"
                  target="_blank"
                  rel="noopener noreferrer"
-                 class="font-medium text-stone-700 underline underline-offset-2 hover:text-primary-700">{{ event.name }}</a>
+                 class="hover:underline">{{ event.name|demoji }}</a>
             {%- else -%}
-              <span class="font-medium text-stone-700">{{ event.name }}</span>
+              {{ event.name|demoji }}
             {%- endif -%}
+          {% else if scope.is_group() -%}
+            {{ user_label() }}
+          {% else -%}
+            {{ conversation.group_name }}
           {% endif -%}
-          .
-        </p>
+        </h1>
       </div>
-    </div>
-    {# End participants -#}
+      {# End conversation title -#}
 
-    {# Conversation facts -#}
-    <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-stone-200 pt-4 text-xs text-stone-600">
-      <span class="flex items-center gap-1.5">
-        <span class="svg-icon size-3.5 shrink-0 icon-calendar bg-stone-500"
-              aria-hidden="true"></span>
-        <span>Started <time datetime="{{ conversation.created_at.to_rfc3339() }}">{{ conversation.created_at.format("%b %d, %Y") }}</time></span>
-      </span>
-      <span class="flex items-center gap-1.5">
-        <span class="svg-icon size-3.5 shrink-0 icon-clock bg-stone-500"
-              aria-hidden="true"></span>
-        <span>Last message <time datetime="{{ conversation.last_message_at.to_rfc3339() }}">{{ conversation.last_message_at.format("%b %d, %Y · %I:%M %p UTC") }}</time></span>
-      </span>
-      <span class="flex items-center gap-1.5">
-        <span class="svg-icon size-3.5 shrink-0 icon-email bg-stone-500"
-              aria-hidden="true"></span>
-        <span>{{ conversation.messages.len() }} message{{ conversation.messages.len()|pluralize }}</span>
-      </span>
-    </div>
-    {# End conversation facts -#}
-  </header>
+      {# Conversation facts -#}
+      <div class="flex min-h-12.5 flex-wrap items-center gap-x-6 gap-y-2 border-t border-stone-200 px-4 py-3 text-xs text-stone-600 sm:px-6 xl:max-2xl:min-h-0">
+        {{ badges::inbox_status_badge(status = conversation.status) -}}
+        <span class="hidden items-center gap-1.5 xl:flex">
+          <span class="svg-icon size-3.5 shrink-0 icon-calendar bg-stone-500"
+                aria-hidden="true"></span>
+          <span>Started <time datetime="{{ conversation.created_at.to_rfc3339() }}">{{ conversation.created_at.format("%b %d, %Y") }}</time></span>
+        </span>
+        <span class="hidden items-center gap-1.5 xl:flex">
+          <span class="svg-icon size-3.5 shrink-0 icon-clock bg-stone-500"
+                aria-hidden="true"></span>
+          <span>Last message <time datetime="{{ conversation.last_message_at.to_rfc3339() }}">{{ conversation.last_message_at.format("%b %d, %Y · %I:%M %p UTC") }}</time></span>
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span class="svg-icon size-3.5 shrink-0 icon-email bg-stone-500"
+                aria-hidden="true"></span>
+          <span>{{ conversation.messages.len() }} message{{ conversation.messages.len()|pluralize }}</span>
+        </span>
+      </div>
+      {# End conversation facts -#}
+    </header>
+
+    {% if can_close() || can_mark_spam() || can_unmark_spam() -%}
+      {# Conversation actions -#}
+      <div class="absolute bottom-px end-4.25 flex h-12.5 flex-wrap items-center justify-end gap-3 sm:end-6.25 xl:max-2xl:static xl:max-2xl:mt-3 xl:max-2xl:h-auto">
+        {% if can_close() -%}
+          {% if let Some(close_url) = scope.close_url(conversation.inbox_conversation_id) -%}
+            <button id="inbox-close-button"
+                    type="button"
+                    class="btn-primary-outline btn-mini"
+                    data-confirm-action
+                    data-confirm-message="Close this conversation? The user can reopen it by writing again."
+                    data-confirm-text="Close conversation"
+                    data-error-message="Something went wrong closing the conversation. Please try again later."
+                    hx-put="{{ close_url }}"
+                    hx-trigger="confirmed"
+                    hx-target="#inbox-conversation"
+                    hx-swap="outerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#dashboard-spinner">Close conversation</button>
+          {% endif -%}
+        {% endif -%}
+        {% if can_mark_spam() -%}
+          {% if let Some(mark_spam_url) = scope.mark_spam_url(conversation.inbox_conversation_id) -%}
+            <button id="inbox-mark-spam-button"
+                    type="button"
+                    class="btn-primary-outline btn-mini"
+                    data-confirm-action
+                    data-confirm-message="Mark this conversation as spam? The user will no longer be able to write to it or contact this group. Users reported by three groups of this community can no longer contact any of its groups."
+                    data-confirm-text="Mark as spam"
+                    data-error-message="Something went wrong marking the conversation as spam. Please try again later."
+                    hx-put="{{ mark_spam_url }}"
+                    hx-trigger="confirmed"
+                    hx-target="#inbox-conversation"
+                    hx-swap="outerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#dashboard-spinner">Mark as spam</button>
+          {% endif -%}
+        {% endif -%}
+        {% if can_unmark_spam() -%}
+          {% if let Some(unmark_spam_url) = scope.unmark_spam_url(conversation.inbox_conversation_id) -%}
+            <button id="inbox-unmark-spam-button"
+                    type="button"
+                    class="btn-primary-outline btn-mini"
+                    data-confirm-action
+                    data-confirm-message="Unmark this conversation as spam? It returns to your inbox and the user can write to it again."
+                    data-confirm-text="Not spam"
+                    data-error-message="Something went wrong unmarking the conversation as spam. Please try again later."
+                    hx-put="{{ unmark_spam_url }}"
+                    hx-trigger="confirmed"
+                    hx-target="#inbox-conversation"
+                    hx-swap="outerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#dashboard-spinner">Not spam</button>
+          {% endif -%}
+        {% endif -%}
+      </div>
+      {# End conversation actions -#}
+    {% endif -%}
+  </div>
   {# End conversation header -#}
 
   {% if let Some(notice) = action_notice -%}
@@ -183,7 +163,7 @@
     {% for message in conversation.messages -%}
       {% if loop.first || message.created_at.date_naive().ne(conversation.messages[loop.index0 - 1].created_at.date_naive()) -%}
         {# Day divider -#}
-        <li class="flex items-center gap-3 py-1 text-xs text-stone-500"
+        <li class="flex items-center gap-3 py-4 text-xs text-stone-500"
             aria-hidden="true">
           <span class="h-px flex-1 bg-stone-200"></span>
           {{ message.created_at.format("%b %d, %Y") }}
@@ -204,15 +184,10 @@
                     {% else -%}
                       ps-11
                     {% endif -%}">
-          <span class="break-words font-medium text-stone-700">
-            {% if !scope.is_group() && !message.kind.is_from_group() -%}
-              You
-            {% else -%}
-              {{ self::user_label(message.author.as_ref()) }}
-            {% endif -%}
-          </span>
+          <span class="break-words font-medium text-stone-700">{{ self::user_label(message.author.as_ref()) }}</span>
           {% if message.kind.is_from_group() -%}
-            {{ badges::common_badge(content = "Organizer", extra_styles = Some("px-2.5 py-0.5")) -}}
+            <span aria-hidden="true">·</span>
+            <span class="text-nowrap text-[10px] font-medium uppercase text-stone-500">Organizer</span>
           {% endif -%}
           <span aria-hidden="true">·</span>
           <time datetime="{{ message.created_at.to_rfc3339() }}"
@@ -223,7 +198,7 @@
         </div>
         {# End message meta -#}
         {# Message bubble (mt-2.25 centers the avatar on a one-line bubble) -#}
-        <div class="flex max-w-[85%] items-start gap-3 sm:max-w-[70%]
+        <div class="flex max-w-[90%] items-start gap-3 lg:max-w-[70%]
                     {% if message.kind.is_from_group() -%}
                       flex-row-reverse
                     {% endif -%}">

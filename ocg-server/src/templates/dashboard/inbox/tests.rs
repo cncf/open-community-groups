@@ -104,7 +104,7 @@ fn test_conversation_page_renders_event_as_text_when_not_public() {
 
     let body = page.render().unwrap();
 
-    assert!(body.contains("<span class=\"font-medium text-stone-700\">Test Event</span>"));
+    assert!(body.contains("Test Event"));
     assert!(!body.contains("/event/test-event"));
 }
 
