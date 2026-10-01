@@ -7,7 +7,8 @@
 //! fails on a forbidden edge that is not listed in an allowance. Allowances
 //! exist only for edges that are still being migrated; an allowance that no
 //! longer matches any edge also fails the test, so the lists shrink with each
-//! migration and never grow silently.
+//! migration and never grow silently. A second test keeps cached aggregates
+//! over mutable data out of `services`, where transactions are opened.
 
 use std::{
     collections::BTreeSet,
@@ -63,6 +64,19 @@ const DB_OPERATION_TYPES: &[&str] = &[
 /// moved behind a manager, and new handler code never adds an entry.
 const HANDLER_OPERATION_TYPE_ALLOWANCES: &[(&str, &str)] = &[];
 
+/// Cached aggregates over mutable data. Inside a transaction that changed the
+/// underlying rows they could hide its writes or cache uncommitted counts.
+/// Keeping them out of `services`, where transactions are opened, is a
+/// conservative proxy for that rule; see "Cached reads and transactions" in
+/// `docs/backend.md`.
+const MUTABLE_AGGREGATE_CACHED_READS: &[&str] = &[
+    "get_community_site_stats",
+    "get_community_stats",
+    "get_group_stats",
+    "get_site_home_stats",
+    "get_site_stats",
+];
+
 /// A source file with the `crate::` paths it references.
 struct SourceFile {
     /// Layer the file belongs to.
@@ -71,6 +85,38 @@ struct SourceFile {
     paths: BTreeSet<String>,
     /// Path relative to `src/`, with `/` separators.
     relative_path: String,
+}
+
+#[test]
+fn cached_aggregate_reads_stay_outside_services() {
+    let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+
+    // Collect every service source file
+    let mut entries = Vec::new();
+    walk_rust_files(&src_dir.join("services"), &mut entries);
+    entries.push(src_dir.join("services.rs"));
+
+    // Check service code for calls to cached aggregates over mutable data
+    let mut violations = Vec::new();
+    for entry in entries.iter().filter(|entry| entry.is_file()) {
+        let source = fs::read_to_string(entry).expect("source file should be readable");
+        let code = strip_line_comments(&source);
+        let identifiers: BTreeSet<&str> = tokenize(&code).into_iter().collect();
+        for method in MUTABLE_AGGREGATE_CACHED_READS {
+            if identifiers.contains(method) {
+                violations.push(format!(
+                    "{} references cached aggregate read `{method}`",
+                    entry.strip_prefix(&src_dir).unwrap_or(entry).display()
+                ));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "cached aggregate reads must stay outside services:\n{}",
+        violations.join("\n")
+    );
 }
 
 #[test]
@@ -174,21 +220,10 @@ fn collect_source_files(src_dir: &Path) -> Vec<SourceFile> {
 }
 
 /// Extracts every `crate::` path referenced by the source: flattened `use`
-/// trees plus inline paths. Line comments are ignored so documentation can
-/// mention paths freely.
+/// trees plus inline paths. Line comments are ignored.
 fn crate_paths(source: &str) -> BTreeSet<String> {
     let mut paths = BTreeSet::new();
-    let code: String = source
-        .lines()
-        .map(|line| match line.find("//") {
-            Some(index) => &line[..index],
-            None => line,
-        })
-        .fold(String::new(), |mut acc, line| {
-            acc.push_str(line);
-            acc.push('\n');
-            acc
-        });
+    let code = strip_line_comments(source);
     let tokens = tokenize(&code);
 
     let mut index = 0;
@@ -273,6 +308,22 @@ fn parse_use_tree(
         paths.insert(segments.join("::"));
     }
     index
+}
+
+/// Returns the source with line comments removed, so documentation can mention
+/// paths and identifiers freely.
+fn strip_line_comments(source: &str) -> String {
+    source
+        .lines()
+        .map(|line| match line.find("//") {
+            Some(index) => &line[..index],
+            None => line,
+        })
+        .fold(String::new(), |mut acc, line| {
+            acc.push_str(line);
+            acc.push('\n');
+            acc
+        })
 }
 
 /// Splits source code into identifier, `::`, and punctuation tokens.

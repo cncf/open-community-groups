@@ -1282,13 +1282,19 @@ async fn db_contracts_list_cohost_group_options_deserializes() -> Result<()> {
         .find(|option| option.group_id == subgroup_id())
         .expect("subgroup to be offered as a co-host");
     assert_eq!(subgroup.community_name, "contract-community");
-    assert!(!subgroup.logo_url.is_empty());
+    assert!(
+        !subgroup.logo_url.is_empty(),
+        "subgroup logo url should be set"
+    );
 
     // Check inactive communities offer no options
     let inactive_options = db
         .list_cohost_group_options(cohost_community_id(), group_id())
         .await?;
-    assert!(inactive_options.is_empty());
+    assert!(
+        inactive_options.is_empty(),
+        "inactive community should offer no co-host options, got {inactive_options:?}"
+    );
 
     Ok(())
 }
@@ -1487,7 +1493,11 @@ async fn db_contracts_list_group_check_in_events_deserializes() -> Result<()> {
         .iter()
         .find(|event| event.event_id == event_id())
         .expect("future contract event to be available for check-in");
-    assert!(event.cohosts.is_empty());
+    assert!(
+        event.cohosts.is_empty(),
+        "event should have no cohosts, got {:?}",
+        event.cohosts
+    );
     assert_eq!(event.event_id, event_id());
     assert!(!event.in_progress);
     assert_eq!(event.kind, EventKind::Hybrid);
@@ -1530,12 +1540,18 @@ async fn db_contracts_list_group_cohosted_events_deserializes() -> Result<()> {
     assert!(event.canceled);
     assert_eq!(event.event_id, cohost_canceled_event_id());
     assert_eq!(event.event_kind, EventKind::Virtual);
-    assert!(!event.event_logo_url.is_empty());
+    assert!(
+        !event.event_logo_url.is_empty(),
+        "event logo url should be set"
+    );
     assert_eq!(event.event_name, "Contract Co-host Canceled Event");
     assert_eq!(event.event_slug, "contract-cohost-canceled-event");
     assert_eq!(event.owner_community_display_name, "Contract Community");
     assert_eq!(event.owner_community_name, "contract-community");
-    assert!(!event.owner_group_logo_url.is_empty());
+    assert!(
+        !event.owner_group_logo_url.is_empty(),
+        "owner group logo url should be set"
+    );
     assert!(!event.published);
     assert_eq!(event.status, EventCohostStatus::EventCanceled);
     assert_eq!(event.timezone.to_string(), "UTC");

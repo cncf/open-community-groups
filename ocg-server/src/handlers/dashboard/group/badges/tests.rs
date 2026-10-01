@@ -1116,7 +1116,11 @@ async fn test_options_trims_search_and_returns_json() {
     // Check the JSON page contract
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(body.total, 0);
-    assert!(body.badges.is_empty());
+    assert!(
+        body.badges.is_empty(),
+        "badges page should be empty, got {:?}",
+        body.badges
+    );
 }
 
 #[tokio::test]

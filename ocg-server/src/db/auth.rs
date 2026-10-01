@@ -39,7 +39,7 @@ pub(crate) trait DBAuth {
     /// Deletes a session from the database.
     async fn delete_session(&self, session_id: &session::Id) -> Result<()>;
 
-    /// Retrieves a session by its ID.
+    /// Retrieves an unexpired session by its ID.
     async fn get_session(&self, session_id: &session::Id) -> Result<Option<session::Record>>;
 
     /// Retrieves a registered or pre-registered user by email for external auth.
@@ -210,7 +210,7 @@ where
         let db = self.client().await?;
         let row = db
             .query_opt(
-                "select data, expires_at from auth_session where auth_session_id = $1::text;",
+                "select data, expires_at from get_auth_session($1::text);",
                 &[&session_id.to_string()],
             )
             .await?;

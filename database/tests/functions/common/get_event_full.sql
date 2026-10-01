@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,8 +20,10 @@ select plan(17);
 \set eventID '0c060000-0000-0000-0000-000000000006'
 \set eventInactiveGroupID '0c060000-0000-0000-0000-000000000007'
 \set eventPaidID '0c060000-0000-0000-0000-000000000008'
+\set eventPurchasedID '0c060000-0000-0000-0000-000000000029'
 \set eventRecordingOverrideID '0c060000-0000-0000-0000-000000000009'
 \set eventRelatedID '0c060000-0000-0000-0000-00000000000a'
+\set eventRefundedID '0c060000-0000-0000-0000-00000000002a'
 \set eventSeriesID '0c060000-0000-0000-0000-00000000000b'
 \set eventUnpublishedID '0c060000-0000-0000-0000-00000000000c'
 \set groupCategoryID '0c060000-0000-0000-0000-00000000000d'
@@ -46,6 +48,8 @@ select plan(17);
 \set ticketDiscountCodeID '0c060000-0000-0000-0000-00000000001f'
 \set ticketPriceWindowID '0c060000-0000-0000-0000-000000000020'
 \set ticketTypeID '0c060000-0000-0000-0000-000000000021'
+\set ticketTypePurchasedID '0c060000-0000-0000-0000-00000000002b'
+\set ticketTypeRefundedID '0c060000-0000-0000-0000-00000000002c'
 \set unknownCommunityID '0c060000-0000-0000-0000-000000000022'
 \set unknownEventID '0c060000-0000-0000-0000-000000000023'
 \set user1ID '0c060000-0000-0000-0000-000000000024'
@@ -776,6 +780,12 @@ select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_obje
     'timezone', 'America/New_York'
 ));
 
+-- Ticketed event with a completed purchase
+select fx_event(:'eventPurchasedID', :'groupID', :'eventCategoryID');
+
+-- Ticketed event with only a refunded purchase
+select fx_event(:'eventRefundedID', :'groupID', :'eventCategoryID');
+
 -- Paid event organizers for order checks
 insert into event_organizer (event_id, user_id, "order")
 values
@@ -805,6 +815,46 @@ select fx_event_ticket_type(:'ticketTypeID', :'eventPaidID', jsonb_build_object(
     'seats_total', 25,
     'title', 'General admission'
 ));
+
+-- Ticket type of the event with a completed purchase
+select fx_event_ticket_type(:'ticketTypePurchasedID', :'eventPurchasedID');
+
+-- Ticket type of the event with only a refunded purchase
+select fx_event_ticket_type(:'ticketTypeRefundedID', :'eventRefundedID');
+
+-- Completed purchase of the purchased event
+insert into event_purchase (
+    amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    :'eventPurchasedID',
+    :'ticketTypePurchasedID',
+    'completed',
+    'Purchased pass',
+    :'user1ID'
+);
+
+-- Refunded purchase of the refunded event
+insert into event_purchase (
+    amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    :'eventRefundedID',
+    :'ticketTypeRefundedID',
+    'refunded',
+    'Refunded pass',
+    :'user1ID'
+);
 
 -- Event ticket price window
 select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 2500));
@@ -1325,6 +1375,45 @@ select is(
         :'ticketDiscountCodeID', :'ticketTypeID', :'ticketPriceWindowID'
     )::jsonb,
     'Should include normalized ticketing fields in the full event payload'
+);
+
+-- Should not report purchases that belong to another event
+select is(
+    (
+        get_event_full(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'eventPaidID'::uuid
+        )::jsonb
+    )->'has_ticket_purchases',
+    'false'::jsonb,
+    'Should not report purchases that belong to another event'
+);
+
+-- Should report ticket purchases when only refunded purchases exist
+select is(
+    (
+        get_event_full(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'eventRefundedID'::uuid
+        )::jsonb
+    )->'has_ticket_purchases',
+    'true'::jsonb,
+    'Should report ticket purchases when only refunded purchases exist'
+);
+
+-- Should report ticket purchases when the event has a purchase
+select is(
+    (
+        get_event_full(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'eventPurchasedID'::uuid
+        )::jsonb
+    )->'has_ticket_purchases',
+    'true'::jsonb,
+    'Should report ticket purchases when the event has a purchase'
 );
 
 -- Should resolve the fiscal sponsor as seller for events on the Stripe rail

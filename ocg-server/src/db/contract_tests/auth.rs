@@ -1,6 +1,11 @@
 //! Contract tests for the `DBAuth` functions.
 
+use std::collections::HashMap;
+
 use anyhow::Result;
+use axum_login::tower_sessions::session;
+use serde_json::json;
+use time::{Duration, OffsetDateTime};
 use tokio_postgres::types::Json;
 
 use crate::{auth::ExternalUserProfile, db::auth::DBAuth, types::user::UserProvider};
@@ -35,6 +40,58 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
     assert_eq!(user.registration_status, "registered");
     assert_eq!(user.user_id, activation_id());
     assert_eq!(user.username, "contract-activation");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_session_ignores_expired_sessions() -> Result<()> {
+    // Setup a session that expired well before the database clock
+    let db = contract_tests_db()?;
+    let expired = session::Record {
+        data: HashMap::from([("state".to_string(), json!("expired"))]),
+        expiry_date: OffsetDateTime::now_utc() - Duration::hours(1),
+        id: session::Id::default(),
+    };
+    db.create_session(&expired).await?;
+
+    // Load the expired and a missing session through the Rust contract
+    let expired_session = db.get_session(&expired.id).await?;
+    let missing_session = db.get_session(&session::Id::default()).await?;
+
+    // Check neither session is returned
+    assert!(expired_session.is_none());
+    assert!(missing_session.is_none());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_session_round_trips_unexpired_sessions() -> Result<()> {
+    // Setup a session that expires well after the database clock
+    let db = contract_tests_db()?;
+    let record = session::Record {
+        data: HashMap::from([("state".to_string(), json!("unexpired"))]),
+        expiry_date: OffsetDateTime::now_utc() + Duration::hours(1),
+        id: session::Id::default(),
+    };
+    db.create_session(&record).await?;
+
+    // Load the session through the Rust contract
+    let session = db
+        .get_session(&record.id)
+        .await?
+        .expect("unexpired contract session should exist");
+
+    // Check the stored session fields
+    assert_eq!(session.data, record.data);
+    assert_eq!(
+        session.expiry_date.unix_timestamp(),
+        record.expiry_date.unix_timestamp()
+    );
+    assert_eq!(session.id, record.id);
 
     Ok(())
 }

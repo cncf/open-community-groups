@@ -1,9 +1,11 @@
+-- Tests listing a community's upcoming events.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +20,7 @@ select plan(5);
 \set event6ID '0d050000-0000-0000-0000-000000000007'
 \set event7ID '0d050000-0000-0000-0000-000000000008'
 \set eventCategoryID '0d050000-0000-0000-0000-000000000009'
+\set eventDeletedID '0d050000-0000-0000-0000-000000000014'
 \set group1ID '0d050000-0000-0000-0000-000000000010'
 \set group2ID '0d050000-0000-0000-0000-000000000011'
 \set groupCategoryID '0d050000-0000-0000-0000-000000000012'
@@ -57,7 +60,7 @@ select fx_event(:'event2ID', :'group1ID', :'eventCategoryID', jsonb_build_object
 ));
 select fx_event(:'event3ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
     'ends_at', now() + interval '3 months' + interval '2 hours',
-    'event_kind_id', 'hybrid',
+    'event_kind_id', 'virtual',
     'starts_at', now() + interval '3 months'
 ));
 select fx_event(:'event4ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
@@ -78,6 +81,49 @@ select fx_event(:'event7ID', :'group2ID', :'eventCategoryID', jsonb_build_object
     'starts_at', now() + interval '3 months'
 ));
 
+-- Future event tied with another event's start time
+select fx_event(:'event6ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 month' + interval '4 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 month'
+));
+
+-- Deleted future event excluded from upcoming events
+select fx_event(:'eventDeletedID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'ends_at', now() + interval '2 weeks' + interval '2 hours',
+    'event_kind_id', 'virtual',
+    'published', false,
+    'starts_at', now() + interval '2 weeks'
+));
+
+-- Nine distant future hybrid events exceeding the upcoming events limit
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    timezone
+)
+select
+    format('0d050000-0000-0000-0000-%s', lpad(n::text, 12, '0'))::uuid,
+    'Distant future event',
+    :'eventCategoryID',
+    'hybrid',
+    :'group1ID',
+    'Distant Future Event ' || n,
+    true,
+    'distant-future-event-' || n,
+    now() + interval '5 years' + n * interval '1 day',
+    'UTC'
+from generate_series(101, 109) n;
+
 -- Approved co-host credit that must not duplicate community upcoming events
 insert into event_cohost (
     approved_at,
@@ -97,9 +143,10 @@ insert into event_cohost (
 
 -- Should return published non-test future events
 select is(
-    get_community_upcoming_events(:'communityID'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
+    get_community_upcoming_events(:'communityID'::uuid, array['in-person', 'virtual'])::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event6ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
     ),
     'Should return published non-test future events'
@@ -129,35 +176,17 @@ select is(
     'Should show a co-hosted event once under its owner'
 );
 
--- Intentional mid-test seed: creates a tied future event after baseline assertions.
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    published,
-    starts_at,
-    ends_at,
-    canceled,
-    logo_url
-) values (
-    :'event6ID',
-    'Future Event 5',
-    'future-event-5',
-    'A future event with a tied start time',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    :'group1ID',
-    true,
-    now() + interval '1 month',
-    now() + interval '1 month' + interval '4 hours',
-    false,
-    'https://example.com/event-5-logo.png'
+-- Should return only the first eight upcoming events
+select is(
+    (
+        select jsonb_agg(event_item->>'event_id')
+        from jsonb_array_elements(get_community_upcoming_events(:'communityID'::uuid, array['hybrid'])::jsonb) event_item
+    ),
+    (
+        select jsonb_agg(format('0d050000-0000-0000-0000-%s', lpad(n::text, 12, '0')) order by n)
+        from generate_series(101, 108) n
+    ),
+    'Should return only the first eight upcoming events'
 );
 
 -- Should order tied future events by event ID

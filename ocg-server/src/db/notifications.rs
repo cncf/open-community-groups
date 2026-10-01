@@ -47,6 +47,8 @@ pub(crate) trait DBNotifications {
     ) -> Result<Vec<Uuid>>;
 
     /// Retrieves a notification attachment by its ID.
+    ///
+    /// Cached for up to two hours per process.
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment>;
 
     /// Marks a claimed notification with an unknown delivery outcome.

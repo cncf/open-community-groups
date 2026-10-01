@@ -1,3 +1,5 @@
+-- Tests computing the site home page statistics.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -68,6 +70,19 @@ select fx_event(:'event5ID', :'groupID', :'eventCategoryID', jsonb_build_object(
 ));
 select fx_event(:'event6ID', :'group4ID', :'eventCategory2ID', jsonb_build_object('published', true));
 
+-- Approved co-host credit that must not duplicate home event counts
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id
+) values (
+    current_timestamp,
+    'approved',
+    :'eventID',
+    :'group2ID'
+);
+
 -- Group Member
 insert into group_member (group_id, user_id, created_at)
 values
@@ -99,6 +114,7 @@ values
 -- - 4 groups: 2 active (group, group2), 1 deleted (group3), 1 in inactive community (group4)
 -- - 6 events: 1 published (event), 1 unpublished (event2), 1 canceled (event3),
 --   1 deleted (event4), 1 test event (event5), 1 in inactive community (event6)
+-- - 1 approved co-host credit for the published event (owner-only attribution)
 -- - 5 group members: 3 in active groups, 1 in deleted group, 1 in inactive
 --   community group (should be excluded)
 -- - 8 event attendees: 2 confirmed in published event, 1 non-confirmed in

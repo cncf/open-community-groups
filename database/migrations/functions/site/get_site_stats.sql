@@ -9,6 +9,10 @@
 --
 -- Time series data is returned as arrays of [timestamp, value] pairs, where
 -- timestamps are Unix milliseconds. Monthly data uses YYYY-MM labels.
+--
+-- Each domain is scanned once into monthly buckets split at the period start,
+-- so totals and series come from the same aggregation. Totals default to zero
+-- because summing an empty set returns null.
 create or replace function get_site_stats()
 returns json as $$
 with params as (
@@ -17,47 +21,17 @@ with params as (
 filtered_groups as (
     select
         g.created_at,
-        g.group_category_id,
-        g.group_id,
-        g.region_id,
-
-        timezone(
-            'UTC',
-            date_trunc('month', g.created_at at time zone 'UTC')
-        ) as created_month
+        g.group_id
     from "group" g
     join community c on c.community_id = g.community_id
     where c.active = true
         and g.active = true
         and g.deleted = false
 ),
-members as (
-    select
-        gm.created_at,
-        fg.group_category_id,
-        fg.group_id,
-        fg.region_id,
-
-        timezone(
-            'UTC',
-            date_trunc('month', gm.created_at at time zone 'UTC')
-        ) as created_month
-    from group_member gm
-    join filtered_groups fg on fg.group_id = gm.group_id
-),
 events as (
     select
-        e.event_category_id,
         e.event_id,
-        e.group_id,
-        e.starts_at,
-        fg.group_category_id,
-        fg.region_id,
-
-        timezone(
-            'UTC',
-            date_trunc('month', e.starts_at at time zone 'UTC')
-        ) as starts_month
+        e.starts_at
     from event e
     join filtered_groups fg on fg.group_id = e.group_id
     where e.canceled = false
@@ -65,65 +39,97 @@ events as (
         and e.published = true
         and e.test_event = false
 ),
-events_with_start as (
-    select *
-    from events
-    where starts_at is not null
-),
-attendees as (
+-- Aggregate each domain once into monthly buckets split at the period start
+group_buckets as (
     select
-        ea.created_at,
-        ea.event_id,
-        e.event_category_id,
-        e.group_category_id,
-        e.region_id,
-
+        timezone(
+            'UTC',
+            date_trunc('month', fg.created_at at time zone 'UTC')
+        ) as bucket_start,
+        fg.created_at >= p.period_start as in_period,
+        count(*) as count
+    from filtered_groups fg
+    cross join params p
+    group by 1, 2
+),
+member_buckets as (
+    select
+        timezone(
+            'UTC',
+            date_trunc('month', gm.created_at at time zone 'UTC')
+        ) as bucket_start,
+        gm.created_at >= p.period_start as in_period,
+        count(*) as count
+    from group_member gm
+    join filtered_groups fg on fg.group_id = gm.group_id
+    cross join params p
+    group by 1, 2
+),
+event_buckets as (
+    -- Undated events land in a null bucket that only counts in totals
+    select
+        timezone(
+            'UTC',
+            date_trunc('month', e.starts_at at time zone 'UTC')
+        ) as bucket_start,
+        e.starts_at >= p.period_start as in_period,
+        count(*) as count
+    from events e
+    cross join params p
+    group by 1, 2
+),
+attendee_buckets as (
+    select
         timezone(
             'UTC',
             date_trunc('month', ea.created_at at time zone 'UTC')
-        ) as created_month
+        ) as bucket_start,
+        ea.created_at >= p.period_start as in_period,
+        count(*) as count
     from event_attendee ea
     join events e on e.event_id = ea.event_id
+    cross join params p
     where ea.status = 'confirmed'
+    group by 1, 2
 ),
 domain_running_total_counts as (
     select
         'groups' as domain,
-        fg.created_month as bucket_start,
-        count(*)::int as count
-    from filtered_groups fg
-    join params p on fg.created_at >= p.period_start
-    group by fg.created_month
+        gb.bucket_start,
+        sum(gb.count)::int as count
+    from group_buckets gb
+    where gb.in_period
+    group by gb.bucket_start
 
     union all
 
     select
         'members' as domain,
-        m.created_month as bucket_start,
-        count(*)::int as count
-    from members m
-    join params p on m.created_at >= p.period_start
-    group by m.created_month
+        mb.bucket_start,
+        sum(mb.count)::int as count
+    from member_buckets mb
+    where mb.in_period
+    group by mb.bucket_start
 
     union all
 
     select
         'events' as domain,
-        ews.starts_month as bucket_start,
-        count(*)::int as count
-    from events_with_start ews
-    join params p on ews.starts_at >= p.period_start
-    group by ews.starts_month
+        eb.bucket_start,
+        sum(eb.count)::int as count
+    from event_buckets eb
+    where eb.in_period
+    group by eb.bucket_start
 
     union all
 
     select
         'attendees' as domain,
-        a.created_month as bucket_start,
-        count(*)::int as count
-    from attendees a
-    join params p on a.created_at >= p.period_start
-    group by a.created_month
+        ab.bucket_start,
+        sum(ab.count)::int as count
+    from attendee_buckets ab
+    where ab.in_period
+    group by ab.bucket_start
 ),
 domain_monthly_counts as (
     select
@@ -144,7 +150,7 @@ select json_strip_nulls(json_build_object(
             from domain_running_total_counts counts
             where domain = 'groups'
         )),
-        'total', (select count(*)::int from filtered_groups)
+        'total', (select coalesce(sum(count), 0)::int from group_buckets)
     ),
     'members', json_build_object(
         'per_month', stats_label_count_series((
@@ -157,7 +163,7 @@ select json_strip_nulls(json_build_object(
             from domain_running_total_counts counts
             where domain = 'members'
         )),
-        'total', (select count(*)::int from members)
+        'total', (select coalesce(sum(count), 0)::int from member_buckets)
     ),
     'events', json_build_object(
         'per_month', stats_label_count_series((
@@ -170,7 +176,7 @@ select json_strip_nulls(json_build_object(
             from domain_running_total_counts counts
             where domain = 'events'
         )),
-        'total', (select count(*)::int from events)
+        'total', (select coalesce(sum(count), 0)::int from event_buckets)
     ),
     'attendees', json_build_object(
         'per_month', stats_label_count_series((
@@ -183,7 +189,7 @@ select json_strip_nulls(json_build_object(
             from domain_running_total_counts counts
             where domain = 'attendees'
         )),
-        'total', (select count(*)::int from attendees)
+        'total', (select coalesce(sum(count), 0)::int from attendee_buckets)
     )
 ));
 $$ language sql;

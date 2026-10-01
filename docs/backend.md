@@ -448,23 +448,31 @@ aborted at the end of the grace period like any other stalled worker.
 
 ## Cached reads and transactions
 
-Rule: a `#[cached]` read caches data that is long-lived and that no
-transaction mutates before reading back. The cache is a performance tool for
-reference data, not a consistency mechanism.
+Rule: a `#[cached]` read caches data where staleness up to the TTL is
+acceptable. The cache is a performance tool, not a consistency mechanism, and
+the TTL is the only invalidation. Each cached trait method documents its TTL.
 
 The `#[cached]` reads sit on blanket `impl<T: PgExecutor>` blocks, so `PgDB`
 and `PgUnitOfWork` share the same cache entries and there is no transactional
 bypass. A cached read inside a transaction is served from the cache like any
 other call, and a miss populates the cache from the transaction's view.
 
-Consequences:
+Whether a cached read is safe inside a `DBExt::transaction` depends on what
+the transaction writes, not on the transaction itself:
 
-- Code that reads a cached value after writing it inside the same
-  transaction must not rely on seeing its own write.
-- A new `#[cached]` read is added only for data that transactions never
-  mutate before reading. If such a path is needed, read the row directly
-  with an uncached query rather than adding a bypass to the cached method.
-- Acceptable staleness is the cache TTL; invalidation is unchanged.
+- Safe: the transaction does not modify the cached data. Reference data
+  (kinds, roles, currencies, timezones, community name and ID lookups) is the
+  typical case, and reading it inside a transaction behaves like reading it
+  outside one.
+- Unsafe: the transaction modifies the cached data, or data a cached aggregate
+  is computed from. A hit hides the transaction's own writes, and a miss can
+  cache uncommitted values that outlive a rollback for the whole TTL. Read the
+  rows with an uncached query instead of adding a bypass to the cached method.
+
+Aggregates over mutable data (dashboard and site statistics) are the reads
+most likely to overlap with a transaction's writes, so they are not read from
+`services`, where transactions are opened. Their trait methods point here, and
+`layers::cached_aggregate_reads_stay_outside_services` enforces the rule.
 
 Cache entries are keyed by the data they describe and are global to the
 process. Every `PgDB` in a process shares them, which is the intended

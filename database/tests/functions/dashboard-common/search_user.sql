@@ -1,9 +1,11 @@
+-- Tests searching users by username, name prefix or email.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,7 +20,13 @@ select plan(12);
 \set user7ID '1c010000-0000-0000-0000-000000000007'
 \set user8ID '1c010000-0000-0000-0000-000000000008'
 \set user9ID '1c010000-0000-0000-0000-000000000009'
+\set userAccentedID '1c010000-0000-0000-0000-00000000000c'
+\set userGreekFinalSigmaID '1c010000-0000-0000-0000-00000000000d'
+\set userGreekSigmaID '1c010000-0000-0000-0000-00000000000e'
+\set userMixedCaseID '1c010000-0000-0000-0000-00000000000f'
 \set userPreRegisteredID '1c010000-0000-0000-0000-00000000000a'
+\set userTurkishDotlessID '1c010000-0000-0000-0000-000000000010'
+\set userTurkishDottedID '1c010000-0000-0000-0000-000000000011'
 \set userUnverifiedID '1c010000-0000-0000-0000-00000000000b'
 
 -- ============================================================================
@@ -70,7 +78,31 @@ select fx_user(:'user9ID', jsonb_build_object(
     'name', 'Back Slash',
     'username', 'back\slash'
 ));
+select fx_user(:'userAccentedID', jsonb_build_object(
+    'name', 'Ángela Ruiz',
+    'username', 'angela-search-user'
+));
+select fx_user(:'userGreekFinalSigmaID', jsonb_build_object(
+    'name', 'ΟΔΟΣ',
+    'username', 'odos-search-user'
+));
+select fx_user(:'userGreekSigmaID', jsonb_build_object(
+    'name', 'σοφία',
+    'username', 'sofia-search-user'
+));
+select fx_user(:'userMixedCaseID', jsonb_build_object(
+    'name', 'MiXeD Name',
+    'username', 'MixedCase-Search-User'
+));
 select fx_user(:'userPreRegisteredID', jsonb_build_object('registration_status', 'pre-registered'));
+select fx_user(:'userTurkishDotlessID', jsonb_build_object(
+    'name', 'ılgaz Işık',
+    'username', 'ilgaz-search-user'
+));
+select fx_user(:'userTurkishDottedID', jsonb_build_object(
+    'name', 'İpek Yılmaz',
+    'username', 'ipek-search-user'
+));
 select fx_user(:'userUnverifiedID', jsonb_build_object(
     'email_verified', false,
     'username', 'unverified'
@@ -79,6 +111,102 @@ select fx_user(:'userUnverifiedID', jsonb_build_object(
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should match accented prefixes case-insensitively
+select is(
+    (
+        select jsonb_agg(result->>'username' order by position)
+        from jsonb_array_elements(search_user('á')) with ordinality as results(result, position)
+    ),
+    '["angela-search-user"]'::jsonb,
+    'Should match accented prefixes case-insensitively'
+);
+
+-- Should match Greek final sigma like ILIKE
+select is(
+    (
+        select jsonb_object_agg(
+            query,
+            (
+                select coalesce(jsonb_agg(result->>'username' order by position), '[]'::jsonb)
+                from jsonb_array_elements(search_user(query)) with ordinality as results(result, position)
+            )
+        )
+        from unnest(array['σ', 'Σ', 'ς', 'οδοσ', 'οδος', 'ΟΔΟς', 'σοφ']) as query
+    ),
+    (
+        -- Compute the expected matches with ILIKE under the test collation
+        select jsonb_object_agg(
+            query,
+            (
+                select coalesce(jsonb_agg(matches.username order by matches.username), '[]'::jsonb)
+                from (
+                    select u.username
+                    from "user" u
+                    where u.email_verified = true
+                    and u.registration_status = 'registered'
+                    and (
+                        u.username ilike escape_ilike_pattern(query) || '%' escape '\'
+                        or u.name ilike escape_ilike_pattern(query) || '%' escape '\'
+                        or lower(u.email) = lower(query)
+                    )
+                    order by u.username
+                    limit 5
+                ) matches
+            )
+        )
+        from unnest(array['σ', 'Σ', 'ς', 'οδοσ', 'οδος', 'ΟΔΟς', 'σοφ']) as query
+    ),
+    'Should match Greek final sigma like ILIKE'
+);
+
+-- Should match Turkish dotted and dotless i like ILIKE
+select is(
+    (
+        select jsonb_object_agg(
+            query,
+            (
+                select coalesce(jsonb_agg(result->>'username' order by position), '[]'::jsonb)
+                from jsonb_array_elements(search_user(query)) with ordinality as results(result, position)
+            )
+        )
+        from unnest(array['İ', 'ı', 'I', 'i', 'ip', 'İp', 'ılg', 'Ilg']) as query
+    ),
+    (
+        -- Compute the expected matches with ILIKE under the test collation
+        select jsonb_object_agg(
+            query,
+            (
+                select coalesce(jsonb_agg(matches.username order by matches.username), '[]'::jsonb)
+                from (
+                    select u.username
+                    from "user" u
+                    where u.email_verified = true
+                    and u.registration_status = 'registered'
+                    and (
+                        u.username ilike escape_ilike_pattern(query) || '%' escape '\'
+                        or u.name ilike escape_ilike_pattern(query) || '%' escape '\'
+                        or lower(u.email) = lower(query)
+                    )
+                    order by u.username
+                    limit 5
+                ) matches
+            )
+        )
+        from unnest(array['İ', 'ı', 'I', 'i', 'ip', 'İp', 'ılg', 'Ilg']) as query
+    ),
+    'Should match Turkish dotted and dotless i like ILIKE'
+);
+
+-- Should match username and name prefixes case-insensitively
+select is(
+    jsonb_build_array(
+        search_user('mIXEDcASE-s')->0->>'username',
+        search_user('mixed n')->0->>'username'
+    ),
+    '["MixedCase-Search-User", "MixedCase-Search-User"]'::jsonb,
+    'Should match username and name prefixes case-insensitively'
+);
 
 -- Should find users by username prefix
 select is(

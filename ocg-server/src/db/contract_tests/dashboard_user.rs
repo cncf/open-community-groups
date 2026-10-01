@@ -189,7 +189,11 @@ async fn db_contracts_list_user_check_in_events_deserializes() -> Result<()> {
     assert_eq!(events.len(), 1);
     let event = &events[0];
     assert!(event.checked_in);
-    assert!(event.cohosts.is_empty());
+    assert!(
+        event.cohosts.is_empty(),
+        "event should have no cohosts, got {:?}",
+        event.cohosts
+    );
     assert_eq!(event.event_id, event_id());
     assert!(!event.in_progress);
     assert_eq!(event.kind, EventKind::Hybrid);
@@ -328,7 +332,11 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
     assert!(!pending_checkout.has_paid_purchase);
     assert!(!pending_checkout.manually_invited);
     assert!(pending_checkout.registration_questions.is_empty());
-    assert!(pending_checkout.roles.is_empty());
+    assert!(
+        pending_checkout.roles.is_empty(),
+        "pending checkout event should have no user roles, got {:?}",
+        pending_checkout.roles
+    );
     assert_eq!(pending_checkout.admission_offer_id, None);
     assert_eq!(pending_checkout.admission_offer_source, None);
     assert_eq!(pending_checkout.admission_offer_status, None);

@@ -217,3 +217,17 @@ pub(crate) struct UserPasswordInput {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub old_password: String,
 }
+
+/// User returned by dashboard user searches.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub(crate) struct UserSearchResult {
+    /// User identifier.
+    pub user_id: Uuid,
+    /// Unique username.
+    pub username: String,
+
+    /// Optional display name.
+    pub name: Option<String>,
+    /// Optional profile photo URL.
+    pub photo_url: Option<String>,
+}

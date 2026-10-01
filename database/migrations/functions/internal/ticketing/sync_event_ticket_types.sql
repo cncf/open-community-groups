@@ -75,13 +75,13 @@ begin
         raise exception 'ticket types with invitation requests cannot be removed; deactivate them instead' using errcode = 'OCG01';
     end if;
 
-    -- Prevent removing ticket types that are already linked to purchases
+    -- Prevent removing ticket types that are already linked to purchases;
+    -- the composite foreign key keeps a purchase's ticket type on its event
     if exists (
         select 1
-        from event_ticket_type ett
-        join event_purchase ep on ep.event_ticket_type_id = ett.event_ticket_type_id
-        where ett.event_id = p_event_id
-        and not (ett.event_ticket_type_id = any(v_ticket_type_ids))
+        from event_purchase ep
+        where ep.event_id = p_event_id
+        and not (ep.event_ticket_type_id = any(v_ticket_type_ids))
     ) then
         raise exception 'ticket types with purchases cannot be removed; deactivate them instead' using errcode = 'OCG01';
     end if;
@@ -106,6 +106,7 @@ begin
     for v_ticket_type in
         select jsonb_array_elements(coalesce(p_ticket_types, '[]'::jsonb))
     loop
+        -- Resolve the identifier of the ticket type being synchronized
         v_ticket_type_id := (v_ticket_type->>'event_ticket_type_id')::uuid;
 
         -- Reject seat totals that would undershoot allocated inventory,
@@ -130,6 +131,7 @@ begin
         )
         into v_allocated_seat_count;
 
+        -- Reject the seat total when it is below the allocated seats
         if coalesce((v_ticket_type->>'seats_total')::int, 0) < v_allocated_seat_count then
             raise exception
                 'ticket type seats_total (%) cannot be less than current allocated seats (%)',

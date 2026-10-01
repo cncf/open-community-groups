@@ -2,14 +2,15 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     db::PgExecutor,
-    types::{dashboard::community::groups::GroupInput, group::GroupParentOption},
+    types::{
+        dashboard::community::groups::GroupInput, group::GroupParentOption, user::UserSearchResult,
+    },
 };
 
 /// Common database operations for dashboards.
@@ -30,7 +31,7 @@ pub(crate) trait DBDashboardCommon {
     ) -> Result<Vec<GroupParentOption>>;
 
     /// Searches for users by query.
-    async fn search_user(&self, query: &str) -> Result<Vec<User>>;
+    async fn search_user(&self, query: &str) -> Result<Vec<UserSearchResult>>;
 
     /// Updates an existing group.
     async fn update_group(
@@ -84,7 +85,7 @@ where
 
     /// [`DBDashboardCommon::search_user`]
     #[instrument(skip(self), err)]
-    async fn search_user(&self, query: &str) -> Result<Vec<User>> {
+    async fn search_user(&self, query: &str) -> Result<Vec<UserSearchResult>> {
         self.fetch_json_one("select search_user($1::text)", &[&query]).await
     }
 
@@ -103,20 +104,4 @@ where
         )
         .await
     }
-}
-
-// Types.
-
-/// User search result.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub(crate) struct User {
-    /// User identifier.
-    pub user_id: Uuid,
-    /// Unique username.
-    pub username: String,
-
-    /// Optional display name.
-    pub name: Option<String>,
-    /// Optional profile photo URL.
-    pub photo_url: Option<String>,
 }

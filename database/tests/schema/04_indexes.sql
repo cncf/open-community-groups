@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(121);
+select plan(126);
 
 -- ============================================================================
 -- TESTS
@@ -226,7 +226,6 @@ select indexes_are('event_series', array[
 -- Test: event_attendee indexes should match expected
 select indexes_are('event_attendee', array[
     'event_attendee_pkey',
-    'event_attendee_event_id_idx',
     'event_attendee_user_id_idx',
     'event_attendee_event_id_created_at_idx',
     'event_attendee_event_id_status_created_at_idx',
@@ -301,9 +300,11 @@ select indexes_are('event_purchase', array[
     'event_purchase_pkey',
     'event_purchase_admission_offer_id_active_idx',
     'event_purchase_admission_offer_id_created_at_idx',
+    'event_purchase_event_discount_code_id_idx',
     'event_purchase_event_id_idx',
     'event_purchase_event_id_status_idx',
     'event_purchase_event_id_user_id_active_idx',
+    'event_purchase_event_ticket_type_id_idx',
     'event_purchase_provider_charge_id_idx',
     'event_purchase_provider_checkout_session_idx',
     'event_purchase_provider_invoice_id_idx',
@@ -316,6 +317,20 @@ select index_is_unique('event_purchase', 'event_purchase_provider_charge_id_idx'
 select index_is_unique('event_purchase', 'event_purchase_provider_checkout_session_idx');
 select index_is_unique('event_purchase', 'event_purchase_provider_invoice_id_idx');
 select index_is_unique('event_purchase', 'event_purchase_provider_payment_reference_idx');
+
+-- Test: event_purchase discount code index should be partial on linked purchases
+select is(
+    (select indexdef from pg_indexes where indexname = 'event_purchase_event_discount_code_id_idx'),
+    'CREATE INDEX event_purchase_event_discount_code_id_idx ON public.event_purchase USING btree (event_discount_code_id) WHERE (event_discount_code_id IS NOT NULL)',
+    'event_purchase discount code index should be partial on linked purchases'
+);
+
+-- Test: event_purchase ticket type index should cover ticket type references
+select is(
+    (select indexdef from pg_indexes where indexname = 'event_purchase_event_ticket_type_id_idx'),
+    'CREATE INDEX event_purchase_event_ticket_type_id_idx ON public.event_purchase USING btree (event_ticket_type_id)',
+    'event_purchase ticket type index should cover ticket type references'
+);
 
 -- Test: external_payments_config indexes should match expected
 select indexes_are('external_payments_config', array[
@@ -701,9 +716,12 @@ select indexes_are('user', array[
     'user_pkey',
     'user_email_lower_idx',
     'user_linuxfoundation_identity_idx',
+    'user_member_order_idx',
     'user_name_lower_idx',
+    'user_name_lower_pattern_idx',
     'user_tsdoc_idx',
-    'user_username_lower_idx'
+    'user_username_lower_idx',
+    'user_username_lower_pattern_idx'
 ]);
 
 -- Test: user badge indexes should match expected
@@ -725,6 +743,27 @@ select index_is_unique('user_badge', 'user_badge_status_list_index_key');
 select index_is_unique('user', 'user_email_lower_idx');
 select index_is_unique('user', 'user_linuxfoundation_identity_idx');
 select index_is_unique('user', 'user_username_lower_idx');
+
+-- Test: user member order index should match the group member listing order
+select is(
+    (select indexdef from pg_indexes where indexname = 'user_member_order_idx'),
+    'CREATE INDEX user_member_order_idx ON public."user" USING btree (((name IS NOT NULL)) DESC, lower(name), lower(username), user_id)',
+    'user member order index should match the group member listing order'
+);
+
+-- Test: user name pattern index should support lowercase prefix searches
+select is(
+    (select indexdef from pg_indexes where indexname = 'user_name_lower_pattern_idx'),
+    'CREATE INDEX user_name_lower_pattern_idx ON public."user" USING btree (lower(name) text_pattern_ops)',
+    'user name pattern index should support lowercase prefix searches'
+);
+
+-- Test: user username pattern index should support lowercase prefix searches
+select is(
+    (select indexdef from pg_indexes where indexname = 'user_username_lower_pattern_idx'),
+    'CREATE INDEX user_username_lower_pattern_idx ON public."user" USING btree (lower(username) text_pattern_ops)',
+    'user username pattern index should support lowercase prefix searches'
+);
 
 -- Test: user group notification mute indexes should match expected
 select indexes_are('user_group_notification_mute', array[

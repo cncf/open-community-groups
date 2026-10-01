@@ -190,6 +190,12 @@ const REQUESTER_ID: &str = "00000000-0000-0000-0000-00000000c0ee";
 const REVOKED_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0be";
 const SESSION_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c1";
 const SITE_ID: &str = "00000000-0000-0000-0000-00000000c0b1";
+/// Inactive community whose cached public statistics are verified.
+const STATS_CACHE_COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000f101";
+/// Active group counted by the stats cache community statistics.
+const STATS_CACHE_GROUP_ID: &str = "00000000-0000-0000-0000-00000000f103";
+/// User added to the stats cache group after its statistics are cached.
+const STATS_CACHE_JOINER_ID: &str = "00000000-0000-0000-0000-00000000f105";
 /// User fixture with a canceled organizer invitation.
 const STATUS_CANCELED_USER_ID: &str = "00000000-0000-0000-0000-00000000c10e";
 /// User fixture with a declined organizer invitation.
@@ -1017,6 +1023,21 @@ pub(super) fn session_proposal_id() -> Uuid {
 /// Returns the site identifier used by the contract fixture.
 pub(super) fn site_id() -> Uuid {
     parse_uuid(SITE_ID)
+}
+
+/// Returns the community used by the stats cache contract.
+pub(super) fn stats_cache_community_id() -> Uuid {
+    parse_uuid(STATS_CACHE_COMMUNITY_ID)
+}
+
+/// Returns the group used by the stats cache contract.
+pub(super) fn stats_cache_group_id() -> Uuid {
+    parse_uuid(STATS_CACHE_GROUP_ID)
+}
+
+/// Returns the user added by the stats cache contract.
+pub(super) fn stats_cache_joiner_id() -> Uuid {
+    parse_uuid(STATS_CACHE_JOINER_ID)
 }
 
 /// Returns the canceled-offer user used by the status contract.

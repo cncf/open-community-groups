@@ -17,7 +17,7 @@ use crate::types::{
     },
     payments::{GroupPaymentRecipient, PaymentProvider},
     site::{SiteSettings, Theme},
-    user::User,
+    user::{User, UserSearchResult},
 };
 
 /// Sample community summary used across tests.
@@ -354,5 +354,16 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> User {
 
         name: Some("Speaker".to_string()),
         ..Default::default()
+    }
+}
+
+/// Sample user entry returned by dashboard user searches.
+pub(crate) fn sample_user_search_result(user_id: Uuid) -> UserSearchResult {
+    UserSearchResult {
+        user_id,
+        username: "test-user".to_string(),
+
+        name: Some("Test User".to_string()),
+        photo_url: Some("https://example.test/avatar.png".to_string()),
     }
 }

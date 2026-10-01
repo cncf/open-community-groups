@@ -90,8 +90,7 @@ returns json as $$
             'has_ticket_purchases', exists (
                 select 1
                 from event_purchase ep
-                join event_ticket_type ett on ett.event_ticket_type_id = ep.event_ticket_type_id
-                where ett.event_id = e.event_id
+                where ep.event_id = e.event_id
             ),
             'photos_urls', e.photos_urls,
             'published_at', epoch_seconds(e.published_at),

@@ -247,7 +247,7 @@ mock! {
         async fn search_user(
             &self,
             query: &str,
-        ) -> Result<Vec<crate::db::dashboard::common::User>>;
+        ) -> Result<Vec<crate::types::user::UserSearchResult>>;
         async fn update_group(
             &self,
             actor_user_id: Uuid,

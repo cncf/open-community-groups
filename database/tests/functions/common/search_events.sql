@@ -1,3 +1,5 @@
+-- Tests searching events.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -20,6 +22,7 @@ select plan(26);
 \set event6ID '0c0e0000-0000-0000-0000-000000000009'
 \set event7ID '0c0e0000-0000-0000-0000-00000000000a'
 \set event8ID '0c0e0000-0000-0000-0000-00000000000b'
+\set event9ID '0c0e0000-0000-0000-0000-000000000018'
 \set eventCategory1ID '0c0e0000-0000-0000-0000-00000000000c'
 \set eventCategory2ID '0c0e0000-0000-0000-0000-00000000000d'
 \set eventCategory3ID '0c0e0000-0000-0000-0000-00000000000e'
@@ -182,6 +185,17 @@ select fx_event(:'event8ID', :'group4ID', :'eventCategory3ID', jsonb_build_objec
     'venue_address', '321 Main St',
     'venue_city', 'Denver',
     'venue_name', 'Tech Hall'
+));
+
+-- Deleted event filtered out from search results
+select fx_event(:'event9ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'deleted', true,
+    'ends_at', now() + interval '8 days' + interval '2 hours',
+    'published', false,
+    'starts_at', now() + interval '8 days',
+    'tags', array['deleted'],
+    'venue_city', 'San Francisco',
+    'venue_name', 'Deleted Hall'
 ));
 
 -- Approved co-host credit that must not duplicate owner-scoped search results

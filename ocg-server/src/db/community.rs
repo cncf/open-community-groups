@@ -3,6 +3,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::cached;
+use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -19,9 +20,13 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBCommunity {
     /// Resolves a community ID from the provided community name.
+    ///
+    /// Cached for up to one day per process.
     async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
 
     /// Resolves a community name from the provided community ID.
+    ///
+    /// Cached for up to one day per process.
     async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>>;
 
     /// Retrieves the most recently added groups in the community.
@@ -31,6 +36,10 @@ pub(crate) trait DBCommunity {
     ) -> Result<Vec<GroupSummary>>;
 
     /// Retrieves statistical data for the community page.
+    ///
+    /// Cached for up to one hour per process. Aggregates mutable data; see
+    /// "Cached reads and transactions" in `docs/backend.md` before calling it
+    /// from a transaction.
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<CommunityStats>;
 
     /// Retrieves upcoming events for the community.
@@ -112,11 +121,26 @@ where
     /// [`DB::get_community_site_stats`]
     #[instrument(skip(self), err)]
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<CommunityStats> {
-        self.fetch_json_one(
-            "select get_community_site_stats($1::uuid)",
-            &[&community_id],
-        )
-        .await
+        #[cached(
+            ttl = 3600,
+            key = "Uuid",
+            convert = r#"{ community_id }"#,
+            sync_writes = "by_key"
+        )]
+        async fn inner(db: PgClient<'_>, community_id: Uuid) -> Result<CommunityStats> {
+            let row = db
+                .query_one(
+                    "select get_community_site_stats($1::uuid)",
+                    &[&community_id],
+                )
+                .await?;
+            let stats = row.try_get::<_, Json<CommunityStats>>(0)?.0;
+
+            Ok(stats)
+        }
+
+        let db = self.client().await?;
+        inner(db, community_id).await
     }
 
     /// [`DB::get_community_upcoming_events`]

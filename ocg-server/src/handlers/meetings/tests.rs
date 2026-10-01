@@ -18,7 +18,7 @@ use super::*;
 fn test_compute_hmac() {
     // Test vector for HMAC-SHA256
     let result = compute_hmac("test message", "secret key");
-    assert!(!result.is_empty());
+    assert!(!result.is_empty(), "hmac should not be empty");
     assert_eq!(result.len(), 64); // SHA256 produces 32 bytes = 64 hex chars
 }
 

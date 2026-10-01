@@ -24,7 +24,7 @@ use crate::{
         BadgeSigningKeyConfig, BadgesConfig, HttpClientConfig, HttpServerConfig, MeetingsConfig,
         MeetingsZoomConfig, PaymentsConfig, PaymentsStripeConfig,
     },
-    db::{DynDB, dashboard::common::User as DashboardUser, mock::MockDB},
+    db::{DynDB, mock::MockDB},
     handlers::auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
     services::{
@@ -90,7 +90,7 @@ pub(crate) use crate::types::tests::{
     sample_community_summary, sample_event_cohost_group, sample_event_form, sample_event_full,
     sample_event_summary, sample_group_category, sample_group_payment_recipient,
     sample_group_region, sample_group_summary, sample_inbox_conversation,
-    sample_inbox_conversation_summary, sample_site_settings,
+    sample_inbox_conversation_summary, sample_site_settings, sample_user_search_result,
 };
 
 // Helpers.
@@ -155,7 +155,11 @@ pub(crate) fn assert_empty_hx_trigger_response(
 /// Assert an empty response with the expected status.
 pub(crate) fn assert_empty_response(parts: &Parts, bytes: &[u8], status: StatusCode) {
     assert_eq!(parts.status, status);
-    assert!(bytes.is_empty());
+    assert!(
+        bytes.is_empty(),
+        "response body should be empty, got {:?}",
+        String::from_utf8_lossy(bytes)
+    );
 }
 
 /// Assert an HTML response with the expected status.
@@ -165,13 +169,13 @@ pub(crate) fn assert_html_response(parts: &Parts, bytes: &[u8], status: StatusCo
         parts.headers.get(CONTENT_TYPE),
         Some(&HeaderValue::from_static("text/html; charset=utf-8")),
     );
-    assert!(!bytes.is_empty());
+    assert!(!bytes.is_empty(), "response body should not be empty");
 }
 
 /// Assert a non-empty response with the expected status.
 pub(crate) fn assert_non_empty_response(parts: &Parts, bytes: &[u8], status: StatusCode) {
     assert_eq!(parts.status, status);
-    assert!(!bytes.is_empty());
+    assert!(!bytes.is_empty(), "response body should not be empty");
 }
 
 /// Expect an authenticated session scoped to a community.
@@ -523,17 +527,6 @@ pub(crate) fn sample_community_update() -> CommunityUpdate {
         group_team_management_restricted: false,
         logo_url: "https://example.test/logo.png".to_string(),
         ..Default::default()
-    }
-}
-
-/// Sample dashboard user entry returned by search endpoints.
-pub(crate) fn sample_dashboard_user(user_id: Uuid) -> DashboardUser {
-    DashboardUser {
-        user_id,
-        username: "test-user".to_string(),
-
-        name: Some("Test User".to_string()),
-        photo_url: Some("https://example.test/avatar.png".to_string()),
     }
 }
 
