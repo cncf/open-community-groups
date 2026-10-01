@@ -227,9 +227,9 @@ lifecycle controls, see [Event Operations](event-operations.md).
 
 ## Contact Organizers
 
-Every event page has a `Contact organizers` button below its organizers. It opens a form to
-send a plain-text question to the group that owns the event; for co-hosted events the message
-always goes to the owning group.
+Event pages that list organizers have a `Contact` button next to the Organizers title. It opens a
+form to send a plain-text question to the group that owns the event; for co-hosted events the
+message always goes to the owning group.
 
 - Sign in first. Visitors who are not signed in see a sign-in prompt that returns to the event.
 - If you already have an open conversation with the group about the event, the form links to it

@@ -42,6 +42,8 @@ test.describe("group inbox workflow", () => {
       const modal = member1Page.getByRole("dialog", { name: "Contact organizers" });
       await expect(modal).toBeVisible();
       await expect(modal.getByLabel("Message")).toBeFocused();
+      await expect(modal.getByLabel("To", { exact: true })).toBeDisabled();
+      await expect(modal.getByLabel("To", { exact: true })).toHaveValue(TEST_GROUP_NAME);
 
       // Send the first message and check the organizer emails
       let snapshot = snapshotNotifications();
@@ -189,7 +191,7 @@ test.describe("group inbox workflow", () => {
 
     // Verify the team note replaces the form without linking to the inbox
     await expect(modal.locator("[data-contact-organizer-note]")).toContainText(
-      `You're on the ${TEST_GROUP_NAME} team.`,
+      `You're a team member of the ${TEST_GROUP_NAME} group.`,
     );
     await expect(modal.getByRole("link", { name: "Open group Inbox" })).toHaveCount(0);
     await expect(modal.locator("#contact-form")).toHaveCount(0);

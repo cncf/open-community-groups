@@ -22,7 +22,7 @@
     {# Sign-in prompt -#}
     <div class="space-y-3" data-contact-sign-in>
       <p class="text-base text-stone-600">
-        You need to sign in to contact the organizers of {{ context.group_name }}.
+        You need to sign in to contact the organizers of <span class="font-semibold text-stone-900">{{ context.group_name }}</span>.
       </p>
       <div class="flex justify-center mt-9">
         <a class="btn-primary-outline-anchor inline-flex items-center"
@@ -39,7 +39,7 @@
       <div class="space-y-3" data-contact-organizer-note>
         {% if viewer.can_manage_inbox -%}
           <p class="text-base text-stone-600">
-            You organize {{ context.group_name }}. Messages to this group appear in its Inbox in the group dashboard.
+            You organize <span class="font-semibold text-stone-900">{{ context.group_name }}</span>. Messages to this group appear in its Inbox in the group dashboard.
           </p>
           <div class="flex justify-center mt-9">
             <a class="btn-primary-outline-anchor inline-flex items-center"
@@ -47,7 +47,7 @@
           </div>
         {% else -%}
           <p class="text-base text-stone-600">
-            You're on the {{ context.group_name }} team. Organizers with Inbox access answer messages sent to this group.
+            You're a team member of the <span class="font-semibold text-stone-900">{{ context.group_name }}</span> group.
           </p>
         {% endif -%}
       </div>
@@ -56,7 +56,7 @@
       {# Open conversation note -#}
       <div class="space-y-3" data-contact-open-conversation>
         <p class="text-base text-stone-600">
-          You already have an open conversation with {{ context.group_name }} about this event. Continue it from your Inbox.
+          You already have an open conversation with <span class="font-semibold text-stone-900">{{ context.group_name }}</span> about this event. Continue it from your Inbox.
         </p>
         <div class="flex justify-center mt-9">
           <a class="btn-primary-outline-anchor inline-flex items-center"
@@ -67,7 +67,7 @@
     {% else if viewer.is_blocked -%}
       {# Blocked notice -#}
       <p class="text-base text-stone-600" data-contact-blocked>
-        You can no longer contact {{ context.group_name }}. Your messages were marked as spam by its organizers or by other groups of this community.
+        You can no longer contact <span class="font-semibold text-stone-900">{{ context.group_name }}</span>. Your messages were marked as spam by its organizers or by other groups of this community.
       </p>
       {# End blocked notice -#}
     {% else if !viewer.can_start_conversation -%}
@@ -87,6 +87,19 @@
             data-htmx-response
             data-error-message="Something went wrong sending your message. Please try again later.">
         <div class="space-y-4">
+          {# Recipient field (display only, not submitted) -#}
+          <div>
+            <label for="contact-recipient" class="form-label">To</label>
+            <div class="mt-2">
+              <input id="contact-recipient"
+                     type="text"
+                     value="{{ context.group_name }}"
+                     class="input-primary"
+                     disabled>
+            </div>
+          </div>
+          {# End recipient field -#}
+
           {# Message field (no maxlength: browsers count UTF-16 units, the server counts characters) -#}
           <div>
             <label for="contact-body" class="form-label">Message</label>
@@ -100,10 +113,7 @@
                         autofocus></textarea>
             </div>
             <p id="contact-body-help" class="form-legend">
-              Your message goes to the organizers of {{ context.group_name }} about {{ context.event_name }}.
-              Their replies arrive by email and in your dashboard Inbox. Plain text, up to
-              {{ crate::validation::MAX_LEN_INBOX_MESSAGE }} characters. You can start up to 3 conversations
-              and send up to 10 follow-ups per day.
+              Plain text, up to {{ crate::validation::MAX_LEN_INBOX_MESSAGE }} characters. Up to 3 new conversations and 10 follow-ups per day.
             </p>
           </div>
           {# End message field -#}

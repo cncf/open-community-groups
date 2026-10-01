@@ -48,7 +48,7 @@
             {% if let Some(close_url) = scope.close_url(conversation.inbox_conversation_id) -%}
               <button id="inbox-close-button"
                       type="button"
-                      class="btn-primary-outline btn-mini"
+                      class="btn-primary-outline"
                       data-confirm-action
                       data-confirm-message="Close this conversation? The user can reopen it by writing again."
                       data-confirm-text="Close conversation"
@@ -65,7 +65,7 @@
             {% if let Some(mark_spam_url) = scope.mark_spam_url(conversation.inbox_conversation_id) -%}
               <button id="inbox-mark-spam-button"
                       type="button"
-                      class="btn-primary-outline btn-mini"
+                      class="btn-primary-outline"
                       data-confirm-action
                       data-confirm-message="Mark this conversation as spam? The user will no longer be able to write to it or contact this group. Users reported by three groups of this community can no longer contact any of its groups."
                       data-confirm-text="Mark as spam"
@@ -82,7 +82,7 @@
             {% if let Some(unmark_spam_url) = scope.unmark_spam_url(conversation.inbox_conversation_id) -%}
               <button id="inbox-unmark-spam-button"
                       type="button"
-                      class="btn-primary-outline btn-mini"
+                      class="btn-primary-outline"
                       data-confirm-action
                       data-confirm-message="Unmark this conversation as spam? It returns to your inbox and the user can write to it again."
                       data-confirm-text="Not spam"
@@ -204,7 +204,13 @@
                     {% else -%}
                       ps-11
                     {% endif -%}">
-          <span class="break-words font-medium text-stone-700">{{ self::user_label(message.author.as_ref()) }}</span>
+          <span class="break-words font-medium text-stone-700">
+            {% if !scope.is_group() && !message.kind.is_from_group() -%}
+              You
+            {% else -%}
+              {{ self::user_label(message.author.as_ref()) }}
+            {% endif -%}
+          </span>
           {% if message.kind.is_from_group() -%}
             {{ badges::common_badge(content = "Organizer", extra_styles = Some("px-2.5 py-0.5")) -}}
           {% endif -%}

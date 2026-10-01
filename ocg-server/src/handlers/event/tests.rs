@@ -854,7 +854,7 @@ async fn test_contact_modal_renders_team_note_without_inbox_link_for_viewers() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("data-contact-organizer-note"));
     assert!(body.contains(
-        "You're on the Test Group team. Organizers with Inbox access answer messages sent to this group."
+        "You're a team member of the <span class=\"font-semibold text-stone-900\">Test Group</span> group."
     ));
     assert!(!body.contains("You organize Test Group."));
     assert!(!body.contains("/dashboard/group?tab=inbox"));

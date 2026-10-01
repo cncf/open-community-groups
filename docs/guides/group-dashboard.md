@@ -480,7 +480,8 @@ Public pages are cached, so co-hosting changes can take a few minutes to appear 
 
 ## Inbox: Questions from Users
 
-Signed-in users can contact the organizers from `Contact organizers` on any published event page.
+Signed-in users can contact the organizers from `Contact` in the Organizers section of published
+event pages.
 Each message starts a conversation with the group that owns the event; for co-hosted events the
 owning group receives it, never the co-hosts. Conversations appear in
 [Inbox](/dashboard/group?tab=inbox ':ignore'), newest activity first, and you can filter them by
