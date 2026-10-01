@@ -582,7 +582,9 @@ async fn test_contact_modal_renders_blocked_notice() {
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("data-contact-blocked"));
-    assert!(body.contains("You can no longer contact Test Group."));
+    assert!(body.contains(
+        "You can no longer contact <span class=\"font-semibold text-stone-900\">Test Group</span>."
+    ));
     assert!(!body.contains("id=\"contact-form\""));
 }
 
@@ -738,7 +740,11 @@ async fn test_contact_modal_renders_organizer_note() {
     // Check the organizer note replaces the form
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    assert!(body.contains("You organize Test Group."));
+    assert!(
+        body.contains(
+            "You organize <span class=\"font-semibold text-stone-900\">Test Group</span>."
+        )
+    );
     assert!(body.contains("href=\"/dashboard/group?tab=inbox\""));
     assert!(!body.contains("id=\"contact-form\""));
 }
@@ -776,7 +782,11 @@ async fn test_contact_modal_renders_organizer_note_for_community_inbox_managers(
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("data-contact-organizer-note"));
-    assert!(body.contains("You organize Test Group."));
+    assert!(
+        body.contains(
+            "You organize <span class=\"font-semibold text-stone-900\">Test Group</span>."
+        )
+    );
     assert!(body.contains("href=\"/dashboard/group?tab=inbox\""));
     assert!(!body.contains("id=\"contact-form\""));
 }
@@ -856,7 +866,7 @@ async fn test_contact_modal_renders_team_note_without_inbox_link_for_viewers() {
     assert!(body.contains(
         "You're a team member of the <span class=\"font-semibold text-stone-900\">Test Group</span> group."
     ));
-    assert!(!body.contains("You organize Test Group."));
+    assert!(!body.contains("You organize <span"));
     assert!(!body.contains("/dashboard/group?tab=inbox"));
     assert!(!body.contains("id=\"contact-form\""));
 }

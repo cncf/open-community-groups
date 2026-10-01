@@ -89,7 +89,7 @@
         <div class="space-y-4">
           {# Recipient field (display only, not submitted) -#}
           <div>
-            <label for="contact-recipient" class="form-label">To</label>
+            <label for="contact-recipient" class="form-label">Group</label>
             <div class="mt-2">
               <input id="contact-recipient"
                      type="text"
@@ -99,6 +99,19 @@
             </div>
           </div>
           {# End recipient field -#}
+
+          {# Event field (display only, not submitted) -#}
+          <div>
+            <label for="contact-event" class="form-label">Event</label>
+            <div class="mt-2">
+              <input id="contact-event"
+                     type="text"
+                     value="{{ context.event_name }}"
+                     class="input-primary"
+                     disabled>
+            </div>
+          </div>
+          {# End event field -#}
 
           {# Message field (no maxlength: browsers count UTF-16 units, the server counts characters) -#}
           <div>

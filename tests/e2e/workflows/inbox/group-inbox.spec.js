@@ -44,8 +44,8 @@ test.describe("group inbox workflow", () => {
       const modal = member1Page.getByRole("dialog", { name: "Contact organizers" });
       await expect(modal).toBeVisible();
       await expect(modal.getByLabel("Message")).toBeFocused();
-      await expect(modal.getByLabel("To", { exact: true })).toBeDisabled();
-      await expect(modal.getByLabel("To", { exact: true })).toHaveValue(TEST_GROUP_NAME);
+      await expect(modal.getByLabel("Group", { exact: true })).toBeDisabled();
+      await expect(modal.getByLabel("Group", { exact: true })).toHaveValue(TEST_GROUP_NAME);
 
       // Send the first message and check the organizer emails
       let snapshot = snapshotNotifications();
