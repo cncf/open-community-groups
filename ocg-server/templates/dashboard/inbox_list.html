@@ -2,6 +2,19 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 
+{# Event cell -#}
+{# Used by conversation rows, where the column position depends on the inbox scope. -#}
+{% macro event_cell(conversation) -%}
+  <td class="px-3 xl:px-5 py-4">
+    {% if let Some(event) = conversation.event -%}
+      <div class="line-clamp-2 break-words font-medium text-stone-900">{{ event.name }}</div>
+    {% else -%}
+      <span class="text-stone-400">-</span>
+    {% endif -%}
+  </td>
+{% endmacro event_cell -%}
+{# End event cell -#}
+
 {# Inbox conversations list -#}
 <section class="min-w-0" aria-label="Inbox" data-inbox-list>
   {% if let Some(warning) = warning -%}
@@ -59,20 +72,18 @@
         <col />
         <col class="w-[130px]" />
         <col class="hidden 2xl:table-column w-[190px]" />
-        <col class="w-[72px]" />
       </colgroup>
       {# End table columns -#}
       {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
-          <th scope="col" class="px-3 xl:px-5 py-1.5">
-            {% if scope.is_group() -%}
-              User
-            {% else -%}
-              Group
-            {% endif -%}
-          </th>
-          <th scope="col" class="px-3 xl:px-5 py-1.5">Event</th>
+          {% if scope.is_group() -%}
+            <th scope="col" class="px-3 xl:px-5 py-1.5">Event</th>
+            <th scope="col" class="px-3 xl:px-5 py-1.5">User</th>
+          {% else -%}
+            <th scope="col" class="px-3 xl:px-5 py-1.5">Group</th>
+            <th scope="col" class="px-3 xl:px-5 py-1.5">Event</th>
+          {% endif -%}
           <th scope="col" class="px-3 xl:px-5 py-1.5">Last message</th>
           <th scope="col" class="px-3 xl:px-5 py-1.5">
             {% call dashboard::table_filter_menu(id = "inbox-status-filter-options", label = "Status", is_active = !is_unfiltered()) -%}
@@ -93,9 +104,6 @@
             {% endcall -%}
           </th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">Last activity</th>
-          <th scope="col" class="px-3 xl:px-5 py-1.5">
-            <span class="sr-only">Actions</span>
-          </th>
         </tr>
       </thead>
       {# End table header -#}
@@ -103,10 +111,10 @@
         {% if conversations.is_empty() -%}
           {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
-            <td class="2xl:hidden px-8 py-16 text-center" colspan="5">
+            <td class="2xl:hidden px-8 py-16 text-center" colspan="4">
               {% include "dashboard/placeholders/inbox_table.html" -%}
             </td>
-            <td class="hidden 2xl:table-cell px-8 py-16 text-center" colspan="6">
+            <td class="hidden 2xl:table-cell px-8 py-16 text-center" colspan="5">
               {% include "dashboard/placeholders/inbox_table.html" -%}
             </td>
           </tr>
@@ -114,7 +122,18 @@
         {% else -%}
           {% for conversation in conversations -%}
             {# Conversation row -#}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <tr class="cursor-pointer odd:bg-white even:bg-stone-50/50 border-b border-stone-200 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:bg-stone-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400 motion-reduce:transition-none"
+                tabindex="0"
+                hx-get="{{ scope.conversation_url(conversation.inbox_conversation_id) }}"
+                hx-trigger="click, keydown[key=='Enter']"
+                hx-target="#dashboard-content"
+                hx-swap="innerHTML show:window:top"
+                hx-indicator="#dashboard-spinner"
+                title="View conversation with {{ counterpart_label(conversation) }}"
+                data-inbox-conversation-row>
+              {% if scope.is_group() -%}
+                {{ event_cell(conversation) -}}
+              {% endif -%}
               {# Counterpart -#}
               <th scope="row" class="px-3 xl:px-5 py-4 font-medium text-stone-900">
                 <div class="flex min-w-0 items-center gap-3">
@@ -133,7 +152,7 @@
                   <div class="min-w-0">
                     <div class="truncate
                                 {% if scope.is_group() && conversation.user.is_none() -%}
-                                  font-normal italic text-stone-500
+                                  font-normal text-stone-500
                                 {% else -%}
                                   font-medium text-stone-900
                                 {% endif -%}">{{ counterpart_label(conversation) }}</div>
@@ -144,20 +163,18 @@
                 </div>
               </th>
               {# End counterpart -#}
-              {# Event -#}
-              <td class="px-3 xl:px-5 py-4">
-                {% if let Some(event) = conversation.event -%}
-                  <div class="line-clamp-2 break-words font-medium text-stone-900">{{ event.name }}</div>
-                {% else -%}
-                  <span class="text-stone-400">-</span>
-                {% endif -%}
-              </td>
-              {# End event -#}
+              {% if !scope.is_group() -%}
+                {{ event_cell(conversation) -}}
+              {% endif -%}
               {# Last message -#}
               <td class="px-3 xl:px-5 py-4">
                 <p class="line-clamp-2 break-words text-xs text-stone-600">
                   {% if conversation.last_message_kind.is_from_group() -%}
                     <span class="font-medium text-stone-700">Organizers:</span>
+                  {% else if scope.is_group() -%}
+                    <span class="font-medium text-stone-700">User:</span>
+                  {% else -%}
+                    <span class="font-medium text-stone-700">You:</span>
                   {% endif -%}
                   <span>“{{ conversation.last_message_excerpt }}”</span>
                 </p>
@@ -180,22 +197,6 @@
                 </time>
               </td>
               {# End last activity -#}
-              {# Actions -#}
-              <td class="px-3 xl:px-5 py-4">
-                <div class="flex items-center justify-end">
-                  <a href="{{ scope.conversation_dashboard_url(conversation.inbox_conversation_id) }}"
-                     hx-get="{{ scope.conversation_url(conversation.inbox_conversation_id) }}"
-                     hx-target="#dashboard-content"
-                     hx-swap="innerHTML show:window:top"
-                     hx-indicator="#dashboard-spinner"
-                     class="btn-tertiary-anchor p-2 inline-flex items-center justify-center"
-                     title="View conversation"
-                     aria-label="View conversation with {{ counterpart_label(conversation) }}">
-                    <div class="svg-icon size-4 icon-eye" aria-hidden="true"></div>
-                  </a>
-                </div>
-              </td>
-              {# End actions -#}
             </tr>
             {# End conversation row -#}
           {% endfor -%}

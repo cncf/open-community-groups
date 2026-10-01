@@ -281,11 +281,8 @@ fn test_list_page_renders_rows_linking_to_threads() {
     let body = page.render().unwrap();
 
     assert!(body.contains(&format!("hx-get=\"/dashboard/user/inbox/{id}\"")));
-    assert!(body.contains(&format!(
-        "href=\"/dashboard/user?tab=inbox&#38;conversation_id={id}\""
-    )));
     assert!(body.contains("Test Group"));
-    assert!(body.contains("About Test Event"));
+    assert!(body.contains("Test Event"));
     assert!(body.contains("When do doors open?"));
     assert!(body.contains(">Open</span>"));
 }

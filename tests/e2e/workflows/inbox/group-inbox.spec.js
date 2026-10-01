@@ -71,10 +71,11 @@ test.describe("group inbox workflow", () => {
         .locator("#dashboard-menu")
         .getByRole("link", { name: /Inbox/ });
       await expect(inboxMenuItem).toContainText("1");
-      await organizerGroupPage
-        .locator("[data-inbox-list] tbody tr", { hasText: question })
-        .getByRole("link", { name: "View conversation with E2E Member One" })
-        .click();
+      const conversationRow = organizerGroupPage.locator("[data-inbox-conversation-row]", {
+        hasText: question,
+      });
+      await expect(conversationRow).toHaveAttribute("title", "View conversation with E2E Member One");
+      await conversationRow.click();
       const organizerThread = organizerGroupPage.locator("#inbox-conversation");
       await expect(organizerThread.getByRole("heading", { name: "E2E Member One" })).toBeVisible();
       await expect(organizerThread).toContainText(question);
@@ -164,6 +165,22 @@ test.describe("group inbox workflow", () => {
       deleteNotifications(notificationIds);
       deleteMemberConversations();
     }
+  });
+
+  test("organizer opens a conversation from the inbox with the keyboard", async ({ organizerGroupPage }) => {
+    // Focus the seeded conversation row in the group inbox
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=inbox");
+    const conversationRow = organizerGroupPage.locator("[data-inbox-conversation-row]", {
+      hasText: TEST_INBOX_CONVERSATION.reply,
+    });
+    await conversationRow.focus();
+    await expect(conversationRow).toBeFocused();
+
+    // Verify Enter opens the conversation thread
+    await organizerGroupPage.keyboard.press("Enter");
+    const organizerThread = organizerGroupPage.locator("#inbox-conversation");
+    await expect(organizerThread.getByRole("heading", { name: "E2E Member Two" })).toBeVisible();
+    await expect(organizerThread).toContainText(TEST_INBOX_CONVERSATION.question);
   });
 
   test("organizer contact modal links to the group inbox", async ({ organizerGroupPage }) => {
