@@ -4,6 +4,7 @@ import { deleteNotifications, expectNewNotifications, snapshotNotifications } fr
 import {
   TEST_COMMUNITY_IDS,
   TEST_COMMUNITY_NAME,
+  TEST_COMMUNITY_TITLE,
   TEST_EVENT_IDS,
   TEST_EVENT_NAME,
   TEST_EVENT_SLUG,
@@ -187,6 +188,57 @@ test.describe("group inbox workflow", () => {
     await expect(organizerThread).toContainText(TEST_INBOX_CONVERSATION.question);
   });
 
+  test("member reads a conversation with names and the group context", async ({ member2Page }) => {
+    // Load the seeded conversation from the user dashboard
+    await navigateToPath(
+      member2Page,
+      `/dashboard/user?tab=inbox&conversation_id=${TEST_INBOX_CONVERSATION.id}`,
+    );
+    const userThread = member2Page.locator("#inbox-conversation");
+
+    // Verify the header shows the group and community above the event name
+    await expect(userThread.getByRole("heading", { name: TEST_EVENT_NAME })).toBeVisible();
+    await expect(userThread.locator("header")).toContainText(`${TEST_GROUP_NAME} · ${TEST_COMMUNITY_TITLE}`);
+
+    // Verify messages show the member name and the organizer label instead of "You"
+    const messages = userThread.getByRole("list", { name: "Messages" });
+    await expect(messages).toContainText("E2E Member Two");
+    await expect(messages).toContainText("E2E Organizer One");
+    await expect(messages.getByText("Organizer", { exact: true })).toBeVisible();
+    await expect(messages.getByText("You", { exact: true })).toHaveCount(0);
+  });
+
+  test("organizer conversation header adapts actions and dates to the viewport", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the seeded conversation on a wide screen
+    await organizerGroupPage.setViewportSize({ width: 1600, height: 900 });
+    await navigateToPath(
+      organizerGroupPage,
+      `/dashboard/group?tab=inbox&conversation_id=${TEST_INBOX_CONVERSATION.id}`,
+    );
+    const header = organizerGroupPage.locator("#inbox-conversation header");
+    const closeButton = organizerGroupPage.getByRole("button", { name: "Close conversation" });
+    const dates = header.locator("time");
+
+    // Verify wide screens show the dates and keep the actions inside the header
+    await expect(dates.first()).toBeVisible();
+    await expect(dates.last()).toBeVisible();
+    await expectActionsInsideHeader(header, closeButton, true);
+
+    // Verify xl screens show the dates and move the actions below the header
+    await organizerGroupPage.setViewportSize({ width: 1358, height: 900 });
+    await expect(dates.first()).toBeVisible();
+    await expect(dates.last()).toBeVisible();
+    await expectActionsInsideHeader(header, closeButton, false);
+
+    // Verify lg screens hide the dates and keep the actions inside the header
+    await organizerGroupPage.setViewportSize({ width: 1100, height: 900 });
+    await expect(dates.first()).toBeHidden();
+    await expect(dates.last()).toBeHidden();
+    await expectActionsInsideHeader(header, closeButton, true);
+  });
+
   test("organizer contact modal links to the group inbox", async ({ organizerGroupPage }) => {
     // Open the contact modal of an event of the organized group
     await navigateToEvent(organizerGroupPage, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
@@ -357,6 +409,23 @@ const expectActionNotice = async (page, message) => {
   await expect(notice).toHaveText(message);
   await expect(notice).toBeFocused();
   await expect(page.locator(".swal2-popup")).toBeHidden();
+};
+
+/**
+ * Verifies whether a conversation action sits inside the header box.
+ * @param {import("@playwright/test").Locator} header - Conversation header
+ * @param {import("@playwright/test").Locator} action - Conversation action button
+ * @param {boolean} inside - Whether the action is expected inside the header
+ * @returns {Promise<void>}
+ */
+const expectActionsInsideHeader = async (header, action, inside) => {
+  await expect
+    .poll(async () => {
+      const headerBox = await header.boundingBox();
+      const actionBox = await action.boundingBox();
+      return actionBox.y + actionBox.height <= headerBox.y + headerBox.height;
+    })
+    .toBe(inside);
 };
 
 /** Returns the conversation the first member started with the primary group. */

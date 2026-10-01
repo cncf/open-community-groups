@@ -12,15 +12,17 @@
 
 {% block content -%}
   <p class="default mb-15" style="margin-bottom: 15px">
-    <strong>{{ group_name }}</strong> ({{ community_display_name }}) replied to your message
+    <strong>{{ group_name }}</strong> replied to your message
     {%- if let Some(event_name) = event_name %} about <strong>{{ event_name }}</strong>{% endif -%}
     :
   </p>
-  <p class="default mb-30 preline" style="margin-bottom: 30px">{{ body }}</p>
+  <blockquote class="quote" style="margin: 0 0 15px">
+    {{- body -}}
+  </blockquote>
 
-  <p class="default mb-30" style="margin-bottom: 30px">
-    Replies must be sent from the Inbox in your dashboard; replying to this email does not
-    reach the organizers.
+  <p class="default text-muted mb-30" style="margin-bottom: 30px">
+    To continue the conversation, use the Inbox in your dashboard. Messages sent to this email
+    address aren't delivered.
   </p>
 
   {{ email::button(link = link, text = "View conversation", color = theme.primary_color) }}

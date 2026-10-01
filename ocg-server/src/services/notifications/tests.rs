@@ -1880,9 +1880,8 @@ fn test_delivery_worker_prepare_content_inbox_message_received() {
     assert_eq!(subject, "[Inbox Group] New message from Uma User");
     assert!(body.contains("Is there parking &#60;nearby&#62;?"));
     assert!(body.contains("about <strong>Inbox Event</strong>"));
-    assert!(
-        body.contains("This message was sent to Inbox Group in the Inbox Community community.")
-    );
+    assert!(body.contains("select Inbox Group first if you manage"));
+    assert!(body.contains("Messages sent to this email"));
     assert!(body.contains(
         "https://example.test/dashboard/group?tab=inbox&#38;conversation_id=44444444-4444-4444-4444-444444444444"
     ));
@@ -1933,6 +1932,7 @@ fn test_delivery_worker_prepare_content_inbox_reply_received() {
     assert_eq!(subject, "[Inbox Group] New reply to your message");
     assert!(body.contains("Yes, there is a car park."));
     assert!(body.contains("about <strong>Inbox Event</strong>"));
+    assert!(body.contains("To continue the conversation, use the Inbox in your dashboard."));
     assert!(body.contains(
         "https://example.test/dashboard/user?tab=inbox&#38;conversation_id=44444444-4444-4444-4444-444444444444"
     ));

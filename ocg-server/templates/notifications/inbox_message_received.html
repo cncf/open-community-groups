@@ -16,12 +16,13 @@
     {%- if let Some(event_name) = event_name %} about <strong>{{ event_name }}</strong>{% endif -%}
     :
   </p>
-  <p class="default mb-30 preline" style="margin-bottom: 30px">{{ body }}</p>
+  <blockquote class="quote" style="margin: 0 0 15px">
+    {{- body -}}
+  </blockquote>
 
-  <p class="default mb-30" style="margin-bottom: 30px">
-    This message was sent to {{ group_name }} in the {{ community_display_name }} community.
-    If you manage several groups, select {{ group_name }} in the group dashboard to see it in its Inbox.
-    Replies must be sent from the dashboard; replying to this email does not reach {{ sender_name }}.
+  <p class="default text-muted mb-30" style="margin-bottom: 30px">
+    To answer, use the Inbox in the group dashboard (select {{ group_name }} first if you manage
+    several groups). Messages sent to this email address aren't delivered.
   </p>
 
   {{ email::button(link = link, text = "View conversation", color = theme.primary_color) }}
