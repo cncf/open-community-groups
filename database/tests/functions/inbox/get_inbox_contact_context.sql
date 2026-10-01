@@ -18,6 +18,7 @@ select plan(8);
 \set conversationLimitedSecondID '1b080000-0000-0000-0000-000000000004'
 \set conversationLimitedThirdID '1b080000-0000-0000-0000-000000000005'
 \set conversationOpenEarlierID '1b080000-0000-0000-0000-000000000006'
+\set conversationOtherEventID '1b080000-0000-0000-0000-000000000022'
 \set conversationReopenedID '1b080000-0000-0000-0000-000000000007'
 \set conversationSpamID '1b080000-0000-0000-0000-000000000017'
 \set eventCategoryID '1b080000-0000-0000-0000-000000000008'
@@ -25,6 +26,7 @@ select plan(8);
 \set groupCategoryID '1b080000-0000-0000-0000-000000000010'
 \set groupID '1b080000-0000-0000-0000-000000000011'
 \set limitedUserID '1b080000-0000-0000-0000-000000000012'
+\set otherEventID '1b080000-0000-0000-0000-000000000021'
 \set otherGroupID '1b080000-0000-0000-0000-000000000014'
 \set spamUserID '1b080000-0000-0000-0000-000000000018'
 \set teamMemberID '1b080000-0000-0000-0000-000000000013'
@@ -80,6 +82,9 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'slug', 'inbox-contact-event'
 ));
 
+-- Another published event of the group
+select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
+
 -- Unpublished event
 select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID');
 
@@ -105,13 +110,17 @@ insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inb
 insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, user_id)
 values (:'conversationAnsweredID', '2020-01-01 10:00:00+00', :'groupID', 'answered', '2020-01-10 12:00:00+00', :'userID');
 
--- Open conversation of the user opened before the reopened one was active again
-insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, user_id)
-values (:'conversationOpenEarlierID', '2020-01-02 10:00:00+00', :'groupID', 'open', '2020-01-10 10:00:00+00', :'userID');
+-- Open conversation of the user about the event opened before the reopened one was active again
+insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, event_id, user_id)
+values (:'conversationOpenEarlierID', '2020-01-02 10:00:00+00', :'groupID', 'open', '2020-01-10 10:00:00+00', :'eventID', :'userID');
 
--- Older conversation of the user reopened most recently
-insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, user_id)
-values (:'conversationReopenedID', '2020-01-01 09:00:00+00', :'groupID', 'open', '2020-01-10 11:00:00+00', :'userID');
+-- Open conversation of the user about another event with the latest activity
+insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, event_id, user_id)
+values (:'conversationOtherEventID', '2020-01-03 10:00:00+00', :'groupID', 'open', '2020-01-10 13:00:00+00', :'otherEventID', :'userID');
+
+-- Older conversation of the user about the event reopened most recently
+insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, event_id, user_id)
+values (:'conversationReopenedID', '2020-01-01 09:00:00+00', :'groupID', 'open', '2020-01-10 11:00:00+00', :'eventID', :'userID');
 
 -- Conversation of the spam user marked as spam by the group
 insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, user_id)
@@ -165,14 +174,14 @@ select is(
     'Should flag users blocked by spam reports'
 );
 
--- Should point to the most recently active open conversation
+-- Should point to the most recently active open conversation about the event
 select is(
     get_inbox_contact_context(:'communityID'::uuid, :'eventID'::uuid, :'userID'::uuid)::jsonb->'viewer',
     format(
         '{"can_manage_inbox": false, "can_start_conversation": true, "is_blocked": false, "is_group_team_member": false, "open_inbox_conversation_id": "%s"}',
         :'conversationReopenedID'
     )::jsonb,
-    'Should point to the most recently active open conversation'
+    'Should point to the most recently active open conversation about the event'
 );
 
 -- Should report users who reached the daily limit of new conversations

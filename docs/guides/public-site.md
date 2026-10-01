@@ -232,8 +232,9 @@ send a plain-text question to the group that owns the event; for co-hosted event
 always goes to the owning group.
 
 - Sign in first. Visitors who are not signed in see a sign-in prompt that returns to the event.
-- If you already have an open conversation with the group, the form links to it instead, so you
-  can continue it from your dashboard.
+- If you already have an open conversation with the group about the event, the form links to it
+  instead, so you can continue it from your dashboard. Questions about another event of the group
+  start a separate conversation.
 - Group organizers see a note pointing to their group Inbox instead of the form.
 - If the group marked one of your conversations as spam, or three groups of the community did,
   the form is replaced by a notice that you can no longer contact the group.

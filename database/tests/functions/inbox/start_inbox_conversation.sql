@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -21,6 +21,7 @@ select plan(12);
 \set groupID '1b090000-0000-0000-0000-000000000008'
 \set limitedUserID '1b090000-0000-0000-0000-000000000009'
 \set nearLimitUserID '1b090000-0000-0000-0000-000000000010'
+\set otherEventID '1b090000-0000-0000-0000-000000000017'
 \set otherGroupID '1b090000-0000-0000-0000-000000000012'
 \set spamConversationID '1b090000-0000-0000-0000-000000000015'
 \set spamUserID '1b090000-0000-0000-0000-000000000016'
@@ -35,7 +36,7 @@ select plan(12);
 -- Community
 select fx_community(:'communityID');
 
--- User with an open conversation with the group
+-- User with an open conversation about the event
 select fx_user(:'conflictUserID');
 
 -- User who reached the daily limit of new conversations
@@ -71,6 +72,9 @@ select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 -- Published event co-hosted by another group
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
+-- Another published event of the group
+select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
+
 -- Unpublished event
 select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID');
 
@@ -82,9 +86,9 @@ values (:'eventID', :'cohostGroupID', 'approved', current_timestamp);
 insert into group_team (accepted, group_id, role, user_id)
 values (true, :'groupID', 'events-manager', :'teamMemberID');
 
--- Open conversation of the conflict user with the group
-insert into inbox_conversation (inbox_conversation_id, group_id, user_id)
-values (:'conflictConversationID', :'groupID', :'conflictUserID');
+-- Open conversation of the conflict user about the event
+insert into inbox_conversation (inbox_conversation_id, group_id, event_id, user_id)
+values (:'conflictConversationID', :'groupID', :'eventID', :'conflictUserID');
 
 -- Conversations started today by the limited user
 insert into inbox_conversation (created_at, group_id, inbox_conversation_status_id, user_id) values
@@ -105,11 +109,11 @@ values (:'spamConversationID', current_timestamp - interval '2 days', :'groupID'
 -- TESTS
 -- ============================================================================
 
--- Should point users with an open conversation to it without writing rows
+-- Should point users with an open conversation about the event to it without writing rows
 select is(
     start_inbox_conversation(:'conflictUserID'::uuid, :'communityID'::uuid, :'eventID'::uuid, 'Hello again')::jsonb,
     '{"conflict": "open-conversation"}'::jsonb,
-    'Should point users with an open conversation to it'
+    'Should point users with an open conversation about the event to it'
 );
 select is(
     (
@@ -157,6 +161,23 @@ select throws_ok(
     'OCG01',
     'daily limit of new conversations reached',
     'Should reject users who reached the daily limit of new conversations'
+);
+
+-- Should start a conversation about another event of a group with an open conversation
+select ok(
+    start_inbox_conversation(:'conflictUserID'::uuid, :'communityID'::uuid, :'otherEventID'::uuid, 'Hello')::jsonb ? 'inbox_conversation_id',
+    'Should start a conversation about another event of a group with an open conversation'
+);
+select results_eq(
+    format(
+        $$select event_id, inbox_conversation_status_id
+        from inbox_conversation
+        where user_id = %L::uuid
+        order by event_id$$,
+        :'conflictUserID'
+    ),
+    format($$values (%L::uuid, 'open'), (%L::uuid, 'open')$$, :'eventID', :'otherEventID'),
+    'Should keep one open conversation per event of the group'
 );
 
 -- Should start the last conversation allowed by the daily limit

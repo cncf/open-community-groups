@@ -35,7 +35,8 @@ returns json as $$
                 'open_inbox_conversation_id', (
                     select ic.inbox_conversation_id
                     from inbox_conversation ic
-                    where ic.group_id = g.group_id
+                    where ic.event_id = e.event_id
+                    and ic.group_id = g.group_id
                     and ic.user_id = p_user_id
                     and ic.inbox_conversation_status_id = 'open'
                     order by ic.last_message_at desc, ic.inbox_conversation_id desc

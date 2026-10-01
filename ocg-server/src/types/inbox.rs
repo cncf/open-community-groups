@@ -122,7 +122,7 @@ pub(crate) struct InboxContactViewer {
     /// Whether the viewer is an accepted member of the group team.
     pub is_group_team_member: bool,
 
-    /// The viewer's most recently active open conversation with the group.
+    /// The viewer's most recently active open conversation about the event.
     pub open_inbox_conversation_id: Option<Uuid>,
 }
 

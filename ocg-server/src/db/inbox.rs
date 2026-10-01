@@ -317,7 +317,7 @@ pub(crate) struct PostedInboxMessage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum StartInboxConversationConflict {
-    /// The user already has an open conversation with the group.
+    /// The user already has an open conversation with the group about the event.
     OpenConversation,
 }
 

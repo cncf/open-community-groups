@@ -28,9 +28,9 @@ mod contract_tests;
 #[cfg(test)]
 mod tests;
 
-/// Rejection returned when the user already has an open conversation with the group.
+/// Rejection returned when the user already has an open conversation about the event.
 const OPEN_CONVERSATION_REJECTION: &str =
-    "you already have an open conversation with this group; continue it from your Inbox";
+    "you already have an open conversation about this event; continue it from your Inbox";
 
 /// Inbox write workflows used by handlers.
 #[async_trait]

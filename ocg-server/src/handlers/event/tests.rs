@@ -1898,7 +1898,7 @@ async fn test_send_contact_message_returns_rejected_message() {
     inbox_manager.expect_start_conversation().times(1).returning(|_| {
         Box::pin(async {
             Err(InboxError::Rejected(
-                "you already have an open conversation with this group".to_string(),
+                "you already have an open conversation about this event".to_string(),
             ))
         })
     });
@@ -1918,7 +1918,7 @@ async fn test_send_contact_message_returns_rejected_message() {
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "you already have an open conversation with this group"
+        "you already have an open conversation about this event"
     );
 }
 

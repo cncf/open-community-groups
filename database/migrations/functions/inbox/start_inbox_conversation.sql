@@ -1,7 +1,7 @@
 -- Starts an inbox conversation between a user and the group that owns an
 -- event. Returns the posted identifiers, or an open-conversation conflict when
--- the user already has an open conversation with that group. Users blocked by
--- spam reports are rejected.
+-- the user already has an open conversation with that group about the event.
+-- Users blocked by spam reports are rejected.
 create or replace function start_inbox_conversation(
     p_actor_user_id uuid,
     p_community_id uuid,
@@ -45,11 +45,12 @@ begin
         raise exception 'group team members cannot contact their own group' using errcode = 'OCG01';
     end if;
 
-    -- Point the user to the open conversation they already have with the group
+    -- Point the user to the open conversation they already have about the event
     if exists (
         select 1
         from inbox_conversation ic
-        where ic.group_id = v_group_id
+        where ic.event_id = v_event_id
+        and ic.group_id = v_group_id
         and ic.user_id = p_actor_user_id
         and ic.inbox_conversation_status_id = 'open'
     ) then
