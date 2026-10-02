@@ -198,7 +198,8 @@ The categories are grouped into sections, and each section only appears when it 
 `Save` only changes the categories shown on the page. A choice you made in a section that is no
 longer shown, for example after leaving a team, is kept and applies again if you rejoin.
 
-The `Always sent` list on the page covers:
+Select `things that need your attention are always sent` in the page description to open the
+`Always sent` list, which covers:
 
 - Account: email verification and team invitations.
 - Registrations: confirmations, group welcome emails, tickets, invitations, waitlist changes and
@@ -225,7 +226,7 @@ registered for, waitlisted on, or speak at. There is no limit on how many groups
 
 `Mute` and `Unmute` save immediately and don't change unsaved category choices. Unmuting a group
 doesn't turn back on categories you turned off. A muted group that is no longer available, for
-example because it was deactivated, stays listed as `No longer available` so you can still unmute
+example because it was deactivated, stays listed as `Not available` so you can still unmute
 it.
 
 ?> Preferences apply when an email is queued. Emails already queued are still delivered, and

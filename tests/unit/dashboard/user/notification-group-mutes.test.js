@@ -125,6 +125,37 @@ describe("notification group mutes", () => {
     }
   });
 
+  it("renders options with framed group logos and the community above the name", async () => {
+    const fetchMock = mockFetch({
+      impl: () =>
+        new Response(
+          JSON.stringify([{ ...GROUPS[0], logo_url: "https://example.com/logo.png" }, GROUPS[1]]),
+          {
+            status: 200,
+          },
+        ),
+    });
+
+    try {
+      // Render the component and load the options.
+      const element = await mountGroupMutes();
+      await loadOptions(element);
+      const [withLogo, withoutLogo] = element.querySelectorAll('[role="option"]');
+
+      // The logo uses a decorative image, or the broken-image placeholder when missing.
+      expect(withLogo.querySelector("img")?.getAttribute("src")).to.equal("https://example.com/logo.png");
+      expect(withLogo.querySelector("img")?.getAttribute("alt")).to.equal("");
+      expect(withoutLogo.querySelector("img")).to.equal(null);
+      expect(withoutLogo.querySelector(".icon-broken-image")).to.not.equal(null);
+
+      // The community label precedes the group name.
+      const labels = [...withLogo.querySelectorAll(".truncate")].map((label) => label.textContent.trim());
+      expect(labels).to.deep.equal(["Cloud Native Community", "Kubernetes Group"]);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
   it("filters options by group or community name", async () => {
     const fetchMock = mockFetch({ impl: () => optionsResponse() });
 
@@ -154,7 +185,8 @@ describe("notification group mutes", () => {
 
   it("selects with the keyboard, sends PUT, refreshes the list, and invalidates options", async () => {
     const fetchMock = mockFetch({
-      impl: (_url, init = {}) => (init.method === "PUT" ? new Response(null, { status: 204 }) : optionsResponse()),
+      impl: (_url, init = {}) =>
+        init.method === "PUT" ? new Response(null, { status: 204 }) : optionsResponse(),
     });
 
     try {
@@ -244,7 +276,8 @@ describe("notification group mutes", () => {
 
   it("returns focus to the search after the mute success alert closes", async () => {
     const fetchMock = mockFetch({
-      impl: (_url, init = {}) => (init.method === "PUT" ? new Response(null, { status: 204 }) : optionsResponse()),
+      impl: (_url, init = {}) =>
+        init.method === "PUT" ? new Response(null, { status: 204 }) : optionsResponse(),
     });
     const alert = emulateSwalFocusReturn();
 
@@ -394,7 +427,9 @@ describe("notification group mutes", () => {
       search.focus();
       await element.updateComplete;
       expect(search.placeholder).to.equal("Loading groups...");
-      expect(element.querySelector('[role="status"]').textContent.trim()).to.equal("Loading groups to mute...");
+      expect(element.querySelector('[role="status"]').textContent.trim()).to.equal(
+        "Loading groups to mute...",
+      );
       expect(element.textContent).to.include("Loading groups...");
 
       // Resolve with no options and inspect the empty state.

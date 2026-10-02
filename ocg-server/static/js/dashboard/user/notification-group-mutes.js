@@ -5,7 +5,6 @@ import { ComboboxController } from "/static/js/common/combobox.js";
 import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import "/static/js/common/media/logo-image.js";
 import { isSuccessfulXHR } from "/static/js/common/utils.js";
 
 const GROUP_MUTES_READY_KEY = "notificationGroupMutesReady";
@@ -353,15 +352,14 @@ export class NotificationGroupMutes extends LitWrapper {
           @click=${() => this._muteGroup(group)}
           @mouseover=${() => this._combobox.setActiveIndex(index)}
         >
-          <logo-image
-            image-url=${group.logo_url || nothing}
-            placeholder=${getGroupPlaceholder(group)}
-            size="size-9"
-            font-size="text-xs"
-          ></logo-image>
+          ${renderGroupLogo(group)}
           <span class="min-w-0">
-            <span class="block truncate font-medium">${group.name}</span>
-            <span class="block truncate text-xs text-stone-500">${group.community_display_name}</span>
+            <span
+              class="block truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400"
+            >
+              ${group.community_display_name}
+            </span>
+            <span class="mt-0.5 block truncate text-sm/5 font-semibold text-stone-900">${group.name}</span>
           </span>
         </button>
       </li>
@@ -481,24 +479,6 @@ export const initializeMutedGroupsSwapFocusRecovery = () => {
 };
 
 /**
- * Builds a short logo placeholder for a group option.
- * @param {Object} group Group option.
- * @returns {string} Initials placeholder.
- */
-const getGroupPlaceholder = (group) => {
-  const words = String(group?.name || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  const initials = words
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase();
-  return initials || "-";
-};
-
-/**
  * Restores focus after HTMX replaces the muted groups inner content.
  * @param {Event} event HTMX after-swap event.
  * @returns {void}
@@ -542,6 +522,33 @@ const handleUnmuteBeforeOnLoad = (event) => {
 
   getElementById(document, MUTED_GROUPS_TITLE_ID)?.focus();
 };
+
+/**
+ * Renders a group logo with the framed style used on group pages. Groups
+ * without a logo show the same placeholder used for images that fail to load.
+ * @param {Object} group Group option.
+ * @returns {import("lit").TemplateResult}
+ */
+const renderGroupLogo = (group) => html`
+  <span
+    class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[5px] border-white outline outline-1 outline-stone-300 ${
+      group.logo_url ? "bg-white" : "bg-stone-50"
+    }"
+  >
+    ${
+      group.logo_url
+        ? html`<img
+            src=${group.logo_url}
+            alt=""
+            class="h-full w-full object-contain"
+            width="36"
+            height="36"
+            loading="lazy"
+          />`
+        : html`<span class="svg-icon size-5 icon-broken-image bg-stone-400" aria-hidden="true"></span>`
+    }
+  </span>
+`;
 
 customElements.define("notification-group-mutes", NotificationGroupMutes);
 initializeMutedGroupsSwapFocusRecovery();

@@ -206,7 +206,7 @@ async fn test_muted_groups_renders_inner_content_only() {
         "hx-delete=\"/dashboard/user/notifications/muted-groups/{available_group_id}\""
     )));
     assert!(body.contains("aria-label=\"Unmute Retired Group\""));
-    assert_eq!(body.matches("No longer available").count(), 1);
+    assert_eq!(body.matches("Not available").count(), 1);
 }
 
 #[tokio::test]

@@ -2,11 +2,8 @@
 
 use askama::Template;
 
-use crate::{
-    templates::helpers::user_initials,
-    types::dashboard::user::notifications::{
-        MutedGroup, NotificationCategory, NotificationPreferences,
-    },
+use crate::types::dashboard::user::notifications::{
+    MutedGroup, NotificationCategory, NotificationPreferences,
 };
 
 // Pages templates.

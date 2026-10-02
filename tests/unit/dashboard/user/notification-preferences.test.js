@@ -1,11 +1,14 @@
 import { expect } from "@open-wc/testing";
 
+import { resetRestoredModalState } from "/static/js/common/modals/modal-lifecycle.js";
 import { initializeNotificationPreferences } from "/static/js/dashboard/user/notification-preferences.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 describe("dashboard user notification preferences", () => {
   afterEach(() => {
+    // Close open modals so scroll locks do not leak into other tests
+    resetRestoredModalState(document);
     resetDom();
   });
 
@@ -94,4 +97,118 @@ describe("dashboard user notification preferences", () => {
     expect(form.querySelector("#preference-group-announcements")?.value).to.equal("true");
     expect(document.body.firstElementChild?.value).to.equal("outside");
   });
+
+  it("opens the always-sent modal from its description trigger and closes it from the header", () => {
+    // Render the always-sent modal fixture
+    const { modal, opener } = renderAlwaysSentModalFixture();
+    initializeNotificationPreferences();
+
+    // Open the modal from the description trigger
+    opener.click();
+
+    // The modal is visible, announced, and focused on its first control
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(modal.getAttribute("aria-hidden")).to.equal("false");
+    expect(document.activeElement?.id).to.equal("close-always-sent-modal");
+
+    // Close the modal from the header close control
+    document.getElementById("close-always-sent-modal")?.click();
+
+    // The modal hides and focus returns to the trigger
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
+    expect(document.activeElement).to.equal(opener);
+  });
+
+  it("closes the always-sent modal from the overlay and footer controls", () => {
+    // Render the always-sent modal fixture
+    const { modal, opener } = renderAlwaysSentModalFixture();
+    initializeNotificationPreferences();
+
+    // Open and close the modal from the overlay
+    opener.click();
+    document.getElementById("overlay-always-sent-modal")?.click();
+    expect(modal.classList.contains("hidden")).to.equal(true);
+
+    // Open and close the modal from the footer button
+    opener.click();
+    document.getElementById("footer-close-always-sent-modal")?.click();
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(document.body.dataset.modalOpenCount).to.equal("0");
+  });
+
+  it("closes the always-sent modal with Escape and traps Tab inside it", () => {
+    // Render the always-sent modal fixture and open it
+    const { modal, opener } = renderAlwaysSentModalFixture();
+    initializeNotificationPreferences();
+    opener.click();
+
+    // Press Tab on the last control
+    document.getElementById("footer-close-always-sent-modal")?.focus();
+    const tab = pressKey("Tab");
+
+    // Focus wraps to the first control
+    expect(tab.defaultPrevented).to.equal(true);
+    expect(document.activeElement?.id).to.equal("close-always-sent-modal");
+
+    // Press Escape
+    const escape = pressKey("Escape");
+
+    // The modal closes and focus returns to the trigger
+    expect(escape.defaultPrevented).to.equal(true);
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(document.activeElement).to.equal(opener);
+  });
+
+  it("ignores Escape while the always-sent modal is closed", () => {
+    // Render the always-sent modal fixture without opening it
+    const { modal } = renderAlwaysSentModalFixture();
+    initializeNotificationPreferences();
+
+    // Press Escape
+    const escape = pressKey("Escape");
+
+    // The closed modal is unchanged and the key is left to other handlers
+    expect(escape.defaultPrevented).to.equal(false);
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
 });
+
+// Helpers.
+
+/**
+ * Dispatches a keydown event from the focused element.
+ * @param {string} key Keyboard key.
+ * @returns {KeyboardEvent} Dispatched event.
+ */
+const pressKey = (key) => {
+  const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key });
+  (document.activeElement || document).dispatchEvent(event);
+  return event;
+};
+
+/**
+ * Renders the always-sent modal and its description trigger.
+ * @returns {{modal: HTMLElement, opener: HTMLElement}} Fixture elements.
+ */
+const renderAlwaysSentModalFixture = () => {
+  document.body.innerHTML = `
+    <p>
+      Emails about
+      <button id="always-sent-opener" type="button" data-always-sent-modal-open>
+        things that need your attention are always sent
+      </button>.
+    </p>
+    <div id="always-sent-modal" class="hidden" role="dialog" aria-modal="true" aria-hidden="true">
+      <div id="overlay-always-sent-modal" class="modal-overlay" data-always-sent-modal-close></div>
+      <button id="close-always-sent-modal" type="button" data-always-sent-modal-close>Close modal</button>
+      <ul><li>Account</li></ul>
+      <button id="footer-close-always-sent-modal" type="button" data-always-sent-modal-close>Close</button>
+    </div>
+  `;
+
+  return {
+    modal: document.getElementById("always-sent-modal"),
+    opener: document.getElementById("always-sent-opener"),
+  };
+};

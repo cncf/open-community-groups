@@ -18,8 +18,19 @@ test.describe("user dashboard notifications view", () => {
       hidden: ["Group organizing", "Community organizing"],
       visible: ["Events and groups"],
     });
-    await expect(member1Page.getByRole("heading", { name: "Always sent" })).toBeVisible();
     await expect(member1Page.getByRole("heading", { name: "Muted groups" })).toBeVisible();
+
+    // Verify the always-sent details open from the page description and close with Escape.
+    const alwaysSentTrigger = member1Page.getByRole("button", {
+      name: "things that need your attention are always sent",
+    });
+    const alwaysSentModal = member1Page.getByRole("dialog", { name: "Always sent" });
+    await alwaysSentTrigger.click();
+    await expect(alwaysSentModal).toBeVisible();
+    await expect(alwaysSentModal).toContainText("Organizer actions:");
+    await member1Page.keyboard.press("Escape");
+    await expect(alwaysSentModal).toBeHidden();
+    await expect(alwaysSentTrigger).toBeFocused();
 
     // Verify an accepted group admin sees the group organizing categories.
     await navigateToPath(organizerGroupPage, NOTIFICATIONS_PATH);

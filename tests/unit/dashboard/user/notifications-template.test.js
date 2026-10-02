@@ -39,14 +39,43 @@ describe("dashboard user notifications template", () => {
 
   it("keeps muted group unmute rows on the partial contract", async () => {
     // Load the muted groups partial before checking row action contracts.
-    const template = await loadTemplate("/ocg-server/templates/dashboard/user/notifications_muted_groups.html");
+    const template = await loadTemplate(
+      "/ocg-server/templates/dashboard/user/notifications_muted_groups.html",
+    );
 
-    // Verify each row uses the shared logo component and HTMX unmute action.
-    expect(template).to.include("<logo-image");
-    expect(template).to.include('hx-delete="/dashboard/user/notifications/muted-groups/{{ group.group_id }}"');
+    // Verify each row uses the group page logo frame and HTMX unmute action.
+    expect(template).to.include("{{ ui::logo(logo_url = logo_url");
+    expect(template).to.include("icon-broken-image");
+    expect(template).to.include(
+      'hx-delete="/dashboard/user/notifications/muted-groups/{{ group.group_id }}"',
+    );
     expect(template).to.include('hx-swap="none"');
     expect(template).to.include("data-htmx-response");
     expect(template).to.include('aria-label="Unmute {{ group.name }}"');
     expect(template).to.include("You haven't muted any groups.");
+
+    // Verify unavailable groups keep a visible warning badge next to the name.
+    expect(template).to.include("{% if !group.available -%}");
+    expect(template).to.include("Not available</span>");
+  });
+
+  it("opens the always-sent details from the page description", async () => {
+    // Load the notifications template before checking the always-sent modal contract.
+    const template = await loadTemplate("/ocg-server/templates/dashboard/user/notifications.html");
+
+    // Verify the description trigger controls the modal.
+    expect(template).to.include("description_html = notifications_description");
+    expect(template).to.include('aria-controls="always-sent-modal"');
+    expect(template).to.include(
+      "data-always-sent-modal-open>things that need your attention are always sent</button>",
+    );
+
+    // Verify the modal keeps dialog semantics, labels, and close controls.
+    expect(template).to.include('id="always-sent-modal"');
+    expect(template).to.include('role="dialog"');
+    expect(template).to.include('aria-labelledby="always-sent-modal-title"');
+    expect(template).to.include('aria-describedby="always-sent-modal-description"');
+    expect(template).to.include('close_attrs = "data-always-sent-modal-close"');
+    expect(template.match(/data-always-sent-modal-close/g)).to.have.length(3);
   });
 });

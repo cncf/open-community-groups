@@ -1,6 +1,11 @@
+{% import "macros/ui.html" as ui -%}
+
 {% if muted_groups.is_empty() -%}
   {# Empty state -#}
-  <p class="text-sm text-stone-500">You haven't muted any groups.</p>
+  <div class="rounded-lg border border-dashed border-stone-300 p-10 text-center">
+    <p class="font-semibold text-stone-900">You haven't muted any groups.</p>
+    <p class="mt-1 text-stone-600">Groups you mute will appear here.</p>
+  </div>
   {# End empty state -#}
 {% else -%}
   <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white"
@@ -9,14 +14,24 @@
       {# Muted group row -#}
       <li class="flex items-center gap-4 px-4 py-3"
           data-muted-group-id="{{ group.group_id }}">
-        <logo-image {% if let Some(logo_url) = group.logo_url -%} image-url="{{ logo_url }}" {% endif -%} size="size-10" placeholder="{{ self::user_initials(Some(group.name.as_str()), group.name.as_str()) }}">
-        </logo-image>
+        {% if let Some(logo_url) = group.logo_url -%}
+          {{ ui::logo(logo_url = logo_url, classes = "size-10 shrink-0", size = 40) -}}
+        {% else -%}
+          <div class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[5px] border-white bg-stone-50 outline outline-1 outline-stone-300">
+            <div class="svg-icon size-6 icon-broken-image bg-stone-400"
+                 aria-hidden="true"></div>
+          </div>
+        {% endif -%}
         <div class="min-w-0 flex-1">
-          <div class="truncate text-sm font-medium text-stone-900">{{ group.name }}</div>
-          <div class="truncate text-xs text-stone-500">{{ group.community_display_name }}</div>
-          {% if !group.available -%}
-            <div class="mt-1 text-xs font-medium text-amber-700">No longer available</div>
-          {% endif -%}
+          <div class="truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400">
+            {{ group.community_display_name }}
+          </div>
+          <div class="mt-0.5 flex min-w-0 items-center gap-2">
+            <div class="truncate text-sm/5 font-semibold text-stone-900">{{ group.name }}</div>
+            {% if !group.available -%}
+              <span class="custom-badge shrink-0 border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Not available</span>
+            {% endif -%}
+          </div>
         </div>
         <button type="button"
                 class="btn-primary-outline btn-mini shrink-0"
