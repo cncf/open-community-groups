@@ -254,9 +254,7 @@ export class NotificationGroupMutes extends LitWrapper {
       this._invalidateOptions();
       this._combobox.setQuery("");
       await this.updateComplete;
-      // Focus the enabled input first so the alert returns focus there on close
-      this._restoreSearchFocus();
-      showSuccessAlert(`${group.name} muted.`);
+      this._showAlertFromSearch(() => showSuccessAlert(`${group.name} muted.`));
     } catch (error) {
       if (!this.isConnected) {
         return;
@@ -265,9 +263,9 @@ export class NotificationGroupMutes extends LitWrapper {
       this._isBusy = false;
       this._invalidateOptions();
       await this.updateComplete;
-      // Focus the enabled input first so the alert returns focus there on close
-      this._restoreSearchFocus();
-      showServerErrorAlert("Something went wrong muting this group.", error?.message || "");
+      this._showAlertFromSearch(() =>
+        showServerErrorAlert("Something went wrong muting this group.", error?.message || ""),
+      );
       await this._loadOptions();
     }
   }
@@ -456,6 +454,20 @@ export class NotificationGroupMutes extends LitWrapper {
 
       this.querySelector(`#${GROUP_OPTION_ID_PREFIX}${index}`)?.scrollIntoView({ block: "nearest" });
     });
+  }
+
+  /**
+   * Shows a mute alert that returns focus to the search input on close
+   * without reopening the dropdown or reloading the options.
+   * @param {Function} showAlert Callback that opens the alert.
+   * @returns {void}
+   */
+  _showAlertFromSearch(showAlert) {
+    // Focus the enabled input first so the alert returns focus there on close
+    this._restoreSearchFocus();
+    // Skip the focus-open behavior once when the alert returns focus
+    this._focusWithoutOpen = this._searchInput === document.activeElement;
+    showAlert();
   }
 }
 

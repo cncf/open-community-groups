@@ -1,9 +1,15 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { queryE2eDatabase } from "../../../database.js";
+import {
+  cleanupGroupMute,
+  restoreNotificationPreference,
+  setupGroupMute,
+} from "../../../data-graphs/notification-preferences.js";
 import { TEST_GROUP_IDS, TEST_GROUP_NAMES, TEST_USER_IDS } from "../../../seed.js";
 import { navigateToPath, waitForActionResponse, waitForHtmxSettle } from "../../../utils.js";
 
+const GROUP_OPTIONS_PATH = "/dashboard/user/notifications/group-options";
+const MUTED_GROUPS_PATH = "/dashboard/user/notifications/muted-groups";
 const NOTIFICATIONS_PATH = "/dashboard/user?tab=notifications";
 
 test.describe("user dashboard notifications view", () => {
@@ -62,7 +68,11 @@ test.describe("user dashboard notifications view", () => {
       await expectPreferenceState(member1Page, category, !originalPreference);
     } finally {
       if (typeof originalPreference === "boolean") {
-        restoreNotificationPreference(TEST_USER_IDS.member1, category, originalPreference);
+        restoreNotificationPreference({
+          category,
+          enabled: originalPreference,
+          userId: TEST_USER_IDS.member1,
+        });
       }
     }
   });
@@ -73,7 +83,7 @@ test.describe("user dashboard notifications view", () => {
 
     try {
       // Load the notifications tab with no muted groups for this scenario.
-      clearGroupMute(TEST_USER_IDS.member1, groupId);
+      cleanupGroupMute({ groupId, userId: TEST_USER_IDS.member1 });
       await navigateToPath(member1Page, NOTIFICATIONS_PATH);
       await expectMutedGroupEmptyState(member1Page);
 
@@ -81,11 +91,16 @@ test.describe("user dashboard notifications view", () => {
       await muteGroupThroughCombobox(member1Page, { groupId, groupName });
       await expectMutedGroup(member1Page, groupId, groupName);
 
+      // Verify closing the success alert returns focus without reopening the picker.
+      const search = getGroupSearch(member1Page);
+      await expect(search).toBeFocused();
+      await expect(search).toHaveAttribute("aria-expanded", "false");
+
       // Unmute the group and verify the empty state returns.
       await unmuteGroup(member1Page, { groupId, groupName });
       await expectMutedGroupEmptyState(member1Page);
     } finally {
-      clearGroupMute(TEST_USER_IDS.member1, groupId);
+      cleanupGroupMute({ groupId, userId: TEST_USER_IDS.member1 });
     }
   });
 
@@ -100,7 +115,7 @@ test.describe("user dashboard notifications view", () => {
     try {
       // Start with no muted groups and stage an unsaved preference change.
       for (const group of groups) {
-        clearGroupMute(TEST_USER_IDS.member1, group.groupId);
+        cleanupGroupMute({ groupId: group.groupId, userId: TEST_USER_IDS.member1 });
       }
       await navigateToPath(member1Page, NOTIFICATIONS_PATH);
       originalPreference = await getPreferenceToggle(member1Page, category).isChecked();
@@ -130,42 +145,124 @@ test.describe("user dashboard notifications view", () => {
       await expectPreferenceState(member1Page, category, originalPreference);
     } finally {
       for (const group of groups) {
-        clearGroupMute(TEST_USER_IDS.member1, group.groupId);
+        cleanupGroupMute({ groupId: group.groupId, userId: TEST_USER_IDS.member1 });
       }
+    }
+  });
+
+  test("muted unavailable groups are marked as not available and can be unmuted", async ({ member1Page }) => {
+    const groupId = TEST_GROUP_IDS.community1.empty;
+    const groupName = "Empty Coverage Group";
+
+    try {
+      // Load the tab with a mute for the seeded inactive group.
+      cleanupGroupMute({ groupId, userId: TEST_USER_IDS.member1 });
+      setupGroupMute({ groupId, userId: TEST_USER_IDS.member1 });
+      await navigateToPath(member1Page, NOTIFICATIONS_PATH);
+
+      // Verify the muted row flags the group as not available.
+      await expectMutedGroup(member1Page, groupId, groupName);
+      await expect(getMutedGroupRow(member1Page, groupId)).toContainText("Not available");
+
+      // Unmute the unavailable group and verify the empty state returns.
+      await unmuteGroup(member1Page, { groupId, groupName });
+      await expectMutedGroupEmptyState(member1Page);
+    } finally {
+      cleanupGroupMute({ groupId, userId: TEST_USER_IDS.member1 });
+    }
+  });
+
+  test("group picker offers a retry when options fail to load", async ({ member1Page }) => {
+    // Fail only the first group options request.
+    let failedRequests = 0;
+    await member1Page.route(`**${GROUP_OPTIONS_PATH}`, async (route) => {
+      if (failedRequests === 0) {
+        failedRequests += 1;
+        await route.fulfill({ body: "Unavailable", status: 500 });
+        return;
+      }
+
+      await route.continue();
+    });
+
+    try {
+      // Open the picker and verify the load error.
+      await navigateToPath(member1Page, NOTIFICATIONS_PATH);
+      const picker = member1Page.locator("notification-group-mutes");
+      await getGroupSearch(member1Page).click();
+      const loadError = picker.getByRole("alert");
+      await expect(loadError).toContainText("Groups could not be loaded. Try again.");
+
+      // Retry and verify the options load.
+      await loadError.getByRole("button", { name: "Retry" }).click();
+      await expect(
+        picker.getByRole("option", { name: new RegExp(escapeRegExp(TEST_GROUP_NAMES.alpha), "u") }),
+      ).toBeVisible();
+      expect(failedRequests).toBe(1);
+    } finally {
+      await member1Page.unroute(`**${GROUP_OPTIONS_PATH}`);
+    }
+  });
+
+  test("failed mutes show the server message and keep the group unmuted", async ({ member1Page }) => {
+    const groupId = TEST_GROUP_IDS.community1.alpha;
+    const groupName = TEST_GROUP_NAMES.alpha;
+    const serverMessage = "group not available to mute";
+
+    // Reject the mute request with a user-facing server message.
+    await member1Page.route(`**${MUTED_GROUPS_PATH}/${groupId}`, async (route) => {
+      if (route.request().method() !== "PUT") {
+        await route.continue();
+        return;
+      }
+
+      await route.fulfill({ body: serverMessage, status: 422 });
+    });
+
+    try {
+      // Load the tab without muted groups and select the group in the picker.
+      cleanupGroupMute({ groupId, userId: TEST_USER_IDS.member1 });
+      await navigateToPath(member1Page, NOTIFICATIONS_PATH);
+      const search = getGroupSearch(member1Page);
+      await search.fill(groupName);
+      const muteResponse = member1Page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" && response.url().endsWith(`${MUTED_GROUPS_PATH}/${groupId}`),
+      );
+      await member1Page
+        .locator("notification-group-mutes")
+        .getByRole("option", { name: new RegExp(escapeRegExp(groupName), "u") })
+        .click();
+      expect((await muteResponse).status()).toBe(422);
+
+      // Verify the error alert shows the server message and focus returns to the closed picker.
+      await dismissAlert(member1Page, serverMessage);
+      await expect(search).toBeFocused();
+      await expect(search).toHaveAttribute("aria-expanded", "false");
+
+      // Verify the group was not muted.
+      await expectMutedGroupEmptyState(member1Page);
+    } finally {
+      await member1Page.unroute(`**${MUTED_GROUPS_PATH}/${groupId}`);
+      cleanupGroupMute({ groupId, userId: TEST_USER_IDS.member1 });
     }
   });
 });
 
-/** Clears a user's mute for one group. */
-const clearGroupMute = (userId, groupId) => {
-  queryE2eDatabase(`
-    delete from user_group_notification_mute
-    where user_id = '${userId}'::uuid
-    and group_id = '${groupId}'::uuid;
-  `);
-};
-
-/** Dismisses the active success alert when one is visible. */
-const dismissAlertIfVisible = async (page) => {
+/** Waits for an alert with the expected text and closes it. */
+const dismissAlert = async (page, text) => {
   const dialog = page.locator(".swal2-popup");
-  if ((await dialog.count()) === 0 || !(await dialog.first().isVisible())) {
-    return;
-  }
-
-  await dialog.first().getByRole("button", { name: "OK", exact: true }).click();
+  await expect(dialog).toContainText(text);
+  await dialog.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(dialog).toBeHidden();
 };
 
 /** Escapes a string for use in a regular expression. */
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** Verifies a muted group row is absent. */
-const expectNoMutedGroup = async (page, groupId) => {
-  await expect(page.locator(`#muted-groups [data-muted-group-id="${groupId}"]`)).toHaveCount(0);
-};
-
 /** Verifies a muted group row is present. */
 const expectMutedGroup = async (page, groupId, groupName) => {
-  const row = page.locator(`#muted-groups [data-muted-group-id="${groupId}"]`);
+  const row = getMutedGroupRow(page, groupId);
   await expect(row).toBeVisible();
   await expect(row).toContainText(groupName);
 };
@@ -173,6 +270,11 @@ const expectMutedGroup = async (page, groupId, groupName) => {
 /** Verifies the muted groups empty state is rendered. */
 const expectMutedGroupEmptyState = async (page) => {
   await expect(page.locator("#muted-groups")).toContainText("You haven't muted any groups.");
+};
+
+/** Verifies a muted group row is absent. */
+const expectNoMutedGroup = async (page, groupId) => {
+  await expect(getMutedGroupRow(page, groupId)).toHaveCount(0);
 };
 
 /** Verifies visible and hidden preference fieldsets. */
@@ -192,6 +294,12 @@ const expectPreferenceState = async (page, category, enabled) => {
   await expect(getPreferenceInput(page, category)).toHaveValue(String(enabled));
 };
 
+/** Returns the group mute picker search input. */
+const getGroupSearch = (page) => page.locator("notification-group-mutes #notification-group-mute-search");
+
+/** Returns one muted group row. */
+const getMutedGroupRow = (page, groupId) => page.locator(`#muted-groups [data-muted-group-id="${groupId}"]`);
+
 /** Returns one notification preference hidden input. */
 const getPreferenceInput = (page, category) => page.locator(`#preference-${category}`);
 
@@ -201,7 +309,7 @@ const getPreferenceToggle = (page, category) => page.locator(`#toggle-preference
 /** Mutes one group through the dashboard combobox. */
 const muteGroupThroughCombobox = async (page, { groupId, groupName }) => {
   const picker = page.locator("notification-group-mutes");
-  const search = picker.locator("#notification-group-mute-search");
+  const search = getGroupSearch(page);
 
   await expect(search).toBeEnabled();
   await search.fill(groupName);
@@ -210,39 +318,18 @@ const muteGroupThroughCombobox = async (page, { groupId, groupName }) => {
 
   const muteResponse = page.waitForResponse(
     (response) =>
-      response.request().method() === "PUT" &&
-      response.url().endsWith(`/dashboard/user/notifications/muted-groups/${groupId}`),
+      response.request().method() === "PUT" && response.url().endsWith(`${MUTED_GROUPS_PATH}/${groupId}`),
   );
   const refreshResponse = page.waitForResponse(
     (response) =>
-      response.request().method() === "GET" &&
-      response.url().includes("/dashboard/user/notifications/muted-groups") &&
-      response.ok(),
+      response.request().method() === "GET" && response.url().includes(MUTED_GROUPS_PATH) && response.ok(),
   );
 
   await option.click();
   expect((await muteResponse).ok()).toBeTruthy();
   await refreshResponse;
   await waitForHtmxSettle(page);
-  await dismissAlertIfVisible(page);
-};
-
-/** Restores one persisted preference to the requested enabled state. */
-const restoreNotificationPreference = (userId, category, enabled) => {
-  if (enabled) {
-    queryE2eDatabase(`
-      delete from user_notification_opt_out
-      where user_id = '${userId}'::uuid
-      and notification_category_id = '${category}';
-    `);
-    return;
-  }
-
-  queryE2eDatabase(`
-    insert into user_notification_opt_out (user_id, notification_category_id)
-    values ('${userId}'::uuid, '${category}')
-    on conflict do nothing;
-  `);
+  await dismissAlert(page, `${groupName} muted.`);
 };
 
 /** Saves one notification preference through the form. */
@@ -257,9 +344,7 @@ const saveNotificationPreference = async (page, category, enabled) => {
     },
   );
 
-  const dialog = page.locator(".swal2-popup");
-  await expect(dialog).toContainText("Notification preferences updated.");
-  await dismissAlertIfVisible(page);
+  await dismissAlert(page, "Notification preferences updated.");
 };
 
 /** Stages one notification preference without submitting the form. */
@@ -277,16 +362,14 @@ const setNotificationPreference = async (page, category, enabled) => {
 const unmuteGroup = async (page, { groupId, groupName }) => {
   const refreshResponse = page.waitForResponse(
     (response) =>
-      response.request().method() === "GET" &&
-      response.url().includes("/dashboard/user/notifications/muted-groups") &&
-      response.ok(),
+      response.request().method() === "GET" && response.url().includes(MUTED_GROUPS_PATH) && response.ok(),
   );
 
   await waitForActionResponse(page, () => page.getByRole("button", { name: `Unmute ${groupName}` }).click(), {
     method: "DELETE",
-    urlEndsWith: `/dashboard/user/notifications/muted-groups/${groupId}`,
+    urlEndsWith: `${MUTED_GROUPS_PATH}/${groupId}`,
   });
   await refreshResponse;
   await waitForHtmxSettle(page);
-  await dismissAlertIfVisible(page);
+  await dismissAlert(page, `${groupName} unmuted.`);
 };

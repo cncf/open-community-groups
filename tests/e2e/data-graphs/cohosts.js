@@ -78,6 +78,7 @@ export const readCohostStatus = (eventId, groupId) =>
 /**
  * Creates a future virtual event owned by one group with co-host invitations in given states.
  * @param {{
+ *   attendeeUserIds?: string[],
  *   cohosts?: Array<{ groupId: string, status?: "approved"|"canceled"|"pending"|"rejected" }>,
  *   days?: number,
  *   ownerGroupId?: string,
@@ -86,6 +87,7 @@ export const readCohostStatus = (eventId, groupId) =>
  * @returns {{ eventId: string, invitationIds: Record<string, string>, name: string, slug: string }}
  */
 export const setupCohostEvent = ({
+  attendeeUserIds = [],
   cohosts = [],
   days = 200,
   ownerGroupId = TEST_GROUP_IDS.community1.alpha,
@@ -108,6 +110,11 @@ export const setupCohostEvent = ({
       ${status === "pending" ? "null" : "current_timestamp"}
     )`,
   );
+  const attendeeInsert =
+    attendeeUserIds.length > 0
+      ? `insert into event_attendee (event_id, user_id, status)
+         values ${attendeeUserIds.map((userId) => `('${eventId}', '${userId}'::uuid, 'confirmed')`).join(", ")};`
+      : "";
   const cohostInsert =
     cohostValues.length > 0
       ? `insert into event_cohost (
@@ -164,6 +171,8 @@ export const setupCohostEvent = ({
     values ('${randomUUID()}', 0, '${ticketTypeId}');
 
     ${cohostInsert}
+
+    ${attendeeInsert}
   `);
 
   return { eventId, invitationIds, name, slug };

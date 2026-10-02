@@ -228,17 +228,25 @@ describe("notification group mutes", () => {
       await waitForMicrotask();
       await element.updateComplete;
 
-      // Verify the mute request, success feedback, refresh trigger, cache invalidation, and focus restoration.
+      // Verify the mute request, success feedback, refresh trigger, and focus restoration.
       expect(fetchMock.calls.map(([url]) => url)).to.deep.equal([
         "/dashboard/user/notifications/group-options",
         "/dashboard/user/notifications/muted-groups/group-1",
       ]);
       expect(env.current.htmx.triggerCalls).to.deep.equal([[document.body, "refresh-muted-groups"]]);
       expect(env.current.swal.calls[0]).to.include({ text: "Kubernetes Group muted.", icon: "success" });
-      expect(element._loadStatus).to.equal("idle");
-      expect(element._options).to.deep.equal([]);
       expect(search.value).to.equal("");
       expect(document.activeElement).to.equal(search);
+
+      // Reopen the picker and verify the invalidated options are fetched again.
+      search.click();
+      await waitForMicrotask();
+      await element.updateComplete;
+      expect(fetchMock.calls.map(([url]) => url)).to.deep.equal([
+        "/dashboard/user/notifications/group-options",
+        "/dashboard/user/notifications/muted-groups/group-1",
+        "/dashboard/user/notifications/group-options",
+      ]);
     } finally {
       fetchMock.restore();
     }
@@ -300,7 +308,7 @@ describe("notification group mutes", () => {
     }
   });
 
-  it("returns focus to the search after the mute success alert closes", async () => {
+  it("returns focus to the search after the mute success alert closes without reopening options", async () => {
     const fetchMock = mockFetch({
       impl: (_url, init = {}) =>
         init.method === "PUT" ? new Response(null, { status: 204 }) : optionsResponse(),
@@ -324,14 +332,23 @@ describe("notification group mutes", () => {
       await waitForMicrotask();
       await element.updateComplete;
 
-      // Focus returns to the stable search input instead of body.
+      // Focus returns to the stable search input while the picker stays closed.
       expect(document.activeElement.id).to.equal(search.id);
+      expect(search.getAttribute("aria-expanded")).to.equal("false");
+      expect(fetchMock.calls.filter(([, init = {}]) => init.method !== "PUT")).to.have.length(1);
+
+      // A later click still opens the picker and reloads the options.
+      search.click();
+      await waitForMicrotask();
+      await element.updateComplete;
+      expect(search.getAttribute("aria-expanded")).to.equal("true");
+      expect(fetchMock.calls.filter(([, init = {}]) => init.method !== "PUT")).to.have.length(2);
     } finally {
       fetchMock.restore();
     }
   });
 
-  it("returns focus to the search after the mute error alert closes", async () => {
+  it("returns focus to the search after the mute error alert closes without reopening options", async () => {
     const fetchMock = mockFetch({
       impl: (_url, init = {}) =>
         init.method === "PUT"
@@ -357,8 +374,10 @@ describe("notification group mutes", () => {
       await waitForMicrotask();
       await element.updateComplete;
 
-      // Focus returns to the stable search input instead of body.
+      // Focus returns to the stable search input while the picker stays closed.
       expect(document.activeElement.id).to.equal(search.id);
+      expect(search.getAttribute("aria-expanded")).to.equal("false");
+      expect(fetchMock.calls.filter(([, init = {}]) => init.method !== "PUT")).to.have.length(2);
     } finally {
       fetchMock.restore();
     }
@@ -423,17 +442,22 @@ describe("notification group mutes", () => {
     const fetchMock = mockFetch({ impl: () => optionsResponse() });
 
     try {
-      // Render and load the options.
+      // Render, load the options, and close the picker.
       const element = await mountGroupMutes();
-      await loadOptions(element);
-      expect(element._loadStatus).to.equal("ready");
+      const search = await loadOptions(element);
+      search.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+      await element.updateComplete;
+      expect(fetchMock.calls).to.have.length(1);
 
       // Dispatch the refresh event fired by HTMX unmute actions.
       document.body.dispatchEvent(new Event("refresh-muted-groups"));
 
-      // Verify the cached options were dropped.
-      expect(element._loadStatus).to.equal("idle");
-      expect(element._options).to.deep.equal([]);
+      // Reopening the picker fetches the options again instead of using the cache.
+      search.click();
+      await waitForMicrotask();
+      await element.updateComplete;
+      expect(fetchMock.calls).to.have.length(2);
+      expect(element.querySelectorAll('[role="option"]')).to.have.length(2);
     } finally {
       fetchMock.restore();
     }

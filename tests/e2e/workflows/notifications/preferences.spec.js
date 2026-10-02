@@ -3,6 +3,11 @@ import { expect, test } from "../../fixtures.js";
 import { cleanupCohostEvents, setupCohostEvent } from "../../data-graphs/cohosts.js";
 import { cleanupEventsByIds, setupNotificationEvent } from "../../data-graphs/events.js";
 import { cleanupGroupTeamInvitation } from "../../data-graphs/invitations.js";
+import {
+  cleanupGroupMute,
+  restoreNotificationPreference,
+  setupGroupMute,
+} from "../../data-graphs/notification-preferences.js";
 import { queryE2eDatabase } from "../../database.js";
 import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
 import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../seed.js";
@@ -34,9 +39,12 @@ const COHOST_AUDIENCE_RECIPIENT_IDS_WITH_MEMBER2_SUPPRESSED = [
 
 const COHOST_GROUP_ID = TEST_GROUP_IDS.community2.delta;
 const COHOST_GROUP_NAME = "E2E Second Group Delta";
+const EVENT_REMINDERS_CATEGORY = "event-reminders";
 const GROUP_ANNOUNCEMENTS_CATEGORY = "group-announcements";
 const GROUP_NOTIFICATION_BODY = "Preference suppression check from the e2e suite.";
 const GROUP_NOTIFICATION_SUBJECT = "E2E preference suppression";
+const ORGANIZER_MESSAGE_BODY = "Organizer message preference check from the e2e suite.";
+const ORGANIZER_MESSAGE_SUBJECT = "E2E organizer message preferences";
 const OWNER_GROUP_ID = TEST_GROUP_IDS.community1.alpha;
 const UNRELATED_GROUP_ID = TEST_GROUP_IDS.community2.epsilon;
 
@@ -82,11 +90,11 @@ test.describe("notification preferences workflow", () => {
       // Remove generated notifications and preference changes.
       deleteNotifications(notificationIds);
       if (typeof originalPreference === "boolean") {
-        restoreNotificationPreference(
-          TEST_USER_IDS.member1,
-          GROUP_ANNOUNCEMENTS_CATEGORY,
-          originalPreference,
-        );
+        restoreNotificationPreference({
+          category: GROUP_ANNOUNCEMENTS_CATEGORY,
+          enabled: originalPreference,
+          userId: TEST_USER_IDS.member1,
+        });
       }
     }
   });
@@ -103,7 +111,7 @@ test.describe("notification preferences workflow", () => {
         groupId: OWNER_GROUP_ID,
         userId: TEST_USER_IDS.member1,
       });
-      clearGroupMute(TEST_USER_IDS.member1, OWNER_GROUP_ID);
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member1 });
       await muteGroupForUser(member1Page, OWNER_GROUP_ID);
 
       // Send a group notification and assert Member One is omitted exactly.
@@ -159,7 +167,7 @@ test.describe("notification preferences workflow", () => {
         groupId: OWNER_GROUP_ID,
         userId: TEST_USER_IDS.member1,
       });
-      clearGroupMute(TEST_USER_IDS.member1, OWNER_GROUP_ID);
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member1 });
     }
   });
 
@@ -176,10 +184,10 @@ test.describe("notification preferences workflow", () => {
       // Add one temporary co-host group member, then set up two different mute states.
       cleanupGroupMember(COHOST_GROUP_ID, TEST_USER_IDS.pending1);
       setupGroupMember(COHOST_GROUP_ID, TEST_USER_IDS.pending1);
-      clearGroupMute(TEST_USER_IDS.member2, OWNER_GROUP_ID);
-      clearGroupMute(TEST_USER_IDS.pending1, UNRELATED_GROUP_ID);
-      muteGroupInDatabase(TEST_USER_IDS.member2, OWNER_GROUP_ID);
-      muteGroupInDatabase(TEST_USER_IDS.pending1, UNRELATED_GROUP_ID);
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      cleanupGroupMute({ groupId: UNRELATED_GROUP_ID, userId: TEST_USER_IDS.pending1 });
+      setupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      setupGroupMute({ groupId: UNRELATED_GROUP_ID, userId: TEST_USER_IDS.pending1 });
 
       // Publish the approved co-hosted event and assert actual notification rows.
       const publishSnapshot = snapshotNotifications();
@@ -204,10 +212,117 @@ test.describe("notification preferences workflow", () => {
     } finally {
       // Remove generated notifications, mutes, membership, and the temporary event.
       deleteNotifications(notificationIds);
-      clearGroupMute(TEST_USER_IDS.member2, OWNER_GROUP_ID);
-      clearGroupMute(TEST_USER_IDS.pending1, UNRELATED_GROUP_ID);
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      cleanupGroupMute({ groupId: UNRELATED_GROUP_ID, userId: TEST_USER_IDS.pending1 });
       cleanupGroupMember(COHOST_GROUP_ID, TEST_USER_IDS.pending1);
       cleanupCohostEvents([scenario.eventId]);
+    }
+  });
+
+  test("owner group mute suppresses organizer messages but co-host group mutes do not", async ({
+    organizerGroupPage,
+  }) => {
+    const scenario = setupCohostEvent({
+      attendeeUserIds: [TEST_USER_IDS.member1, TEST_USER_IDS.member2],
+      cohosts: [{ groupId: COHOST_GROUP_ID, status: "approved" }],
+      ownerGroupId: OWNER_GROUP_ID,
+      published: true,
+    });
+    let notificationIds = [];
+
+    try {
+      // Mute the co-host group for Member One and the owner group for Member Two.
+      cleanupGroupMute({ groupId: COHOST_GROUP_ID, userId: TEST_USER_IDS.member1 });
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      setupGroupMute({ groupId: COHOST_GROUP_ID, userId: TEST_USER_IDS.member1 });
+      setupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+
+      // Email every attendee and assert only Member One receives the organizer message.
+      const messageSnapshot = snapshotNotifications();
+      const messageResponse = await organizerGroupPage.request.post(
+        buildE2eUrl(`/dashboard/group/notifications/${scenario.eventId}`),
+        {
+          form: {
+            body: ORGANIZER_MESSAGE_BODY,
+            subject: ORGANIZER_MESSAGE_SUBJECT,
+          },
+        },
+      );
+      expect(messageResponse.ok()).toBeTruthy();
+      notificationIds = notificationIds.concat(
+        expectNewNotifications(messageSnapshot, [
+          {
+            kind: "event-custom",
+            templateDataContains: {
+              body: ORGANIZER_MESSAGE_BODY,
+              event: { event_id: scenario.eventId },
+              subject: ORGANIZER_MESSAGE_SUBJECT,
+            },
+            userIds: [TEST_USER_IDS.member1],
+          },
+        ]),
+      );
+    } finally {
+      // Remove generated notifications, mutes, and the temporary event.
+      deleteNotifications(notificationIds);
+      cleanupGroupMute({ groupId: COHOST_GROUP_ID, userId: TEST_USER_IDS.member1 });
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      cleanupCohostEvents([scenario.eventId]);
+    }
+  });
+
+  test("event reminders respect category opt-outs and owner group mutes but not co-host group mutes", async () => {
+    let notificationIds = [];
+    let scenario;
+
+    try {
+      // Opt Member One out of reminders, mute the owner for Member Two, and the co-host for Pending One.
+      restoreNotificationPreference({
+        category: EVENT_REMINDERS_CATEGORY,
+        enabled: false,
+        userId: TEST_USER_IDS.member1,
+      });
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      cleanupGroupMute({ groupId: COHOST_GROUP_ID, userId: TEST_USER_IDS.pending1 });
+      setupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      setupGroupMute({ groupId: COHOST_GROUP_ID, userId: TEST_USER_IDS.pending1 });
+
+      // Snapshot before creating the due event because the server reminder worker may enqueue it first.
+      const reminderSnapshot = snapshotNotifications();
+      scenario = setupCohostEvent({
+        attendeeUserIds: [TEST_USER_IDS.member1, TEST_USER_IDS.member2, TEST_USER_IDS.pending1],
+        cohosts: [{ groupId: COHOST_GROUP_ID, status: "approved" }],
+        days: 0.5,
+        ownerGroupId: OWNER_GROUP_ID,
+        published: true,
+      });
+
+      // Run the reminder enqueue step the server worker runs on its schedule.
+      queryE2eDatabase(`select enqueue_due_event_reminders('${buildE2eUrl("/")}');`);
+
+      // Assert only Pending One receives the reminder.
+      notificationIds = notificationIds.concat(
+        expectNewNotifications(reminderSnapshot, [
+          {
+            kind: "event-reminder",
+            templateDataContains: { event: { event_id: scenario.eventId } },
+            userIds: [TEST_USER_IDS.pending1],
+          },
+        ]),
+      );
+    } finally {
+      // Remove generated notifications, preferences, mutes, and the temporary event.
+      deleteNotifications(notificationIds);
+      restoreNotificationPreference({
+        category: EVENT_REMINDERS_CATEGORY,
+        enabled: true,
+        userId: TEST_USER_IDS.member1,
+      });
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      cleanupGroupMute({ groupId: COHOST_GROUP_ID, userId: TEST_USER_IDS.pending1 });
+      if (scenario) {
+        cleanupCohostEvents([scenario.eventId]);
+      }
     }
   });
 
@@ -244,15 +359,6 @@ test.describe("notification preferences workflow", () => {
   });
 });
 
-/** Removes a user's mute for one group. */
-const clearGroupMute = (userId, groupId) => {
-  queryE2eDatabase(`
-    delete from user_group_notification_mute
-    where user_id = '${userId}'::uuid
-    and group_id = '${groupId}'::uuid;
-  `);
-};
-
 /** Removes a temporary group membership. */
 const cleanupGroupMember = (groupId, userId) => {
   queryE2eDatabase(`
@@ -266,15 +372,6 @@ const cleanupGroupMember = (groupId, userId) => {
 const getNotificationPreference = async (page, category) =>
   page.locator(`#toggle-preference-${category}`).isChecked();
 
-/** Creates a mute row for notification fan-out scenarios. */
-const muteGroupInDatabase = (userId, groupId) => {
-  queryE2eDatabase(`
-    insert into user_group_notification_mute (user_id, group_id)
-    values ('${userId}'::uuid, '${groupId}'::uuid)
-    on conflict do nothing;
-  `);
-};
-
 /** Mutes one group through the authenticated user endpoint. */
 const muteGroupForUser = async (page, groupId) => {
   const response = await page.request.put(
@@ -282,24 +379,6 @@ const muteGroupForUser = async (page, groupId) => {
   );
 
   expect(response.ok()).toBeTruthy();
-};
-
-/** Restores one persisted preference to the requested enabled state. */
-const restoreNotificationPreference = (userId, category, enabled) => {
-  if (enabled) {
-    queryE2eDatabase(`
-      delete from user_notification_opt_out
-      where user_id = '${userId}'::uuid
-      and notification_category_id = '${category}';
-    `);
-    return;
-  }
-
-  queryE2eDatabase(`
-    insert into user_notification_opt_out (user_id, notification_category_id)
-    values ('${userId}'::uuid, '${category}')
-    on conflict do nothing;
-  `);
 };
 
 /** Saves the group announcements preference through the notifications form. */
