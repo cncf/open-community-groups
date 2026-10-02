@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(17);
 \set communityInactiveID '8a020000-0000-0000-0000-000000000002'
 \set eventCategoryID '8a020000-0000-0000-0000-000000000003'
 \set eventCategoryInactiveCommunityID '8a020000-0000-0000-0000-000000000004'
+\set eventAllFilteredID '8a020000-0000-0000-0000-000000000025'
 \set eventDeletedGroupID '8a020000-0000-0000-0000-000000000005'
 \set eventDisabledID '8a020000-0000-0000-0000-000000000006'
 \set eventDueID '8a020000-0000-0000-0000-000000000007'
@@ -33,6 +34,8 @@ select plan(17);
 \set userVerifiedAttendeeID '8a020000-0000-0000-0000-000000000022'
 \set userVerifiedLateSignupID '8a020000-0000-0000-0000-000000000023'
 \set userVerifiedSpeakerID '8a020000-0000-0000-0000-000000000024'
+\set userFilteredMutedID '8a020000-0000-0000-0000-000000000026'
+\set userFilteredOptOutID '8a020000-0000-0000-0000-000000000027'
 
 -- ============================================================================
 -- SEED DATA
@@ -77,11 +80,28 @@ select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_bu
 
 -- Users
 select fx_user(:'userVerifiedAttendeeID', jsonb_build_object('username', 'attendee-enqueue-due-event-reminders'));
--- user
+
+-- Speaker-only recipient for the due reminder event
 select fx_user(:'userVerifiedSpeakerID', jsonb_build_object('username', 'speaker-enqueue-due-event-reminders'));
--- user
+
+-- Verified attendee opted out of event reminders
+select fx_user(:'userFilteredOptOutID');
+
+-- Verified speaker who muted the owner group
+select fx_user(:'userFilteredMutedID');
+
+-- Event reminders opt-out used by the all-filtered reminder event
+insert into user_notification_opt_out (notification_category_id, user_id)
+values ('event-reminders', :'userFilteredOptOutID');
+
+-- Owner group mute used by the all-filtered reminder event
+insert into user_group_notification_mute (group_id, user_id)
+values (:'groupID', :'userFilteredMutedID');
+
+-- Unverified attendee excluded before reminder filtering
 select fx_user(:'userUnverifiedID', jsonb_build_object('email_verified', false));
--- user
+
+-- Pre-registered invitee excluded before reminder filtering
 select fx_user(:'userPreRegisteredInvitedID', jsonb_build_object(
     'email_verified', false,
     'registration_status', 'pre-registered'
@@ -99,7 +119,21 @@ select fx_event(:'eventDueID', :'groupID', :'eventCategoryID', jsonb_build_objec
     'venue_country_name', 'United States',
     'venue_name', 'Conference Hall'
 ));
--- event
+
+-- Due event whose verified recipients are all filtered by notification preferences
+select fx_event(:'eventAllFilteredID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '22 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'slug', 'all-filtered-event',
+    'starts_at', current_timestamp + interval '21 hours',
+    'venue_city', 'Seattle',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Remote'
+));
+
+-- Event with no reminder recipients
 select fx_event(:'eventNoRecipientsID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp + interval '21 hours',
     'event_kind_id', 'virtual',
@@ -180,6 +214,7 @@ select fx_event(:'eventSentID', :'groupID', :'eventCategoryID', jsonb_build_obje
 
 -- Attendees and speakers for due event
 insert into event_attendee (event_id, user_id, status) values
+    (:'eventAllFilteredID', :'userFilteredOptOutID', 'confirmed'),
     (:'eventDueID', :'userVerifiedAttendeeID', 'confirmed'),
     (:'eventDeletedGroupID', :'userVerifiedAttendeeID', 'confirmed'),
     (:'eventInactiveCommunityID', :'userVerifiedAttendeeID', 'confirmed'),
@@ -189,6 +224,7 @@ insert into event_attendee (event_id, user_id, status) values
 
 -- Event speakers considered by reminder recipient selection
 insert into event_speaker (event_id, user_id, featured) values
+    (:'eventAllFilteredID', :'userFilteredMutedID', true),
     (:'eventDueID', :'userVerifiedSpeakerID', true),
     (:'eventDueID', :'userVerifiedAttendeeID', false),
     (:'eventDueID', :'userUnverifiedID', false);
@@ -200,7 +236,7 @@ insert into event_speaker (event_id, user_id, featured) values
 -- Should enqueue reminders for verified attendees and speakers on due events
 select is(
     enqueue_due_event_reminders('https://example.test/'),
-    2,
+    4,
     'Should enqueue reminders for verified attendees and speakers on due events'
 );
 
@@ -333,6 +369,30 @@ select isnt(
     (select event_reminder_sent_at from event where event_id = :'eventDueID'),
     null::timestamptz,
     'Should set reminder sent timestamp on due event when notifications are queued'
+);
+
+-- Should filter all recipients when reminder recipients opted out or muted the owner group
+select is(
+    (
+        select count(*)::int
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-reminder'
+        and ntd.data->'event'->>'event_id' = :'eventAllFilteredID'
+    ),
+    0,
+    'Should filter all recipients when reminder recipients opted out or muted the owner group'
+);
+
+-- Should mark all-filtered reminder events as sent and evaluated
+select ok(
+    (
+        select event_reminder_evaluated_for_starts_at = starts_at
+            and event_reminder_sent_at is not null
+        from event
+        where event_id = :'eventAllFilteredID'
+    ),
+    'Should mark all-filtered reminder events as sent and evaluated'
 );
 
 -- Should mark no-recipients event as evaluated even when nothing is enqueued

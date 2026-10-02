@@ -714,7 +714,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('data-notification-scope="all"');
     expect(template).to.include("All eligible attendees");
     expect(template).to.include(
-      "No attendees with verified email addresses and email notifications enabled.",
+      "No attendees with verified email addresses who accept messages from event organizers.",
     );
     expect(template).not.to.include(
       "No confirmed attendees with verified email addresses and email notifications enabled.",

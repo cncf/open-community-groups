@@ -1,0 +1,175 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/ui.html" as ui -%}
+
+{# Preference toggle -#}
+{# Renders one category toggle and the hidden input submitted with the form. -#}
+{% macro preference_toggle(category, label, description, enabled) -%}
+  <div>
+    <input type="hidden"
+           id="preference-{{ category }}"
+           name="preferences[{{ category }}]"
+           value="{{ enabled }}">
+    <label for="toggle-preference-{{ category }}"
+           class="inline-flex items-center cursor-pointer">
+      <span class="relative inline-flex shrink-0 items-center">
+        <input id="toggle-preference-{{ category }}"
+               type="checkbox"
+               class="sr-only peer"
+               data-preference-input="preference-{{ category }}"
+               aria-describedby="preference-{{ category }}-description"
+               {% if enabled %}checked{% endif %}>
+        <span class="toggle-track"></span>
+      </span>
+      <span class="ms-3 text-sm font-medium text-stone-900">{{ label }}</span>
+    </label>
+    <p id="preference-{{ category }}-description" class="form-legend">{{ description }}</p>
+  </div>
+{% endmacro preference_toggle -%}
+{# End preference toggle -#}
+
+{# Dashboard User Notifications -#}
+{% let notifications_description -%}
+Choose which optional emails you receive. Emails about your account, your registrations, and
+<button type="button"
+        class="cursor-pointer font-medium text-primary-500 underline underline-offset-2 hover:text-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 rounded-sm"
+        aria-haspopup="dialog"
+        aria-controls="always-sent-modal"
+        data-always-sent-modal-open>things that need your attention are always sent</button>.
+{%- endlet %}
+{{ dashboard::page_title(title = "Notifications", docs_href = "/docs#/guides/user-dashboard?id=notifications-email-preferences",
+  description_html = notifications_description) -}}
+
+{# Preferences form -#}
+<form id="notification-preferences-form"
+      class="mt-10"
+      hx-put="/dashboard/user/notifications/preferences"
+      hx-ext="no-empty-vals"
+      hx-trigger="submit"
+      hx-indicator="#dashboard-spinner, #notification-preferences-spinner"
+      hx-disabled-elt="button[type=submit]"
+      data-htmx-response
+      data-error-message="Something went wrong updating your notification preferences. Please try again later.">
+  <div class="space-y-12 max-w-5xl">
+    {# Events and groups section -#}
+    <fieldset class="border-b border-stone-900/10 pb-12">
+      <legend class="text-lg font-medium text-stone-900">Events and groups</legend>
+      <div class="mt-6 space-y-6">
+        {% call preference_toggle("new-events", "New events", "When a group you belong to or help organize publishes a new event or event series, including events it co-hosts with other groups.", preferences.receives(NotificationCategory::NewEvents)) %}{% endcall -%}
+        {% call preference_toggle("group-announcements", "Group announcements", "Messages organizers send to members of a group you belong to or help organize.", preferences.receives(NotificationCategory::GroupAnnouncements)) %}{% endcall -%}
+        {% call preference_toggle("event-reminders", "Event reminders", "A reminder about 24 hours before an event you're attending or speaking at, if the organizers turned reminders on.", preferences.receives(NotificationCategory::EventReminders)) %}{% endcall -%}
+        {% call preference_toggle("organizer-messages", "Messages from event organizers", "Updates organizers send to attendees of events you're registered for.", preferences.receives(NotificationCategory::OrganizerMessages)) %}{% endcall -%}
+        {% call preference_toggle("badges", "Badges", "When a group awards you a badge or revokes one. This only controls the email; awards and revocations still take effect in your dashboard.", preferences.receives(NotificationCategory::Badges)) %}{% endcall -%}
+      </div>
+    </fieldset>
+    {# End events and groups section -#}
+
+    {% if show_group_team_section -%}
+      {# Group organizing section -#}
+      <fieldset class="border-b border-stone-900/10 pb-12">
+        <legend class="text-lg font-medium text-stone-900">Group organizing</legend>
+        <div class="mt-6 space-y-6">
+          {% call preference_toggle("group-inbox", "Group inbox", "When someone writes to a group you help manage. Only sent if your role includes inbox access.", preferences.receives(NotificationCategory::GroupInbox)) %}{% endcall -%}
+          {% call preference_toggle("cohosting-updates", "Co-hosting updates", "When a group responds to your group's co-hosting invitation, or your group's co-hosting of an event ends. Sent to group admins.", preferences.receives(NotificationCategory::CohostingUpdates)) %}{% endcall -%}
+          {% call preference_toggle("attendee-activity", "Attendee activity", "When an attendee declines a ticket offer you assigned.", preferences.receives(NotificationCategory::AttendeeActivity)) %}{% endcall -%}
+        </div>
+      </fieldset>
+      {# End group organizing section -#}
+    {% endif -%}
+
+    {% if show_community_team_section -%}
+      {# Community organizing section -#}
+      <fieldset class="border-b border-stone-900/10 pb-12">
+        <legend class="text-lg font-medium text-stone-900">Community organizing</legend>
+        <div class="mt-6 space-y-6">
+          {% call preference_toggle("paid-event-setups", "Paid event setups", "When a group in your community configures paid tickets for an event. Sent to community admins.", preferences.receives(NotificationCategory::PaidEventSetups)) %}{% endcall -%}
+        </div>
+      </fieldset>
+      {# End community organizing section -#}
+    {% endif -%}
+  </div>
+
+  <div class="mt-6">
+    <button type="submit" class="btn-primary relative">
+      {{ ui::btn_spinner(id = "notification-preferences-spinner", spinner_type = "2") -}}
+      Save
+    </button>
+  </div>
+</form>
+{# End preferences form -#}
+
+<hr class="w-full max-w-5xl h-px my-12 bg-stone-900/10 border-0">
+
+{# Muted groups section -#}
+<section class="max-w-5xl" aria-labelledby="muted-groups-title">
+  <h2 id="muted-groups-title"
+      class="text-lg font-medium text-stone-900"
+      tabindex="-1">Muted groups</h2>
+  <p class="form-legend mt-3">
+    Stop optional emails from specific groups: new events, group announcements, event reminders, messages from event organizers, and badges. Muting a group also covers events it co-hosts. Muting only changes emails; your membership, registrations, badges, and dashboard stay the same. Emails that are always sent, and group or community organizing emails, still arrive. Mute and Unmute save immediately. Unmuting a group doesn't turn back on categories you've turned off.
+  </p>
+
+  {# Mute picker -#}
+  <div class="mt-6 max-w-xl">
+    <notification-group-mutes options-url="/dashboard/user/notifications/group-options" described-by="notification-group-mutes-legend"></notification-group-mutes>
+    <p id="notification-group-mutes-legend" class="form-legend">
+      Only groups you belong to, or whose events you attend or speak at, are listed.
+    </p>
+  </div>
+  {# End mute picker -#}
+
+  {# Muted groups list -#}
+  {% let muted_groups = preferences.muted_groups -%}
+  <div id="muted-groups"
+       class="mt-6"
+       hx-get="/dashboard/user/notifications/muted-groups"
+       hx-trigger="refresh-muted-groups from:body"
+       hx-swap="innerHTML">{% include "dashboard/user/notifications_muted_groups.html" -%}</div>
+  {# End muted groups list -#}
+</section>
+{# End muted groups section -#}
+
+{# Always sent modal -#}
+<div id="always-sent-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-hidden="true"
+     aria-labelledby="always-sent-modal-title"
+     aria-describedby="always-sent-modal-description"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 h-full max-h-full flex">
+  <div id="overlay-always-sent-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
+       data-always-sent-modal-close></div>
+  <div class="modal-panel p-4 max-w-2xl">
+    <div class="modal-card rounded-lg">
+      {# Modal header -#}
+      {{ dashboard::modal_header(title_id = "always-sent-modal-title",
+        title = "Always sent",
+        close_id = "close-always-sent-modal",
+        close_attrs = "data-always-sent-modal-close") -}}
+      {# End modal header -#}
+
+      {# Modal body -#}
+      <div class="modal-body p-4 md:px-6 md:py-5">
+        <p id="always-sent-modal-description" class="text-sm text-stone-600">
+          These emails can't be turned off because they're about your account or need your attention.
+        </p>
+        <ul class="mt-4 space-y-2 text-sm text-stone-700 list-disc ps-5">
+          <li><span class="font-medium text-stone-900">Account:</span> email verification and team invitations.</li>
+          <li><span class="font-medium text-stone-900">Registrations:</span> confirmations, group welcome emails, tickets, invitations, waitlist changes and offers.</li>
+          <li><span class="font-medium text-stone-900">Payments:</span> instructions, reminders, expirations and refund decisions.</li>
+          <li><span class="font-medium text-stone-900">Event changes:</span> cancellations and reschedules of events you attend or speak at.</li>
+          <li><span class="font-medium text-stone-900">Speaking:</span> speaker confirmations, CFS updates and co-speaker invitations.</li>
+          <li><span class="font-medium text-stone-900">Conversations:</span> replies from groups you wrote to.</li>
+          <li><span class="font-medium text-stone-900">Organizer actions:</span> refund requests and co-hosting invitations, since someone needs to act on them.</li>
+        </ul>
+        <div class="flex justify-end pt-5 border-t border-stone-200 mt-6">
+          <button type="button"
+                  class="btn-primary-outline"
+                  data-always-sent-modal-close>Close</button>
+        </div>
+      </div>
+      {# End modal body -#}
+    </div>
+  </div>
+</div>
+{# End always sent modal -#}

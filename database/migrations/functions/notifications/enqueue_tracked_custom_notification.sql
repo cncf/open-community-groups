@@ -1,4 +1,5 @@
--- Enqueues and tracks a custom notification atomically.
+-- Enqueues and tracks a custom notification atomically. The notification is
+-- scoped to p_group_id, so recipients who muted that group are skipped.
 create or replace function enqueue_tracked_custom_notification(
     p_kind text,
     p_template_data jsonb,
@@ -18,7 +19,8 @@ begin
         p_kind,
         p_template_data,
         p_attachments,
-        p_recipients
+        p_recipients,
+        array[p_group_id]
     );
 
     -- Track the custom notification after enqueue succeeds

@@ -17,10 +17,6 @@ begin
         github_url = nullif(p_user->>'github_url', ''),
         interests = jsonb_text_array(p_user->'interests'),
         linkedin_url = nullif(p_user->>'linkedin_url', ''),
-        optional_notifications_enabled = coalesce(
-            (p_user->>'optional_notifications_enabled')::boolean,
-            optional_notifications_enabled
-        ),
         photo_url = nullif(p_user->>'photo_url', ''),
         timezone = nullif(p_user->>'timezone', ''),
         title = nullif(p_user->>'title', ''),

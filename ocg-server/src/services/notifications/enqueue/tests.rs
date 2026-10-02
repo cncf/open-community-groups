@@ -542,6 +542,10 @@ async fn test_enqueue_event_series_published_notifications_dedupes_cohost_audien
         .times(1)
         .withf(move |_, _, eid| *eid == related_event_id)
         .returning(move |_, _, _| Ok(related_event.clone()));
+    db.expect_filter_notification_recipient_ids()
+        .times(2)
+        .withf(|kind, _, _| matches!(kind, NotificationKind::EventSeriesPublished))
+        .returning(|_, recipients, _| Ok(recipients.to_vec()));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -603,6 +607,154 @@ async fn test_enqueue_event_series_published_notifications_dedupes_cohost_audien
         vec![beta_member_id],
         vec![related_event_id]
     )));
+
+    // Check every bundle names the union of its occurrences' groups, which
+    // here always includes the related occurrence's owner and co-hosts
+    let expected_group_ids = sorted_ids(vec![group_id, alpha_group_id, beta_group_id]);
+    for notification in &notifications {
+        assert_eq!(notification.group_ids, expected_group_ids);
+    }
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_enqueue_event_series_published_notifications_filters_recipients_per_occurrence() {
+    // Setup identifiers and two occurrences, only the first co-hosted
+    let cohost_group_id = Uuid::new_v4();
+    let cohost_member_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let muting_member_id = Uuid::new_v4();
+    let owner_member_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let speaker_id = Uuid::new_v4();
+    let event = EventFull {
+        cohosts: vec![sample_event_cohost_group(cohost_group_id, "Cohost")],
+        ..sample_event_full(community_id, event_id, group_id)
+    };
+    let related_event =
+        sample_event_full_with_speakers(community_id, related_event_id, group_id, &[speaker_id]);
+    let owner_audience = sorted_ids(vec![muting_member_id, owner_member_id]);
+    let first_candidates = [owner_audience.clone(), vec![cohost_member_id]].concat();
+    let related_candidates = owner_audience.clone();
+    let notifications = Arc::new(Mutex::new(Vec::new()));
+
+    // Setup audience expectations
+    let mut db = MockDB::new();
+    db.expect_list_group_members_ids()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(move |_| Ok(vec![muting_member_id, owner_member_id]));
+    db.expect_list_group_members_ids()
+        .times(1)
+        .withf(move |gid| *gid == cohost_group_id)
+        .returning(move |_| Ok(vec![cohost_member_id]));
+    db.expect_list_group_team_members_ids()
+        .times(2)
+        .returning(|_| Ok(vec![]));
+
+    // Setup event expectations
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |_, _, eid| *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |_, _, eid| *eid == related_event_id)
+        .returning(move |_, _, _| Ok(related_event.clone()));
+
+    // Setup eligibility: the muting member muted the co-host of the first occurrence
+    db.expect_filter_notification_recipient_ids()
+        .times(1)
+        .withf(move |kind, recipients, group_ids| {
+            matches!(kind, NotificationKind::EventSeriesPublished)
+                && recipients == first_candidates.as_slice()
+                && group_ids == [group_id, cohost_group_id]
+        })
+        .returning(move |_, _, _| Ok(vec![owner_member_id, cohost_member_id]));
+    db.expect_filter_notification_recipient_ids()
+        .times(1)
+        .withf(move |kind, recipients, group_ids| {
+            matches!(kind, NotificationKind::EventSeriesPublished)
+                && recipients == related_candidates.as_slice()
+                && group_ids == [group_id]
+        })
+        .returning(|_, recipients, _| Ok(recipients.to_vec()));
+
+    // Setup notification expectations
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    let notifications_for_mock = notifications.clone();
+    db.expect_enqueue_notification()
+        .times(4)
+        .returning(move |notification| {
+            notifications_for_mock
+                .lock()
+                .expect("notifications lock not to be poisoned")
+                .push(notification.clone());
+            Ok(())
+        });
+
+    // Run the workflow
+    enqueue_event_series_published_notifications(
+        &db,
+        &sample_server_cfg(),
+        community_id,
+        group_id,
+        &[event_id, related_event_id],
+    )
+    .await
+    .unwrap();
+
+    // Collect the co-host name, recipients, events, and groups of every bundle
+    let notifications = notifications
+        .lock()
+        .expect("notifications lock not to be poisoned")
+        .clone();
+    let bundles: Vec<SeriesBundle> = notifications
+        .iter()
+        .filter(|notification| matches!(notification.kind, NotificationKind::EventSeriesPublished))
+        .map(|notification| {
+            let template: EventSeriesPublished =
+                from_value(notification.template_data.clone().expect("template data to exist"))
+                    .expect("series published notification to deserialize");
+            let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
+            (
+                template.cohost_group_name,
+                notification.recipients.clone(),
+                event_ids,
+                notification.group_ids.clone(),
+            )
+        })
+        .collect();
+
+    // Check the muted co-host only removes the occurrence it co-hosts
+    assert_eq!(bundles.len(), 3);
+    assert!(bundles.contains(&(
+        None,
+        vec![owner_member_id],
+        vec![event_id, related_event_id],
+        sorted_ids(vec![group_id, cohost_group_id]),
+    )));
+    assert!(bundles.contains(&(
+        None,
+        vec![muting_member_id],
+        vec![related_event_id],
+        vec![group_id],
+    )));
+    assert!(bundles.contains(&(
+        Some("Cohost".to_string()),
+        vec![cohost_member_id],
+        vec![event_id],
+        sorted_ids(vec![group_id, cohost_group_id]),
+    )));
+
+    // Check speakers are not filtered
+    let speaker_notification =
+        find_notification(&notifications, &NotificationKind::SpeakerSeriesWelcome);
+    assert_eq!(speaker_notification.recipients, vec![speaker_id]);
 }
 
 #[tokio::test]
@@ -646,6 +798,10 @@ async fn test_enqueue_event_series_published_notifications_groups_members_and_sp
             *cid == community_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event.clone()));
+    db.expect_filter_notification_recipient_ids()
+        .times(2)
+        .withf(|kind, _, _| matches!(kind, NotificationKind::EventSeriesPublished))
+        .returning(|_, recipients, _| Ok(recipients.to_vec()));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -773,6 +929,12 @@ async fn test_enqueue_event_series_published_notifications_skips_covered_cohost_
         .returning(move |_, _, _| Ok(related_event.clone()));
 
     // Setup notification expectations
+    // Setup eligibility expectations that keep every candidate
+    db.expect_filter_notification_recipient_ids()
+        .times(2)
+        .withf(|kind, _, _| matches!(kind, NotificationKind::EventSeriesPublished))
+        .returning(|_, recipients, _| Ok(recipients.to_vec()));
+
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -967,6 +1129,15 @@ async fn test_enqueue_event_published_notifications_dedupes_cohost_audiences() {
             (Some("Alpha".to_string()), vec![alpha_member_id]),
             (Some("Beta".to_string()), vec![beta_member_id]),
         ]
+    );
+
+    // Check every published copy names the owner and all approved co-hosts
+    let expected_group_ids = vec![group_id, gamma_group_id, beta_group_id, alpha_group_id];
+    assert!(
+        notifications
+            .iter()
+            .filter(|notification| matches!(notification.kind, NotificationKind::EventPublished))
+            .all(|notification| notification.group_ids == expected_group_ids)
     );
 
     // Check the speaker only gets the speaker welcome
@@ -1487,6 +1658,7 @@ async fn test_enqueue_tracked_event_custom_notification_builds_content_and_track
             matches!(notification.kind, NotificationKind::EventCustom)
                 && notification.attachments.is_empty()
                 && notification.recipients == vec![attendee_id1, attendee_id2]
+                && notification.group_ids == vec![group_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventCustom>(value.clone()).is_ok_and(|template| {
                         template.subject == "Event Update"
@@ -1584,6 +1756,7 @@ async fn test_enqueue_tracked_group_custom_notification_builds_content_and_track
             matches!(notification.kind, NotificationKind::GroupCustom)
                 && notification.attachments.is_empty()
                 && notification.recipients == vec![member_id1, member_id2]
+                && notification.group_ids == vec![group_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<GroupCustom>(value.clone()).is_ok_and(|template| {
                         template.subject == "Important Update"
@@ -1637,6 +1810,11 @@ async fn test_enqueue_tracked_group_custom_notification_propagates_context_failu
     // Check the failure propagates
     assert!(result.is_err());
 }
+
+// Types.
+
+/// Co-host name, recipients, event ids, and group ids of one series bundle.
+type SeriesBundle = (Option<String>, Vec<Uuid>, Vec<Uuid>, Vec<Uuid>);
 
 // Helpers.
 

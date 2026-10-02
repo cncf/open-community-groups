@@ -903,6 +903,10 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<Option<Uuid>>;
+        async fn get_user_notification_preferences(
+            &self,
+            user_id: Uuid,
+        ) -> Result<crate::types::dashboard::user::notifications::NotificationPreferences>;
         async fn list_session_proposal_levels(
             &self,
         ) -> Result<Vec<crate::types::dashboard::user::session_proposals::SessionProposalLevel>>;
@@ -952,6 +956,10 @@ mock! {
         ) -> Result<Vec<
             crate::types::dashboard::user::invitations::GroupTeamInvitation,
         >>;
+        async fn list_user_notification_group_options(
+            &self,
+            user_id: Uuid,
+        ) -> Result<Vec<crate::types::dashboard::user::notifications::NotificationGroupOption>>;
         async fn list_user_pending_session_proposal_co_speaker_invitations(
             &self,
             user_id: Uuid,
@@ -968,6 +976,11 @@ mock! {
             user_id: Uuid,
             filters: &crate::types::dashboard::user::session_proposals::SessionProposalsFilters,
         ) -> Result<crate::types::dashboard::user::session_proposals::SessionProposalsOutput>;
+        async fn mute_user_group_notifications(
+            &self,
+            user_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<()>;
         async fn refresh_user_badge_identity(
             &self,
             user_id: Uuid,
@@ -1005,6 +1018,11 @@ mock! {
             event_id: Uuid,
             registration_answers: &crate::types::questionnaire::QuestionnaireAnswers,
         ) -> Result<()>;
+        async fn unmute_user_group_notifications(
+            &self,
+            user_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<()>;
         async fn update_session_proposal(
             &self,
             actor_user_id: Uuid,
@@ -1021,6 +1039,11 @@ mock! {
             &self,
             actor_user_id: Uuid,
             user_badge_ids: &[Uuid],
+        ) -> Result<()>;
+        async fn update_user_notification_preferences(
+            &self,
+            user_id: Uuid,
+            input: &crate::types::dashboard::user::notifications::NotificationPreferencesInput,
         ) -> Result<()>;
         async fn withdraw_cfs_submission(
             &self,
@@ -1309,6 +1332,12 @@ mock! {
             notification: &crate::types::notifications::NewNotification,
             tracking: crate::db::notifications::CustomNotificationTracking,
         ) -> Result<()>;
+        async fn filter_notification_recipient_ids(
+            &self,
+            kind: &crate::types::notifications::NotificationKind,
+            recipients: &[Uuid],
+            group_ids: &[Uuid],
+        ) -> Result<Vec<Uuid>>;
         async fn get_notification_attachment(
             &self,
             attachment_id: Uuid

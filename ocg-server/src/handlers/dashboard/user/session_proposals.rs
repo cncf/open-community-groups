@@ -7,8 +7,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
-use serde_json::to_value;
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -18,16 +17,17 @@ use crate::{
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm, ValidatedQuery},
     },
-    services::notifications::DynNotificationsManager,
-    templates::{
-        dashboard::user::session_proposals, notifications::SessionProposalCoSpeakerInvitation,
+    services::notifications::{
+        DynNotificationsManager,
+        best_effort::{
+            CoSpeakerInvitationNotice, enqueue_session_proposal_co_speaker_invitation_best_effort,
+        },
     },
+    templates::dashboard::user::session_proposals,
     types::{
         dashboard::user::session_proposals::{SessionProposalInput, SessionProposalsFilters},
-        notifications::{NewNotification, NotificationKind},
         pagination::{self, NavigationLinks},
     },
-    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -92,23 +92,20 @@ pub(crate) async fn add(
     db.add_session_proposal(user.user_id, &session_proposal).await?;
 
     // Notify co-speaker when invitation is created
-    if let Some(co_speaker_user_id) = session_proposal.co_speaker_user_id
-        && let Err(err) = send_co_speaker_invitation_notification(
-            &db,
+    if let Some(co_speaker_user_id) = session_proposal.co_speaker_user_id {
+        enqueue_session_proposal_co_speaker_invitation_best_effort(
+            db.as_ref(),
             &notifications_manager,
             &server_cfg,
-            co_speaker_user_id,
-            session_proposal.title.as_str(),
-            get_speaker_name(&user),
+            CoSpeakerInvitationNotice {
+                actor_user_id: user.user_id,
+                co_speaker_user_id,
+                session_proposal_title: session_proposal.title.as_str(),
+                speaker_name: get_speaker_name(&user),
+                session_proposal_id: None,
+            },
         )
-        .await
-    {
-        warn!(
-            error = %format_args!("{err:#}"),
-            user_id = %user.user_id,
-            %co_speaker_user_id,
-            "failed to enqueue session proposal co-speaker invitation notification"
-        );
+        .await;
     }
 
     messages.success("Session proposal added.");
@@ -186,23 +183,20 @@ pub(crate) async fn update(
     // Notify new co-speaker when invitation target changed
     if let Some(co_speaker_user_id) = session_proposal.co_speaker_user_id
         && Some(co_speaker_user_id) != previous_co_speaker_user_id
-        && let Err(err) = send_co_speaker_invitation_notification(
-            &db,
+    {
+        enqueue_session_proposal_co_speaker_invitation_best_effort(
+            db.as_ref(),
             &notifications_manager,
             &server_cfg,
-            co_speaker_user_id,
-            session_proposal.title.as_str(),
-            get_speaker_name(&user),
+            CoSpeakerInvitationNotice {
+                actor_user_id: user.user_id,
+                co_speaker_user_id,
+                session_proposal_title: session_proposal.title.as_str(),
+                speaker_name: get_speaker_name(&user),
+                session_proposal_id: Some(session_proposal_id),
+            },
         )
-        .await
-    {
-        warn!(
-            error = %format_args!("{err:#}"),
-            user_id = %user.user_id,
-            %co_speaker_user_id,
-            %session_proposal_id,
-            "failed to enqueue session proposal co-speaker invitation notification"
-        );
+        .await;
     }
 
     messages.success("Session proposal updated.");
@@ -223,40 +217,6 @@ fn get_speaker_name(user: &crate::auth::User) -> &str {
         user.name.as_str()
     }
 }
-
-/// Sends a co-speaker invitation notification for a session proposal.
-async fn send_co_speaker_invitation_notification(
-    db: &DynDB,
-    notifications_manager: &DynNotificationsManager,
-    server_cfg: &HttpServerConfig,
-    co_speaker_user_id: Uuid,
-    session_proposal_title: &str,
-    speaker_name: &str,
-) -> Result<(), HandlerError> {
-    // Build invitation link and template data
-    let site_settings = db.get_site_settings().await?;
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    let link = format!("{base_url}/dashboard/user?tab=session-proposals");
-    let template_data = SessionProposalCoSpeakerInvitation {
-        link,
-        session_proposal_title: session_proposal_title.to_string(),
-        speaker_name: speaker_name.to_string(),
-        theme: site_settings.theme,
-    };
-
-    // Enqueue invitation notification
-    let notification = NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::SessionProposalCoSpeakerInvitation,
-        recipients: vec![co_speaker_user_id],
-        template_data: Some(to_value(&template_data)?),
-    };
-    notifications_manager.enqueue(&notification).await?;
-
-    Ok(())
-}
-
-// Helpers.
 
 /// Prepares the session proposals list page and filters for the user dashboard.
 pub(crate) async fn prepare_list_page(

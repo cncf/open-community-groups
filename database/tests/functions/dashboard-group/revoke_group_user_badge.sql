@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,8 @@ select plan(6);
 \set communityID 'b1100000-0000-0000-0000-000000000002'
 \set groupCategoryID 'b1100000-0000-0000-0000-000000000003'
 \set groupID 'b1100000-0000-0000-0000-000000000004'
+\set filteredRecipientID 'b1100000-0000-0000-0000-000000000008'
+\set filteredUserBadgeID 'b1100000-0000-0000-0000-000000000009'
 \set recipientID 'b1100000-0000-0000-0000-000000000005'
 \set statusListID 'b1100000-0000-0000-0000-000000000006'
 \set userBadgeID 'b1100000-0000-0000-0000-000000000007'
@@ -27,6 +29,7 @@ select plan(6);
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_user(:'actorID');
+select fx_user(:'filteredRecipientID');
 select fx_user(:'recipientID');
 
 -- Group that owns the award
@@ -43,7 +46,18 @@ insert into user_badge (
 ) values (
     :'userBadgeID', :'statusListID', 0, :'groupID',
     '{"issuer":{"group_name":"Revoke Group"},"name":"Badge"}', 3, :'recipientID'
+), (
+    :'filteredUserBadgeID', :'statusListID', 0, :'groupID',
+    '{"issuer":{"group_name":"Revoke Group"},"name":"Filtered Badge"}', 4, :'filteredRecipientID'
 );
+
+-- Badge opt-out used by the filtered revocation notification scenario
+insert into user_notification_opt_out (notification_category_id, user_id)
+values ('badges', :'filteredRecipientID');
+
+-- Issuing group mute used by the filtered revocation notification scenario
+insert into user_group_notification_mute (group_id, user_id)
+values (:'groupID', :'filteredRecipientID');
 
 -- ============================================================================
 -- TESTS
@@ -98,6 +112,33 @@ select ok(
     'Should notify the recipient without exposing the private reason'
 );
 
+-- Should revoke an award when the recipient opted out and muted the group
+select lives_ok(
+    format(
+        $$select revoke_group_user_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, 'filtered reason')$$,
+        :'actorID', :'communityID', :'groupID', :'filteredUserBadgeID'
+    ),
+    'Should revoke an award when the recipient opted out and muted the group'
+);
+
+-- Should store filtered revocation without notifying the recipient
+select ok(
+    exists (
+        select 1
+        from user_badge
+        where user_badge_id = :'filteredUserBadgeID'
+        and revoked_at is not null
+        and revocation_reason = 'filtered reason'
+    )
+    and not exists (
+        select 1
+        from notification
+        where kind = 'badge-revoked'
+        and user_id = :'filteredRecipientID'
+    ),
+    'Should store filtered revocation without notifying the recipient'
+);
+
 -- Should make repeated revocation a no-op
 select lives_ok(
     format($$select revoke_group_user_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, 'another reason')$$, :'actorID', :'communityID', :'groupID', :'userBadgeID'),
@@ -107,7 +148,12 @@ select lives_ok(
 -- Should not duplicate notification, audit, or reason on replay
 select ok(
     (select count(*) from notification where kind = 'badge-revoked') = 1
-    and (select count(*) from audit_log where action = 'badge_revoked') = 1
+    and (
+        select count(*)
+        from audit_log
+        where action = 'badge_revoked'
+        and resource_id = :'userBadgeID'
+    ) = 1
     and (select revocation_reason from user_badge where user_badge_id = :'userBadgeID') = 'policy violation',
     'Should not duplicate notification, audit, or reason on replay'
 );

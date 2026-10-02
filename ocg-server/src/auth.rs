@@ -671,8 +671,6 @@ pub(crate) struct User {
     pub email_verified: bool,
     /// User's display name.
     pub name: String,
-    /// Whether the user receives optional notifications.
-    pub optional_notifications_enabled: bool,
     /// Registration state for placeholder and regular users.
     #[serde(default = "default_registration_status")]
     pub registration_status: String,

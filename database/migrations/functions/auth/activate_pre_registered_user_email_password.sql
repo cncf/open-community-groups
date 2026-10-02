@@ -10,10 +10,12 @@ declare
     v_username text;
     v_verification_code uuid;
 begin
-    -- Validate verification payload before any mutation that depends on it
+    -- Require a verification code before any mutation that depends on it
     if p_verification_code is null then
         raise exception 'verification code is required to send verification email';
     end if;
+
+    -- Require verification template data before any mutation that depends on it
     if p_verification_template_data is null then
         raise exception 'verification template data is required to send verification email';
     end if;
@@ -26,6 +28,7 @@ begin
     and u.registration_status = 'pre-registered'
     for update;
 
+    -- Return no rows when the email was not pre-registered
     if not found then
         return;
     end if;
@@ -46,6 +49,7 @@ begin
     where user_id = v_user_id
     and registration_status = 'pre-registered';
 
+    -- Reject placeholders that were activated concurrently
     if not found then
         raise exception 'pre-registered user not found' using errcode = 'OCG01';
     end if;
@@ -67,13 +71,13 @@ begin
         array[v_user_id]
     );
 
+    -- Return the activated user and verification code
     return query
     select
         json_strip_nulls(json_build_object(
             'auth_hash', u.auth_hash,
             'email', u.email,
             'email_verified', u.email_verified,
-            'optional_notifications_enabled', u.optional_notifications_enabled,
             'name', u.name,
             'provider', u.provider,
             'user_id', u.user_id,

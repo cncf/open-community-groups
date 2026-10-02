@@ -11,8 +11,8 @@ use crate::{
         dashboard::{
             audit, inbox,
             user::{
-                badges, check_in, events, groups, invitations, purchases, session_proposals,
-                submissions,
+                badges, check_in, events, groups, invitations, notifications, purchases,
+                session_proposals, submissions,
             },
         },
         filters,
@@ -60,6 +60,8 @@ pub(crate) enum Content {
     Invitations(invitations::ListPage),
     /// Audit logs page.
     Logs(audit::ListPage),
+    /// Notification preferences page.
+    Notifications(Box<notifications::Page>),
     /// Paid-ticket invoices and credit notes.
     Purchases(purchases::ListPage),
     /// Session proposals page.
@@ -109,6 +111,11 @@ impl Content {
         matches!(self, Content::Logs(_))
     }
 
+    /// Check if the content is the notifications page.
+    fn is_notifications(&self) -> bool {
+        matches!(self, Content::Notifications(_))
+    }
+
     /// Check if the content is the purchase documents page.
     fn is_purchases(&self) -> bool {
         matches!(self, Content::Purchases(_))
@@ -136,6 +143,7 @@ impl Content {
             Content::Inbox(_) | Content::InboxConversation(_) => "inbox",
             Content::Invitations(_) => "invitations",
             Content::Logs(_) => "logs",
+            Content::Notifications(_) => "notifications",
             Content::Purchases(_) => "purchases",
             Content::SessionProposals(_) => "session-proposals",
         }
@@ -154,6 +162,7 @@ impl std::fmt::Display for Content {
             Content::InboxConversation(template) => write!(f, "{}", template.render()?),
             Content::Invitations(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
+            Content::Notifications(template) => write!(f, "{}", template.render()?),
             Content::Purchases(template) => write!(f, "{}", template.render()?),
             Content::SessionProposals(template) => write!(f, "{}", template.render()?),
             Content::Submissions(template) => write!(f, "{}", template.render()?),
@@ -185,6 +194,8 @@ pub(crate) enum Tab {
     Invitations,
     /// Audit logs tab.
     Logs,
+    /// Notification preferences tab.
+    Notifications,
     /// Paid-ticket purchase documents tab.
     Purchases,
     /// Session proposals tab.
@@ -195,7 +206,9 @@ pub(crate) enum Tab {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::pagination::NavigationLinks;
+    use crate::types::{
+        dashboard::user::notifications::NotificationPreferences, pagination::NavigationLinks,
+    };
 
     use super::*;
 
@@ -221,5 +234,16 @@ mod tests {
         });
 
         assert_eq!(content.refresh_path(), "invitations");
+    }
+
+    #[test]
+    fn test_refresh_path_uses_notifications_route_for_notifications_content() {
+        let content = Content::Notifications(Box::new(notifications::Page {
+            preferences: NotificationPreferences::default(),
+            show_community_team_section: false,
+            show_group_team_section: false,
+        }));
+
+        assert_eq!(content.refresh_path(), "notifications");
     }
 }

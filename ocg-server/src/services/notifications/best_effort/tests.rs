@@ -13,6 +13,7 @@ use crate::{
     },
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, GroupTeamInvitation,
+        SessionProposalCoSpeakerInvitation,
     },
     types::{
         dashboard::group::submissions::CfsSubmissionNotificationData,
@@ -25,8 +26,10 @@ use crate::{
 };
 
 use super::{
-    enqueue_cfs_submission_updated_best_effort, enqueue_community_team_invitation_best_effort,
-    enqueue_event_notification_best_effort, enqueue_group_team_invitation_best_effort,
+    CoSpeakerInvitationNotice, enqueue_cfs_submission_updated_best_effort,
+    enqueue_community_team_invitation_best_effort, enqueue_event_notification_best_effort,
+    enqueue_group_team_invitation_best_effort,
+    enqueue_session_proposal_co_speaker_invitation_best_effort,
 };
 
 #[tokio::test]
@@ -279,119 +282,6 @@ async fn test_enqueue_community_team_invitation_best_effort_swallows_enqueue_fai
 }
 
 #[tokio::test]
-async fn test_enqueue_group_team_invitation_best_effort_enqueues_once() {
-    // Setup identifiers and notification context
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let group = sample_group_summary(group_id);
-    let site_settings = sample_site_settings();
-    let expected_theme = site_settings.theme.clone();
-
-    // Setup database context reads
-    let mut db = MockDB::new();
-    db.expect_get_group_summary()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-
-    // Setup the single enqueue expectation with the full content
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::GroupTeamInvitation)
-                && notification.recipients == vec![user_id]
-                && notification.attachments.is_empty()
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<GroupTeamInvitation>(value.clone()).is_ok_and(|template| {
-                        template.group.group_id == group_id
-                            && template.link
-                                == "https://example.test/dashboard/user?tab=invitations"
-                            && template.theme.primary_color == expected_theme.primary_color
-                    })
-                })
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-    let nm: DynNotificationsManager = Arc::new(nm);
-
-    // Run the best-effort enqueue
-    enqueue_group_team_invitation_best_effort(
-        &db,
-        &nm,
-        &test_server_cfg(),
-        community_id,
-        group_id,
-        user_id,
-    )
-    .await;
-}
-
-#[tokio::test]
-async fn test_enqueue_group_team_invitation_best_effort_swallows_context_load_failure() {
-    // Setup a failing context load; the sibling read may be skipped by try_join!
-    let mut db = MockDB::new();
-    db.expect_get_group_summary()
-        .times(1)
-        .returning(|_, _| Err(anyhow!("database unavailable")));
-    db.expect_get_site_settings()
-        .times(0..=1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup the manager, which must not be called
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().never();
-    let nm: DynNotificationsManager = Arc::new(nm);
-
-    // Run the best-effort enqueue, which must return without error
-    enqueue_group_team_invitation_best_effort(
-        &db,
-        &nm,
-        &test_server_cfg(),
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-    )
-    .await;
-}
-
-#[tokio::test]
-async fn test_enqueue_group_team_invitation_best_effort_swallows_enqueue_failure() {
-    // Setup identifiers and notification context
-    let group_id = Uuid::new_v4();
-
-    // Setup database context reads
-    let mut db = MockDB::new();
-    db.expect_get_group_summary()
-        .times(1)
-        .returning(move |_, _| Ok(sample_group_summary(group_id)));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup a failing enqueue
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .returning(|_| Box::pin(async { Err(anyhow!("queue unavailable")) }));
-    let nm: DynNotificationsManager = Arc::new(nm);
-
-    // Run the best-effort enqueue, which must return without error
-    enqueue_group_team_invitation_best_effort(
-        &db,
-        &nm,
-        &test_server_cfg(),
-        Uuid::new_v4(),
-        group_id,
-        Uuid::new_v4(),
-    )
-    .await;
-}
-
-#[tokio::test]
 async fn test_enqueue_event_notification_best_effort_enqueues_once() {
     // Setup identifiers and notification context
     let community_id = Uuid::new_v4();
@@ -538,6 +428,236 @@ async fn test_enqueue_event_notification_best_effort_swallows_enqueue_failure() 
         event_id,
         |event, server_cfg, site_settings| {
             build_event_waitlist_joined_notification(event, user_id, server_cfg, site_settings)
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_enqueue_group_team_invitation_best_effort_enqueues_once() {
+    // Setup identifiers and notification context
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let group = sample_group_summary(group_id);
+    let site_settings = sample_site_settings();
+    let expected_theme = site_settings.theme.clone();
+
+    // Setup database context reads
+    let mut db = MockDB::new();
+    db.expect_get_group_summary()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(group.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Setup the single enqueue expectation with the full content
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::GroupTeamInvitation)
+                && notification.recipients == vec![user_id]
+                && notification.attachments.is_empty()
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<GroupTeamInvitation>(value.clone()).is_ok_and(|template| {
+                        template.group.group_id == group_id
+                            && template.link
+                                == "https://example.test/dashboard/user?tab=invitations"
+                            && template.theme.primary_color == expected_theme.primary_color
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+    let nm: DynNotificationsManager = Arc::new(nm);
+
+    // Run the best-effort enqueue
+    enqueue_group_team_invitation_best_effort(
+        &db,
+        &nm,
+        &test_server_cfg(),
+        community_id,
+        group_id,
+        user_id,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_enqueue_group_team_invitation_best_effort_swallows_context_load_failure() {
+    // Setup a failing context load; the sibling read may be skipped by try_join!
+    let mut db = MockDB::new();
+    db.expect_get_group_summary()
+        .times(1)
+        .returning(|_, _| Err(anyhow!("database unavailable")));
+    db.expect_get_site_settings()
+        .times(0..=1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup the manager, which must not be called
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue().never();
+    let nm: DynNotificationsManager = Arc::new(nm);
+
+    // Run the best-effort enqueue, which must return without error
+    enqueue_group_team_invitation_best_effort(
+        &db,
+        &nm,
+        &test_server_cfg(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_enqueue_group_team_invitation_best_effort_swallows_enqueue_failure() {
+    // Setup identifiers and notification context
+    let group_id = Uuid::new_v4();
+
+    // Setup database context reads
+    let mut db = MockDB::new();
+    db.expect_get_group_summary()
+        .times(1)
+        .returning(move |_, _| Ok(sample_group_summary(group_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup a failing enqueue
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .returning(|_| Box::pin(async { Err(anyhow!("queue unavailable")) }));
+    let nm: DynNotificationsManager = Arc::new(nm);
+
+    // Run the best-effort enqueue, which must return without error
+    enqueue_group_team_invitation_best_effort(
+        &db,
+        &nm,
+        &test_server_cfg(),
+        Uuid::new_v4(),
+        group_id,
+        Uuid::new_v4(),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_enqueue_session_proposal_co_speaker_invitation_best_effort_enqueues_once() {
+    // Setup identifiers and notification context
+    let co_speaker_user_id = Uuid::new_v4();
+    let site_settings = sample_site_settings();
+    let expected_theme = site_settings.theme.clone();
+
+    // Setup database context reads
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Setup the single enqueue expectation with the full content
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(
+                notification.kind,
+                NotificationKind::SessionProposalCoSpeakerInvitation
+            ) && notification.recipients == vec![co_speaker_user_id]
+                && notification.attachments.is_empty()
+                && notification.group_ids.is_empty()
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<SessionProposalCoSpeakerInvitation>(value.clone()).is_ok_and(
+                        |template| {
+                            template.link
+                                == "https://example.test/dashboard/user?tab=session-proposals"
+                                && template.session_proposal_title == "Proposal title"
+                                && template.speaker_name == "Speaker Name"
+                                && template.theme.primary_color == expected_theme.primary_color
+                        },
+                    )
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+    let nm: DynNotificationsManager = Arc::new(nm);
+
+    // Run the best-effort enqueue
+    enqueue_session_proposal_co_speaker_invitation_best_effort(
+        &db,
+        &nm,
+        &test_server_cfg(),
+        CoSpeakerInvitationNotice {
+            actor_user_id: Uuid::new_v4(),
+            co_speaker_user_id,
+            session_proposal_title: "Proposal title",
+            speaker_name: "Speaker Name",
+            session_proposal_id: None,
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_enqueue_session_proposal_co_speaker_invitation_best_effort_swallows_context_load_failure()
+ {
+    // Setup a failing context read
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Err(anyhow!("db unavailable")));
+
+    // Setup notifications manager that must not be called
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue().never();
+    let nm: DynNotificationsManager = Arc::new(nm);
+
+    // Run the best-effort enqueue, which must return without error
+    enqueue_session_proposal_co_speaker_invitation_best_effort(
+        &db,
+        &nm,
+        &test_server_cfg(),
+        CoSpeakerInvitationNotice {
+            actor_user_id: Uuid::new_v4(),
+            co_speaker_user_id: Uuid::new_v4(),
+            session_proposal_title: "Proposal title",
+            speaker_name: "Speaker Name",
+            session_proposal_id: Some(Uuid::new_v4()),
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_enqueue_session_proposal_co_speaker_invitation_best_effort_swallows_enqueue_failure()
+{
+    // Setup database context reads
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup a failing enqueue
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .returning(|_| Box::pin(async { Err(anyhow!("queue unavailable")) }));
+    let nm: DynNotificationsManager = Arc::new(nm);
+
+    // Run the best-effort enqueue, which must return without error
+    enqueue_session_proposal_co_speaker_invitation_best_effort(
+        &db,
+        &nm,
+        &test_server_cfg(),
+        CoSpeakerInvitationNotice {
+            actor_user_id: Uuid::new_v4(),
+            co_speaker_user_id: Uuid::new_v4(),
+            session_proposal_title: "Proposal title",
+            speaker_name: "Speaker Name",
+            session_proposal_id: Some(Uuid::new_v4()),
         },
     )
     .await;

@@ -3,8 +3,8 @@
 # User Dashboard Guide
 
 Think of the User Dashboard as your home base inside OCG. It brings groups, upcoming events,
-attendee check-in credentials, profile, badges, invitations, proposal writing, and submission
-tracking into one place so moving from participant to speaker feels smooth.
+attendee check-in credentials, profile, email notification preferences, badges, invitations,
+proposal writing, and submission tracking into one place so moving from participant to speaker feels smooth.
 
 For a fast end-to-end walkthrough first, use
 [Quickstart](../getting-started/quickstart.md).
@@ -19,6 +19,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 - [Check-In: Attendee Credentials](#check-in-attendee-credentials)
 - [Purchases and Financial Documents](#purchases-and-financial-documents)
 - [Profile: Public Identity](#profile-public-identity)
+- [Notifications: Email Preferences](#notifications-email-preferences)
 - [Badges: Portable Credentials](#badges-portable-credentials)
 - [Invitations: Access and Attendance](#invitations-access-and-attendance)
 - [Inbox: Conversations with Organizers](#inbox-conversations-with-organizers)
@@ -29,13 +30,14 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The dashboard is organized into eleven areas:
+The dashboard is organized into twelve areas:
 
 - [My Groups](/dashboard/user?tab=groups ':ignore')
 - [My Events](/dashboard/user?tab=events ':ignore')
 - [Check-In](/dashboard/user?tab=check-in ':ignore')
 - [Purchases & documents](/dashboard/user?tab=purchases ':ignore')
 - [Profile](/dashboard/user?tab=account ':ignore')
+- [Notifications](/dashboard/user?tab=notifications ':ignore')
 - [Badges](/dashboard/user?tab=badges ':ignore')
 - [Invitations](/dashboard/user?tab=invitations ':ignore')
 - [Inbox](/dashboard/user?tab=inbox ':ignore')
@@ -44,7 +46,7 @@ The dashboard is organized into eleven areas:
 - [Logs](/dashboard/user?tab=logs ':ignore')
 
 Each area supports a different part of your participation in OCG: groups, events, attendee
-check-in, profile, portable credentials, access, conversations with organizers, proposals,
+check-in, profile, email preferences, portable credentials, access, conversations with organizers, proposals,
 submissions, and audit visibility.
 
 ## My Groups
@@ -153,19 +155,82 @@ You can maintain:
 - Personal details: name, timezone, company, title, photo, bio, interests.
 - Location: city and country.
 - Social links: website, LinkedIn, Bluesky, X, Facebook, GitHub.
-- Notification preferences.
 
 Enter social links as absolute HTTP or HTTPS URLs. Other URL schemes and
 protocol-relative URLs are rejected.
 
 Field requirements and limits are shown inline in the dashboard forms while you edit.
 
-Notification preferences deserve a note: `Receive optional notifications` controls broader
-announcements such as new event announcements, event reminders, and custom messages from
-organizers. Turning it off does not disable account, invitation, registration, speaker, refund,
-waitlist, cancellation, or reschedule updates.
+Email preferences live in their own tab; see
+[Notifications: Email Preferences](#notifications-email-preferences).
 
 ![User profile area](../screenshots/dashboard-user-profile.png)
+
+## Notifications: Email Preferences
+
+[Notifications](/dashboard/user?tab=notifications ':ignore') controls which optional emails you
+receive. Every category starts turned on. Emails about your account, your registrations, and
+things that need your attention are always sent and can't be turned off.
+
+The categories are grouped into sections, and each section only appears when it applies to you:
+
+- **Events and groups** (everyone):
+  - `New events`: a group you belong to or help organize publishes a new event or event series,
+    including events it co-hosts with other groups.
+  - `Group announcements`: messages organizers send to members of a group you belong to or help
+    organize.
+  - `Event reminders`: a reminder about 24 hours before an event you're attending or speaking
+    at, when the organizers turned reminders on.
+  - `Messages from event organizers`: updates organizers send to attendees of events you're
+    registered for.
+  - `Badges`: a group awards you a badge or revokes one. This only controls the email; awards and
+    revocations still take effect in your dashboard.
+- **Group organizing** (members of a group or community team):
+  - `Group inbox`: someone writes to a group you help manage. Only sent if your role includes
+    inbox access.
+  - `Co-hosting updates`: a group responds to your group's co-hosting invitation, or your group's
+    co-hosting of an event ends. Sent to group admins.
+  - `Attendee activity`: an attendee declines a ticket offer you assigned.
+- **Community organizing** (community team members):
+  - `Paid event setups`: a group in your community configures paid tickets for an event. Sent to
+    community admins.
+
+`Save` only changes the categories shown on the page. A choice you made in a section that is no
+longer shown, for example after leaving a team, is kept and applies again if you rejoin.
+
+Select `things that need your attention are always sent` in the page description to open the
+`Always sent` list, which covers:
+
+- Account: email verification and team invitations.
+- Registrations: confirmations, group welcome emails, tickets, invitations, waitlist changes and
+  offers.
+- Payments: instructions, reminders, expirations and refund decisions.
+- Event changes: cancellations and reschedules of events you attend or speak at.
+- Speaking: speaker confirmations, CFS updates and co-speaker invitations.
+- Conversations: replies from groups you wrote to.
+- Organizer actions: refund requests and co-hosting invitations, since someone needs to act on
+  them.
+
+### Muted Groups
+
+Muting a group stops its optional emails in the `Events and groups` categories: new events, group
+announcements, event reminders, messages from event organizers, and badges. New event and event
+series announcements also leave out events co-hosted by a muted group. Event reminders and
+messages from event organizers only follow a mute of the group that organizes the event. Muting
+only changes emails; your membership, registrations, badges, and dashboard stay the same.
+Always-sent emails, and group or community organizing emails, still arrive.
+
+To mute a group, search for it by group or community name. Only groups you are connected to are
+listed: groups you belong to or help organize, and groups that organize or co-host events you are
+registered for, waitlisted on, or speak at. There is no limit on how many groups you can mute.
+
+`Mute` and `Unmute` save immediately and don't change unsaved category choices. Unmuting a group
+doesn't turn back on categories you turned off. A muted group that is no longer available, for
+example because it was deactivated, stays listed as `Not available` so you can still unmute
+it.
+
+?> Preferences apply when an email is queued. Emails already queued are still delivered, and
+turning a category back on or unmuting a group doesn't resend emails that were skipped.
 
 ## Badges: Portable Credentials
 
@@ -342,6 +407,7 @@ Coverage in this view includes:
 - Session proposal create, update, delete, and co-speaker invitation decisions.
 - Submission resubmits and withdrawals.
 - Account profile and password updates.
+- Notification preference updates and group mutes and unmutes.
 
 Rows are ordered by newest first by default, and you can switch the ordering to oldest first. You
 can filter by `Action` and date range, and pagination keeps the active filters applied. When an

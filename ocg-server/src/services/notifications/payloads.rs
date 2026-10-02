@@ -75,6 +75,7 @@ pub(crate) fn build_event_attendance_canceled_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::EventAttendanceCanceled,
         recipients: vec![recipient_user_id],
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -97,6 +98,7 @@ pub(crate) fn build_event_canceled_notification(
 
     Ok(NewNotification {
         attachments: vec![build_event_calendar_attachment(base_url, event)],
+        group_ids: vec![],
         kind: NotificationKind::EventCanceled,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -131,6 +133,7 @@ pub(super) fn build_event_cohost_invitation_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::EventCohostInvitation,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -171,6 +174,7 @@ pub(super) fn build_event_cohost_removed_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::EventCohostRemoved,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -198,6 +202,7 @@ pub(super) fn build_event_cohost_responded_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::EventCohostResponded,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -237,6 +242,7 @@ pub(super) fn build_event_paid_configured_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::EventPaidConfigured,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -246,9 +252,12 @@ pub(super) fn build_event_paid_configured_notification(
 /// Builds an event publication notification.
 ///
 /// `cohost_group_name` is set for the copy sent to a co-host group's audience.
+/// `group_ids` lists every group the email names: the owner group and all
+/// approved co-hosts.
 pub(crate) fn build_event_published_notification(
     event: &EventSummary,
     cohost_group_name: Option<&str>,
+    group_ids: Vec<Uuid>,
     recipients: Vec<Uuid>,
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
@@ -264,6 +273,7 @@ pub(crate) fn build_event_published_notification(
 
     Ok(NewNotification {
         attachments: vec![build_event_calendar_attachment(base_url, event)],
+        group_ids,
         kind: NotificationKind::EventPublished,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -306,6 +316,7 @@ pub(crate) fn build_event_refund_rejected_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::EventRefundRejected,
         recipients: vec![recipient_user_id],
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -328,6 +339,7 @@ pub(crate) fn build_event_rescheduled_notification(
 
     Ok(NewNotification {
         attachments: vec![build_event_calendar_attachment(base_url, event)],
+        group_ids: vec![],
         kind: NotificationKind::EventRescheduled,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -350,6 +362,7 @@ pub(crate) fn build_event_waitlist_joined_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::EventWaitlistJoined,
         recipients: vec![recipient_user_id],
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -372,6 +385,7 @@ pub(crate) fn build_event_waitlist_left_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::EventWaitlistLeft,
         recipients: vec![recipient_user_id],
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -398,6 +412,7 @@ pub(crate) fn build_event_welcome_notification(
 
     Ok(NewNotification {
         attachments: vec![build_event_calendar_attachment(base_url, event)],
+        group_ids: vec![],
         kind: NotificationKind::EventWelcome,
         recipients: vec![recipient_user_id],
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -420,6 +435,7 @@ pub(crate) fn build_speaker_welcome_notification(
 
     Ok(NewNotification {
         attachments: vec![build_event_calendar_attachment(base_url, event)],
+        group_ids: vec![],
         kind: NotificationKind::SpeakerWelcome,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -459,6 +475,7 @@ pub(crate) fn build_inbox_message_received_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::InboxMessageReceived,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -494,6 +511,7 @@ pub(crate) fn build_inbox_reply_received_notification(
 
     Ok(NewNotification {
         attachments: vec![],
+        group_ids: vec![],
         kind: NotificationKind::InboxReplyReceived,
         recipients: vec![user.user_id],
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -584,9 +602,11 @@ mod tests {
     #[test]
     fn test_build_event_calendar_notifications_return_expected_payload() {
         // Setup identifiers and data structures
+        let cohost_group_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
+        let owner_group_id = Uuid::new_v4();
         let recipient_user_id = Uuid::new_v4();
-        let event = sample_event_summary(event_id, Uuid::new_v4());
+        let event = sample_event_summary(event_id, owner_group_id);
         let site_settings = sample_site_settings();
         let server_cfg = sample_server_cfg();
 
@@ -601,6 +621,7 @@ mod tests {
         let published = build_event_published_notification(
             &event,
             None,
+            vec![owner_group_id, cohost_group_id],
             vec![recipient_user_id],
             &server_cfg,
             &site_settings,
@@ -630,6 +651,7 @@ mod tests {
         assert_eq!(canceled_template.event.event_id, event_id);
 
         assert_eq!(published.attachments.len(), 1);
+        assert_eq!(published.group_ids, vec![owner_group_id, cohost_group_id]);
         assert!(matches!(published.kind, NotificationKind::EventPublished));
         let published_template: EventPublished =
             serde_json::from_value(published.template_data.expect("template data to exist"))

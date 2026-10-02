@@ -534,7 +534,9 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
 pub(super) fn setup_user_dashboard_router() -> Router<State> {
     // Setup router
     Router::new()
+        // Home endpoints
         .route("/", get(dashboard::user::home::page))
+        // Badges endpoints
         .route("/badges", get(dashboard::user::badges::list_page))
         .route("/badges/order", put(dashboard::user::badges::update_order))
         .route(
@@ -549,11 +551,13 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/badges/{user_badge_id}/listing",
             put(dashboard::user::badges::update_listing),
         )
+        // Check-in endpoints
         .route("/check-in", get(dashboard::user::check_in::list_page))
         .route(
             "/check-in/{event_id}/qr-code",
             get(dashboard::user::check_in::qr_code),
         )
+        // Events endpoints
         .route("/events", get(dashboard::user::events::list_page))
         .route(
             "/events/{community_name}/{event_id}/attendance",
@@ -563,11 +567,13 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/events/{community_name}/{event_id}/registration-answers",
             put(dashboard::user::events::submit_registration_answers),
         )
+        // Groups endpoints
         .route("/groups", get(dashboard::user::groups::list_page))
         .route(
             "/groups/{community_name}/{group_id}/membership",
             delete(dashboard::user::groups::leave_group),
         )
+        // Inbox endpoints
         .route("/inbox", get(dashboard::user::inbox::list_page))
         .route(
             "/inbox/{inbox_conversation_id}",
@@ -577,6 +583,7 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/inbox/{inbox_conversation_id}/messages",
             post(dashboard::user::inbox::send_message),
         )
+        // Invitations endpoints
         .route("/invitations", get(dashboard::user::invitations::list_page))
         .route(
             "/invitations/community/{community_id}/accept",
@@ -598,7 +605,28 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/invitations/group/{group_id}/reject",
             put(dashboard::user::invitations::reject_group_team_invitation),
         )
+        // Logs endpoints
         .route("/logs", get(dashboard::user::logs::list_page))
+        // Notifications endpoints
+        .route("/notifications", get(dashboard::user::notifications::page))
+        .route(
+            "/notifications/group-options",
+            get(dashboard::user::notifications::group_options),
+        )
+        .route(
+            "/notifications/muted-groups",
+            get(dashboard::user::notifications::muted_groups),
+        )
+        .route(
+            "/notifications/muted-groups/{group_id}",
+            put(dashboard::user::notifications::mute_group)
+                .delete(dashboard::user::notifications::unmute_group),
+        )
+        .route(
+            "/notifications/preferences",
+            put(dashboard::user::notifications::update_preferences),
+        )
+        // Purchases endpoints
         .route("/purchases", get(dashboard::user::purchases::list_page))
         .route(
             "/purchases/{event_purchase_id}/credit-notes/{event_purchase_credit_note_id}",
@@ -608,6 +636,7 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/purchases/{event_purchase_id}/invoice",
             get(dashboard::user::purchases::invoice_document),
         )
+        // Session proposals endpoints
         .route(
             "/session-proposals",
             get(dashboard::user::session_proposals::list_page)
@@ -626,6 +655,7 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/session-proposals/{session_proposal_id}/co-speaker-invitation/reject",
             put(dashboard::user::session_proposals::reject_co_speaker_invitation),
         )
+        // Submissions endpoints
         .route("/submissions", get(dashboard::user::submissions::list_page))
         .route(
             "/submissions/{cfs_submission_id}/resubmit",
@@ -635,5 +665,6 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/submissions/{cfs_submission_id}/withdraw",
             put(dashboard::user::submissions::withdraw),
         )
+        // Users search endpoints
         .route("/users/search", get(common::search_user))
 }

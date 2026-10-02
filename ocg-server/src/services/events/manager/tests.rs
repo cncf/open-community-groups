@@ -2240,6 +2240,14 @@ async fn test_publish_series_sends_aggregate_notification() {
             *cid == community_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event_full.clone()));
+    tx.expect_filter_notification_recipient_ids()
+        .times(2)
+        .withf(move |kind, recipients, group_ids| {
+            matches!(kind, NotificationKind::EventSeriesPublished)
+                && recipients == [member_id]
+                && group_ids == [group_id]
+        })
+        .returning(|_, recipients, _| Ok(recipients.to_vec()));
     tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
@@ -2248,6 +2256,7 @@ async fn test_publish_series_sends_aggregate_notification() {
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventSeriesPublished)
                 && notification.attachments.is_empty()
+                && notification.group_ids == vec![group_id]
                 && notification.recipients == vec![member_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventSeriesPublished>(value.clone()).is_ok_and(|template| {

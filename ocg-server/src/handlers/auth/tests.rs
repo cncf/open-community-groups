@@ -1809,8 +1809,8 @@ async fn test_update_user_details_success() {
         .times(1)
         .withf(move |uid, details| {
             *uid == user_id
-                && details.optional_notifications_enabled
                 && details.name == "Updated User"
+                && details.company.as_deref() == Some("Example")
                 && details.github_url.as_deref() == Some("https://github.com/updated-user")
         })
         .returning(|_, _| Ok(()));
@@ -1831,7 +1831,7 @@ async fn test_update_user_details_success() {
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(
-            "name=Updated+User&company=Example&github_url=https%3A%2F%2Fgithub.com%2Fupdated-user&optional_notifications_enabled=true",
+            "name=Updated+User&company=Example&github_url=https%3A%2F%2Fgithub.com%2Fupdated-user",
         ))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -1858,11 +1858,7 @@ async fn test_update_user_details_returns_error_on_db_failure() {
     expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_update_user_details()
         .times(1)
-        .withf(move |uid, details| {
-            *uid == user_id
-                && !details.optional_notifications_enabled
-                && details.name == "Updated User"
-        })
+        .withf(move |uid, details| *uid == user_id && details.name == "Updated User")
         .returning(|_, _| Err(anyhow!("db error")));
     db.expect_update_session().never();
 
@@ -1877,9 +1873,7 @@ async fn test_update_user_details_returns_error_on_db_failure() {
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(
-            "name=Updated+User&company=Example&optional_notifications_enabled=false",
-        ))
+        .body(Body::from("name=Updated+User&company=Example"))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();

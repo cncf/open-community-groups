@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,9 @@ select plan(5);
 \set audit5ID '4a080000-0000-0000-0000-000000000006'
 \set audit6ID '4a080000-0000-0000-0000-000000000012'
 \set audit7ID '4a080000-0000-0000-0000-000000000013'
+\set audit8ID '4a080000-0000-0000-0000-000000000019'
+\set audit9ID '4a080000-0000-0000-0000-000000000020'
+\set audit10ID '4a080000-0000-0000-0000-000000000021'
 \set communityID '4a080000-0000-0000-0000-000000000014'
 \set eventAcceptedID '4a080000-0000-0000-0000-000000000007'
 \set eventRejectedID '4a080000-0000-0000-0000-000000000008'
@@ -149,6 +152,36 @@ insert into audit_log (
         '{}'::jsonb,
         :'inboxConversationID',
         'inbox_conversation'
+    ),
+    (
+        :'audit8ID',
+        'group_notifications_muted',
+        :'otherActorID',
+        'bob-user-audit-logs',
+        '2024-04-05 10:00:00+00',
+        jsonb_build_object('group_id', :'groupID', 'group_name', 'Inbox Audit Group'),
+        :'otherActorID',
+        'user'
+    ),
+    (
+        :'audit9ID',
+        'group_notifications_unmuted',
+        :'otherActorID',
+        'bob-user-audit-logs',
+        '2024-04-05 11:00:00+00',
+        jsonb_build_object('group_id', :'groupID', 'group_name', 'Inbox Audit Group'),
+        :'otherActorID',
+        'user'
+    ),
+    (
+        :'audit10ID',
+        'user_notification_preferences_updated',
+        :'otherActorID',
+        'bob-user-audit-logs',
+        '2024-04-05 12:00:00+00',
+        '{"opted_out_categories":["new-events"]}'::jsonb,
+        :'otherActorID',
+        'user'
     );
 
 -- ============================================================================
@@ -331,6 +364,31 @@ select is(
         4
     ),
     'Should return user audit logs in ascending order with pagination'
+);
+
+-- Should list notification preference audit actions
+select results_eq(
+    format(
+        $$
+            select action
+            from jsonb_to_recordset(
+                list_user_audit_logs(
+                    %L::uuid,
+                    '{"limit": 50, "offset": 0, "sort": "created-asc"}'::jsonb
+                )::jsonb->'logs'
+            ) as logs(action text)
+            where action like 'group_notifications_%%'
+            or action = 'user_notification_preferences_updated'
+            order by action
+        $$,
+        :'otherActorID'
+    ),
+    $$ values
+        ('group_notifications_muted'::text),
+        ('group_notifications_unmuted'::text),
+        ('user_notification_preferences_updated'::text)
+    $$,
+    'Should list notification preference audit actions'
 );
 
 -- Should default unsupported sort values to created descending

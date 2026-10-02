@@ -12,11 +12,14 @@
   <script type="module" src="/static/js/dashboard/confirm-actions.js"></script>
   <script type="module" src="/static/js/dashboard/menu-drawer.js"></script>
   <script type="module" src="/static/js/dashboard/group/events-list.js"></script>
-  <script type="module" src="/static/js/dashboard/user/account-settings.js"></script>
   <script type="module" src="/static/js/dashboard/user/badges.js"></script>
   <script type="module" src="/static/js/dashboard/user/check-in.js"></script>
   <script type="module" src="/static/js/dashboard/user/events.js"></script>
   <script type="module" src="/static/js/dashboard/user/invitations.js"></script>
+  <script type="module"
+          src="/static/js/dashboard/user/notification-group-mutes.js"></script>
+  <script type="module"
+          src="/static/js/dashboard/user/notification-preferences.js"></script>
   <script type="module"
           src="/static/js/dashboard/user/session-proposals/actions.js"></script>
   <script type="module" src="/static/js/dashboard/user/submissions.js"></script>
@@ -43,6 +46,7 @@
     {{ dashboard::menu_item(name = "My Events", icon = "events", is_active = content.is_events() , href = "/dashboard/user?tab=events") -}}
     {{ dashboard::menu_item(name = "Purchases & documents", compact_name = "Purchases", icon = "invoice", is_active = content.is_purchases() , href = "/dashboard/user?tab=purchases") -}}
     {{ dashboard::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account") -}}
+    {{ dashboard::menu_item(name = "Notifications", icon = "bell", is_active = content.is_notifications() , href = "/dashboard/user?tab=notifications") -}}
     {{ dashboard::menu_item(name = "Badges", icon = "certificate", is_active = content.is_badges() , href = "/dashboard/user?tab=badges") -}}
     {{ dashboard::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations") -}}
     {{ dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/user?tab=inbox") -}}

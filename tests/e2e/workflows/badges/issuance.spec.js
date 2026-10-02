@@ -6,6 +6,7 @@ import {
   setupBadgeDefinition,
   setupBadgeStatusList,
 } from "../../data-graphs/badges.js";
+import { cleanupGroupMute, setupGroupMute } from "../../data-graphs/notification-preferences.js";
 import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
 import { TEST_EVENT_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../../seed.js";
 import { buildE2eUrl, navigateToPath, waitForActionResponse } from "../../utils.js";
@@ -96,6 +97,44 @@ test.describe("badge issuance workflow", () => {
     } finally {
       // Remove generated notifications, jobs, and credential rows.
       deleteNotifications(notificationIds);
+      cleanupBadgeAwardJobs({ badgeId: badge.badgeId });
+      cleanupCredential({
+        badgeCreated: badge.badgeCreated,
+        badgeId: badge.badgeId,
+        badgeStatusListId: statusList.badgeStatusListId,
+        userBadgeId: credentialId,
+      });
+    }
+  });
+
+  test("award skips the badge email when the recipient muted the issuing group", async ({
+    organizerGroupPage,
+  }) => {
+    const badge = setupBadgeDefinition({ groupId: TEST_GROUP_IDS.community1.alpha });
+    const statusList = setupBadgeStatusList({ groupId: TEST_GROUP_IDS.community1.alpha });
+    let credentialId;
+    let notificationIds = [];
+
+    try {
+      // Mute the issuing group for the recipient.
+      cleanupGroupMute({ groupId: TEST_GROUP_IDS.community1.alpha, userId: TEST_USER_IDS.member1 });
+      setupGroupMute({ groupId: TEST_GROUP_IDS.community1.alpha, userId: TEST_USER_IDS.member1 });
+
+      // Award the badge and wait for the credential to be issued.
+      const awardedNotifications = snapshotNotifications();
+      await awardBadgeToMemberOne(organizerGroupPage, badge.badgeId);
+      credentialId = await waitForIssuedCredential({
+        badgeId: badge.badgeId,
+        userId: TEST_USER_IDS.member1,
+      });
+
+      // Verify the credential exists but no badge email was enqueued.
+      expect(countActiveCredentials(badge.badgeId, TEST_USER_IDS.member1)).toBe(1);
+      notificationIds = notificationIds.concat(expectNewNotifications(awardedNotifications, []));
+    } finally {
+      // Remove generated notifications, mute, jobs, and credential rows.
+      deleteNotifications(notificationIds);
+      cleanupGroupMute({ groupId: TEST_GROUP_IDS.community1.alpha, userId: TEST_USER_IDS.member1 });
       cleanupBadgeAwardJobs({ badgeId: badge.badgeId });
       cleanupCredential({
         badgeCreated: badge.badgeCreated,

@@ -321,8 +321,8 @@ counted once. The switch is not saved; each fresh page load starts with subgroup
 `Members` provides two practical capabilities: browsing the member list with join dates, and
 sending plain-text email to all group members.
 
-`Send email` reaches both group members and group team members who receive optional
-notifications. The email form includes a required `Subject`, defaults it to the group name, and
+`Send email` reaches both group members and group team members who haven't turned off
+`Group announcements` or muted the group. The email form includes a required `Subject`, defaults it to the group name, and
 sends the message body as plain text.
 
 ![Group members area](../screenshots/dashboard-group-members.png)
@@ -474,6 +474,8 @@ Approving means:
 
 Invitations, removals, and responses are emailed to the accepted, email-verified group `admin`
 team members of the receiving group. Community roles can respond but do not receive these emails.
+Invitations are always sent; responses and removals are skipped for admins who turned off
+`Co-hosting updates` in their notification preferences.
 For recurring series, each occurrence is a separate invitation that is approved on its own.
 
 Public pages are cached, so co-hosting changes can take a few minutes to appear there.
@@ -519,12 +521,14 @@ Messages are plain text of up to 5000 characters and cannot be edited or deleted
 Email notifications:
 
 - When a user writes, the accepted, email-verified group team members with Inbox access receive
-  the message by email. Community roles can open the Inbox but are not emailed.
+  the message by email, unless they turned off `Group inbox` in their notification preferences.
+  Community roles can open the Inbox but are not emailed.
 - The email names the group and its community and links to the conversation in the group
   dashboard Inbox. If you manage several groups, select the group named in the email; with
   another group selected, the dashboard shows the Inbox list with a warning and keeps the group
   selector available.
-- When an organizer replies, the user receives the reply by email and in their own Inbox.
+- When an organizer replies, the user receives the reply by email and in their own Inbox. Reply
+  emails are always sent.
 - Replies are always written in the dashboard; replying to an email does not reach the other side.
 
 If a user deletes their account, the conversation stays in the Inbox under `Deleted user` and

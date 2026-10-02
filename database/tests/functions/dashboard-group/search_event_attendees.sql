@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(35);
+select plan(36);
 
 -- ============================================================================
 -- VARIABLES
@@ -33,6 +33,10 @@ select plan(35);
 \set externalReregisterUserID '3a2e0000-0000-0000-0000-00000000007d'
 \set externalReplacementPurchaseID '3a2e0000-0000-0000-0000-00000000007a'
 \set externalReplacementUserID '3a2e0000-0000-0000-0000-00000000007b'
+\set focusedEligibleUserID '3a2e0000-0000-0000-0000-000000000089'
+\set focusedEventID '3a2e0000-0000-0000-0000-00000000008a'
+\set focusedOwnerMutedUserID '3a2e0000-0000-0000-0000-00000000008b'
+\set focusedUnrelatedMutedUserID '3a2e0000-0000-0000-0000-00000000008c'
 \set eventDiscountCode1ID '3a2e0000-0000-0000-0000-000000000005'
 \set expiredInvitationOfferID '3a2e0000-0000-0000-0000-000000000065'
 \set eventPurchase1ID '3a2e0000-0000-0000-0000-000000000006'
@@ -132,7 +136,6 @@ select fx_user(:'user1ID', jsonb_build_object(
 ));
 select fx_user(:'user2ID', jsonb_build_object(
     'email', 'bob@example.com',
-    'optional_notifications_enabled', false,
     'photo_url', 'https://example.com/bob.png',
     'username', 'bob-search-event-attendees'
 ));
@@ -160,6 +163,13 @@ select fx_user(:'user6ID', jsonb_build_object(
 ));
 select fx_user(:'questionsAttendeeUserID', jsonb_build_object('email_verified', false));
 select fx_user(:'userStopwordSearchID', jsonb_build_object('username', 'may'));
+select fx_user(:'focusedEligibleUserID');
+select fx_user(:'focusedOwnerMutedUserID');
+select fx_user(:'focusedUnrelatedMutedUserID');
+
+-- Organizer messages opt-out used by attendee email eligibility
+insert into user_notification_opt_out (notification_category_id, user_id)
+values ('organizer-messages', :'user2ID');
 
 -- Events
 select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -176,6 +186,9 @@ select fx_event(:'eventPendingCheckoutID', :'groupID', :'eventCategoryID', jsonb
 ));
 select fx_event(:'eventStopwordSearchID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'payment_currency_code', 'USD',
+    'published', true
+));
+select fx_event(:'focusedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published', true
 ));
 select fx_event(:'attendanceFilterEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -312,6 +325,21 @@ insert into event_attendee (
     false,
     'confirmed'
 );
+
+-- Attendees used by focused notification preference eligibility checks
+insert into event_attendee (event_id, status, user_id)
+values
+    (:'focusedEventID', 'confirmed', :'focusedEligibleUserID'),
+    (:'focusedEventID', 'confirmed', :'focusedOwnerMutedUserID'),
+    (:'focusedEventID', 'confirmed', :'focusedUnrelatedMutedUserID');
+
+-- Owner group mute excluding one focused attendee from organizer email
+insert into user_group_notification_mute (group_id, user_id)
+values (:'groupID', :'focusedOwnerMutedUserID');
+
+-- Unrelated group mute that should not exclude the focused attendee
+insert into user_group_notification_mute (group_id, user_id)
+values (:'group2ID', :'focusedUnrelatedMutedUserID');
 
 -- Organizer invitation offers
 insert into admission_offer (
@@ -1741,6 +1769,38 @@ select ok(
         from result
     ),
     'Should exclude active pending checkout holds from email recipient eligibility'
+);
+
+-- Should apply organizer opt-outs and owner group mutes to attendee email eligibility
+select is(
+    (
+        select jsonb_build_object(
+            'recipient_total', (data->>'all_attendees_email_recipient_total')::int,
+            'recipients', (
+                select jsonb_object_agg(
+                    attendee#>>'{user,user_id}',
+                    (attendee->>'can_receive_attendee_email')::boolean
+                )
+                from jsonb_array_elements(data->'attendees') attendee
+            )
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'focusedEventID'::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb as data
+        ) result
+    ),
+    jsonb_build_object(
+        'recipient_total', 2,
+        'recipients', jsonb_build_object(
+            :'focusedEligibleUserID', true,
+            :'focusedOwnerMutedUserID', false,
+            :'focusedUnrelatedMutedUserID', true
+        )
+    ),
+    'Should apply organizer opt-outs and owner group mutes to attendee email eligibility'
 );
 
 -- Should include registration answers in attendee search results

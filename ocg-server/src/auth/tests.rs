@@ -1042,7 +1042,6 @@ fn sample_user() -> User {
         email: "user@example.com".to_string(),
         email_verified: true,
         name: "Test User".to_string(),
-        optional_notifications_enabled: true,
         registration_status: "registered".to_string(),
         user_id: Uuid::new_v4(),
         username: "test-user".to_string(),

@@ -54,4 +54,18 @@ describe("dashboard user home template", () => {
       'menu_item(name = "Purchases & documents", compact_name = "Purchases", icon = "invoice"',
     );
   });
+
+  it("loads notification scripts and links the notifications menu item", async () => {
+    // Load the user dashboard shell before checking the notifications contracts.
+    const template = await loadTemplate();
+
+    // Verify the account settings script was replaced by the notification modules.
+    expect(template).to.include('src="/static/js/dashboard/user/notification-group-mutes.js"');
+    expect(template).to.include('src="/static/js/dashboard/user/notification-preferences.js"');
+
+    // Verify the dashboard exposes the Notifications menu item.
+    expect(template).to.include(
+      'menu_item(name = "Notifications", icon = "bell", is_active = content.is_notifications() , href = "/dashboard/user?tab=notifications")',
+    );
+  });
 });

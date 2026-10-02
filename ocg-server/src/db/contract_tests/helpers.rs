@@ -131,6 +131,11 @@ const GROUP_LOCK_FIRST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c121";
 /// Second event fixture used to verify group-level mutation locks.
 const GROUP_LOCK_SECOND_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c122";
 const GROUP_SPONSOR_ID: &str = "00000000-0000-0000-0000-00000000c061";
+const INBOX_OPT_OUT_ADMIN_ID: &str = "00000000-0000-0000-0000-00000000e02c";
+const INBOX_OPT_OUT_EVENT_ID: &str = "00000000-0000-0000-0000-00000000e034";
+const INBOX_OPT_OUT_EVENTS_MANAGER_ID: &str = "00000000-0000-0000-0000-00000000e02d";
+const INBOX_OPT_OUT_GROUP_ID: &str = "00000000-0000-0000-0000-00000000e014";
+const INBOX_OPT_OUT_USER_ID: &str = "00000000-0000-0000-0000-00000000e02e";
 const INVITATION_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c083";
 const INVITATION_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c081";
 const INVITE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d8";
@@ -138,6 +143,12 @@ const INVITEE_ID: &str = "00000000-0000-0000-0000-00000000c0ed";
 const LEAVER_ID: &str = "00000000-0000-0000-0000-00000000c0e8";
 const MUTATION_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d5";
 const MUTATION_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c0d7";
+const NOTIFICATION_CONCURRENCY_USER_ID: &str = "00000000-0000-0000-0000-00000000f004";
+const NOTIFICATION_ELIGIBLE_USER_ID: &str = "00000000-0000-0000-0000-00000000f002";
+const NOTIFICATION_PREFERENCES_USER_ID: &str = "00000000-0000-0000-0000-00000000f001";
+const NOTIFICATION_UNAVAILABLE_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d028";
+const NOTIFICATION_UNMUTE_CONCURRENCY_USER_ID: &str = "00000000-0000-0000-0000-00000000f005";
+const NOTIFICATION_UPDATE_USER_ID: &str = "00000000-0000-0000-0000-00000000f003";
 const OFFER_DECLINE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0dc";
 const OFFER_DECLINE_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c0dd";
 const OFFER_DECLINER_ID: &str = "00000000-0000-0000-0000-00000000c0f0";
@@ -743,6 +754,31 @@ pub(super) fn group_sponsor_id() -> Uuid {
     parse_uuid(GROUP_SPONSOR_ID)
 }
 
+/// Returns the opted-out inbox admin used by the contract fixture.
+pub(super) fn inbox_opt_out_admin_id() -> Uuid {
+    parse_uuid(INBOX_OPT_OUT_ADMIN_ID)
+}
+
+/// Returns the event whose inbox recipients opted out of group-inbox emails.
+pub(super) fn inbox_opt_out_event_id() -> Uuid {
+    parse_uuid(INBOX_OPT_OUT_EVENT_ID)
+}
+
+/// Returns the opted-out inbox events manager used by the contract fixture.
+pub(super) fn inbox_opt_out_events_manager_id() -> Uuid {
+    parse_uuid(INBOX_OPT_OUT_EVENTS_MANAGER_ID)
+}
+
+/// Returns the group whose inbox recipients opted out of group-inbox emails.
+pub(super) fn inbox_opt_out_group_id() -> Uuid {
+    parse_uuid(INBOX_OPT_OUT_GROUP_ID)
+}
+
+/// Returns the user who writes to the opted-out inbox fixture.
+pub(super) fn inbox_opt_out_user_id() -> Uuid {
+    parse_uuid(INBOX_OPT_OUT_USER_ID)
+}
+
 /// Returns the invitation offer identifier used by the contract fixture.
 pub(super) fn invitation_offer_id() -> Uuid {
     parse_uuid(INVITATION_OFFER_ID)
@@ -786,6 +822,36 @@ pub(crate) fn mutation_event_id() -> Uuid {
 /// Returns the mutation offer identifier used by the contract fixture.
 pub(super) fn mutation_offer_id() -> Uuid {
     parse_uuid(MUTATION_OFFER_ID)
+}
+
+/// Returns the user used by notification mute concurrency contracts.
+pub(super) fn notification_concurrency_user_id() -> Uuid {
+    parse_uuid(NOTIFICATION_CONCURRENCY_USER_ID)
+}
+
+/// Returns the recipient that accepts notification filtering contracts.
+pub(super) fn notification_eligible_user_id() -> Uuid {
+    parse_uuid(NOTIFICATION_ELIGIBLE_USER_ID)
+}
+
+/// Returns the user with seeded notification preferences.
+pub(super) fn notification_preferences_user_id() -> Uuid {
+    parse_uuid(NOTIFICATION_PREFERENCES_USER_ID)
+}
+
+/// Returns the unavailable group muted by the notification preferences fixture.
+pub(super) fn notification_unavailable_group_id() -> Uuid {
+    parse_uuid(NOTIFICATION_UNAVAILABLE_GROUP_ID)
+}
+
+/// Returns the user used by notification unmute concurrency contracts.
+pub(super) fn notification_unmute_concurrency_user_id() -> Uuid {
+    parse_uuid(NOTIFICATION_UNMUTE_CONCURRENCY_USER_ID)
+}
+
+/// Returns the user dedicated to notification preference update contracts.
+pub(super) fn notification_update_user_id() -> Uuid {
+    parse_uuid(NOTIFICATION_UPDATE_USER_ID)
 }
 
 /// Returns the notification identifier used by the contract fixture.

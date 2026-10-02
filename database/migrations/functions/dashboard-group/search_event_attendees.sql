@@ -284,7 +284,14 @@ returns json as $$
                     er.enrollment_status in ('confirmed', 'registration-pending')
                     and er.admission_offer_id is null
                     and u.email_verified = true
-                    and coalesce(u.optional_notifications_enabled, true) = true
+                    and exists (
+                        select 1
+                        from users_accepting_notification(
+                            'event-custom',
+                            array[er.user_id],
+                            array[e.group_id]
+                        )
+                    )
                     and pending_ep.event_purchase_id is null
                 ) as can_receive_attendee_email
             from enrollment_rows er

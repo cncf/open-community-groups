@@ -95,7 +95,6 @@ select is(
         'github_url', 'https://github.com/testuser',
         'has_password', true,
         'name', 'Test User',
-        'optional_notifications_enabled', true,
         'provider', jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
         'user_id', :'userWithTeamsID'::uuid,
         'username', 'testuser'
@@ -116,7 +115,6 @@ select is(
         'github_url', 'https://github.com/testuser',
         'has_password', true,
         'name', 'Test User',
-        'optional_notifications_enabled', true,
         'password', 'hashed_password_here',
         'provider', jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
         'user_id', :'userWithTeamsID'::uuid,
@@ -142,7 +140,6 @@ select is(
         'email', 'nogroups@example.com',
         'email_verified', true,
         'name', 'No Groups User',
-        'optional_notifications_enabled', true,
         'user_id', :'userNoTeamsID'::uuid,
         'username', 'nogroupsuser'
     ),
@@ -159,7 +156,6 @@ select is(
         'email', 'grouponly@example.com',
         'email_verified', true,
         'name', 'Group Only User',
-        'optional_notifications_enabled', true,
         'user_id', :'userGroupOnlyID'::uuid,
         'username', 'grouponlyuser'
     ),
@@ -176,7 +172,6 @@ select is(
         'email', 'communityonly@example.com',
         'email_verified', true,
         'name', 'Community Only User',
-        'optional_notifications_enabled', true,
         'user_id', :'userCommunityOnlyID'::uuid,
         'username', 'communityonlyuser'
     ),
@@ -193,7 +188,6 @@ select is(
         'email', 'both@example.com',
         'email_verified', true,
         'name', 'Both Teams User',
-        'optional_notifications_enabled', true,
         'user_id', :'userBothTeamsID'::uuid,
         'username', 'bothuser'
     ),

@@ -1,16 +1,19 @@
-//! Contract tests for the `DBInbox` functions and the inbox manager.
+//! Contract tests for the `DBInbox` functions.
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use chrono::{TimeZone, Utc};
 use tokio_postgres::error::{DbError, SqlState};
 use uuid::Uuid;
 
 use crate::{
     db::{
-        USER_FACING_DB_ERROR_CODE,
+        DBExt, USER_FACING_DB_ERROR_CODE,
         inbox::{DBInbox, StartInboxConversationConflict, StartInboxConversationResult},
     },
-    types::inbox::{InboxConversationStatus, InboxConversationsFilters, InboxMessageKind},
+    types::{
+        inbox::{InboxConversationStatus, InboxConversationsFilters, InboxMessageKind},
+        notifications::{NewNotification, NotificationKind},
+    },
 };
 
 use super::helpers::*;
@@ -632,6 +635,78 @@ async fn db_contracts_mark_inbox_conversation_as_spam_round_trips() -> Result<()
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_start_inbox_conversation_commits_when_group_inbox_recipients_opt_out()
+-> Result<()> {
+    // Setup a clean opted-out inbox workflow
+    let client = contract_tests_pool()?.get().await?;
+    cleanup_opted_out_inbox_flow(&client).await?;
+    let db = contract_tests_db()?;
+
+    // Start a conversation and queue its email to recipients who all opted out
+    let inbox_conversation_id = db
+        .transaction(|tx| {
+            Box::pin(async move {
+                let result = tx
+                    .start_inbox_conversation(
+                        inbox_opt_out_user_id(),
+                        INBOX_COMMUNITY_ID,
+                        inbox_opt_out_event_id(),
+                        "Will the recording be posted?",
+                    )
+                    .await?;
+                let StartInboxConversationResult::Started(posted) = result else {
+                    bail!("inbox conversation was not started");
+                };
+                let recipients = tx.list_inbox_recipient_ids(posted.group_id).await?;
+                tx.enqueue_notification(&NewNotification {
+                    attachments: vec![],
+                    group_ids: vec![],
+                    kind: NotificationKind::InboxMessageReceived,
+                    recipients,
+                    template_data: Some(serde_json::json!({})),
+                })
+                .await?;
+                Ok(posted.inbox_conversation_id)
+            })
+        })
+        .await?;
+
+    // Load the stored message and any notifications for the opted-out recipients
+    let body: String = client
+        .query_one(
+            "select body
+            from inbox_message
+            where inbox_conversation_id = $1::uuid",
+            &[&inbox_conversation_id],
+        )
+        .await?
+        .get(0);
+    let notification_count: i64 = client
+        .query_one(
+            "select count(*)
+            from notification
+            where kind = 'inbox-message-received'
+            and user_id = any($1::uuid[])",
+            &[&vec![
+                inbox_opt_out_admin_id(),
+                inbox_opt_out_events_manager_id(),
+            ]],
+        )
+        .await?
+        .get(0);
+
+    // Check preference filtering did not roll back the inbox write
+    assert_eq!(body, "Will the recording be posted?");
+    assert_eq!(notification_count, 0);
+
+    // Clean up durable rows so repeated focused runs start from the same state
+    cleanup_opted_out_inbox_flow(&client).await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_start_inbox_conversation_returns_open_conversation_conflict() -> Result<()> {
     // Setup the contract database
     let db = contract_tests_db()?;
@@ -782,4 +857,46 @@ async fn backend_pid(client: &tokio_postgres::Client) -> Result<i32> {
         .query_one("select pg_backend_pid()", &[])
         .await?
         .get::<_, i32>(0))
+}
+
+/// Removes rows written by the opted-out inbox conversation contract.
+async fn cleanup_opted_out_inbox_flow(client: &tokio_postgres::Client) -> Result<()> {
+    // Remove any emails written by a failed prior focused run
+    client
+        .execute(
+            "delete from notification
+            where kind = 'inbox-message-received'
+            and user_id = any($1::uuid[])",
+            &[&vec![
+                inbox_opt_out_admin_id(),
+                inbox_opt_out_events_manager_id(),
+            ]],
+        )
+        .await?;
+
+    // Remove messages before their conversations are deleted
+    client
+        .execute(
+            "delete from inbox_message
+            where inbox_conversation_id in (
+                select inbox_conversation_id
+                from inbox_conversation
+                where group_id = $1::uuid
+                and user_id = $2::uuid
+            )",
+            &[&inbox_opt_out_group_id(), &inbox_opt_out_user_id()],
+        )
+        .await?;
+
+    // Remove the conversation started by the contract
+    client
+        .execute(
+            "delete from inbox_conversation
+            where group_id = $1::uuid
+            and user_id = $2::uuid",
+            &[&inbox_opt_out_group_id(), &inbox_opt_out_user_id()],
+        )
+        .await?;
+
+    Ok(())
 }

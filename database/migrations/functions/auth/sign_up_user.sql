@@ -11,10 +11,12 @@ declare
     v_username text;
     v_verification_code uuid;
 begin
-    -- Validate verification payload before any mutation that depends on it
+    -- Require a verification code when the email is not verified
     if not p_email_verified and p_verification_code is null then
         raise exception 'verification code is required to send verification email';
     end if;
+
+    -- Require verification template data when the email is not verified
     if not p_email_verified and p_verification_template_data is null then
         raise exception 'verification template data is required to send verification email';
     end if;
@@ -64,7 +66,6 @@ begin
             'auth_hash', u.auth_hash,
             'email', u.email,
             'email_verified', u.email_verified,
-            'optional_notifications_enabled', u.optional_notifications_enabled,
             'name', u.name,
             'provider', u.provider,
             'user_id', u.user_id,

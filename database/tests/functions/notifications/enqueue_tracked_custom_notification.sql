@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,6 +12,7 @@ select plan(6);
 \set communityID '8a070000-0000-0000-0000-000000000001'
 \set groupCategoryID '8a070000-0000-0000-0000-000000000002'
 \set groupID '8a070000-0000-0000-0000-000000000003'
+\set mutedRecipientID '8a070000-0000-0000-0000-000000000006'
 \set senderID '8a070000-0000-0000-0000-000000000004'
 \set recipientID '8a070000-0000-0000-0000-000000000005'
 
@@ -25,8 +26,16 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 select fx_user(:'senderID', jsonb_build_object('username', 'sender'));
--- user
+
+-- User who receives the baseline custom notification
 select fx_user(:'recipientID', jsonb_build_object('username', 'recipient-enqueue-tracked-custom-notification'));
+
+-- User who muted the group named by the custom notification
+select fx_user(:'mutedRecipientID', jsonb_build_object('username', 'muted-recipient-enqueue-tracked'));
+
+-- Mute used to prove enqueue filtering does not block tracking
+insert into user_group_notification_mute (group_id, user_id)
+values (:'groupID', :'mutedRecipientID');
 
 -- ============================================================================
 -- TESTS
@@ -68,11 +77,49 @@ select is(
     'Should create one custom notification row'
 );
 
--- Should create one audit row.
+-- Should track a custom notification even when every recipient is filtered
+select lives_ok(
+    format(
+        $$select enqueue_tracked_custom_notification(
+            'group-custom',
+            jsonb_build_object('subject', 'Muted group update'),
+            '[]'::jsonb,
+            array[%L::uuid],
+            %L::uuid,
+            null::uuid,
+            %L::uuid,
+            1,
+            'Muted group update',
+            'Body for muted group notification'
+        )$$,
+        :'mutedRecipientID',
+        :'senderID',
+        :'groupID'
+    ),
+    'Should track a custom notification even when every recipient is filtered'
+);
+
+-- Should filter muted recipients while keeping the tracking row
+select ok(
+    not exists (
+        select 1
+        from notification
+        where kind = 'group-custom'
+        and user_id = :'mutedRecipientID'
+    )
+    and exists (
+        select 1
+        from custom_notification
+        where subject = 'Muted group update'
+    ),
+    'Should filter muted recipients while keeping the tracking row'
+);
+
+-- Should create audit rows for successful tracking operations.
 select is(
     (select count(*) from audit_log where action = 'group_custom_notification_sent'),
-    1::bigint,
-    'Should create one audit row'
+    2::bigint,
+    'Should create audit rows for successful tracking operations'
 );
 
 -- Should roll back tracking when enqueue fails.

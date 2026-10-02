@@ -247,7 +247,8 @@
 
 {# Page title #}
 {# Used by dashboard pages for the primary title and documentation link. #}
-{% macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "", id = "") -%}
+{# description_html renders trusted template markup, such as inline modal triggers. #}
+{% macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "", id = "", description_html = "") -%}
   <div class="min-w-0">
     <div class="flex items-center justify-between gap-3">
       <div class="min-w-0 text-xl leading-tight font-medium text-stone-900 lg:text-2xl">{{ title }}</div>
@@ -260,9 +261,11 @@
         <div class="svg-icon size-4 icon-question bg-primary-500 transition-colors group-hover:bg-white"></div>
       </a>
     </div>
-    {% if !description.is_empty() || !id.is_empty() -%}
+    {% if !description.is_empty() || !description_html.is_empty() || !id.is_empty() -%}
       <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0">
-        {% if !description.is_empty() -%}
+        {% if !description_html.is_empty() -%}
+          <p class="text-sm/6 text-stone-500 m-0">{{ description_html|safe }}</p>
+        {% elif !description.is_empty() -%}
           <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
         {% endif -%}
         {% if !id.is_empty() -%}

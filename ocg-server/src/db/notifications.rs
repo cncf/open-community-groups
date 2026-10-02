@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    types::notifications::{Attachment, NewNotification, Notification},
+    types::notifications::{Attachment, NewNotification, Notification, NotificationKind},
 };
 
 /// Trait that defines database operations used to manage notifications.
@@ -22,18 +22,29 @@ pub(crate) trait DBNotifications {
     /// Claims a pending notification for delivery.
     async fn claim_pending_notification(&self) -> Result<Option<Notification>>;
 
-    /// Enqueues due event reminders and returns the number of notifications created.
+    /// Enqueues due event reminders and returns the number of reminder recipients
+    /// attempted, before preference filtering.
     async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize>;
 
     /// Enqueues a notification to be delivered.
     async fn enqueue_notification(&self, notification: &NewNotification) -> Result<()>;
 
-    /// Enqueues and tracks a custom notification atomically.
+    /// Enqueues and tracks a custom notification atomically. The notification is
+    /// scoped to `tracking.group_id`, so recipients who muted it are skipped.
     async fn enqueue_tracked_custom_notification(
         &self,
         notification: &NewNotification,
         tracking: CustomNotificationTracking,
     ) -> Result<()>;
+
+    /// Returns, in input order, the recipients who accept a notification kind for
+    /// the given groups. `enqueue_notification` still makes the final decision.
+    async fn filter_notification_recipient_ids(
+        &self,
+        kind: &NotificationKind,
+        recipients: &[Uuid],
+        group_ids: &[Uuid],
+    ) -> Result<Vec<Uuid>>;
 
     /// Retrieves a notification attachment by its ID.
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment>;
@@ -171,7 +182,8 @@ where
                     $1::text,
                     $2::jsonb,
                     $3::jsonb,
-                    $4::uuid[]
+                    $4::uuid[],
+                    $5::uuid[]
                 ) as notification_ids;
                 ",
                 &[
@@ -179,6 +191,7 @@ where
                     &notification.template_data,
                     &attachments,
                     &notification.recipients,
+                    &notification.group_ids,
                 ],
             )
             .await?;
@@ -238,6 +251,27 @@ where
                 &tracking.subject,
                 &tracking.body,
             ],
+        )
+        .await
+    }
+
+    /// [`DBNotifications::filter_notification_recipient_ids`].
+    #[instrument(skip(self, recipients), fields(entries = recipients.len()), err)]
+    async fn filter_notification_recipient_ids(
+        &self,
+        kind: &NotificationKind,
+        recipients: &[Uuid],
+        group_ids: &[Uuid],
+    ) -> Result<Vec<Uuid>> {
+        // Nothing to filter
+        if recipients.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Keep the recipients who accept the notification
+        self.fetch_scalar_one(
+            "select filter_notification_recipient_ids($1::text, $2::uuid[], $3::uuid[])",
+            &[&kind.to_string(), &recipients, &group_ids],
         )
         .await
     }
@@ -421,7 +455,8 @@ pub(crate) struct CustomNotificationTracking {
     pub(crate) event_id: Option<Uuid>,
     /// Group associated with the notification.
     pub(crate) group_id: Option<Uuid>,
-    /// Attempted recipient count before optional notification filtering.
+    /// Attempted recipients after eligibility resolution, before the final
+    /// enqueue filter.
     pub(crate) recipient_count: usize,
     /// Subject stored in the custom notification record.
     pub(crate) subject: String,
