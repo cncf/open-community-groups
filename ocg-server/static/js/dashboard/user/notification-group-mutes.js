@@ -3,6 +3,7 @@ import { repeat } from "lit/directives/repeat.js";
 import { showServerErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
+import { DropdownPlacementController } from "/static/js/common/dropdown-placement.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHR } from "/static/js/common/utils.js";
@@ -65,6 +66,10 @@ export class NotificationGroupMutes extends LitWrapper {
         }
       },
     });
+    this._dropdownPlacement = new DropdownPlacementController(this, {
+      getAnchor: () => this.querySelector("[data-group-mute-search]"),
+      getDropdown: () => this.querySelector("[data-group-mute-dropdown]"),
+    });
   }
 
   connectedCallback() {
@@ -107,7 +112,7 @@ export class NotificationGroupMutes extends LitWrapper {
     return html`
       <div class="relative">
         <label for=${GROUP_SEARCH_ID} class="form-label">Mute a group</label>
-        <div class="relative mt-2">
+        <div class="relative mt-2" data-group-mute-search>
           <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
             <div class="svg-icon size-4 icon-search bg-stone-300" aria-hidden="true"></div>
           </div>
@@ -274,7 +279,8 @@ export class NotificationGroupMutes extends LitWrapper {
   _renderDropdown() {
     return html`
       <div
-        class="absolute start-0 end-0 z-10 mt-1 rounded-lg border border-stone-200 bg-white shadow ${
+        data-group-mute-dropdown
+        class="absolute start-0 end-0 z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow ${
           this._combobox.isOpen ? "" : "hidden"
         }"
       >
@@ -315,12 +321,7 @@ export class NotificationGroupMutes extends LitWrapper {
     }
 
     return html`
-      <ul
-        id=${GROUP_OPTIONS_ID}
-        class="max-h-72 overflow-auto py-1"
-        role="listbox"
-        aria-label="Groups to mute"
-      >
+      <ul id=${GROUP_OPTIONS_ID} class="py-1" role="listbox" aria-label="Groups to mute">
         ${repeat(
           this._filteredOptions,
           (group) => group.group_id,

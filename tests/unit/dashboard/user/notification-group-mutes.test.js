@@ -3,7 +3,7 @@ import { expect } from "@open-wc/testing";
 import { registerHtmxResponseHandlers } from "/static/js/common/htmx-extensions.js";
 import "/static/js/dashboard/user/notification-group-mutes.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { renderViewportBottomLayout, resetDom } from "/tests/unit/test-utils/dom.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterSwap, dispatchHtmxBeforeOnLoad } from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
@@ -151,6 +151,32 @@ describe("notification group mutes", () => {
       // The community label precedes the group name.
       const labels = [...withLogo.querySelectorAll(".truncate")].map((label) => label.textContent.trim());
       expect(labels).to.deep.equal(["Cloud Native Community", "Kubernetes Group"]);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("opens the options above the search input near the viewport bottom", async () => {
+    const groups = Array.from({ length: 12 }, (_, index) => ({
+      community_display_name: "Cloud Native Community",
+      group_id: `group-${index}`,
+      logo_url: "",
+      name: `Group ${index}`,
+    }));
+    const fetchMock = mockFetch({ impl: () => new Response(JSON.stringify(groups), { status: 200 }) });
+
+    try {
+      // Render the component near the bottom of the viewport and load a long list.
+      const element = await mountGroupMutes();
+      renderViewportBottomLayout(80);
+      await loadOptions(element);
+
+      // The options open upward and stay inside the viewport.
+      const anchor = element.querySelector("[data-group-mute-search]");
+      const dropdownBounds = element.querySelector("[data-group-mute-dropdown]").getBoundingClientRect();
+      expect(dropdownBounds.height).to.be.greaterThan(0);
+      expect(dropdownBounds.bottom).to.be.at.most(anchor.getBoundingClientRect().top);
+      expect(dropdownBounds.top).to.be.at.least(0);
     } finally {
       fetchMock.restore();
     }
