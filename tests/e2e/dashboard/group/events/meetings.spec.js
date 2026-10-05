@@ -228,6 +228,53 @@ test.describe("group dashboard event meetings", () => {
     }
   });
 
+  test("organizer keeps a synced automatic meeting while the schedule exceeds meeting limits", async ({
+    organizerGroupPage,
+  }) => {
+    const event = TEST_MEETING_EVENTS.error;
+
+    // Record update requests so blocked saves can be verified.
+    const updateRequests = [];
+    organizerGroupPage.on("request", (request) => {
+      if (
+        request.method() === "PUT" &&
+        request.url().includes(`/dashboard/group/events/${event.id}/update`)
+      ) {
+        updateRequests.push(request.url());
+      }
+    });
+
+    // Open the synced automatic meeting event on its date and venue section.
+    const onlineEventDetails = await openMeetingEventEditor(organizerGroupPage, event);
+    const automaticModeInput = onlineEventDetails.locator('input[type="radio"][value="automatic"]');
+    const endsAtInput = organizerGroupPage.locator("#ends_at");
+    const alertDialog = organizerGroupPage.locator(".swal2-popup");
+    const initialEndsAt = await endsAtInput.inputValue();
+    const overLimitEndsAt = shiftDateTimeValue(initialEndsAt, { days: 3 });
+
+    // An over-limit schedule keeps automatic mode and explains the requirement.
+    await endsAtInput.fill(overLimitEndsAt);
+    await endsAtInput.blur();
+    await expect(onlineEventDetails).toContainText("Duration must be 5-720 minutes.");
+    await expect(automaticModeInput).toBeChecked();
+    await expect(automaticModeInput).toBeDisabled();
+    await expect(alertDialog).toBeHidden();
+
+    // Saving is blocked before any update request is sent.
+    await organizerGroupPage.locator("#pending-changes-alert:not(.hidden) #update-event-button").click();
+    await expect(alertDialog).toContainText("Automatic meetings must last between 5 and 720 minutes");
+    await alertDialog.getByRole("button", { name: "OK" }).click();
+    await expect(alertDialog).toBeHidden();
+    expect(updateRequests).toEqual([]);
+
+    // Restoring a valid schedule makes automatic mode available again.
+    await endsAtInput.fill(initialEndsAt);
+    await endsAtInput.blur();
+    await expect(onlineEventDetails).not.toContainText("Duration must be 5-720 minutes.");
+    await expect(automaticModeInput).toBeEnabled();
+    await expect(automaticModeInput).toBeChecked();
+  });
+
   for (const meetingState of MEETING_STATE_CASES) {
     test(`organizer sees ${meetingState.name} automatic meeting state`, async ({ organizerGroupPage }) => {
       // Open the seeded event editor on the section that owns online meeting state.
@@ -235,17 +282,30 @@ test.describe("group dashboard event meetings", () => {
 
       // Verify the automatic meeting status and details match the persisted sync state.
       await expect(onlineEventDetails.getByText(meetingState.statusText, { exact: true })).toBeVisible();
-      await expect(onlineEventDetails.getByText(meetingState.expectedText, { exact: false })).toBeVisible();
+      await expect(
+        onlineEventDetails.getByText(meetingState.expectedText, {
+          exact: false,
+        }),
+      ).toBeVisible();
 
       // Verify live meetings expose their join link.
       if (meetingState.event === TEST_MEETING_EVENTS.live) {
         await expect(
-          onlineEventDetails.getByRole("link", { name: TEST_MEETINGS.live.joinUrl }),
+          onlineEventDetails.getByRole("link", {
+            name: TEST_MEETINGS.live.joinUrl,
+          }),
         ).toHaveAttribute("href", TEST_MEETINGS.live.joinUrl);
       }
     });
   }
 });
+
+/** Shifts a UTC datetime-local input value by whole days. */
+const shiftDateTimeValue = (value, { days }) => {
+  const date = new Date(`${value}:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 16);
+};
 
 /** Opens the meeting event editor and returns the online details section. */
 const openMeetingEventEditor = async (page, event) => {
