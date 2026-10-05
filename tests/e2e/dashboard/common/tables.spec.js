@@ -299,21 +299,35 @@ const TABLE_CASES = [
         name: "Invitation requests",
       });
     },
-    headers: ["Requester", "Position", "Status", "Ticket type", "Requested", "Reviewed", "Actions"],
+    headers: ["Requester", "Position", "Status", "Offer", "Ticket type", "Requested", "Reviewed", "Actions"],
     breakpoints: [
       {
         width: 1024,
         visible: ["Requester", "Status", "Actions"],
-        hidden: ["Position", "Ticket type", "Requested", "Reviewed"],
+        hidden: ["Position", "Offer", "Ticket type", "Requested", "Reviewed"],
+      },
+      {
+        width: 1280,
+        visible: ["Requester", "Status", "Ticket type", "Actions"],
+        hidden: ["Position", "Offer", "Requested", "Reviewed"],
       },
       {
         width: 1536,
-        visible: ["Requester", "Status", "Ticket type", "Reviewed", "Actions"],
+        visible: ["Requester", "Status", "Offer", "Ticket type", "Reviewed", "Actions"],
         hidden: ["Position", "Requested"],
       },
       {
         width: 1920,
-        visible: ["Requester", "Position", "Status", "Ticket type", "Requested", "Reviewed", "Actions"],
+        visible: [
+          "Requester",
+          "Position",
+          "Status",
+          "Offer",
+          "Ticket type",
+          "Requested",
+          "Reviewed",
+          "Actions",
+        ],
         hidden: [],
       },
     ],

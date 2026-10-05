@@ -427,36 +427,46 @@ export const setupTicketInvitationRequest = ({ eventId, status = "pending", tick
 
 /**
  * Records one admission offer for a ticket allocation event.
- * Pending offers reserve a seat; expired offers can be reissued.
+ * Pending and checkout pending offers reserve a seat; expired offers can be
+ * reissued. Completed and declined offers keep a future deadline to cover
+ * closed offers before expiry.
  * @param {{
  *   eventId: string,
  *   source: "approval" | "organizer_invitation",
- *   status: "expired" | "pending",
+ *   status: "checkout_pending" | "completed" | "declined" | "expired" | "pending",
  *   ticketTypeId: string,
  *   userId: string
  * }} options - Offer fields.
  */
 export const setupTicketOffer = ({ eventId, source, status, ticketTypeId, userId }) => {
   const expired = status === "expired";
+  const snapshot = status === "checkout_pending" || status === "completed";
 
+  // Checkout pending and completed offers require a free ticket snapshot.
   queryE2eDatabase(`
     insert into admission_offer (
+      amount_minor,
       created_at,
+      discount_amount_minor,
       event_id,
       event_ticket_type_id,
       expires_at,
       organizer_user_id,
       source,
       status,
+      ticket_title,
       user_id
     ) values (
+      ${snapshot ? "0" : "null"},
       current_timestamp - interval '${expired ? "2 days" : "1 minute"}',
+      ${snapshot ? "0" : "null"},
       '${eventId}',
       '${ticketTypeId}',
       current_timestamp ${expired ? "- interval '1 day'" : "+ interval '1 day'"},
       '${TEST_USER_IDS.organizer1}',
       '${source}',
       '${status}',
+      ${snapshot ? `(select title from event_ticket_type where event_ticket_type_id = '${ticketTypeId}')` : "null"},
       '${userId}'
     );
   `);
