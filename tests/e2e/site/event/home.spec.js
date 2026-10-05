@@ -20,7 +20,7 @@ import {
   getEventLogo,
   waitForAttendanceState,
 } from "./helpers.js";
-import { buildE2eUrl, getIntroSection, navigateToEvent } from "../../utils.js";
+import { buildE2eUrl, getIntroSection, navigateToEvent, routeEmptyBasemap } from "../../utils.js";
 
 // Approved co-hosts seeded for the cross-community summit.
 const COHOSTED_EVENT_COHOSTS = [
@@ -252,6 +252,9 @@ test.describe("event page", () => {
       await expect(page.locator("#event-map")).toHaveAttribute("data-lat", "40.7128");
       await expect(page.locator("#event-map")).toHaveAttribute("data-lng", "-74.006");
 
+      // Keep the real map runtime while removing the external basemap dependency.
+      await routeEmptyBasemap(page);
+
       // Open the full map modal from the location preview.
       await mapButton.click();
 
@@ -265,11 +268,13 @@ test.describe("event page", () => {
       await expect(modalMap.getByRole("button", { name: "Zoom out" })).toBeVisible();
       await expect(page.locator("#event-map").getByRole("button", { name: "Zoom in" })).toHaveCount(0);
 
-      // Zoom in until MapLibre disables the control at its maximum zoom.
-      for (let clicks = 0; clicks < 20 && (await zoomInButton.isEnabled()); clicks += 1) {
-        await zoomInButton.click();
-      }
-      await expect(zoomInButton).toBeDisabled();
+      // Zoom in until MapLibre disables the control at its maximum zoom. Let each
+      // zoom step settle before clicking again, since clicking mid-animation
+      // restarts the zoom from the intermediate level and gains less than one level.
+      await expect(async () => {
+        if (await zoomInButton.isEnabled()) await zoomInButton.click();
+        await expect(zoomInButton).toBeDisabled({ timeout: 1_000 });
+      }).toPass({ intervals: [0], timeout: 20_000 });
       await expect(modalMap.getByRole("button", { name: "Zoom out" })).toBeEnabled();
 
       // Verify zooming keeps the modal open.
