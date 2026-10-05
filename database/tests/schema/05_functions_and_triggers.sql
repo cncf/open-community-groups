@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(519);
+select plan(520);
 
 -- ============================================================================
 -- VARIABLES
@@ -269,6 +269,7 @@ select has_function('external_payment_notification_payload', array['event', '"gr
 select has_function('filter_notification_recipient_ids', array['text', 'uuid[]', 'uuid[]']::name[]);
 select has_function('generate_slug', array['integer']::name[]);
 select has_function('generate_slug_from_source', array['text', 'integer']::name[]);
+select has_function('get_auth_session', array['text']::name[]);
 select has_function('get_badge_status_list', array['uuid']::name[]);
 select has_function('get_cfs_submission_notification_data', array['uuid', 'uuid']::name[]);
 select has_function('get_community_full', array['uuid']::name[]);

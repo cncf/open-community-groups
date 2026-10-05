@@ -2,7 +2,10 @@
 
 use anyhow::Result;
 
-use crate::{db::community::DBCommunity, types::event::EventKind};
+use crate::{
+    db::{PgExecutor, community::DBCommunity},
+    types::event::EventKind,
+};
 
 use super::helpers::*;
 
@@ -37,6 +40,35 @@ async fn db_contracts_get_community_site_stats_deserializes() -> Result<()> {
     assert_eq!(stats.events_attendees, 1);
     assert_eq!(stats.groups, 2);
     assert_eq!(stats.groups_members, 1);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_community_site_stats_is_cached_per_community() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load and cache the stats cache community statistics
+    let stats = db.get_community_site_stats(stats_cache_community_id()).await?;
+    assert_eq!(stats.groups_members, 1);
+
+    // Commit a new member outside the cached read
+    db.execute(
+        "insert into group_member (group_id, user_id) values ($1::uuid, $2::uuid)",
+        &[&stats_cache_group_id(), &stats_cache_joiner_id()],
+    )
+    .await?;
+
+    // Check the cached statistics are returned for the same community
+    let stats = db.get_community_site_stats(stats_cache_community_id()).await?;
+    assert_eq!(stats.groups_members, 1);
+
+    // Check another community is cached under its own key
+    let stats = db.get_community_site_stats(community_id()).await?;
+    assert_eq!(stats.groups_members, 1);
+    assert_eq!(stats.groups, 2);
 
     Ok(())
 }

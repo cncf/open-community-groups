@@ -4464,6 +4464,91 @@ from generate_series(1, 9) n;
 -- Delete the account whose conversation stays readable with null references
 delete from "user" where user_id = '00000000-0000-0000-0000-00000000e025';
 
+-- ============================================================================
+-- STATS CACHE
+-- ============================================================================
+
+-- Inactive community whose cached public statistics are verified per community;
+-- inactive so site-wide statistics and listings exclude it
+insert into community (
+    active,
+    banner_mobile_url,
+    banner_url,
+    community_id,
+    description,
+    display_name,
+    logo_url,
+    name
+) values (
+    false,
+    'https://example.com/stats-cache-community-banner-mobile.png',
+    'https://example.com/stats-cache-community-banner.png',
+    '00000000-0000-0000-0000-00000000f101',
+    'A community used to verify cached statistics in Rust database contract tests',
+    'Contract Stats Cache Community',
+    'https://example.com/stats-cache-community-logo.png',
+    'contract-stats-cache-community'
+);
+
+insert into group_category (
+    community_id,
+    group_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000f101',
+    '00000000-0000-0000-0000-00000000f102',
+    'Stats cache'
+);
+
+-- Active group counted by the stats cache community statistics
+insert into "group" (
+    community_id,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    '00000000-0000-0000-0000-00000000f101',
+    '00000000-0000-0000-0000-00000000f102',
+    '00000000-0000-0000-0000-00000000f103',
+    'Contract Stats Cache Group',
+    'contract-stats-cache-group'
+);
+
+-- Seeded member and the member added by the stats cache contract test
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values
+    (
+        'contract_hash_stats_cache_member',
+        'stats-cache-member.contract@example.com',
+        true,
+        'Contract Stats Cache Member',
+        '00000000-0000-0000-0000-00000000f104',
+        'stats-cache-member'
+    ),
+    (
+        'contract_hash_stats_cache_joiner',
+        'stats-cache-joiner.contract@example.com',
+        true,
+        'Contract Stats Cache Joiner',
+        '00000000-0000-0000-0000-00000000f105',
+        'stats-cache-joiner'
+    );
+
+insert into group_member (
+    group_id,
+    user_id
+) values (
+    '00000000-0000-0000-0000-00000000f103',
+    '00000000-0000-0000-0000-00000000f104'
+);
+
 -- Every remaining event uses a default free tier in the contract fixture
 insert into event_ticket_type (
     event_id,

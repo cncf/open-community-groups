@@ -128,6 +128,10 @@ pub(crate) trait DBDashboardCommunity {
     ) -> Result<()>;
 
     /// Retrieves analytics statistics for a community.
+    ///
+    /// Cached for up to one hour per process. Aggregates mutable data; see
+    /// "Cached reads and transactions" in `docs/backend.md` before calling it
+    /// from a transaction.
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats>;
 
     /// Lists community dashboard audit log rows.
@@ -138,6 +142,8 @@ pub(crate) trait DBDashboardCommunity {
     ) -> Result<AuditLogsOutput>;
 
     /// Lists all available community roles.
+    ///
+    /// Cached for up to one day per process.
     async fn list_community_roles(&self) -> Result<Vec<CommunityRoleSummary>>;
 
     /// Lists all community team members.

@@ -313,6 +313,10 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<GroupSponsor>;
 
     /// Retrieves analytics statistics for a group.
+    ///
+    /// Cached for up to one hour per process. Aggregates mutable data; see
+    /// "Cached reads and transactions" in `docs/backend.md` before calling it
+    /// from a transaction.
     async fn get_group_stats(
         &self,
         community_id: Uuid,
@@ -396,6 +400,8 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<EventCohostsEditor>;
 
     /// Lists all available event kinds.
+    ///
+    /// Cached for up to one day per process.
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>>;
 
     /// Lists non-completed event identifiers from the same event series.
@@ -474,6 +480,8 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<RefundsOutput>;
 
     /// Lists all available group roles.
+    ///
+    /// Cached for up to one day per process.
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>>;
 
     /// Lists sponsors for a group.
@@ -496,9 +504,13 @@ pub(crate) trait DBDashboardGroup {
     async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
 
     /// Lists supported payment currency codes.
+    ///
+    /// Cached for up to one day per process.
     async fn list_payment_currency_codes(&self) -> Result<Vec<String>>;
 
     /// Lists all available session kinds.
+    ///
+    /// Cached for up to one day per process.
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>>;
 
     /// Lists all groups where the user is a team member, grouped by community.

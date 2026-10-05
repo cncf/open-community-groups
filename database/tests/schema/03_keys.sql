@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(237);
+select plan(239);
 
 -- ============================================================================
 -- TESTS
@@ -297,6 +297,18 @@ select fk_ok(
     array['admission_offer_id', 'event_id', 'user_id']::name[],
     'admission_offer',
     array['admission_offer_id', 'event_id', 'user_id']::name[]
+);
+select fk_ok(
+    'event_purchase',
+    array['event_id', 'event_discount_code_id']::name[],
+    'event_discount_code',
+    array['event_id', 'event_discount_code_id']::name[]
+);
+select fk_ok(
+    'event_purchase',
+    array['event_id', 'event_ticket_type_id']::name[],
+    'event_ticket_type',
+    array['event_id', 'event_ticket_type_id']::name[]
 );
 select fk_ok(
     'event_waitlist',

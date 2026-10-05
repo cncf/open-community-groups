@@ -21,6 +21,7 @@ returns json as $$
         and e.starts_at is not null
         and e.starts_at > now()
         and e.canceled = false
+        and e.deleted = false
         order by e.starts_at asc, e.event_id asc
         limit 8
     ) e;

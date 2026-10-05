@@ -15,7 +15,11 @@ returns int as $$
         )
         +
         (
-            select count(distinct coalesce(ep.admission_offer_id, ep.event_purchase_id))
+            -- Purchases without an offer are distinct by primary key and count
+            -- individually; purchases sharing an offer count once
+            select
+                count(*) filter (where ep.admission_offer_id is null)
+                + count(distinct ep.admission_offer_id)
             from event_purchase ep
             where ep.event_id = p_event_id
             and ep.event_ticket_type_id = p_event_ticket_type_id

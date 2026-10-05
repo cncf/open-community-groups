@@ -68,6 +68,8 @@ pub(crate) trait DBCommon {
     async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>>;
 
     /// Lists all available timezones.
+    ///
+    /// Cached for up to one day per process.
     async fn list_timezones(&self) -> Result<Vec<String>>;
 
     /// Lists active profile-visible badges for a user across all communities.

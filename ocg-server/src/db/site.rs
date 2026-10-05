@@ -24,7 +24,7 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBSite {
     /// Retrieves filters options for the explore page. When a `community_name` is
-    /// provided, community-specific filters are included. When `entity` is 'Events`
+    /// provided, community-specific filters are included. When `entity` is `Events`
     /// and a community name is provided, groups are also included.
     async fn get_filters_options(
         &self,
@@ -33,15 +33,25 @@ pub(crate) trait DBSite {
     ) -> Result<FiltersOptions>;
 
     /// Retrieves the site home stats.
+    ///
+    /// Cached for up to one hour per process. Aggregates mutable data; see
+    /// "Cached reads and transactions" in `docs/backend.md` before calling it
+    /// from a transaction.
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats>;
 
     /// Retrieves the most recently added groups across all communities.
     async fn get_site_recently_added_groups(&self) -> Result<Vec<GroupSummary>>;
 
     /// Retrieves the site settings.
+    ///
+    /// Cached for up to five minutes per process.
     async fn get_site_settings(&self) -> Result<SiteSettings>;
 
     /// Retrieves the site stats for the stats page.
+    ///
+    /// Cached for up to one hour per process. Aggregates mutable data; see
+    /// "Cached reads and transactions" in `docs/backend.md` before calling it
+    /// from a transaction.
     async fn get_site_stats(&self) -> Result<SiteStats>;
 
     /// Retrieves upcoming events across all communities.
@@ -51,6 +61,8 @@ pub(crate) trait DBSite {
     ) -> Result<Vec<EventSummary>>;
 
     /// Lists all active communities.
+    ///
+    /// Cached for up to five minutes per process.
     async fn list_communities(&self) -> Result<Vec<CommunitySummary>>;
 }
 
@@ -74,7 +86,21 @@ where
 
     #[instrument(skip(self), err)]
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats> {
-        self.fetch_json_one("select get_site_home_stats()", &[]).await
+        #[cached(
+            ttl = 3600,
+            key = "String",
+            convert = r#"{ String::from("site_home_stats") }"#,
+            sync_writes = "by_key"
+        )]
+        async fn inner(db: PgClient<'_>) -> Result<SiteHomeStats> {
+            let row = db.query_one("select get_site_home_stats()", &[]).await?;
+            let stats = row.try_get::<_, Json<SiteHomeStats>>(0)?.0;
+
+            Ok(stats)
+        }
+
+        let db = self.client().await?;
+        inner(db).await
     }
 
     #[instrument(skip(self), err)]
@@ -104,7 +130,21 @@ where
 
     #[instrument(skip(self), err)]
     async fn get_site_stats(&self) -> Result<SiteStats> {
-        self.fetch_json_one("select get_site_stats()", &[]).await
+        #[cached(
+            ttl = 3600,
+            key = "String",
+            convert = r#"{ String::from("site_stats") }"#,
+            sync_writes = "by_key"
+        )]
+        async fn inner(db: PgClient<'_>) -> Result<SiteStats> {
+            let row = db.query_one("select get_site_stats()", &[]).await?;
+            let stats = row.try_get::<_, Json<SiteStats>>(0)?.0;
+
+            Ok(stats)
+        }
+
+        let db = self.client().await?;
+        inner(db).await
     }
 
     #[instrument(skip(self), err)]

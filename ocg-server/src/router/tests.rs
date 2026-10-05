@@ -298,7 +298,10 @@ async fn test_dashboard_mutation_routes_require_write_permission() {
         .into_iter()
         .filter(|(path, _)| !SCOPE_SELECTION_ROUTES.contains(&path.as_str()))
         .collect();
-    assert!(!write_routes.is_empty());
+    assert!(
+        !write_routes.is_empty(),
+        "router should expose write routes"
+    );
 
     // Check every write route is rejected before its handler runs
     for (path, method) in write_routes {

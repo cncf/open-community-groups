@@ -250,6 +250,187 @@ describe("user-search-field", () => {
     );
   });
 
+  it("shows a minimum length hint without searching one-character queries", async () => {
+    // Render the user-search-field fixture.
+    const element = await mountLitComponent("user-search-field", {
+      searchDelay: 0,
+    });
+
+    // Type a single character.
+    element._handleSearchInput({ target: { value: "a" } });
+    await waitForMicrotask();
+    await element.updateComplete;
+
+    // The hint is shown and no request is sent.
+    expect(fetchMock.calls).to.have.length(0);
+    expect(element._isSearching).to.equal(false);
+    expect(element.textContent).to.contain("Type at least 2 characters");
+    expect(element.textContent).not.to.contain("No users found");
+  });
+
+  it("counts a single emoji as one character when checking the minimum length", async () => {
+    // Render the user-search-field fixture.
+    const element = await mountLitComponent("user-search-field", {
+      searchDelay: 0,
+    });
+
+    // Type a single supplementary-plane character.
+    element._handleSearchInput({ target: { value: "😀" } });
+    await waitForMicrotask();
+    await element.updateComplete;
+
+    // The hint is shown and no request is sent.
+    expect(fetchMock.calls).to.have.length(0);
+    expect(element.textContent).to.contain("Type at least 2 characters");
+  });
+
+  it("treats whitespace-only queries as empty", async () => {
+    // Render the user-search-field fixture.
+    const element = await mountLitComponent("user-search-field", {
+      searchDelay: 0,
+    });
+
+    // Type only whitespace.
+    element._handleSearchInput({ target: { value: "   " } });
+    await waitForMicrotask();
+    await element.updateComplete;
+
+    // The query is empty, no dropdown is rendered and no request is sent.
+    expect(fetchMock.calls).to.have.length(0);
+    expect(element._searchQuery).to.equal("");
+    expect(element.textContent).not.to.contain("Type at least 2 characters");
+  });
+
+  it("searches two-character queries after the debounce", async () => {
+    // Replace timers with controllable debounced callbacks.
+    const scheduledCallbacks = useControlledTimers();
+
+    // Mock the fetch response.
+    fetchMock.setImpl(async () => ({
+      ok: true,
+      async json() {
+        return [{ user_id: "1", username: "ada", name: "Ada Lovelace" }];
+      },
+    }));
+
+    // Render the user-search-field fixture and type two characters.
+    const element = await mountLitComponent("user-search-field", {
+      searchDelay: 25,
+    });
+    element._handleSearchInput({ target: { value: "ad" } });
+
+    // No request is sent before the debounce runs.
+    expect(fetchMock.calls).to.have.length(0);
+    expect(element._isSearching).to.equal(true);
+
+    // Run the debounced search callback.
+    const [pendingSearch] = scheduledCallbacks.values();
+    await pendingSearch();
+
+    // The request is sent and its results are applied.
+    expect(fetchMock.calls).to.have.length(1);
+    expect(fetchMock.calls[0][0]).to.equal("/dashboard/group/users/search?q=ad");
+    expect(element._searchResults).to.deep.equal([
+      { user_id: "1", username: "ada", name: "Ada Lovelace" },
+    ]);
+    expect(element._isSearching).to.equal(false);
+  });
+
+  it("ignores a pending response after the query becomes too short", async () => {
+    // Replace timers and keep search responses pending.
+    const scheduledCallbacks = useControlledTimers();
+    const pendingResponses = deferFetchResponses(fetchMock);
+
+    // Render the user-search-field fixture and start searching for "ab".
+    const element = await mountLitComponent("user-search-field", {
+      searchDelay: 25,
+    });
+    element._handleSearchInput({ target: { value: "ab" } });
+    const [pendingSearch] = scheduledCallbacks.values();
+    const searchDone = pendingSearch();
+
+    // Shorten the query to one character, then resolve the "ab" response.
+    element._handleSearchInput({ target: { value: "a" } });
+    pendingResponses[0].resolve([{ user_id: "1", username: "ab-user" }]);
+    await searchDone;
+
+    // The stale response is aborted and ignored.
+    expect(pendingResponses[0].signal.aborted).to.equal(true);
+    expect(element._searchResults).to.deep.equal([]);
+    expect(element._isSearching).to.equal(false);
+  });
+
+  it("keeps the latest results when an older response resolves last", async () => {
+    // Replace timers and keep search responses pending.
+    const scheduledCallbacks = useControlledTimers();
+    const pendingResponses = deferFetchResponses(fetchMock);
+
+    // Render the user-search-field fixture and start searching for "ab".
+    const element = await mountLitComponent("user-search-field", {
+      searchDelay: 25,
+    });
+    element._handleSearchInput({ target: { value: "ab" } });
+    const firstSearchDone = [...scheduledCallbacks.values()].at(-1)();
+
+    // Start searching for "abc" while "ab" is still pending.
+    element._handleSearchInput({ target: { value: "abc" } });
+    const secondSearchDone = [...scheduledCallbacks.values()].at(-1)();
+
+    // Resolve "abc" first.
+    pendingResponses[1].resolve([{ user_id: "2", username: "abc-user" }]);
+    await secondSearchDone;
+    expect(element._searchResults).to.deep.equal([{ user_id: "2", username: "abc-user" }]);
+    expect(element._isSearching).to.equal(false);
+
+    // Resolve "ab" last.
+    pendingResponses[0].resolve([{ user_id: "1", username: "ab-user" }]);
+    await firstSearchDone;
+
+    // The latest results and loading state remain.
+    expect(pendingResponses[0].signal.aborted).to.equal(true);
+    expect(element._searchResults).to.deep.equal([{ user_id: "2", username: "abc-user" }]);
+    expect(element._isSearching).to.equal(false);
+  });
+
+  it("aborts in-flight searches when clearing the query", async () => {
+    // Keep search responses pending.
+    const pendingResponses = deferFetchResponses(fetchMock);
+
+    // Render the user-search-field fixture and start a search.
+    const element = await mountLitComponent("user-search-field");
+    element._searchQuery = "ada";
+    element._isSearching = true;
+    const searchDone = element._performSearch("ada");
+
+    // Clear the query, then resolve the pending response.
+    element.clearSearch({ refocus: false });
+    pendingResponses[0].resolve([{ user_id: "1", username: "ada" }]);
+    await searchDone;
+
+    // The request is aborted and its results are ignored.
+    expect(pendingResponses[0].signal.aborted).to.equal(true);
+    expect(element._searchResults).to.deep.equal([]);
+    expect(element._isSearching).to.equal(false);
+  });
+
+  it("aborts in-flight searches on disconnect", async () => {
+    // Keep search responses pending.
+    const pendingResponses = deferFetchResponses(fetchMock);
+
+    // Render the user-search-field fixture and start a search.
+    const element = await mountLitComponent("user-search-field");
+    const searchDone = element._performSearch("ada");
+
+    // Remove the field, then resolve the pending response.
+    element.remove();
+    pendingResponses[0].resolve([{ user_id: "1", username: "ada" }]);
+    await searchDone;
+
+    // The request is aborted and its results are ignored.
+    expect(pendingResponses[0].signal.aborted).to.equal(true);
+    expect(element._searchResults).to.deep.equal([]);
+  });
+
   it("clears the dropdown when clicking outside the component", async () => {
     // Render the user-search-field fixture.
     const element = await mountLitComponent("user-search-field");
@@ -353,3 +534,47 @@ describe("user-search-field", () => {
     }
   });
 });
+
+/**
+ * Keeps mocked fetch responses pending until the test resolves them.
+ * @param {Object} fetchMock Fetch mock returned by mockFetch.
+ * @returns {Array<Object>} Pending responses with their signal and resolver.
+ */
+const deferFetchResponses = (fetchMock) => {
+  const pendingResponses = [];
+  fetchMock.setImpl(
+    (_url, init) =>
+      new Promise((resolveResponse) => {
+        pendingResponses.push({
+          signal: init.signal,
+          resolve(users) {
+            resolveResponse({
+              ok: true,
+              async json() {
+                return users;
+              },
+            });
+          },
+        });
+      }),
+  );
+  return pendingResponses;
+};
+
+/**
+ * Replaces window timers with callbacks that tests run explicitly.
+ * @returns {Map<number, Function>} Scheduled callbacks by timer id.
+ */
+const useControlledTimers = () => {
+  const scheduledCallbacks = new Map();
+  let nextTimerId = 0;
+  window.setTimeout = (callback) => {
+    nextTimerId += 1;
+    scheduledCallbacks.set(nextTimerId, callback);
+    return nextTimerId;
+  };
+  window.clearTimeout = (timerId) => {
+    scheduledCallbacks.delete(timerId);
+  };
+  return scheduledCallbacks;
+};

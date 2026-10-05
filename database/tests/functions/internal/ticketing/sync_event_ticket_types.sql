@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(19);
 \set eventID '3a350000-0000-0000-0000-000000000003'
 \set eventGuardedID '3a350000-0000-0000-0000-000000000018'
 \set eventProtectedID '3a350000-0000-0000-0000-000000000004'
+\set eventPurchaseKeptID '3a350000-0000-0000-0000-00000000002c'
 \set eventRequestedID '3a350000-0000-0000-0000-00000000001d'
 \set eventWaitlistRemovalID '3a350000-0000-0000-0000-000000000020'
 \set groupCategoryID '3a350000-0000-0000-0000-000000000005'
@@ -29,6 +30,8 @@ select plan(19);
 \set ticketTypeGuardedRetainedID '3a350000-0000-0000-0000-000000000028'
 \set ticketTypeProtectedID '3a350000-0000-0000-0000-000000000010'
 \set ticketTypeProtectedRetainedID '3a350000-0000-0000-0000-000000000029'
+\set ticketTypePurchaseKeptID '3a350000-0000-0000-0000-00000000002d'
+\set ticketTypePurchaseRemovedID '3a350000-0000-0000-0000-00000000002e'
 \set ticketTypeRequestedID '3a350000-0000-0000-0000-00000000001e'
 \set ticketTypeRequestedRetainedID '3a350000-0000-0000-0000-00000000002a'
 \set ticketTypeWaitlistRemovalID '3a350000-0000-0000-0000-000000000021'
@@ -42,6 +45,7 @@ select plan(19);
 \set userCompletedID '3a350000-0000-0000-0000-000000000011'
 \set userExpiredCheckoutID '3a350000-0000-0000-0000-000000000026'
 \set userExpiredPendingID '3a350000-0000-0000-0000-000000000027'
+\set userPurchaseKeptID '3a350000-0000-0000-0000-00000000002f'
 \set userRefundPendingID '3a350000-0000-0000-0000-000000000012'
 \set userRefundRecoveryID '3a350000-0000-0000-0000-000000000013'
 \set window1CurrentID '3a350000-0000-0000-0000-000000000014'
@@ -65,12 +69,14 @@ select fx_user(:'userQueueGuardedID');
 select fx_user(:'userRequestGuardedID');
 select fx_user(:'userExpiredCheckoutID');
 select fx_user(:'userExpiredPendingID');
+select fx_user(:'userPurchaseKeptID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 select fx_event(:'eventGuardedID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 select fx_event(:'eventProtectedID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'eventPurchaseKeptID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 select fx_event(:'eventWaitlistRemovalID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Event whose only allocated ticket inventory is expired offers
@@ -109,6 +115,15 @@ select fx_event_ticket_type(:'ticketTypeProtectedRetainedID', :'eventProtectedID
     'order', 2,
     'seats_total', 5,
     'title', 'Retained pass'
+));
+select fx_event_ticket_type(:'ticketTypePurchaseKeptID', :'eventPurchaseKeptID', jsonb_build_object(
+    'seats_total', 5,
+    'title', 'Kept pass'
+));
+select fx_event_ticket_type(:'ticketTypePurchaseRemovedID', :'eventPurchaseKeptID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 5,
+    'title', 'Removed pass'
 ));
 select fx_event_ticket_type(:'ticketTypeRequestedID', :'eventRequestedID', jsonb_build_object(
     'seats_total', 5,
@@ -184,6 +199,25 @@ insert into event_purchase (
         'Protected pass',
         :'userRefundRecoveryID'
     );
+
+-- Purchase on a kept ticket type while a sibling ticket type is removed
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    'USD',
+    :'eventPurchaseKeptID',
+    :'ticketTypePurchaseKeptID',
+    'completed',
+    'Kept pass',
+    :'userPurchaseKeptID'
+);
 
 -- Active offer that prevents deactivating its assigned tier
 insert into admission_offer (
@@ -516,6 +550,28 @@ select is(
     ),
     0,
     'Should persist the seat reduction below expired offer reservations'
+);
+
+-- Should remove a ticket type without purchases while kept ticket types have purchases
+select lives_ok(
+    format(
+        $$select sync_event_ticket_types(
+            %L::uuid,
+            '[{"active": true, "availability": "public", "event_ticket_type_id": "%s", "order": 1, "price_windows": [], "seats_total": 5, "title": "Kept pass"}]'::jsonb
+        )$$,
+        :'eventPurchaseKeptID',
+        :'ticketTypePurchaseKeptID'
+    ),
+    'Should remove a ticket type without purchases while kept ticket types have purchases'
+);
+
+select results_eq(
+    format(
+        $$select event_ticket_type_id from event_ticket_type where event_id = %L::uuid$$,
+        :'eventPurchaseKeptID'
+    ),
+    format($$values (%L::uuid)$$, :'ticketTypePurchaseKeptID'),
+    'Should persist only the kept ticket type with purchases'
 );
 
 -- Should reject seat totals below active offer reservations

@@ -280,6 +280,24 @@ less context, not that the caller became shorter.
   exists in the helper's test or in a workflow test: coverage moves, it is
   never dropped.
 
+## Function language
+
+- Simple reads and projections use `language sql`. Validation, branching,
+  mutation, loops, exception handling, and locking use `language plpgsql`.
+- A read uses `language plpgsql` instead when a measurement shows it is
+  faster, for one of two planner reasons:
+  - Parallel query: the final statement of a `language sql` function that
+    returns a single value runs with a row limit, which disables parallel
+    workers; a PL/pgSQL `return (select ...)` runs to completion and can use
+    them.
+  - Argument-aware plans: `language sql` statements are planned without the
+    argument values, so a `like` prefix, a pagination bound, or a selective
+    filter cannot steer the plan. PL/pgSQL with
+    `set plan_cache_mode = force_custom_plan` plans each call with the
+    actual values.
+- The function's header comment states which reason applies; the
+  measurement belongs in the pull request.
+
 ## Inline SQL in Rust
 
 Trivial single-table reads and writes may stay inline in `ocg-server/src/db`.

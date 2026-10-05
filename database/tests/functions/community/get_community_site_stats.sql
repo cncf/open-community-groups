@@ -1,3 +1,5 @@
+-- Tests computing the community site page statistics.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -14,6 +16,7 @@ select plan(2);
 \set event2ID '0d040000-0000-0000-0000-000000000003'
 \set event3ID '0d040000-0000-0000-0000-000000000004'
 \set event4ID '0d040000-0000-0000-0000-000000000005'
+\set event5ID '0d040000-0000-0000-0000-000000000015'
 \set eventCategoryID '0d040000-0000-0000-0000-000000000006'
 \set group1ID '0d040000-0000-0000-0000-000000000007'
 \set group2ID '0d040000-0000-0000-0000-000000000008'
@@ -50,6 +53,25 @@ select fx_event(:'event2ID', :'group1ID', :'eventCategoryID');
 select fx_event(:'event3ID', :'group2ID', :'eventCategoryID', jsonb_build_object('canceled', true));
 select fx_event(:'event4ID', :'group2ID', :'eventCategoryID', jsonb_build_object('deleted', true));
 
+-- Published test event excluded from community stats
+select fx_event(:'event5ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'test_event', true
+));
+
+-- Approved co-host credit that must not duplicate community event counts
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id
+) values (
+    current_timestamp,
+    'approved',
+    :'event1ID',
+    :'group2ID'
+);
+
 -- Group Member
 insert into group_member (group_id, user_id, created_at)
 values
@@ -66,7 +88,8 @@ values
     (:'event1ID', :'user3ID', 'invitation-pending', '2024-01-01 00:00:00'),
     (:'event2ID', :'user1ID', 'confirmed', '2024-01-01 00:00:00'),
     (:'event3ID', :'user2ID', 'confirmed', '2024-01-01 00:00:00'),
-    (:'event4ID', :'user3ID', 'confirmed', '2024-01-01 00:00:00');
+    (:'event4ID', :'user3ID', 'confirmed', '2024-01-01 00:00:00'),
+    (:'event5ID', :'user3ID', 'confirmed', '2024-01-01 00:00:00');
 
 -- ============================================================================
 -- TESTS
@@ -87,10 +110,12 @@ select is(
 -- Should exclude deleted groups and unpublished/canceled/deleted events
 -- Data setup:
 -- - 3 groups: 2 active (group1, group2), 1 deleted (group3)
--- - 4 events: 1 published (event1), 1 unpublished (event2), 1 canceled (event3), 1 deleted (event4)
+-- - 5 events: 1 published (event1), 1 unpublished (event2), 1 canceled (event3),
+--   1 deleted (event4), 1 test event (event5)
+-- - 1 approved co-host credit for event1 (owner-only attribution)
 -- - 4 group members: 3 in active groups, 1 in deleted group (should be excluded)
--- - 6 event attendees: 2 confirmed in published event, 1 non-confirmed in
---   published event (should be excluded), 3 in excluded events (should be excluded)
+-- - 7 event attendees: 2 confirmed in published event, 1 non-confirmed in
+--   published event (should be excluded), 4 in excluded events (should be excluded)
 -- Expected: groups=2, events=1, groups_members=3, events_attendees=2
 select is(
     (get_community_site_stats(:'communityID'::uuid)::jsonb),

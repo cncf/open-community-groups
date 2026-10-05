@@ -489,7 +489,11 @@ fn event_full_speakers_ids_deduplicates_speakers() {
 #[test]
 fn event_full_speakers_ids_returns_empty_when_no_speakers() {
     let event = EventFull::default();
-    assert!(event.speakers_ids().is_empty());
+    assert!(
+        event.speakers_ids().is_empty(),
+        "event without speakers should have no speaker ids, got {:?}",
+        event.speakers_ids()
+    );
 }
 
 #[test]

@@ -149,7 +149,11 @@ async fn test_worker_registry_tracks_running_instances_and_expected_stops() {
     background_tasks.shutdown().await;
     let snapshot = registry.snapshot();
     assert_eq!(snapshot["delivery"].running, 0);
-    assert!(snapshot["delivery"].unexpected_exits.is_empty());
+    assert!(
+        snapshot["delivery"].unexpected_exits.is_empty(),
+        "delivery worker should have no unexpected exits, got {:?}",
+        snapshot["delivery"].unexpected_exits
+    );
 }
 
 #[tokio::test]

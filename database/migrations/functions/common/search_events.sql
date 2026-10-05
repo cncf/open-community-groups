@@ -118,6 +118,7 @@ begin
         and g.active = true
         and e.published = true
         and e.canceled = false
+        and e.deleted = false
         and e.test_event = false
         and
             case when v_bbox is not null then
@@ -154,9 +155,10 @@ begin
                 v_tsquery_with_prefix_matching @@ e.tsdoc
             else true end
     ),
-    -- Select the requested page with the selected sort strategy
+    -- Select the requested page with the selected sort strategy; keep this
+    -- order list identical to the one used to render the page
     filtered_events_page as (
-        select community_id, event_id, group_id
+        select community_id, distance, event_id, group_id, starts_at
         from filtered_events
         order by
             (case when v_sort_by = 'date' and v_sort_direction = 'asc' then starts_at end) asc,
@@ -175,7 +177,8 @@ begin
                     and v_user_location is not null then distance
                 end
             ) desc,
-            starts_at asc
+            starts_at asc,
+            event_id asc
         limit v_filters.limit_value
         offset v_filters.offset_value
     )
@@ -204,9 +207,29 @@ begin
         ),
         'events',
         (
-            -- Render paginated events as summaries
+            -- Render paginated events as summaries; keep this order list
+            -- identical to the one used to select the page
             select coalesce(json_agg(
                 get_event_summary(community_id, group_id, event_id)
+                order by
+                    (case when v_sort_by = 'date' and v_sort_direction = 'asc' then starts_at end) asc,
+                    (case when v_sort_by = 'date' and v_sort_direction = 'desc' then starts_at end) desc,
+                    (
+                        case
+                            when v_sort_by = 'distance'
+                            and v_sort_direction = 'asc'
+                            and v_user_location is not null then distance
+                        end
+                    ) asc,
+                    (
+                        case
+                            when v_sort_by = 'distance'
+                            and v_sort_direction = 'desc'
+                            and v_user_location is not null then distance
+                        end
+                    ) desc,
+                    starts_at asc,
+                    event_id asc
             ), '[]'::json)
             from filtered_events_page
         ),

@@ -132,7 +132,11 @@ async fn db_contracts_get_group_upcoming_events_deserializes() -> Result<()> {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_id, event_id());
     assert_eq!(events[0].kind, EventKind::Hybrid);
-    assert!(events[0].cohosts.is_empty());
+    assert!(
+        events[0].cohosts.is_empty(),
+        "event should have no cohosts, got {:?}",
+        events[0].cohosts
+    );
 
     Ok(())
 }

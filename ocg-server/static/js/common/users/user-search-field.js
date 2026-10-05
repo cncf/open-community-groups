@@ -10,6 +10,12 @@ import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
 const emailAddressPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
+ * Minimum search query length, in Unicode code points after trimming. Mirrors
+ * `USER_SEARCH_MIN_QUERY_CHARS` in `ocg-server/src/handlers/dashboard/common.rs`.
+ */
+const MIN_SEARCH_QUERY_LENGTH = 2;
+
+/**
  * UserSearchField component for searching and selecting users.
  *
  * Displays an inline search input with a floating dropdown that shows
@@ -40,6 +46,8 @@ export class UserSearchField extends LitWrapper {
    * @property {Array} _searchResults - Internal search results collection
    * @property {string} _searchQuery - Internal current search query string
    * @property {number} _searchTimeoutId - Internal debounce timeout id
+   * @property {number} _searchRequestId - Internal id of the latest search request
+   * @property {AbortController|null} _searchAbortController - Internal in-flight search controller
    */
   static properties = {
     // Public props
@@ -83,6 +91,8 @@ export class UserSearchField extends LitWrapper {
     this._searchResults = [];
     this._searchQuery = "";
     this._searchTimeoutId = 0;
+    this._searchRequestId = 0;
+    this._searchAbortController = null;
     this._outsidePointerHandler = null;
   }
 
@@ -97,6 +107,7 @@ export class UserSearchField extends LitWrapper {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
+    this._cancelPendingSearch();
     if (this._outsidePointerHandler) {
       document.removeEventListener("pointerdown", this._outsidePointerHandler);
     }
@@ -165,6 +176,16 @@ export class UserSearchField extends LitWrapper {
   }
 
   /**
+   * Invalidates the latest search request and aborts it when in flight.
+   * @private
+   */
+  _cancelPendingSearch() {
+    this._searchRequestId += 1;
+    this._searchAbortController?.abort();
+    this._searchAbortController = null;
+  }
+
+  /**
    * Clears the current query and results and restores the focus to the input.
    * @param {Object} [options] Clear behavior options.
    * @param {boolean} [options.emitChange=true] Whether to emit the query event.
@@ -177,6 +198,7 @@ export class UserSearchField extends LitWrapper {
     this._searchResults = [];
     this._isSearching = false;
     this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
+    this._cancelPendingSearch();
     if (emitChange) {
       this._emitSearchQueryChanged("");
     }
@@ -197,46 +219,81 @@ export class UserSearchField extends LitWrapper {
     this._emitSearchQueryChanged(query);
 
     this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
+    this._cancelPendingSearch();
 
-    if (query === "") {
+    // Skip empty queries and queries too short to be selective
+    if (query === "" || this._isQueryTooShort(query)) {
       this._searchResults = [];
       this._isSearching = false;
       return;
     }
 
     this._isSearching = true;
+    const requestId = this._searchRequestId;
     this._searchTimeoutId = replaceTimeout(
       this._searchTimeoutId,
       () => {
         this._searchTimeoutId = 0;
-        this._performSearch(query);
+        return this._performSearch(query, requestId);
       },
       this.searchDelay,
     );
   }
 
   /**
-   * Performs the search request to the dashboard API and updates results.
-   * @param {string} query - The search query to send to the backend
+   * Checks whether a search request is still the latest one.
+   * @param {number} requestId - Id of the request to check
+   * @param {AbortController} controller - Controller of the request to check
+   * @returns {boolean} True when the request results can be applied
    * @private
    */
-  async _performSearch(query) {
+  _isActiveSearch(requestId, controller) {
+    return requestId === this._searchRequestId && this._searchAbortController === controller;
+  }
+
+  /**
+   * Checks whether a query is shorter than the minimum search length.
+   * @param {string} query - Trimmed search query
+   * @returns {boolean} True when the query is too short to search
+   * @private
+   */
+  _isQueryTooShort(query) {
+    return Array.from(query).length < MIN_SEARCH_QUERY_LENGTH;
+  }
+
+  /**
+   * Performs the search request to the dashboard API and updates results.
+   * Results of superseded or aborted requests are ignored.
+   * @param {string} query - The search query to send to the backend
+   * @param {number} [requestId] - Id of the search request, defaults to the latest
+   * @private
+   */
+  async _performSearch(query, requestId = this._searchRequestId) {
     if (this.disabled) return;
+    this._searchAbortController?.abort();
+    const controller = new AbortController();
+    this._searchAbortController = controller;
     try {
       const response = await ocgFetch(
         `/dashboard/${this.dashboardType}/users/search?q=${encodeURIComponent(query)}`,
+        { signal: controller.signal },
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const users = await response.json();
+      if (!this._isActiveSearch(requestId, controller)) return;
       const available = users.filter((u) => !this.excludeUsernames?.some((x) => x === u.username));
       this._searchResults = available;
     } catch (err) {
+      if (err?.name === "AbortError" || !this._isActiveSearch(requestId, controller)) return;
       console.error("Error searching users:", err);
       this._searchResults = [];
     } finally {
-      this._isSearching = false;
+      if (this._isActiveSearch(requestId, controller)) {
+        this._isSearching = false;
+        this._searchAbortController = null;
+      }
     }
   }
 
@@ -318,6 +375,53 @@ export class UserSearchField extends LitWrapper {
   }
 
   /**
+   * Renders the dropdown content for the current search state.
+   * @returns {TemplateResult} Searching, email action, hint, empty or results template.
+   * @private
+   */
+  _renderDropdownContent() {
+    if (this._isSearching) {
+      return html`
+        <div class="p-4 text-center">
+          <div class="inline-flex items-center gap-2 text-stone-600">
+            <div class="animate-spin w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full"></div>
+            Searching...
+          </div>
+        </div>
+      `;
+    }
+
+    if (this._searchResults.length === 0 && this._hasEmailAction()) {
+      return this._renderEmailAction();
+    }
+
+    // Short queries never search, so their results are always empty
+    if (this._isQueryTooShort(this._searchQuery)) {
+      return html`
+        <div class="p-4 text-center text-stone-500">
+          <p class="text-sm">Type at least ${MIN_SEARCH_QUERY_LENGTH} characters</p>
+        </div>
+      `;
+    }
+
+    if (this._searchResults.length === 0) {
+      return html`
+        <div class="p-4 text-center text-stone-500">
+          <p class="text-sm">No ${this.label || "users"} found for "${this._searchQuery}"</p>
+        </div>
+      `;
+    }
+
+    return html`<div class="py-1">
+      ${repeat(
+        this._searchResults,
+        (u) => u.username,
+        (u) => this._renderResult(u),
+      )}
+    </div>`;
+  }
+
+  /**
    * Renders the valid-email action row.
    * @returns {TemplateResult} Email action row template.
    * @private
@@ -345,8 +449,6 @@ export class UserSearchField extends LitWrapper {
    * @returns {TemplateResult} Component template
    */
   render() {
-    const hasEmailAction = this._hasEmailAction();
-
     return html`
       <div class="relative ${this.wrapperClass || ""}">
         <!-- Left search icon -->
@@ -396,36 +498,7 @@ export class UserSearchField extends LitWrapper {
                     this._isSearching || this._searchResults.length === 0 ? "" : "max-h-80 overflow-y-auto"
                   }"
                 >
-                  ${
-                    this._isSearching
-                      ? html`
-                          <div class="p-4 text-center">
-                            <div class="inline-flex items-center gap-2 text-stone-600">
-                              <div
-                                class="animate-spin w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full"
-                              ></div>
-                              Searching...
-                            </div>
-                          </div>
-                        `
-                      : this._searchResults.length === 0 && hasEmailAction
-                        ? this._renderEmailAction()
-                        : this._searchResults.length === 0
-                          ? html`
-                              <div class="p-4 text-center text-stone-500">
-                                <p class="text-sm">
-                                  No ${this.label || "users"} found for "${this._searchQuery}"
-                                </p>
-                              </div>
-                            `
-                          : html`<div class="py-1">
-                              ${repeat(
-                                this._searchResults,
-                                (u) => u.username,
-                                (u) => this._renderResult(u),
-                              )}
-                            </div>`
-                  }
+                  ${this._renderDropdownContent()}
                 </div>
               `
             : ""
