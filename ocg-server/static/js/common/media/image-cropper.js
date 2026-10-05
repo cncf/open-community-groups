@@ -590,7 +590,7 @@ export class ImageCropper extends LitWrapper {
       this._selection = selection;
       cropperCanvas.style.height = "100%";
       cropperCanvas.style.width = "100%";
-      await cropperImage.$ready();
+      await waitForCropperImageLoad(cropperImage);
       await new Promise((resolve) => requestAnimationFrame(resolve));
 
       if (!this._isOpen || editToken !== this._editToken || this._cropper !== cropper) {
@@ -980,6 +980,31 @@ const parseSvgAbsoluteLength = (value) => {
   const unitScale = SVG_LENGTH_UNIT_TO_PIXELS[match[2]?.toLowerCase() || "px"];
   const pixelLength = length * unitScale;
   return Number.isFinite(pixelLength) && pixelLength > 0 ? pixelLength : null;
+};
+
+/**
+ * Wait until the vendor image has handled its own load event. `$ready()`
+ * resolves immediately for cached sources, but the vendor still centers the
+ * image with its initial "contain" size when the pending load event fires,
+ * which would overwrite a fit applied in between.
+ */
+const waitForCropperImageLoad = async (cropperImage) => {
+  await cropperImage.$ready();
+  if (cropperImage.$isReady) {
+    return;
+  }
+
+  // The vendor load listener was registered first, so it runs before this one.
+  const controller = new AbortController();
+  try {
+    await new Promise((resolve, reject) => {
+      const { signal } = controller;
+      cropperImage.$image.addEventListener("load", resolve, { signal });
+      cropperImage.$image.addEventListener("error", reject, { signal });
+    });
+  } finally {
+    controller.abort();
+  }
 };
 
 customElements.define("image-cropper", ImageCropper);
