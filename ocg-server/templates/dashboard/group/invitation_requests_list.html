@@ -170,11 +170,12 @@
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
              role="rowgroup">
         <tr>
-          <th scope="col" class="px-3 xl:px-5 py-1.5 xl:w-[30%]">
+          <th scope="col"
+              class="px-3 xl:px-5 py-1.5 xl:w-[30%] min-[1920px]:w-[22%]!">
             <span class="whitespace-nowrap">Requester</span>
           </th>
           <th scope="col"
-              class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5">
+              class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 min-[1920px]:w-[16%]">
             {% call dashboard::table_filter_menu(id = "invitation-requests-position-filter", label = "Position", is_active = title.is_some()) -%}
             <div class="py-2">
               <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
@@ -189,7 +190,7 @@
             </div>
             {% endcall -%}
           </th>
-          <th scope="col" class="px-3 xl:px-5 py-1.5 w-48">
+          <th scope="col" class="px-3 xl:px-5 py-1.5 w-px whitespace-nowrap">
             {% call dashboard::table_filter_menu(id = "invitation-requests-status-filter", label = "Status", is_active = status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All) -%}
             <div class="py-2">
               <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
@@ -205,7 +206,10 @@
             </div>
             {% endcall -%}
           </th>
-          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-48">
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-44">
+            <span class="whitespace-nowrap">Offer</span>
+          </th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48">
             <span class="whitespace-nowrap">Ticket type</span>
           </th>
           <th scope="col"
@@ -223,15 +227,19 @@
         {% if invitation_requests.is_empty() -%}
           {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
-            <td class="2xl:hidden px-8 py-12 text-center" colspan="3">
+            <td class="xl:hidden px-8 py-12 text-center" colspan="3">
+              {{ invitation_requests_empty_state(event, limit, sort, title, status, ts_query) -}}
+            </td>
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
+                colspan="4">
               {{ invitation_requests_empty_state(event, limit, sort, title, status, ts_query) -}}
             </td>
             <td class="hidden 2xl:table-cell min-[1920px]:hidden! px-8 py-12 text-center"
-                colspan="5">
+                colspan="6">
               {{ invitation_requests_empty_state(event, limit, sort, title, status, ts_query) -}}
             </td>
             <td class="hidden min-[1920px]:table-cell px-8 py-12 text-center"
-                colspan="7">
+                colspan="8">
               {{ invitation_requests_empty_state(event, limit, sort, title, status, ts_query) -}}
             </td>
           </tr>
@@ -241,18 +249,15 @@
             {# Invitation request row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Requester -#}
-              <td class="px-3 xl:px-5 py-4 max-w-0 xl:w-[30%]">
+              <td class="px-3 xl:px-5 py-4 max-w-0 xl:w-[30%] min-[1920px]:w-[22%]!">
                 {% call dashboard::user_profile_modal_trigger(request.user, self::user_initials(request.user.name.as_deref() , request.user.username.as_str())) -%}
-                <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-600">{{ request.user.name.as_deref() |assigned_or(request.user.username) }}</div>
-                <div class="truncate text-xs text-stone-600 2xl:hidden">
-                  {{ request.requested_ticket_title.as_deref() |assigned_or("Private admission") }}
-                </div>
+                <div class="font-medium text-stone-900 truncate group-hover:text-primary-600">{{ request.user.name.as_deref() |assigned_or(request.user.username) }}</div>
                 {% endcall -%}
               </td>
               {# End requester -#}
 
               {# Position -#}
-              <td class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0">
+              <td class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0 min-[1920px]:w-[16%]">
                 <div class="flex flex-col space-y-1">
                   <div class="font-medium text-stone-900 truncate">{{ request.user.company.as_deref() |assigned_or("-") }}</div>
                   {% if let Some(title) = &request.user.title -%}
@@ -263,21 +268,36 @@
               {# End position -#}
 
               {# Status -#}
-              <td class="px-3 xl:px-5 py-4 align-middle">
-                <div class="flex min-w-0 items-center">
+              <td class="px-3 xl:px-5 py-4 align-middle w-px whitespace-nowrap">
+                <div class="flex min-w-0 flex-col items-start gap-1.5">
                   {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
-                    {{ invitation_request_status_badge(request, event, "Pending", false, false) -}}
+                    {{ badges::status_badge(label = "Pending") -}}
                   {% else if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Rejected -%}
-                    {{ invitation_request_status_badge(request, event, "Rejected", true, false) -}}
+                    {{ badges::status_badge(label = "Rejected", canceled = true) -}}
                   {% else -%}
-                    {{ invitation_request_status_badge(request, event, "Accepted", false, true) -}}
+                    {{ badges::status_badge(label = "Accepted", published = true) -}}
+                  {% endif -%}
+                  {% if request.admission_offer_status.is_some() -%}
+                    <div class="2xl:hidden">{{ invitation_request_offer(request, event, stacked = true) -}}</div>
                   {% endif -%}
                 </div>
               </td>
               {# End status -#}
 
+              {# Offer -#}
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 align-middle w-44">
+                <div class="flex min-w-0 items-center">
+                  {% if request.admission_offer_status.is_some() -%}
+                    {{ invitation_request_offer(request, event) -}}
+                  {% else -%}
+                    -
+                  {% endif -%}
+                </div>
+              </td>
+              {# End offer -#}
+
               {# Ticket type -#}
-              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0 w-48">
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-0 w-48">
                 <div class="truncate font-medium text-stone-900"
                      title="{{ request.requested_ticket_title.as_deref() |assigned_or("Private admission") }}">
                   {{ request.requested_ticket_title.as_deref() |assigned_or("Private admission") }}
@@ -531,52 +551,56 @@
 {% endif -%}
 {# End pagination -#}
 
-{# Invitation request status badge and ticket offer details. #}
-{% macro invitation_request_status_badge(request, event, label, canceled, published) -%}
+{# Invitation request ticket offer outcome for the column or stacked status layout. #}
+{% macro invitation_request_offer(request, event, stacked = false) -%}
   {% if let Some(offer_status) = request.admission_offer_status -%}
-    {% let request_offer_tooltip_id -%}invitation-request-offer-details-{{ request.user.user_id }}{%- endlet %}
-  <span class="group/request-offer relative inline-flex shrink-0">
-    <button type="button"
-            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-            aria-describedby="{{ request_offer_tooltip_id }}">
-      {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
-      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
-                   {% if canceled %}bg-red-800{% else if published %}bg-green-800{% else %}bg-amber-800{% endif %}"
-            aria-hidden="true"></span>
-    </button>
-    {% call dashboard::tooltip_panel(
-      id = request_offer_tooltip_id,
-      title = "Ticket offer",
-      visibility_classes = "group-hover/request-offer:visible group-hover/request-offer:opacity-100 group-focus-within/request-offer:visible group-focus-within/request-offer:opacity-100"
-    ) -%}
-    <span class="block">
-      <span class="block font-semibold text-stone-500">Ticket type</span>
-      <span class="mt-0.5 block text-stone-900">
-        {{ request.offered_ticket_title.as_deref() |assigned_or("RSVP invitation") }}
-      </span>
+    {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
+      {{ invitation_request_offer_badge(request, event, "Offer pending", false, false, stacked) -}}
+    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
+      {{ invitation_request_offer_badge(request, event, "Checkout pending", false, false, stacked) -}}
+    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Completed -%}
+      {{ invitation_request_offer_badge(request, event, "Ticket claimed", false, true, stacked) -}}
+    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+      {{ invitation_request_offer_badge(request, event, "Offer expired", true, false, stacked) -}}
+    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
+      {{ invitation_request_offer_badge(request, event, "Offer canceled", true, false, stacked) -}}
+    {% else -%}
+      {{ invitation_request_offer_badge(request, event, "Offer declined", true, false, stacked) -}}
+    {% endif -%}
+  {% endif -%}
+{% endmacro invitation_request_offer -%}
+{# End invitation request ticket offer outcome. #}
+
+{# Invitation request ticket offer badge with offer details tooltip. #}
+{% macro invitation_request_offer_badge(request, event, label, canceled, published, stacked) -%}
+  {% let request_offer_tooltip_id -%}invitation-request-offer-details-{{ request.user.user_id }}{% if stacked %}-stacked{% endif %}{%- endlet %}
+<span class="group/request-offer relative inline-flex shrink-0">
+  <button type="button"
+          class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          aria-describedby="{{ request_offer_tooltip_id }}">
+    {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
+    <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
+                 {% if canceled %}bg-red-800{% else if published %}bg-green-800{% else %}bg-amber-800{% endif %}"
+          aria-hidden="true"></span>
+  </button>
+  {% call dashboard::tooltip_panel(
+    id = request_offer_tooltip_id,
+    title = "Ticket offer",
+    visibility_classes = "group-hover/request-offer:visible group-hover/request-offer:opacity-100 group-focus-within/request-offer:visible group-focus-within/request-offer:opacity-100"
+  ) -%}
+  <span class="block">
+    <span class="block font-semibold text-stone-500">Ticket type</span>
+    <span class="mt-0.5 block text-stone-900">
+      {{ request.offered_ticket_title.as_deref() |assigned_or("RSVP invitation") }}
     </span>
-    <span class="block">
-      <span class="block font-semibold text-stone-500">Offer status</span>
-      <span class="mt-0.5 block text-stone-900">
-        {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
-          Pending
-        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
-          Checkout in progress
-        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Completed -%}
-          Claimed
-        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
-          Expired
-        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
-          Canceled
-        {% else -%}
-          Declined
-        {% endif -%}
-      </span>
-    </span>
-    {% if let Some(offer_expires_at) = &request.offer_expires_at -%}
+  </span>
+  {% if let Some(offer_expires_at) = &request.offer_expires_at -%}
+    {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+      || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
+      || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
       <span class="block">
         <span class="block font-semibold text-stone-500">
-          {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+          {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
             Expired
           {% else -%}
             Deadline
@@ -587,13 +611,11 @@
         </span>
       </span>
     {% endif -%}
-    {% endcall -%}
-  </span>
-{% else -%}
-  {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
-{% endif -%}
-{% endmacro invitation_request_status_badge -%}
-{# End invitation request status badge. #}
+  {% endif -%}
+  {% endcall -%}
+</span>
+{% endmacro invitation_request_offer_badge -%}
+{# End invitation request ticket offer badge. #}
 
 {# Invitation requests empty state for search, status filter, and empty lists. #}
 {% macro invitation_requests_empty_state(event, limit, sort, title, status, ts_query) -%}

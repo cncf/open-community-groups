@@ -56,6 +56,12 @@ const CLOSED_APPROVAL_OFFER_ID = "59555555-5555-5555-5555-555555555905";
 
 const DISABLED_APPROVAL_EVENT_NAME = "Upcoming In-Person Event";
 
+// Requester, Position, Status, and Offer cells keep their DOM order across breakpoints.
+const INVITATION_REQUEST_OFFER_CELL_INDEX = 3;
+const INVITATION_REQUEST_POSITION_CELL_INDEX = 1;
+const INVITATION_REQUEST_REQUESTER_CELL_INDEX = 0;
+const INVITATION_REQUEST_STATUS_CELL_INDEX = 2;
+
 const SOLD_OUT_CONFLICT_MESSAGE =
   "This ticket type is sold out. Add seats or cancel a pending offer before allocating another ticket.";
 
@@ -518,7 +524,7 @@ test.describe("group dashboard requests tab", () => {
       notificationIds = expectNewNotifications(approvalSnapshot, [
         { kind: "event-ticket-request-approved", userIds: [TEST_USER_IDS.pending2] },
       ]);
-      await expectTicketOfferStatus(pendingTwoRow, "Accepted", "Pending");
+      await expectTicketOfferStatus(pendingTwoRow, "Accepted", "Offer pending", "Deadline");
     } finally {
       // Remove request notifications and the temporary event.
       deleteNotifications(notificationIds);
@@ -612,7 +618,7 @@ test.describe("group dashboard requests tab", () => {
       );
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Ticket offer canceled.");
       await organizerGroupPage.getByRole("button", { name: "OK" }).click();
-      await expectTicketOfferStatus(acceptedRow, "Accepted", "Canceled");
+      await expectTicketOfferStatus(acceptedRow, "Accepted", "Offer canceled", null);
 
       // Invite both reviewed requesters from the Attendees tab.
       const attendeesContent = await openCurrentEventEditorSection(
@@ -759,7 +765,7 @@ test.describe("group dashboard requests tab", () => {
         method: "PUT",
         urlIncludes: `/dashboard/group/events/${event.id}/attendees/${TEST_USER_IDS.pending2}/invitation-request/accept`,
       });
-      await expectTicketOfferStatus(acceptedRow, "Accepted", "Pending");
+      await expectTicketOfferStatus(acceptedRow, "Accepted", "Offer pending", "Deadline");
     } finally {
       // Restore the shared request fixtures for later tests.
       resetClosedRegistrationWindowRequests();
@@ -836,7 +842,7 @@ test.describe("group dashboard requests tab", () => {
       const requestRow = requestsContent.locator("tr", {
         hasText: "E2E Member One",
       });
-      await expectTicketOfferStatus(requestRow, "Accepted", "Expired");
+      await expectTicketOfferStatus(requestRow, "Accepted", "Offer expired", "Expired");
       await requestRow.getByRole("button", { name: "Open actions for E2E Member One" }).click();
       const reissueButton = requestRow.getByRole("button", {
         name: "Reissue offer",
@@ -849,7 +855,7 @@ test.describe("group dashboard requests tab", () => {
       });
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Ticket offer reissued.");
       await organizerGroupPage.getByRole("button", { name: "OK" }).click();
-      await expectTicketOfferStatus(requestRow, "Accepted", "Pending");
+      await expectTicketOfferStatus(requestRow, "Accepted", "Offer pending", "Deadline");
     } finally {
       // Restore the shared request fixtures for later tests.
       resetClosedRegistrationWindowRequests();
@@ -874,7 +880,7 @@ test.describe("group dashboard requests tab", () => {
       const requestRow = requestsContent.locator("tr", {
         hasText: "E2E Member Two",
       });
-      await expectTicketOfferStatus(requestRow, "Accepted", "Expired");
+      await expectTicketOfferStatus(requestRow, "Accepted", "Offer expired", "Expired");
       await requestRow.getByRole("button", { name: "Open actions for E2E Member Two" }).click();
       const reissueButton = requestRow.getByRole("button", {
         name: "Reissue offer",
@@ -888,6 +894,98 @@ test.describe("group dashboard requests tab", () => {
     } finally {
       // Remove the temporary request and offer.
       cleanupDisabledApprovalExpiredOffer();
+    }
+  });
+
+  test("organizer sees each offer outcome and deadline", async ({ organizerGroupPage }) => {
+    const event = setupTicketAllocationEvent({
+      approvalRequired: true,
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      ticketTypes: TICKET_TYPES,
+    });
+
+    try {
+      // Record accepted requests with open and closed offers before their deadlines.
+      for (const { status, userId } of [
+        { status: "checkout_pending", userId: TEST_USER_IDS.member1 },
+        { status: "declined", userId: TEST_USER_IDS.pending1 },
+        { status: "completed", userId: TEST_USER_IDS.pending2 },
+      ]) {
+        setupTicketInvitationRequest({
+          eventId: event.eventId,
+          status: "accepted",
+          ticketTypeId: event.ticketTypeIds.open,
+          userId,
+        });
+        setupTicketOffer({
+          eventId: event.eventId,
+          source: "approval",
+          status,
+          ticketTypeId: event.ticketTypeIds.open,
+          userId,
+        });
+      }
+
+      // Record a pending request that has no offer yet.
+      setupTicketInvitationRequest({
+        eventId: event.eventId,
+        ticketTypeId: event.ticketTypeIds.open,
+        userId: TEST_USER_IDS.member2,
+      });
+      await organizerGroupPage.setViewportSize({ width: 1280, height: 900 });
+      const requestsContent = await openInvitationRequestsTab(organizerGroupPage, event.name, event.eventId);
+      await showAllInvitationRequests(organizerGroupPage, requestsContent, event.eventId);
+      const invitationRequestsTable = requestsContent.getByRole("table", { name: "Invitation requests" });
+
+      // Verify open offers keep their deadline and closed offers drop it.
+      await expectTicketOfferStatus(
+        requestsContent.locator("tr", { hasText: "E2E Member One" }),
+        "Accepted",
+        "Checkout pending",
+        "Deadline",
+      );
+      await expectTicketOfferStatus(
+        requestsContent.locator("tr", { hasText: "E2E Pending One" }),
+        "Accepted",
+        "Offer declined",
+        null,
+      );
+      await expectTicketOfferStatus(
+        requestsContent.locator("tr", { hasText: "E2E Pending Two" }),
+        "Accepted",
+        "Ticket claimed",
+        null,
+      );
+
+      // Verify a request without an offer renders no offer details in either layout.
+      const noOfferRow = requestsContent.locator("tr", { hasText: "E2E Member Two" });
+      await expect(noOfferRow.getByText("Pending", { exact: true })).toBeVisible();
+      await expect(noOfferRow.getByRole("tooltip", { includeHidden: true })).toHaveCount(0);
+
+      // Verify the Status column shrinks to the stacked status and offer badges.
+      await expectStatusColumnFitsContent(invitationRequestsTable);
+
+      // Verify the wide layout moves offers into the Offer column with a placeholder for no offer.
+      await organizerGroupPage.setViewportSize({ width: 1600, height: 900 });
+      const checkoutOfferCell = requestsContent
+        .locator("tr", { hasText: "E2E Member One" })
+        .locator("td")
+        .nth(INVITATION_REQUEST_OFFER_CELL_INDEX);
+      const noOfferCell = noOfferRow.locator("td").nth(INVITATION_REQUEST_OFFER_CELL_INDEX);
+      await expect(
+        checkoutOfferCell.getByRole("button", { name: "Checkout pending", exact: true }),
+      ).toBeVisible();
+      await expect(noOfferCell).toBeVisible();
+      await expect(noOfferCell).toHaveText("-");
+
+      // Verify the widest layout gives Position room and keeps Status sized to its content.
+      await organizerGroupPage.setViewportSize({ width: 1920, height: 900 });
+      await expect(noOfferRow.locator("td").nth(INVITATION_REQUEST_POSITION_CELL_INDEX)).toBeVisible();
+      await expectColumnWidthShare(invitationRequestsTable, INVITATION_REQUEST_REQUESTER_CELL_INDEX, 0.22);
+      await expectColumnWidthShare(invitationRequestsTable, INVITATION_REQUEST_POSITION_CELL_INDEX, 0.16);
+      await expectStatusColumnFitsContent(invitationRequestsTable);
+    } finally {
+      cleanupEventsByIds([event.eventId]);
     }
   });
 
@@ -964,13 +1062,13 @@ test.describe("group dashboard requests tab", () => {
     expect(new URLSearchParams((await approvalRequest).postData() ?? "").get("event_ticket_type_id")).toBe(
       "56555555-5555-5555-5555-655555555914",
     );
-    await expectTicketOfferStatus(unscopedRequestRow, "Accepted", "Pending");
+    await expectTicketOfferStatus(unscopedRequestRow, "Accepted", "Offer pending", "Deadline");
 
     // Reissue an expired offer while preserving its assigned private tier.
     const expiredOfferRow = requestsContent.locator("tr", {
       hasText: "E2E Admin Two",
     });
-    await expect(expiredOfferRow).toContainText("Accepted");
+    await expectTicketOfferStatus(expiredOfferRow, "Accepted", "Offer expired", "Expired");
     await expiredOfferRow.getByRole("button", { name: "Open actions for E2E Admin Two" }).click();
     await expect(expiredOfferRow.getByLabel("Invitation-only ticket")).toHaveValue(
       "56555555-5555-5555-5555-655555555914",
@@ -1375,18 +1473,66 @@ const cleanupReviewedInvitationRequest = () => {
   `);
 };
 
-/** Verifies an accepted or rejected request exposes its ticket offer details. */
-const expectTicketOfferStatus = async (requestRow, requestStatus, offerStatus) => {
-  const requestStatusButton = requestRow.getByRole("button", {
-    name: requestStatus,
+/** Verifies a column header takes the expected share of the table width. */
+const expectColumnWidthShare = async (table, columnIndex, expectedShare) => {
+  const [tableWidth, columnWidth] = await Promise.all([
+    table.evaluate((element) => element.getBoundingClientRect().width),
+    table
+      .locator("thead th")
+      .nth(columnIndex)
+      .evaluate((element) => element.getBoundingClientRect().width),
+  ]);
+
+  expect(columnWidth / tableWidth).toBeGreaterThanOrEqual(expectedShare - 0.02);
+  expect(columnWidth / tableWidth).toBeLessThanOrEqual(expectedShare + 0.02);
+};
+
+/** Verifies the Status column is no wider than its widest header or badge content. */
+const expectStatusColumnFitsContent = async (table) => {
+  const { columnWidth, contentWidth } = await table.evaluate((element, columnIndex) => {
+    const paddedWidth = (cell, width) => {
+      const style = getComputedStyle(cell);
+      return width + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+    };
+    const header = element.querySelectorAll("thead th")[columnIndex];
+    const cells = [...element.querySelectorAll("tbody tr")].map((row) => row.children[columnIndex]);
+    const contentWidths = [
+      paddedWidth(header, header.firstElementChild.getBoundingClientRect().width),
+      ...cells.map((cell) =>
+        paddedWidth(
+          cell,
+          Math.max(
+            ...[...cell.firstElementChild.children].map((child) => child.getBoundingClientRect().width),
+          ),
+        ),
+      ),
+    ];
+
+    return {
+      columnWidth: header.getBoundingClientRect().width,
+      contentWidth: Math.max(...contentWidths),
+    };
+  }, INVITATION_REQUEST_STATUS_CELL_INDEX);
+
+  // Allow a small share of spare table width without accepting the former fixed width.
+  expect(columnWidth).toBeGreaterThanOrEqual(contentWidth - 1);
+  expect(columnWidth).toBeLessThanOrEqual(contentWidth + 12);
+};
+
+/** Verifies a request row shows its review status, offer outcome, and offer deadline label. */
+const expectTicketOfferStatus = async (requestRow, requestStatus, offerStatus, deadlineLabel) => {
+  const offerStatusButton = requestRow.getByRole("button", {
+    name: offerStatus,
     exact: true,
   });
   const offerDetails = requestRow.getByRole("tooltip");
-  const offerStatusDetails = offerDetails.getByText("Offer status", { exact: true }).locator("..");
 
-  await requestStatusButton.focus();
+  await expect(requestRow.getByText(requestStatus, { exact: true })).toBeVisible();
+  await offerStatusButton.focus();
   await expect(offerDetails).toBeVisible();
-  await expect(offerStatusDetails.getByText(offerStatus, { exact: true })).toBeVisible();
+  for (const label of ["Deadline", "Expired"]) {
+    await expect(offerDetails.getByText(label, { exact: true })).toHaveCount(label === deadlineLabel ? 1 : 0);
+  }
 };
 
 /** Opens one invitation request row menu and returns the row. */

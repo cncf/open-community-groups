@@ -74,27 +74,37 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('<span class="whitespace-nowrap">Requester</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Ticket type</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Requested</span>');
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%]"');
-    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%] min-[1920px]:w-[22%]!"');
+    expect(template).to.include(
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 min-[1920px]:w-[16%]"',
+    );
     expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
-    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-48"');
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-48"');
-    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"');
-    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0 w-48"');
-    expect(template).to.include('class="truncate text-xs text-stone-600 2xl:hidden"');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48"');
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-px whitespace-nowrap"');
+    expect(template).to.include('class="px-3 xl:px-5 py-4 align-middle w-px whitespace-nowrap"');
+    expect(template).to.include('class="px-3 xl:px-5 py-4 max-w-0 xl:w-[30%] min-[1920px]:w-[22%]!"');
+    expect(template).to.include(
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0 min-[1920px]:w-[16%]"',
+    );
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-0 w-48"');
+    expect(template).to.not.include('class="truncate text-xs text-stone-600 2xl:hidden"');
     expect(template).to.include(
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"',
     );
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-24 text-right"');
     expect(template).to.include('<span class="sr-only">Actions</span>');
-    expect(template).to.include('class="2xl:hidden px-8 py-12 text-center" colspan="3"');
-    expect(template).not.to.include("hidden xl:table-cell 2xl:hidden");
+    expect(template).to.include('class="xl:hidden px-8 py-12 text-center" colspan="3"');
+    expect(template).to.include('class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4"');
     expect(template).to.include(
-      'class="hidden 2xl:table-cell min-[1920px]:hidden! px-8 py-12 text-center" colspan="5"',
+      'class="hidden 2xl:table-cell min-[1920px]:hidden! px-8 py-12 text-center" colspan="6"',
     );
-    expect(template).to.include('class="hidden min-[1920px]:table-cell px-8 py-12 text-center" colspan="7"');
-    expect(tableHeader.indexOf("Status")).to.be.lessThan(tableHeader.indexOf("Ticket type"));
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-8 py-12 text-center" colspan="8"');
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-44"');
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 align-middle w-44"');
+    const offerHeaderIndex = tableHeader.indexOf('<span class="whitespace-nowrap">Offer</span>');
+    expect(tableHeader.indexOf("Status")).to.be.lessThan(offerHeaderIndex);
+    expect(offerHeaderIndex).to.be.lessThan(tableHeader.indexOf("Ticket type"));
     expect(tableHeader.indexOf("Ticket type")).to.be.lessThan(tableHeader.indexOf("Requested"));
     expect(tableHeader.indexOf("Requested")).to.be.lessThan(tableHeader.indexOf("Reviewed"));
     expect(template).to.include('dashboard::table_filter_menu(id = "invitation-requests-position-filter"');
@@ -147,7 +157,7 @@ describe("dashboard group invitation requests list template", () => {
       template.match(
         /\{\{ invitation_requests_empty_state\(event, limit, sort, title, status, ts_query\) -\}\}/g,
       ),
-    ).to.have.length(3);
+    ).to.have.length(4);
 
     // Verify search, status-filtered, and unfiltered empty lists stay distinct.
     expect(template).to.include(
@@ -172,7 +182,6 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include("request.offered_ticket_title.as_deref()");
     expect(template).to.include("Ticket offer");
     expect(template).to.include("group/request-offer relative inline-flex shrink-0");
-    expect(template).to.include("invitation-request-offer-details-{{ request.user.user_id }}");
     expect(template).to.include('aria-describedby="{{ request_offer_tooltip_id }}"');
     expect(template).to.include("dashboard::tooltip_panel(");
     expect(template).to.include('title = "Ticket offer"');
@@ -183,15 +192,57 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include("bg-red-800");
     expect(template).to.include("bg-green-800");
     expect(template).not.to.include("icon-info");
-    expect(template).to.include("Offer status");
-    expect(template).to.include("Checkout in progress");
-    expect(template).to.include("Expired");
-    expect(template).to.include('invitation_request_status_badge(request, event, "Pending", false, false)');
-    expect(template).to.include('invitation_request_status_badge(request, event, "Rejected", true, false)');
-    expect(template).to.include('invitation_request_status_badge(request, event, "Accepted", false, true)');
+    expect(template).to.not.include("Offer status");
+    expect(template).to.not.include("Checkout in progress");
+    expect(template).to.not.include("invitation_request_status_badge");
+
+    // Verify the status column stacks the offer outcome below the 2xl breakpoint.
+    const statusCell = template.slice(
+      template.indexOf("{# Status -#}"),
+      template.indexOf("{# End status -#}"),
+    );
+    expect(statusCell).to.include('<div class="flex min-w-0 flex-col items-start gap-1.5">');
+    expect(statusCell).to.include('badges::status_badge(label = "Pending")');
+    expect(statusCell).to.include('badges::status_badge(label = "Rejected", canceled = true)');
+    expect(statusCell).to.include('badges::status_badge(label = "Accepted", published = true)');
+    expect(statusCell).to.include(
+      '{% if request.admission_offer_status.is_some() -%} <div class="2xl:hidden">{{ invitation_request_offer(request, event, stacked = true) -}}</div> {% endif -%}',
+    );
+
+    // Verify the offer column shows the offer outcome and a placeholder without an offer.
+    const offerCell = template.slice(template.indexOf("{# Offer -#}"), template.indexOf("{# End offer -#}"));
+    expect(offerCell).to.include(
+      "{% if request.admission_offer_status.is_some() -%} {{ invitation_request_offer(request, event) -}} {% else -%} - {% endif -%}",
+    );
+
+    // Verify each offer outcome maps to its badge and keeps a unique tooltip per layout.
+    expect(template).to.include("{% macro invitation_request_offer(request, event, stacked = false) -%}");
+    for (const [label, canceled, published] of [
+      ["Offer pending", false, false],
+      ["Checkout pending", false, false],
+      ["Ticket claimed", false, true],
+      ["Offer expired", true, false],
+      ["Offer canceled", true, false],
+      ["Offer declined", true, false],
+    ]) {
+      expect(template).to.include(
+        `invitation_request_offer_badge(request, event, "${label}", ${canceled}, ${published}, stacked)`,
+      );
+    }
+    expect(template).to.include(
+      "invitation-request-offer-details-{{ request.user.user_id }}{% if stacked %}-stacked{% endif %}",
+    );
     expect(template).to.not.include("Request pending");
     expect(template).to.not.include("Request rejected");
     expect(template).to.not.include("Request accepted");
+
+    // Verify only open or expired offers show their deadline.
+    expect(template).to.include(
+      "{% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending) || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}",
+    );
+    expect(template).to.include(
+      "{% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%} Expired {% else -%} Deadline {% endif -%}",
+    );
     expect(template).to.include(
       'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
     );
