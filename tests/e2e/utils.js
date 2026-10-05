@@ -307,6 +307,15 @@ export const expectTableColumnsAtViewport = async (
   }
 };
 
+/** Replaces the external basemap style with an empty style while keeping the real map runtime. */
+export const routeEmptyBasemap = (page) =>
+  page.route("https://tiles.openfreemap.org/styles/bright", (route) =>
+    route.fulfill({
+      headers: { "access-control-allow-origin": "*" },
+      json: { layers: [], sources: {}, version: 8 },
+    }),
+  );
+
 /** Adds query parameters to the next matching browser request. */
 export const routeNextRequestWithQuery = async (page, urlIncludes, query) => {
   const queryParameters = new URLSearchParams(query);

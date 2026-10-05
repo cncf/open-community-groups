@@ -206,6 +206,31 @@ describe("community explore map", () => {
     }
   });
 
+  it("requests viewport locations in map mode", async () => {
+    // Start from a URL carrying list view pagination.
+    const { controller } = await initializeMap();
+    const originalUrl = window.location.href;
+    window.history.replaceState(
+      null,
+      "",
+      "?entity=groups&view_mode=list&offset=20",
+    );
+    const fetchMock = mockFetch({
+      response: { ok: true, json: async () => ({ groups: [] }) },
+    });
+    try {
+      // Fetch locations and verify the server receives map mode.
+      await controller.fetchLocationData();
+      const url = new URL(fetchMock.calls[0][0], window.location.origin);
+      expect(url.searchParams.getAll("view_mode")).to.deep.equal(["map"]);
+      expect(url.searchParams.get("entity")).to.equal("groups");
+    } finally {
+      // Restore the request implementation and page URL.
+      fetchMock.restore();
+      window.history.replaceState(null, "", originalUrl);
+    }
+  });
+
   it("deduplicates cluster markers and zooms into their locations", async () => {
     // Render duplicate source features for one cluster.
     const { controller, map, source } = await initializeMap();

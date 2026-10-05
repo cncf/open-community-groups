@@ -65,7 +65,7 @@ const initializeMapModal = (mapContainer) => {
     }
     modalMapLoaded = true;
     requestAnimationFrame(() => {
-      loadMap(modalMapId, lat, lng)
+      loadMap(modalMapId, lat, lng, { navigationControl: true })
         .then((map) => {
           modalMapLoaded = Boolean(map);
         })

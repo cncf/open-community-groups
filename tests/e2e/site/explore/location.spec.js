@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { TEST_COMMUNITY_NAME, TEST_EVENT_NAMES, TEST_EVENT_SLUGS, TEST_GROUP_SLUGS } from "../../seed.js";
-import { buildE2eUrl, navigateToPath } from "../../utils.js";
+import { buildE2eUrl, navigateToPath, routeEmptyBasemap } from "../../utils.js";
 
 const CLOUDFRONT_NEW_YORK_HEADERS = {
   "CloudFront-Viewer-Latitude": "40.7128",
@@ -55,12 +55,7 @@ test.describe("site explore location search", () => {
 
   test("event map markers expose accessible links to public event pages", async ({ page }) => {
     // Keep MapLibre running while avoiding external basemap tile dependencies.
-    await page.route("https://tiles.openfreemap.org/styles/bright", (route) =>
-      route.fulfill({
-        headers: { "access-control-allow-origin": "*" },
-        json: { layers: [], sources: {}, version: 8 },
-      }),
-    );
+    await routeEmptyBasemap(page);
     await page.setExtraHTTPHeaders(CLOUDFRONT_NEW_YORK_HEADERS);
 
     // Open the map view directly; the events toolbar exposes calendar instead of a map toggle.

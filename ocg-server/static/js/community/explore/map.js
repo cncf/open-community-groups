@@ -253,7 +253,8 @@ export class Map {
    */
   async fetchLocationData() {
     const params = new URLSearchParams(location.search);
-    params.delete("view_mode");
+    // Map mode makes the server apply the map result limit and offset.
+    params.set("view_mode", "map");
     params.delete("kind", "virtual");
 
     const bounds = this.map.getBounds();

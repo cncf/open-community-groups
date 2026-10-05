@@ -77,6 +77,14 @@ describe("map modal", () => {
     expect(mapLibre.maps[0].controls[0].control.options.compact).to.equal(
       false,
     );
+    expect(mapLibre.maps[0].controls).to.have.length(1);
+
+    // Only the modal map exposes zoom buttons.
+    expect(mapLibre.maps[1].controls).to.have.length(2);
+    expect(mapLibre.maps[1].controls[1].position).to.equal("top-right");
+    expect(mapLibre.maps[1].controls[1].control.options).to.deep.equal({
+      showCompass: false,
+    });
 
     // Close actions toggle the modal closed.
     document.getElementById("close-event-map-modal").click();
