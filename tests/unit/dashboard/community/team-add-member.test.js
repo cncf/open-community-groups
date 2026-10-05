@@ -130,7 +130,7 @@ describe("team-add-member", () => {
     expect(focusCalls).to.equal(1);
   });
 
-  it("allows the user search dropdown to overflow the modal", async () => {
+  it("keeps the modal content inside the scrolling modal body", async () => {
     // Call mount lit component with attributes.
     const element = await mountLitComponentWithAttributes("team-add-member", {
       attributes: {
@@ -144,17 +144,11 @@ describe("team-add-member", () => {
     element._open();
     await element.updateComplete;
 
-    // The user search dropdown can overflow the modal.
-    expect(
-      element
-        .querySelector(".modal-card")
-        .classList.contains("modal-overflow-visible"),
-    ).to.equal(true);
-    expect(
-      element
-        .querySelector(".modal-body")
-        .classList.contains("modal-overflow-visible"),
-    ).to.equal(true);
+    // The user search renders inside the modal body so its dropdown fits the scroll area.
+    const modalBody = element.querySelector(".modal-card > .modal-body");
+    expect(modalBody).to.not.equal(null);
+    expect(modalBody.querySelector("user-search-field")).to.not.equal(null);
+    expect(modalBody.classList.contains("modal-overflow-visible")).to.equal(false);
   });
 
   it("enables submit only after both a user and role have been selected", async () => {

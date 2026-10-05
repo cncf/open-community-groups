@@ -23,6 +23,7 @@ export class DropdownPlacementController {
     this.host = host;
     this._options = options;
     this._isListening = false;
+    this._pendingFrameId = 0;
     this._handleViewportChange = this._handleViewportChange.bind(this);
     host.addController(this);
   }
@@ -40,6 +41,7 @@ export class DropdownPlacementController {
    * @returns {void}
    */
   update() {
+    this._cancelPendingFit();
     const anchor = this._options.getAnchor();
     const dropdown = this._options.getDropdown();
     if (!isRenderedElement(anchor) || !isRenderedElement(dropdown)) {
@@ -66,6 +68,9 @@ export class DropdownPlacementController {
 
   /**
    * Refits the dropdown unless the scroll happened inside the dropdown itself.
+   *
+   * Placement reads layout, so refits are coalesced into the next animation
+   * frame to keep scrolling cheap when several dropdowns are mounted.
    * @param {Event} event Resize or scroll event.
    * @returns {void}
    */
@@ -74,7 +79,13 @@ export class DropdownPlacementController {
     if (event.type === "scroll" && event.target instanceof Node && dropdown?.contains(event.target)) {
       return;
     }
-    this.update();
+    if (this._pendingFrameId !== 0) {
+      return;
+    }
+    this._pendingFrameId = window.requestAnimationFrame(() => {
+      this._pendingFrameId = 0;
+      this.update();
+    });
   }
 
   /**
@@ -82,12 +93,25 @@ export class DropdownPlacementController {
    * @returns {void}
    */
   _removeListeners() {
+    this._cancelPendingFit();
     if (!this._isListening) {
       return;
     }
     this._isListening = false;
     window.removeEventListener("resize", this._handleViewportChange, { passive: true });
     document.removeEventListener("scroll", this._handleViewportChange, { capture: true, passive: true });
+  }
+
+  /**
+   * Drops a refit that has not run yet.
+   * @returns {void}
+   */
+  _cancelPendingFit() {
+    if (this._pendingFrameId === 0) {
+      return;
+    }
+    window.cancelAnimationFrame(this._pendingFrameId);
+    this._pendingFrameId = 0;
   }
 }
 

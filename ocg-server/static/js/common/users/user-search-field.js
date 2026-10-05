@@ -1,5 +1,6 @@
 import { html } from "lit";
 import { repeat } from "lit/directives/repeat.js";
+import { DropdownPlacementController } from "/static/js/common/dropdown-placement.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/media/logo-image.js";
@@ -94,6 +95,10 @@ export class UserSearchField extends LitWrapper {
     this._searchRequestId = 0;
     this._searchAbortController = null;
     this._outsidePointerHandler = null;
+    this._dropdownPlacement = new DropdownPlacementController(this, {
+      getAnchor: () => this.querySelector("[data-user-search-input]"),
+      getDropdown: () => this.querySelector("[data-user-search-dropdown]"),
+    });
   }
 
   connectedCallback() {
@@ -494,9 +499,8 @@ export class UserSearchField extends LitWrapper {
           this._searchQuery !== ""
             ? html`
                 <div
-                  class="absolute left-0 right-0 top-10 mt-1 bg-white rounded-lg shadow-lg border border-stone-200 z-10 ${
-                    this._isSearching || this._searchResults.length === 0 ? "" : "max-h-80 overflow-y-auto"
-                  }"
+                  data-user-search-dropdown
+                  class="absolute left-0 right-0 top-10 mt-1 max-h-80 overflow-y-auto bg-white rounded-lg shadow-lg border border-stone-200 z-10"
                 >
                   ${this._renderDropdownContent()}
                 </div>

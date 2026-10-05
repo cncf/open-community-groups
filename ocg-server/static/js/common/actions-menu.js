@@ -1,11 +1,11 @@
 import { closestElement, markDatasetReady } from "/static/js/common/dom.js";
+import { getVisibleVerticalBounds } from "/static/js/common/dropdown-placement.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 
 const ACTIONS_MENU_SELECTOR = "[data-actions-menu]";
 const ACTIONS_MENU_DROPDOWN_SELECTOR = ":scope > .dropdown";
 const DATA_KEY = "actionsMenuReady";
 const VIEWPORT_GAP = 8;
-const CLIPPING_OVERFLOW_VALUES = new Set(["auto", "clip", "hidden", "scroll"]);
 
 /**
  * Clears inline placement so a dropdown uses its template position.
@@ -15,31 +15,6 @@ const CLIPPING_OVERFLOW_VALUES = new Set(["auto", "clip", "hidden", "scroll"]);
 const clearDropdownPlacement = (dropdown) => {
   dropdown.style.insetBlockStart = "";
   dropdown.style.insetBlockEnd = "";
-};
-
-/**
- * Finds the visible vertical bounds imposed by the viewport and ancestors.
- * @param {HTMLElement} menu Action menu trigger wrapper.
- * @returns {{top: number, bottom: number}} Visible vertical bounds.
- */
-const getVisibleVerticalBounds = (menu) => {
-  const bounds = {
-    top: VIEWPORT_GAP,
-    bottom: window.innerHeight - VIEWPORT_GAP,
-  };
-  let ancestor = menu.parentElement;
-
-  while (ancestor) {
-    const styles = window.getComputedStyle(ancestor);
-    if (CLIPPING_OVERFLOW_VALUES.has(styles.overflowY) || CLIPPING_OVERFLOW_VALUES.has(styles.overflow)) {
-      const ancestorBounds = ancestor.getBoundingClientRect();
-      bounds.top = Math.max(bounds.top, ancestorBounds.top + VIEWPORT_GAP);
-      bounds.bottom = Math.min(bounds.bottom, ancestorBounds.bottom - VIEWPORT_GAP);
-    }
-    ancestor = ancestor.parentElement;
-  }
-
-  return bounds;
 };
 
 /**
@@ -57,7 +32,7 @@ export const positionActionsDropdown = (anchor, dropdown) => {
   clearDropdownPlacement(dropdown);
   const anchorBounds = anchor.getBoundingClientRect();
   const dropdownBounds = dropdown.getBoundingClientRect();
-  const visibleBounds = getVisibleVerticalBounds(anchor);
+  const visibleBounds = getVisibleVerticalBounds(anchor, VIEWPORT_GAP);
   const availableAbove = anchorBounds.top - visibleBounds.top;
   const availableBelow = visibleBounds.bottom - anchorBounds.bottom;
 

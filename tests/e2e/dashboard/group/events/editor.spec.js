@@ -8,8 +8,10 @@ import { fillMarkdownEditor } from "../../form-helpers.js";
 
 import {
   deleteEventFromList,
+  expectSearchDropdownInViewport,
   openEventUpdateFormByName,
   openPaymentsSection,
+  scrollToViewportBottom,
   waitForEventEditorAfterSave,
 } from "./helpers.js";
 
@@ -468,5 +470,37 @@ test.describe("group dashboard event editor", () => {
     await expect(
       organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
     ).toContainText("EARLY20");
+  });
+
+  test("location search results stay inside the viewport near its bottom", async ({ organizerGroupPage }) => {
+    // Return a full page of deterministic location results.
+    await organizerGroupPage.route(/nominatim\.openstreetmap\.org\/search/, (route) =>
+      route.fulfill({
+        json: Array.from({ length: 10 }, (_, index) => ({
+          place_id: index + 1,
+          display_name: `E2E Venue ${index + 1}, Málaga, Andalusia, Spain`,
+        })),
+      }),
+    );
+
+    // Open the add form venue section in a short viewport.
+    await organizerGroupPage.setViewportSize({ width: 1280, height: 600 });
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await organizerGroupPage.locator("#dashboard-content").getByRole("button", { name: "Add Event" }).click();
+    await expect(organizerGroupPage.locator("#name")).toBeVisible();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+
+    // Search locations with the input at the viewport bottom.
+    const locationInput = organizerGroupPage.locator("#location-search-input");
+    const locationDropdown = organizerGroupPage.locator("[data-location-search-dropdown]");
+    await scrollToViewportBottom(locationInput);
+    await locationInput.fill("Málaga");
+    await locationInput.press("Enter");
+    await expect(locationDropdown.getByRole("option")).toHaveCount(10);
+
+    // Verify the results open above the input inside the viewport.
+    await expectSearchDropdownInViewport(organizerGroupPage, locationInput, locationDropdown, {
+      above: true,
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { html } from "lit";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isElementHidden } from "/static/js/common/dom.js";
+import { DropdownPlacementController } from "/static/js/common/dropdown-placement.js";
 import {
   getCoordinateFieldConfig,
   getEmptyLocationValues,
@@ -163,6 +164,10 @@ export class LocationSearchField extends LitWrapper {
     this._mapBoundingBox = null;
     this._shouldFitBounds = false;
     this._mapPreview = new LocationMapPreview(this._mapElementId);
+    this._dropdownPlacement = new DropdownPlacementController(this, {
+      getAnchor: () => this.querySelector("#location-search-input"),
+      getDropdown: () => this.querySelector("[data-location-search-dropdown]"),
+    });
   }
 
   get _map() {

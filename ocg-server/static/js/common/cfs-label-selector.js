@@ -1,6 +1,7 @@
 import { html } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
+import { DropdownPlacementController } from "/static/js/common/dropdown-placement.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 const DEFAULT_PLACEHOLDER = "Search labels";
@@ -54,6 +55,10 @@ export class CfsLabelSelector extends LitWrapper {
           this._toggleSelection(String(label.event_cfs_label_id));
         }
       },
+    });
+    this._dropdownPlacement = new DropdownPlacementController(this, {
+      getAnchor: () => this.querySelector("[data-cfs-label-search]"),
+      getDropdown: () => this.querySelector("[data-cfs-label-dropdown]"),
     });
   }
 
@@ -367,7 +372,7 @@ export class CfsLabelSelector extends LitWrapper {
     return html`
       <div class=${this.selectedInInput ? "space-y-0" : "space-y-3"}>
         <div>
-          <div class="relative">
+          <div class="relative" data-cfs-label-search>
             <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
               <div class="svg-icon size-4 icon-search bg-stone-300"></div>
             </div>
@@ -474,6 +479,7 @@ export class CfsLabelSelector extends LitWrapper {
               this._combobox.isOpen
                 ? html`
                     <ul
+                      data-cfs-label-dropdown
                       class="absolute top-full mt-1 left-0 right-0 z-20 max-h-56 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-sm"
                       role="listbox"
                     >

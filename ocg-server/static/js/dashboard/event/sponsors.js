@@ -1,6 +1,7 @@
 import { html } from "lit";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { getElementById } from "/static/js/common/dom.js";
+import { DropdownPlacementController } from "/static/js/common/dropdown-placement.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
@@ -45,6 +46,10 @@ export class SponsorsSection extends LitWrapper {
     this.pendingLevel = "";
     this.disabled = false;
     this._handleClickOutside = this._handleClickOutside.bind(this);
+    this._dropdownPlacement = new DropdownPlacementController(this, {
+      getAnchor: () => this.querySelector("[data-sponsor-search-input]"),
+      getDropdown: () => this.querySelector("[data-sponsor-search-dropdown]"),
+    });
   }
 
   connectedCallback() {
@@ -334,6 +339,7 @@ export class SponsorsSection extends LitWrapper {
           </div>
           <input
             type="text"
+            data-sponsor-search-input
             class="input-primary peer ps-9 ${this.disabled ? "bg-stone-100 cursor-not-allowed" : ""}"
             placeholder="Search sponsors"
             autocomplete="off"
@@ -357,22 +363,19 @@ export class SponsorsSection extends LitWrapper {
             </button>
           </div>
 
-          <div class="absolute z-10 start-0 end-0">
-            <div
-              class="${
-                this.disabled || !this.visibleDropdown ? "hidden" : ""
-              } bg-white divide-y divide-stone-100 rounded-lg shadow w-full border border-stone-200 mt-1"
-            >
-              ${
-                this.visibleOptions && this.visibleOptions.length > 0
-                  ? html`<ul class="py-1 text-stone-700 overflow-auto max-h-80">
-                      ${this.visibleOptions.map((opt, idx) => this._renderOption(opt, idx))}
-                    </ul>`
-                  : html`<div class="px-8 py-4 text-sm/6 text-stone-600 font-semibold">
-                      No sponsors found
-                    </div>`
-              }
-            </div>
+          <div
+            data-sponsor-search-dropdown
+            class="${
+              this.disabled || !this.visibleDropdown ? "hidden" : ""
+            } absolute z-10 start-0 end-0 mt-1 max-h-80 overflow-y-auto bg-white rounded-lg shadow border border-stone-200"
+          >
+            ${
+              this.visibleOptions && this.visibleOptions.length > 0
+                ? html`<ul class="py-1 text-stone-700">
+                    ${this.visibleOptions.map((opt, idx) => this._renderOption(opt, idx))}
+                  </ul>`
+                : html`<div class="px-8 py-4 text-sm/6 text-stone-600 font-semibold">No sponsors found</div>`
+            }
           </div>
         </div>
 

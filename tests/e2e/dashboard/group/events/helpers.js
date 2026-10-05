@@ -346,3 +346,38 @@ export const deleteEventFromList = async (page, eventId) => {
   const deleteResponse = await page.request.delete(buildE2eUrl(`/dashboard/group/events/${eventId}/delete`));
   expect([200, 204, 404]).toContain(deleteResponse.status());
 };
+
+/**
+ * Asserts a visible search dropdown stays next to its input and inside the viewport.
+ *
+ * Only pass `above` when the dropdown is known to be taller than the room left
+ * below its input, otherwise the side it opens on depends on the seeded data.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {import("@playwright/test").Locator} input - Search input the dropdown opens from.
+ * @param {import("@playwright/test").Locator} dropdown - Search dropdown panel.
+ * @param {{ above?: boolean }} [options] - Whether the dropdown must open above its input.
+ * @returns {Promise<void>}
+ */
+export const expectSearchDropdownInViewport = async (page, input, dropdown, { above = false } = {}) => {
+  await expect(dropdown).toBeVisible();
+  const { height: viewportHeight } = page.viewportSize();
+  const inputBox = await input.boundingBox();
+  const dropdownBox = await dropdown.boundingBox();
+  const dropdownBottom = dropdownBox.y + dropdownBox.height;
+  const opensAbove = dropdownBottom <= inputBox.y;
+  const opensBelow = dropdownBox.y >= inputBox.y + inputBox.height;
+
+  expect(dropdownBox.height).toBeGreaterThan(0);
+  expect(dropdownBox.y).toBeGreaterThanOrEqual(0);
+  expect(dropdownBottom).toBeLessThanOrEqual(viewportHeight);
+  expect(above ? opensAbove : opensAbove || opensBelow).toBe(true);
+};
+
+/**
+ * Scrolls an element so its bottom edge lines up with the viewport bottom.
+ * @param {import("@playwright/test").Locator} locator - Element to scroll into place.
+ * @returns {Promise<void>}
+ */
+export const scrollToViewportBottom = async (locator) => {
+  await locator.evaluate((element) => element.scrollIntoView({ block: "end" }));
+};
