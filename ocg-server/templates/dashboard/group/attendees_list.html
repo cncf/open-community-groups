@@ -1173,36 +1173,7 @@
                  value="all">
           <div id="attendee-notification-selected-fields"></div>
 
-          <div class="mb-4">
-            <label for="attendee-subject" class="form-label">
-              Subject <span class="asterisk">*</span>
-            </label>
-            <div class="mt-2">
-              <input type="text"
-                     id="attendee-subject"
-                     name="subject"
-                     required
-                     maxlength="{{ crate::validation::MAX_LEN_M }}"
-                     class="input-primary"
-                     value="{{ event.group_name }}: {{ event.name }}"
-                     placeholder="Enter notification subject">
-            </div>
-          </div>
-          <div class="mb-6">
-            <label for="attendee-body" class="form-label">
-              Body <span class="asterisk">*</span>
-            </label>
-            <div class="mt-2">
-              <textarea id="attendee-body"
-                        name="body"
-                        required
-                        rows="6"
-                        maxlength="{{ crate::validation::MAX_LEN_NOTIFICATION_BODY }}"
-                        class="input-primary"
-                        placeholder="Enter notification body (plain text only)"></textarea>
-              <p class="mt-1 text-xs text-stone-500">Plain text only. No HTML formatting.</p>
-            </div>
-          </div>
+          {{ dashboard::custom_notification_fields(subject_id = "attendee-subject", body_id = "attendee-body", default_subject = event.group_name ~ ": " ~ event.name) -}}
           <div class="flex justify-end gap-3 pt-6 border-t border-stone-200">
             <button id="cancel-attendee-notification"
                     type="button"

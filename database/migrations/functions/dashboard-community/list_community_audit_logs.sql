@@ -24,6 +24,7 @@ returns json as $$
             cross join filters f
             where al.community_id = p_community_id
             and al.action = any(array[
+                'community_custom_notification_sent',
                 'community_team_invitation_accepted',
                 'community_team_invitation_rejected',
                 'community_team_member_added',

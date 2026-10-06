@@ -103,6 +103,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "cfs_submission_updated",
     },
     AuditActionDefinition {
+        label: "Community custom notification sent",
+        scopes: COMMUNITY_SCOPES,
+        value: "community_custom_notification_sent",
+    },
+    AuditActionDefinition {
         label: "Community team invitation accepted",
         scopes: COMMUNITY_USER_SCOPES,
         value: "community_team_invitation_accepted",
@@ -677,9 +682,20 @@ fn humanize_key(key: &str) -> String {
         .join(" ")
 }
 
+/// Returns whether a JSON value is a scalar.
+fn is_scalar(value: &Value) -> bool {
+    !matches!(value, Value::Array(_) | Value::Object(_))
+}
+
 /// Formats a JSON detail value for display.
+///
+/// Arrays of scalars render as comma-separated lists so filter names read
+/// naturally; nested structures keep their JSON representation.
 fn render_detail_value(value: &Value) -> String {
     match value {
+        Value::Array(items) if items.iter().all(is_scalar) => {
+            items.iter().map(render_detail_value).collect::<Vec<_>>().join(", ")
+        }
         Value::Array(_) | Value::Object(_) => value.to_string(),
         Value::Bool(value) => value.to_string(),
         Value::Null => "-".to_string(),
@@ -703,5 +719,43 @@ fn resource_type_label(resource_type: &str) -> &'static str {
         "session_proposal" => "Session proposal",
         "user" => "User",
         _ => "Resource",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_action_label_community_custom_notification_sent() {
+        assert_eq!(
+            action_label("community_custom_notification_sent"),
+            "Community custom notification sent"
+        );
+    }
+
+    #[test]
+    fn test_render_detail_value_joins_scalar_arrays() {
+        assert_eq!(
+            render_detail_value(&json!(["Platform", "No region", 3])),
+            "Platform, No region, 3"
+        );
+    }
+
+    #[test]
+    fn test_render_detail_value_keeps_nested_arrays_as_json() {
+        assert_eq!(
+            render_detail_value(&json!([{"name": "Platform"}])),
+            r#"[{"name":"Platform"}]"#
+        );
+    }
+
+    #[test]
+    fn test_render_detail_value_renders_scalars() {
+        assert_eq!(render_detail_value(&json!("All")), "All");
+        assert_eq!(render_detail_value(&json!(null)), "-");
+        assert_eq!(render_detail_value(&json!(2)), "2");
     }
 }

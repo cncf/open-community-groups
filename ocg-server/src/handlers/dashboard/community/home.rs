@@ -11,7 +11,7 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{groups, logs, team};
+use super::{contact, groups, logs, team};
 
 use crate::{
     auth::AuthSession,
@@ -68,6 +68,12 @@ pub(crate) async fn page(
         Tab::Analytics => {
             let stats = db.get_community_stats(community_id).await?;
             Content::Analytics(Box::new(analytics::Page { stats }))
+        }
+        Tab::Contact => {
+            let template =
+                contact::prepare_page(&db, community_id, user_id, community.display_name.clone())
+                    .await?;
+            Content::Contact(Box::new(template))
         }
         Tab::EventCategories => {
             let (can_manage_taxonomy, categories) = tokio::try_join!(

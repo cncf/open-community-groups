@@ -1,8 +1,14 @@
 //! Notification type definitions.
 
 use chrono::{DateTime, Utc};
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+use crate::{
+    types::dashboard::community::contact::CommunityContactFilters,
+    validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
+};
 
 /// Represents a file that should be sent with a notification.
 #[derive(Debug, Clone)]
@@ -15,40 +21,64 @@ pub(crate) struct Attachment {
     pub file_name: String,
 }
 
+/// Community-authored custom notification addressed to group team members.
+///
+/// Recipients are resolved by the database from the filters when the
+/// notification is enqueued, so this input deliberately carries none.
+#[derive(Debug, Clone)]
+pub(crate) struct CommunityCustomNotificationInput {
+    /// User sending the notification.
+    pub actor_user_id: Uuid,
+    /// Community the notification is sent from.
+    pub community_id: Uuid,
+    /// Subject and body of the notification.
+    pub content: CustomNotificationContent,
+    /// Filters selecting the group team members to notify.
+    pub filters: CommunityContactFilters,
+}
+
+/// Subject and body of an organizer-authored custom notification.
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+pub(crate) struct CustomNotificationContent {
+    /// Body text of the notification.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_NOTIFICATION_BODY))]
+    pub body: String,
+    /// Subject line of the notification email.
+    #[serde(alias = "title")]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    pub subject: String,
+}
+
 /// Organizer-authored custom notification addressed to event attendees.
 #[derive(Debug, Clone)]
 pub(crate) struct EventCustomNotificationInput {
     /// User sending the notification.
     pub actor_user_id: Uuid,
-    /// Body text of the notification.
-    pub body: String,
     /// Community containing the event.
     pub community_id: Uuid,
+    /// Subject and body of the notification.
+    pub content: CustomNotificationContent,
     /// Event the notification is about.
     pub event_id: Uuid,
     /// Group organizing the event.
     pub group_id: Uuid,
     /// Resolved recipient user identifiers.
     pub recipients: Vec<Uuid>,
-    /// Subject line of the notification email.
-    pub subject: String,
 }
 
 /// Organizer-authored custom notification addressed to group members.
+///
+/// The enqueue service resolves the group members and team as recipients.
 #[derive(Debug, Clone)]
 pub(crate) struct GroupCustomNotificationInput {
     /// User sending the notification.
     pub actor_user_id: Uuid,
-    /// Body text of the notification.
-    pub body: String,
     /// Community containing the group.
     pub community_id: Uuid,
+    /// Subject and body of the notification.
+    pub content: CustomNotificationContent,
     /// Group the notification is about.
     pub group_id: Uuid,
-    /// Resolved recipient user identifiers.
-    pub recipients: Vec<Uuid>,
-    /// Subject line of the notification email.
-    pub subject: String,
 }
 
 /// Data required to create a new notification.
@@ -97,6 +127,8 @@ pub(crate) enum NotificationKind {
     BadgeRevoked,
     /// Notification for a CFS submission update.
     CfsSubmissionUpdated,
+    /// Notification for a custom community message to group teams.
+    CommunityCustom,
     /// Notification for a community team invitation.
     CommunityTeamInvitation,
     /// Notification for email verification.

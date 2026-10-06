@@ -11,8 +11,8 @@ describe("notification modal", () => {
     withSwal: true,
   });
 
-  it("updates the form endpoint and toggles the modal from controls", () => {
-    // Render the DOM fixture for updating the form endpoint and toggles the modal.
+  it("toggles the modal from controls", () => {
+    // Render the DOM fixture for toggling the modal from controls.
     document.body.innerHTML = `
       <button id="open-modal" type="button">Open</button>
       <div id="notification-modal" class="hidden"></div>
@@ -24,10 +24,7 @@ describe("notification modal", () => {
       </form>
     `;
 
-    // Prepare update calls for updating the form endpoint and toggles the modal.
-    const updateCalls = [];
-
-    // Verify updates the form endpoint and toggles the modal.
+    // Bind the modal controls.
     createNotificationModal({
       modalId: "notification-modal",
       formId: "notification-form",
@@ -36,19 +33,14 @@ describe("notification modal", () => {
       closeButtonId: "close-modal",
       cancelButtonId: "cancel-modal",
       overlayId: "modal-overlay",
-      updateEndpoint: ({ form }) => {
-        updateCalls.push(form.action);
-        form.action = "/updated";
-      },
     });
 
     // Keep a reference to the notification modal element.
     const modal = document.getElementById("notification-modal");
     document.getElementById("open-modal")?.click();
 
-    // Verify updates the form endpoint and toggles the modal from controls.
-    expect(updateCalls).to.have.length(2);
-    expect(document.getElementById("notification-form")?.getAttribute("action")).to.equal("/updated");
+    // Verify the open button shows the modal without changing the form action.
+    expect(document.getElementById("notification-form")?.getAttribute("action")).to.equal("/initial");
     expect(modal.classList.contains("hidden")).to.equal(false);
 
     // Close the modal from the close button.

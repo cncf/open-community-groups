@@ -39,7 +39,7 @@ use crate::{
             },
         },
         event::{EventAdmissionOfferStatus, EventEnrollmentReconciliationOutcome, EventSummary},
-        notifications::NotificationKind,
+        notifications::{CustomNotificationContent, NotificationKind},
         payments::EventTicketType,
         permissions::GroupPermission,
         questionnaire::{
@@ -2217,17 +2217,17 @@ async fn test_send_event_custom_notification_success() {
     let notification_body = "Hello, event attendees!";
     let notification_subject = "Event Update";
     let form_data = serde_qs::to_string(&EventCustomNotification {
-        body: notification_body.to_string(),
+        content: CustomNotificationContent {
+            body: notification_body.to_string(),
+            subject: notification_subject.to_string(),
+        },
         recipient_scope: EventCustomNotificationRecipientScope::All,
         recipient_user_ids: vec![],
-        subject: notification_subject.to_string(),
     })
     .unwrap();
 
     // Create copies for the enqueue_tracked_custom_notification closure
     let track_user_id = user_id;
-    let track_event_id = event_id;
-    let track_group_id = group_id;
     let track_subject = notification_subject.to_string();
     let track_body = notification_body.to_string();
 
@@ -2263,8 +2263,6 @@ async fn test_send_event_custom_notification_success() {
             matches!(notification.kind, NotificationKind::EventCustom)
                 && notification.recipients == vec![attendee_id1, attendee_id2]
                 && tracking.created_by == track_user_id
-                && tracking.event_id == Some(track_event_id)
-                && tracking.group_id == Some(track_group_id)
                 && tracking.recipient_count == 2
                 && tracking.subject == track_subject
                 && tracking.body == track_body
@@ -2309,10 +2307,12 @@ async fn test_send_event_custom_notification_selected_recipients_success() {
     let requested_recipient_ids = vec![selected_attendee_id, filtered_out_attendee_id];
     let expected_requested_recipient_ids = requested_recipient_ids.clone();
     let form_data = serde_qs::to_string(&EventCustomNotification {
-        body: notification_body.to_string(),
+        content: CustomNotificationContent {
+            body: notification_body.to_string(),
+            subject: notification_subject.to_string(),
+        },
         recipient_scope: EventCustomNotificationRecipientScope::Selected,
         recipient_user_ids: requested_recipient_ids,
-        subject: notification_subject.to_string(),
     })
     .unwrap();
 
@@ -2352,8 +2352,6 @@ async fn test_send_event_custom_notification_selected_recipients_success() {
             matches!(notification.kind, NotificationKind::EventCustom)
                 && notification.recipients == vec![selected_attendee_id]
                 && tracking.created_by == user_id
-                && tracking.event_id == Some(event_id)
-                && tracking.group_id == Some(group_id)
                 && tracking.recipient_count == 1
                 && tracking.subject == track_subject
                 && tracking.body == track_body
@@ -2389,10 +2387,12 @@ async fn test_send_event_custom_notification_selected_recipients_requires_select
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let form_data = serde_qs::to_string(&EventCustomNotification {
-        body: "Body".to_string(),
+        content: CustomNotificationContent {
+            body: "Body".to_string(),
+            subject: "Subject".to_string(),
+        },
         recipient_scope: EventCustomNotificationRecipientScope::Selected,
         recipient_user_ids: vec![],
-        subject: "Subject".to_string(),
     })
     .unwrap();
 
@@ -2424,7 +2424,7 @@ async fn test_send_event_custom_notification_selected_recipients_requires_select
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
         "Select at least one attendee."
@@ -2443,10 +2443,12 @@ async fn test_send_event_custom_notification_selected_recipients_no_eligible_rec
     let requested_attendee_ids = vec![requested_attendee_id];
     let expected_requested_attendee_ids = requested_attendee_ids.clone();
     let form_data = serde_qs::to_string(&EventCustomNotification {
-        body: "Body".to_string(),
+        content: CustomNotificationContent {
+            body: "Body".to_string(),
+            subject: "Subject".to_string(),
+        },
         recipient_scope: EventCustomNotificationRecipientScope::Selected,
         recipient_user_ids: requested_attendee_ids,
-        subject: "Subject".to_string(),
     })
     .unwrap();
 
@@ -2490,11 +2492,75 @@ async fn test_send_event_custom_notification_selected_recipients_no_eligible_rec
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
         "No selected attendees can receive this email."
     );
+}
+
+#[tokio::test]
+async fn test_send_event_custom_notification_parses_flattened_content() {
+    // Setup identifiers and a raw form using the legacy title field
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let attendee_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id, group_id);
+    let site_settings = sample_site_settings();
+    let form_data = format!(
+        "body=Hello+there&recipient_scope=selected\
+         &recipient_user_ids%5B0%5D={attendee_id}&title=Legacy+Title"
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    db.expect_resolve_event_custom_notification_recipient_ids()
+        .times(1)
+        .withf(move |_, _, recipient_scope, requested_user_ids| {
+            recipient_scope == "selected-attendees"
+                && requested_user_ids.as_deref() == Some(&[attendee_id][..])
+        })
+        .returning(move |_, _, _, _| Ok(vec![attendee_id]));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+    db.expect_enqueue_tracked_custom_notification()
+        .times(1)
+        .withf(|_, tracking| tracking.body == "Hello there" && tracking.subject == "Legacy Title")
+        .returning(|_, _| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/dashboard/group/notifications/{event_id}"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(form_data))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
@@ -2506,10 +2572,12 @@ async fn test_send_event_custom_notification_no_recipients() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let form_data = serde_qs::to_string(&EventCustomNotification {
-        body: "Body".to_string(),
+        content: CustomNotificationContent {
+            body: "Body".to_string(),
+            subject: "Subject".to_string(),
+        },
         recipient_scope: EventCustomNotificationRecipientScope::All,
         recipient_user_ids: vec![],
-        subject: "Subject".to_string(),
     })
     .unwrap();
 
@@ -2553,7 +2621,7 @@ async fn test_send_event_custom_notification_no_recipients() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
         "No attendees with verified email addresses who accept messages from event organizers."

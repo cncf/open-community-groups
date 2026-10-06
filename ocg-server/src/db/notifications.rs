@@ -8,12 +8,16 @@ use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use cached::cached;
 use serde::Serialize;
+use tokio_postgres::types::Json;
 use tracing::{info, instrument};
 use uuid::Uuid;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    types::notifications::{Attachment, NewNotification, Notification, NotificationKind},
+    types::{
+        dashboard::community::contact::CommunityContactFilters,
+        notifications::{Attachment, NewNotification, Notification, NotificationKind},
+    },
 };
 
 /// Trait that defines database operations used to manage notifications.
@@ -29,8 +33,19 @@ pub(crate) trait DBNotifications {
     /// Enqueues a notification to be delivered.
     async fn enqueue_notification(&self, notification: &NewNotification) -> Result<()>;
 
+    /// Enqueues and tracks a community custom notification atomically.
+    ///
+    /// The database validates the filters and resolves the distinct matching
+    /// group team members in the same statement that enqueues and audits the
+    /// notification, rejecting an empty audience with `OCG01`. Returns the
+    /// number of recipients.
+    async fn enqueue_tracked_community_custom_notification(
+        &self,
+        input: CommunityCustomNotificationEnqueue,
+    ) -> Result<usize>;
+
     /// Enqueues and tracks a custom notification atomically. The notification is
-    /// scoped to `tracking.group_id`, so recipients who muted it are skipped.
+    /// scoped to the tracking group, so recipients who muted it are skipped.
     async fn enqueue_tracked_custom_notification(
         &self,
         notification: &NewNotification,
@@ -205,6 +220,43 @@ where
         Ok(())
     }
 
+    /// [`DBNotifications::enqueue_tracked_community_custom_notification`].
+    #[instrument(skip(self, input), fields(community_id = %input.community_id), err)]
+    async fn enqueue_tracked_community_custom_notification(
+        &self,
+        input: CommunityCustomNotificationEnqueue,
+    ) -> Result<usize> {
+        // Resolve recipients, enqueue and audit the notification atomically
+        let count = self
+            .fetch_scalar_one::<i32>(
+                "
+                select enqueue_tracked_community_custom_notification(
+                    $1::uuid,
+                    $2::uuid,
+                    $3::jsonb,
+                    $4::jsonb,
+                    $5::text,
+                    $6::text
+                );
+                ",
+                &[
+                    &input.community_id,
+                    &input.created_by,
+                    &Json(&input.filters),
+                    &input.template_data,
+                    &input.subject,
+                    &input.body,
+                ],
+            )
+            .await?;
+
+        // Convert the recipient count from the database integer type
+        let count =
+            usize::try_from(count).map_err(|_| anyhow!("recipient count cannot be negative"))?;
+
+        Ok(count)
+    }
+
     /// [`DBNotifications::enqueue_tracked_custom_notification`].
     #[instrument(skip(self, notification, tracking), err)]
     async fn enqueue_tracked_custom_notification(
@@ -224,8 +276,22 @@ where
         // Prepare attachments payload
         let attachments = serialize_notification_attachments(&notification.attachments)?;
 
+        // Resolve the identifiers of the tracking scope
+        let (community_id, event_id, group_id) = match tracking.scope {
+            CustomNotificationScope::Event {
+                community_id,
+                event_id,
+                group_id,
+            } => (community_id, Some(event_id), group_id),
+            CustomNotificationScope::Group {
+                community_id,
+                group_id,
+            } => (community_id, None, group_id),
+        };
+
         // Enqueue notification and store the custom-notification audit atomically
         let kind = notification.kind.to_string();
+        let recipient_filters: Option<serde_json::Value> = None;
         self.execute(
             "
             select enqueue_tracked_custom_notification(
@@ -236,9 +302,11 @@ where
                 $5::uuid,
                 $6::uuid,
                 $7::uuid,
-                $8::int,
-                $9::text,
-                $10::text
+                $8::uuid,
+                $9::int,
+                $10::text,
+                $11::text,
+                $12::jsonb
             );
             ",
             &[
@@ -247,11 +315,13 @@ where
                 &attachments,
                 &notification.recipients,
                 &tracking.created_by,
-                &tracking.event_id,
-                &tracking.group_id,
+                &community_id,
+                &event_id,
+                &group_id,
                 &recipient_count,
                 &tracking.subject,
                 &tracking.body,
+                &recipient_filters,
             ],
         )
         .await
@@ -447,19 +517,54 @@ where
     }
 }
 
+/// Community custom notification enqueued for the group team members matching
+/// a set of filters.
+pub(crate) struct CommunityCustomNotificationEnqueue {
+    /// Body stored in the custom notification record.
+    pub(crate) body: String,
+    /// Community the notification is sent from.
+    pub(crate) community_id: Uuid,
+    /// User who sent the custom notification.
+    pub(crate) created_by: Uuid,
+    /// Filters selecting the group team members to notify.
+    pub(crate) filters: CommunityContactFilters,
+    /// Subject stored in the custom notification record.
+    pub(crate) subject: String,
+    /// Template data shared by every recipient's notification.
+    pub(crate) template_data: serde_json::Value,
+}
+
+/// Entity a tracked custom notification is sent from.
+pub(crate) enum CustomNotificationScope {
+    /// Notification sent to event attendees.
+    Event {
+        /// Community containing the event.
+        community_id: Uuid,
+        /// Event the notification is about.
+        event_id: Uuid,
+        /// Group organizing the event.
+        group_id: Uuid,
+    },
+    /// Notification sent to group members.
+    Group {
+        /// Community containing the group.
+        community_id: Uuid,
+        /// Group the notification is about.
+        group_id: Uuid,
+    },
+}
+
 /// Metadata used to track a custom notification audit entry.
 pub(crate) struct CustomNotificationTracking {
     /// Body stored in the custom notification record.
     pub(crate) body: String,
     /// User who sent the custom notification.
     pub(crate) created_by: Uuid,
-    /// Event associated with the notification, for event custom notifications.
-    pub(crate) event_id: Option<Uuid>,
-    /// Group associated with the notification.
-    pub(crate) group_id: Option<Uuid>,
     /// Attempted recipients after eligibility resolution, before the final
     /// enqueue filter.
     pub(crate) recipient_count: usize,
+    /// Entity the notification is sent from.
+    pub(crate) scope: CustomNotificationScope,
     /// Subject stored in the custom notification record.
     pub(crate) subject: String,
 }

@@ -33,7 +33,7 @@ use crate::{
         run_worker,
     },
     templates::notifications::{
-        BadgeAwarded, BadgeRevoked, CfsSubmissionUpdated, CommunityTeamInvitation,
+        BadgeAwarded, BadgeRevoked, CfsSubmissionUpdated, CommunityCustom, CommunityTeamInvitation,
         EmailVerification, EventAdmissionOfferCanceled, EventAdmissionOfferCreated,
         EventAdmissionOfferDeclined, EventAttendanceCanceled, EventCanceled, EventCohostInvitation,
         EventCohostRemoved, EventCohostResponded, EventCustom, EventExternalPaymentExpired,
@@ -351,6 +351,9 @@ impl DeliveryWorker {
             }
             NotificationKind::CfsSubmissionUpdated => {
                 Self::render_template::<CfsSubmissionUpdated>(template_data, base_url)
+            }
+            NotificationKind::CommunityCustom => {
+                Self::render_template::<CommunityCustom>(template_data, base_url)
             }
             NotificationKind::CommunityTeamInvitation => {
                 Self::render_template::<CommunityTeamInvitation>(template_data, base_url)

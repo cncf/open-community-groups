@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(6);
 \set audit6ID '2c0e0000-0000-0000-0000-000000000008'
 \set audit7ID '2c0e0000-0000-0000-0000-000000000009'
 \set audit8ID '2c0e0000-0000-0000-0000-000000000018'
+\set audit9ID '2c0e0000-0000-0000-0000-000000000019'
 \set community1ID '2c0e0000-0000-0000-0000-000000000010'
 \set community2ID '2c0e0000-0000-0000-0000-000000000011'
 \set deletedRegionID '2c0e0000-0000-0000-0000-000000000012'
@@ -158,6 +159,17 @@ insert into audit_log (
         '{"external_payments_enabled": true}'::jsonb,
         :'groupID',
         'group'
+    ),
+    (
+        :'audit9ID',
+        'community_custom_notification_sent',
+        :'actor1ID',
+        'alice-audit-logs',
+        :'community1ID',
+        '2024-02-03 12:00:00+00',
+        '{"recipient_count": 3, "roles": ["Admin"], "subject": "Team update"}'::jsonb,
+        :'community1ID',
+        'community'
     );
 
 -- ============================================================================
@@ -216,6 +228,16 @@ select is(
                 "resource_type": "community"
             },
             {
+                "action": "community_custom_notification_sent",
+                "actor_username": "alice-audit-logs",
+                "audit_log_id": "%s",
+                "created_at": 1706961600,
+                "details": {"recipient_count": 3, "roles": ["Admin"], "subject": "Team update"},
+                "resource_id": "%s",
+                "resource_name": "Community One",
+                "resource_type": "community"
+            },
+            {
                 "action": "group_external_payments_updated",
                 "actor_username": "bob",
                 "audit_log_id": "%s",
@@ -265,6 +287,8 @@ select is(
             :'actor1ID',
             :'wildcardAuditID',
             :'community1ID',
+            :'audit9ID',
+            :'community1ID',
             :'audit8ID',
             :'groupID',
             :'audit3ID',
@@ -275,7 +299,7 @@ select is(
             :'community1ID'
         )::jsonb,
         'total',
-        8
+        9
     ),
     'Should return only community dashboard actions for the selected community'
 );
@@ -310,6 +334,38 @@ select is(
         1
     ),
     'Should filter community audit logs by action and actor'
+);
+
+-- Should filter community audit logs by community custom notification sends
+select is(
+    list_community_audit_logs(
+        :'community1ID'::uuid,
+        '{"action": "community_custom_notification_sent", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        format(
+            $json$
+        [
+            {
+                "action": "community_custom_notification_sent",
+                "actor_username": "alice-audit-logs",
+                "audit_log_id": "%s",
+                "created_at": 1706961600,
+                "details": {"recipient_count": 3, "roles": ["Admin"], "subject": "Team update"},
+                "resource_id": "%s",
+                "resource_name": "Community One",
+                "resource_type": "community"
+            }
+        ]
+            $json$,
+            :'audit9ID',
+            :'community1ID'
+        )::jsonb,
+        'total',
+        1
+    ),
+    'Should filter community audit logs by community custom notification sends'
 );
 
 -- Should filter community audit logs by external payments opt-in changes

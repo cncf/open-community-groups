@@ -13,29 +13,31 @@ use crate::{
         DBOperations,
         dashboard::group::{EventCohostNotificationData, EventCohostRef, EventCohostResponse},
         inbox::PostedInboxMessage,
-        notifications::CustomNotificationTracking,
+        notifications::{
+            CommunityCustomNotificationEnqueue, CustomNotificationScope, CustomNotificationTracking,
+        },
     },
     services::notifications::{
         load_event_notification_context,
         payloads::{
-            build_event_attendance_canceled_notification, build_event_canceled_notification,
-            build_event_cohost_invitation_notification, build_event_cohost_removed_notification,
-            build_event_cohost_responded_notification, build_event_paid_configured_notification,
+            build_community_custom_notification, build_event_attendance_canceled_notification,
+            build_event_canceled_notification, build_event_cohost_invitation_notification,
+            build_event_cohost_removed_notification, build_event_cohost_responded_notification,
+            build_event_custom_notification, build_event_paid_configured_notification,
             build_event_published_notification, build_event_rescheduled_notification,
-            build_inbox_message_received_notification, build_inbox_reply_received_notification,
-            build_speaker_welcome_notification,
+            build_group_custom_notification, build_inbox_message_received_notification,
+            build_inbox_reply_received_notification, build_speaker_welcome_notification,
         },
     },
-    templates::notifications::{EventCohostRemovalReason, EventCustom, GroupCustom},
+    templates::notifications::EventCohostRemovalReason,
     types::{
         event::{EventCohostStatus, EventSummary},
         inbox::{InboxConversation, InboxMessage},
         notifications::{
-            EventCustomNotificationInput, GroupCustomNotificationInput, NewNotification,
-            NotificationKind,
+            CommunityCustomNotificationInput, EventCustomNotificationInput,
+            GroupCustomNotificationInput, NewNotification, NotificationKind,
         },
     },
-    util::{base_url_without_trailing_slash, build_event_page_link},
 };
 
 mod event_series;
@@ -49,6 +51,15 @@ mod tests;
 
 /// Minimum shift required to notify a reschedule.
 const MIN_RESCHEDULE_SHIFT: TimeDelta = TimeDelta::minutes(15);
+
+/// Outcome of enqueueing a group custom notification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum GroupCustomNotificationOutcome {
+    /// The group has no members or team members to notify.
+    NoRecipients,
+    /// The notification was enqueued for the given number of recipients.
+    Sent(usize),
+}
 
 /// Enqueues notifications required by event attendance cancellation.
 pub(crate) async fn enqueue_event_attendance_cancellation_notifications(
@@ -500,6 +511,39 @@ pub(crate) async fn enqueue_inbox_reply_received_notification(
     Ok(())
 }
 
+/// Enqueues a community custom notification for the matching group team
+/// members, returning the number of recipients.
+///
+/// The database resolves the recipients from the filters in the same atomic
+/// statement that enqueues and audits the notification. Filter values outside
+/// the community and an empty audience are rejected with `OCG01`.
+pub(crate) async fn enqueue_tracked_community_custom_notification(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+    input: &CommunityCustomNotificationInput,
+) -> Result<usize> {
+    // Load the community and site context for the notification content
+    let (community, site_settings) = tokio::try_join!(
+        db.get_community_summary(input.community_id),
+        db.get_site_settings()
+    )?;
+
+    // Build the notification content shared by every recipient
+    let template_data =
+        build_community_custom_notification(&community, &input.content, server_cfg, &site_settings);
+
+    // Resolve recipients, enqueue and audit the notification atomically
+    db.enqueue_tracked_community_custom_notification(CommunityCustomNotificationEnqueue {
+        body: input.content.body.clone(),
+        community_id: input.community_id,
+        created_by: input.actor_user_id,
+        filters: input.filters.clone(),
+        subject: input.content.subject.clone(),
+        template_data: serde_json::to_value(&template_data)?,
+    })
+    .await
+}
+
 /// Enqueues an organizer-authored event notification with its tracking record.
 ///
 /// The caller resolves the recipients; the notification content and the
@@ -515,14 +559,8 @@ pub(crate) async fn enqueue_tracked_event_custom_notification(
         load_event_notification_context(db, input.community_id, input.event_id).await?;
 
     // Build the notification with its event page link
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    let template_data = EventCustom {
-        body: input.body.clone(),
-        link: build_event_page_link(base_url, &event),
-        event,
-        subject: input.subject.clone(),
-        theme: site_settings.theme,
-    };
+    let template_data =
+        build_event_custom_notification(&event, &input.content, server_cfg, &site_settings);
     let notification = NewNotification {
         attachments: vec![],
         group_ids: vec![input.group_id],
@@ -535,12 +573,15 @@ pub(crate) async fn enqueue_tracked_event_custom_notification(
     db.enqueue_tracked_custom_notification(
         &notification,
         CustomNotificationTracking {
-            body: input.body.clone(),
+            body: input.content.body.clone(),
             created_by: input.actor_user_id,
-            event_id: Some(input.event_id),
-            group_id: Some(input.group_id),
             recipient_count: input.recipients.len(),
-            subject: input.subject.clone(),
+            scope: CustomNotificationScope::Event {
+                community_id: input.community_id,
+                event_id: input.event_id,
+                group_id: input.group_id,
+            },
+            subject: input.content.subject.clone(),
         },
     )
     .await
@@ -548,14 +589,20 @@ pub(crate) async fn enqueue_tracked_event_custom_notification(
 
 /// Enqueues an organizer-authored group notification with its tracking record.
 ///
-/// The caller resolves the recipients; the notification content and the
-/// tracking entry are built here so no caller constructs the database-owned
-/// tracking type.
+/// The recipients are the group members and accepted team members; the
+/// notification content and the tracking entry are built here so no caller
+/// constructs the database-owned tracking type.
 pub(crate) async fn enqueue_tracked_group_custom_notification(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
     input: &GroupCustomNotificationInput,
-) -> Result<()> {
+) -> Result<GroupCustomNotificationOutcome> {
+    // Resolve the group audience before loading the notification context
+    let recipients = group_audience_ids(db, input.group_id).await?;
+    if recipients.is_empty() {
+        return Ok(GroupCustomNotificationOutcome::NoRecipients);
+    }
+
     // Load the group and site context for the notification content
     let (site_settings, group) = tokio::try_join!(
         db.get_site_settings(),
@@ -563,24 +610,14 @@ pub(crate) async fn enqueue_tracked_group_custom_notification(
     )?;
 
     // Build the notification with its group page link
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    let template_data = GroupCustom {
-        body: input.body.clone(),
-        link: format!(
-            "{}/{}/group/{}",
-            base_url,
-            group.community_name,
-            group.public_slug()
-        ),
-        group,
-        subject: input.subject.clone(),
-        theme: site_settings.theme,
-    };
+    let template_data =
+        build_group_custom_notification(&group, &input.content, server_cfg, &site_settings);
+    let recipient_count = recipients.len();
     let notification = NewNotification {
         attachments: vec![],
         group_ids: vec![input.group_id],
         kind: NotificationKind::GroupCustom,
-        recipients: input.recipients.clone(),
+        recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
     };
 
@@ -588,15 +625,19 @@ pub(crate) async fn enqueue_tracked_group_custom_notification(
     db.enqueue_tracked_custom_notification(
         &notification,
         CustomNotificationTracking {
-            body: input.body.clone(),
+            body: input.content.body.clone(),
             created_by: input.actor_user_id,
-            event_id: None,
-            group_id: Some(input.group_id),
-            recipient_count: input.recipients.len(),
-            subject: input.subject.clone(),
+            recipient_count,
+            scope: CustomNotificationScope::Group {
+                community_id: input.community_id,
+                group_id: input.group_id,
+            },
+            subject: input.content.subject.clone(),
         },
     )
-    .await
+    .await?;
+
+    Ok(GroupCustomNotificationOutcome::Sent(recipient_count))
 }
 
 // Helpers.

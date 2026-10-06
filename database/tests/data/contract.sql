@@ -3514,6 +3514,177 @@ insert into event_purchase (
 );
 
 -- ============================================================================
+-- COMMUNITY CONTACT
+-- ============================================================================
+
+-- Inactive community used by the community contact contracts, so public
+-- listings and counts of the contract community are unchanged
+insert into community (
+    active,
+    banner_mobile_url,
+    banner_url,
+    community_id,
+    description,
+    display_name,
+    logo_url,
+    name
+) values (
+    false,
+    'https://example.com/contact-community-banner-mobile.png',
+    'https://example.com/contact-community-banner.png',
+    '00000000-0000-0000-0000-00000000e101',
+    'A community used by the community contact contract tests',
+    'Contract Contact Community',
+    'https://example.com/contact-community-logo.png',
+    'contract-contact-community'
+);
+
+-- Region of the contact community
+insert into region (
+    community_id,
+    name,
+    region_id
+) values (
+    '00000000-0000-0000-0000-00000000e101',
+    'Contact Region',
+    '00000000-0000-0000-0000-00000000e111'
+);
+
+-- Group categories of the contact community
+insert into group_category (
+    community_id,
+    group_category_id,
+    name
+) values
+    (
+        '00000000-0000-0000-0000-00000000e101',
+        '00000000-0000-0000-0000-00000000e112',
+        'Contact Category A'
+    ),
+    (
+        '00000000-0000-0000-0000-00000000e101',
+        '00000000-0000-0000-0000-00000000e113',
+        'Contact Category B'
+    );
+
+-- Contact groups: one per category plus an inactive group excluded from contact
+insert into "group" (
+    active,
+    community_id,
+    group_category_id,
+    group_id,
+    name,
+    region_id,
+    slug
+) values
+    (
+        true,
+        '00000000-0000-0000-0000-00000000e101',
+        '00000000-0000-0000-0000-00000000e112',
+        '00000000-0000-0000-0000-00000000e121',
+        'Contact Group A',
+        '00000000-0000-0000-0000-00000000e111',
+        'contact-group-a'
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000e101',
+        '00000000-0000-0000-0000-00000000e113',
+        '00000000-0000-0000-0000-00000000e122',
+        'Contact Group B',
+        null,
+        'contact-group-b'
+    ),
+    (
+        false,
+        '00000000-0000-0000-0000-00000000e101',
+        '00000000-0000-0000-0000-00000000e112',
+        '00000000-0000-0000-0000-00000000e123',
+        'Contact Inactive Group',
+        null,
+        'contact-inactive-group'
+    );
+
+-- Contact team users, one of them without a verified email
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values
+    (
+        'contract_hash_contact_admin',
+        'contact-admin.contract@example.com',
+        true,
+        'Contact Admin',
+        '00000000-0000-0000-0000-00000000e141',
+        'contract-contact-admin'
+    ),
+    (
+        'contract_hash_contact_manager',
+        'contact-manager.contract@example.com',
+        true,
+        'Contact Manager',
+        '00000000-0000-0000-0000-00000000e142',
+        'contract-contact-manager'
+    ),
+    (
+        'contract_hash_contact_unverified',
+        'contact-unverified.contract@example.com',
+        false,
+        'Contact Unverified',
+        '00000000-0000-0000-0000-00000000e143',
+        'contract-contact-unverified'
+    );
+
+-- Contact team seats: the admin sits on two groups, while the unverified user
+-- and the inactive group seat never qualify
+insert into group_team (
+    accepted,
+    group_id,
+    role,
+    user_id,
+    "order"
+) values
+    (
+        true,
+        '00000000-0000-0000-0000-00000000e121',
+        'admin',
+        '00000000-0000-0000-0000-00000000e141',
+        1
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000e121',
+        'events-manager',
+        '00000000-0000-0000-0000-00000000e142',
+        2
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000e121',
+        'admin',
+        '00000000-0000-0000-0000-00000000e143',
+        3
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000e122',
+        'viewer',
+        '00000000-0000-0000-0000-00000000e141',
+        1
+    ),
+    (
+        true,
+        '00000000-0000-0000-0000-00000000e123',
+        'admin',
+        '00000000-0000-0000-0000-00000000e142',
+        1
+    );
+
+-- ============================================================================
 -- EVENT CO-HOSTING
 -- ============================================================================
 

@@ -7,8 +7,6 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use garde::Validate;
-use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -21,15 +19,16 @@ use crate::{
             CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
         },
     },
-    services::notifications::enqueue::enqueue_tracked_group_custom_notification,
+    services::notifications::enqueue::{
+        GroupCustomNotificationOutcome, enqueue_tracked_group_custom_notification,
+    },
     templates::dashboard::group::members,
     types::{
         dashboard::group::members::GroupMembersFilters,
-        notifications::GroupCustomNotificationInput,
+        notifications::{CustomNotificationContent, GroupCustomNotificationInput},
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
-    validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
 };
 
 #[cfg(test)]
@@ -77,55 +76,28 @@ pub(crate) async fn send_group_custom_notification(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
-    ValidatedForm(notification): ValidatedForm<GroupCustomNotification>,
+    ValidatedForm(content): ValidatedForm<CustomNotificationContent>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get group members and team members
-    let (group_members_ids, team_member_ids) = tokio::try_join!(
-        db.list_group_members_ids(group_id),
-        db.list_group_team_members_ids(group_id),
-    )?;
-
-    // Combine group members and team members
-    let mut recipients = group_members_ids;
-    recipients.extend(team_member_ids);
-    recipients.sort();
-    recipients.dedup();
-
-    // If there are no recipients, nothing to do
-    if recipients.is_empty() {
-        return Ok(StatusCode::NO_CONTENT.into_response());
-    }
-
-    // Enqueue the custom notification with its audit entry
-    enqueue_tracked_group_custom_notification(
+    // Enqueue the custom notification for the group audience with its audit entry
+    let outcome = enqueue_tracked_group_custom_notification(
         db.as_ref(),
         &server_cfg,
         &GroupCustomNotificationInput {
             actor_user_id: user.user_id,
-            body: notification.body,
             community_id,
+            content,
             group_id,
-            recipients,
-            subject: notification.subject,
         },
     )
     .await?;
 
-    Ok(StatusCode::NO_CONTENT.into_response())
-}
-
-// Types.
-
-/// Form data for custom group notifications.
-#[derive(Debug, Deserialize, Serialize, Validate)]
-pub(crate) struct GroupCustomNotification {
-    /// Body text for the notification.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_NOTIFICATION_BODY))]
-    pub body: String,
-    /// Subject line for the notification email.
-    #[serde(alias = "title")]
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
-    pub subject: String,
+    // Reject empty audiences so stale pages cannot report a false success
+    match outcome {
+        GroupCustomNotificationOutcome::NoRecipients => Err(HandlerError::Rejected(
+            "no group members can receive this email".to_string(),
+        )),
+        GroupCustomNotificationOutcome::Sent(_) => Ok(StatusCode::NO_CONTENT),
+    }
 }
 
 // Helpers.

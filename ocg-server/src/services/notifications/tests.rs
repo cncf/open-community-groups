@@ -667,6 +667,38 @@ fn test_delivery_worker_prepare_content_cfs_submission_updated() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_community_custom() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::CommunityCustom,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(json!({
+            "body": "Custom community body",
+            "community_display_name": "Test Community",
+            "link": "https://example.test/test-community",
+            "subject": "Custom community subject",
+            "theme": {"primary_color": "#000000"}
+        })),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Custom community subject");
+    assert!(body.contains("Custom community body"));
+    assert!(body.contains("Visit community page"));
+    assert!(body.contains("https://example.test/test-community"));
+    assert!(
+        body.contains("You received this email because you're on the team of one or more groups")
+    );
+    assert!(body.contains("Test Community community"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_community_team_invitation() {
     // Setup notification
     let notification = Notification {

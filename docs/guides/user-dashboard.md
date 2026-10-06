@@ -210,6 +210,7 @@ Select `things that need your attention are always sent` in the page description
 - Conversations: replies from groups you wrote to.
 - Organizer actions: refund requests and co-hosting invitations, since someone needs to act on
   them.
+- Community messages: emails the community team sends to the teams of groups you help organize.
 
 ### Muted Groups
 

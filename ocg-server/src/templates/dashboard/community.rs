@@ -1,6 +1,7 @@
 //! Templates for the community dashboard.
 
 pub(crate) mod analytics;
+pub(crate) mod contact;
 pub(crate) mod event_categories;
 pub(crate) mod group_categories;
 pub(crate) mod groups;

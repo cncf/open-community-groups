@@ -39,6 +39,11 @@ pub const MAX_LEN_S: usize = 100;
 
 // Purpose-specific limits
 
+/// Maximum number of values accepted by each community contact filter. The
+/// bound keeps filter queries small while covering every option a community
+/// can reasonably offer.
+pub const MAX_CONTACT_FILTER_VALUES: usize = 500;
+
 /// Maximum number of groups that can co-host one event. The bound keeps the
 /// co-host selector, invitation emails, and public credit lines small.
 pub const MAX_EVENT_COHOSTS: usize = 10;

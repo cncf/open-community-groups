@@ -53,6 +53,8 @@ const DB_OPERATION_TYPES: &[&str] = &[
     "db::inbox::PostedInboxMessage",
     "db::inbox::StartInboxConversationConflict",
     "db::inbox::StartInboxConversationResult",
+    "db::notifications::CommunityCustomNotificationEnqueue",
+    "db::notifications::CustomNotificationScope",
     "db::notifications::CustomNotificationTracking",
     "db::payments::CompletePaymentJobRecoveryInput",
     "db::payments::PrepareEventCheckoutPurchaseInput",

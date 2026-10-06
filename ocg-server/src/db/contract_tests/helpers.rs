@@ -88,6 +88,20 @@ const COHOST_REINVITE_RACE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d20
 /// Pending invitation rotated by the re-invite race.
 const COHOST_REINVITE_RACE_INVITATION_ID: &str = "00000000-0000-0000-0000-00000000d310";
 const COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000c001";
+/// Verified contact user who is admin of one group and viewer of another.
+const CONTACT_ADMIN_ID: &str = "00000000-0000-0000-0000-00000000e141";
+/// Contact group category holding the active and inactive groups.
+const CONTACT_CATEGORY_A_ID: &str = "00000000-0000-0000-0000-00000000e112";
+/// Contact group category holding the group without a region.
+const CONTACT_CATEGORY_B_ID: &str = "00000000-0000-0000-0000-00000000e113";
+/// Inactive community used by the community contact contracts.
+const CONTACT_COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000e101";
+/// Active contact group with a region.
+const CONTACT_GROUP_A_ID: &str = "00000000-0000-0000-0000-00000000e121";
+/// Verified contact user who is events manager of one active group.
+const CONTACT_MANAGER_ID: &str = "00000000-0000-0000-0000-00000000e142";
+/// Region of the contact community.
+const CONTACT_REGION_ID: &str = "00000000-0000-0000-0000-00000000e111";
 const DOCUMENT_ADJUSTMENT_ID: &str = "00000000-0000-0000-0000-00000000c11d";
 const DOCUMENT_ADJUSTMENT_JOB_ID: &str = "00000000-0000-0000-0000-00000000c134";
 const DOCUMENT_CREDIT_NOTE_ID: &str = "00000000-0000-0000-0000-00000000c11e";
@@ -125,6 +139,8 @@ const FINANCIAL_RECOVERY_ADJUSTMENT_JOB_ID: &str = "00000000-0000-0000-0000-0000
 const FINANCIAL_RECOVERY_CREDIT_NOTE_JOB_ID: &str = "00000000-0000-0000-0000-00000000c138";
 const FREE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e4";
 const FREE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f3";
+/// Group category of the contract community.
+const GROUP_CATEGORY_ID: &str = "00000000-0000-0000-0000-00000000c012";
 const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
 /// First event fixture used to verify group-level mutation locks.
 const GROUP_LOCK_FIRST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c121";
@@ -569,6 +585,41 @@ pub(crate) fn community_id() -> Uuid {
     parse_uuid(COMMUNITY_ID)
 }
 
+/// Returns the verified contact user who is admin of one group and viewer of another.
+pub(super) fn contact_admin_id() -> Uuid {
+    parse_uuid(CONTACT_ADMIN_ID)
+}
+
+/// Returns the contact group category holding the active and inactive groups.
+pub(super) fn contact_category_a_id() -> Uuid {
+    parse_uuid(CONTACT_CATEGORY_A_ID)
+}
+
+/// Returns the contact group category holding the group without a region.
+pub(super) fn contact_category_b_id() -> Uuid {
+    parse_uuid(CONTACT_CATEGORY_B_ID)
+}
+
+/// Returns the inactive community used by the community contact contracts.
+pub(super) fn contact_community_id() -> Uuid {
+    parse_uuid(CONTACT_COMMUNITY_ID)
+}
+
+/// Returns the active contact group with a region.
+pub(super) fn contact_group_a_id() -> Uuid {
+    parse_uuid(CONTACT_GROUP_A_ID)
+}
+
+/// Returns the verified contact user who is events manager of one active group.
+pub(super) fn contact_manager_id() -> Uuid {
+    parse_uuid(CONTACT_MANAGER_ID)
+}
+
+/// Returns the region of the contact community.
+pub(super) fn contact_region_id() -> Uuid {
+    parse_uuid(CONTACT_REGION_ID)
+}
+
 /// Builds the shared `PostgreSQL` configuration for contract tests.
 pub(super) fn contract_tests_config() -> Result<DeadpoolDbConfig> {
     let port = env_or_default("OCG_DB_PORT", "5432")
@@ -711,6 +762,11 @@ pub(super) fn free_buyer_id() -> Uuid {
 /// Returns the free purchase identifier used by the contract fixture.
 pub(super) fn free_purchase_id() -> Uuid {
     parse_uuid(FREE_PURCHASE_ID)
+}
+
+/// Returns the group category of the contract community.
+pub(super) fn group_category_id() -> Uuid {
+    parse_uuid(GROUP_CATEGORY_ID)
 }
 
 /// Returns the group identifier used by the contract fixture.
@@ -863,6 +919,13 @@ pub(super) fn notification_update_user_id() -> Uuid {
 /// Returns the notification identifier used by the contract fixture.
 pub(super) fn notification_id() -> Uuid {
     parse_uuid("00000000-0000-0000-0000-00000000c0f1")
+}
+
+/// Returns the message of a user-facing `OCG01` database error, if any.
+pub(super) fn ocg01_message(err: &anyhow::Error) -> Option<String> {
+    let db_err = err.downcast_ref::<tokio_postgres::Error>()?.as_db_error()?;
+    (db_err.code().code() == crate::db::USER_FACING_DB_ERROR_CODE)
+        .then(|| db_err.message().to_string())
 }
 
 /// Returns the declined offer event identifier used by the contract fixture.

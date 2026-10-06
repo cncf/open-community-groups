@@ -14,7 +14,13 @@ use crate::{
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
     types::{
-        dashboard::{DASHBOARD_PAGINATION_LIMIT, common::AuditLogSort},
+        dashboard::{
+            DASHBOARD_PAGINATION_LIMIT,
+            common::AuditLogSort,
+            community::contact::{
+                CommunityContactFilterOptions, CommunityContactRecipientsSummary,
+            },
+        },
         permissions::CommunityPermission,
         search::SearchGroupsOutput,
     },
@@ -66,6 +72,71 @@ async fn test_page_analytics_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_page_contact_tab_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
+    db.expect_get_community_full()
+        .times(1)
+        .withf(move |id| *id == community_id)
+        .returning(move |_| Ok(sample_community_full(community_id)));
+    db.expect_list_user_communities()
+        .times(1)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(sample_user_communities(community_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_user_has_community_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == community_id
+                && *uid == user_id
+                && *permission == CommunityPermission::GroupsWrite
+        })
+        .returning(|_, _, _| Ok(true));
+    db.expect_list_community_contact_filter_options()
+        .times(1)
+        .withf(move |cid| *cid == community_id)
+        .returning(|_| Ok(CommunityContactFilterOptions::default()));
+    db.expect_list_group_roles()
+        .times(1)
+        .returning(|| Ok(vec![sample_group_role_summary()]));
+    db.expect_get_community_contact_recipients_summary()
+        .times(1)
+        .withf(move |cid, _| *cid == community_id)
+        .returning(|_, _| Ok(CommunityContactRecipientsSummary::default()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/community?tab=contact")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let html = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the contact page is rendered in the dashboard
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(html.contains(r#"id="community-contact-form""#));
+    assert!(html.contains("No group team members match these filters."));
 }
 
 #[tokio::test]
