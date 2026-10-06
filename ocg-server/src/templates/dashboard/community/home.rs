@@ -128,8 +128,7 @@ impl std::fmt::Display for Content {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {
-    /// Analytics tab (default).
-    #[default]
+    /// Analytics tab.
     Analytics,
     /// Event categories management tab.
     EventCategories,
@@ -141,7 +140,8 @@ pub(crate) enum Tab {
     Logs,
     /// Regions management tab.
     Regions,
-    /// Settings tab.
+    /// Settings tab (default).
+    #[default]
     Settings,
     /// Team management tab.
     Team,

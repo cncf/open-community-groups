@@ -245,6 +245,61 @@ async fn test_page_settings_tab_success() {
 }
 
 #[tokio::test]
+async fn test_page_without_tab_defaults_to_settings() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
+    db.expect_user_has_community_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::SettingsWrite
+        })
+        .returning(|_, _, _| Ok(false));
+    db.expect_get_community_full()
+        .times(1)
+        .withf(move |id| *id == community_id)
+        .returning(move |_| Ok(sample_community_full(community_id)));
+    db.expect_list_user_communities()
+        .times(1)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(sample_user_communities(community_id)));
+    db.expect_get_community_stats().never();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request without selecting a tab
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/community")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the settings tab is rendered instead of analytics
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("hx-get=\"/dashboard/community/settings/update\""));
+    assert!(!body.contains("hx-get=\"/dashboard/community/analytics\""));
+}
+
+#[tokio::test]
 async fn test_page_team_tab_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
