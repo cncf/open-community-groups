@@ -13,9 +13,10 @@ use clap::Parser;
 use deadpool_postgres::Runtime;
 use ocg_common::{
     db::tls_connector,
-    runtime::{setup_logging, shutdown_signal},
+    runtime::{setup_logging, shutdown_signal_with_drain},
 };
 use tokio::{net::TcpListener, sync::RwLock, time};
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
 use crate::{
@@ -68,7 +69,8 @@ async fn run_server(db: PgDB, server_cfg: &HttpServerConfig) -> Result<()> {
     spawn_redirect_refresh(db, redirects.clone());
 
     // Build the router before binding the TCP listener
-    let router = router::setup(redirects, server_cfg);
+    let shutdown_drain = CancellationToken::new();
+    let router = router::setup(redirects, server_cfg, shutdown_drain.clone());
     let listener = TcpListener::bind(&server_cfg.addr).await?;
 
     // Serve requests until a graceful shutdown signal arrives
@@ -76,7 +78,7 @@ async fn run_server(db: PgDB, server_cfg: &HttpServerConfig) -> Result<()> {
     info!(%server_cfg.addr, "listening");
 
     if let Err(err) = axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_signal_with_drain(shutdown_drain))
         .await
     {
         error!(error = %format_args!("{err:#}"), "server error");

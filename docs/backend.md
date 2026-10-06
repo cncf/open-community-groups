@@ -396,6 +396,10 @@ cancellation-aware iterations, `claim_loop` claims and releases jobs, and
   not affect; tying a probe to worker exits would remove serving capacity
   without healing anything. Worker state is reported through the periodic
   health log instead.
+- A terminate signal starts a drain: `/health-check` returns 503 while the
+  server keeps serving requests for a fixed delay, so load balancers stop
+  routing new requests before the HTTP server stops. An interactive interrupt
+  stops immediately. Worker shutdown starts after the HTTP server stops.
 - `BackgroundTasks::shutdown` cancels every worker and waits up to
   `server.shutdown_grace_period_secs` for them to finish their in-flight
   unit; workers still running when the grace period expires are aborted. A

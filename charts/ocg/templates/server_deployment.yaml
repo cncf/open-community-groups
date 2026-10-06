@@ -25,6 +25,8 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+      # Covers the 15s server drain, in-flight requests, and the 30s worker shutdown grace period
+      terminationGracePeriodSeconds: 60
       {{- if .Release.IsInstall }}
       serviceAccountName: {{ include "chart.resourceNamePrefix" . }}server
       {{- end }}
@@ -64,6 +66,7 @@ spec:
             httpGet:
               path: /health-check
               port: 9000
+            periodSeconds: 2
           command: ['ocg-server', '-c', '{{ .Values.configDir }}/server.yml']
       volumes:
         - name: server-config

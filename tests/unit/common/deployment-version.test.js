@@ -4,16 +4,14 @@ import {
   COMMIT_SHA_HEADER,
   consumePendingDeploymentRefreshAlert,
   createDeploymentRefreshUrl,
-  DEPLOYMENT_REFRESH_ATTRIBUTE,
   DEPLOYMENT_REFRESH_MESSAGE,
   DEPLOYMENT_REFRESH_OUTCOME,
   DEPLOYMENT_REFRESH_PARAM,
-  DEPLOYMENT_REFRESH_STALLED_BLOCKED_MESSAGE,
+  DEPLOYMENT_RELOAD_BLOCKED_MESSAGE,
   DIRTY_DEPLOYMENT_BLOCKED_MESSAGE,
   DIRTY_DEPLOYMENT_NOTICE_MESSAGE,
   DIRTY_DEPLOYMENT_RELOAD_BLOCKED_MESSAGE,
   HTMX_REFRESH_HEADER,
-  initializeDeploymentRefreshRetry,
   initializeDeploymentReloadState,
   isDeploymentReloadRequested,
   processDeploymentRefresh,
@@ -26,54 +24,16 @@ import {
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
-const RETRY_WINDOW_MS = 7 * 60 * 1000;
-
 // Set the loaded commit SHA meta tag for deployment checks.
 const setLoadedCommitSha = (commitSha) => {
   document.head.innerHTML = `<meta name="ocg-commit-sha" content="${commitSha}">`;
 };
 
-// Mark the loaded page as produced by a deployment refresh, as the base template does.
-const markDeploymentRefreshLoad = () => {
-  document.documentElement.setAttribute(DEPLOYMENT_REFRESH_ATTRIBUTE, "");
-};
-
-// Enter the refresh retry loop by reporting a new commit twice within the cache window.
-const enterDeploymentRefreshRetry = (startedAt, handler) => {
-  Date.now = () => startedAt;
-  setLoadedCommitSha("old");
+// Simulate the page loaded by a deployment reload, keeping the reload marker.
+const loadReloadedPage = (commitSha, handler) => {
+  resetDeploymentReloadState({ clearReloadMarker: false });
   setDeploymentReloadHandler(handler);
-  reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-  resetDeploymentReloadState({ clearRefreshHistory: false });
-  setDeploymentReloadHandler(handler);
-  reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-};
-
-const captureDeploymentRefreshRetryTimer = () => {
-  const originalSetTimeout = window.setTimeout;
-  const originalClearTimeout = window.clearTimeout;
-  let callback = null;
-  let delay = null;
-
-  window.setTimeout = (handler, timeout) => {
-    callback = handler;
-    delay = timeout;
-    return 1;
-  };
-  window.clearTimeout = () => {};
-
-  return {
-    get callback() {
-      return callback;
-    },
-    get delay() {
-      return delay;
-    },
-    restore() {
-      window.setTimeout = originalSetTimeout;
-      window.clearTimeout = originalClearTimeout;
-    },
-  };
+  setLoadedCommitSha(commitSha);
 };
 
 describe("deployment version", () => {
@@ -83,26 +43,48 @@ describe("deployment version", () => {
     Date.now = originalDateNow;
     document.head.innerHTML = "";
     document.body.innerHTML = "";
-    document.documentElement.removeAttribute(DEPLOYMENT_REFRESH_ATTRIBUTE);
     resetDeploymentReloadState();
   });
 
-  it("stores and consumes a one-shot alert marker when the server requests a refresh", () => {
+  it("shows the refreshed notice once after a forced refresh loads a new version", () => {
     // Count reloads requested by the deployment refresh handler.
+    setLoadedCommitSha("old");
     let reloads = 0;
-    setDeploymentReloadHandler(() => {
+    const handler = () => {
       reloads += 1;
-    });
+    };
+    setDeploymentReloadHandler(handler);
 
     // Process the explicit refresh header from the server.
     const changed = reloadIfDeploymentChanged(new Headers({ [REFRESH_HEADER]: "true" }));
-
-    // Commit-sha refresh stores and consumes the reload alert marker.
     expect(changed).to.equal(true);
     expect(reloads).to.equal(1);
+
+    // The reloaded page on the new version consumes the one-shot notice.
+    loadReloadedPage("new", handler);
     expect(DEPLOYMENT_REFRESH_MESSAGE).to.equal(
       "This page was refreshed because a new version is available.",
     );
+    expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
+    expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
+  });
+
+  it("shows the refreshed notice once after a newer commit response loads a new version", () => {
+    // Store the current page commit SHA before reading the response.
+    setLoadedCommitSha("abc123");
+    let reloads = 0;
+    const handler = () => {
+      reloads += 1;
+    };
+    setDeploymentReloadHandler(handler);
+
+    // Process a response from a different commit SHA.
+    const changed = reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "def456" }));
+    expect(changed).to.equal(true);
+    expect(reloads).to.equal(1);
+
+    // The reloaded page on the new version consumes the one-shot notice.
+    loadReloadedPage("def456", handler);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
   });
@@ -248,242 +230,6 @@ describe("deployment version", () => {
     }
   });
 
-  it("stores and consumes a one-shot alert marker when a response comes from a newer commit", () => {
-    // Store the current page commit SHA before reading the response.
-    setLoadedCommitSha("abc123");
-    let reloads = 0;
-    setDeploymentReloadHandler(() => {
-      reloads += 1;
-    });
-
-    // Process a response from a different commit SHA.
-    const changed = reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "def456" }));
-
-    // Cross-version responses store and consume the reload alert marker.
-    expect(changed).to.equal(true);
-    expect(reloads).to.equal(1);
-    expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
-    expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
-  });
-
-  it("suppresses repeated automatic refreshes within the public cache window", () => {
-    // Start inside the public cache window with a stale loaded commit.
-    Date.now = () => 1_000;
-    setLoadedCommitSha("old");
-    let reloads = 0;
-    setDeploymentReloadHandler(() => {
-      reloads += 1;
-    });
-
-    // Set up first changed.
-    const firstChanged = reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-
-    // Verify suppresses repeated automatic refreshes within the public cache window.
-    expect(firstChanged).to.equal(true);
-    expect(reloads).to.equal(1);
-    expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
-
-    resetDeploymentReloadState({ clearRefreshHistory: false });
-    setDeploymentReloadHandler(() => {
-      reloads += 1;
-    });
-    Date.now = () => 1_000 + 4 * 60 * 1000;
-
-    // Set up second changed.
-    const secondChanged = reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-
-    // Assert that the flag is enabled.
-    expect(secondChanged).to.equal(true);
-    expect(reloads).to.equal(1);
-    expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
-  });
-
-  it("schedules automatic refresh retries when cached HTML is still loaded", () => {
-    // Start inside the public cache window with a stale loaded commit.
-    Date.now = () => 1_000;
-    setLoadedCommitSha("old");
-    let reloads = 0;
-    setDeploymentReloadHandler(() => {
-      reloads += 1;
-    });
-    const swal = mockSwal();
-    const retryTimer = captureDeploymentRefreshRetryTimer();
-
-    // Restore the page state after the check.
-    try {
-      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-      resetDeploymentReloadState({ clearRefreshHistory: false });
-      setDeploymentReloadHandler(() => {
-        reloads += 1;
-      });
-      Date.now = () => 1_000 + 4 * 60 * 1000;
-
-      // Set up changed.
-      const changed = reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-
-      // Verify schedules automatic refresh retries when cached HTML is still loaded.
-      expect(changed).to.equal(true);
-      expect(reloads).to.equal(1);
-      expect(swal.calls).to.have.length(1);
-      expect(retryTimer.delay).to.equal(30_000);
-
-      // Fire the retry timer.
-      retryTimer.callback();
-
-      // Assert the reload count.
-      expect(reloads).to.equal(2);
-    } finally {
-      retryTimer.restore();
-      swal.restore();
-    }
-  });
-
-  it("defers a scheduled refresh retry when the form becomes dirty", () => {
-    // Start inside the public cache window with a stale loaded commit.
-    Date.now = () => 1_000;
-    setLoadedCommitSha("old");
-    let reloads = 0;
-    setDeploymentReloadHandler(() => {
-      reloads += 1;
-    });
-    const swal = mockSwal();
-    const retryTimer = captureDeploymentRefreshRetryTimer();
-
-    try {
-      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-      resetDeploymentReloadState({ clearRefreshHistory: false });
-      setDeploymentReloadHandler(() => {
-        reloads += 1;
-      });
-      Date.now = () => 1_000 + 4 * 60 * 1000;
-      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-
-      // A retry is armed while the form is still clean.
-      expect(reloads).to.equal(1);
-      expect(isDeploymentReloadRequested()).to.equal(true);
-
-      // Dirtiness after arming must not reload when the timer fires.
-      document.body.innerHTML = '<div id="pending-changes-alert"></div>';
-      retryTimer.callback();
-
-      expect(reloads).to.equal(1);
-      expect(isDeploymentReloadRequested()).to.equal(false);
-      expect(swal.calls.at(-1).text).to.equal(DIRTY_DEPLOYMENT_NOTICE_MESSAGE);
-      expect(retryTimer.delay).to.equal(30_000);
-
-      // Once the draft is gone, the next retry reload can proceed.
-      document.body.innerHTML = '<div id="pending-changes-alert" class="hidden"></div>';
-      retryTimer.callback();
-
-      expect(reloads).to.equal(2);
-      expect(isDeploymentReloadRequested()).to.equal(true);
-    } finally {
-      retryTimer.restore();
-      swal.restore();
-    }
-  });
-
-  it("unsticks a pending retry when a later dirty response arrives", () => {
-    // Start inside the public cache window with a stale loaded commit.
-    Date.now = () => 1_000;
-    setLoadedCommitSha("old");
-    let reloads = 0;
-    setDeploymentReloadHandler(() => {
-      reloads += 1;
-    });
-    const swal = mockSwal();
-    const retryTimer = captureDeploymentRefreshRetryTimer();
-
-    try {
-      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-      resetDeploymentReloadState({ clearRefreshHistory: false });
-      setDeploymentReloadHandler(() => {
-        reloads += 1;
-      });
-      Date.now = () => 1_000 + 4 * 60 * 1000;
-      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-      document.body.innerHTML = '<div id="pending-changes-alert"></div>';
-
-      // A forced intercept after the form is dirty must not keep reload-pending callers stuck.
-      const changed = reloadIfDeploymentChanged(new Headers({ [REFRESH_HEADER]: "true" }));
-
-      expect(changed).to.equal(true);
-      expect(reloads).to.equal(1);
-      expect(isDeploymentReloadRequested()).to.equal(false);
-      expect(swal.calls.at(-1).text).to.equal(DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
-    } finally {
-      retryTimer.restore();
-      swal.restore();
-    }
-  });
-
-  it("resumes refresh retries while the stale commit is still loaded", () => {
-    // Start inside the public cache window with a stale loaded commit.
-    Date.now = () => 1_000;
-    setLoadedCommitSha("old");
-    setDeploymentReloadHandler(() => {});
-    const swal = mockSwal();
-    const firstRetryTimer = captureDeploymentRefreshRetryTimer();
-
-    // Restore the page state after the check.
-    try {
-      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-      resetDeploymentReloadState({ clearRefreshHistory: false });
-      Date.now = () => 1_000 + 4 * 60 * 1000;
-      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-    } finally {
-      firstRetryTimer.restore();
-    }
-
-    resetDeploymentReloadState({
-      clearRefreshHistory: false,
-      clearRetryState: false,
-    });
-    const resumedRetryTimer = captureDeploymentRefreshRetryTimer();
-
-    // Restore the page state after the check.
-    try {
-      setLoadedCommitSha("old");
-      expect(initializeDeploymentRefreshRetry()).to.equal(true);
-      expect(resumedRetryTimer.delay).to.equal(30_000);
-
-      resetDeploymentReloadState({
-        clearRefreshHistory: false,
-        clearRetryState: false,
-      });
-      setLoadedCommitSha("new");
-      expect(initializeDeploymentRefreshRetry()).to.equal(false);
-    } finally {
-      resumedRetryTimer.restore();
-      swal.restore();
-    }
-  });
-
-  it("allows another automatic refresh after the public cache window", () => {
-    // Start inside the public cache window with a stale loaded commit.
-    Date.now = () => 1_000;
-    setLoadedCommitSha("old");
-    let reloads = 0;
-    setDeploymentReloadHandler(() => {
-      reloads += 1;
-    });
-
-    reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-    resetDeploymentReloadState({ clearRefreshHistory: false });
-    setDeploymentReloadHandler(() => {
-      reloads += 1;
-    });
-    Date.now = () => 1_000 + 5 * 60 * 1000;
-
-    // Set up changed.
-    const changed = reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
-
-    // Assert that the flag is enabled.
-    expect(changed).to.equal(true);
-    expect(reloads).to.equal(2);
-    expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
-  });
-
   it("reloads through a unique cache-busting URL", () => {
     // Report a response from a newer commit.
     Date.now = () => 1_700_000_000_000;
@@ -512,55 +258,72 @@ describe("deployment version", () => {
     );
   });
 
-  it("stops automatic retries and offers a manual reload after the retry window", async () => {
+  it("offers a manual reload once instead of looping when a reload returns the same version", async () => {
+    // Reload a stale page automatically.
+    setLoadedCommitSha("old");
     const reloadUrls = [];
+    const handler = (url) => reloadUrls.push(url);
+    setDeploymentReloadHandler(handler);
+    reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+    expect(reloadUrls).to.have.length(1);
     const swal = mockSwal();
-    const retryTimer = captureDeploymentRefreshRetryTimer();
+    swal.setNextResult({ isConfirmed: false, isDismissed: true });
 
     try {
-      // Enter the retry loop while stale HTML is still loaded.
-      enterDeploymentRefreshRetry(1_000, (url) => reloadUrls.push(url));
-      expect(reloadUrls).to.have.length(1);
-      expect(isDeploymentReloadRequested()).to.equal(true);
+      // The reload returned the same stale version, so no refreshed notice is shown.
+      loadReloadedPage("old", handler);
+      expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
 
-      // Fire the retry timer once the retry window has elapsed.
-      Date.now = () => 1_000 + RETRY_WINDOW_MS;
-      retryTimer.callback();
-
-      // The page is released and a dismissible reload notice replaces the overlay.
+      // Later mismatches keep the page and offer one passive reload prompt.
+      expect(reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }))).to.equal(false);
+      expect(reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }))).to.equal(false);
+      await waitForMicrotask();
       expect(reloadUrls).to.have.length(1);
       expect(isDeploymentReloadRequested()).to.equal(false);
-      expect(swal.calls.at(-1)).to.include({ confirmButtonText: "Reload", showCancelButton: true });
-    } finally {
-      retryTimer.restore();
-    }
-
-    try {
-      // Accepting the notice reloads through a cache-busting URL.
-      await waitForMicrotask();
-      expect(reloadUrls).to.have.length(2);
-      expect(new URL(reloadUrls[1]).searchParams.has(DEPLOYMENT_REFRESH_PARAM)).to.equal(true);
+      expect(swal.calls).to.have.length(1);
+      expect(swal.calls[0]).to.include({ confirmButtonText: "Reload", icon: "info", showCancelButton: true });
     } finally {
       swal.restore();
     }
   });
 
-  it("does not discard edits made while the manual reload notice was open", async () => {
+  it("reloads through a cache-busting URL when the manual reload prompt is accepted", async () => {
+    // Load a page that an automatic reload could not move to the new version.
+    setLoadedCommitSha("old");
     const reloadUrls = [];
+    const handler = (url) => reloadUrls.push(url);
+    setDeploymentReloadHandler(handler);
+    reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+    loadReloadedPage("old", handler);
     const swal = mockSwal();
-    const retryTimer = captureDeploymentRefreshRetryTimer();
 
     try {
-      // Exhaust the retry window so the manual reload notice opens.
-      enterDeploymentRefreshRetry(1_000, (url) => reloadUrls.push(url));
-      Date.now = () => 1_000 + RETRY_WINDOW_MS;
-      retryTimer.callback();
+      // Accept the manual reload prompt.
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+      await waitForMicrotask();
+
+      // The accepted prompt reloads through a fresh cache-busting URL.
+      expect(reloadUrls).to.have.length(2);
+      expect(new URL(reloadUrls[1]).searchParams.has(DEPLOYMENT_REFRESH_PARAM)).to.equal(true);
+      expect(isDeploymentReloadRequested()).to.equal(true);
     } finally {
-      retryTimer.restore();
+      swal.restore();
     }
+  });
+
+  it("does not discard edits made while the manual reload prompt was open", async () => {
+    // Load a page that an automatic reload could not move to the new version.
+    setLoadedCommitSha("old");
+    const reloadUrls = [];
+    const handler = (url) => reloadUrls.push(url);
+    setDeploymentReloadHandler(handler);
+    reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+    loadReloadedPage("old", handler);
+    const swal = mockSwal();
 
     try {
-      // Edit the form before the notice's Reload action is confirmed.
+      // Open the prompt, then edit the form before its Reload action is confirmed.
+      reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
       document.body.innerHTML = '<div id="pending-changes-alert"></div>';
       await waitForMicrotask();
 
@@ -573,77 +336,21 @@ describe("deployment version", () => {
     }
   });
 
-  it("keeps the page usable once the retry window has elapsed", () => {
+  it("warns on every blocked user request but prompts background intercepts once", () => {
+    // Load a page that an automatic reload could not move to the new version.
+    setLoadedCommitSha("old");
     let reloads = 0;
     const handler = () => {
       reloads += 1;
     };
+    setDeploymentReloadHandler(handler);
+    reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+    loadReloadedPage("old", handler);
     const swal = mockSwal();
     swal.setNextResult({ isConfirmed: false, isDismissed: true });
-    const retryTimer = captureDeploymentRefreshRetryTimer();
 
     try {
-      // Retry until shortly before the window closes.
-      enterDeploymentRefreshRetry(1_000, handler);
-      Date.now = () => 1_000 + RETRY_WINDOW_MS - 30_000;
-      retryTimer.callback();
-      expect(reloads).to.equal(2);
-
-      // A plain navigation after expiry loads silently.
-      resetDeploymentReloadState({ clearRefreshHistory: false, clearRetryState: false });
-      setDeploymentReloadHandler(handler);
-      setLoadedCommitSha("old");
-      Date.now = () => 1_000 + RETRY_WINDOW_MS;
-      const callsBeforeNavigation = swal.calls.length;
-      expect(initializeDeploymentRefreshRetry()).to.equal(false);
-      expect(swal.calls).to.have.length(callsBeforeNavigation);
-
-      // The page produced by an automatic retry explains the stalled refresh once.
-      resetDeploymentReloadState({ clearRefreshHistory: false, clearRetryState: false });
-      setDeploymentReloadHandler(handler);
-      markDeploymentRefreshLoad();
-      expect(initializeDeploymentRefreshRetry()).to.equal(false);
-      expect(document.documentElement.hasAttribute(DEPLOYMENT_REFRESH_ATTRIBUTE)).to.equal(false);
-      expect(swal.calls).to.have.length(callsBeforeNavigation + 1);
-      expect(swal.calls.at(-1).confirmButtonText).to.equal("Reload");
-
-      // Later responses are processed, intercepts warn every time, and nothing reloads.
-      expect(reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }))).to.equal(false);
-      expect(swal.calls).to.have.length(callsBeforeNavigation + 1);
-      expect(reloadIfDeploymentChanged(new Headers({ [REFRESH_HEADER]: "true" }))).to.equal(true);
-      expect(reloadIfDeploymentChanged(new Headers({ [HTMX_REFRESH_HEADER]: "true" }))).to.equal(true);
-      expect(reloads).to.equal(2);
-      expect(isDeploymentReloadRequested()).to.equal(false);
-      expect(swal.calls).to.have.length(callsBeforeNavigation + 3);
-      expect(swal.calls.at(-1)).to.include({
-        confirmButtonText: "Reload",
-        icon: "warning",
-        text: DEPLOYMENT_REFRESH_STALLED_BLOCKED_MESSAGE,
-      });
-    } finally {
-      retryTimer.restore();
-      swal.restore();
-    }
-  });
-
-  it("offers a passive reload when a background request is intercepted after the retry window", () => {
-    let reloads = 0;
-    const handler = () => {
-      reloads += 1;
-    };
-    const swal = mockSwal();
-    swal.setNextResult({ isConfirmed: false, isDismissed: true });
-    const retryTimer = captureDeploymentRefreshRetryTimer();
-
-    try {
-      // Exhaust the retry window and simulate the next navigation.
-      enterDeploymentRefreshRetry(1_000, handler);
-      resetDeploymentReloadState({ clearRefreshHistory: false, clearRetryState: false });
-      setDeploymentReloadHandler(handler);
-      Date.now = () => 1_000 + RETRY_WINDOW_MS;
-      const callsBeforeIntercept = swal.calls.length;
-
-      // A background intercept stays blocked but uses the passive prompt once.
+      // Background intercepts stay blocked but use the passive prompt once.
       const refreshHeaders = new Headers({ [HTMX_REFRESH_HEADER]: "true" });
       expect(processDeploymentRefresh(refreshHeaders, document, { background: true })).to.equal(
         DEPLOYMENT_REFRESH_OUTCOME.BLOCKED,
@@ -651,104 +358,51 @@ describe("deployment version", () => {
       expect(processDeploymentRefresh(refreshHeaders, document, { background: true })).to.equal(
         DEPLOYMENT_REFRESH_OUTCOME.BLOCKED,
       );
-      expect(reloads).to.equal(1);
-      expect(swal.calls).to.have.length(callsBeforeIntercept + 1);
+      expect(swal.calls).to.have.length(1);
       expect(swal.calls.at(-1)).to.include({ confirmButtonText: "Reload", icon: "info" });
 
-      // A user-started intercept still explains that its request did not complete.
+      // User-started intercepts always explain that their request did not complete.
+      expect(processDeploymentRefresh(new Headers({ [REFRESH_HEADER]: "true" }))).to.equal(
+        DEPLOYMENT_REFRESH_OUTCOME.BLOCKED,
+      );
       expect(processDeploymentRefresh(refreshHeaders)).to.equal(DEPLOYMENT_REFRESH_OUTCOME.BLOCKED);
-      expect(swal.calls).to.have.length(callsBeforeIntercept + 2);
+      expect(swal.calls).to.have.length(3);
       expect(swal.calls.at(-1)).to.include({
+        confirmButtonText: "Reload",
         icon: "warning",
-        text: DEPLOYMENT_REFRESH_STALLED_BLOCKED_MESSAGE,
+        text: DEPLOYMENT_RELOAD_BLOCKED_MESSAGE,
       });
+      expect(reloads).to.equal(1);
+      expect(isDeploymentReloadRequested()).to.equal(false);
     } finally {
-      retryTimer.restore();
       swal.restore();
     }
   });
 
-  it("does not restart automatic reloads for an expired commit after the cooldown", () => {
+  it("reloads automatically again once a newer version is loaded", () => {
+    // Load a page that an automatic reload could not move to the new version.
+    setLoadedCommitSha("old");
     let reloads = 0;
     const handler = () => {
       reloads += 1;
     };
+    setDeploymentReloadHandler(handler);
+    reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
+    loadReloadedPage("old", handler);
     const swal = mockSwal();
     swal.setNextResult({ isConfirmed: false, isDismissed: true });
-    const retryTimer = captureDeploymentRefreshRetryTimer();
 
     try {
-      // Exhaust the retry window for the stale commit.
-      enterDeploymentRefreshRetry(1_000, handler);
-      Date.now = () => 1_000 + RETRY_WINDOW_MS;
-      retryTimer.callback();
-      expect(reloads).to.equal(1);
-      const callsAfterExpiry = swal.calls.length;
-
-      // A mismatch after both the retry window and cooldown only offers a reload.
-      Date.now = () => 1_000 + RETRY_WINDOW_MS + 5 * 60 * 1000;
+      // The stale page only offers a manual reload.
       expect(reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }))).to.equal(false);
       expect(reloads).to.equal(1);
-      expect(isDeploymentReloadRequested()).to.equal(false);
-      expect(swal.calls).to.have.length(callsAfterExpiry);
 
-      // A newer loaded commit starts a fresh deployment refresh cycle.
-      setLoadedCommitSha("new");
+      // A page on a newer version clears the marker and reloads automatically for the next deploy.
+      loadReloadedPage("new", handler);
+      expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
       expect(reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "newer" }))).to.equal(true);
       expect(reloads).to.equal(2);
     } finally {
-      retryTimer.restore();
-      swal.restore();
-    }
-  });
-
-  it("does not claim a refresh succeeded when an automatic reload loads an expired commit", () => {
-    const swal = mockSwal();
-    swal.setNextResult({ isConfirmed: false, isDismissed: true });
-
-    try {
-      // Simulate an automatic reload queued after the retry window expired.
-      Date.now = () => 1_000 + RETRY_WINDOW_MS;
-      setLoadedCommitSha("old");
-      window.sessionStorage.setItem("ocg.deploymentRefreshRetryStaleCommitSha", "old");
-      window.sessionStorage.setItem("ocg.deploymentRefreshRetryStartedAt", "1000");
-      window.sessionStorage.setItem("ocg.deploymentRefreshAlert", "true");
-      markDeploymentRefreshLoad();
-
-      // The stalled notice is shown and the pending refreshed alert is dropped.
-      expect(initializeDeploymentRefreshRetry()).to.equal(false);
-      expect(swal.calls).to.have.length(1);
-      expect(swal.calls[0].confirmButtonText).to.equal("Reload");
-      expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
-    } finally {
-      swal.restore();
-    }
-  });
-
-  it("bounds retries resumed from state saved before the retry window existed", () => {
-    let reloads = 0;
-    setDeploymentReloadHandler(() => {
-      reloads += 1;
-    });
-    const swal = mockSwal();
-    swal.setNextResult({ isConfirmed: false, isDismissed: true });
-    const retryTimer = captureDeploymentRefreshRetryTimer();
-
-    try {
-      // Resume a retry that only recorded the stale commit.
-      Date.now = () => 10_000;
-      window.sessionStorage.setItem("ocg.deploymentRefreshRetryStaleCommitSha", "old");
-      setLoadedCommitSha("old");
-      expect(initializeDeploymentRefreshRetry()).to.equal(true);
-
-      // The retry window starts on resume and still expires.
-      Date.now = () => 10_000 + RETRY_WINDOW_MS;
-      retryTimer.callback();
-      expect(reloads).to.equal(0);
-      expect(isDeploymentReloadRequested()).to.equal(false);
-      expect(swal.calls.at(-1).confirmButtonText).to.equal("Reload");
-    } finally {
-      retryTimer.restore();
       swal.restore();
     }
   });

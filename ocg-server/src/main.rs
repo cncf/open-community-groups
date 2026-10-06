@@ -16,9 +16,10 @@ use clap::Parser;
 use deadpool_postgres::Runtime;
 use ocg_common::{
     db::tls_connector,
-    runtime::{setup_logging, shutdown_signal},
+    runtime::{setup_logging, shutdown_signal_with_drain},
 };
 use tokio::net::TcpListener;
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
 use crate::{
@@ -181,6 +182,7 @@ async fn run_server(
     server_cfg: &HttpServerConfig,
 ) -> Result<()> {
     // Build the router before binding the TCP listener
+    let shutdown_drain = CancellationToken::new();
     let router = router::setup(
         activity_tracker,
         db,
@@ -193,6 +195,7 @@ async fn run_server(
         payments_manager,
         notifications_manager,
         server_cfg,
+        shutdown_drain.clone(),
     )
     .await?;
     let listener = TcpListener::bind(&server_cfg.addr).await?;
@@ -202,7 +205,7 @@ async fn run_server(
     info!(%server_cfg.addr, "listening");
 
     if let Err(err) = axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_signal_with_drain(shutdown_drain))
         .await
     {
         error!(error = %format_args!("{err:#}"), "server error");

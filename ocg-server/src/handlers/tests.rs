@@ -15,6 +15,7 @@ use chrono_tz::UTC;
 use serde_json::json;
 use ssi_jwk::JWK;
 use time::{Duration as TimeDuration, OffsetDateTime};
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::{
@@ -1283,6 +1284,7 @@ pub(crate) fn test_state_with_server_cfg(
         payments_manager: Arc::new(MockPaymentsManager::new()),
         serde_qs_de: router::serde_qs_config(),
         server_cfg: server_cfg.clone(),
+        shutdown_drain: CancellationToken::new(),
     }
 }
 
@@ -1357,6 +1359,7 @@ impl TestRouterBuilder {
             payments_manager,
             nm,
             &server_cfg,
+            CancellationToken::new(),
         )
         .await
         .expect("router setup should succeed")

@@ -27,7 +27,7 @@ import {
 import {
   COMMIT_SHA_HEADER,
   consumePendingDeploymentRefreshAlert,
-  DEPLOYMENT_REFRESH_STALLED_BLOCKED_MESSAGE,
+  DEPLOYMENT_RELOAD_BLOCKED_MESSAGE,
   DIRTY_DEPLOYMENT_BLOCKED_MESSAGE,
   HTMX_REFRESH_HEADER,
   REFRESH_HEADER,
@@ -45,7 +45,6 @@ const setLoadedCommitSha = (commitSha) => {
 };
 
 describe("htmx extensions", () => {
-  const originalDateNow = Date.now;
   let swal;
 
   beforeEach(() => {
@@ -54,7 +53,6 @@ describe("htmx extensions", () => {
 
   afterEach(() => {
     swal.restore();
-    Date.now = originalDateNow;
     document.head.innerHTML = "";
     document.body.innerHTML = "";
     resetDashboardContextReloadState();
@@ -434,6 +432,7 @@ describe("htmx extensions", () => {
 
   it("records and owns htmx refresh headers before htmx handles them", () => {
     // Track reloads and build a beforeOnLoad event with the refresh header.
+    setLoadedCommitSha("old");
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
@@ -450,21 +449,22 @@ describe("htmx extensions", () => {
     // Handle the refresh header before HTMX processes the response.
     handleCommitShaBeforeOnLoad(event);
 
-    // The refresh response is owned and stores the pending alert marker.
+    // The refresh response is owned and the reloaded page on the new version gets the notice.
     expect(event.defaultPrevented).to.equal(true);
     expect(reloads).to.equal(1);
+    setLoadedCommitSha("new");
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
   });
 
-  it("owns htmx refresh headers without reloading during the refresh cooldown", () => {
-    // Start inside the refresh cooldown window.
-    Date.now = () => 1_000;
+  it("owns htmx refresh headers without reloading again when a reload returned the same version", () => {
+    // Reload a stale page and load the same version again.
+    setLoadedCommitSha("old");
+    swal.setNextResult({ isConfirmed: false, isDismissed: true });
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
     });
-
-    handleCommitShaBeforeOnLoad(
+    const buildOnLoadEvent = () =>
       new CustomEvent("htmx:beforeOnLoad", {
         cancelable: true,
         detail: {
@@ -472,25 +472,18 @@ describe("htmx extensions", () => {
             getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
           },
         },
-      }),
-    );
-    resetDeploymentReloadState({ clearRefreshHistory: false });
+      });
+    handleCommitShaBeforeOnLoad(buildOnLoadEvent());
+    resetDeploymentReloadState({ clearReloadMarker: false });
     setDeploymentReloadHandler(() => {
       reloads += 1;
     });
-    Date.now = () => 1_000 + 4 * 60 * 1000;
-    const event = new CustomEvent("htmx:beforeOnLoad", {
-      cancelable: true,
-      detail: {
-        xhr: {
-          getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
-        },
-      },
-    });
+    const event = buildOnLoadEvent();
 
+    // Handle the next refresh header on the stale page.
     handleCommitShaBeforeOnLoad(event);
 
-    // Assert whether the event was prevented.
+    // The refresh stays owned, no reload loop starts, and no refreshed notice is queued.
     expect(event.defaultPrevented).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
@@ -568,13 +561,21 @@ describe("htmx extensions", () => {
     expect(swal.calls[1].text).to.equal(DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
   });
 
-  it("uses passive wording for background htmx refresh intercepts after the retry window", () => {
-    // Load a page whose commit already exhausted its refresh retry window.
-    Date.now = () => 1_000 + 7 * 60 * 1000;
+  it("uses passive wording for background htmx refresh intercepts when a reload returned the same version", () => {
+    // Load a page whose automatic reload returned the same stale version.
     setLoadedCommitSha("old");
-    window.sessionStorage.setItem("ocg.deploymentRefreshRetryStaleCommitSha", "old");
-    window.sessionStorage.setItem("ocg.deploymentRefreshRetryStartedAt", "1000");
+    swal.setNextResult({ isConfirmed: false, isDismissed: true });
     let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    handleCommitShaBeforeSwap({
+      detail: {
+        shouldSwap: true,
+        xhr: { getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "new" : null) },
+      },
+    });
+    resetDeploymentReloadState({ clearReloadMarker: false });
     setDeploymentReloadHandler(() => {
       reloads += 1;
     });
@@ -595,7 +596,7 @@ describe("htmx extensions", () => {
 
     // The refresh stays owned but only offers a passive reload.
     expect(backgroundEvent.defaultPrevented).to.equal(true);
-    expect(reloads).to.equal(0);
+    expect(reloads).to.equal(1);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0]).to.include({ confirmButtonText: "Reload", icon: "info" });
 
@@ -605,9 +606,9 @@ describe("htmx extensions", () => {
 
     // The user is told that their request did not complete.
     expect(userEvent.defaultPrevented).to.equal(true);
-    expect(reloads).to.equal(0);
+    expect(reloads).to.equal(1);
     expect(swal.calls).to.have.length(2);
-    expect(swal.calls[1]).to.include({ icon: "warning", text: DEPLOYMENT_REFRESH_STALLED_BLOCKED_MESSAGE });
+    expect(swal.calls[1]).to.include({ icon: "warning", text: DEPLOYMENT_RELOAD_BLOCKED_MESSAGE });
   });
 
   it("cancels the swap and reloads when an htmx response comes from a newer commit", () => {

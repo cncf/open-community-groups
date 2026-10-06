@@ -14,24 +14,18 @@ const STALE_COMMIT_SHA = "e2e-stale-build";
 const COMMIT_SHA_META_PATTERN = /(<meta name="ocg-commit-sha" content=")[^"]*(")/;
 const DEPLOYMENT_REFRESH_PARAM = "ocg_refresh";
 
-// Session storage keys and timings mirrored from static/js/common/deployment-version.js.
-const RETRY_STALE_COMMIT_SHA_STORAGE_KEY = "ocg.deploymentRefreshRetryStaleCommitSha";
-const RETRY_STARTED_AT_STORAGE_KEY = "ocg.deploymentRefreshRetryStartedAt";
-const RETRY_INTERVAL_MS = 30 * 1000;
-const RETRY_MAX_DURATION_MS = 7 * 60 * 1000;
-// Upper bound on retry intervals needed to exhaust the retry window.
-const MAX_RETRY_ATTEMPTS = RETRY_MAX_DURATION_MS / RETRY_INTERVAL_MS + 2;
+// Session storage key mirrored from static/js/common/deployment-version.js.
+const RELOADED_FROM_COMMIT_SHA_STORAGE_KEY = "ocg.deploymentReloadedFromCommitSha";
 
 // User-facing deployment refresh copy.
 const DIRTY_RELOAD_BLOCKED_MESSAGE =
   "A new version is live. Copy any unsaved work, then reload to pick up the update.";
 const REFRESHED_MESSAGE = "This page was refreshed because a new version is available.";
-const RESULTS_ERROR_MESSAGE = "Something went wrong loading results. Please try again later.";
-const RETRY_MESSAGE = "We're deploying an update right now.";
-const STALLED_BLOCKED_MESSAGE =
+const RELOAD_BLOCKED_MESSAGE =
   "A new version is live. This request did not complete. Reload to pick up the update.";
-const STALLED_MESSAGE =
+const RELOAD_PROMPT_MESSAGE =
   "A new version is available, but this page couldn't load it automatically. Reload to try again.";
+const RESULTS_ERROR_MESSAGE = "Something went wrong loading results. Please try again later.";
 
 const EXPLORE_EVENTS_PATH = `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`;
 const EXPLORE_CALENDAR_PATH = `${EXPLORE_EVENTS_PATH}&view_mode=calendar`;
@@ -72,41 +66,20 @@ test.describe("deployment refresh", () => {
     expect(staleDocuments.count).toBe(1);
   });
 
-  test("offers a manual reload once caches stay stale for the whole retry window", async ({ page }) => {
-    test.setTimeout(120_000);
-
-    // Keep every document stale and control the retry timers.
-    await page.clock.install();
+  test("offers a manual reload instead of looping when a reload returns the same version", async ({
+    page,
+  }) => {
+    // Keep every document stale, as a shared cache that was not purged would.
     const staleDocuments = await serveStaleDocuments(page);
-    let loads = 0;
-    page.on("load", () => {
-      loads += 1;
-    });
     await page.goto(buildE2eUrl(EXPLORE_EVENTS_PATH), { waitUntil: "domcontentloaded" });
 
-    // The second stale load within the cooldown shows the blocking retry overlay.
-    await expect(page.locator(".swal2-popup")).toContainText(RETRY_MESSAGE);
-
-    // Retry every interval until the retry window closes.
-    const stalledPrompt = page.locator(".swal2-popup").filter({ hasText: STALLED_MESSAGE });
-    for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt += 1) {
-      if (await stalledPrompt.isVisible()) {
-        break;
-      }
-      const loadsBefore = loads;
-      await page.clock.runFor(RETRY_INTERVAL_MS);
-      await expect.poll(async () => loads > loadsBefore || (await stalledPrompt.isVisible())).toBe(true);
-    }
-
-    // Every retry bypassed the cache, and the page now offers a passive reload.
-    await expect(stalledPrompt).toBeVisible();
-    expect(staleDocuments.count).toBeGreaterThanOrEqual(RETRY_MAX_DURATION_MS / RETRY_INTERVAL_MS);
-    await expect(page.locator(".swal2-popup").filter({ hasText: RETRY_MESSAGE })).toHaveCount(0);
-
-    // Background requests intercepted after expiry do not claim a user request failed.
+    // The stale page reloads once, then offers a passive reload instead of reloading again.
+    const prompt = page.locator(".swal2-popup").filter({ hasText: RELOAD_PROMPT_MESSAGE });
+    await expect(prompt).toBeVisible();
     await waitForHtmxSettle(page);
-    await expect(stalledPrompt).toBeVisible();
-    await expect(page.locator(".swal2-popup").filter({ hasText: STALLED_BLOCKED_MESSAGE })).toHaveCount(0);
+    expect(staleDocuments.count).toBe(2);
+    await expect(page.locator(".swal2-popup").filter({ hasText: RELOAD_BLOCKED_MESSAGE })).toHaveCount(0);
+    await expect(page.locator(".swal2-popup").filter({ hasText: REFRESHED_MESSAGE })).toHaveCount(0);
 
     // The prompt does not block the page. It sits top-end and may cover the input's
     // center, so click near the input's left edge.
@@ -116,12 +89,14 @@ test.describe("deployment refresh", () => {
     await expect(searchInput).toBeFocused();
   });
 
-  test("keeps the page when a user request is intercepted after the retry window", async ({ page }) => {
+  test("keeps the page when a user request is intercepted after a reload returned the same version", async ({
+    page,
+  }) => {
     // Load explore results before the loaded commit becomes stale.
     await navigateToPath(page, EXPLORE_EVENTS_PATH);
     const remoteEvent = page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true });
     await expect(remoteEvent).toBeVisible();
-    await markPageAsStaleAfterRetryWindow(page);
+    await markPageAsStaleAfterReload(page);
     await markDocument(page);
 
     // Change a filter; the server intercepts the stale request instead of filtering.
@@ -133,7 +108,7 @@ test.describe("deployment refresh", () => {
     expect(response.headers()["hx-refresh"]).toBe("true");
 
     // The user is told the request did not complete, and the page stays in place.
-    const prompt = page.locator(".swal2-popup").filter({ hasText: STALLED_BLOCKED_MESSAGE });
+    const prompt = page.locator(".swal2-popup").filter({ hasText: RELOAD_BLOCKED_MESSAGE });
     await expect(prompt).toBeVisible();
     await expect(remoteEvent).toBeVisible();
     expect(await isMarkedDocument(page)).toBe(true);
@@ -145,15 +120,15 @@ test.describe("deployment refresh", () => {
       prompt.getByRole("button", { name: "Reload" }).click(),
     ]);
 
-    // The fresh page clears the retry state without showing any prompt.
+    // The fresh page explains the refresh and clears the reload marker.
     expect(await isMarkedDocument(page)).toBe(false);
     await expect(page.locator('meta[name="ocg-commit-sha"]')).not.toHaveAttribute(
       "content",
       STALE_COMMIT_SHA,
     );
-    await expect(page.locator(".swal2-popup")).toHaveCount(0);
+    await expect(page.locator(".swal2-popup")).toContainText(REFRESHED_MESSAGE);
     expect(new URL(page.url()).searchParams.has(DEPLOYMENT_REFRESH_PARAM)).toBe(false);
-    expect(await readRetryState(page)).toEqual({ staleCommitSha: null, startedAt: null });
+    expect(await readReloadedFromCommitSha(page)).toBeNull();
   });
 
   test("serves pages requested with the cache-busting parameter", async ({ organizerGroupPage, request }) => {
@@ -174,25 +149,22 @@ test.describe("deployment refresh", () => {
   test("refuses a manual reload while a dashboard form has unsaved changes", async ({
     organizerGroupPage,
   }) => {
-    // Record an expired retry window for the commit the dashboard is serving.
+    // Open the add form while the dashboard is current.
     await navigateToPath(organizerGroupPage, DASHBOARD_EVENTS_PATH);
-    const commitSha = await organizerGroupPage.locator('meta[name="ocg-commit-sha"]').getAttribute("content");
-    await seedExpiredRetryWindow(organizerGroupPage, commitSha);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () =>
+        organizerGroupPage.locator("#dashboard-content").getByRole("button", { name: "Add Event" }).click(),
+      { method: "GET", urlIncludes: "/dashboard/group/events/add" },
+    );
 
-    // Load the page an automatic retry would have produced; it offers a manual reload.
-    await navigateToPath(organizerGroupPage, withDeploymentRefreshParam(DASHBOARD_EVENTS_PATH));
-    const prompt = organizerGroupPage.locator(".swal2-popup").filter({ hasText: STALLED_MESSAGE });
+    // Make the page stale after a reload returned the same version, then intercept a background request.
+    await markPageAsStaleAfterReload(organizerGroupPage);
+    await organizerGroupPage.evaluate(() =>
+      window.htmx.ajax("GET", window.location.pathname, { swap: "none" }),
+    );
+    const prompt = organizerGroupPage.locator(".swal2-popup").filter({ hasText: RELOAD_PROMPT_MESSAGE });
     await expect(prompt).toBeVisible();
-
-    // Open the add form with the keyboard, since the prompt may overlap the button.
-    const addEventButton = organizerGroupPage
-      .locator("#dashboard-content")
-      .getByRole("button", { name: "Add Event" });
-    await addEventButton.focus();
-    await waitForActionResponse(organizerGroupPage, () => organizerGroupPage.keyboard.press("Enter"), {
-      method: "GET",
-      urlIncludes: "/dashboard/group/events/add",
-    });
 
     // Edit the form so it has visible pending changes.
     const eventName = uniqueName("Deployment Refresh Draft");
@@ -213,7 +185,7 @@ test.describe("deployment refresh", () => {
     await navigateToPath(page, EXPLORE_CALENDAR_PATH);
     await expect(page.locator("#calendar-box")).toBeVisible();
     await expect(page.locator("#calendar-box .fc-daygrid-day").first()).toBeVisible();
-    await markPageAsStaleAfterRetryWindow(page);
+    await markPageAsStaleAfterReload(page);
 
     // Move to the next month; the server intercepts the stale calendar fetch.
     const response = await waitForActionResponse(page, () => page.locator("#next-month-btn").click(), {
@@ -229,7 +201,7 @@ test.describe("deployment refresh", () => {
 
     // Closing the error brings the reload prompt back.
     await popup.getByRole("button", { name: "OK" }).click();
-    await expect(popup.filter({ hasText: STALLED_BLOCKED_MESSAGE })).toBeVisible();
+    await expect(popup.filter({ hasText: RELOAD_BLOCKED_MESSAGE })).toBeVisible();
     await expect(popup.getByRole("button", { name: "Reload" })).toBeVisible();
   });
 });
@@ -280,48 +252,31 @@ const markDocument = (page) =>
   });
 
 /**
- * Makes the loaded page stale and records that its retry window already expired.
+ * Makes the loaded page stale and records that an automatic reload already returned it.
  * @param {import("@playwright/test").Page} page - Playwright page.
  * @returns {Promise<void>}
  */
-const markPageAsStaleAfterRetryWindow = async (page) => {
+const markPageAsStaleAfterReload = async (page) => {
   await page.locator('meta[name="ocg-commit-sha"]').evaluate((meta, commitSha) => {
     meta.setAttribute("content", commitSha);
   }, STALE_COMMIT_SHA);
-  await seedExpiredRetryWindow(page, STALE_COMMIT_SHA);
+  await page.evaluate(
+    ({ commitSha, storageKey }) => {
+      window.sessionStorage.setItem(storageKey, commitSha);
+    },
+    { commitSha: STALE_COMMIT_SHA, storageKey: RELOADED_FROM_COMMIT_SHA_STORAGE_KEY },
+  );
 };
 
 /**
- * Reads the deployment refresh retry state from session storage.
+ * Reads the commit SHA the last automatic deployment reload navigated away from.
  * @param {import("@playwright/test").Page} page - Playwright page.
- * @returns {Promise<{staleCommitSha: string|null, startedAt: string|null}>} Stored retry state.
+ * @returns {Promise<string|null>} Stored commit SHA, or null when no reload is pending.
  */
-const readRetryState = (page) =>
+const readReloadedFromCommitSha = (page) =>
   page.evaluate(
-    ({ staleCommitShaKey, startedAtKey }) => ({
-      staleCommitSha: window.sessionStorage.getItem(staleCommitShaKey),
-      startedAt: window.sessionStorage.getItem(startedAtKey),
-    }),
-    { staleCommitShaKey: RETRY_STALE_COMMIT_SHA_STORAGE_KEY, startedAtKey: RETRY_STARTED_AT_STORAGE_KEY },
-  );
-
-/**
- * Records a retry window for a commit that started long enough ago to have expired.
- * @param {import("@playwright/test").Page} page - Playwright page.
- * @param {string} commitSha - Commit SHA the retries were waiting to replace.
- * @returns {Promise<void>}
- */
-const seedExpiredRetryWindow = (page, commitSha) =>
-  page.evaluate(
-    ({ staleCommitSha, staleCommitShaKey, startedAtKey }) => {
-      window.sessionStorage.setItem(staleCommitShaKey, staleCommitSha);
-      window.sessionStorage.setItem(startedAtKey, "1");
-    },
-    {
-      staleCommitSha: commitSha,
-      staleCommitShaKey: RETRY_STALE_COMMIT_SHA_STORAGE_KEY,
-      startedAtKey: RETRY_STARTED_AT_STORAGE_KEY,
-    },
+    (storageKey) => window.sessionStorage.getItem(storageKey),
+    RELOADED_FROM_COMMIT_SHA_STORAGE_KEY,
   );
 
 /**
