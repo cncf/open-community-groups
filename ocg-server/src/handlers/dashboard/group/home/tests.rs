@@ -192,9 +192,8 @@ async fn test_page_check_in_tab_falls_back_without_management_permission() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let groups = sample_user_groups_by_community(community_id, group_id);
-    let stats = sample_group_stats();
 
-    // Setup permission, selector, and fallback analytics expectations
+    // Setup permission, selector, and fallback settings expectations
     let mut db = MockDB::new();
     db.expect_user_has_group_permission()
         .times(1)
@@ -224,16 +223,7 @@ async fn test_page_check_in_tab_falls_back_without_management_permission() {
         .times(1)
         .withf(move |uid| uid == &user_id)
         .returning(move |_| Ok(groups.clone()));
-    db.expect_get_group_stats()
-        .times(1)
-        .withf(move |cid, gid, include_subgroups| {
-            *cid == community_id && *gid == group_id && !*include_subgroups
-        })
-        .returning(move |_, _, _| Ok(stats.clone()));
-    db.expect_group_has_active_subgroups()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(false));
+    expect_settings_content(&mut db, community_id, group_id, user_id, false);
     db.expect_list_group_check_in_events().never();
     db.expect_get_site_settings()
         .times(1)
@@ -432,19 +422,13 @@ async fn test_page_inbox_tab_falls_back_without_inbox_permission() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let stats = sample_group_stats();
 
-    // Setup dashboard context and fallback analytics expectations
+    // Setup dashboard context and fallback settings expectations
     let mut db = MockDB::new();
     expect_inbox_home_context(&mut db, session_id, user_id, community_id, group_id, false);
     db.expect_count_group_open_inbox_conversations().never();
     db.expect_list_group_inbox_conversations().never();
-    db.expect_get_group_stats()
-        .times(1)
-        .returning(move |_, _, _| Ok(stats.clone()));
-    db.expect_group_has_active_subgroups()
-        .times(1)
-        .returning(|_, _| Ok(false));
+    expect_settings_content(&mut db, community_id, group_id, user_id, false);
 
     // Request the inbox through the full dashboard route
     let (parts, bytes) = send_home_request(db, session_id, "/dashboard/group?tab=inbox").await;
@@ -736,7 +720,6 @@ async fn test_page_members_tab_success() {
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
 async fn test_page_settings_tab_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -744,9 +727,6 @@ async fn test_page_settings_tab_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let groups = sample_user_groups_by_community(community_id, group_id);
-    let group_full = sample_group_full(community_id, group_id);
-    let category = sample_group_category();
-    let region = sample_group_region();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -772,53 +752,11 @@ async fn test_page_settings_tab_success() {
         user_id,
         GroupPermission::Read,
     );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::SettingsWrite,
-    );
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
         .returning(move |_| Ok(groups.clone()));
-    db.expect_get_group_full()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group_full.clone()));
-    db.expect_group_has_child_links()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(false));
-    db.expect_list_group_categories()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(vec![category.clone()]));
-    db.expect_list_group_parent_options()
-        .times(1)
-        .withf(move |cid, uid, gid| {
-            *cid == community_id && *uid == user_id && *gid == Some(group_id)
-        })
-        .returning(|_, _, _| Ok(vec![]));
-    db.expect_list_regions()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(vec![region.clone()]));
-    db.expect_get_group_external_payments_context()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| {
-            Ok(GroupExternalPaymentsContext {
-                configured: false,
-                eligible: false,
-                enabled: false,
-                country_code: None,
-                default_payment_window_hours: None,
-                max_payment_window_hours: None,
-                seller_display_name: None,
-            })
-        });
+    expect_settings_content(&mut db, community_id, group_id, user_id, true);
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -840,6 +778,31 @@ async fn test_page_settings_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_page_without_tab_defaults_to_settings() {
+    // Setup a readable group session without badge or check-in management
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup dashboard context and default settings tab expectations
+    let mut db = MockDB::new();
+    expect_inbox_home_context(&mut db, session_id, user_id, community_id, group_id, false);
+    expect_settings_content(&mut db, community_id, group_id, user_id, false);
+    db.expect_get_group_stats().never();
+    db.expect_group_has_active_subgroups().never();
+
+    // Request the dashboard without selecting a tab
+    let (parts, bytes) = send_home_request(db, session_id, "/dashboard/group").await;
+
+    // Check the settings tab is rendered instead of analytics
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("hx-get=\"/dashboard/group/settings\""));
+    assert!(!body.contains("hx-get=\"/dashboard/group/analytics\""));
 }
 
 #[tokio::test]
@@ -1249,6 +1212,65 @@ fn expect_inbox_permission_denied(
             (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &InboxWrite)
         })
         .returning(|_, _, _, _| Ok(false));
+}
+
+/// Expects the reads used to prepare the settings tab content.
+fn expect_settings_content(
+    db: &mut MockDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    can_manage_settings: bool,
+) {
+    let category = sample_group_category();
+    let group_full = sample_group_full(community_id, group_id);
+    let region = sample_group_region();
+
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::SettingsWrite
+        })
+        .returning(move |_, _, _, _| Ok(can_manage_settings));
+    db.expect_get_group_full()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(group_full.clone()));
+    db.expect_group_has_child_links()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(false));
+    db.expect_list_group_categories()
+        .times(1)
+        .withf(move |cid| *cid == community_id)
+        .returning(move |_| Ok(vec![category.clone()]));
+    db.expect_list_group_parent_options()
+        .times(1)
+        .withf(move |cid, uid, gid| {
+            *cid == community_id && *uid == user_id && *gid == Some(group_id)
+        })
+        .returning(|_, _, _| Ok(vec![]));
+    db.expect_list_regions()
+        .times(1)
+        .withf(move |cid| *cid == community_id)
+        .returning(move |_| Ok(vec![region.clone()]));
+    db.expect_get_group_external_payments_context()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| {
+            Ok(GroupExternalPaymentsContext {
+                configured: false,
+                eligible: false,
+                enabled: false,
+                country_code: None,
+                default_payment_window_hours: None,
+                max_payment_window_hours: None,
+                seller_display_name: None,
+            })
+        });
 }
 
 /// Sends a group dashboard home request through the router.

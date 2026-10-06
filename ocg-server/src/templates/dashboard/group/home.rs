@@ -252,8 +252,7 @@ impl std::fmt::Display for Content {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {
-    /// Analytics tab (default).
-    #[default]
+    /// Analytics tab.
     Analytics,
     /// Badge artwork tab.
     Artwork,
@@ -275,7 +274,8 @@ pub(crate) enum Tab {
     Members,
     /// Refund operations tab.
     Refunds,
-    /// Settings management tab.
+    /// Settings management tab (default).
+    #[default]
     Settings,
     /// Sponsors management tab.
     Sponsors,

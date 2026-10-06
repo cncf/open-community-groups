@@ -202,6 +202,76 @@ describe("team-add-member", () => {
     expect(element.textContent).to.include("Ada Lovelace");
   });
 
+  const dismissActions = [
+    {
+      name: "close button",
+      dismiss: (element) =>
+        element.querySelector("button:has(.icon-close)").click(),
+    },
+    {
+      name: "overlay click",
+      dismiss: (element) => element.querySelector(".modal-overlay").click(),
+    },
+    {
+      name: "Escape key",
+      dismiss: () =>
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
+    },
+  ];
+
+  dismissActions.forEach(({ name, dismiss }) => {
+    it(`clears the selected user and role when dismissed via ${name}`, async () => {
+      // Render the component and open the modal.
+      const element = await mountLitComponentWithAttributes("team-add-member", {
+        attributes: {
+          "role-options": JSON.stringify([
+            { display_name: "Maintainer", community_role_id: "role-1" },
+          ]),
+        },
+      });
+      element._open();
+      await element.updateComplete;
+
+      // Select a user and a role.
+      element._onUserSelected({
+        detail: {
+          user: {
+            user_id: "user-9",
+            name: "Katherine Johnson",
+            username: "katherine",
+          },
+        },
+      });
+      element._onRoleChanged({
+        target: {
+          value: "role-1",
+        },
+      });
+      await element.updateComplete;
+      expect(element.textContent).to.include("Katherine Johnson");
+
+      // Dismiss the modal without submitting.
+      dismiss(element);
+      await element.updateComplete;
+
+      // Verify the modal is closed and the selection is cleared.
+      expect(element._isOpen).to.equal(false);
+      expect(element._selectedUser).to.equal(null);
+      expect(element._selectedRole).to.equal("");
+      expect(document.body.dataset.modalOpenCount).to.equal("0");
+
+      // Reopen the modal.
+      element._open();
+      await element.updateComplete;
+
+      // Verify the reopened modal starts without a selection.
+      expect(element.textContent).to.not.include("Katherine Johnson");
+      expect(element.querySelector("#team-add-user-id").value).to.equal("");
+      expect(element.querySelector("#team-add-role").value).to.equal("");
+      expect(element.querySelector("#team-add-submit").disabled).to.equal(true);
+    });
+  });
+
   it("closes and resets the form after a successful htmx request", async () => {
     // Call mount lit component with attributes.
     const element = await mountLitComponentWithAttributes("team-add-member", {

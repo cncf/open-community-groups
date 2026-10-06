@@ -6,26 +6,33 @@ import { navigateToEvent, waitForActionResponse } from "../../utils.js";
 const CFS_EVENT_SLUG = "alpha-cfs-summit";
 
 test.describe("event page call for speakers", () => {
-  for (const [windowState, cfsEvent] of Object.entries(TEST_CFS_WINDOW_EVENTS)) {
-    test(`${windowState} submission windows explain why proposals are disabled`, async ({ page }) => {
-      // Load the event representing the current submission window state.
-      await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, cfsEvent.slug);
+  test("upcoming submission windows explain why proposals are disabled", async ({ page }) => {
+    // Load the event with an upcoming submission window.
+    const cfsEvent = TEST_CFS_WINDOW_EVENTS.upcoming;
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, cfsEvent.slug);
 
-      // Verify the event and Call for Speakers section are visible.
-      await expect(page.getByRole("heading", { level: 1, name: cfsEvent.name })).toBeVisible();
-      await expect(page.getByText("Call for Speakers", { exact: true })).toBeVisible();
+    // Verify the event and Call for Speakers section are visible.
+    await expect(page.getByRole("heading", { level: 1, name: cfsEvent.name })).toBeVisible();
+    await expect(page.getByText("Call for Speakers", { exact: true })).toBeVisible();
 
-      // Find the proposal action and verify its state-specific explanation.
-      const submitButton = page.getByRole("button", {
-        name: "Submit session proposal",
-      });
-      await expect(submitButton).toBeDisabled();
-      await expect(submitButton).toHaveAttribute(
-        "title",
-        windowState === "upcoming" ? "Call for Speakers will open soon" : "Call for Speakers is now closed",
-      );
+    // Find the proposal action and verify its explanation.
+    const submitButton = page.getByRole("button", {
+      name: "Submit session proposal",
     });
-  }
+    await expect(submitButton).toBeDisabled();
+    await expect(submitButton).toHaveAttribute("title", "Call for Speakers will open soon");
+  });
+
+  test("closed submission windows hide the call for speakers section", async ({ page }) => {
+    // Load the event with a closed submission window.
+    const cfsEvent = TEST_CFS_WINDOW_EVENTS.closed;
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, cfsEvent.slug);
+
+    // Verify the event renders without the Call for Speakers section.
+    await expect(page.getByRole("heading", { level: 1, name: cfsEvent.name })).toBeVisible();
+    await expect(page.getByText("Call for Speakers", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Submit session proposal" })).toHaveCount(0);
+  });
 
   test("public event page renders the call for speakers section for an open event", async ({ page }) => {
     // Load the event page with an open call for speakers.

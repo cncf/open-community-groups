@@ -117,6 +117,8 @@ export class TeamAddMember extends LitWrapper {
    */
   _open() {
     if (!this._canManageTeam()) return;
+    this._selectedUser = null;
+    this._selectedRole = "";
     this._isOpen = openModalBodyScroll(this._isOpen);
     this.updateComplete.then(() => {
       focusUserSearchField(this);
@@ -124,11 +126,12 @@ export class TeamAddMember extends LitWrapper {
   }
 
   /**
-   * Closes the modal.
+   * Closes the modal and clears the selected user and role.
    * @private
    */
   _close() {
     this._isOpen = closeModalBodyScroll(this._isOpen);
+    this._resetSelection();
   }
 
   /**
@@ -195,7 +198,6 @@ export class TeamAddMember extends LitWrapper {
           });
           if (ok) {
             this._close();
-            this._resetSelection();
           }
         };
         form.addEventListener("htmx:afterRequest", this._afterRequestHandler);

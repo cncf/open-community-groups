@@ -525,6 +525,30 @@ input:placeholder-shown {
   pointer-events: none;
 }
 
+.explore-map-tooltip .maplibregl-popup-tip {
+  border-width: 5px;
+}
+
+.explore-map-tooltip.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.explore-map-tooltip.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.explore-map-tooltip.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--color-stone-300);
+}
+
+.explore-map-tooltip.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.explore-map-tooltip.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.explore-map-tooltip.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--color-stone-300);
+}
+
+.explore-map-tooltip.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--color-stone-300);
+}
+
+.explore-map-tooltip.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--color-stone-300);
+}
+
 .maplibregl-map a {
   color: inherit !important;
 }
@@ -869,6 +893,7 @@ input:placeholder-shown {
 }
 
 .markdown hr {
+  border-top: 1px solid var(--color-stone-200);
   margin: 1rem 0;
 }
 
