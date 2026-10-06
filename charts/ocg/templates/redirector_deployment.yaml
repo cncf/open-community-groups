@@ -26,6 +26,8 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+      # Covers the 15s server drain and in-flight requests
+      terminationGracePeriodSeconds: 30
       {{- if .Release.IsInstall }}
       serviceAccountName: {{ include "chart.resourceNamePrefix" . }}redirector
       {{- end }}
@@ -65,6 +67,7 @@ spec:
             httpGet:
               path: /health-check
               port: 9001
+            periodSeconds: 2
           command: ['ocg-redirector', '-c', '{{ .Values.configDir }}/redirector.yml']
       volumes:
         - name: redirector-config

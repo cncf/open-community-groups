@@ -9,8 +9,7 @@ import {
   initializePageAlerts,
   shouldRefreshBodyForBackendFlash,
   showConfirmAlert,
-  showDeploymentRefreshRetryAlert,
-  showDeploymentRefreshStalledAlert,
+  showDeploymentReloadPrompt,
   showErrorAlert,
   showInfoAlert,
   showServerErrorAlert,
@@ -144,28 +143,9 @@ describe("alerts", () => {
     expect("timer" in env.current.swal.calls[0]).to.equal(false);
   });
 
-  it("renders the deployment refresh retry alert without auto-dismissal", () => {
-    // Show the deployment refresh retry alert.
-    showDeploymentRefreshRetryAlert();
-
-    // Assert the retry alert stays modal and persistent.
-    expect(env.current.swal.calls).to.have.length(1);
-    expect(env.current.swal.calls[0]).to.include({
-      showConfirmButton: false,
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      position: "center",
-      backdrop: true,
-    });
-    expect(env.current.swal.calls[0].iconHtml).to.include("icon-network");
-    expect(env.current.swal.calls[0].html).to.include("We're deploying an update right now.");
-    expect(env.current.swal.calls[0].html).to.include("This page will reload automatically");
-    expect("timer" in env.current.swal.calls[0]).to.equal(false);
-  });
-
-  it("offers a dismissible manual reload when deployment refresh retries stop", async () => {
-    // Accept the stalled deployment notice.
-    const outcome = await showDeploymentRefreshStalledAlert();
+  it("offers a dismissible manual deployment reload", async () => {
+    // Accept the deployment reload prompt.
+    const outcome = await showDeploymentReloadPrompt();
 
     // Assert the notice is persistent but does not block the page.
     expect(outcome).to.equal("reload");
@@ -185,10 +165,10 @@ describe("alerts", () => {
 
     // Dismissing the notice does not request a reload.
     env.current.swal.setNextResult({ isConfirmed: false, isDismissed: true, dismiss: "cancel" });
-    expect(await showDeploymentRefreshStalledAlert()).to.equal("dismiss");
+    expect(await showDeploymentReloadPrompt()).to.equal("dismiss");
 
     // Blocked requests can override the notice icon and copy.
-    await showDeploymentRefreshStalledAlert({ icon: "warning", text: "Request blocked." });
+    await showDeploymentReloadPrompt({ icon: "warning", text: "Request blocked." });
     expect(env.current.swal.calls[2]).to.include({
       icon: "warning",
       text: "Request blocked.",
@@ -196,7 +176,7 @@ describe("alerts", () => {
     });
   });
 
-  it("reports a stalled reload prompt replaced by another alert", async () => {
+  it("reports a deployment reload prompt replaced by another alert", async () => {
     // Replace the prompt the way SweetAlert2 does when another alert opens.
     const envSwal = globalThis.Swal;
     const calls = [];
@@ -215,18 +195,18 @@ describe("alerts", () => {
 
     try {
       // Error alerts still show while the prompt is open.
-      const prompt = showDeploymentRefreshStalledAlert({ icon: "warning", text: "Blocked." });
+      const prompt = showDeploymentReloadPrompt({ icon: "warning", text: "Blocked." });
       showErrorAlert("Failed to save, please try again.");
       expect(calls.map(({ text }) => text)).to.deep.equal(["Blocked.", "Failed to save, please try again."]);
       expect(await prompt).to.equal("replaced");
 
       // A programmatic close is not a replacement while its popup animates out.
-      const closing = showDeploymentRefreshStalledAlert();
+      const closing = showDeploymentReloadPrompt();
       pendingResults.splice(0).forEach((resolve) => resolve({ isDismissed: true }));
       expect(await closing).to.equal("dismiss");
 
       // A dismissal without a visible replacement is not reported as replaced.
-      const closed = showDeploymentRefreshStalledAlert();
+      const closed = showDeploymentReloadPrompt();
       pendingResults.splice(0).forEach((resolve) => resolve({ isDismissed: true }));
       popup = null;
       expect(await closed).to.equal("dismiss");
@@ -235,7 +215,7 @@ describe("alerts", () => {
     }
   });
 
-  it("tells a replaced stalled prompt apart from a closed one with the bundled SweetAlert2", async () => {
+  it("tells a replaced deployment reload prompt apart from a closed one with the bundled SweetAlert2", async () => {
     // Load the SweetAlert2 bundle used by the base template.
     const envSwal = globalThis.Swal;
     const template = await (await fetch("/ocg-server/templates/common/base.html")).text();
@@ -252,12 +232,12 @@ describe("alerts", () => {
 
     try {
       // Another alert replaces the open prompt.
-      const replacedPrompt = showDeploymentRefreshStalledAlert();
+      const replacedPrompt = showDeploymentReloadPrompt();
       showErrorAlert("Failed to save, please try again.");
       expect(await replacedPrompt).to.equal("replaced");
 
       // Navigation cleanup closes the prompt, which stays visible while animating out.
-      const closedPrompt = showDeploymentRefreshStalledAlert();
+      const closedPrompt = showDeploymentReloadPrompt();
       sweetAlert.close();
       expect(sweetAlert.isVisible()).to.equal(true);
       expect(await closedPrompt).to.equal("dismiss");

@@ -1,10 +1,6 @@
 import { expect } from "@open-wc/testing";
 
-import {
-  createDeploymentRefreshUrl,
-  DEPLOYMENT_REFRESH_ATTRIBUTE,
-  DEPLOYMENT_REFRESH_PARAM,
-} from "/static/js/common/deployment-version.js";
+import { createDeploymentRefreshUrl, DEPLOYMENT_REFRESH_PARAM } from "/static/js/common/deployment-version.js";
 
 const litBundlePath = "/static/vendor/js/lit-all.v3.3.3.min.js";
 const expectedLitImportMap = {
@@ -99,12 +95,11 @@ const extractDeploymentRefreshScript = (template) => {
 
 /**
  * Runs the inline deployment refresh cleanup against stubbed browser globals for
- * the given URL, then returns the address bar rewrites and the root marker state.
+ * the given URL, then returns the address bar rewrites.
  */
 const runDeploymentRefreshScript = (scriptBody, href) => {
   // Stub the globals the cleanup reads and rewrites.
   const url = new URL(href);
-  const documentElement = document.createElement("html");
   const replacedUrls = [];
   const historyStub = {
     state: { page: "current" },
@@ -113,9 +108,9 @@ const runDeploymentRefreshScript = (scriptBody, href) => {
   const locationStub = { hash: url.hash, pathname: url.pathname, search: url.search };
 
   // Run the extracted source with the stubs in place of the page globals.
-  new Function("document", "history", "location", scriptBody)({ documentElement }, historyStub, locationStub);
+  new Function("history", "location", scriptBody)(historyStub, locationStub);
 
-  return { marked: documentElement.hasAttribute(DEPLOYMENT_REFRESH_ATTRIBUTE), replacedUrls };
+  return replacedUrls;
 };
 
 describe("common base template", () => {
@@ -225,7 +220,7 @@ describe("common base template", () => {
     expect(index).to.be.lessThan(htmxScriptIndex);
   });
 
-  it("strips only the deployment refresh parameter and marks the refreshed page", async () => {
+  it("strips only the deployment refresh parameter", async () => {
     // Load the base template and extract the cleanup source.
     const { body } = extractDeploymentRefreshScript(await loadTemplate());
 
@@ -240,10 +235,7 @@ describe("common base template", () => {
       expect(
         runDeploymentRefreshScript(body, createDeploymentRefreshUrl(pageUrl, "t1")),
         pageUrl,
-      ).to.deep.equal({
-        marked: true,
-        replacedUrls: [{ state: { page: "current" }, url: `${pathname}${search}${hash}` }],
-      });
+      ).to.deep.equal([{ state: { page: "current" }, url: `${pathname}${search}${hash}` }]);
     });
 
     // Verify URLs without the exact parameter are left untouched.
@@ -253,10 +245,7 @@ describe("common base template", () => {
       `https://example.test/cncf?page=${DEPLOYMENT_REFRESH_PARAM}`,
     ];
     untouchedUrls.forEach((untouchedUrl) => {
-      expect(runDeploymentRefreshScript(body, untouchedUrl), untouchedUrl).to.deep.equal({
-        marked: false,
-        replacedUrls: [],
-      });
+      expect(runDeploymentRefreshScript(body, untouchedUrl), untouchedUrl).to.deep.equal([]);
     });
   });
 });

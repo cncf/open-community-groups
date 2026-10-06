@@ -461,12 +461,27 @@ async fn test_favicon_route_surfaces_db_errors_as_internal_server_error() {
 #[tokio::test]
 async fn test_health_check_returns_ok() {
     // Run handler
-    let response = health_check().await.into_response();
+    let response = health_check(AxumState(CancellationToken::new()))
+        .await
+        .into_response();
     let (parts, body) = response.into_parts();
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn test_health_check_returns_service_unavailable_while_draining() {
+    // Setup a drain token that has already been cancelled
+    let shutdown_drain = CancellationToken::new();
+    shutdown_drain.cancel();
+
+    // Run handler
+    let response = health_check(AxumState(shutdown_drain)).await.into_response();
+
+    // Check response matches expectations
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]

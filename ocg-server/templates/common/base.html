@@ -19,8 +19,8 @@
       }
     </script>
     {# Deployment refresh: drop the cache-busting parameter before HTMX records the page path for
-       history, keeping other parameters as sent. Parameter and attribute names mirror
-       static/js/common/deployment-version.js, which reads the marker. -#}
+       history, keeping other parameters as sent. The parameter name mirrors
+       static/js/common/deployment-version.js. -#}
     <script>
       (() => {
         const params = location.search.slice(1).split("&").filter(Boolean);
@@ -29,7 +29,6 @@
           return;
         }
 
-        document.documentElement.setAttribute("data-deployment-refresh", "");
         const search = keptParams.length ? `?${keptParams.join("&")}` : "";
         history.replaceState(history.state, "", `${location.pathname}${search}${location.hash}`);
       })();

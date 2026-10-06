@@ -25,6 +25,7 @@ use axum::{
 use axum_login::login_required;
 use axum_messages::MessagesManagerLayer;
 use rust_embed::Embed;
+use tokio_util::sync::CancellationToken;
 use tower::ServiceBuilder;
 use tower_http::{
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
@@ -145,6 +146,8 @@ pub(crate) struct State {
     pub serde_qs_de: serde_qs::Config,
     /// HTTP server configuration.
     pub server_cfg: HttpServerConfig,
+    /// Token cancelled when the server starts draining traffic before shutdown.
+    pub shutdown_drain: CancellationToken,
 }
 
 /// Configures and returns the application router.
@@ -166,6 +169,7 @@ pub(crate) async fn setup(
     payments_manager: DynPaymentsManager,
     notifications_manager: DynNotificationsManager,
     server_cfg: &HttpServerConfig,
+    shutdown_drain: CancellationToken,
 ) -> Result<Router> {
     // Check whether the Zoom meetings provider is enabled
     let zoom_enabled = meetings_cfg
@@ -199,6 +203,7 @@ pub(crate) async fn setup(
         payments_manager,
         serde_qs_de: serde_qs_config(),
         server_cfg: server_cfg.clone(),
+        shutdown_drain,
     };
 
     // Setup authentication layer
@@ -449,9 +454,16 @@ async fn favicon(AxumState(db): AxumState<DynDB>) -> impl IntoResponse {
 
 /// Health check endpoint handler.
 ///
-/// Returns 200 OK for monitoring and load balancer health checks.
+/// Returns 200 OK for monitoring and load balancer health checks, or 503 while
+/// the server drains traffic before shutdown.
 #[instrument(skip_all)]
-async fn health_check() -> impl IntoResponse {
+async fn health_check(
+    AxumState(shutdown_drain): AxumState<CancellationToken>,
+) -> impl IntoResponse {
+    if shutdown_drain.is_cancelled() {
+        return StatusCode::SERVICE_UNAVAILABLE;
+    }
+
     StatusCode::OK
 }
 

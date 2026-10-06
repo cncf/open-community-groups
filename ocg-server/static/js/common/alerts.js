@@ -97,55 +97,13 @@ export const showErrorAlert = (message, withHtml = false, persist = false) => {
 };
 
 /**
- * Displays the deployment refresh retry alert while cached HTML expires.
- * @returns {void}
- */
-export const showDeploymentRefreshRetryAlert = () => {
-  const commonOptions = getCommonAlertOptions();
-  const spinnerClass = [
-    "inline-block",
-    "size-6",
-    "rounded-full",
-    "border-2",
-    "border-stone-300",
-    "border-t-primary-500",
-    "animate-spin",
-  ].join(" ");
-  const message = `<div class="flex flex-col items-center gap-6 text-center">
-    <p class="text-lg font-semibold text-stone-900">We're deploying an update right now.</p>
-    <p>This page will reload automatically as soon as it's ready. Thanks for your patience.</p>
-    <div class="flex items-center justify-center">
-      <span class="${spinnerClass}"></span>
-    </div>
-  </div>`;
-  const alertOptions = {
-    ...commonOptions,
-    html: message,
-    iconHtml: `<span class="svg-icon size-16 bg-primary-500 icon-network" aria-hidden="true"></span>`,
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    customClass: {
-      ...commonOptions.customClass,
-      icon: "border-0!",
-    },
-    position: "center",
-    backdrop: true,
-  };
-
-  if (globalThis.Swal?.fire) {
-    Swal.fire(alertOptions);
-  }
-};
-
-/**
- * Offers a manual reload after automatic deployment refresh retries stop.
+ * Offers a manual reload when an automatic deployment reload loaded the same version.
  * The alert does not block the page and stays open until dismissed.
  * @param {{icon?: string, text?: string}} options Optional icon and message overrides.
  * @returns {Promise<"reload"|"dismiss"|"replaced">} User choice, or "replaced"
  * when another alert replaced the prompt before the user answered it.
  */
-export const showDeploymentRefreshStalledAlert = async ({
+export const showDeploymentReloadPrompt = async ({
   icon = "info",
   text = "A new version is available, but this page couldn't load it automatically. Reload to try again.",
 } = {}) => {

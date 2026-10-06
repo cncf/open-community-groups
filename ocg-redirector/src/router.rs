@@ -10,6 +10,7 @@ use axum::{
     routing::get,
 };
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use tower_http::trace::TraceLayer;
 use tracing::instrument;
 
@@ -24,6 +25,8 @@ pub(crate) struct State {
     pub redirect_host_suffix: Arc<str>,
     /// Redirects keyed by community name and normalized legacy path.
     pub redirects: Arc<RwLock<Redirects>>,
+    /// Token cancelled when the server starts draining traffic before shutdown.
+    pub shutdown_drain: CancellationToken,
 }
 
 /// Redirect communities keyed by community name.
@@ -40,13 +43,18 @@ pub(crate) struct CommunityRedirects {
 
 /// Configures and returns the application router.
 #[instrument(skip_all)]
-pub(crate) fn setup(redirects: Arc<RwLock<Redirects>>, server_cfg: &HttpServerConfig) -> Router {
+pub(crate) fn setup(
+    redirects: Arc<RwLock<Redirects>>,
+    server_cfg: &HttpServerConfig,
+    shutdown_drain: CancellationToken,
+) -> Router {
     let state = State {
         base_redirect_url: Arc::<str>::from(server_cfg.base_redirect_url.trim_end_matches('/')),
         redirect_host_suffix: Arc::<str>::from(normalize_redirect_host_suffix(
             &server_cfg.redirect_host_suffix(),
         )),
         redirects,
+        shutdown_drain,
     };
 
     let router = Router::new()
@@ -60,8 +68,13 @@ pub(crate) fn setup(redirects: Arc<RwLock<Redirects>>, server_cfg: &HttpServerCo
 
 // Handlers.
 
-/// Returns a success response when the service is healthy.
-async fn health_check() -> impl IntoResponse {
+/// Returns a success response when the service is healthy, or 503 while the
+/// server drains traffic before shutdown.
+async fn health_check(AxumState(state): AxumState<State>) -> impl IntoResponse {
+    if state.shutdown_drain.is_cancelled() {
+        return StatusCode::SERVICE_UNAVAILABLE;
+    }
+
     StatusCode::OK
 }
 
@@ -182,9 +195,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_health_check_returns_ok() {
-        let response = health_check().await.into_response();
+        let router = test_router(Redirects::new());
+        let response = router.oneshot(test_request("/health-check")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_health_check_returns_service_unavailable_while_draining() {
+        // Setup a router whose drain token has already been cancelled
+        let shutdown_drain = CancellationToken::new();
+        shutdown_drain.cancel();
+        let router = setup(
+            Arc::new(RwLock::new(Redirects::new())),
+            &test_server_cfg(),
+            shutdown_drain,
+        );
+
+        // Check health checks fail while draining
+        let response = router.oneshot(test_request("/health-check")).await.unwrap();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
     #[test]
@@ -413,7 +443,11 @@ mod tests {
             "/legacy-group".to_string(),
             "/community/group/group".to_string(),
         )]));
-        let router = setup(Arc::new(RwLock::new(redirects)), &server_cfg);
+        let router = setup(
+            Arc::new(RwLock::new(redirects)),
+            &server_cfg,
+            CancellationToken::new(),
+        );
         let response = router.oneshot(test_request("/legacy-group")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
@@ -467,11 +501,18 @@ mod tests {
 
     /// Sets up a router with the provided redirects and default configuration for testing.
     fn test_router(redirects: Redirects) -> Router {
-        let server_cfg = HttpServerConfig {
+        setup(
+            Arc::new(RwLock::new(redirects)),
+            &test_server_cfg(),
+            CancellationToken::new(),
+        )
+    }
+
+    /// Returns the default server configuration used by router tests.
+    fn test_server_cfg() -> HttpServerConfig {
+        HttpServerConfig {
             addr: "127.0.0.1:9001".to_string(),
             base_redirect_url: "https://ocg.example".to_string(),
-        };
-
-        setup(Arc::new(RwLock::new(redirects)), &server_cfg)
+        }
     }
 }
