@@ -1,3 +1,5 @@
+-- Tests listing approved CFS submissions available for event sessions.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -15,6 +17,8 @@ select plan(2);
 \set eventNoApprovedID '3a170000-0000-0000-0000-000000000004'
 \set groupCategoryID '3a170000-0000-0000-0000-000000000005'
 \set groupID '3a170000-0000-0000-0000-000000000006'
+\set labelAlphaID '3a170000-0000-0000-0000-000000000019'
+\set labelZetaID '3a170000-0000-0000-0000-000000000018'
 \set proposal1ID '3a170000-0000-0000-0000-000000000007'
 \set proposal2ID '3a170000-0000-0000-0000-000000000008'
 \set proposal3ID '3a170000-0000-0000-0000-000000000009'
@@ -105,28 +109,44 @@ insert into cfs_submission (
     (:'submission4ID', :'eventNoApprovedID', :'proposal1ID', 'not-reviewed'),
     (:'submission5ID', :'eventNoApprovedID', :'proposal2ID', 'rejected');
 
+-- Label sorted first by name despite its larger identifier
+insert into event_label (event_label_id, color, event_id, name)
+values (:'labelAlphaID', '#DBEAFE', :'eventID', 'Alpha');
+
+-- Label sorted last by name despite its smaller identifier
+insert into event_label (event_label_id, color, event_id, name)
+values (:'labelZetaID', '#FEE2E2', :'eventID', 'Zeta');
+
+-- Labels linked to the first approved submission
+insert into cfs_submission_label (cfs_submission_id, event_label_id)
+values
+    (:'submission1ID', :'labelZetaID'),
+    (:'submission1ID', :'labelAlphaID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should list approved submissions for sessions
+-- Should list approved submissions with label IDs ordered by label name
 select is(
     list_event_approved_cfs_submissions(:'eventID'::uuid)::jsonb,
     jsonb_build_array(
         jsonb_build_object(
             'cfs_submission_id', :'submission1ID'::uuid,
+            'label_ids', jsonb_build_array(:'labelAlphaID'::uuid, :'labelZetaID'::uuid),
             'session_proposal_id', :'proposal1ID'::uuid,
             'speaker_name', 'Alice',
             'title', 'Alpha Talk'
         ),
         jsonb_build_object(
             'cfs_submission_id', :'submission2ID'::uuid,
+            'label_ids', '[]'::jsonb,
             'session_proposal_id', :'proposal2ID'::uuid,
             'speaker_name', 'Bob',
             'title', 'Beta Talk'
         )
     ),
-    'Should list approved submissions for sessions'
+    'Should list approved submissions with label IDs ordered by label name'
 );
 
 -- Should return empty list when no submissions are approved

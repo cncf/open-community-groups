@@ -95,6 +95,7 @@ Time-bound and meeting-specific fields are intentionally not carried forward.
 - Start/end dates are cleared.
 - Registration window dates are cleared.
 - Sessions are not copied.
+- Label names and colors are copied as new labels for the new event.
 - Meeting links are not copied.
 - Some older host/speaker fields may need manual cleanup.
 
@@ -306,8 +307,9 @@ When adding a new event, recurrence can create multiple linked events at once:
 For recurring events, set `Additional Events` to the number of extra linked events to create.
 The maximum is `12`. OCG creates each occurrence as a separate individual event, sharing one
 series identifier, and shifts event dates, registration windows, CFS windows, sessions, ticket
-windows, and discount windows by the same schedule offset. Monthly recurrence skips months that do
-not contain the same ordinal weekday.
+windows, and discount windows by the same schedule offset. Each occurrence gets its own copy of
+the event labels, and its sessions use that copy. Monthly recurrence skips months that do not
+contain the same ordinal weekday.
 
 After creation, each occurrence has its own event page, editor, attendees, submissions, sessions,
 tickets, and operational state. `Publish`, `Unpublish`, `Cancel`, and `Delete` can target the
@@ -341,6 +343,12 @@ Sessions turns approved content into an actual agenda. Here you create agenda ro
 bounds, keep session times inside the event start/end, and link approved CFS submissions into the
 schedule.
 
+Each session can carry up to `10` labels from the event's label set. Labels appear as chips on the
+session in the editor, in the preview, and on the public event page. When you link an approved CFS
+submission, the session starts with that submission's labels; you can change them before saving.
+After that, session and submission labels are independent: changing one does not change the
+other.
+
 This tab is usually most useful once review outcomes are clearer and your schedule is taking
 final shape.
 
@@ -348,16 +356,26 @@ final shape.
 
 ![Event add session](../screenshots/dashboard-group-event-add-session.png)
 
+### Labels
+
+Labels are the event's shared set of tracks, topics, or themes. Sessions and CFS submissions both
+use them, and you can manage them whether or not CFS is enabled. Labels are public: they appear on
+session chips on the event page and in the CFS submission form.
+
+- An event can have up to `200` labels, each with a name of up to `80` characters and a color
+  from the palette.
+- Label names must be unique within the event and cannot be blank.
+- Renaming or recoloring a label updates every session and submission that uses it.
+- Delete a label with its trash button. Deleting a label removes it from every session and
+  submission that uses it.
+
+?> Renaming a label updates every session and submission that already uses it.
+
 ### CFS
 
-This tab configures speaker intake: enabling or disabling CFS, setting open/close timestamps,
-writing the CFS description shown on the event page, and defining optional labels
-(tracks/topics/themes).
-
-Label model tip: if you edit an existing label name, that rename affects submissions already using
-that label.
-
-?> Renaming a label updates existing submissions that already reference that label.
+This tab configures speaker intake: enabling or disabling CFS, setting open/close timestamps, and
+writing the CFS description shown on the event page. Speakers and reviewers pick submission labels
+from the event's set, managed in the `Labels` tab.
 
 ![Event CFS](../screenshots/dashboard-group-event-cfs.png)
 

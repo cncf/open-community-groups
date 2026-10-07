@@ -4,6 +4,8 @@ import {
   MEETING_RECORDING_URL_LEGEND,
   MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/meeting-recording.js";
+import { normalizeLabels } from "/static/js/common/labels.js";
+import "/static/js/common/label-selector.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isObjectEmpty, parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/users/speakers-selector.js";
@@ -35,6 +37,8 @@ class SessionItem extends LitWrapper {
    * @property {Function} onDataChange - Callback for data changes.
    * @property {Array} sessionKinds - Available session kinds.
    * @property {Array} approvedSubmissions - Approved CFS submissions.
+   * @property {Array} labels - Named event labels available for sessions.
+   * @property {number} labelMaxSelected - Max labels assigned to one session.
    * @property {Array} usedSubmissionIds - Submission ids used by other sessions.
    * @property {Object} meetingMaxParticipants - Limits per meeting provider.
    * @property {boolean} meetingsEnabled - Whether meetings can be configured.
@@ -53,6 +57,8 @@ class SessionItem extends LitWrapper {
     onDataChange: { type: Function },
     sessionKinds: { type: Array, attribute: "session-kinds" },
     approvedSubmissions: { type: Array },
+    labels: { type: Array },
+    labelMaxSelected: { type: Number },
     usedSubmissionIds: { type: Array },
     meetingMaxParticipants: { type: Object, attribute: "meeting-max-participants" },
     meetingsEnabled: { type: Boolean },
@@ -90,6 +96,8 @@ class SessionItem extends LitWrapper {
     this.onDataChange = () => {};
     this.sessionKinds = [];
     this.approvedSubmissions = [];
+    this.labels = [];
+    this.labelMaxSelected = 0;
     this.usedSubmissionIds = [];
     this.meetingMaxParticipants = {};
     this.meetingsEnabled = false;
@@ -100,6 +108,7 @@ class SessionItem extends LitWrapper {
     this.inputMode = "manual";
     this.prefilledDate = "";
     this.eventPast = false;
+    this._namedLabelsCache = { source: null, value: [] };
     this._onModeChange = this._onModeChange.bind(this);
     this._handleSpeakersChanged = this._handleSpeakersChanged.bind(this);
   }
@@ -143,6 +152,18 @@ class SessionItem extends LitWrapper {
   }
 
   /**
+   * Gets the named labels, normalized once per labels payload.
+   * @returns {Array<{color: string, event_label_id: string, name: string}>}
+   * @private
+   */
+  get _namedLabels() {
+    if (this._namedLabelsCache.source !== this.labels) {
+      this._namedLabelsCache = { source: this.labels, value: normalizeLabels(this.labels) };
+    }
+    return this._namedLabelsCache.value;
+  }
+
+  /**
    * Handles input field changes.
    * @param {Event} event - Input event
    * @private
@@ -153,6 +174,9 @@ class SessionItem extends LitWrapper {
     const name = event.target.dataset.name;
 
     this.data = { ...this.data, [name]: value };
+    if (name === "cfs_submission_id" && value) {
+      this.data = this._withSubmissionLabels(this.data, value);
+    }
     this.isObjectEmpty = isObjectEmpty(this.data);
     this.onDataChange(this.data, this.index);
     this.requestUpdate();
@@ -195,6 +219,90 @@ class SessionItem extends LitWrapper {
     this.isObjectEmpty = isObjectEmpty(this.data);
     this.onDataChange(this.data, this.index);
     this.requestUpdate();
+  }
+
+  /**
+   * Handles label selection changes. Labels that are currently unavailable
+   * (for example while their name is blank) stay assigned to the session.
+   * @param {Event} event - Change event from the label selector
+   * @private
+   */
+  _onLabelsChange(event) {
+    if (this.disabled) return;
+    const selector = event.currentTarget;
+    const selected = Array.isArray(selector?.selected) ? selector.selected.map((id) => String(id)) : [];
+    const availableLabelIds = new Set(this._namedLabels.map((label) => label.event_label_id));
+    const current = Array.isArray(this.data.label_ids) ? this.data.label_ids.map((id) => String(id)) : [];
+    const next = [...selected, ...current.filter((id) => !availableLabelIds.has(id))];
+    if (haveSameIds(next, current)) return;
+
+    this.data = { ...this.data, label_ids: next };
+    this.isObjectEmpty = isObjectEmpty(this.data);
+    this.onDataChange(this.data, this.index);
+    this.requestUpdate();
+  }
+
+  /**
+   * Pre-fills the session labels from a newly linked approved submission.
+   * When the summary has no label ids, the labels stay unset so the server
+   * copies them from the submission on save.
+   * @param {Object} data - Session data
+   * @param {string} submissionId - Linked submission id
+   * @returns {Object} Updated session data
+   * @private
+   */
+  _withSubmissionLabels(data, submissionId) {
+    const submission = (this.approvedSubmissions || []).find(
+      (item) => String(item?.cfs_submission_id) === String(submissionId),
+    );
+    if (!submission) return data;
+
+    if (!Array.isArray(submission.label_ids)) {
+      const rest = { ...data };
+      delete rest.label_ids;
+      return rest;
+    }
+
+    const availableLabelIds = new Set(this._namedLabels.map((label) => label.event_label_id));
+    return {
+      ...data,
+      label_ids: submission.label_ids.map((id) => String(id)).filter((id) => availableLabelIds.has(id)),
+    };
+  }
+
+  /**
+   * Renders the session labels selector.
+   * @returns {import("lit").TemplateResult|typeof nothing}
+   * @private
+   */
+  _renderLabelsField() {
+    const labels = this._namedLabels;
+    if (labels.length === 0) return nothing;
+
+    const availableLabelIds = new Set(labels.map((label) => label.event_label_id));
+    const selected = (this.data.label_ids || [])
+      .map((id) => String(id))
+      .filter((id) => availableLabelIds.has(id));
+    const sessionLabelsId = `session-${this.index}-labels`;
+
+    return html`
+      <div class="col-span-full">
+        <div id="${sessionLabelsId}-title" class="form-label">Labels</div>
+        <div class="mt-2">
+          <label-selector
+            id=${sessionLabelsId}
+            labelledby="${sessionLabelsId}-title"
+            legend="Labels are shown on the event page. Manage them from the Labels tab."
+            .labels=${labels}
+            .maxSelected=${Number(this.labelMaxSelected) || 0}
+            .name=${""}
+            .selected=${selected}
+            ?disabled=${this.disabled}
+            @change=${(event) => this._onLabelsChange(event)}
+          ></label-selector>
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -379,6 +487,7 @@ class SessionItem extends LitWrapper {
         </div>
       </div>
 
+      ${this._renderLabelsField()}
       ${
         this.approvedSubmissions?.length
           ? html`
@@ -705,5 +814,17 @@ class SessionItem extends LitWrapper {
     </div>`;
   }
 }
+
+/**
+ * Checks whether two id lists contain the same ids, ignoring order.
+ * @param {Array<string>} left - First id list
+ * @param {Array<string>} right - Second id list
+ * @returns {boolean} True when both lists hold the same ids
+ */
+const haveSameIds = (left, right) => {
+  const leftIds = new Set(left);
+  const rightIds = new Set(right);
+  return leftIds.size === rightIds.size && [...leftIds].every((id) => rightIds.has(id));
+};
 
 customElements.define("session-item", SessionItem);

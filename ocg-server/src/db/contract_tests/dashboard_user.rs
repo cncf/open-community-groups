@@ -169,9 +169,10 @@ async fn db_contracts_list_user_cfs_submissions_deserializes() -> Result<()> {
     // Load user submissions through the Rust contract
     let output = db.list_user_cfs_submissions(attendee_id(), &filters).await?;
 
-    // Check submission pagination totals
+    // Check submission pagination totals and labels
     assert_eq!(output.total, 1);
     assert_eq!(output.submissions.len(), 1);
+    assert_eq!(output.submissions[0].labels, vec![contract_event_label()]);
 
     Ok(())
 }

@@ -131,7 +131,7 @@ describe("dashboard group event add template", () => {
     expect(template).to.include(
       '<cohosts-selector communities="{{ communities|json }}" selected-cohosts="[]" revision="0" current-group-id="{{ group_id }}"',
     );
-    expect(template.match(/<form id="[^"]+" data-event-form/gu)).to.have.length(8);
+    expect(template.match(/<form id="[^"]+" data-event-form/gu)).to.have.length(9);
   });
 
   it("initializes the General Admission ticket with 500 seats", async () => {
@@ -443,6 +443,36 @@ describe("dashboard group event add template", () => {
     );
     expect(template).to.include(
       "Ticket-request answers are available from Requests.",
+    );
+  });
+
+  it("places the labels tab after sessions and moves the labels editor out of CFS", async () => {
+    // Load the event template before checking the labels tab.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the tab order is Sessions, Labels, Questions, CFS.
+    const tabIndex = (section) => template.indexOf(`event_form::tab_button(section = "${section}"`);
+    const optionIndex = (section) => template.indexOf(`event_form::tab_option(section = "${section}"`);
+    expect(tabIndex("labels")).to.be.greaterThan(tabIndex("sessions"));
+    expect(tabIndex("questions")).to.be.greaterThan(tabIndex("labels"));
+    expect(tabIndex("cfs")).to.be.greaterThan(tabIndex("questions"));
+    expect(optionIndex("labels")).to.be.greaterThan(optionIndex("sessions"));
+    expect(optionIndex("questions")).to.be.greaterThan(optionIndex("labels"));
+    expect(template).to.include('icon = "tag", label = "Labels"');
+
+    // Assert the labels editor lives in its own marked form, not in the CFS form.
+    const labelsFormIndex = template.indexOf('<form id="labels-form" data-event-form>');
+    const editorIndex = template.indexOf('<labels-editor id="labels-editor" field-name="labels"');
+    const cfsFormIndex = template.indexOf('<form id="cfs-form" data-event-form>');
+    expect(labelsFormIndex).to.be.greaterThan(-1);
+    expect(editorIndex).to.be.greaterThan(labelsFormIndex);
+    expect(editorIndex).to.be.lessThan(template.indexOf("</form>", labelsFormIndex));
+    expect(template.slice(cfsFormIndex, template.indexOf("</form>", cfsFormIndex))).to.not.include(
+      "labels-editor",
+    );
+    expect(template).to.include("crate::validation::EVENT_LABEL_COLORS|json");
+    expect(template).to.include(
+      'label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}"',
     );
   });
 });

@@ -37,15 +37,6 @@ returns json as $$
             'cfs_description', e.cfs_description,
             'cfs_enabled', e.cfs_enabled,
             'cfs_ends_at', epoch_seconds(e.cfs_ends_at),
-            'cfs_labels', (
-                select coalesce(json_agg(json_build_object(
-                    'color', ecl.color,
-                    'event_cfs_label_id', ecl.event_cfs_label_id,
-                    'name', ecl.name
-                ) order by ecl.name asc, ecl.event_cfs_label_id asc), '[]')
-                from event_cfs_label ecl
-                where ecl.event_id = e.event_id
-            ),
             'cfs_starts_at', epoch_seconds(e.cfs_starts_at),
             'description_short', e.description_short,
             'discount_codes', list_event_discount_codes(e.event_id),
@@ -61,6 +52,13 @@ returns json as $$
                 where related_event.event_series_id = e.event_series_id
                 and related_event.event_id <> e.event_id
                 and related_event.deleted = false
+            ),
+            'labels', event_labels_json(
+                array(
+                    select el.event_label_id
+                    from event_label el
+                    where el.event_id = e.event_id
+                )
             ),
             'latitude', st_y(e.location::geometry),
             'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
@@ -232,6 +230,13 @@ returns json as $$
                             'meeting_recording_url', s.meeting_recording_url,
                             'meeting_requested', s.meeting_requested,
 
+                            'labels', event_labels_json(
+                                array(
+                                    select sl.event_label_id
+                                    from session_label sl
+                                    where sl.session_id = s.session_id
+                                )
+                            ),
                             'speakers', coalesce(
                                 (
                                     select json_agg(json_strip_nulls(json_build_object(

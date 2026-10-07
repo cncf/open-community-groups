@@ -9,21 +9,18 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::{
-    types::{
-        community::CommunitySummary,
-        group::GroupSummary,
-        location::{LocationParts, build_location},
-        meetings::MeetingProvider,
-        payments::{
-            EventDiscountCode, EventPurchaseChargeModel, EventRefundRequestStatus, EventTicketType,
-            ExternalPaymentInfo, TicketTaxBehavior, TicketTaxCalculationMode, TicketVenue,
-            format_amount_minor,
-        },
-        questionnaire::{OptionalQuestionnaireAnswersForm, QuestionnaireQuestion},
-        user::{User, UserSummary},
+use crate::types::{
+    community::CommunitySummary,
+    group::GroupSummary,
+    location::{LocationParts, build_location},
+    meetings::MeetingProvider,
+    payments::{
+        EventDiscountCode, EventPurchaseChargeModel, EventRefundRequestStatus, EventTicketType,
+        ExternalPaymentInfo, TicketTaxBehavior, TicketTaxCalculationMode, TicketVenue,
+        format_amount_minor,
     },
-    validation::{MAX_LEN_EVENT_LABEL_NAME, trimmed_non_empty, valid_cfs_label_color},
+    questionnaire::{OptionalQuestionnaireAnswersForm, QuestionnaireQuestion},
+    user::{User, UserSummary},
 };
 
 #[cfg(test)]
@@ -315,9 +312,6 @@ pub struct EventFull {
     pub canceled: bool,
     /// Event category information.
     pub category_name: String,
-    /// Call for speakers labels.
-    #[serde(default)]
-    pub cfs_labels: Vec<EventCfsLabel>,
     /// Groups publicly credited as co-hosts of the event.
     #[serde(default)]
     pub cohosts: Vec<EventCohostGroup>,
@@ -344,6 +338,9 @@ pub struct EventFull {
     pub hosts: Vec<User>,
     /// Type of event (in-person, online, hybrid).
     pub kind: EventKind,
+    /// Labels shared by the event sessions and CFS submissions.
+    #[serde(default)]
+    pub labels: Vec<EventLabel>,
     /// URL to the event logo.
     pub logo_url: String,
     /// Stripe Tax Rate identifiers selected for manual tax.
@@ -873,23 +870,6 @@ pub struct EventCategory {
     pub events_count: Option<usize>,
 }
 
-/// Event CFS label used for submissions.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub struct EventCfsLabel {
-    /// Label color.
-    #[garde(custom(valid_cfs_label_color))]
-    pub color: String,
-    /// Label name.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_EVENT_LABEL_NAME))]
-    pub name: String,
-
-    /// Event CFS label identifier.
-    #[serde(default)]
-    #[garde(skip)]
-    pub event_cfs_label_id: Option<Uuid>,
-}
-
 /// Group credited as a co-host of an event.
 #[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1088,6 +1068,17 @@ pub struct EventKindSummary {
     pub event_kind_id: String,
 }
 
+/// Event label shared by sessions and CFS submissions.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct EventLabel {
+    /// Label color.
+    pub color: String,
+    /// Event label identifier.
+    pub event_label_id: Uuid,
+    /// Label name.
+    pub name: String,
+}
+
 /// Result returned when leaving an event or waiting list.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EventLeaveOutcome {
@@ -1149,6 +1140,9 @@ pub struct Session {
     /// Session end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
+    /// Event labels assigned to the session.
+    #[serde(default)]
+    pub labels: Vec<EventLabel>,
     /// Location details for the session.
     pub location: Option<String>,
     /// Error message if meeting sync failed.

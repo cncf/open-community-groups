@@ -244,6 +244,7 @@ describe("event-selector", () => {
       <user-search-selector field-name="hosts"></user-search-selector>
       <sponsors-section></sponsors-section>
       <cohosts-selector></cohosts-selector>
+      <labels-editor></labels-editor>
       <sessions-section></sessions-section>
       <timezone-selector name="timezone"></timezone-selector>
       <online-event-details></online-event-details>
@@ -274,9 +275,19 @@ describe("event-selector", () => {
     const cohosts = document.querySelector("cohosts-selector");
     cohosts.selectedCohosts = [{ group_id: "existing-cohost", name: "Existing co-host" }];
 
-    // Stub session updates while copied sessions are applied.
+    // Track session resets while copied details are applied.
     const sessionsSection = document.querySelector("sessions-section");
-    sessionsSection.requestUpdate = () => {};
+    sessionsSection.sessions = [{ name: "Stale session" }];
+    let sessionResets = 0;
+    sessionsSection.reset = () => {
+      sessionResets += 1;
+      sessionsSection.sessions = [];
+    };
+
+    // Track copied labels through the labels editor public API.
+    const labelsEditor = document.querySelector("labels-editor");
+    const copiedLabels = [];
+    labelsEditor.setLabels = (labels) => copiedLabels.push(labels);
 
     // Keep a reference to the ticket types UI element.
     const ticketTypesEditor = document.getElementById("ticket-types-ui");
@@ -320,6 +331,7 @@ describe("event-selector", () => {
 
     // Copied event details populate the form.
     await element._applyEventDetails({
+      labels: [{ color: "#bfdbfe", event_label_id: "label-1", name: "Backend" }],
       name: "Cloud Native Málaga",
       category_name: "Conference",
       kind: "workshop",
@@ -483,6 +495,8 @@ describe("event-selector", () => {
     expect(sponsors.selectedSponsors).to.deep.equal([{ name: "ACME", level: "2" }]);
     expect(cohosts.selectedCohosts).to.deep.equal([{ group_id: "existing-cohost", name: "Existing co-host" }]);
     expect(sessionsSection.sessions).to.deep.equal([]);
+    expect(sessionResets).to.equal(1);
+    expect(copiedLabels).to.deep.equal([[{ color: "#bfdbfe", name: "Backend" }]]);
     expect(timezoneSelector.value).to.equal("Europe/Madrid");
     expect(resetCalls).to.equal(1);
 

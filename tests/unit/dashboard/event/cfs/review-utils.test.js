@@ -19,7 +19,6 @@ import {
   isLinkedToSession,
   isMessageRequired,
   isStatusAllowed,
-  normalizeLabels,
   parseReviewAttributeList,
 } from "/static/js/dashboard/event/cfs/review-utils.js";
 
@@ -72,31 +71,16 @@ describe("cfs submissions review utils", () => {
     expect(getStatusColor("not-reviewed").dot).to.equal("bg-primary-500");
   });
 
-  it("normalizes labels for selector payloads", () => {
-    // Build mixed label payloads from attributes and selector state.
-    const labels = [
-      { event_cfs_label_id: 12, name: " Backend ", color: " blue " },
-      { event_cfs_label_id: " ", name: "Ignored", color: "gray" },
-      { event_cfs_label_id: 13, name: "", color: "red" },
-    ];
-
-    // Invalid labels are removed and valid labels are string-normalized.
-    expect(normalizeLabels(labels)).to.deep.equal([
-      { event_cfs_label_id: "12", name: "Backend", color: "blue" },
-    ]);
-    expect(normalizeLabels(null)).to.deep.equal([]);
-  });
-
   it("parses review attribute lists only when values are not loaded", () => {
     // Build an element with a JSON array attribute.
     const element = document.createElement("review-submission-modal");
-    element.setAttribute("labels", JSON.stringify([{ event_cfs_label_id: "1" }]));
+    element.setAttribute("labels", JSON.stringify([{ event_label_id: "1" }]));
 
     // Empty current values allow parsing, while loaded values skip it.
     expect(parseReviewAttributeList(element, "labels", [])).to.deep.equal([
-      { event_cfs_label_id: "1" },
+      { event_label_id: "1" },
     ]);
-    expect(parseReviewAttributeList(element, "labels", [{ event_cfs_label_id: "loaded" }])).to.equal(
+    expect(parseReviewAttributeList(element, "labels", [{ event_label_id: "loaded" }])).to.equal(
       null,
     );
     expect(parseReviewAttributeList(element, "missing", [])).to.equal(null);
@@ -135,6 +119,7 @@ describe("cfs submissions review utils", () => {
 
     expect(buildApprovedSubmissionSummary(submission, "approved")).to.deep.equal({
       cfs_submission_id: "12",
+      label_ids: [],
       session_proposal_id: "99",
       title: "Platform Engineering at Scale",
       speaker_name: "ada",
@@ -143,11 +128,12 @@ describe("cfs submissions review utils", () => {
     expect(buildApprovedSubmissionSummary({ ...submission, speaker: {} }, "approved")).to.equal(
       null,
     );
-    expect(buildApprovedSubmissionEventDetail(submission, "approved")).to.deep.equal({
+    expect(buildApprovedSubmissionEventDetail(submission, "approved", [4, "5"])).to.deep.equal({
       approved: true,
       cfsSubmissionId: "12",
       submission: {
         cfs_submission_id: "12",
+        label_ids: ["4", "5"],
         session_proposal_id: "99",
         title: "Platform Engineering at Scale",
         speaker_name: "ada",
@@ -204,7 +190,7 @@ describe("cfs submissions review utils", () => {
       {
         action_required_message: "Please expand the abstract",
         linked_session_id: "session-1",
-        labels: [{ event_cfs_label_id: 4 }, { event_cfs_label_id: "" }],
+        labels: [{ event_label_id: 4 }, { event_label_id: "" }],
         status_id: "not-reviewed",
       },
       { comments: "Looks promising", stars: "4" },

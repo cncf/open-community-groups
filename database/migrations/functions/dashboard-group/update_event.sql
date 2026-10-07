@@ -180,8 +180,10 @@ begin
         p_effective_capacity => v_event.capacity
     );
 
-    -- Validate CFS labels rules
-    perform validate_event_cfs_labels_payload(p_event->'cfs_labels');
+    -- Validate the labels payload when supplied
+    if p_event ? 'labels' then
+        perform validate_event_labels_payload(p_event->'labels');
+    end if;
 
     -- Update event
     update event set
@@ -294,8 +296,11 @@ begin
         p_configured_provider
     );
 
-    -- Synchronize event CFS labels
-    perform sync_event_cfs_labels(p_event_id, p_event->'cfs_labels');
+    -- Synchronize labels before sessions, which reference labels from the
+    -- same payload
+    if p_event ? 'labels' then
+        perform sync_event_labels(p_event_id, p_event->'labels');
+    end if;
 
     -- Synchronize event sessions and speakers. This must run after the event
     -- row update so the session bounds trigger re-validates retained sessions

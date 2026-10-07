@@ -70,6 +70,7 @@
         {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
         {{ event_form::tab_option(section = "payments", label = "Tickets") -}}
         {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
+        {{ event_form::tab_option(section = "labels", label = "Labels") -}}
         {{ event_form::tab_option(section = "questions", label = "Questions") -}}
         {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
       </select>
@@ -80,6 +81,7 @@
         {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
         {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Tickets") -}}
         {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
+        {{ event_form::tab_button(section = "labels", icon = "tag", label = "Labels") -}}
         {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
         {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
       </ul>
@@ -351,6 +353,27 @@
       </div>
       {# End Co-hosts Tab -#}
 
+      {# Labels Tab -#}
+      <div data-content="labels" class="hidden">
+        <form id="labels-form" data-event-form>
+          <div class="pb-12">
+            {{ dashboard::form_title(title = "Labels", description = "Categorize sessions and Call for Speakers submissions.") -}}
+            <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+              Labels are shared by sessions and Call for Speakers submissions. For example, you can use them to organize sessions by track, topic, or theme. Renaming a label updates it everywhere it is used. To delete a label, use its trash button.
+            </div>
+            <div class="mt-10 max-w-5xl">
+              <labels-editor id="labels-editor" field-name="labels" max-items="{{ crate::validation::MAX_EVENT_LABELS_PER_EVENT }}" max-name-length="{{ crate::validation::MAX_LEN_EVENT_LABEL_NAME }}" colors="{{ crate::validation::EVENT_LABEL_COLORS|json }}">
+              <p slot="legend" class="form-legend">
+                Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
+                <span class="font-semibold">/</span> as the separator for consistency.
+              </p>
+              </labels-editor>
+            </div>
+          </div>
+        </form>
+      </div>
+      {# End Labels Tab -#}
+
       {# Questions Tab -#}
       <div data-content="questions" class="hidden">
         <form id="questions-form" data-event-form>
@@ -439,22 +462,14 @@
               </div>
               {# End CFS description -#}
 
-              {# CFS labels -#}
+              {# Labels pointer -#}
               <div class="col-span-full">
-                <label for="cfs-labels-editor" class="form-label">Labels</label>
-                <p class="form-legend mt-1">
-                  Labels help categorize submitted session proposals. For example, you can use them to organize sessions by track, topic, or theme. Submitters can select one or more labels when submitting their proposals. Organizers can review and update the labels on submissions during the review process, if needed.
+                <p class="form-legend">
+                  Submitters can pick from the event labels when submitting their proposals. Manage them from the
+                  <span class="font-semibold">Labels</span> tab.
                 </p>
-                <div class="mt-3">
-                  <cfs-labels-editor id="cfs-labels-editor" field-name="cfs_labels" max-items="{{ crate::validation::MAX_EVENT_LABELS_PER_EVENT }}" colors="{{ crate::validation::CFS_LABEL_COLORS|json }}">
-                  <p slot="legend" class="form-legend">
-                    Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
-                    <span class="font-semibold">/</span> as the separator for consistency.
-                  </p>
-                  </cfs-labels-editor>
-                </div>
               </div>
-              {# End CFS labels -#}
+              {# End labels pointer -#}
             </div>
           </div>
         </form>
@@ -709,7 +724,7 @@
         <div class="pb-12">
           {{ dashboard::form_title(title = "Sessions") -}}
           <div class="mt-10">
-            <sessions-section session-kinds="{{ session_kinds|json }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" {% if meetings_enabled %}meetings-enabled{% endif %}></sessions-section>
+            <sessions-section session-kinds="{{ session_kinds|json }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}" {% if meetings_enabled %}meetings-enabled{% endif %}></sessions-section>
           </div>
         </div>
       </form>

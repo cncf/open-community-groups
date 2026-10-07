@@ -129,27 +129,6 @@ export const isStatusAllowed = (submission, statusId) => {
 };
 
 /**
- * Drops incomplete labels so option rendering only receives usable values.
- * @param {Array<Object>} labels Label payloads.
- * @returns {Array<Object>} Normalized labels.
- */
-export const normalizeLabels = (labels) => {
-  if (!Array.isArray(labels)) {
-    return [];
-  }
-
-  return labels
-    .map((label) => {
-      return {
-        color: String(label?.color || "").trim(),
-        event_cfs_label_id: String(label?.event_cfs_label_id || "").trim(),
-        name: String(label?.name || "").trim(),
-      };
-    })
-    .filter((label) => label.event_cfs_label_id && label.name);
-};
-
-/**
  * Attribute payloads are only a fallback before async values are loaded.
  * @param {Element} element Source element.
  * @param {string} attributeName Attribute name.
@@ -186,9 +165,10 @@ export const buildReviewFormStateSnapshot = (state) => {
  * Returns the minimal approved submission shape needed by session editors.
  * @param {Object} submission Submission payload.
  * @param {string} statusId Selected status id.
+ * @param {Array<string>} [labelIds] Saved label ids for the submission.
  * @returns {Object|null} Approved submission summary, or null when not approved.
  */
-export const buildApprovedSubmissionSummary = (submission, statusId) => {
+export const buildApprovedSubmissionSummary = (submission, statusId, labelIds = []) => {
   const proposal = submission?.session_proposal || {};
   const speakerName = submission?.speaker?.name || submission?.speaker?.username || "";
   if (statusId !== "approved" || !proposal?.session_proposal_id || !proposal?.title || !speakerName) {
@@ -197,6 +177,7 @@ export const buildApprovedSubmissionSummary = (submission, statusId) => {
 
   return {
     cfs_submission_id: String(submission.cfs_submission_id),
+    label_ids: (Array.isArray(labelIds) ? labelIds : []).map((id) => String(id)).filter(Boolean),
     session_proposal_id: String(proposal.session_proposal_id),
     title: proposal.title,
     speaker_name: speakerName,
@@ -207,12 +188,13 @@ export const buildApprovedSubmissionSummary = (submission, statusId) => {
  * Event detail keeps approval state and summary payload in sync for listeners.
  * @param {Object} submission Submission payload.
  * @param {string} statusId Selected status id.
+ * @param {Array<string>} [labelIds] Saved label ids for the submission.
  * @returns {Object}
  */
-export const buildApprovedSubmissionEventDetail = (submission, statusId) => ({
+export const buildApprovedSubmissionEventDetail = (submission, statusId, labelIds = []) => ({
   approved: statusId === "approved",
   cfsSubmissionId: String(submission.cfs_submission_id),
-  submission: buildApprovedSubmissionSummary(submission, statusId),
+  submission: buildApprovedSubmissionSummary(submission, statusId, labelIds),
 });
 
 /**
@@ -242,8 +224,8 @@ export const handleReviewAfterRequest = ({ event, handleResponse, onSuccess }) =
  */
 const getSubmissionLabelIds = (submission) =>
   (submission?.labels || [])
-    .map((label) => String(label?.event_cfs_label_id || ""))
-    .filter((eventCfsLabelId) => eventCfsLabelId.length > 0);
+    .map((label) => String(label?.event_label_id || ""))
+    .filter((eventLabelId) => eventLabelId.length > 0);
 
 /**
  * Linked submissions always reopen as approved because other statuses are locked.

@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     types::{
         dashboard,
-        event::{CfsSessionProposal, EventCfsLabel, EventSummary},
+        event::{CfsSessionProposal, EventLabel, EventSummary},
         pagination::{Pagination, ToRawQuery},
     },
     validation::MAX_PAGINATION_LIMIT,
@@ -27,7 +27,7 @@ pub(crate) struct CfsSubmission {
     /// Event summary information.
     pub event: EventSummary,
     /// Labels assigned to the submission.
-    pub labels: Vec<EventCfsLabel>,
+    pub labels: Vec<EventLabel>,
     /// Session proposal summary information.
     pub session_proposal: CfsSessionProposal,
     /// Submission status identifier.

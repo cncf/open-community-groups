@@ -170,7 +170,7 @@ mock! {
             event_id: Uuid,
         )
             -> Result<crate::types::event::EventSummary>;
-        async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<crate::types::event::EventCfsLabel>>;
+        async fn list_event_labels(&self, event_id: Uuid) -> Result<Vec<crate::types::event::EventLabel>>;
         async fn get_group_full(
             &self,
             community_id: Uuid,

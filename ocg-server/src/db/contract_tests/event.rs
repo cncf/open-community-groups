@@ -222,6 +222,16 @@ async fn db_contracts_get_event_full_by_slug_deserializes() -> Result<()> {
     assert_eq!(event.sessions.len(), 1);
     assert_eq!(event.sponsors.len(), 1);
 
+    // Check public event and session labels
+    assert_eq!(event.labels, vec![contract_event_label()]);
+    let labeled_session = event
+        .sessions
+        .values()
+        .flatten()
+        .find(|session| session.session_id == session_id())
+        .expect("labeled session should be listed");
+    assert_eq!(labeled_session.labels, vec![contract_event_label()]);
+
     // Check public capacity follows the visible ticket inventory
     assert_eq!(event.capacity, Some(100));
     assert_eq!(event.remaining_capacity, Some(98));

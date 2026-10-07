@@ -107,6 +107,29 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
         &event.ticket_types.as_ref().expect("event should have tickets")[0],
     );
 
+    // Check event labels and session labels
+    assert_eq!(event.labels, vec![contract_event_label()]);
+    let sessions = event.sessions.values().flatten().collect::<Vec<_>>();
+    let labeled_session = sessions
+        .iter()
+        .find(|session| session.session_id == session_id())
+        .expect("labeled session should be listed");
+    let unlabeled_session = sessions
+        .iter()
+        .find(|session| session.session_id == unlabeled_session_id())
+        .expect("unlabeled session should be listed");
+    assert_eq!(labeled_session.labels, vec![contract_event_label()]);
+    assert!(
+        unlabeled_session.labels.is_empty(),
+        "unlabeled session should have no labels, got {:?}",
+        unlabeled_session.labels
+    );
+    assert!(
+        external_event.labels.is_empty(),
+        "external event should have no labels, got {:?}",
+        external_event.labels
+    );
+
     // Check host and organizer provider profiles
     assert_eq!(
         event.hosts[0].github_url.as_deref(),
@@ -302,17 +325,20 @@ async fn db_contracts_internal_raise_keeps_default_sqlstate() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_list_event_cfs_labels_deserializes() -> Result<()> {
+async fn db_contracts_list_event_labels_deserializes() -> Result<()> {
     // Setup the contract database and event fixture
     let db = contract_tests_db()?;
 
-    // Load event submission labels through the Rust contract
-    let labels = db.list_event_cfs_labels(event_id()).await?;
+    // Load event labels through the Rust contract
+    let labels = db.list_event_labels(event_id()).await?;
+    let unlabeled_event_labels = db.list_event_labels(external_event_id()).await?;
 
-    // Check label color and name fields
-    assert_eq!(labels.len(), 1);
-    assert_eq!(labels[0].color, "#DBEAFE");
-    assert_eq!(labels[0].name, "track / backend");
+    // Check label identifier, color and name fields
+    assert_eq!(labels, vec![contract_event_label()]);
+    assert!(
+        unlabeled_event_labels.is_empty(),
+        "external event should have no labels, got {unlabeled_event_labels:?}"
+    );
 
     Ok(())
 }

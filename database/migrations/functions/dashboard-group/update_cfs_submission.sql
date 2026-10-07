@@ -24,26 +24,19 @@ begin
         raise exception 'invalid submission status' using errcode = 'OCG01';
     end if;
 
-    -- Validate labels payload
+    -- Parse the submitted labels, validated when they are synchronized
     if p_submission ? 'label_ids' then
-        if coalesce(jsonb_array_length(p_submission->'label_ids'), 0) > 10 then
-            raise exception 'too many submission labels' using errcode = 'OCG01';
-        end if;
-
-        if p_submission->'label_ids' is not null then
-            v_label_ids := array(
-                select input_label_id::uuid
-                from jsonb_array_elements_text(p_submission->'label_ids') as input_label_id
-            );
-        end if;
-
-        perform validate_cfs_submission_label_ids(p_event_id, v_label_ids);
+        v_label_ids := array(
+            select input_label_id::uuid
+            from jsonb_array_elements_text(p_submission->'label_ids') as input_label_id
+        );
     end if;
 
     -- Validate rating payload (`0` clears; `1`-`5` sets rating)
     if p_submission ? 'rating_stars' then
         v_rating_stars := (p_submission->>'rating_stars')::int;
 
+        -- Reject ratings outside the supported range
         if v_rating_stars < 0 or v_rating_stars > 5 then
             raise exception 'invalid rating stars' using errcode = 'OCG01';
         end if;
@@ -58,6 +51,7 @@ begin
     and cs.status_id <> 'withdrawn'
     for update;
 
+    -- Reject missing or withdrawn submissions
     if not found then
         raise exception 'submission not found' using errcode = 'OCG01';
     end if;
@@ -89,10 +83,12 @@ begin
 
     -- Upsert or remove the reviewer rating
     if p_submission ? 'rating_stars' then
+        -- Remove the rating when it is cleared
         if v_rating_stars = 0 then
             delete from cfs_submission_rating
             where cfs_submission_id = p_cfs_submission_id
             and reviewer_id = p_reviewer_id;
+        -- Store the reviewer rating
         else
             insert into cfs_submission_rating (
                 comments,
@@ -136,6 +132,7 @@ begin
         p_event_id
     );
 
+    -- Return whether the submitter should be notified
     return v_notify;
 end;
 $$ language plpgsql;

@@ -76,7 +76,7 @@ const renderCfsDetailsLabels = (state) => {
     <div>
       <label for="cfs-submission-labels" class="form-label">Labels</label>
       <div class="mt-2">
-        <cfs-label-selector
+        <label-selector
           id="cfs-submission-labels"
           name="label_ids"
           .labels=${state.labels}
@@ -86,7 +86,7 @@ const renderCfsDetailsLabels = (state) => {
           legend="Add labels to categorize this submission for your review team."
           placeholder="Search labels"
           @change=${state.onLabelsChange}
-        ></cfs-label-selector>
+        ></label-selector>
       </div>
     </div>
   `;

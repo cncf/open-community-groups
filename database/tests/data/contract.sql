@@ -1172,6 +1172,7 @@ insert into event_sponsor (
 -- SESSIONS
 -- ============================================================================
 
+-- Labeled session consumed by event and session label contracts
 insert into session (
     description,
     ends_at,
@@ -1190,6 +1191,27 @@ insert into session (
     '00000000-0000-0000-0000-00000000c051',
     'hybrid',
     '2099-05-20 17:15:00+00'
+);
+
+-- Unlabeled session consumed by empty session label contracts
+insert into session (
+    description,
+    ends_at,
+    event_id,
+    location,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
+    'An unlabeled session used by Rust database contract tests',
+    '2099-05-20 17:45:00+00',
+    '00000000-0000-0000-0000-00000000c031',
+    'Room 2',
+    'Contract Unlabeled Session',
+    '00000000-0000-0000-0000-00000000c052',
+    'hybrid',
+    '2099-05-20 17:30:00+00'
 );
 
 -- ============================================================================
@@ -2901,9 +2923,10 @@ insert into session_proposal (
         'ready-for-submission'
     );
 
-insert into event_cfs_label (
+-- Event label shared by the linked submission and session label contracts
+insert into event_label (
     color,
-    event_cfs_label_id,
+    event_label_id,
     event_id,
     name
 ) values (
@@ -2930,12 +2953,22 @@ insert into cfs_submission (
     '00000000-0000-0000-0000-00000000c041'
 );
 
+-- Submission label consumed by CFS submission label contracts
 insert into cfs_submission_label (
     cfs_submission_id,
-    event_cfs_label_id
+    event_label_id
 ) values (
     '00000000-0000-0000-0000-00000000c0c5',
     '00000000-0000-0000-0000-00000000c0c8'
+);
+
+-- Session label consumed by session label contracts
+insert into session_label (
+    event_label_id,
+    session_id
+) values (
+    '00000000-0000-0000-0000-00000000c0c8',
+    '00000000-0000-0000-0000-00000000c051'
 );
 
 -- ============================================================================

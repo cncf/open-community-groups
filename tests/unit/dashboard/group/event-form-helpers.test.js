@@ -2,13 +2,13 @@ import { expect } from "@open-wc/testing";
 
 import {
   appendCopySuffix,
-  buildSessionEntries,
   initializeSessionsRemovalWarning,
+  resetSessions,
   setCategoryValue,
   setEventReminderEnabled,
   setGalleryImages,
   setHosts,
-  setSessions,
+  setLabels,
   setSponsors,
   setTags,
   updateMarkdownContent,
@@ -165,71 +165,47 @@ describe("event form helpers", () => {
     expect(sponsorsUpdated).to.equal(1);
   });
 
-  it("builds and applies normalized sessions for the sessions section", () => {
-    // Render the DOM fixture for building and applies normalized sessions.
-    document.body.innerHTML = `<sessions-section></sessions-section>`;
+  it("replaces the event labels with copied names and colors", () => {
+    // Render a labels editor stub that records the applied labels.
+    document.body.innerHTML = "<labels-editor></labels-editor>";
+    const editor = document.querySelector("labels-editor");
+    const appliedLabels = [];
+    editor.setLabels = (labels) => appliedLabels.push(labels);
 
-    // Read the sessions section after normalized sessions are applied.
-    const sessionsSection = document.querySelector("sessions-section");
-    let initializeCalls = 0;
-    let updateCalls = 0;
-    sessionsSection._initializeSessionIds = () => {
-      initializeCalls += 1;
-    };
-    sessionsSection.requestUpdate = () => {
-      updateCalls += 1;
-    };
-
-    // Prepare sessions data for building and applies normalized sessions.
-    const sessionsData = {
-      dayOne: [
-        {
-          name: "Opening keynote",
-          description: "Kickoff",
-          kind: "talk",
-          location: "Main room",
-          cfs_submission_id: 42,
-          speakers: [
-            {
-              user: { user_id: "1", username: "alice" },
-              featured: true,
-            },
-          ],
-        },
-      ],
-      ignored: "not-an-array",
-    };
-
-    // Verify builds and applies normalized sessions for the sessions section.
-    expect(buildSessionEntries(sessionsData)).to.deep.equal([
-      {
-        name: "Opening keynote",
-        description: "Kickoff",
-        kind: "talk",
-        location: "Main room",
-        meeting_join_instructions: "",
-        meeting_join_url: "",
-        meeting_recording_url: "",
-        meeting_requested: false,
-        meeting_in_sync: false,
-        meeting_password: "",
-        meeting_error: "",
-        starts_at: "",
-        ends_at: "",
-        cfs_submission_id: "42",
-        speakers: [{ user_id: "1", username: "alice", featured: true }],
-      },
+    // Copy labels from another event.
+    setLabels([
+      { color: "#bfdbfe", event_label_id: "label-1", name: "Backend" },
+      { color: "#fecaca", event_label_id: "label-2", is_new: false, name: "Frontend" },
     ]);
+    setLabels(null);
 
-    // Verify builds and applies normalized sessions.
-    setSessions(sessionsData);
+    // Verify only names and colors are passed so the editor creates new ids.
+    expect(appliedLabels).to.deep.equal([
+      [
+        { color: "#bfdbfe", name: "Backend" },
+        { color: "#fecaca", name: "Frontend" },
+      ],
+      [],
+    ]);
+  });
 
-    // Verify builds and applies normalized sessions for the sessions section.
-    expect(sessionsSection.sessions).to.deep.equal(
-      buildSessionEntries(sessionsData),
-    );
-    expect(initializeCalls).to.equal(1);
-    expect(updateCalls).to.equal(1);
+  it("resets sessions through the sessions section", () => {
+    // Render a sessions section stub that records resets.
+    document.body.innerHTML = "<sessions-section></sessions-section>";
+    const sessionsSection = document.querySelector("sessions-section");
+    let resetCalls = 0;
+    sessionsSection.reset = () => {
+      resetCalls += 1;
+    };
+
+    // Reset sessions twice, then without a sessions section.
+    resetSessions();
+    resetSessions();
+    document.body.innerHTML = "";
+    resetSessions();
+
+    // Verify each call delegates to the component reset.
+    expect(resetCalls).to.equal(2);
   });
 
   it("updates markdown content and timezone selectors", () => {

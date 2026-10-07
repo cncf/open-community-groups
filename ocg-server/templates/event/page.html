@@ -40,7 +40,7 @@
   <script type="module" src="/static/js/common/users/user-chip.js"></script>
   <script type="module" src="/static/js/common/modals/user-info-modal.js"></script>
   <script type="module" src="/static/js/common/modals/share-modal.js"></script>
-  <script type="module" src="/static/js/common/cfs-label-selector.js"></script>
+  <script type="module" src="/static/js/common/label-selector.js"></script>
   <script type="module" src="/static/js/common/tooltip-panel.js"></script>
   <script type="module" src="/static/js/event/attendance.js"></script>
   <script type="module" src="/static/js/event/agenda-tabs.js"></script>
@@ -809,6 +809,13 @@
       <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
       {{ badges::event_badge(kind = session.kind, extra_styles = Some("mt-1 md:mt-1.5")) -}}
     </div>
+    {% if !session.labels.is_empty() -%}
+      <div class="mt-2 mb-3 flex flex-wrap gap-1.5 min-w-0">
+        {% for label in session.labels -%}
+          {{ badges::label_chip(name = &label.name, color = &label.color) -}}
+        {% endfor -%}
+      </div>
+    {% endif -%}
     {% if let Some(location) = &session.location -%}
       <div class="text-sm/6 text-stone-500 italic mb-3">{{ location }}</div>
     {% endif -%}

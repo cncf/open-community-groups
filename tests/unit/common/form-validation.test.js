@@ -61,6 +61,30 @@ describe("form validation helpers", () => {
     expect(reportCalls).to.equal(1);
   });
 
+  it("keeps custom validity on required fields that manage their own validity", () => {
+    // Render required fields with and without managed validity.
+    document.body.innerHTML = `
+      <form id="managed-form">
+        <input id="managed-field" name="managed" value="   " required data-managed-validity />
+        <input id="plain-field" name="plain" value="Plain" required />
+      </form>
+    `;
+    const form = document.getElementById("managed-form");
+    const managedField = document.getElementById("managed-field");
+    const plainField = document.getElementById("plain-field");
+    form.dispatchEvent(new CustomEvent("htmx:load", { bubbles: true }));
+
+    // Set custom validity messages and edit both fields.
+    managedField.setCustomValidity("Label name is required");
+    plainField.setCustomValidity("Stale message");
+    managedField.dispatchEvent(new Event("change", { bubbles: true }));
+    plainField.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // Only the plain field clears its custom validity.
+    expect(managedField.validationMessage).to.equal("Label name is required");
+    expect(plainField.validationMessage).to.equal("");
+  });
+
   it("validates optional group pretty slugs before submit", () => {
     // Create a slug input with the generated slug metadata.
     const input = document.createElement("input");

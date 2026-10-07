@@ -46,7 +46,6 @@ export const initializeSharedEventPageControls = ({
     cfsStartsAtInput,
     cfsEndsAtInput,
     cfsDescriptionInput,
-    cfsLabelsEditor,
     registrationStartsAtInput,
     registrationEndsAtInput,
     startsAtInput,
@@ -57,7 +56,6 @@ export const initializeSharedEventPageControls = ({
     cfsStartsAtInput,
     cfsEndsAtInput,
     cfsDescriptionInput,
-    cfsLabelsEditor,
     isFieldLocked: isCfsFieldLocked,
   });
 
@@ -123,7 +121,6 @@ export const initializeSharedEventPageControls = ({
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS starts input.
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS ends input.
  * @param {HTMLTextAreaElement|null} config.cfsDescriptionInput CFS description input.
- * @param {HTMLElement|null} config.cfsLabelsEditor CFS labels editor element.
  * @param {(field: HTMLElement|null) => boolean} [config.isFieldLocked]
  * Locked-field lookup.
  * @returns {(enabled: boolean) => void} Shared CFS field updater.
@@ -132,7 +129,6 @@ const createEventPageCfsFieldUpdater = ({
   cfsStartsAtInput,
   cfsEndsAtInput,
   cfsDescriptionInput,
-  cfsLabelsEditor,
   isFieldLocked = () => false,
 }) => {
   const updateField = (field, enabled) => {
@@ -149,10 +145,6 @@ const createEventPageCfsFieldUpdater = ({
     updateField(cfsStartsAtInput, enabled);
     updateField(cfsEndsAtInput, enabled);
     updateField(cfsDescriptionInput, enabled);
-
-    if (cfsLabelsEditor) {
-      cfsLabelsEditor.disabled = !enabled;
-    }
   };
 };
 

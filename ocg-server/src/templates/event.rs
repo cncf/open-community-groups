@@ -11,7 +11,7 @@ use crate::{
         helpers::{self, user_initials},
     },
     types::{
-        event::{EventCfsLabel, EventFull, EventKind, EventSummary, SessionProposal},
+        event::{EventFull, EventKind, EventLabel, EventSummary, SessionProposal},
         inbox::InboxContactContext,
         site::SiteSettings,
     },
@@ -87,7 +87,7 @@ pub(crate) struct CfsModal {
     /// Event summary information.
     pub event: EventSummary,
     /// Labels available for the event.
-    pub labels: Vec<EventCfsLabel>,
+    pub labels: Vec<EventLabel>,
     /// List of session proposals for the current user.
     pub session_proposals: Vec<SessionProposal>,
     /// Authenticated user information.

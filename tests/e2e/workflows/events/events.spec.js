@@ -11,6 +11,7 @@ import {
 import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
 
 import {
+  buildE2eUrl,
   futureDate,
   navigateToPath,
   selectTimezone,
@@ -34,13 +35,15 @@ import {
 } from "../../dashboard/group/events/helpers.js";
 
 import {
+  addSession,
   editTicketType,
   enableAutomaticMeetingCreation,
   expectAutomaticMeetingControls,
   openDetailsSection,
+  openLabelsSection,
   setAutomaticMeetingCapacity,
-  setCfsLabels,
   setEventPeople,
+  setLabels,
   setRegistrationQuestions,
 } from "../../dashboard/group/events/event-form-helpers.js";
 
@@ -228,7 +231,6 @@ test.describe("event management workflows", () => {
       categoryId: "33333333-3333-3333-3333-333333333331",
       cfsDescription: "Initial speaker program details for a temporary event.",
       cfsEndsAt: "2030-09-20T17:00",
-      cfsLabels: ["track / platform"],
       cfsStartsAt: "2030-09-01T09:00",
       description: "Initial full description for a temporary event with rich form coverage.",
       descriptionShort: "Initial temporary event for rich update coverage.",
@@ -243,6 +245,7 @@ test.describe("event management workflows", () => {
         },
       ],
       kindId: "hybrid",
+      labels: ["track / platform"],
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       lumaUrl: "https://luma.com/e2e-rich-event-initial",
       meetupUrl: "https://meetup.com/e2e-rich-event-initial",
@@ -290,7 +293,6 @@ test.describe("event management workflows", () => {
       categoryId: "33333333-3333-3333-3333-333333333331",
       cfsDescription: "Updated speaker program details for a temporary event.",
       cfsEndsAt: "2030-09-24T18:00",
-      cfsLabels: ["track / devex", "track / cloud"],
       cfsStartsAt: "2030-09-03T10:30",
       description: "Updated full description for a temporary event with rich form coverage.",
       descriptionShort: "Updated temporary event for rich update coverage.",
@@ -305,6 +307,7 @@ test.describe("event management workflows", () => {
         },
       ],
       kindId: "hybrid",
+      labels: ["track / cloud", "track / devex"],
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       lumaUrl: "https://luma.com/e2e-rich-event-updated",
       meetupUrl: "https://meetup.com/e2e-rich-event-updated",
@@ -440,7 +443,9 @@ test.describe("event management workflows", () => {
         force: true,
       });
       await fillMarkdownEditor(organizerGroupPage, "cfs_description", values.cfsDescription);
-      await setCfsLabels(organizerGroupPage, values.cfsLabels);
+
+      // Fill the event labels for this values set.
+      await setLabels(organizerGroupPage, values.labels);
     };
 
     try {
@@ -580,9 +585,13 @@ test.describe("event management workflows", () => {
       await expect(organizerGroupPage.locator("#cfs_enabled")).toHaveValue("true");
       await expect(organizerGroupPage.locator("#cfs_starts_at")).toHaveValue(updatedValues.cfsStartsAt);
       await expect(organizerGroupPage.locator("#cfs_ends_at")).toHaveValue(updatedValues.cfsEndsAt);
-      await expect(organizerGroupPage.locator('cfs-labels-editor input[name$="[name]"]')).toHaveCount(
-        updatedValues.cfsLabels.length,
+      await openLabelsSection(organizerGroupPage);
+      const labelNameInputs = organizerGroupPage.locator(
+        'labels-editor input[name^="labels"][name$="[name]"]',
       );
+      await expect(labelNameInputs).toHaveCount(updatedValues.labels.length);
+      await expect(labelNameInputs.nth(0)).toHaveValue(updatedValues.labels[0]);
+      await expect(labelNameInputs.nth(1)).toHaveValue(updatedValues.labels[1]);
       await expect(
         organizerGroupPage.locator('gallery-field[field-name="photos_urls"] input[name="photos_urls[]"]'),
       ).toHaveCount(initialValues.galleryPaths.length + updatedValues.galleryPaths.length);
@@ -616,6 +625,97 @@ test.describe("event management workflows", () => {
       await expect(dashboardContent.locator("tr", { hasText: updatedValues.name })).toHaveCount(0);
     } finally {
       // Remove any remaining temporary rich event.
+      if (eventId) {
+        cleanupEventsByIds([eventId]);
+      }
+    }
+  });
+
+  test("session labels are shown as chips on the public event page", async ({ organizerGroupPage }) => {
+    const eventName = uniqueName("labeled sessions event");
+    const sessionName = uniqueName("labeled public session");
+    let eventId;
+    let notificationIds = [];
+
+    try {
+      // Open the event form from the dashboard list.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+      await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+      await expect(organizerGroupPage.locator("#name")).toBeVisible();
+
+      // Fill the core details and schedule of the temporary event.
+      await organizerGroupPage.locator("#name").fill(eventName);
+      await organizerGroupPage.locator("#kind_id").selectOption("virtual");
+      await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
+      await organizerGroupPage
+        .locator("#description_short")
+        .fill("A dashboard event with labeled sessions from the e2e suite.");
+      await fillMarkdownEditor(
+        organizerGroupPage,
+        "description",
+        "A dashboard event used to check session label chips on the public page.",
+      );
+      await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+      await selectTimezone(organizerGroupPage, "UTC");
+      await organizerGroupPage.locator("#starts_at").fill(futureDate({ days: 71, hour: 10 }));
+      await organizerGroupPage.locator("#ends_at").fill(futureDate({ days: 71, hour: 12 }));
+      await organizerGroupPage
+        .locator("#meeting_join_url")
+        .fill("https://meet.example.com/e2e-labeled-sessions");
+
+      // Add event labels and assign one of them to a session.
+      await setLabels(organizerGroupPage, ["track / community", "track / platform"]);
+      await addSession(organizerGroupPage, {
+        endTime: "11:00",
+        labels: ["track / platform"],
+        name: sessionName,
+        startTime: "10:30",
+      });
+
+      // Create the event and wait for its editor.
+      const addEventButton = organizerGroupPage.locator(
+        "#pending-changes-alert:not(.hidden) #add-event-button",
+      );
+      await expect(addEventButton).toBeVisible();
+      await waitForActionResponse(organizerGroupPage, () => addEventButton.click(), {
+        method: "POST",
+        urlIncludes: "/dashboard/group/events/add",
+        status: 201,
+      });
+      eventId = await waitForEventEditorAfterSave(organizerGroupPage);
+
+      // Publish the event from the editor and assert the group fan-out.
+      const snapshot = snapshotNotifications();
+      await organizerGroupPage.locator("#publish-event-button").click();
+      await waitForEventEditorAfterSave(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          eventId,
+          method: "PUT",
+          urlIncludes: `/dashboard/group/events/${eventId}/publish`,
+        },
+      );
+      notificationIds = expectNewNotifications(snapshot, [
+        {
+          kind: "event-published",
+          templateDataContains: { event: { event_id: eventId } },
+          userIds: ALPHA_GROUP_EVENT_PUBLISHED_RECIPIENT_IDS,
+        },
+      ]);
+
+      // Open the public page and verify the session shows only its own label chip.
+      const publicUrl = await organizerGroupPage.locator("#event-public-page-link").getAttribute("href");
+      await navigateToPath(organizerGroupPage, new URL(publicUrl ?? "", buildE2eUrl("/")).pathname);
+      const agendaSession = organizerGroupPage.locator("li", { hasText: sessionName });
+      await expect(agendaSession).toBeVisible();
+      const sessionChips = agendaSession.locator('[style*="--label-color"]');
+      await expect(sessionChips).toHaveText(["track / platform"]);
+      await expect(sessionChips).toHaveAttribute("style", /--label-color: #FFD866;/);
+    } finally {
+      // Remove publish notifications and the temporary event.
+      deleteNotifications(notificationIds);
       if (eventId) {
         cleanupEventsByIds([eventId]);
       }

@@ -4,14 +4,16 @@ use serde_json::Value;
 use uuid::Uuid;
 
 use crate::{
+    types::event::SessionKind,
     types::payments::{
         EventDiscountType, EventTicketTypeAvailability, TicketTaxBehavior, TicketTaxCalculationMode,
     },
-    validation::MAX_EVENT_COHOSTS,
+    validation::{MAX_ASSIGNED_EVENT_LABELS, MAX_EVENT_COHOSTS},
 };
 
 use super::{
-    CohostsUpdate, DiscountCodeInput, EventInput, TicketPriceWindowInput, TicketTypeInput,
+    CohostsUpdate, DiscountCodeInput, EventInput, EventLabelInput, SessionInput,
+    TicketPriceWindowInput, TicketTypeInput,
 };
 
 #[test]
@@ -58,6 +60,89 @@ cohosts_revision=5"
             group_ids: vec![group_id],
         })
     );
+}
+
+#[test]
+fn event_deserialization_parses_labels_and_session_labels() {
+    // Setup the submitted labels editor and session label selection
+    let label_id = Uuid::new_v4();
+    let new_label_id = Uuid::new_v4();
+    let event: EventInput = serde_qs::from_str(&format!(
+        "category_id=00000000-0000-0000-0000-000000000001&description=d&kind_id=virtual&\
+name=n&timezone=UTC&labels_present=true&\
+labels[0][color]=%23FFD866&labels[0][event_label_id]={label_id}&labels[0][name]=Cloud&\
+labels[1][color]=%23FC9867&labels[1][event_label_id]={new_label_id}&labels[1][is_new]=true&\
+labels[1][name]=Security&\
+sessions[0][kind]=virtual&sessions[0][name]=Keynote&sessions[0][starts_at]=2030-01-01T10:00:00&\
+sessions[0][label_ids][0]={new_label_id}&sessions[0][label_ids_present]=true"
+    ))
+    .unwrap();
+
+    // Check labels and their new-row markers
+    let labels = event.labels.as_ref().unwrap();
+    assert_eq!(event.labels_present, Some(true));
+    assert_eq!(labels.len(), 2);
+    assert_eq!(labels[0].color, "#FFD866");
+    assert_eq!(labels[0].event_label_id, label_id);
+    assert_eq!(labels[0].name, "Cloud");
+    assert!(!labels[0].is_new);
+    assert_eq!(labels[1].event_label_id, new_label_id);
+    assert!(labels[1].is_new);
+
+    // Check the session label selection and its marker
+    let session = &event.sessions.as_ref().unwrap()[0];
+    assert_eq!(session.label_ids, Some(vec![new_label_id]));
+    assert_eq!(session.label_ids_present, Some(true));
+    assert!(event.validate().is_ok());
+}
+
+#[test]
+fn event_deserialization_rejects_labels_without_id() {
+    let result: Result<EventInput, _> = serde_qs::from_str(
+        "category_id=00000000-0000-0000-0000-000000000001&description=d&kind_id=virtual&\
+name=n&timezone=UTC&labels_present=true&labels[0][color]=%23FFD866&labels[0][name]=Cloud",
+    );
+
+    assert!(result.is_err());
+}
+
+#[test]
+fn event_validation_rejects_invalid_label_color() {
+    let event = EventInput {
+        labels: Some(vec![EventLabelInput {
+            color: "#000000".to_string(),
+            ..sample_label("Cloud")
+        }]),
+        labels_present: Some(true),
+        ..sample_event()
+    };
+
+    assert!(event.validate().is_err());
+}
+
+#[test]
+fn event_validation_rejects_too_many_session_labels() {
+    let event = EventInput {
+        sessions: Some(vec![SessionInput {
+            label_ids: Some((0..=MAX_ASSIGNED_EVENT_LABELS).map(|_| Uuid::new_v4()).collect()),
+            label_ids_present: Some(true),
+            ..sample_session()
+        }]),
+        ..sample_event()
+    };
+
+    assert!(event.validate().is_err());
+}
+
+#[test]
+fn event_validation_rejects_whitespace_only_label_name() {
+    let event = EventInput {
+        labels: Some(vec![sample_label("   ")]),
+        labels_present: Some(true),
+        ..sample_event()
+    };
+
+    assert!(event.validate().is_err());
 }
 
 #[test]
@@ -159,10 +244,70 @@ fn to_db_payload_clears_submitted_empty_manual_tax_rate_selection() {
 }
 
 #[test]
+fn to_db_payload_includes_empty_labels_when_markers_are_present() {
+    // Setup an event whose labels and session labels were all cleared
+    let event = EventInput {
+        labels_present: Some(true),
+        sessions: Some(vec![SessionInput {
+            label_ids_present: Some(true),
+            ..sample_session()
+        }]),
+        ..sample_event()
+    };
+
+    // Build the database payload
+    let payload = event.to_db_payload().unwrap();
+
+    // Check empty selections are submitted and markers removed
+    assert_eq!(payload["labels"], serde_json::json!([]));
+    assert_eq!(payload["sessions"][0]["label_ids"], serde_json::json!([]));
+    assert!(payload.get("labels_present").is_none());
+    assert!(payload["sessions"][0].get("label_ids_present").is_none());
+}
+
+#[test]
+fn to_db_payload_includes_labels_and_session_label_ids_when_markers_are_present() {
+    // Setup an event with labels and a session using one of them
+    let label = sample_label("Cloud");
+    let label_id = label.event_label_id;
+    let event = EventInput {
+        labels: Some(vec![EventLabelInput {
+            is_new: true,
+            ..label
+        }]),
+        labels_present: Some(true),
+        sessions: Some(vec![SessionInput {
+            label_ids: Some(vec![label_id]),
+            label_ids_present: Some(true),
+            ..sample_session()
+        }]),
+        ..sample_event()
+    };
+
+    // Build the database payload
+    let payload = event.to_db_payload().unwrap();
+
+    // Check labels and session label IDs are submitted
+    assert_eq!(
+        payload["labels"],
+        serde_json::json!([{
+            "color": "#FFD866",
+            "event_label_id": label_id,
+            "name": "Cloud",
+            "is_new": true
+        }])
+    );
+    assert_eq!(
+        payload["sessions"][0]["label_ids"],
+        serde_json::json!([label_id])
+    );
+    assert_eq!(payload["sessions"][0]["name"], "Keynote");
+}
+
+#[test]
 fn to_db_payload_keeps_optional_section_keys_omitted_when_form_omits_inputs() {
     let payload = sample_event().to_db_payload().unwrap();
 
-    assert_eq!(payload["cfs_labels"], Value::Array(Vec::new()));
     assert_eq!(payload["description"], "Event description");
     assert_eq!(payload["kind_id"], "virtual");
     assert_eq!(payload["name"], "Sample Event");
@@ -171,6 +316,7 @@ fn to_db_payload_keeps_optional_section_keys_omitted_when_form_omits_inputs() {
     assert!(payload.get("external_payment_instructions").is_none());
     assert!(payload.get("external_payment_url").is_none());
     assert!(payload.get("external_payment_window_hours").is_none());
+    assert!(payload.get("labels").is_none());
     assert!(payload.get("registration_questions").is_none());
     assert!(payload.get("ticket_types").is_none());
 }
@@ -192,6 +338,28 @@ fn to_db_payload_keeps_manual_tax_rate_ids() {
     assert!(payload.get("manual_tax_rate_ids_present").is_none());
     assert_eq!(payload["tax_behavior"], "exclusive");
     assert_eq!(payload["tax_calculation_mode"], "manual");
+}
+
+#[test]
+fn to_db_payload_omits_labels_without_markers() {
+    // Setup labels and session labels submitted without their markers
+    let label = sample_label("Cloud");
+    let label_id = label.event_label_id;
+    let event = EventInput {
+        labels: Some(vec![label]),
+        sessions: Some(vec![SessionInput {
+            label_ids: Some(vec![label_id]),
+            ..sample_session()
+        }]),
+        ..sample_event()
+    };
+
+    // Build the database payload
+    let payload = event.to_db_payload().unwrap();
+
+    // Check the database keeps the stored labels
+    assert!(payload.get("labels").is_none());
+    assert!(payload["sessions"][0].get("label_ids").is_none());
 }
 
 #[test]
@@ -477,5 +645,41 @@ fn sample_event() -> EventInput {
         name: "Sample Event".to_string(),
         timezone: "UTC".to_string(),
         ..EventInput::default()
+    }
+}
+
+/// Creates a sample saved label with the given name.
+fn sample_label(name: &str) -> EventLabelInput {
+    EventLabelInput {
+        color: "#FFD866".to_string(),
+        event_label_id: Uuid::new_v4(),
+        name: name.to_string(),
+
+        is_new: false,
+    }
+}
+
+/// Creates a sample session with required fields for testing.
+fn sample_session() -> SessionInput {
+    SessionInput {
+        kind: SessionKind::Virtual,
+        name: "Keynote".to_string(),
+        session_id: None,
+        starts_at: "2030-01-01T10:00:00".parse().unwrap(),
+
+        cfs_submission_id: None,
+        description: None,
+        ends_at: None,
+        label_ids: None,
+        label_ids_present: None,
+        location: None,
+        meeting_hosts: None,
+        meeting_join_instructions: None,
+        meeting_join_url: None,
+        meeting_provider: None,
+        meeting_recording_published: None,
+        meeting_recording_url: None,
+        meeting_requested: None,
+        speakers: None,
     }
 }

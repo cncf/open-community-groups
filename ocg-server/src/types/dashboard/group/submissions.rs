@@ -10,12 +10,12 @@ use crate::types::event::CfsSessionProposal;
 use crate::{
     types::{
         dashboard,
-        event::EventCfsLabel,
+        event::EventLabel,
         pagination::{Pagination, ToRawQuery},
         user::UserSummary,
     },
     validation::{
-        MAX_EVENT_LABELS_PER_EVENT, MAX_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_DESCRIPTION,
+        MAX_ASSIGNED_EVENT_LABELS, MAX_EVENT_LABELS_PER_EVENT, MAX_LEN_DESCRIPTION,
         MAX_PAGINATION_LIMIT, trimmed_non_empty,
     },
 };
@@ -30,7 +30,7 @@ pub(crate) struct CfsSubmission {
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     /// Labels assigned to the submission.
-    pub labels: Vec<EventCfsLabel>,
+    pub labels: Vec<EventLabel>,
     /// Ratings for this submission.
     pub ratings: Vec<CfsSubmissionRating>,
     /// Total number of ratings.
@@ -141,7 +141,7 @@ pub(crate) enum CfsSubmissionsSort {
 pub(crate) struct CfsSubmissionUpdate {
     /// Labels assigned to the submission.
     #[serde(default)]
-    #[garde(length(max = MAX_EVENT_LABELS_PER_SUBMISSION))]
+    #[garde(length(max = MAX_ASSIGNED_EVENT_LABELS))]
     pub label_ids: Vec<Uuid>,
     /// Submission status identifier.
     #[garde(custom(trimmed_non_empty))]

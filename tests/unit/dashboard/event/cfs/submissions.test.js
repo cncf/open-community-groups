@@ -82,7 +82,7 @@ describe("review-submission-modal", () => {
       action_required_message: "Please expand the abstract",
       linked_session_id: "",
       status_id: "not-reviewed",
-      labels: [{ event_cfs_label_id: 4 }],
+      labels: [{ event_label_id: 4 }],
       ratings: [
         {
           reviewer: { user_id: "user-1" },
@@ -112,8 +112,8 @@ describe("review-submission-modal", () => {
     const labelsFilter = document.createElement("div");
     labelsFilter.id = "submissions-label-filter";
     labelsFilter.labels = [
-      { event_cfs_label_id: 7, name: "Backend", color: "blue" },
-      { event_cfs_label_id: " ", name: "Ignored", color: "gray" },
+      { event_label_id: 7, name: "Backend", color: "blue" },
+      { event_label_id: " ", name: "Ignored", color: "gray" },
     ];
     document.body.append(labelsFilter);
 
@@ -131,7 +131,7 @@ describe("review-submission-modal", () => {
     // Verify opens with the current reviewer state and syncs labels from the filter.
     expect(element._isOpen).to.equal(true);
     expect(element.labels).to.deep.equal([
-      { event_cfs_label_id: "7", name: "Backend", color: "blue" },
+      { event_label_id: "7", name: "Backend", color: "blue" },
     ]);
     expect(element._message).to.equal("Please expand the abstract");
     expect(element._ratingComment).to.equal("Looks promising");
@@ -228,7 +228,7 @@ describe("review-submission-modal", () => {
     // Pending changes keep label order stable.
     element.open(
       buildSubmission({
-        labels: [{ event_cfs_label_id: 1 }, { event_cfs_label_id: 2 }],
+        labels: [{ event_label_id: 1 }, { event_label_id: 2 }],
       }),
     );
     await element.updateComplete;
@@ -288,6 +288,7 @@ describe("review-submission-modal", () => {
         cfsSubmissionId: "12",
         submission: {
           cfs_submission_id: "12",
+          label_ids: [],
           session_proposal_id: "99",
           title: "Platform Engineering at Scale",
           speaker_name: "Ada Lovelace",
@@ -317,6 +318,9 @@ describe("review-submission-modal", () => {
     );
     await element.updateComplete;
 
+    // Change the label selection before saving.
+    element._selectedLabelIds = ["4", "9"];
+
     // Read the modal state before the HTMX afterRequest handler runs.
     const form = element.querySelector("#cfs-submission-form");
     expect(form).to.not.equal(null);
@@ -334,6 +338,7 @@ describe("review-submission-modal", () => {
         cfsSubmissionId: "12",
         submission: {
           cfs_submission_id: "12",
+          label_ids: ["4", "9"],
           session_proposal_id: "99",
           title: "Platform Engineering at Scale",
           speaker_name: "Ada Lovelace",
@@ -342,6 +347,27 @@ describe("review-submission-modal", () => {
     ]);
     expect(element._isOpen).to.equal(false);
     expect(element._afterRequestHandler).to.equal(null);
+  });
+
+  it("does not emit approved submission updates when the save fails", async () => {
+    // Render the modal fixture and track approved submission updates.
+    const element = await renderModal();
+    const receivedEvents = [];
+    document.body.addEventListener("event-approved-submissions-updated", (event) => {
+      receivedEvents.push(event.detail);
+    });
+
+    // Open an approved submission and fail the save request.
+    element.open(buildSubmission({ status_id: "approved" }));
+    await element.updateComplete;
+    dispatchHtmxAfterRequest(element.querySelector("#cfs-submission-form"), {
+      status: 500,
+    });
+    await element.updateComplete;
+
+    // Verify nothing was emitted and the modal stays open.
+    expect(receivedEvents).to.deep.equal([]);
+    expect(element._isOpen).to.equal(true);
   });
 
   it("keeps dismiss listener cleanup while closing the modal", async () => {

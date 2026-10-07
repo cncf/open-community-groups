@@ -21,7 +21,7 @@
 #   - Functions under functions/internal/ are SQL-only helpers: the Rust
 #     crates never call them (contract tests excepted).
 #   - Every test under tests/schema/constraints is named after a table created
-#     by a schema migration.
+#     or renamed by a schema migration.
 #
 # Test rules:
 #   - pgTAP schema and function tests run in parallel against one database, so
@@ -79,8 +79,8 @@ done
 # Constraint tests are named after the table whose constraints they exercise
 for file in $(find "$tests_dir/schema/constraints" -name '*.sql' | sort); do
     table=$(basename "$file" .sql)
-    if ! grep -qE "^create table (if not exists )?\"?$table\"? \(" "$schema_dir"/*.sql; then
-        fail "$file is not named after a table created by a schema migration"
+    if ! grep -qE "^(create table (if not exists )?\"?$table\"? \(|alter table \"?[a-z_]+\"? rename to \"?$table\"?;)" "$schema_dir"/*.sql; then
+        fail "$file is not named after a table created or renamed by a schema migration"
     fi
 done
 

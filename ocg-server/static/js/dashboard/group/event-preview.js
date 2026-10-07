@@ -3,6 +3,7 @@ import "/static/js/common/breadcrumb-nav.js";
 import { convertDateTimeLocalToISO } from "/static/js/common/datetime.js";
 import { closestElement, getElementById, markDatasetReady, setElementHidden } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { normalizeLabels } from "/static/js/common/labels.js";
 import { loadMap } from "/static/js/common/location/maplibre.js";
 import {
   bindModalDismissListeners,
@@ -588,15 +589,31 @@ const collectSessionContexts = (sessionsSection) => {
   const kindLabels = new Map(
     sessionKinds.map((kind) => [String(kind?.session_kind_id || ""), toOptionalString(kind?.display_name)]),
   );
+  const labelsById = new Map(
+    normalizeLabels(sessionsSection?.labels).map((label) => [label.event_label_id, label]),
+  );
 
   return sessions.map((session) =>
     compactObject({
       kind_label: firstValue(kindLabels.get(String(session?.kind || "")), session?.kind),
+      labels: collectSessionLabels(session?.label_ids, labelsById),
       name: session?.name,
       speakers: collectPeople(session?.speakers),
     }),
   );
 };
+
+/**
+ * Resolves session label ids into the label names and colors to preview.
+ * @param {unknown} labelIds Session label ids.
+ * @param {Map<string, Object>} labelsById Named labels by id.
+ * @returns {Array<{color: string, name: string}>} Session labels.
+ */
+const collectSessionLabels = (labelIds, labelsById) =>
+  readArray(labelIds)
+    .map((labelId) => labelsById.get(String(labelId)))
+    .filter(Boolean)
+    .map((label) => ({ color: label.color, name: label.name }));
 
 /**
  * Collects people selector data into preview context.

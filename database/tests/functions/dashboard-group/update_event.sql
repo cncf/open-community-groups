@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(56);
+select plan(61);
 
 -- ============================================================================
 -- VARIABLES
@@ -46,6 +46,8 @@ select plan(56);
 \set eventFreeToPaidID '3a390000-0000-0000-0000-000000000023'
 \set eventFreeToPaidPriceWindowID '3a390000-0000-0000-0000-000000000026'
 \set eventFreeToPaidTicketTypeID '3a390000-0000-0000-0000-000000000027'
+\set eventLabelRemovedID '3a390000-0000-0000-0000-0000000000a5'
+\set eventLabelStaleID '3a390000-0000-0000-0000-0000000000a6'
 \set eventManualTaxID '3a390000-0000-0000-0000-000000000041'
 \set eventPaidToFreeID '3a390000-0000-0000-0000-000000000024'
 \set eventPaidToFreePriceWindowID '3a390000-0000-0000-0000-000000000028'
@@ -69,7 +71,13 @@ select plan(56);
 \set label2ID '3a390000-0000-0000-0000-000000000012'
 \set label3ID '3a390000-0000-0000-0000-000000000013'
 \set label4ID '3a390000-0000-0000-0000-000000000014'
+\set label5ID '3a390000-0000-0000-0000-0000000000a1'
+\set labelRemovedID '3a390000-0000-0000-0000-0000000000a2'
+\set labelStaleID '3a390000-0000-0000-0000-0000000000a3'
+\set labelStaleMissingID '3a390000-0000-0000-0000-0000000000a4'
 \set sessionHostsID '3a390000-0000-0000-0000-000000000065'
+\set sessionLabelRemovedID '3a390000-0000-0000-0000-0000000000a7'
+\set sessionLabelRenameID '3a390000-0000-0000-0000-0000000000a8'
 \set sponsorNewID '3a390000-0000-0000-0000-000000000015'
 \set sponsorOrigID '3a390000-0000-0000-0000-000000000016'
 \set user1ID '3a390000-0000-0000-0000-000000000009'
@@ -262,29 +270,47 @@ select fx_event(:'event11ID', :'group1ID', :'category1ID', jsonb_build_object(
     'starts_at', current_timestamp + interval '10 hours'
 ));
 
--- Event used for CFS labels update checks
+-- Event whose labels are kept when the payload omits them
 select fx_event(:'event12ID', :'group1ID', :'category1ID', jsonb_build_object(
     'cfs_description', 'Initial CFS description',
     'cfs_enabled', true,
     'cfs_ends_at', '2030-01-05 00:00:00+00',
     'cfs_starts_at', '2029-12-20 00:00:00+00',
-    'description', 'Event seeded for CFS labels update tests',
+    'description', 'Event seeded for labels update tests',
     'ends_at', '2030-01-15 12:00:00+00',
     'event_kind_id', 'virtual',
     'name', 'Event With Labels',
     'starts_at', '2030-01-15 10:00:00+00'
 ));
 
--- Event used for CFS label upsert checks
+-- Event whose labels are renamed, added and pruned
 select fx_event(:'event18ID', :'group1ID', :'category1ID', jsonb_build_object(
     'cfs_description', 'Initial CFS description',
     'cfs_enabled', true,
     'cfs_ends_at', '2030-01-05 00:00:00+00',
     'cfs_starts_at', '2029-12-20 00:00:00+00',
-    'description', 'Event seeded for CFS labels upsert tests',
+    'description', 'Event seeded for labels upsert tests',
     'ends_at', '2030-01-15 12:00:00+00',
     'event_kind_id', 'virtual',
     'name', 'Event With Labels For Upsert',
+    'starts_at', '2030-01-15 10:00:00+00'
+));
+
+-- Event whose removed label is still referenced by a session
+select fx_event(:'eventLabelRemovedID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Event seeded for removed label tests',
+    'ends_at', '2030-01-15 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'name', 'Event With Removed Label',
+    'starts_at', '2030-01-15 10:00:00+00'
+));
+
+-- Event receiving a stale label identifier
+select fx_event(:'eventLabelStaleID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Event seeded for stale label tests',
+    'ends_at', '2030-01-15 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'name', 'Event With Stale Label',
     'starts_at', '2030-01-15 10:00:00+00'
 ));
 
@@ -300,15 +326,23 @@ select fx_event(:'eventWaitlistWindowID', :'group1ID', :'category1ID', jsonb_bui
     'waitlist_enabled', true
 ));
 
--- CFS labels seeded for update and upsert checks
-insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
+-- Labels kept when the payload omits them
+insert into event_label (event_label_id, event_id, color, name) values
     (:'label1ID', :'event12ID', '#CCFBF1', 'track / backend'),
     (:'label2ID', :'event12ID', '#FEE2E2', 'track / frontend');
 
--- Existing labels owned by a different event
-insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
+-- Labels renamed, kept and pruned by the payload
+insert into event_label (event_label_id, event_id, color, name) values
     (:'label3ID', :'event18ID', '#CCFBF1', 'track / backend'),
     (:'label4ID', :'event18ID', '#FEE2E2', 'track / frontend');
+
+-- Label removed while a session still references it
+insert into event_label (event_label_id, event_id, color, name)
+values (:'labelRemovedID', :'eventLabelRemovedID', '#CCFBF1', 'track / removed');
+
+-- Label kept when a stale label identifier is rejected
+insert into event_label (event_label_id, event_id, color, name)
+values (:'labelStaleID', :'eventLabelStaleID', '#CCFBF1', 'track / stale');
 
 -- Attendee used by reminder evaluation checks
 insert into event_attendee (event_id, user_id)
@@ -405,6 +439,22 @@ insert into session (
     'zoom',
     true
 );
+
+-- Session linked to the label renamed by the payload
+insert into session (session_id, event_id, name, session_kind_id, starts_at)
+values (:'sessionLabelRenameID', :'event18ID', 'Renamed Label Session', 'virtual', '2030-01-15 10:00:00+00');
+
+-- Session linked to the label removed by the rejected payload
+insert into session (session_id, event_id, name, session_kind_id, starts_at)
+values (:'sessionLabelRemovedID', :'eventLabelRemovedID', 'Removed Label Session', 'virtual', '2030-01-15 10:00:00+00');
+
+-- Link to the label renamed by the payload
+insert into session_label (event_label_id, session_id)
+values (:'label3ID', :'sessionLabelRenameID');
+
+-- Link to the label removed by the rejected payload
+insert into session_label (event_label_id, session_id)
+values (:'labelRemovedID', :'sessionLabelRemovedID');
 
 -- Paid Stripe-shaped event on the non-external group used to prove leftover URLs clear
 select fx_event(:'eventExternalClearID', :'group1ID', :'category1ID', jsonb_build_object(
@@ -644,7 +694,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels' - 'ticket_types'
+        )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'ticket_types'
     )),
     '{
         "attendee_count": 0,
@@ -653,6 +703,7 @@ select is(
         "description": "Updated description",
         "hosts": [],
         "kind": "virtual",
+        "labels": [],
         "logo_url": "https://example.com/logo.png",
         "name": "Updated Event Name",
         "published": false,
@@ -1235,7 +1286,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels' - 'ticket_types'
+        )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'ticket_types'
     )),
     '{
         "attendee_count": 0,
@@ -1251,6 +1302,7 @@ select is(
             {"name": "Speaker One", "user_id": "3a390000-0000-0000-0000-000000000018", "username": "speaker1-update-event", "featured": false}
         ],
         "kind": "hybrid",
+        "labels": [],
         "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
         "meeting_in_sync": false,
         "meeting_requested": false,
@@ -1408,113 +1460,217 @@ select is(
     'Should mark the unchanged session out of sync after the host change'
 );
 
--- Should clear CFS labels when payload omits cfs_labels
+-- Should keep labels when the payload omits labels
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a390000-0000-0000-0000-000000000010'::uuid,
-        '3a390000-0000-0000-0000-000000000008'::uuid,
-        '{
-            "name": "Event With Labels",
-            "description": "Event seeded for CFS labels update tests",
-            "timezone": "UTC",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "cfs_description": "Initial CFS description",
-            "cfs_enabled": true,
-            "cfs_starts_at": "2029-12-20T00:00:00",
-            "cfs_ends_at": "2030-01-05T00:00:00",
-            "starts_at": "2030-01-15T10:00:00",
-            "ends_at": "2030-01-15T12:00:00"
-        }'::jsonb
-    )$$,
-    'Should clear CFS labels when payload omits cfs_labels'
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event12ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'cfs_description', 'Initial CFS description',
+            'cfs_enabled', true,
+            'cfs_ends_at', '2030-01-05T00:00:00',
+            'cfs_starts_at', '2029-12-20T00:00:00',
+            'description', 'Event seeded for labels update tests',
+            'ends_at', '2030-01-15T12:00:00',
+            'kind_id', 'virtual',
+            'name', 'Event With Labels',
+            'starts_at', '2030-01-15T10:00:00',
+            'timezone', 'UTC'
+        )
+    ),
+    'Should keep labels when the payload omits labels'
 );
-
--- Should delete all CFS labels when payload omits cfs_labels
-select is(
-    (select count(*) from event_cfs_label where event_id = :'event12ID'::uuid),
-    0::bigint,
-    'Should delete all CFS labels when payload omits cfs_labels'
-);
-
--- Should update CFS labels for an event
-select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a390000-0000-0000-0000-000000000010'::uuid,
-        '3a390000-0000-0000-0000-000000000009'::uuid,
-        '{
-            "name": "Event With Labels For Upsert",
-            "description": "Event seeded for CFS labels upsert tests",
-            "timezone": "UTC",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "cfs_description": "Updated CFS description",
-            "cfs_enabled": true,
-            "cfs_starts_at": "2029-12-22T00:00:00",
-            "cfs_ends_at": "2030-01-07T00:00:00",
-            "starts_at": "2030-01-15T10:00:00",
-            "ends_at": "2030-01-15T12:00:00",
-            "cfs_labels": [
-                {
-                    "event_cfs_label_id": "3a390000-0000-0000-0000-000000000013",
-                    "name": "track / ai + ml",
-                    "color": "#DBEAFE"
-                },
-                {
-                    "name": "track / web",
-                    "color": "#FEE2E2"
-                }
-            ]
-        }'::jsonb
-    )$$,
-    'Should update CFS labels for an event'
-);
-
--- Should upsert and prune CFS labels in event_cfs_label
-select is(
-    (
-        select jsonb_agg(
-            jsonb_build_object(
-                'color', color,
-                'name', name
-            )
+select results_eq(
+    format(
+        $$
+            select event_label_id, name, color
+            from event_label
+            where event_id = %L::uuid
             order by name
-        )
-        from event_cfs_label
-        where event_id = :'event18ID'::uuid
+        $$,
+        :'event12ID'
     ),
-    '[
-        {"color": "#DBEAFE", "name": "track / ai + ml"},
-        {"color": "#FEE2E2", "name": "track / web"}
-    ]'::jsonb,
-    'Should upsert and prune CFS labels in event_cfs_label'
+    format(
+        $$values (%L::uuid, %L::text, %L::text), (%L::uuid, %L::text, %L::text)$$,
+        :'label1ID', 'track / backend', '#CCFBF1',
+        :'label2ID', 'track / frontend', '#FEE2E2'
+    ),
+    'Should leave labels untouched when the payload omits labels'
 );
 
--- Should return updated CFS labels in event payload
+-- Should keep session links when renaming labels
+select lives_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event18ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'cfs_description', 'Updated CFS description',
+            'cfs_enabled', true,
+            'cfs_ends_at', '2030-01-07T00:00:00',
+            'cfs_starts_at', '2029-12-22T00:00:00',
+            'description', 'Event seeded for labels upsert tests',
+            'ends_at', '2030-01-15T12:00:00',
+            'kind_id', 'virtual',
+            'labels', jsonb_build_array(
+                jsonb_build_object(
+                    'color', '#DBEAFE',
+                    'event_label_id', :'label3ID',
+                    'is_new', false,
+                    'name', 'track / ai + ml'
+                ),
+                jsonb_build_object(
+                    'color', '#FEE2E2',
+                    'event_label_id', :'label5ID',
+                    'is_new', true,
+                    'name', 'track / web'
+                )
+            ),
+            'name', 'Event With Labels For Upsert',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'kind', 'virtual',
+                    'name', 'Renamed Label Session',
+                    'session_id', :'sessionLabelRenameID',
+                    'starts_at', '2030-01-15T10:00:00'
+                )
+            ),
+            'starts_at', '2030-01-15T10:00:00',
+            'timezone', 'UTC'
+        )
+    ),
+    'Should keep session links when renaming labels'
+);
+select results_eq(
+    format(
+        $$
+            select event_label_id, name, color
+            from event_label
+            where event_id = %L::uuid
+            order by name
+        $$,
+        :'event18ID'
+    ),
+    format(
+        $$values (%L::uuid, %L::text, %L::text), (%L::uuid, %L::text, %L::text)$$,
+        :'label3ID', 'track / ai + ml', '#DBEAFE',
+        :'label5ID', 'track / web', '#FEE2E2'
+    ),
+    'Should rename, add and prune labels by identifier'
+);
+select results_eq(
+    format(
+        $$select event_label_id from session_label where session_id = %L::uuid$$,
+        :'sessionLabelRenameID'
+    ),
+    format($$values (%L::uuid)$$, :'label3ID'),
+    'Should keep sessions linked to renamed labels'
+);
+select is(
+    get_event_full(
+        :'community1ID'::uuid,
+        :'group1ID'::uuid,
+        :'event18ID'::uuid
+    )::jsonb->'labels',
+    jsonb_build_array(
+        jsonb_build_object(
+            'color', '#DBEAFE',
+            'event_label_id', :'label3ID',
+            'name', 'track / ai + ml'
+        ),
+        jsonb_build_object(
+            'color', '#FEE2E2',
+            'event_label_id', :'label5ID',
+            'name', 'track / web'
+        )
+    ),
+    'Should return updated labels in the event payload'
+);
+
+-- Should reject a stale label identifier
+select throws_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'eventLabelStaleID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Event seeded for stale label tests',
+            'ends_at', '2030-01-15T12:00:00',
+            'kind_id', 'virtual',
+            'labels', jsonb_build_array(
+                jsonb_build_object(
+                    'color', '#CCFBF1',
+                    'event_label_id', :'labelStaleMissingID',
+                    'is_new', false,
+                    'name', 'track / stale'
+                )
+            ),
+            'name', 'Event With Stale Label',
+            'starts_at', '2030-01-15T10:00:00',
+            'timezone', 'UTC'
+        )
+    ),
+    'OCG01',
+    'event label not found for event',
+    'Should reject a stale label identifier'
+);
+select results_eq(
+    format(
+        $$select event_label_id, name from event_label where event_id = %L::uuid$$,
+        :'eventLabelStaleID'
+    ),
+    format($$values (%L::uuid, %L::text)$$, :'labelStaleID', 'track / stale'),
+    'Should keep labels when rejecting a stale label identifier'
+);
+
+-- Should reject removing a label still referenced by a session
+select throws_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'eventLabelRemovedID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated removed label event',
+            'ends_at', '2030-01-15T12:00:00',
+            'kind_id', 'virtual',
+            'labels', '[]'::jsonb,
+            'name', 'Event With Removed Label Updated',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'kind', 'virtual',
+                    'label_ids', jsonb_build_array(:'labelRemovedID'),
+                    'name', 'Removed Label Session',
+                    'session_id', :'sessionLabelRemovedID',
+                    'starts_at', '2030-01-15T10:00:00'
+                )
+            ),
+            'starts_at', '2030-01-15T10:00:00',
+            'timezone', 'UTC'
+        )
+    ),
+    'OCG01',
+    'invalid event labels',
+    'Should reject removing a label still referenced by a session'
+);
 select is(
     (
-        select jsonb_agg(
-            jsonb_build_object(
-                'color', label->>'color',
-                'name', label->>'name'
-            )
-            order by label->>'name'
+        select jsonb_build_object(
+            'event_name', (select name from event where event_id = :'eventLabelRemovedID'::uuid),
+            'labels', (select count(*)::int from event_label where event_label_id = :'labelRemovedID'::uuid),
+            'session_labels', (select count(*)::int from session_label where session_id = :'sessionLabelRemovedID'::uuid)
         )
-        from jsonb_array_elements(
-            get_event_full(
-                :'community1ID'::uuid,
-                :'group1ID'::uuid,
-                :'event18ID'::uuid
-            )::jsonb->'cfs_labels'
-        ) as label
     ),
-    '[
-        {"color": "#DBEAFE", "name": "track / ai + ml"},
-        {"color": "#FEE2E2", "name": "track / web"}
-    ]'::jsonb,
-    'Should return updated CFS labels in event payload'
+    jsonb_build_object(
+        'event_name', 'Event With Removed Label',
+        'labels', 1,
+        'session_labels', 1
+    ),
+    'Should leave the event unchanged when a removed label is still referenced'
 );
 
 -- Should throw error when group_id does not match

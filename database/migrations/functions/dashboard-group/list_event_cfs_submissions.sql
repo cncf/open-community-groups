@@ -49,12 +49,12 @@ returns json as $$
                 or cs.cfs_submission_id in (
                     select csl.cfs_submission_id
                     from cfs_submission_label csl
-                    where csl.event_cfs_label_id in (
+                    where csl.event_label_id in (
                         select unnest(selected_label_ids)
                         from label_filter
                     )
                     group by csl.cfs_submission_id
-                    having count(distinct csl.event_cfs_label_id) = (select labels_total from label_filter)
+                    having count(distinct csl.event_label_id) = (select labels_total from label_filter)
                 )
             )
         ),
@@ -136,15 +136,12 @@ returns json as $$
                 coalesce(rs.ratings_count, 0) as ratings_count,
                 fs.status_id,
                 css.display_name as status_name,
-                (
-                    select coalesce(json_agg(json_build_object(
-                        'color', ecl.color,
-                        'event_cfs_label_id', ecl.event_cfs_label_id,
-                        'name', ecl.name
-                    ) order by ecl.name asc, ecl.event_cfs_label_id asc), '[]'::json)
-                    from cfs_submission_label csl
-                    join event_cfs_label ecl on ecl.event_cfs_label_id = csl.event_cfs_label_id
-                    where csl.cfs_submission_id = fs.cfs_submission_id
+                event_labels_json(
+                    array(
+                        select csl.event_label_id
+                        from cfs_submission_label csl
+                        where csl.cfs_submission_id = fs.cfs_submission_id
+                    )
                 ) as labels,
                 (
                     select coalesce(json_agg(json_strip_nulls(json_build_object(

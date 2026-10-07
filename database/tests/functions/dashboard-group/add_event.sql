@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(52);
+select plan(56);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,12 @@ select plan(52);
 \set groupExternalNamelessID '3a020000-0000-0000-0000-0000000000b1'
 \set groupID '3a020000-0000-0000-0000-000000000002'
 \set invalidUserID '3a020000-0000-0000-0000-000000009999'
+\set labelAiID '3a020000-0000-0000-0000-000000000701'
+\set labelDuplicate1ID '3a020000-0000-0000-0000-000000000702'
+\set labelDuplicate2ID '3a020000-0000-0000-0000-000000000703'
+\set labelFailedID '3a020000-0000-0000-0000-000000000704'
+\set labelMissingID '3a020000-0000-0000-0000-000000000705'
+\set labelWebID '3a020000-0000-0000-0000-000000000706'
 \set sponsor1ID '3a020000-0000-0000-0000-000000000061'
 \set sponsor2ID '3a020000-0000-0000-0000-000000000062'
 \set user1ID '3a020000-0000-0000-0000-000000000020'
@@ -160,7 +166,7 @@ select ok(
                 :'groupID'::uuid,
                 '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
             )
-        )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels' - 'ticket_types'
+        )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'ticket_types'
     )) = '{
         "attendee_count": 0,
         "canceled": false,
@@ -174,6 +180,7 @@ select ok(
         "hosts": [],
         "speakers": [],
         "kind": "in-person",
+        "labels": [],
         "logo_url": "https://example.com/logo.png",
         "name": "Kubernetes Fundamentals Workshop",
         "published": false,
@@ -367,7 +374,7 @@ select ok(
         :'communityID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
-    )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'cfs_labels' - 'ticket_types') = '{
+    )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'ticket_types') = '{
         "attendee_count": 0,
         "canceled": false,
         "category_name": "Conference",
@@ -381,6 +388,7 @@ select ok(
             {"name": "Speaker One", "user_id": "3a020000-0000-0000-0000-000000000022", "username": "speaker1", "featured": false}
         ],
         "kind": "hybrid",
+        "labels": [],
         "name": "CloudNativeCon Seattle 2025",
         "published": false,
         "timezone": "America/Los_Angeles",
@@ -472,97 +480,207 @@ select ok(
     'Sessions contain expected rows (ignoring session_id)'
 );
 
--- Should create event with CFS labels
-with cfs_labels_event as (
+-- Should create labels and link sessions to labels from the same payload
+with labels_event as (
     select add_event(
         null::uuid,
         :'groupID'::uuid,
-        '{
-            "name": "CloudNativeCon Labels Event",
-            "description": "Event with labels for CFS",
-            "timezone": "UTC",
-            "category_id": "3a020000-0000-0000-0000-000000000011",
-            "kind_id": "virtual",
-            "cfs_description": "Submit your talk",
-            "cfs_enabled": true,
-            "cfs_ends_at": "2030-01-05T00:00:00",
-            "cfs_starts_at": "2029-12-20T00:00:00",
-            "starts_at": "2030-01-10T10:00:00",
-            "ends_at": "2030-01-10T12:00:00",
-            "cfs_labels": [
-                {"name": "track / web", "color": "#FEE2E2"},
-                {"name": "track / ai + ml", "color": "#DBEAFE"}
-            ]
-        }'::jsonb
+        jsonb_build_object(
+            'category_id', :'eventCategoryID',
+            'description', 'Event with labels',
+            'ends_at', '2030-01-10T12:00:00',
+            'kind_id', 'virtual',
+            'labels', jsonb_build_array(
+                jsonb_build_object(
+                    'color', '#FEE2E2',
+                    'event_label_id', :'labelWebID',
+                    'is_new', true,
+                    'name', 'track / web'
+                ),
+                jsonb_build_object(
+                    'color', '#DBEAFE',
+                    'event_label_id', :'labelAiID',
+                    'is_new', true,
+                    'name', 'track / ai + ml'
+                )
+            ),
+            'name', 'CloudNativeCon Labels Event',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'kind', 'virtual',
+                    'label_ids', jsonb_build_array(:'labelWebID'),
+                    'name', 'Labeled Session',
+                    'starts_at', '2030-01-10T10:00:00'
+                )
+            ),
+            'starts_at', '2030-01-10T10:00:00',
+            'timezone', 'UTC'
+        )
     ) as event_id
 )
-select event_id as "eventWithCfsLabelsID" from cfs_labels_event \gset
+select event_id as "eventWithLabelsID" from labels_event \gset
 
--- Should persist CFS labels in the event_cfs_label table
-select is(
-    (
-        select jsonb_agg(
-            jsonb_build_object(
-                'color', color,
-                'name', name
-            )
+-- Should persist labels with the supplied identifiers
+select results_eq(
+    format(
+        $$
+            select event_label_id, name, color
+            from event_label
+            where event_id = %L::uuid
             order by name
-        )
-        from event_cfs_label
-        where event_id = :'eventWithCfsLabelsID'::uuid
+        $$,
+        :'eventWithLabelsID'
     ),
-    '[
-        {"color": "#DBEAFE", "name": "track / ai + ml"},
-        {"color": "#FEE2E2", "name": "track / web"}
-    ]'::jsonb,
-    'Should persist CFS labels in event_cfs_label'
+    format(
+        $$values (%L::uuid, %L::text, %L::text), (%L::uuid, %L::text, %L::text)$$,
+        :'labelAiID', 'track / ai + ml', '#DBEAFE',
+        :'labelWebID', 'track / web', '#FEE2E2'
+    ),
+    'Should persist labels with the supplied identifiers'
 );
 
--- Should return created CFS labels in event payload
+-- Should link sessions to labels created in the same payload
+select results_eq(
+    format(
+        $$
+            select sl.event_label_id
+            from session_label sl
+            join session s on s.session_id = sl.session_id
+            where s.event_id = %L::uuid
+        $$,
+        :'eventWithLabelsID'
+    ),
+    format($$values (%L::uuid)$$, :'labelWebID'),
+    'Should link sessions to labels created in the same payload'
+);
+
+-- Should return created labels in the event payload
+select is(
+    get_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventWithLabelsID'::uuid
+    )::jsonb->'labels',
+    jsonb_build_array(
+        jsonb_build_object(
+            'color', '#DBEAFE',
+            'event_label_id', :'labelAiID',
+            'name', 'track / ai + ml'
+        ),
+        jsonb_build_object(
+            'color', '#FEE2E2',
+            'event_label_id', :'labelWebID',
+            'name', 'track / web'
+        )
+    ),
+    'Should return created labels in the event payload'
+);
+
+-- Should create no labels when the labels key is absent
+with unlabeled_event as (
+    select add_event(
+        null::uuid,
+        :'groupID'::uuid,
+        jsonb_build_object(
+            'category_id', :'eventCategoryID',
+            'description', 'Event without labels',
+            'kind_id', 'virtual',
+            'name', 'CloudNativeCon Unlabeled Event',
+            'timezone', 'UTC'
+        )
+    ) as event_id
+)
+select event_id as "eventWithoutLabelsID" from unlabeled_event \gset
+
+select is(
+    (select count(*)::int from event_label where event_id = :'eventWithoutLabelsID'::uuid),
+    0,
+    'Should create no labels when the labels key is absent'
+);
+
+-- Should leave nothing behind when a labeled event fails to be created
+select count(*)::int as "auditCountBeforeFailedLabels" from audit_log \gset
+
+select throws_ok(
+    format(
+        $$select add_event(null::uuid, %L::uuid, %L::jsonb)$$,
+        :'groupID',
+        jsonb_build_object(
+            'category_id', :'eventCategoryID',
+            'description', 'Event whose session uses an unknown label',
+            'kind_id', 'virtual',
+            'labels', jsonb_build_array(
+                jsonb_build_object(
+                    'color', '#DBEAFE',
+                    'event_label_id', :'labelFailedID',
+                    'is_new', true,
+                    'name', 'track / failed'
+                )
+            ),
+            'name', 'CloudNativeCon Failed Labels Event',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'kind', 'virtual',
+                    'label_ids', jsonb_build_array(:'labelMissingID'),
+                    'name', 'Failed Labeled Session',
+                    'starts_at', '2030-01-10T10:00:00'
+                )
+            ),
+            'timezone', 'UTC'
+        )
+    ),
+    'OCG01',
+    'invalid event labels',
+    'Should reject sessions using labels missing from the event'
+);
 select is(
     (
-        select jsonb_agg(
-            jsonb_build_object(
-                'color', label->>'color',
-                'name', label->>'name'
-            )
-            order by label->>'name'
+        select jsonb_build_object(
+            'audit_rows', (select count(*)::int from audit_log),
+            'events', (select count(*)::int from event where name = 'CloudNativeCon Failed Labels Event'),
+            'labels', (select count(*)::int from event_label where event_label_id = :'labelFailedID'::uuid),
+            'sessions', (select count(*)::int from session where name = 'Failed Labeled Session')
         )
-        from jsonb_array_elements(
-            get_event_full(
-                :'communityID'::uuid,
-                :'groupID'::uuid,
-                :'eventWithCfsLabelsID'::uuid
-            )::jsonb->'cfs_labels'
-        ) as label
     ),
-    '[
-        {"color": "#DBEAFE", "name": "track / ai + ml"},
-        {"color": "#FEE2E2", "name": "track / web"}
-    ]'::jsonb,
-    'Should return created CFS labels in event payload'
+    jsonb_build_object(
+        'audit_rows', :auditCountBeforeFailedLabels,
+        'events', 0,
+        'labels', 0,
+        'sessions', 0
+    ),
+    'Should leave nothing behind when a labeled event fails to be created'
 );
 
--- Should throw error when CFS labels contain duplicate names
+-- Should throw error when labels contain duplicate names
 select throws_ok(
-    $$select add_event(
-        null::uuid,
-        '3a020000-0000-0000-0000-000000000002'::uuid,
-        '{
-            "name": "CloudNativeCon Duplicate Labels Event",
-            "description": "Event with duplicate CFS labels",
-            "timezone": "UTC",
-            "category_id": "3a020000-0000-0000-0000-000000000011",
-            "kind_id": "virtual",
-            "cfs_labels": [
-                {"name": "track / web", "color": "#FEE2E2"},
-                {"name": "track / web", "color": "#DBEAFE"}
-            ]
-        }'::jsonb
-    )$$,
+    format(
+        $$select add_event(null::uuid, %L::uuid, %L::jsonb)$$,
+        :'groupID',
+        jsonb_build_object(
+            'category_id', :'eventCategoryID',
+            'description', 'Event with duplicate labels',
+            'kind_id', 'virtual',
+            'labels', jsonb_build_array(
+                jsonb_build_object(
+                    'color', '#FEE2E2',
+                    'event_label_id', :'labelDuplicate1ID',
+                    'is_new', true,
+                    'name', 'track / web'
+                ),
+                jsonb_build_object(
+                    'color', '#DBEAFE',
+                    'event_label_id', :'labelDuplicate2ID',
+                    'is_new', true,
+                    'name', 'track / web'
+                )
+            ),
+            'name', 'CloudNativeCon Duplicate Labels Event',
+            'timezone', 'UTC'
+        )
+    ),
     'OCG01',
-    'duplicate cfs label names',
-    'Should throw error when CFS labels contain duplicate names'
+    'duplicate label names',
+    'Should throw error when labels contain duplicate names'
 );
 
 -- Should set meeting flags consistently for events and sessions when requested

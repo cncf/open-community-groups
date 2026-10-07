@@ -27,10 +27,10 @@ import {
   isKnownReviewTab,
   isLinkedToSession,
   isStatusAllowed,
-  normalizeLabels,
   parseReviewAttributeList,
 } from "/static/js/dashboard/event/cfs/review-utils.js";
-import "/static/js/common/cfs-label-selector.js";
+import { normalizeLabels } from "/static/js/common/labels.js";
+import "/static/js/common/label-selector.js";
 import "/static/js/common/media/logo-image.js";
 
 const APPROVED_SUBMISSIONS_EVENT = "event-approved-submissions-updated";
@@ -275,7 +275,7 @@ export class ReviewSubmissionModal extends LitWrapper {
       new CustomEvent(APPROVED_SUBMISSIONS_EVENT, {
         bubbles: true,
         composed: true,
-        detail: buildApprovedSubmissionEventDetail(submission, this._statusId),
+        detail: buildApprovedSubmissionEventDetail(submission, this._statusId, this._selectedLabelIds),
       }),
     );
   }
@@ -302,7 +302,7 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
-   * Handles label selection changes from cfs-label-selector.
+   * Handles label selection changes from label-selector.
    * @param {Event} event
    */
   _onLabelsChange(event) {

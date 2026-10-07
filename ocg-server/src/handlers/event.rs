@@ -43,9 +43,7 @@ use crate::{
         inbox::InboxMessageInput,
         payments::{CheckoutInput, EventTicketType, PreparedEventCheckout},
     },
-    validation::{
-        MAX_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_DESCRIPTION_SHORT, trimmed_non_empty_opt,
-    },
+    validation::{MAX_ASSIGNED_EVENT_LABELS, MAX_LEN_DESCRIPTION_SHORT, trimmed_non_empty_opt},
 };
 
 use super::{error::HandlerError, extractors::CommunityId};
@@ -122,7 +120,7 @@ pub(crate) async fn cfs_modal(
     // Get event details, labels and user's session proposals
     let (event, labels, session_proposals) = tokio::try_join!(
         db.get_event_summary_by_id(community_id, event_id),
-        db.list_event_cfs_labels(event_id),
+        db.list_event_labels(event_id),
         async {
             if let Some(user_id) = user_id {
                 db.list_user_session_proposals_for_cfs_event(user_id, event_id).await
@@ -419,7 +417,7 @@ pub(crate) async fn submit_cfs_submission(
     // Prepare template
     let (event, labels, session_proposals) = tokio::try_join!(
         db.get_event_summary_by_id(community_id, event_id),
-        db.list_event_cfs_labels(event_id),
+        db.list_event_labels(event_id),
         db.list_user_session_proposals_for_cfs_event(user_id, event_id),
     )?;
     let template = CfsModal {
@@ -459,7 +457,7 @@ pub(crate) async fn track_view(
 pub(crate) struct CfsSubmissionInput {
     /// Labels selected by the submitter for this proposal.
     #[serde(default)]
-    #[garde(length(max = MAX_EVENT_LABELS_PER_SUBMISSION))]
+    #[garde(length(max = MAX_ASSIGNED_EVENT_LABELS))]
     label_ids: Vec<Uuid>,
     /// Session proposal being submitted to the event CFS.
     #[garde(skip)]

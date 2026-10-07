@@ -22,6 +22,8 @@ class SessionFormModal extends LitWrapper {
    * Component properties definition.
    * @property {Array} sessionKinds - Available session kinds.
    * @property {Array} approvedSubmissions - Approved CFS submissions.
+   * @property {Array} labels - Named event labels available for sessions.
+   * @property {number} labelMaxSelected - Max labels assigned to one session.
    * @property {Array} usedSubmissionIds - Submission ids used by other sessions.
    * @property {Object} meetingMaxParticipants - Limits per meeting provider.
    * @property {boolean} meetingsEnabled - Whether meetings can be configured.
@@ -38,6 +40,8 @@ class SessionFormModal extends LitWrapper {
   static properties = {
     sessionKinds: { type: Array },
     approvedSubmissions: { type: Array },
+    labels: { type: Array },
+    labelMaxSelected: { type: Number },
     usedSubmissionIds: { type: Array },
     meetingMaxParticipants: { type: Object },
     meetingsEnabled: { type: Boolean },
@@ -56,6 +60,8 @@ class SessionFormModal extends LitWrapper {
     super();
     this.sessionKinds = [];
     this.approvedSubmissions = [];
+    this.labels = [];
+    this.labelMaxSelected = 0;
     this.usedSubmissionIds = [];
     this.meetingMaxParticipants = {};
     this.meetingsEnabled = false;
@@ -252,6 +258,8 @@ class SessionFormModal extends LitWrapper {
                 .index=${0}
                 .sessionKinds=${this.sessionKinds}
                 .approvedSubmissions=${this.approvedSubmissions}
+                .labels=${this.labels}
+                .labelMaxSelected=${this.labelMaxSelected}
                 .usedSubmissionIds=${currentUsedIds}
                 .meetingMaxParticipants=${this.meetingMaxParticipants}
                 .meetingsEnabled=${this.meetingsEnabled}

@@ -198,10 +198,10 @@ values (
 );
 
 -- ============================================================================
--- EVENT CFS LABELS
+-- EVENT LABELS
 -- ============================================================================
 
-insert into event_cfs_label (event_cfs_label_id, event_id, name, color)
+insert into event_label (event_label_id, event_id, name, color)
 values (
     '99999999-9999-9999-9999-999999999701',
     '55555555-5555-5555-5555-555555555519',
@@ -364,7 +364,7 @@ insert into cfs_submission (
     now() - interval '5 hours'
 );
 
-insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id)
+insert into cfs_submission_label (cfs_submission_id, event_label_id)
 values (
     '99999999-9999-9999-9999-999999999911',
     '99999999-9999-9999-9999-999999999701'

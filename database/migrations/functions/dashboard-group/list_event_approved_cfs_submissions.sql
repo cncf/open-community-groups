@@ -5,6 +5,13 @@ returns json as $$
         json_agg(
             json_build_object(
                 'cfs_submission_id', cs.cfs_submission_id,
+                'label_ids', array(
+                    select csl.event_label_id
+                    from cfs_submission_label csl
+                    join event_label el on el.event_label_id = csl.event_label_id
+                    where csl.cfs_submission_id = cs.cfs_submission_id
+                    order by el.name asc, el.event_label_id asc
+                ),
                 'session_proposal_id', sp.session_proposal_id,
                 'title', sp.title,
 

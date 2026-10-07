@@ -122,8 +122,8 @@ select fx_event(:'eventClosedID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'starts_at', current_timestamp + interval '10 days'
 ));
 
--- Event CFS labels
-insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
+-- Event labels
+insert into event_label (event_label_id, event_id, name, color) values
     (:'label1ID', :'eventID', 'track / backend', '#DBEAFE'),
     (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2'),
     (:'labelInvalidID', :'eventClosedID', 'track / closed-event', '#CCFBF1');
@@ -284,7 +284,7 @@ select throws_ok(
         :'labelInvalidID'
     ),
     'OCG01',
-    'invalid event CFS labels',
+    'invalid event labels',
     'Should reject labels that do not belong to the event'
 );
 

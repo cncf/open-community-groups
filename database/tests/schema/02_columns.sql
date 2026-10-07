@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(92);
+select plan(93);
 
 -- ============================================================================
 -- TESTS
@@ -147,7 +147,7 @@ select columns_are('cfs_submission', array[
 select columns_are('cfs_submission_label', array[
     'cfs_submission_id',
     'created_at',
-    'event_cfs_label_id'
+    'event_label_id'
 ]);
 
 -- Test: cfs_submission_rating columns should match expected
@@ -479,6 +479,15 @@ select columns_are('event_kind', array[
     'display_name'
 ]);
 
+-- Test: event_label columns should match expected
+select columns_are('event_label', array[
+    'color',
+    'created_at',
+    'event_id',
+    'event_label_id',
+    'name'
+]);
+
 -- Test: event_organizer columns should match expected
 select columns_are('event_organizer', array[
     'event_id',
@@ -636,15 +645,6 @@ select columns_are('event_ticket_type', array[
     'updated_at',
 
     'description'
-]);
-
--- Test: event_cfs_label columns should match expected
-select columns_are('event_cfs_label', array[
-    'color',
-    'created_at',
-    'event_id',
-    'event_cfs_label_id',
-    'name'
 ]);
 
 -- Test: event_speaker columns should match expected
@@ -931,6 +931,13 @@ select is(
 select columns_are('session_kind', array[
     'session_kind_id',
     'display_name'
+]);
+
+-- Test: session_label columns should match expected
+select columns_are('session_label', array[
+    'created_at',
+    'event_label_id',
+    'session_id'
 ]);
 
 -- Test: session_proposal columns should match expected

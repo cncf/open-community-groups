@@ -88,13 +88,17 @@ begin
     -- Validate add-specific event and session date rules
     perform validate_add_event_dates(p_event);
 
-    -- Validate capacity and CFS label rules
+    -- Validate capacity rules
     perform validate_event_capacity(
         p_event,
         p_cfg_max_participants,
         p_effective_capacity => v_event.capacity
     );
-    perform validate_event_cfs_labels_payload(p_event->'cfs_labels');
+
+    -- Validate the labels payload when supplied
+    if p_event ? 'labels' then
+        perform validate_event_labels_payload(p_event->'labels');
+    end if;
 
     -- Insert event with unique slug generation and collision retry
     loop
@@ -249,8 +253,10 @@ begin
     perform sync_event_discount_codes(v_event_id, v_payload.discount_codes);
     perform sync_event_ticket_types(v_event_id, v_payload.ticket_types);
 
-    -- Insert CFS labels
-    perform sync_event_cfs_labels(v_event_id, p_event->'cfs_labels');
+    -- Insert labels before sessions, which reference labels from the same payload
+    if p_event ? 'labels' then
+        perform sync_event_labels(v_event_id, p_event->'labels');
+    end if;
 
     -- Insert event hosts, speakers, and sponsors
     perform sync_event_hosts_speakers_sponsors(v_event_id, p_event);
@@ -269,6 +275,7 @@ begin
         v_event_id
     );
 
+    -- Return the created event identifier
     return v_event_id;
 end;
 $$ language plpgsql;

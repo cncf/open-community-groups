@@ -1,4 +1,5 @@
 import { html } from "lit";
+import { labelColorStyle, normalizeLabels } from "/static/js/common/labels.js";
 import { computeUserInitials } from "/static/js/common/users/initials.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/media/logo-image.js";
@@ -13,11 +14,13 @@ class SessionCard extends LitWrapper {
    * Component properties definition.
    * @property {Object} session Session entry displayed by the card.
    * @property {Array} sessionKinds Available session kinds.
+   * @property {Array} labels Named event labels.
    * @property {boolean} disabled Whether actions are disabled.
    */
   static properties = {
     session: { type: Object },
     sessionKinds: { type: Array },
+    labels: { type: Array },
     disabled: { type: Boolean },
   };
 
@@ -25,6 +28,7 @@ class SessionCard extends LitWrapper {
     super();
     this.session = {};
     this.sessionKinds = [];
+    this.labels = [];
     this.disabled = false;
   }
 
@@ -45,6 +49,32 @@ class SessionCard extends LitWrapper {
 
   _onDelete() {
     this.dispatchEvent(new CustomEvent("delete", { bubbles: true, composed: true }));
+  }
+
+  /**
+   * Renders the chips of the named labels assigned to the session.
+   * @returns {import("lit").TemplateResult|string}
+   * @private
+   */
+  _renderLabelChips() {
+    const labelIds = new Set((this.session?.label_ids || []).map((id) => String(id)));
+    const labels = normalizeLabels(this.labels).filter((label) => labelIds.has(label.event_label_id));
+    if (labels.length === 0) return "";
+
+    return html`
+      <div class="flex flex-wrap gap-1.5 mt-1.5 min-w-0">
+        ${labels.map(
+          (label) => html`
+            <span
+              class="custom-badge inline-block max-w-full truncate px-2 py-0.5 text-stone-900"
+              style=${labelColorStyle(label.color)}
+              title=${label.name}
+              >${label.name}</span
+            >
+          `,
+        )}
+      </div>
+    `;
   }
 
   /**
@@ -114,6 +144,7 @@ class SessionCard extends LitWrapper {
           <div class="text-sm text-stone-500 truncate w-full">
             ${kindName}${session.location ? html` · ${session.location}` : ""}
           </div>
+          ${this._renderLabelChips()}
         </div>
 
         <div class="flex items-center gap-3 shrink-0">

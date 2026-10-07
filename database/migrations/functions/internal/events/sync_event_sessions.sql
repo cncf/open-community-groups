@@ -1,6 +1,9 @@
--- Synchronizes the sessions and session speakers of an event with the update
--- payload: existing sessions are updated (their meeting sync state derived
--- from the stored row), new ones inserted, omitted ones removed. The prior
+-- Synchronizes the sessions, session speakers and session labels of an event
+-- with the update payload: existing sessions are updated (their meeting sync
+-- state derived from the stored row), new ones inserted, omitted ones removed.
+-- Submitted label IDs replace a session's labels; when they are omitted, a
+-- session that is new or newly linked to a CFS submission copies that
+-- submission's labels, and any other session keeps its labels. The prior
 -- event row is null when the event is being created.
 create or replace function sync_event_sessions(
     p_event_id uuid,
@@ -12,8 +15,10 @@ declare
     v_processed_session_ids uuid[] := '{}';
     v_session jsonb;
     v_session_before session;
+    v_session_cfs_submission_id uuid;
     v_session_ends_at timestamptz;
     v_session_id uuid;
+    v_session_link_changed boolean;
     v_session_meeting_hosts text[];
     v_session_speaker jsonb;
     v_session_starts_at timestamptz;
@@ -29,9 +34,11 @@ begin
         return;
     end if;
 
-    -- Upsert each submitted session and replace its speakers
+    -- Upsert each submitted session and replace its speakers and labels
     for v_session in select jsonb_array_elements(p_event->'sessions')
     loop
+        -- Resolve the session values shared by inserts and updates
+        v_session_cfs_submission_id := nullif(v_session->>'cfs_submission_id', '')::uuid;
         v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
         v_session_meeting_hosts := jsonb_text_array(v_session->'meeting_hosts');
         v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
@@ -52,10 +59,14 @@ begin
                 raise exception 'session % not found for event %', v_session_id, p_event_id using errcode = 'OCG01';
             end if;
 
+            -- Track whether the session is linked to a different submission
+            v_session_link_changed := v_session_before.cfs_submission_id
+                is distinct from v_session_cfs_submission_id;
+
             -- Update the session unconditionally so the session bounds trigger
             -- re-validates it against the current event dates
             update session set
-                cfs_submission_id = nullif(v_session->>'cfs_submission_id', '')::uuid,
+                cfs_submission_id = v_session_cfs_submission_id,
                 description = nullif(v_session->>'description', ''),
                 ends_at = v_session_ends_at,
                 location = nullif(v_session->>'location', ''),
@@ -111,7 +122,7 @@ begin
                 nullif(v_session->>'description', ''),
                 v_session_starts_at,
                 v_session_ends_at,
-                nullif(v_session->>'cfs_submission_id', '')::uuid,
+                v_session_cfs_submission_id,
                 v_session->>'kind',
                 nullif(v_session->>'location', ''),
                 v_session_meeting_hosts,
@@ -129,8 +140,12 @@ begin
                 (v_session->>'meeting_requested')::boolean
             )
             returning session_id into v_session_id;
+
+            -- Treat a linked new session as a link change
+            v_session_link_changed := v_session_cfs_submission_id is not null;
         end if;
 
+        -- Keep the session out of the omitted sessions cleanup
         v_processed_session_ids := array_append(v_processed_session_ids, v_session_id);
 
         -- Insert the submitted speakers
@@ -143,6 +158,30 @@ begin
                 (v_session_speaker->>'featured')::boolean
             );
         end loop;
+
+        -- Replace the labels with the submitted ones
+        if v_session ? 'label_ids' then
+            perform sync_session_labels(
+                v_session_id,
+                p_event_id,
+                array(
+                    select input_label_id::uuid
+                    from jsonb_array_elements_text(v_session->'label_ids') as input_label_id
+                )
+            );
+
+        -- Copy the labels of a newly linked submission
+        elsif v_session_link_changed and v_session_cfs_submission_id is not null then
+            perform sync_session_labels(
+                v_session_id,
+                p_event_id,
+                array(
+                    select csl.event_label_id
+                    from cfs_submission_label csl
+                    where csl.cfs_submission_id = v_session_cfs_submission_id
+                )
+            );
+        end if;
     end loop;
 
     -- Remove sessions omitted from the payload

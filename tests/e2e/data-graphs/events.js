@@ -39,7 +39,7 @@ export const cleanupEventsByIds = (eventIds) => {
       delete from event_attendee where event_id = any(v_event_ids);
       delete from event_invitation_request where event_id = any(v_event_ids);
       delete from admission_offer where event_id = any(v_event_ids);
-      delete from event_cfs_label where event_id = any(v_event_ids);
+      delete from event_label where event_id = any(v_event_ids);
       delete from meeting where event_id = any(v_event_ids);
 
       -- Attending a ticketed event records a purchase; remove it and its dependents before tickets.

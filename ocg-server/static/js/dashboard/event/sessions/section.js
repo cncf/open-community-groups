@@ -45,6 +45,9 @@ export class SessionsSection extends LitWrapper {
    * @property {string} eventStartsAt - Event start datetime.
    * @property {string} eventEndsAt - Event end datetime.
    * @property {boolean} eventPast - Whether the parent event is in the past.
+   * @property {Array} labels - Named event labels available for sessions.
+   * @property {Array<string>} labelIds - Every event label row id, named or not.
+   * @property {number} labelMaxSelected - Max labels assigned to one session.
    */
   static properties = {
     sessions: { type: Array },
@@ -60,6 +63,9 @@ export class SessionsSection extends LitWrapper {
     eventStartsAt: { type: String, attribute: "event-starts-at" },
     eventEndsAt: { type: String, attribute: "event-ends-at" },
     eventPast: { type: Boolean, attribute: "event-past" },
+    labels: { type: Array, attribute: false },
+    labelIds: { type: Array, attribute: false },
+    labelMaxSelected: { type: Number, attribute: "label-max-selected" },
   };
 
   constructor() {
@@ -76,6 +82,10 @@ export class SessionsSection extends LitWrapper {
     this.eventStartsAt = "";
     this.eventEndsAt = "";
     this.eventPast = false;
+    this.labels = [];
+    this.labelIds = undefined;
+    this.labelMaxSelected = 0;
+    this._labelPruneChanged = false;
     this._handleSessionSaved = this._handleSessionSaved.bind(this);
     this._bindHtmxCleanup();
   }
@@ -84,6 +94,37 @@ export class SessionsSection extends LitWrapper {
     super.connectedCallback();
     this._parseAttributes();
     this._initializeSessions();
+  }
+
+  /**
+   * Prunes session labels whose label rows were deleted.
+   * @param {Map<string, unknown>} changedProperties Changed reactive properties
+   */
+  willUpdate(changedProperties) {
+    super.willUpdate(changedProperties);
+
+    if (changedProperties.has("labelIds")) {
+      this._pruneDeletedLabelIds(changedProperties.get("labelIds"));
+    }
+  }
+
+  updated(changedProperties) {
+    super.updated(changedProperties);
+
+    if (this._labelPruneChanged) {
+      this._labelPruneChanged = false;
+      this._emitSessionsChanged();
+    }
+  }
+
+  /**
+   * Clears every session and notifies listeners.
+   */
+  reset() {
+    this.querySelector("session-form-modal")?.close();
+    this.sessions = [];
+    this.requestUpdate();
+    this._emitSessionsChanged();
   }
 
   /**
@@ -111,9 +152,14 @@ export class SessionsSection extends LitWrapper {
             ? convertTimestampToDateTimeLocalInTz(ts, this.timezone)
             : convertTimestampToDateTimeLocal(ts);
         const meetingProviderId = item.meeting_provider_id || item.meeting_provider || "";
+        const { labels, ...session } = item;
+        const labelIds = Array.isArray(labels)
+          ? labels.map((label) => String(label?.event_label_id || "")).filter(Boolean)
+          : session.label_ids;
         return {
           ...createEmptySession(index),
-          ...item,
+          ...session,
+          label_ids: labelIds,
           meeting_provider_id: meetingProviderId,
           id: index,
           starts_at: toLocal(item.starts_at),
@@ -182,6 +228,36 @@ export class SessionsSection extends LitWrapper {
     this._emitSessionsChanged();
   }
 
+  /**
+   * Removes label ids that were present before and are gone now.
+   * @param {Array<string>|undefined} previousLabelIds Previous label row ids
+   * @private
+   */
+  _pruneDeletedLabelIds(previousLabelIds) {
+    if (!Array.isArray(previousLabelIds)) {
+      return;
+    }
+
+    const currentLabelIds = new Set(Array.isArray(this.labelIds) ? this.labelIds : []);
+    const deletedLabelIds = new Set(previousLabelIds.filter((id) => !currentLabelIds.has(id)));
+    if (deletedLabelIds.size === 0) {
+      return;
+    }
+
+    let changed = false;
+    const sessions = this.sessions.map((session) => {
+      if (!Array.isArray(session.label_ids) || !session.label_ids.some((id) => deletedLabelIds.has(id))) {
+        return session;
+      }
+      changed = true;
+      return { ...session, label_ids: session.label_ids.filter((id) => !deletedLabelIds.has(id)) };
+    });
+    if (changed) {
+      this.sessions = sessions;
+      this._labelPruneChanged = true;
+    }
+  }
+
   /** Emits the current sessions after an organizer change. */
   _emitSessionsChanged() {
     this.dispatchEvent(
@@ -242,6 +318,7 @@ export class SessionsSection extends LitWrapper {
             <session-card
               .session=${s}
               .sessionKinds=${this.sessionKinds}
+              .labels=${this.labels}
               .disabled=${this.disabled}
               @edit=${() => this._openEditModal(s)}
               @delete=${() => this._deleteSession(s)}
@@ -367,11 +444,13 @@ export class SessionsSection extends LitWrapper {
         }
       </div>
 
-      ${renderSessionsHiddenInputs(this.sessions)}
+      ${renderSessionsHiddenInputs(this.sessions, this.labels)}
 
       <session-form-modal
         .sessionKinds=${this.sessionKinds}
         .approvedSubmissions=${this.approvedSubmissions}
+        .labels=${this.labels}
+        .labelMaxSelected=${this.labelMaxSelected}
         .usedSubmissionIds=${usedSubmissionIds}
         .meetingMaxParticipants=${this.meetingMaxParticipants}
         .meetingsEnabled=${this.meetingsEnabled}

@@ -18,8 +18,8 @@ use serde::{Deserialize, Deserializer};
 
 use crate::types::payments::GroupPaymentRecipient;
 
-/// Allowed CFS label colors.
-pub const CFS_LABEL_COLORS: [&str; 10] = [
+/// Allowed event label colors.
+pub const EVENT_LABEL_COLORS: [&str; 10] = [
     "#FFD866", "#FC9867", "#FF6188", "#AB9DF2", "#78DCE8", "#A9DC76", "#A88F6A", "#9DA5B4",
     "#FF9EBB", "#6272A4",
 ];
@@ -39,6 +39,9 @@ pub const MAX_LEN_S: usize = 100;
 
 // Purpose-specific limits
 
+/// Maximum number of labels assigned to one CFS submission or session.
+pub const MAX_ASSIGNED_EVENT_LABELS: usize = 10;
+
 /// Maximum number of values accepted by each community contact filter. The
 /// bound keeps filter queries small while covering every option a community
 /// can reasonably offer.
@@ -50,9 +53,6 @@ pub const MAX_EVENT_COHOSTS: usize = 10;
 
 /// Maximum number of labels allowed per event.
 pub const MAX_EVENT_LABELS_PER_EVENT: usize = 200;
-
-/// Maximum number of labels allowed per submission.
-pub const MAX_EVENT_LABELS_PER_SUBMISSION: usize = 10;
 
 /// Maximum number of elements in a collection (filters, tags, etc.).
 pub const MAX_ITEMS: usize = 25;
@@ -235,14 +235,6 @@ pub fn url_map_values(value: &Option<BTreeMap<String, String>>, _ctx: &()) -> ga
     Ok(())
 }
 
-/// Validates that a CFS label color belongs to the predefined palette.
-pub fn valid_cfs_label_color(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
-    if !CFS_LABEL_COLORS.contains(&value.as_ref()) {
-        return Err(garde::Error::new("invalid cfs label color"));
-    }
-    Ok(())
-}
-
 /// Validates that an optional date has a year PostgreSQL accepts as `YYYY`.
 ///
 /// `chrono` parses signed and five-digit years that `::date` rejects, so filters
@@ -252,6 +244,14 @@ pub fn valid_date_opt(value: &Option<NaiveDate>, _ctx: &()) -> garde::Result {
         && !(1..=9999).contains(&date.year())
     {
         return Err(garde::Error::new("year must be between 1 and 9999"));
+    }
+    Ok(())
+}
+
+/// Validates that an event label color belongs to the predefined palette.
+pub fn valid_event_label_color(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
+    if !EVENT_LABEL_COLORS.contains(&value.as_ref()) {
+        return Err(garde::Error::new("invalid label color"));
     }
     Ok(())
 }

@@ -1,23 +1,23 @@
 import { expect } from "@open-wc/testing";
 
-import "/static/js/common/cfs-label-selector.js";
+import "/static/js/common/label-selector.js";
 import { renderViewportBottomLayout } from "/tests/unit/test-utils/dom.js";
 import {
   mountLitComponent,
   useMountedElementsCleanup,
 } from "/tests/unit/test-utils/lit.js";
 
-describe("cfs-label-selector", () => {
-  useMountedElementsCleanup("cfs-label-selector");
+describe("label-selector", () => {
+  useMountedElementsCleanup("label-selector");
 
   it("normalizes labels and prunes invalid selections", async () => {
-    // Render the cfs-label-selector fixture.
-    const element = await mountLitComponent("cfs-label-selector", {
+    // Render the label-selector fixture.
+    const element = await mountLitComponent("label-selector", {
       labels: [
-        { event_cfs_label_id: 1, name: "Backend", color: "blue" },
-        { event_cfs_label_id: 1, name: "Duplicate", color: "red" },
-        { event_cfs_label_id: 2, name: "Frontend", color: "green" },
-        { event_cfs_label_id: "", name: "Ignored", color: "gray" },
+        { event_label_id: 1, name: "Backend", color: "blue" },
+        { event_label_id: 1, name: "Duplicate", color: "red" },
+        { event_label_id: 2, name: "Frontend", color: "green" },
+        { event_label_id: "", name: "Ignored", color: "gray" },
       ],
       selected: ["1", "missing"],
     });
@@ -27,18 +27,18 @@ describe("cfs-label-selector", () => {
 
     // The selected event carries the expected payload.
     expect(element.labels).to.deep.equal([
-      { event_cfs_label_id: "1", name: "Backend", color: "blue" },
-      { event_cfs_label_id: "2", name: "Frontend", color: "green" },
+      { event_label_id: "1", name: "Backend", color: "blue" },
+      { event_label_id: "2", name: "Frontend", color: "green" },
     ]);
     expect(element.selected).to.deep.equal(["1"]);
   });
 
   it("toggles selections while respecting the maximum selection count", async () => {
-    // Render the cfs-label-selector fixture.
-    const element = await mountLitComponent("cfs-label-selector", {
+    // Render the label-selector fixture.
+    const element = await mountLitComponent("label-selector", {
       labels: [
-        { event_cfs_label_id: "1", name: "Backend", color: "blue" },
-        { event_cfs_label_id: "2", name: "Frontend", color: "green" },
+        { event_label_id: "1", name: "Backend", color: "blue" },
+        { event_label_id: "2", name: "Frontend", color: "green" },
       ],
       maxSelected: 1,
     });
@@ -62,9 +62,9 @@ describe("cfs-label-selector", () => {
   it("opens the labels above the search input near the viewport bottom", async () => {
     // Render the component near the bottom of the viewport.
     renderViewportBottomLayout(80);
-    const element = await mountLitComponent("cfs-label-selector", {
+    const element = await mountLitComponent("label-selector", {
       labels: Array.from({ length: 12 }, (_, index) => ({
-        event_cfs_label_id: `${index + 1}`,
+        event_label_id: `${index + 1}`,
         name: `Label ${index + 1}`,
         color: "blue",
       })),
@@ -75,8 +75,8 @@ describe("cfs-label-selector", () => {
     await element.updateComplete;
 
     // The labels open upward and stay inside the viewport.
-    const search = element.querySelector("[data-cfs-label-search]");
-    const dropdownBounds = element.querySelector("[data-cfs-label-dropdown]").getBoundingClientRect();
+    const search = element.querySelector("[data-multi-select-search]");
+    const dropdownBounds = element.querySelector("[data-multi-select-dropdown]").getBoundingClientRect();
     expect(dropdownBounds.height).to.be.greaterThan(0);
     expect(dropdownBounds.bottom).to.be.at.most(search.getBoundingClientRect().top);
     expect(dropdownBounds.top).to.be.at.least(0);
@@ -86,10 +86,10 @@ describe("cfs-label-selector", () => {
     // Render the selector inside a form.
     document.body.innerHTML = '<form id="labels-form"></form>';
     const form = document.getElementById("labels-form");
-    const element = document.createElement("cfs-label-selector");
+    const element = document.createElement("label-selector");
     element.labels = [
-      { event_cfs_label_id: "2", name: "Frontend", color: "green" },
-      { event_cfs_label_id: "1", name: "Backend", color: "blue" },
+      { event_label_id: "2", name: "Frontend", color: "green" },
+      { event_label_id: "1", name: "Backend", color: "blue" },
     ];
     form.append(element);
     await element.updateComplete;
@@ -114,21 +114,23 @@ describe("cfs-label-selector", () => {
     expect(element.querySelector('[aria-label="Remove Backend"]')).to.not.equal(null);
   });
 
-  it("keeps the legacy and generic placement markers", async () => {
+  it("uses only the generic placement markers", async () => {
     // Render the selector with labels.
-    const element = await mountLitComponent("cfs-label-selector", {
-      labels: [{ event_cfs_label_id: "1", name: "Backend", color: "blue" }],
+    const element = await mountLitComponent("label-selector", {
+      labels: [{ event_label_id: "1", name: "Backend", color: "blue" }],
     });
 
     // Open the labels dropdown.
     element._combobox.open();
     await element.updateComplete;
 
-    // Verify both marker sets point at the same elements.
-    const search = element.querySelector("[data-cfs-label-search]");
-    const dropdown = element.querySelector("[data-cfs-label-dropdown]");
-    expect(search).to.equal(element.querySelector("[data-multi-select-search]"));
-    expect(dropdown).to.equal(element.querySelector("[data-multi-select-dropdown]"));
+    // Verify the generic markers exist and no domain-specific markers remain.
+    const dropdown = element.querySelector("[data-multi-select-dropdown]");
+    expect(element.querySelector("[data-multi-select-search]")).to.not.equal(null);
     expect(dropdown.getAttribute("role")).to.equal("listbox");
+    const legacyMarkers = Array.from(element.querySelectorAll("*")).filter((node) =>
+      node.getAttributeNames().some((name) => name.startsWith("data-cfs")),
+    );
+    expect(legacyMarkers).to.deep.equal([]);
   });
 });

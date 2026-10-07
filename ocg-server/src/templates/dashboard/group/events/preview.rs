@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use crate::templates::filters;
+use crate::{templates::filters, validation::EVENT_LABEL_COLORS};
 
 /// Preview status of a co-host that approved the invitation.
 const COHOST_STATUS_APPROVED: &str = "approved";
@@ -248,6 +248,8 @@ pub(crate) struct Session {
     pub description: Option<String>,
     /// Session kind label.
     pub kind_label: Option<String>,
+    /// Session labels with palette colors.
+    pub labels: Vec<SessionLabel>,
     /// Session location label.
     pub location: Option<String>,
     /// Session name.
@@ -274,6 +276,15 @@ impl Session {
             .clone()
             .unwrap_or_else(|| "Missing session name".to_string())
     }
+}
+
+/// Prepared preview session label.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SessionLabel {
+    /// Label color from the event label palette.
+    pub color: String,
+    /// Label name.
+    pub name: String,
 }
 
 // Input types.
@@ -466,6 +477,16 @@ pub(crate) struct ContextGroup {
     pub slug: Option<String>,
 }
 
+/// Preview label display context.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct ContextLabel {
+    /// Label color.
+    pub color: Option<String>,
+    /// Label name.
+    pub name: Option<String>,
+}
+
 /// Preview person display context.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -510,6 +531,9 @@ impl ContextPerson {
 pub(crate) struct ContextSession {
     /// Session type display label.
     pub kind_label: Option<String>,
+    /// Session labels with display data.
+    #[serde(default)]
+    pub labels: Vec<ContextLabel>,
     /// Session name.
     pub name: Option<String>,
     /// Session speakers with display data.
@@ -660,6 +684,25 @@ fn build_missing_fields(
     missing
 }
 
+/// Builds preview session labels, keeping only named labels with palette colors.
+fn build_session_labels(labels: &[ContextLabel]) -> Vec<SessionLabel> {
+    labels
+        .iter()
+        .filter_map(|label| {
+            let name = normalize_text(label.name.as_deref())?;
+            let color = label
+                .color
+                .as_deref()
+                .filter(|color| EVENT_LABEL_COLORS.contains(color))?;
+
+            Some(SessionLabel {
+                color: color.to_string(),
+                name,
+            })
+        })
+        .collect()
+}
+
 /// Builds a display label for a session's online details.
 fn build_session_online_label(input: &InputSession) -> Option<String> {
     if normalize_text(input.meeting_join_url.clone()).is_some() {
@@ -698,6 +741,7 @@ fn build_sessions(
             Some(Session {
                 description: normalize_text(input.description),
                 kind_label,
+                labels: build_session_labels(&context.labels),
                 location: normalize_text(input.location),
                 name: first_text([input.name.as_deref(), context.name.as_deref()]),
                 online_label,
@@ -827,6 +871,29 @@ mod tests {
         };
 
         assert!(Event::from(input).cohosts.is_empty());
+    }
+
+    #[test]
+    fn event_keeps_named_session_labels_with_palette_colors() {
+        let input = Input {
+            preview_context: Some(
+                r##"{"sessions":[{"name":"Keynote","labels":[
+                    {"color":"#FFD866","name":" Cloud "},
+                    {"color":"#000000","name":"Unknown color"},
+                    {"color":"#FC9867","name":"  "},
+                    {"name":"Missing color"}
+                ]}]}"##
+                    .to_string(),
+            ),
+            ..Input::default()
+        };
+
+        let sessions = Event::from(input).sessions;
+
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].labels.len(), 1);
+        assert_eq!(sessions[0].labels[0].color, "#FFD866");
+        assert_eq!(sessions[0].labels[0].name, "Cloud");
     }
 
     #[test]

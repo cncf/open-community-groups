@@ -62,4 +62,29 @@ describe("session-card", () => {
       true,
     );
   });
+
+  it("renders chips for the named labels assigned to the session", async () => {
+    // Render a session card assigned to named, blank, and unknown labels.
+    const element = await mountLitComponent("session-card", {
+      labels: [
+        { color: "#bfdbfe", event_label_id: "label-1", name: "Backend" },
+        { color: "#fecaca", event_label_id: "label-2", name: " " },
+        { color: "#bbf7d0", event_label_id: "label-3", name: "Unassigned" },
+      ],
+      session: {
+        label_ids: ["label-1", "label-2", "unknown"],
+        name: "Opening Keynote",
+      },
+    });
+
+    // Only the assigned named label renders, with the shared chip color style.
+    const chips = Array.from(element.querySelectorAll(".custom-badge"));
+    expect(chips.map((chip) => chip.textContent.trim())).to.deep.equal(["Backend"]);
+    expect(chips[0].getAttribute("style")).to.include("--label-color:#bfdbfe");
+
+    // Sessions without labels render no chips.
+    element.session = { name: "Closing" };
+    await element.updateComplete;
+    expect(element.querySelector(".custom-badge")).to.equal(null);
+  });
 });

@@ -1314,6 +1314,7 @@ async fn db_contracts_list_event_approved_cfs_submissions_deserializes() -> Resu
     assert_eq!(submissions[0].session_proposal_id, session_proposal_id());
     assert_eq!(submissions[0].speaker_name, "Contract Attendee");
     assert_eq!(submissions[0].title, "Contract Rust Proposal");
+    assert_eq!(submissions[0].label_ids, vec![event_label_id()]);
 
     Ok(())
 }
@@ -1349,9 +1350,10 @@ async fn db_contracts_list_event_cfs_submissions_deserializes() -> Result<()> {
     // Load event submissions through the Rust contract
     let output = db.list_event_cfs_submissions(event_id(), &filters).await?;
 
-    // Check submission pagination totals
+    // Check submission pagination totals and labels
     assert_eq!(output.total, 1);
     assert_eq!(output.submissions.len(), 1);
+    assert_eq!(output.submissions[0].labels, vec![contract_event_label()]);
 
     Ok(())
 }

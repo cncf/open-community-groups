@@ -1,13 +1,25 @@
 import { expect, test } from "../../fixtures.js";
-import { queryE2eDatabase } from "../../database.js";
+import { queryE2eDatabase, queryE2eDatabaseRows } from "../../database.js";
 import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
 import { TEST_EVENT_IDS, TEST_USER_IDS } from "../../seed.js";
 import { navigateToPath, uniqueName, waitForActionResponse } from "../../utils.js";
+import {
+  listEventLabels,
+  listSessionLabels,
+  waitForEventEditorAfterSave,
+} from "../../dashboard/group/events/helpers.js";
+import {
+  expectSessionCardLabels,
+  openSessionsSection,
+  selectLabels,
+} from "../../dashboard/group/events/event-form-helpers.js";
 import {
   createSessionProposal,
   openUserDashboardPath,
   submitProposalToOpenCfsEvent,
 } from "../../dashboard/user/helpers.js";
+
+const CFS_EVENT_ID = TEST_EVENT_IDS.alpha.cfsSummit;
 
 test.describe("CFS submission workflow", () => {
   test("submitted proposal can be approved end to end", async ({ eventsManagerGroupPage, pending1Page }) => {
@@ -128,7 +140,7 @@ test.describe("CFS submission workflow", () => {
         name: "Review submission",
       });
       await expect(reviewModal).toBeVisible();
-      await reviewModal.locator("cfs-label-selector input").fill("Workshop");
+      await reviewModal.locator("label-selector#cfs-submission-labels input").fill("Workshop");
       await reviewModal.getByRole("option", { name: /Workshop/ }).click();
       await reviewModal.getByRole("tab", { name: "Decision" }).click();
       await reviewModal.locator("label", { hasText: "Information requested" }).click();
@@ -194,6 +206,117 @@ test.describe("CFS submission workflow", () => {
       // Remove notifications and the temporary proposal graph.
       deleteNotifications(notificationIds);
       deleteSessionProposalsByTitle(TEST_USER_IDS.pending1, [proposalTitle]);
+    }
+  });
+
+  test("approved submission labels are copied to its linked session and then evolve separately", async ({
+    eventsManagerGroupPage,
+    pending1Page,
+  }) => {
+    test.setTimeout(90_000);
+
+    // Create a unique proposal and remember the seeded label colors the editor normalizes on save.
+    const proposalTitle = uniqueName("pending1 labeled workflow proposal");
+    const seededLabels = listEventLabels(CFS_EVENT_ID);
+    let notificationIds = [];
+
+    try {
+      // Submit the temporary proposal to the open CFS event.
+      await createSessionProposal(pending1Page, proposalTitle);
+      await submitProposalToOpenCfsEvent(pending1Page, proposalTitle);
+      const submissionId = readSubmissionIdByTitle(proposalTitle);
+
+      // Label and approve the submission in one review.
+      const submissionsContent = await openCfsEventSubmissionsTab(eventsManagerGroupPage);
+      const reviewModal = await openSubmissionReview(
+        eventsManagerGroupPage,
+        submissionsContent,
+        proposalTitle,
+      );
+      await selectLabels(reviewModal.locator("label-selector#cfs-submission-labels"), ["Workshop"]);
+      await reviewModal.getByRole("tab", { name: "Decision" }).click();
+      await reviewModal.locator("label", { hasText: "Approved" }).click();
+      const approvalSnapshot = snapshotNotifications();
+      await saveSubmissionReview(eventsManagerGroupPage, reviewModal, submissionId);
+      notificationIds = expectNewNotifications(approvalSnapshot, [
+        {
+          kind: "cfs-submission-updated",
+          templateDataContains: { status_name: "Approved" },
+          userIds: [TEST_USER_IDS.pending1],
+        },
+      ]);
+
+      // Link the approved submission to a new session and verify its labels are pre-filled.
+      await openSessionsSection(eventsManagerGroupPage);
+      await eventsManagerGroupPage
+        .locator("sessions-section")
+        .getByRole("button", { name: "Add session" })
+        .first()
+        .click();
+      const sessionModal = eventsManagerGroupPage.locator("session-form-modal");
+      const addSessionDialog = sessionModal.getByRole("dialog", { name: "Add session" });
+      await expect(addSessionDialog).toBeVisible();
+      await sessionModal.locator('input[data-name="name"]').fill(proposalTitle);
+      await sessionModal.locator('select[data-name="kind"]').selectOption("virtual");
+      await sessionModal.locator('input[type="time"]').nth(0).fill("12:30");
+      await sessionModal.locator('input[type="time"]').nth(1).fill("13:00");
+      await sessionModal.getByText("From Call for Speakers submission", { exact: true }).click();
+      await sessionModal.locator('select[data-name="cfs_submission_id"]').selectOption(submissionId);
+      const sessionLabelSelector = sessionModal.locator("label-selector");
+      await expect(sessionLabelSelector.locator('button[aria-label^="Remove "]')).toHaveCount(1);
+      await expect(
+        sessionLabelSelector.getByRole("button", { name: "Remove Workshop", exact: true }),
+      ).toBeVisible();
+      await sessionModal.getByRole("button", { name: "Add session" }).click();
+      await expect(addSessionDialog).toHaveCount(0);
+      await expectSessionCardLabels(eventsManagerGroupPage, proposalTitle, ["Workshop"]);
+
+      // Save the event and verify the session stores the copied labels.
+      await saveCfsEventUpdate(eventsManagerGroupPage);
+      expect(readSessionLabelsByName(proposalTitle)).toEqual(["Workshop"]);
+
+      // Add another label to the session without touching the submission.
+      await openSessionsSection(eventsManagerGroupPage);
+      await eventsManagerGroupPage
+        .locator("sessions-section session-card")
+        .filter({ hasText: proposalTitle })
+        .getByTitle("Edit")
+        .click();
+      const editSessionDialog = sessionModal.getByRole("dialog", { name: "Edit session" });
+      await expect(editSessionDialog).toBeVisible();
+      await selectLabels(sessionModal.locator("label-selector"), ["Platform"]);
+      await sessionModal.getByRole("button", { name: "Save changes" }).click();
+      await expect(editSessionDialog).toHaveCount(0);
+      await expectSessionCardLabels(eventsManagerGroupPage, proposalTitle, ["Platform", "Workshop"]);
+      await saveCfsEventUpdate(eventsManagerGroupPage);
+      expect(readSessionLabelsByName(proposalTitle)).toEqual(["Platform", "Workshop"]);
+      expect(readSubmissionLabels(submissionId)).toEqual(["Workshop"]);
+
+      // Change the submission labels later without a new decision or notification.
+      const updatedSubmissionsContent = await openCfsEventSubmissionsTab(eventsManagerGroupPage);
+      const updatedReviewModal = await openSubmissionReview(
+        eventsManagerGroupPage,
+        updatedSubmissionsContent,
+        proposalTitle,
+      );
+      const reviewLabelSelector = updatedReviewModal.locator("label-selector#cfs-submission-labels");
+      await reviewLabelSelector.getByRole("button", { name: "Remove Workshop", exact: true }).click();
+      await expect(reviewLabelSelector.locator('button[aria-label^="Remove "]')).toHaveCount(0);
+      const labelsSnapshot = snapshotNotifications();
+      await saveSubmissionReview(eventsManagerGroupPage, updatedReviewModal, submissionId);
+      notificationIds = notificationIds.concat(expectNewNotifications(labelsSnapshot, []));
+      expect(readSubmissionLabels(submissionId)).toEqual([]);
+
+      // Verify the linked session keeps its own labels after reloading the editor.
+      await openCfsEventSubmissionsTab(eventsManagerGroupPage);
+      await openSessionsSection(eventsManagerGroupPage);
+      await expectSessionCardLabels(eventsManagerGroupPage, proposalTitle, ["Platform", "Workshop"]);
+      expect(readSessionLabelsByName(proposalTitle)).toEqual(["Platform", "Workshop"]);
+    } finally {
+      // Remove notifications and the temporary proposal graph, and restore the seeded label colors.
+      deleteNotifications(notificationIds);
+      deleteSessionProposalsByTitle(TEST_USER_IDS.pending1, [proposalTitle]);
+      restoreEventLabelColors(seededLabels);
     }
   });
 });
@@ -262,6 +385,59 @@ const openCfsEventSubmissionsTab = async (page) => {
   return page.locator("#submissions-content");
 };
 
+/** Opens the review modal of a submission row and returns the dialog. */
+const openSubmissionReview = async (page, submissionsContent, proposalTitle) => {
+  await submissionsContent.locator("tr", { hasText: proposalTitle }).getByTitle("Review submission").click();
+  const reviewModal = page.getByRole("dialog", { name: "Review submission" });
+  await expect(reviewModal).toBeVisible();
+
+  return reviewModal;
+};
+
+/** Returns the label names of the temporary session with the given name. */
+const readSessionLabelsByName = (sessionName) =>
+  listSessionLabels(CFS_EVENT_ID).find((session) => session.name === sessionName)?.labels ?? null;
+
+/** Returns the submission id of a temporary proposal sent to the seeded CFS event. */
+const readSubmissionIdByTitle = (proposalTitle) =>
+  queryE2eDatabase(`
+    select cs.cfs_submission_id
+    from cfs_submission cs
+    join session_proposal sp on sp.session_proposal_id = cs.session_proposal_id
+    where cs.event_id = '${CFS_EVENT_ID}'
+    and sp.title = '${proposalTitle.replace(/'/g, "''")}'
+  `);
+
+/** Returns the label names of a CFS submission, sorted by name. */
+const readSubmissionLabels = (submissionId) =>
+  queryE2eDatabaseRows(`
+    select el.name
+    from cfs_submission_label csl
+    join event_label el on el.event_label_id = csl.event_label_id
+    where csl.cfs_submission_id = '${submissionId}'
+    order by el.name
+  `).map(([name]) => name);
+
+/** Restores event label colors changed when the editor saves the seeded CFS event. */
+const restoreEventLabelColors = (labels) => {
+  for (const label of labels) {
+    queryE2eDatabase(`update event_label set color = '${label.color}' where event_label_id = '${label.id}'`);
+  }
+};
+
+/** Saves the seeded CFS event editor and waits for it to reload. */
+const saveCfsEventUpdate = async (page) => {
+  await waitForEventEditorAfterSave(
+    page,
+    () => page.locator("#pending-changes-alert:not(.hidden) #update-event-button").click(),
+    {
+      eventId: CFS_EVENT_ID,
+      method: "PUT",
+      urlIncludes: `/dashboard/group/events/${CFS_EVENT_ID}/update`,
+    },
+  );
+};
+
 /** Saves the given final decision for a submission through the review modal. */
 const saveSubmissionDecision = async (page, submissionsContent, proposalTitle, decision) => {
   // Open the review modal for the target submission.
@@ -278,6 +454,15 @@ const saveSubmissionDecision = async (page, submissionsContent, proposalTitle, d
   await waitForActionResponse(page, () => reviewModal.getByRole("button", { name: "Save" }).click(), {
     method: "PUT",
     urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/submissions/`,
+  });
+  await expect(reviewModal).toBeHidden();
+};
+
+/** Saves the review modal of a submission and waits for it to close. */
+const saveSubmissionReview = async (page, reviewModal, submissionId) => {
+  await waitForActionResponse(page, () => reviewModal.getByRole("button", { name: "Save" }).click(), {
+    method: "PUT",
+    urlIncludes: `/dashboard/group/events/${CFS_EVENT_ID}/submissions/${submissionId}`,
   });
   await expect(reviewModal).toBeHidden();
 };

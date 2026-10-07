@@ -80,7 +80,7 @@
                 {% if !submission.labels.is_empty() -%}
                   <div class="mt-2 flex flex-wrap gap-1.5 min-w-0">
                     {% for label in submission.labels -%}
-                      {{ badges::cfs_label_chip(name = &label.name, color = &label.color) -}}
+                      {{ badges::label_chip(name = &label.name, color = &label.color) -}}
                     {% endfor -%}
                   </div>
                 {% endif -%}

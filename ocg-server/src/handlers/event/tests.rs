@@ -416,7 +416,7 @@ async fn test_cfs_modal_success_anonymous() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_list_event_cfs_labels()
+    db.expect_list_event_labels()
         .times(1)
         .withf(move |eid| *eid == event_id)
         .returning(|_| Ok(vec![]));
@@ -467,7 +467,7 @@ async fn test_cfs_modal_success_authenticated() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_list_event_cfs_labels()
+    db.expect_list_event_labels()
         .times(1)
         .withf(move |eid| *eid == event_id)
         .returning(|_| Ok(vec![]));
@@ -2264,7 +2264,7 @@ async fn test_submit_cfs_submission_success() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_list_event_cfs_labels()
+    db.expect_list_event_labels()
         .times(1)
         .withf(move |eid| *eid == event_id)
         .returning(|_| Ok(vec![]));

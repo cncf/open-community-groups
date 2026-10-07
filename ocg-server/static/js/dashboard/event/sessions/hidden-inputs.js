@@ -1,4 +1,5 @@
 import { html } from "lit";
+import { normalizeLabels } from "/static/js/common/labels.js";
 import { DEFAULT_MEETING_PROVIDER } from "/static/js/dashboard/group/meeting-validations.js";
 
 /**
@@ -25,6 +26,31 @@ export const getSessionHiddenInputValues = (session) => {
     meetingRecordingPublished: session.meeting_recording_published === true,
     meetingRecordingUrl: session.meeting_recording_url || "",
   };
+};
+
+/**
+ * Renders hidden label inputs for one session. Sessions whose labels were
+ * never set submit no label inputs, so the server keeps or copies them.
+ * @param {Object} state Label input state.
+ * @param {number} state.index Session index.
+ * @param {Set<string>} state.namedLabelIds Ids of the labels with a name.
+ * @param {Object} state.session Session payload.
+ * @returns {import("lit").TemplateResult|string}
+ */
+const renderSessionLabelHiddenInputs = ({ index, namedLabelIds, session }) => {
+  if (!Array.isArray(session.label_ids)) {
+    return "";
+  }
+
+  const labelIds = session.label_ids.map((id) => String(id)).filter((id) => namedLabelIds.has(id));
+  return html`
+    <input type="hidden" name="sessions[${index}][label_ids_present]" value="true" />
+    ${labelIds.map(
+      (labelId, labelIndex) => html`
+        <input type="hidden" name="sessions[${index}][label_ids][${labelIndex}]" value=${labelId} />
+      `,
+    )}
+  `;
 };
 
 /**
@@ -57,9 +83,10 @@ const renderSessionSpeakerHiddenInputs = ({ index, session, values }) => {
  * Renders hidden inputs for one session.
  * @param {Object} session Session payload.
  * @param {number} index Session index.
+ * @param {Set<string>} namedLabelIds Ids of the labels with a name.
  * @returns {import("lit").TemplateResult}
  */
-const renderSessionHiddenInputs = (session, index) => {
+const renderSessionHiddenInputs = (session, index, namedLabelIds) => {
   const values = getSessionHiddenInputValues(session);
 
   return html`
@@ -97,6 +124,7 @@ const renderSessionHiddenInputs = (session, index) => {
       value=${session.meeting_requested || false}
     />
     <input type="hidden" name="sessions[${index}][meeting_provider_id]" value=${values.meetingProviderId} />
+    ${renderSessionLabelHiddenInputs({ index, namedLabelIds, session })}
     ${renderSessionSpeakerHiddenInputs({ index, session, values })}
   `;
 };
@@ -104,8 +132,12 @@ const renderSessionHiddenInputs = (session, index) => {
 /**
  * Renders hidden inputs for all sessions.
  * @param {Object[]} sessions Session payloads.
+ * @param {Object[]} [labels] Named event labels.
  * @returns {import("lit").TemplateResult}
  */
-export const renderSessionsHiddenInputs = (sessions) => html`
-  ${sessions.map((session, index) => renderSessionHiddenInputs(session, index))}
-`;
+export const renderSessionsHiddenInputs = (sessions, labels = []) => {
+  const namedLabelIds = new Set(normalizeLabels(labels).map((label) => label.event_label_id));
+  return html`
+    ${sessions.map((session, index) => renderSessionHiddenInputs(session, index, namedLabelIds))}
+  `;
+};

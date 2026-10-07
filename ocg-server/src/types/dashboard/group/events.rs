@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     types::{
         dashboard,
-        event::{EventCfsLabel, EventCohostStatus, EventSummary, SessionKind},
+        event::{EventCohostStatus, EventSummary, SessionKind},
         meetings::MeetingProvider,
         pagination::{Pagination, ToRawQuery},
         payments::{
@@ -20,11 +20,12 @@ use crate::{
         questionnaire::QuestionnaireQuestion,
     },
     validation::{
-        MAX_EVENT_COHOSTS, MAX_EVENT_LABELS_PER_EVENT, MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION,
-        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_S, MAX_LEN_TIMEZONE,
-        MAX_PAGINATION_LIMIT, MAX_RECURRING_ADDITIONAL_OCCURRENCES, email_vec, image_url_opt,
-        trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_tag_vec, trimmed_non_empty_vec,
-        valid_latitude, valid_longitude, web_url_opt,
+        MAX_ASSIGNED_EVENT_LABELS, MAX_EVENT_COHOSTS, MAX_EVENT_LABELS_PER_EVENT,
+        MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME,
+        MAX_LEN_EVENT_LABEL_NAME, MAX_LEN_L, MAX_LEN_S, MAX_LEN_TIMEZONE, MAX_PAGINATION_LIMIT,
+        MAX_RECURRING_ADDITIONAL_OCCURRENCES, email_vec, image_url_opt, trimmed_non_empty,
+        trimmed_non_empty_opt, trimmed_non_empty_tag_vec, trimmed_non_empty_vec,
+        valid_event_label_color, valid_latitude, valid_longitude, web_url_opt,
     },
 };
 
@@ -42,6 +43,10 @@ pub(crate) struct ApprovedSubmissionSummary {
     pub speaker_name: String,
     /// Submission title.
     pub title: String,
+
+    /// Event labels assigned to the submission, ordered by label name.
+    #[serde(default)]
+    pub label_ids: Vec<Uuid>,
 }
 
 /// CFS submission status option.
@@ -177,10 +182,6 @@ pub(crate) struct EventInput {
     /// Category this event belongs to.
     #[garde(skip)]
     pub category_id: Uuid,
-    /// Call for speakers labels.
-    #[serde(default)]
-    #[garde(length(max = MAX_EVENT_LABELS_PER_EVENT), dive)]
-    pub cfs_labels: Vec<EventCfsLabel>,
     /// Event description.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub description: String,
@@ -267,6 +268,12 @@ pub(crate) struct EventInput {
     /// User IDs of event hosts.
     #[garde(skip)]
     pub hosts: Option<Vec<Uuid>>,
+    /// Labels shared by the event sessions and CFS submissions.
+    #[garde(length(max = MAX_EVENT_LABELS_PER_EVENT), dive)]
+    pub labels: Option<Vec<EventLabelInput>>,
+    /// Whether the labels section was submitted.
+    #[garde(skip)]
+    pub labels_present: Option<bool>,
     /// Latitude coordinate of the event location.
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
@@ -530,24 +537,54 @@ impl EventInput {
         }
 
         // Reinsert ticketing sections only when the form submitted those inputs
-        Self::insert_optional_ticketing_field(
+        Self::insert_optional_field(
             &mut payload,
             "discount_codes",
             self.discount_codes_present.is_some(),
             discount_codes,
         )?;
-        Self::insert_optional_ticketing_field(
+        Self::insert_optional_field(
             &mut payload,
             "ticket_types",
             self.ticket_types_present.is_some(),
             ticket_types,
         )?;
 
+        // Include event and session labels only when the form submitted them
+        self.insert_label_fields(&mut payload)?;
+
         Ok(Value::Object(payload))
     }
 
-    /// Inserts a ticketing field only when it was submitted in the form.
-    fn insert_optional_ticketing_field<T: Serialize>(
+    /// Replaces the serialized label fields with the database label contract.
+    /// Labels are included only when the form submitted the labels editor, so
+    /// an omitted section never deletes the event labels, and each session
+    /// distinguishes submitted-empty label IDs from omitted ones.
+    fn insert_label_fields(&self, payload: &mut Map<String, Value>) -> anyhow::Result<()> {
+        // Reinsert event labels only when the labels editor was submitted
+        payload.remove("labels");
+        payload.remove("labels_present");
+        Self::insert_optional_field(
+            payload,
+            "labels",
+            self.labels_present.is_some(),
+            Some(self.labels.clone().unwrap_or_default()),
+        )?;
+
+        // Rebuild sessions with their label IDs contract
+        if let Some(sessions) = &self.sessions {
+            let sessions = sessions
+                .iter()
+                .map(SessionInput::to_db_payload)
+                .collect::<anyhow::Result<Vec<_>>>()?;
+            payload.insert("sessions".to_string(), Value::Array(sessions));
+        }
+
+        Ok(())
+    }
+
+    /// Inserts an optional field only when it was submitted in the form.
+    fn insert_optional_field<T: Serialize>(
         payload: &mut Map<String, Value>,
         field_name: &str,
         field_present: bool,
@@ -583,6 +620,25 @@ impl EventInput {
             }
         }
     }
+}
+
+/// Event label submitted by the labels editor.
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+pub(crate) struct EventLabelInput {
+    /// Label color.
+    #[garde(custom(valid_event_label_color))]
+    pub color: String,
+    /// Event label identifier, generated by the editor for new labels.
+    #[garde(skip)]
+    pub event_label_id: Uuid,
+    /// Label name.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_EVENT_LABEL_NAME))]
+    pub name: String,
+
+    /// Whether the label is not stored yet.
+    #[serde(default)]
+    #[garde(skip)]
+    pub is_new: bool,
 }
 
 /// Recurrence options supported by the add event flow.
@@ -736,6 +792,12 @@ pub(crate) struct SessionInput {
     /// Session end time.
     #[garde(skip)]
     pub ends_at: Option<NaiveDateTime>,
+    /// Event labels assigned to the session.
+    #[garde(length(max = MAX_ASSIGNED_EVENT_LABELS))]
+    pub label_ids: Option<Vec<Uuid>>,
+    /// Whether the session labels were submitted.
+    #[garde(skip)]
+    pub label_ids_present: Option<bool>,
     /// Location for the session.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub location: Option<String>,
@@ -764,6 +826,31 @@ pub(crate) struct SessionInput {
     /// Session speakers.
     #[garde(dive)]
     pub speakers: Option<Vec<SpeakerInput>>,
+}
+
+impl SessionInput {
+    /// Converts the session form payload into the JSON shape used by the
+    /// database. Label IDs are included, possibly empty, only when the form
+    /// submitted them; otherwise the database keeps or copies the labels.
+    pub(crate) fn to_db_payload(&self) -> anyhow::Result<Value> {
+        // Serialize the session into a mutable JSON object
+        let mut payload = match serde_json::to_value(self)? {
+            Value::Object(map) => map,
+            _ => Map::new(),
+        };
+
+        // Reinsert label IDs only when the form submitted them
+        payload.remove("label_ids");
+        payload.remove("label_ids_present");
+        if self.label_ids_present.is_some() {
+            payload.insert(
+                "label_ids".to_string(),
+                serde_json::to_value(self.label_ids.clone().unwrap_or_default())?,
+            );
+        }
+
+        Ok(Value::Object(payload))
+    }
 }
 
 /// Speaker selection with optional featured flag.

@@ -763,6 +763,7 @@ input:placeholder-shown {
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
 .icon-star { --icon-url: url('/static/images/icons/star.svg'); }
 .icon-submission { --icon-url: url('/static/images/icons/submission.svg'); }
+.icon-tag { --icon-url: url('/static/images/icons/tag.svg'); }
 .icon-team { --icon-url: url('/static/images/icons/team.svg'); }
 .icon-ticket { --icon-url: url('/static/images/icons/ticket.svg'); }
 .icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }

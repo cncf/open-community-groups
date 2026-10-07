@@ -1,9 +1,11 @@
+-- Tests validating the event label IDs assigned to a submission or session.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,45 +20,79 @@ select plan(5);
 \set label1ID '0c1d0000-0000-0000-0000-000000000007'
 \set label2ID '0c1d0000-0000-0000-0000-000000000008'
 \set labelOtherID '0c1d0000-0000-0000-0000-000000000009'
+\set missingLabelID '0c1d0000-0000-0000-0000-00000000000a'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories, groups and events
+-- Community containing the labeled events
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Event category used by the labeled events
 select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category used by the labeled events group
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group hosting the labeled events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Event whose labels are assigned
 select fx_event(:'eventID', :'groupID', :'eventCategoryID');
+
+-- Event owning a label that cannot be assigned
 select fx_event(:'eventOtherID', :'groupID', :'eventCategoryID');
 
--- Event CFS labels
-insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
-    (:'label1ID', :'eventID', 'Track / Backend', '#DBEAFE'),
-    (:'label2ID', :'eventID', 'Track / Frontend', '#FEE2E2'),
-    (:'labelOtherID', :'eventOtherID', 'Track / Other', '#CCFBF1');
+-- First assignable label
+insert into event_label (event_label_id, color, event_id, name)
+values (:'label1ID', '#DBEAFE', :'eventID', 'Track / Backend');
+
+-- Second assignable label
+insert into event_label (event_label_id, color, event_id, name)
+values (:'label2ID', '#FEE2E2', :'eventID', 'Track / Frontend');
+
+-- Label belonging to another event
+insert into event_label (event_label_id, color, event_id, name)
+values (:'labelOtherID', '#CCFBF1', :'eventOtherID', 'Track / Other');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
+-- Should accept empty labels
+select lives_ok(
+    format($$select validate_event_label_ids(%L::uuid, array[]::uuid[])$$, :'eventID'),
+    'Should accept empty labels'
+);
+
 -- Should accept null labels
 select lives_ok(
-    format($$select validate_cfs_submission_label_ids(%L::uuid, null)$$, :'eventID'),
+    format($$select validate_event_label_ids(%L::uuid, null)$$, :'eventID'),
     'Should accept null labels'
 );
 
--- Should accept empty labels
+-- Should accept ten labels
 select lives_ok(
-    format($$select validate_cfs_submission_label_ids(%L::uuid, array[]::uuid[])$$, :'eventID'),
-    'Should accept empty labels'
+    format(
+        $$select validate_event_label_ids(
+            %L::uuid,
+            array[
+                %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid,
+                %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid
+            ]
+        )$$,
+        :'eventID',
+        :'label1ID', :'label2ID', :'label1ID', :'label2ID', :'label1ID',
+        :'label2ID', :'label1ID', :'label2ID', :'label1ID', :'label2ID'
+    ),
+    'Should accept ten labels'
 );
 
 -- Should accept valid labels with duplicates
 select lives_ok(
     format(
-        $$select validate_cfs_submission_label_ids(%L::uuid, array[%L::uuid, %L::uuid, %L::uuid])$$,
+        $$select validate_event_label_ids(%L::uuid, array[%L::uuid, %L::uuid, %L::uuid])$$,
         :'eventID',
         :'label1ID',
         :'label1ID',
@@ -65,10 +101,23 @@ select lives_ok(
     'Should accept valid labels with duplicates'
 );
 
+-- Should reject labels from another event
+select throws_ok(
+    format(
+        $$select validate_event_label_ids(%L::uuid, array[%L::uuid, %L::uuid])$$,
+        :'eventID',
+        :'label1ID',
+        :'labelOtherID'
+    ),
+    'OCG01',
+    'invalid event labels',
+    'Should reject labels from another event'
+);
+
 -- Should reject more than ten labels
 select throws_ok(
     format(
-        $$select validate_cfs_submission_label_ids(
+        $$select validate_event_label_ids(
             %L::uuid,
             array[
                 %L::uuid, %L::uuid, %L::uuid, %L::uuid,
@@ -82,20 +131,20 @@ select throws_ok(
         :'label1ID', :'label1ID', :'label1ID'
     ),
     'OCG01',
-    'too many submission labels',
+    'too many labels',
     'Should reject more than ten labels'
 );
 
--- Should reject labels from another event
+-- Should reject unknown labels
 select throws_ok(
     format(
-        $$select validate_cfs_submission_label_ids(%L::uuid, array[%L::uuid])$$,
+        $$select validate_event_label_ids(%L::uuid, array[%L::uuid])$$,
         :'eventID',
-        :'labelOtherID'
+        :'missingLabelID'
     ),
     'OCG01',
-    'invalid event CFS labels',
-    'Should reject labels from another event'
+    'invalid event labels',
+    'Should reject unknown labels'
 );
 
 -- ============================================================================

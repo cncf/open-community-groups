@@ -1,5 +1,6 @@
 import { expect } from "../../../fixtures.js";
 
+import { queryE2eDatabaseRows } from "../../../database.js";
 import {
   buildE2eUrl,
   navigateToPath,
@@ -381,3 +382,32 @@ export const expectSearchDropdownInViewport = async (page, input, dropdown, { ab
 export const scrollToViewportBottom = async (locator) => {
   await locator.evaluate((element) => element.scrollIntoView({ block: "end" }));
 };
+
+/**
+ * Lists the labels of an event from the database, sorted by name.
+ * @param {string} eventId - Event identifier.
+ * @returns {{ color: string, id: string, name: string }[]} Event labels.
+ */
+export const listEventLabels = (eventId) =>
+  queryE2eDatabaseRows(`
+    select event_label_id, name, color
+    from event_label
+    where event_id = '${eventId}'
+    order by name
+  `).map(([id, name, color]) => ({ color, id, name }));
+
+/**
+ * Lists the sessions of an event with their label names from the database.
+ * @param {string} eventId - Event identifier.
+ * @returns {{ labels: string[], name: string }[]} Sessions sorted by name, labels sorted by name.
+ */
+export const listSessionLabels = (eventId) =>
+  queryE2eDatabaseRows(`
+    select s.name, coalesce(array_to_json(array_agg(el.name order by el.name) filter (where el.name is not null)), '[]')
+    from session s
+    left join session_label sl on sl.session_id = s.session_id
+    left join event_label el on el.event_label_id = sl.event_label_id
+    where s.event_id = '${eventId}'
+    group by s.session_id, s.name
+    order by s.name
+  `).map(([name, labels]) => ({ labels: JSON.parse(labels), name }));
