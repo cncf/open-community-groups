@@ -103,7 +103,7 @@ test.describe("event page call for speakers", () => {
     const modal = member1Page.getByRole("dialog", { name: "Submit a proposal" });
     await expect(modal).toBeVisible();
     await expect(modal.locator("#session_proposal_id")).toBeVisible();
-    await expect(modal.locator("cfs-label-selector")).toBeVisible();
+    await expect(modal.locator("label-selector#cfs-submission-labels")).toBeVisible();
     await expect(
       modal.getByText("Proposals already submitted to this event will appear disabled."),
     ).toBeVisible();

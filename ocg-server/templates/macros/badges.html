@@ -1,15 +1,3 @@
-{# CFS label chip -#}
-{# Used by dashboard submission lists to show call-for-speakers labels. -#}
-{% macro cfs_label_chip(name, color, extra_styles = None) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
-
-  <span class="custom-badge inline-block max-w-full truncate px-2.5 py-0.5 text-stone-900 {{ extra_styles_ }}"
-        style="--label-color: {{ color }};
-               border-color: var(--label-color);
-               background-color: color-mix(in srgb, var(--label-color) 30%, transparent)">{{ name }}</span>
-{% endmacro cfs_label_chip -%}
-{# End CFS label chip -#}
-
 {# Common badge -#}
 {# Used by dashboard lists for neutral, reusable badge styling. -#}
 {% macro common_badge(content, extra_styles = None) -%}
@@ -70,6 +58,18 @@
   {% endif -%}
 {% endmacro invitation_badge -%}
 {# End invitation badge -#}
+
+{# Label chip -#}
+{# Used by session lists and submission lists to show event labels. -#}
+{% macro label_chip(name, color, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <span class="custom-badge inline-block max-w-full truncate px-2.5 py-0.5 text-stone-900 {{ extra_styles_ }}"
+        style="--label-color: {{ color }};
+               border-color: var(--label-color);
+               background-color: color-mix(in srgb, var(--label-color) 30%, transparent)">{{ name }}</span>
+{% endmacro label_chip -%}
+{# End label chip -#}
 
 {# Payment status badge -#}
 {# Used by purchase, enrollment, and refund states. -#}

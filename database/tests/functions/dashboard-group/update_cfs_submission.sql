@@ -1,3 +1,5 @@
+-- Tests updating CFS submissions.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -82,8 +84,8 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('
 -- Event used for invalid label checks
 select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
--- Event CFS labels
-insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
+-- Event labels
+insert into event_label (event_label_id, event_id, name, color) values
     (:'label1ID', :'eventID', 'track / backend', '#DBEAFE'),
     (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2'),
     (:'labelInvalidID', :'event2ID', 'track / invalid', '#CCFBF1');
@@ -96,7 +98,7 @@ values
     (:'submission3ID', :'eventID', :'proposal3ID', 'approved');
 
 -- CFS submission labels
-insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id)
+insert into cfs_submission_label (cfs_submission_id, event_label_id)
 values (:'submissionID', :'label1ID');
 
 -- Session
@@ -214,7 +216,7 @@ select is(
 -- Should replace submission labels
 select is(
     (
-        select jsonb_agg(event_cfs_label_id order by event_cfs_label_id)
+        select jsonb_agg(event_label_id order by event_label_id)
         from cfs_submission_label
         where cfs_submission_id = :'submissionID'::uuid
     ),
@@ -416,7 +418,7 @@ select throws_ok(
         )
     ),
     'OCG01',
-    'invalid event CFS labels',
+    'invalid event labels',
     'Should reject labels that do not belong to the event'
 );
 

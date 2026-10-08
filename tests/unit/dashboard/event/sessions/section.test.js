@@ -458,4 +458,108 @@ describe("sessions-section", () => {
       "sessions[0][meeting_hosts]": ["host-1"],
     });
   });
+
+  it("maps loaded session labels to label ids", async () => {
+    // Render sessions loaded from the server with and without labels.
+    const element = await renderSessionsSection({
+      sessions: JSON.stringify([
+        {
+          name: "Labeled session",
+          labels: [
+            { color: "#bfdbfe", event_label_id: "label-1", name: "Backend" },
+            { color: "#fecaca", event_label_id: "label-2", name: "Frontend" },
+          ],
+        },
+        { name: "Unlabeled session", labels: [] },
+        { name: "Legacy session" },
+      ]),
+    });
+
+    // Loaded labels become editable label ids and the read model is dropped.
+    expect(element.sessions[0].label_ids).to.deep.equal(["label-1", "label-2"]);
+    expect(element.sessions[0]).to.not.have.property("labels");
+    expect(element.sessions[1].label_ids).to.deep.equal([]);
+    expect(element.sessions[2].label_ids).to.equal(undefined);
+  });
+
+  it("prunes session labels only when their label rows are deleted", async () => {
+    // Render sessions assigned to several labels and track change events.
+    const element = await renderSessionsSection({
+      labelIds: ["label-1", "label-2"],
+      sessions: [
+        { id: 0, label_ids: ["label-1", "label-2", "unknown"], name: "First" },
+        { id: 1, label_ids: ["label-1"], name: "Second" },
+        { id: 2, name: "Third" },
+      ],
+    });
+    const changes = [];
+    element.addEventListener("sessions-changed", (event) => changes.push(event.detail.sessions));
+
+    // Adding a label row does not touch the sessions.
+    element.labelIds = ["label-1", "label-2", "label-3"];
+    await element.updateComplete;
+    expect(changes).to.have.length(0);
+
+    // Deleting a label row removes only that id from the sessions.
+    element.labelIds = ["label-1", "label-3"];
+    await element.updateComplete;
+    expect(element.sessions.map((session) => session.label_ids)).to.deep.equal([
+      ["label-1", "unknown"],
+      ["label-1"],
+      undefined,
+    ]);
+    expect(changes).to.have.length(1);
+
+    // Deleting a label no session uses emits nothing.
+    element.labelIds = ["label-1"];
+    await element.updateComplete;
+    expect(changes).to.have.length(1);
+  });
+
+  it("renders label hidden inputs only for sessions with label ids", async () => {
+    // Render sessions with assigned, empty, and unset labels.
+    const element = await renderSessionsSection({
+      labels: [
+        { color: "#bfdbfe", event_label_id: "label-1", name: "Backend" },
+        { color: "#fecaca", event_label_id: "label-2", name: " " },
+      ],
+      sessions: [
+        { id: 0, label_ids: ["label-1", "label-2", "missing"], name: "Assigned", cfs_submission_id: "sub-1" },
+        { id: 1, label_ids: [], name: "Empty" },
+        { id: 2, name: "Unset" },
+      ],
+    });
+    const valueOf = (name) => element.querySelector(`input[name="${name}"]`)?.value ?? null;
+
+    // Assigned sessions submit the marker and only their named labels.
+    expect(valueOf("sessions[0][label_ids_present]")).to.equal("true");
+    expect(valueOf("sessions[0][label_ids][0]")).to.equal("label-1");
+    expect(valueOf("sessions[0][label_ids][1]")).to.equal(null);
+
+    // Empty selections submit only the marker.
+    expect(valueOf("sessions[1][label_ids_present]")).to.equal("true");
+    expect(valueOf("sessions[1][label_ids][0]")).to.equal(null);
+
+    // Unset labels submit nothing so the server keeps or copies them.
+    expect(valueOf("sessions[2][label_ids_present]")).to.equal(null);
+    expect(element.querySelector('input[name^="sessions[2][label_ids]"]')).to.equal(null);
+  });
+
+  it("resets all sessions and notifies listeners", async () => {
+    // Render sessions and track change events.
+    const element = await renderSessionsSection({
+      sessions: [{ id: 0, name: "Opening" }],
+    });
+    const changes = [];
+    element.addEventListener("sessions-changed", (event) => changes.push(event.detail.sessions));
+
+    // Reset the section.
+    element.reset();
+    await element.updateComplete;
+
+    // Sessions and their hidden inputs are cleared.
+    expect(element.sessions).to.deep.equal([]);
+    expect(changes).to.deep.equal([[]]);
+    expect(element.querySelector('input[name^="sessions["]')).to.equal(null);
+  });
 });

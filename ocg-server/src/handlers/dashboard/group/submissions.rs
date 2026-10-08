@@ -55,7 +55,7 @@ pub(crate) async fn list_page(
             GroupPermission::EventsWrite
         ),
         db.get_event_summary(community_id, group_id, event_id), // ensure event belongs to group
-        db.list_event_cfs_labels(event_id),
+        db.list_event_labels(event_id),
         db.list_event_cfs_submissions(event_id, &filters)
     )?;
 
@@ -66,12 +66,12 @@ pub(crate) async fn list_page(
     let refresh_url = pagination::build_url(&base_path, &filters)?;
     let template = submissions::ListPage {
         can_manage_events,
-        event_cfs_labels: labels,
+        event_labels: labels,
         event_id,
         submissions: submissions.submissions,
         navigation_links,
         refresh_url,
-        selected_event_cfs_label_ids: filters.label_ids.clone(),
+        selected_label_ids: filters.label_ids.clone(),
         sort: filters.sort.unwrap_or(CfsSubmissionsSort::CreatedDesc).to_string(),
         total: submissions.total,
     };

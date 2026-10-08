@@ -65,7 +65,6 @@ export const resolveSharedEventPageControls = (pageRoot) => ({
   cfsStartsAtInput: getElementById(pageRoot, "cfs_starts_at"),
   cfsEndsAtInput: getElementById(pageRoot, "cfs_ends_at"),
   cfsDescriptionInput: getElementById(pageRoot, "cfs_description"),
-  cfsLabelsEditor: getElementById(pageRoot, "cfs-labels-editor"),
   registrationStartsAtInput: getElementById(pageRoot, "registration_starts_at"),
   registrationEndsAtInput: getElementById(pageRoot, "registration_ends_at"),
   startsAtInput: getElementById(pageRoot, "starts_at"),

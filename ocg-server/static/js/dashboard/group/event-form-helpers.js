@@ -316,80 +316,33 @@ const setSponsors = (sponsors) => {
 };
 
 /**
- * Normalizes speaker data, flattening nested user objects.
- * @param {*} speakers Raw speakers payload
- * @returns {object[]} Normalized speaker entries
+ * Replaces the event labels in the labels editor. Copied labels keep only
+ * their name and color, so the editor gives them new ids.
+ * @param {*} labels Labels payload
  */
-const normalizeSpeakers = (speakers) => {
-  if (!Array.isArray(speakers)) {
-    return [];
-  }
-  return speakers
-    .map((speaker) => {
-      if (speaker && typeof speaker === "object" && speaker.user && typeof speaker.user === "object") {
-        return { ...speaker.user, featured: !!speaker.featured };
-      }
-      return speaker && typeof speaker === "object" ? { ...speaker, featured: !!speaker.featured } : null;
-    })
-    .filter(Boolean);
-};
-
-/**
- * Builds session entry objects compatible with the sessions UI.
- * @param {*} sessionsData Sessions data grouped or flat
- * @returns {object[]} Normalized session entries
- */
-const buildSessionEntries = (sessionsData) => {
-  if (!sessionsData) {
-    return [];
-  }
-  const buckets = Array.isArray(sessionsData) ? sessionsData : Object.values(sessionsData);
-  const entries = [];
-  buckets.forEach((bucket) => {
-    if (!Array.isArray(bucket)) {
-      return;
-    }
-    bucket.forEach((session) => {
-      if (!session || typeof session !== "object") {
-        return;
-      }
-      entries.push({
-        name: toOptionalString(session.name),
-        description: toOptionalString(session.description),
-        kind: toOptionalString(session.kind),
-        location: toOptionalString(session.location),
-        meeting_join_instructions: "",
-        meeting_join_url: "",
-        meeting_recording_url: "",
-        meeting_requested: false,
-        meeting_in_sync: false,
-        meeting_password: "",
-        meeting_error: "",
-        starts_at: "",
-        ends_at: "",
-        cfs_submission_id: toOptionalString(session.cfs_submission_id),
-        speakers: normalizeSpeakers(session.speakers),
-      });
-    });
-  });
-  return entries;
-};
-
-/**
- * Sets sessions on the sessions section component.
- * @param {*} sessionsData Raw sessions data
- */
-const setSessions = (sessionsData) => {
-  const section = document.querySelector("sessions-section");
-  if (!section) {
+const setLabels = (labels) => {
+  const editor = document.querySelector("labels-editor");
+  if (!editor || typeof editor.setLabels !== "function") {
     return;
   }
-  const entries = buildSessionEntries(sessionsData);
-  section.sessions = entries.length > 0 ? entries : [];
-  if (typeof section._initializeSessionIds === "function") {
-    section._initializeSessionIds();
+
+  const copiedLabels = (Array.isArray(labels) ? labels : []).map((label) => ({
+    color: toOptionalString(label?.color),
+    name: toOptionalString(label?.name),
+  }));
+  editor.setLabels(copiedLabels);
+};
+
+/**
+ * Clears every session in the sessions section component.
+ */
+const resetSessions = () => {
+  const section = document.querySelector("sessions-section");
+  if (!section || typeof section.reset !== "function") {
+    return;
   }
-  section.requestUpdate?.();
+
+  section.reset();
 };
 
 /**
@@ -501,18 +454,17 @@ const initializeSessionsRemovalWarning = ({
 
 export {
   appendCopySuffix,
-  buildSessionEntries,
   initializeSessionsRemovalWarning,
-  normalizeSpeakers,
+  resetSessions,
   setAttendeeApprovalRequired,
   setCategoryValue,
   setDiscountCodes,
   setEventReminderEnabled,
   setGalleryImages,
   setHosts,
+  setLabels,
   setPaymentCurrencyCode,
   setRegistrationQuestions,
-  setSessions,
   setSponsors,
   setTags,
   setTicketTaxConfiguration,

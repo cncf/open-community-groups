@@ -194,6 +194,12 @@ For approval events, keep these points in mind:
 
 !> Attendance must be confirmed before event-day check-in is available.
 
+## Browse the Event Schedule
+
+When an event has sessions, the event page lists them by day with their times,
+speakers, and locations. Colored chips under a session title show the event
+labels, such as tracks or topics, that organizers assigned to that session.
+
 ## Check In on Event Day
 
 Open [User Dashboard -> Check-In](/dashboard/user?tab=check-in ':ignore') on

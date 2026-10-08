@@ -168,6 +168,27 @@ describe("event preview", () => {
     expect(context.sessions[0].speakers[0].name).to.equal("Session Speaker");
   });
 
+  it("resolves session labels into preview names and colors", () => {
+    // Prepare a page whose session uses named, missing, and blank labels.
+    const pageRoot = mountPreviewPage();
+    const sessionsSection = pageRoot.querySelector("sessions-section");
+    sessionsSection.labels = [
+      { color: "#bfdbfe", event_label_id: "label-1", name: "Backend" },
+      { color: "#fecaca", event_label_id: "label-2", name: " " },
+    ];
+    sessionsSection.sessions = [
+      { kind: "talk", label_ids: ["label-1", "label-2", "missing"], name: "Opening session" },
+      { kind: "talk", name: "Closing session" },
+    ];
+
+    // Build the preview context.
+    const context = JSON.parse(buildEventPreviewPayload(pageRoot).get("preview_context"));
+
+    // Verify only named labels are sent, without ids.
+    expect(context.sessions[0].labels).to.deep.equal([{ color: "#bfdbfe", name: "Backend" }]);
+    expect(context.sessions[1].labels).to.equal(undefined);
+  });
+
   it("keeps preview co-host context empty when the selector is missing", () => {
     // Render the preview page without the co-hosts form.
     const pageRoot = mountPreviewPage();

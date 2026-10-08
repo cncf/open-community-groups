@@ -91,13 +91,14 @@
         {% if !labels.is_empty() -%}
           {# Labels field -#}
           <div>
-            <label for="cfs-label-selector" class="form-label">Labels</label>
+            <label for="cfs-submission-labels" class="form-label">Labels</label>
             <div class="mt-2">
-              <cfs-label-selector id="cfs-label-selector" name="label_ids" labels="{{ labels|json }}" max-selected="{{ crate::validation::MAX_EVENT_LABELS_PER_SUBMISSION }}" placeholder="Search labels" close-on-select></cfs-label-selector>
+              <label-selector id="cfs-submission-labels" name="label_ids" labels="{{ labels|json }}" max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}" placeholder="Search labels" close-on-select>
+              </label-selector>
             </div>
             <p class="form-legend">
               Optional labels help organizers categorize your submission.
-              You can select up to {{ crate::validation::MAX_EVENT_LABELS_PER_SUBMISSION }} labels.
+              You can select up to {{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }} labels.
             </p>
           </div>
           {# End labels field -#}

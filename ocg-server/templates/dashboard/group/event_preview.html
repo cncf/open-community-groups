@@ -335,6 +335,13 @@
                           <h3 class="font-semibold text-stone-900 md:text-lg">{{ session.name_label() }}</h3>
                           {{ badges::event_badge(kind = session.kind_display_label() , extra_styles = Some("mt-1 px-2.5 py-0.5 md:mt-1.5")) -}}
                         </div>
+                        {% if !session.labels.is_empty() -%}
+                          <div class="mb-3 mt-2 flex min-w-0 flex-wrap gap-1.5">
+                            {% for label in session.labels -%}
+                              {{ badges::label_chip(name = &label.name, color = &label.color) -}}
+                            {% endfor -%}
+                          </div>
+                        {% endif -%}
                         {% if let Some(location) = &session.location -%}
                           <div class="mb-3 text-sm/6 italic text-stone-500">{{ location }}</div>
                         {% endif -%}

@@ -1,5 +1,6 @@
 import { initializeEventContributors } from "/static/js/dashboard/group/event-contributors.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
+import { initializeEventLabels } from "/static/js/dashboard/group/event-labels.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
 import { initializeAutomaticTaxReadiness } from "/static/js/dashboard/event/automatic-tax-readiness.js";
 import "/static/js/dashboard/group/questions-editor.js";
@@ -246,6 +247,7 @@ export const initializeEventAddPage = (root = document) => {
 
   const { pageRoot, queryOne } = pageContext;
   initializeEventContributors(pageRoot);
+  initializeEventLabels(pageRoot);
 
   const controls = resolveSharedEventPageControls(pageRoot);
   const {

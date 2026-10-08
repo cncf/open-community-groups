@@ -13,6 +13,7 @@ use crate::{
     types::{
         badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge},
         dashboard::group::events::EventInput,
+        event::EventLabel,
         payments::{EventTicketType, EventTicketTypeAvailability},
     },
 };
@@ -111,6 +112,8 @@ const DOCUMENT_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c11c";
 const DOCUMENT_REFUND_JOB_ID: &str = "00000000-0000-0000-0000-00000000c136";
 const EVENT_CATEGORY_ID: &str = "00000000-0000-0000-0000-00000000c013";
 const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
+/// Label assigned to the contract event session and submission.
+const EVENT_LABEL_ID: &str = "00000000-0000-0000-0000-00000000c0c8";
 /// Buyer fixture used to prepare a new external checkout hold.
 const EXTERNAL_CHECKOUT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c12a";
 /// Pending external purchase dedicated to the completion mutation contract.
@@ -204,6 +207,8 @@ const REJECTED_REQUEST_USER_ID: &str = "00000000-0000-0000-0000-00000000c102";
 const REQUEST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d9";
 const REQUESTER_ID: &str = "00000000-0000-0000-0000-00000000c0ee";
 const REVOKED_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0be";
+/// Contract event session with one label.
+const SESSION_ID: &str = "00000000-0000-0000-0000-00000000c051";
 const SESSION_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c1";
 const SITE_ID: &str = "00000000-0000-0000-0000-00000000c0b1";
 /// Inactive community whose cached public statistics are verified.
@@ -228,6 +233,8 @@ const SUBGROUP_ID: &str = "00000000-0000-0000-0000-00000000c022";
 const SUMMARY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f1";
 const SYNC_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0a1";
 const TICKETED_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d0";
+/// Contract event session without labels.
+const UNLABELED_SESSION_ID: &str = "00000000-0000-0000-0000-00000000c052";
 const WAITLIST_ID: &str = "00000000-0000-0000-0000-00000000c043";
 
 /// Returns the activation identifier used by the contract fixture.
@@ -620,6 +627,15 @@ pub(super) fn contact_region_id() -> Uuid {
     parse_uuid(CONTACT_REGION_ID)
 }
 
+/// Returns the label assigned to the contract session and submission.
+pub(super) fn contract_event_label() -> EventLabel {
+    EventLabel {
+        color: "#DBEAFE".to_string(),
+        event_label_id: event_label_id(),
+        name: "track / backend".to_string(),
+    }
+}
+
 /// Builds the shared `PostgreSQL` configuration for contract tests.
 pub(super) fn contract_tests_config() -> Result<DeadpoolDbConfig> {
     let port = env_or_default("OCG_DB_PORT", "5432")
@@ -677,6 +693,11 @@ pub(super) fn event_category_id() -> Uuid {
 /// Returns the event identifier used by the contract fixture.
 pub(super) fn event_id() -> Uuid {
     parse_uuid(EVENT_ID)
+}
+
+/// Returns the label assigned to the contract session and submission.
+pub(super) fn event_label_id() -> Uuid {
+    parse_uuid(EVENT_LABEL_ID)
 }
 
 /// Returns the buyer used to prepare a new external checkout hold.
@@ -1078,6 +1099,11 @@ pub(super) fn revoked_user_badge_id() -> Uuid {
     parse_uuid(REVOKED_USER_BADGE_ID)
 }
 
+/// Returns the labeled session identifier used by the contract fixture.
+pub(super) fn session_id() -> Uuid {
+    parse_uuid(SESSION_ID)
+}
+
 /// Returns the session proposal identifier used by the contract fixture.
 pub(super) fn session_proposal_id() -> Uuid {
     parse_uuid(SESSION_PROPOSAL_ID)
@@ -1161,6 +1187,11 @@ pub(super) fn queue_invite_event_id() -> Uuid {
 /// Returns the queued invitation target used by the allocation contract.
 pub(super) fn queue_invitee_id() -> Uuid {
     parse_uuid(QUEUE_INVITEE_ID)
+}
+
+/// Returns the unlabeled session identifier used by the contract fixture.
+pub(super) fn unlabeled_session_id() -> Uuid {
+    parse_uuid(UNLABELED_SESSION_ID)
 }
 
 /// Waits until one contract-test backend is blocked by another.

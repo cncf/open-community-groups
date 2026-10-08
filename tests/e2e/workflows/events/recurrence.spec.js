@@ -11,7 +11,17 @@ import {
   waitForActionResponse,
 } from "../../utils.js";
 import { fillMarkdownEditor } from "../../dashboard/form-helpers.js";
-import { waitForEventEditorAfterSave } from "../../dashboard/group/events/helpers.js";
+import {
+  listEventLabels,
+  listSessionLabels,
+  waitForEventEditorAfterSave,
+} from "../../dashboard/group/events/helpers.js";
+import {
+  addSession,
+  expectSessionCardLabels,
+  openSessionsSection,
+  setLabels,
+} from "../../dashboard/group/events/event-form-helpers.js";
 
 const ALPHA_GROUP_EVENT_SERIES_PUBLISHED_RECIPIENT_IDS = [
   TEST_USER_IDS.organizer1,
@@ -122,6 +132,92 @@ test.describe("recurring event workflows", () => {
       await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
     } finally {
       // Remove any remaining recurring event rows.
+      cleanupEventsByIds(eventIds);
+    }
+  });
+
+  test("each recurring occurrence gets its own labels used by its sessions", async ({
+    organizerGroupPage,
+  }) => {
+    // Create unique names for the recurring labeled series.
+    const eventName = uniqueName("recurring labeled event");
+    const sessionName = uniqueName("recurring labeled session");
+    let eventIds = [];
+
+    try {
+      // Open the event form from the dashboard list.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+      await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+      await expect(organizerGroupPage.locator("#name")).toBeVisible();
+
+      // Fill the core event details for the recurring series.
+      await organizerGroupPage.locator("#name").fill(eventName);
+      await organizerGroupPage.locator("#kind_id").selectOption("virtual");
+      await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
+      await organizerGroupPage
+        .locator("#description_short")
+        .fill("A recurring dashboard event with labeled sessions.");
+      await fillMarkdownEditor(
+        organizerGroupPage,
+        "description",
+        "A recurring dashboard event used by session label e2e coverage.",
+      );
+
+      // Fill the recurring schedule and occurrence count.
+      await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+      await selectTimezone(organizerGroupPage, "UTC");
+      await organizerGroupPage.locator("#starts_at").fill(futureDate({ days: 89, hour: 10 }));
+      await organizerGroupPage.locator("#ends_at").fill(futureDate({ days: 89, hour: 12 }));
+      await organizerGroupPage
+        .locator("#meeting_join_url")
+        .fill("https://meet.example.com/e2e-recurring-labeled-event");
+      await organizerGroupPage.locator("#recurrence_pattern").selectOption("weekly");
+      await expect(organizerGroupPage.locator("#recurrence-additional-occurrences-container")).toBeVisible();
+      await organizerGroupPage.locator("#recurrence_additional_occurrences").fill("2");
+
+      // Add labels and a session that uses one of them.
+      await setLabels(organizerGroupPage, ["track / alpha", "track / beta"]);
+      await addSession(organizerGroupPage, {
+        endTime: "11:00",
+        labels: ["track / beta"],
+        name: sessionName,
+        startTime: "10:30",
+      });
+
+      // Create the recurring series and wait for the first occurrence editor.
+      const visibleAddEventButton = organizerGroupPage.locator(
+        "#pending-changes-alert:not(.hidden) #add-event-button",
+      );
+      await expect(visibleAddEventButton).toBeVisible();
+      await waitForActionResponse(organizerGroupPage, () => visibleAddEventButton.click(), {
+        method: "POST",
+        urlIncludes: "/dashboard/group/events/add",
+        status: 201,
+      });
+      await waitForEventEditorAfterSave(organizerGroupPage);
+      eventIds = listEventIdsByName(eventName);
+      expect(eventIds).toHaveLength(3);
+
+      // Verify the first occurrence editor shows the session label.
+      await openSessionsSection(organizerGroupPage);
+      await expectSessionCardLabels(organizerGroupPage, sessionName, ["track / beta"]);
+
+      // Verify every occurrence owns a separate copy of the labels.
+      const occurrenceLabels = eventIds.map((eventId) => listEventLabels(eventId));
+      for (const labels of occurrenceLabels) {
+        expect(labels.map((label) => label.name)).toEqual(["track / alpha", "track / beta"]);
+      }
+      const labelIds = occurrenceLabels.flat().map((label) => label.id);
+      expect(new Set(labelIds).size).toBe(labelIds.length);
+
+      // Verify every occurrence session uses the labels of its own occurrence.
+      for (const eventId of eventIds) {
+        expect(listSessionLabels(eventId)).toEqual([{ labels: ["track / beta"], name: sessionName }]);
+      }
+      expect(listSessionLabelEventIds(eventIds)).toEqual(eventIds.map((eventId) => [eventId, eventId]));
+    } finally {
+      // Remove the recurring event rows and their labels.
       cleanupEventsByIds(eventIds);
     }
   });
@@ -318,6 +414,17 @@ const listEventIdsByName = (eventName) => {
     order by starts_at, event_id
   `).map(([eventId]) => eventId);
 };
+
+/** Returns the event of each session and of its label for the session labels of the events. */
+const listSessionLabelEventIds = (eventIds) =>
+  queryE2eDatabaseRows(`
+    select s.event_id, el.event_id
+    from session s
+    join session_label sl on sl.session_id = s.session_id
+    join event_label el on el.event_label_id = sl.event_label_id
+    where s.event_id = any(array[${eventIds.map((eventId) => `'${eventId}'::uuid`).join(", ")}])
+    order by s.starts_at, s.event_id
+  `);
 
 /** Selects a scoped recurring-event action and waits for the series request. */
 const selectScopedAction = async (page, row, action, scopeButtonName) => {

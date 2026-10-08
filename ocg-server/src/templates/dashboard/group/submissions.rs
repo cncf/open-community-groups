@@ -4,7 +4,7 @@ use askama::Template;
 use uuid::Uuid;
 
 use crate::templates::{filters, helpers::user_initials};
-use crate::types::{event::EventCfsLabel, pagination};
+use crate::types::{event::EventLabel, pagination};
 
 use crate::types::dashboard::group::submissions::CfsSubmission;
 
@@ -16,16 +16,16 @@ use crate::types::dashboard::group::submissions::CfsSubmission;
 pub(crate) struct ListPage {
     /// Whether the current user can manage events.
     pub can_manage_events: bool,
-    /// Event CFS labels available for filtering and submission updates.
-    pub event_cfs_labels: Vec<EventCfsLabel>,
+    /// Event labels available for filtering and submission updates.
+    pub event_labels: Vec<EventLabel>,
     /// Event identifier.
     pub event_id: Uuid,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
     /// URL used to refresh the submissions list.
     pub refresh_url: String,
-    /// Selected CFS label identifiers used to filter submissions.
-    pub selected_event_cfs_label_ids: Option<Vec<Uuid>>,
+    /// Selected label identifiers used to filter submissions.
+    pub selected_label_ids: Option<Vec<Uuid>>,
     /// Sort option used to order submissions.
     pub sort: String,
     /// List of submissions.

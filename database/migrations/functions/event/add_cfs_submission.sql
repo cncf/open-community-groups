@@ -63,9 +63,6 @@ begin
         raise exception 'session proposal not ready for submission' using errcode = 'OCG01';
     end if;
 
-    -- Validate labels payload
-    perform validate_cfs_submission_label_ids(p_event_id, p_label_ids);
-
     -- Create submission
     insert into cfs_submission (
         event_id,
@@ -78,7 +75,7 @@ begin
     )
     returning cfs_submission_id into v_submission_id;
 
-    -- Link labels to submission
+    -- Validate and link labels to the submission
     perform sync_cfs_submission_labels(v_submission_id, p_event_id, p_label_ids);
 
     -- Return the created submission identifier

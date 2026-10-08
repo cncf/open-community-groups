@@ -201,7 +201,7 @@ describe("dashboard group event update template", () => {
     expect(template).to.include(
       '<cohosts-selector communities="{{ communities|json }}" selected-cohosts="{{ cohosts.cohosts|json }}" revision="{{ cohosts.revision }}" current-group-id="{{ event.group.group_id }}"',
     );
-    expect(template.match(/<form id="[^"]+" data-event-form/gu)).to.have.length(8);
+    expect(template.match(/<form id="[^"]+" data-event-form/gu)).to.have.length(9);
   });
 
   it("lazy-loads event review tabs from the desktop tab buttons", async () => {
@@ -624,5 +624,40 @@ describe("dashboard group event update template", () => {
     expect(contributorForm.match(/class="pb-12"/gu)).to.have.length(1);
     expect(contributorForm).not.to.include("border-b");
     expect(contributorForm).not.to.include("border-stone-900/10");
+  });
+
+  it("places the labels tab after sessions and moves the labels editor out of CFS", async () => {
+    // Load the event template before checking the labels tab.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the tab order is Sessions, Labels, Questions, CFS.
+    const tabIndex = (section) => template.indexOf(`event_form::tab_button(section = "${section}"`);
+    const optionIndex = (section) => template.indexOf(`event_form::tab_option(section = "${section}"`);
+    expect(tabIndex("labels")).to.be.greaterThan(tabIndex("sessions"));
+    expect(tabIndex("questions")).to.be.greaterThan(tabIndex("labels"));
+    expect(tabIndex("cfs")).to.be.greaterThan(tabIndex("questions"));
+    expect(optionIndex("labels")).to.be.greaterThan(optionIndex("sessions"));
+    expect(optionIndex("questions")).to.be.greaterThan(optionIndex("labels"));
+    expect(template).to.include('icon = "tag", label = "Labels"');
+
+    // Assert the labels editor lives in its own marked form, not in the CFS form.
+    const labelsFormIndex = template.indexOf('<form id="labels-form" data-event-form>');
+    const editorIndex = template.indexOf('<labels-editor id="labels-editor" field-name="labels"');
+    const cfsFormIndex = template.indexOf('<form id="cfs-form" data-event-form>');
+    expect(labelsFormIndex).to.be.greaterThan(-1);
+    expect(editorIndex).to.be.greaterThan(labelsFormIndex);
+    expect(editorIndex).to.be.lessThan(template.indexOf("</form>", labelsFormIndex));
+    expect(template.slice(cfsFormIndex, template.indexOf("</form>", cfsFormIndex))).to.not.include(
+      "labels-editor",
+    );
+    expect(template).to.include("crate::validation::EVENT_LABEL_COLORS|json");
+    expect(template).to.include(
+      'label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}"',
+    );
+    expect(template).to.include('labels="{{ event.labels|json }}" max-items=');
+    expect(template).to.include('statuses="{{ cfs_submission_statuses|json }}" labels="{{ event.labels|json }}"');
+    expect(template).to.include(
+      'labels="{{ event.labels|json }}" label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}" current-user-id=',
+    );
   });
 });

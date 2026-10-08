@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { DropdownPlacementController } from "/static/js/common/dropdown-placement.js";
+import { labelColorStyle } from "/static/js/common/labels.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 const DEFAULT_EMPTY_MESSAGE = "No results found";
@@ -352,9 +353,7 @@ export class MultiSelect extends LitWrapper {
   _renderChip(option) {
     const sizeClass = this.compact ? "h-[22px] gap-0.5 px-2 py-0.5 text-[11px]" : "gap-2 px-2.5 py-1 text-xs";
     const colorClass = option.color ? "" : "border-stone-300 bg-stone-100";
-    const colorStyle = option.color
-      ? `--label-color:${option.color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);`
-      : nothing;
+    const colorStyle = option.color ? labelColorStyle(option.color) : nothing;
     const iconSizeClass = this.compact ? "size-2.5" : "size-3";
 
     return html`

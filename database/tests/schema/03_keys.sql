@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(240);
+select plan(248);
 
 -- ============================================================================
 -- TESTS
@@ -22,6 +22,7 @@ select has_pk('badge_award_job');
 select has_pk('badge_award_job_recipient');
 select has_pk('badge_status_list');
 select has_pk('cfs_submission');
+select has_pk('cfs_submission_label');
 select has_pk('cfs_submission_rating');
 select has_pk('cfs_submission_status');
 select has_pk('community');
@@ -43,6 +44,7 @@ select has_pk('event_cohost_status');
 select has_pk('event_discount_code');
 select has_pk('event_host');
 select has_pk('event_kind');
+select has_pk('event_label');
 select has_pk('event_organizer');
 select has_pk('event_purchase');
 select has_pk('event_purchase_application_fee_adjustment');
@@ -88,6 +90,7 @@ select has_pk('payment_provider_tax_product');
 select has_pk('region');
 select has_pk('session');
 select has_pk('session_kind');
+select has_pk('session_label');
 select has_pk('session_proposal');
 select has_pk('session_proposal_level');
 select has_pk('session_proposal_status');
@@ -118,6 +121,8 @@ select col_is_fk('cfs_submission', 'event_id', 'event');
 select col_is_fk('cfs_submission', 'reviewed_by', 'user');
 select col_is_fk('cfs_submission', 'session_proposal_id', 'session_proposal');
 select col_is_fk('cfs_submission', 'status_id', 'cfs_submission_status');
+select fk_ok('cfs_submission_label', 'cfs_submission_id', 'cfs_submission', 'cfs_submission_id');
+select fk_ok('cfs_submission_label', 'event_label_id', 'event_label', 'event_label_id');
 select col_is_fk('cfs_submission_rating', 'cfs_submission_id', 'cfs_submission');
 select col_is_fk('cfs_submission_rating', 'reviewer_id', 'user');
 select col_is_fk('community', 'community_site_layout_id', 'community_site_layout');
@@ -154,6 +159,7 @@ select col_is_fk('event_discount_code', 'event_id', 'event');
 select col_is_fk('event_host', 'event_id', 'event');
 select col_is_fk('event_host', 'user_id', 'user');
 select col_is_fk('event_invitation_request', 'event_ticket_type_id', 'event_ticket_type');
+select fk_ok('event_label', 'event_id', 'event', 'event_id');
 select col_is_fk('event_organizer', 'event_id', 'event');
 select col_is_fk('event_organizer', 'user_id', 'user');
 select col_is_fk('event_purchase', 'event_discount_code_id', 'event_discount_code');
@@ -244,6 +250,8 @@ select col_is_fk('session', 'event_id', 'event');
 select col_is_fk('session', 'cfs_submission_id', 'cfs_submission');
 select col_is_fk('session', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('session', 'session_kind_id', 'session_kind');
+select fk_ok('session_label', 'event_label_id', 'event_label', 'event_label_id');
+select fk_ok('session_label', 'session_id', 'session', 'session_id');
 select col_is_fk('session_proposal', 'co_speaker_user_id', 'user');
 select col_is_fk('session_proposal', 'session_proposal_level_id', 'session_proposal_level');
 select col_is_fk('session_proposal', 'session_proposal_status_id', 'session_proposal_status');

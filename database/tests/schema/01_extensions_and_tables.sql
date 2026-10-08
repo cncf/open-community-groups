@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(90);
+select plan(91);
 
 -- ============================================================================
 -- TESTS
@@ -49,6 +49,7 @@ select has_table('event_discount_code');
 select has_table('event_host');
 select has_table('event_invitation_request');
 select has_table('event_kind');
+select has_table('event_label');
 select has_table('event_organizer');
 select has_table('event_purchase');
 select has_table('event_purchase_application_fee_adjustment');
@@ -57,7 +58,6 @@ select has_table('event_purchase_refund');
 select has_table('event_refund_request');
 select has_table('event_ticket_price_window');
 select has_table('event_ticket_type');
-select has_table('event_cfs_label');
 select has_table('event_series');
 select has_table('event_speaker');
 select has_table('event_sponsor');
@@ -95,6 +95,7 @@ select has_table('payment_provider_tax_product');
 select has_table('region');
 select has_table('session');
 select has_table('session_kind');
+select has_table('session_label');
 select has_table('session_proposal');
 select has_table('session_proposal_level');
 select has_table('session_proposal_status');

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use anyhow::anyhow;
 use chrono::Utc;
@@ -33,7 +33,7 @@ use crate::{
     types::{
         dashboard::group::events::{
             EventActionScope, EventCohostInvitation, EventCohostsEditor, EventInput,
-            EventRecurrencePattern,
+            EventLabelInput, EventRecurrencePattern,
         },
         event::{EventCohostStatus, EventFull, EventSummary, Speaker},
         meetings::MeetingProvider,
@@ -621,11 +621,20 @@ async fn test_add_recurring_success() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
+    let label_id = Uuid::new_v4();
     let related_event_id = Uuid::new_v4();
     let third_event_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let mut event_form = sample_event_form();
     event_form.ends_at = Some((Utc::now() + chrono::Duration::days(8)).naive_utc());
+    event_form.labels = Some(vec![EventLabelInput {
+        color: "#FFD866".to_string(),
+        event_label_id: label_id,
+        name: "Cloud".to_string(),
+
+        is_new: true,
+    }]);
+    event_form.labels_present = Some(true);
     event_form.recurrence_additional_occurrences = Some(2);
     event_form.recurrence_pattern = Some(EventRecurrencePattern::Weekly);
     event_form.starts_at = Some((Utc::now() + chrono::Duration::days(7)).naive_utc());
@@ -648,11 +657,21 @@ async fn test_add_recurring_success() {
                         .and_then(serde_json::Value::as_str)
                         .is_some_and(|name| name == event_name)
                 });
+                let label_ids: HashSet<_> = events
+                    .iter()
+                    .filter_map(|event| {
+                        event
+                            .pointer("/labels/0/event_label_id")
+                            .and_then(serde_json::Value::as_str)
+                    })
+                    .collect();
 
                 *uid == user_id
                     && *id == group_id
                     && events.len() == 3
                     && names_match
+                    && label_ids.len() == 3
+                    && label_ids.contains(label_id.to_string().as_str())
                     && recurrence
                         .get("additional_occurrences")
                         .and_then(serde_json::Value::as_i64)

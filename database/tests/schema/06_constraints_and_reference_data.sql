@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(189);
+select plan(190);
 
 -- ============================================================================
 -- TESTS
@@ -147,6 +147,9 @@ select results_eq(
 -- Test: event discount code table expected constraints exist
 select has_check('event_discount_code', 'event_discount_code_kind_value_chk');
 select has_check('event_discount_code', 'event_discount_code_window_chk');
+
+-- Test: event label table expected constraints exist
+select has_check('event_label', 'event_label_name_check');
 
 -- Test: event ticket price window table expected constraints exist
 select has_check('event_ticket_price_window', 'event_ticket_price_window_window_chk');

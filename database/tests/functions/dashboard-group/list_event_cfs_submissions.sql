@@ -91,8 +91,8 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published', true
 ));
 
--- Event CFS labels
-insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
+-- Event labels
+insert into event_label (event_label_id, event_id, name, color) values
     (:'label1ID', :'eventID', 'track / backend', '#DBEAFE'),
     (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2');
 
@@ -162,7 +162,7 @@ insert into session (
 );
 
 -- CFS submission labels
-insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id) values
+insert into cfs_submission_label (cfs_submission_id, event_label_id) values
     (:'submission1ID', :'label1ID'),
     (:'submission2ID', :'label1ID'),
     (:'submission2ID', :'label2ID');
@@ -215,12 +215,12 @@ select is(
                 'labels', jsonb_build_array(
                     jsonb_build_object(
                         'color', '#DBEAFE',
-                        'event_cfs_label_id', :'label1ID'::uuid,
+                        'event_label_id', :'label1ID'::uuid,
                         'name', 'track / backend'
                     ),
                     jsonb_build_object(
                         'color', '#FEE2E2',
-                        'event_cfs_label_id', :'label2ID'::uuid,
+                        'event_label_id', :'label2ID'::uuid,
                         'name', 'track / frontend'
                     )
                 ),
@@ -274,7 +274,7 @@ select is(
                 'labels', jsonb_build_array(
                     jsonb_build_object(
                         'color', '#DBEAFE',
-                        'event_cfs_label_id', :'label1ID'::uuid,
+                        'event_label_id', :'label1ID'::uuid,
                         'name', 'track / backend'
                     )
                 ),
@@ -354,12 +354,12 @@ select is(
             'labels', jsonb_build_array(
                 jsonb_build_object(
                     'color', '#DBEAFE',
-                    'event_cfs_label_id', :'label1ID'::uuid,
+                    'event_label_id', :'label1ID'::uuid,
                     'name', 'track / backend'
                 ),
                 jsonb_build_object(
                     'color', '#FEE2E2',
-                    'event_cfs_label_id', :'label2ID'::uuid,
+                    'event_label_id', :'label2ID'::uuid,
                     'name', 'track / frontend'
                 )
             ),

@@ -126,4 +126,221 @@ describe("session-form-modal", () => {
     expect(sessionItem.eventPast).to.equal(true);
     expect(onlineEventDetails.eventPast).to.equal(true);
   });
+
+  describe("labels", () => {
+    const labels = [
+      { color: "#bfdbfe", event_label_id: "label-1", name: "Backend" },
+      { color: "#fecaca", event_label_id: "label-2", name: "Frontend" },
+    ];
+    const approvedSubmissions = [
+      {
+        cfs_submission_id: "sub-1",
+        label_ids: ["label-1", "deleted-label"],
+        speaker_name: "Ada",
+        title: "Scaling APIs",
+      },
+      { cfs_submission_id: "sub-2", speaker_name: "Grace", title: "Compilers" },
+    ];
+
+    /** Opens the modal and returns its rendered parts. */
+    const openModal = async (session = null) => {
+      const modal = await mountLitComponent("session-form-modal", {
+        approvedSubmissions,
+        labelMaxSelected: 10,
+        labels,
+        sessionKinds: [{ session_kind_id: "talk", display_name: "Talk" }],
+      });
+      modal.open(session, "2025-05-10");
+      await modal.updateComplete;
+      const item = modal.querySelector("session-item");
+      await item.updateComplete;
+      const selector = item.querySelector("label-selector");
+      await selector.updateComplete;
+      return { item, modal, selector };
+    };
+
+    /** Waits until the modal, item, and selector finish pending updates. */
+    const settle = async ({ item, modal, selector }) => {
+      for (let round = 0; round < 4; round += 1) {
+        await modal.updateComplete;
+        await item.updateComplete;
+        await selector.updateComplete;
+      }
+    };
+
+    /** Links the session to an approved submission through the form controls. */
+    const linkSubmission = async (parts, submissionId) => {
+      const cfsModeInput = parts.item.querySelector('input[type="radio"][value="cfs"]');
+      if (!cfsModeInput.checked) {
+        cfsModeInput.click();
+        await settle(parts);
+      }
+      const select = parts.item.querySelector("#session-0-cfs-submission");
+      select.value = submissionId;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      await settle(parts);
+    };
+
+    it("prefills labels from linked submissions with label ids", async () => {
+      // Open a new session and link a submission with label ids.
+      const parts = await openModal();
+      await linkSubmission(parts, "sub-1");
+
+      // Only labels that still exist are pre-filled.
+      expect(parts.modal._session.label_ids).to.deep.equal(["label-1"]);
+      expect(parts.selector.selected).to.deep.equal(["label-1"]);
+      expect(parts.selector.maxSelected).to.equal(10);
+
+      // Linking a submission without label ids leaves labels unset for the server.
+      await linkSubmission(parts, "sub-2");
+      expect(parts.modal._session).to.not.have.property("label_ids");
+      expect(parts.selector.selected).to.deep.equal([]);
+    });
+
+    it("keeps label edits after linking and when switching mode", async () => {
+      // Link a submission, then edit the pre-filled labels.
+      const parts = await openModal();
+      await linkSubmission(parts, "sub-1");
+      await parts.selector._toggleSelection("label-2");
+      await settle(parts);
+
+      // The organizer edit is kept in the session.
+      expect(parts.modal._session.label_ids).to.deep.equal(["label-1", "label-2"]);
+
+      // Switching back to manual mode keeps the labels.
+      parts.item.querySelector('input[type="radio"][value="manual"]').click();
+      await settle(parts);
+      expect(parts.modal._session.cfs_submission_id).to.equal("");
+      expect(parts.modal._session.label_ids).to.deep.equal(["label-1", "label-2"]);
+    });
+
+    it("does not copy submission labels again when reopening a linked session", async () => {
+      // Reopen a session linked to a submission whose labels were edited.
+      const parts = await openModal({
+        cfs_submission_id: "sub-1",
+        id: 3,
+        label_ids: ["label-2"],
+        name: "Scaling APIs",
+        starts_at: "2025-05-10T09:00",
+      });
+
+      // The saved selection is shown as is.
+      expect(parts.item.data.label_ids).to.deep.equal(["label-2"]);
+      expect(parts.selector.selected).to.deep.equal(["label-2"]);
+    });
+
+    it("keeps assigned labels while their name is blank and settles selector updates", async () => {
+      // Open a session with two labels and track selector and data updates.
+      const parts = await openModal({
+        id: 3,
+        label_ids: ["label-1", "label-2"],
+        name: "Scaling APIs",
+        starts_at: "2025-05-10T09:00",
+      });
+      const receivedSelections = [];
+      const originalWillUpdate = parts.selector.willUpdate.bind(parts.selector);
+      parts.selector.willUpdate = (changedProperties) => {
+        if (changedProperties.has("selected")) {
+          receivedSelections.push({
+            available: (parts.selector.labels || []).map((label) => String(label.event_label_id)),
+            selected: [...parts.selector.selected],
+          });
+        }
+        originalWillUpdate(changedProperties);
+      };
+      let changeEvents = 0;
+      parts.selector.addEventListener("change", () => {
+        changeEvents += 1;
+      });
+      const dataChanges = [];
+      const originalOnDataChange = parts.modal._onDataChange;
+      parts.modal._onDataChange = (data) => {
+        dataChanges.push([...(data.label_ids || [])]);
+        originalOnDataChange(data);
+      };
+      parts.modal.requestUpdate();
+      await settle(parts);
+
+      // Blank the second label name, then restore it.
+      parts.modal.labels = [labels[0]];
+      await settle(parts);
+      expect(parts.selector.selected).to.deep.equal(["label-1"]);
+      expect(parts.item.data.label_ids).to.deep.equal(["label-1", "label-2"]);
+      parts.modal.labels = [...labels];
+      await settle(parts);
+
+      // The selection is restored without any change event or data update.
+      expect(parts.selector.selected).to.deep.equal(["label-1", "label-2"]);
+      expect(changeEvents).to.equal(0);
+      expect(dataChanges).to.deep.equal([]);
+
+      // Deselect a label while the other one is blank.
+      parts.modal.labels = [labels[0]];
+      await settle(parts);
+      await parts.selector._toggleSelection("label-1");
+      await settle(parts);
+
+      // One real change produces one data update that keeps the blank label.
+      expect(changeEvents).to.equal(1);
+      expect(dataChanges).to.deep.equal([["label-2"]]);
+      expect(parts.modal._session.label_ids).to.deep.equal(["label-2"]);
+
+      // Restoring the label shows it selected without further updates.
+      parts.modal.labels = [...labels];
+      await settle(parts);
+      expect(parts.selector.selected).to.deep.equal(["label-2"]);
+      expect(changeEvents).to.equal(1);
+      expect(dataChanges).to.have.length(1);
+
+      // The selector only ever received ids it had options for.
+      expect(receivedSelections.length).to.be.greaterThan(0);
+      receivedSelections.forEach(({ available, selected }) => {
+        selected.forEach((id) => expect(available).to.include(id));
+      });
+    });
+
+    it("hides the labels field when the event has no named labels", async () => {
+      // Open the modal for an event with only blank labels.
+      const modal = await mountLitComponent("session-form-modal", {
+        labels: [{ color: "#bfdbfe", event_label_id: "label-1", name: " " }],
+        sessionKinds: [{ session_kind_id: "talk", display_name: "Talk" }],
+      });
+      modal.open(null, "2025-05-10");
+      await modal.updateComplete;
+      const item = modal.querySelector("session-item");
+      await item.updateComplete;
+
+      // Verify no labels selector or heading is rendered.
+      expect(item.querySelector("label-selector")).to.equal(null);
+      expect(item.querySelector("#session-0-labels-title")).to.equal(null);
+    });
+
+    it("closes the labels dropdown before the modal on Escape", async () => {
+      // Open the modal and the labels dropdown.
+      const parts = await openModal();
+      const input = parts.selector.querySelector('input[role="combobox"]');
+      input.dispatchEvent(new FocusEvent("focus"));
+      await settle(parts);
+      expect(input.getAttribute("aria-expanded")).to.equal("true");
+
+      // Press Escape inside the dropdown.
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Escape" }),
+      );
+      await settle(parts);
+
+      // Verify only the dropdown closes.
+      expect(input.getAttribute("aria-expanded")).to.equal("false");
+      expect(parts.modal._isOpen).to.equal(true);
+
+      // Press Escape again with the dropdown closed.
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Escape" }),
+      );
+      await parts.modal.updateComplete;
+
+      // Verify the second Escape closes the modal.
+      expect(parts.modal._isOpen).to.equal(false);
+    });
+  });
 });

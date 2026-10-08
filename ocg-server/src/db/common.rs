@@ -12,7 +12,7 @@ use crate::{
     types::{
         badges::{BadgeStatusList, PublicUserBadge, UserBadge},
         community::{CommunityFull, CommunitySummary},
-        event::{EventCfsLabel, EventFull, EventSummary},
+        event::{EventFull, EventLabel, EventSummary},
         group::{GroupFull, GroupSummary},
         search::{
             SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters, SearchGroupsOutput,
@@ -65,7 +65,7 @@ pub(crate) trait DBCommon {
     async fn get_worker_queue_health(&self) -> Result<WorkerQueueHealth>;
 
     /// Lists labels configured for an event.
-    async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>>;
+    async fn list_event_labels(&self, event_id: Uuid) -> Result<Vec<EventLabel>>;
 
     /// Lists all available timezones.
     ///
@@ -182,10 +182,10 @@ where
         self.fetch_json_one("select get_worker_queue_health()", &[]).await
     }
 
-    /// [`DBCommon::list_event_cfs_labels`]
+    /// [`DBCommon::list_event_labels`]
     #[instrument(skip(self), err)]
-    async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>> {
-        self.fetch_json_one("select list_event_cfs_labels($1::uuid)", &[&event_id])
+    async fn list_event_labels(&self, event_id: Uuid) -> Result<Vec<EventLabel>> {
+        self.fetch_json_one("select list_event_labels($1::uuid)", &[&event_id])
             .await
     }
 

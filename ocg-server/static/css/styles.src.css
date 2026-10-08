@@ -329,15 +329,6 @@
   .featured-speakers-grid:not(:empty) + .regular-speakers-grid {
     margin-top: 1.5rem;
   }
-
-  .featured-sessions-grid:empty {
-    display: none;
-    margin: 0;
-  }
-
-  .featured-sessions-grid:not(:empty) + .regular-sessions-speakers {
-    margin-top: 0.75rem;
-  }
 }
 
 :root {
@@ -763,6 +754,7 @@ input:placeholder-shown {
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
 .icon-star { --icon-url: url('/static/images/icons/star.svg'); }
 .icon-submission { --icon-url: url('/static/images/icons/submission.svg'); }
+.icon-tag { --icon-url: url('/static/images/icons/tag.svg'); }
 .icon-team { --icon-url: url('/static/images/icons/team.svg'); }
 .icon-ticket { --icon-url: url('/static/images/icons/ticket.svg'); }
 .icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }

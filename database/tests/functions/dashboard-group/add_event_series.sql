@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,8 @@ select plan(14);
 \set eventCategoryID '3a030000-0000-0000-0000-000000000002'
 \set groupCategoryID '3a030000-0000-0000-0000-000000000003'
 \set groupID '3a030000-0000-0000-0000-000000000004'
+\set labelOccurrence1ID '3a030000-0000-0000-0000-000000000006'
+\set labelOccurrence2ID '3a030000-0000-0000-0000-000000000007'
 \set userID '3a030000-0000-0000-0000-000000000005'
 
 -- ============================================================================
@@ -74,6 +76,108 @@ select is(
     'Should create the expected number of events'
 );
 
+-- Should give each occurrence its own labels and session links
+select lives_ok(
+    format(
+        $$select add_event_series(%L::uuid, %L::uuid, %L::jsonb, %L::jsonb)$$,
+        :'userID',
+        :'groupID',
+        jsonb_build_array(
+                jsonb_build_object(
+                    'category_id', :'eventCategoryID',
+                    'description', 'Labeled base event',
+                    'ends_at', '2030-01-07T11:00:00',
+                    'kind_id', 'virtual',
+                    'labels', jsonb_build_array(
+                        jsonb_build_object(
+                            'color', '#DBEAFE',
+                            'event_label_id', :'labelOccurrence1ID',
+                            'is_new', true,
+                            'name', 'track / web'
+                        )
+                    ),
+                    'name', 'Labeled Study Group',
+                    'sessions', jsonb_build_array(
+                        jsonb_build_object(
+                            'kind', 'virtual',
+                            'label_ids', jsonb_build_array(:'labelOccurrence1ID'),
+                            'name', 'Labeled Session',
+                            'starts_at', '2030-01-07T10:00:00'
+                        )
+                    ),
+                    'starts_at', '2030-01-07T10:00:00',
+                    'timezone', 'UTC'
+                ),
+                jsonb_build_object(
+                    'category_id', :'eventCategoryID',
+                    'description', 'Labeled base event',
+                    'ends_at', '2030-01-14T11:00:00',
+                    'kind_id', 'virtual',
+                    'labels', jsonb_build_array(
+                        jsonb_build_object(
+                            'color', '#DBEAFE',
+                            'event_label_id', :'labelOccurrence2ID',
+                            'is_new', true,
+                            'name', 'track / web'
+                        )
+                    ),
+                    'name', 'Labeled Study Group',
+                    'sessions', jsonb_build_array(
+                        jsonb_build_object(
+                            'kind', 'virtual',
+                            'label_ids', jsonb_build_array(:'labelOccurrence2ID'),
+                            'name', 'Labeled Session',
+                            'starts_at', '2030-01-14T10:00:00'
+                        )
+                    ),
+                    'starts_at', '2030-01-14T10:00:00',
+                    'timezone', 'UTC'
+                )
+        ),
+        '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb
+    ),
+    'Should give each occurrence its own labels and session links'
+);
+select results_eq(
+    $$
+        select e.starts_at, el.event_label_id, el.name
+        from event_label el
+        join event e on e.event_id = el.event_id
+        where e.name = 'Labeled Study Group'
+        order by e.starts_at
+    $$,
+    format(
+        $$
+            values
+                ('2030-01-07 10:00:00+00'::timestamptz, %L::uuid, 'track / web'::text),
+                ('2030-01-14 10:00:00+00'::timestamptz, %L::uuid, 'track / web'::text)
+        $$,
+        :'labelOccurrence1ID',
+        :'labelOccurrence2ID'
+    ),
+    'Should store the labels of each occurrence on its own event'
+);
+select results_eq(
+    $$
+        select e.starts_at, sl.event_label_id
+        from session_label sl
+        join session s on s.session_id = sl.session_id
+        join event e on e.event_id = s.event_id
+        where e.name = 'Labeled Study Group'
+        order by e.starts_at
+    $$,
+    format(
+        $$
+            values
+                ('2030-01-07 10:00:00+00'::timestamptz, %L::uuid),
+                ('2030-01-14 10:00:00+00'::timestamptz, %L::uuid)
+        $$,
+        :'labelOccurrence1ID',
+        :'labelOccurrence2ID'
+    ),
+    'Should link each occurrence session to its own event labels'
+);
+
 -- Should link all created events to one series
 select is(
     (
@@ -94,6 +198,11 @@ select results_eq(
             recurrence_pattern,
             timezone
         from event_series
+        where event_series_id = (
+            select distinct event_series_id
+            from event
+            where name = 'Weekly Study Group'
+        )
     $$,
     $$
         values (1, 'weekly'::text, 'UTC'::text)
@@ -461,7 +570,7 @@ select results_eq(
             (select count(*)::int from event_series)
     $$,
     $$
-        values (0, 1)
+        values (0, 2)
     $$,
     'Should leave no partial rows after a generated event fails'
 );

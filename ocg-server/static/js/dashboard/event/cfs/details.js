@@ -2,6 +2,8 @@ import { html } from "lit";
 import { computeUserInitials } from "/static/js/common/users/initials.js";
 import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 
+const LABELS_LEGEND = "Add labels to categorize this submission for your review team.";
+
 /**
  * Renders a badge row for a person.
  * @param {Object} person Person payload.
@@ -72,21 +74,25 @@ const renderCfsDetailsLabels = (state) => {
     return html``;
   }
 
+  const maxSelected = Number(state.labelMaxSelected) || 0;
+  const legend =
+    maxSelected > 0 ? `${LABELS_LEGEND} You can select up to ${maxSelected} labels.` : LABELS_LEGEND;
+
   return html`
     <div>
       <label for="cfs-submission-labels" class="form-label">Labels</label>
       <div class="mt-2">
-        <cfs-label-selector
+        <label-selector
           id="cfs-submission-labels"
           name="label_ids"
           .labels=${state.labels}
           .selected=${state.selectedLabelIds}
           close-on-select
-          max-selected="10"
-          legend="Add labels to categorize this submission for your review team."
+          .maxSelected=${maxSelected}
+          legend=${legend}
           placeholder="Search labels"
           @change=${state.onLabelsChange}
-        ></cfs-label-selector>
+        ></label-selector>
       </div>
     </div>
   `;

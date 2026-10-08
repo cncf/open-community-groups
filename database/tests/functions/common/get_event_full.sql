@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -340,8 +340,8 @@ insert into event (
     )::jsonb
 );
 
--- Event CFS labels
-insert into event_cfs_label (event_cfs_label_id, event_id, name, color)
+-- Event labels
+insert into event_label (event_label_id, event_id, name, color)
 values
     (:'label1ID', :'eventID', 'track / ai + ml', '#DBEAFE'),
     (:'label2ID', :'eventID', 'track / web', '#FEE2E2');
@@ -420,6 +420,10 @@ insert into cfs_submission (
     :'sessionProposalID',
     'approved'
 );
+
+-- Submission label that differs from the linked session label
+insert into cfs_submission_label (cfs_submission_id, event_label_id)
+values (:'cfsSubmissionID', :'label2ID');
 
 -- Event Host
 insert into event_host (event_id, user_id)
@@ -656,6 +660,10 @@ insert into meeting (
     :'sessionOverrideID'
 );
 
+-- Label of the session linked to the CFS submission
+insert into session_label (event_label_id, session_id)
+values (:'label1ID', :'session3ID');
+
 -- Session Speakers
 insert into session_speaker (session_id, user_id, featured)
 values
@@ -882,6 +890,18 @@ select is(
         "has_related_events": true,
         "has_ticket_purchases": false,
         "kind": "hybrid",
+        "labels": [
+            {
+                "color": "#DBEAFE",
+                "event_label_id": "0c060000-0000-0000-0000-000000000011",
+                "name": "track / ai + ml"
+            },
+            {
+                "color": "#FEE2E2",
+                "event_label_id": "0c060000-0000-0000-0000-000000000012",
+                "name": "track / web"
+            }
+        ],
         "name": "KubeCon Seattle 2024",
         "published": true,
         "slug": "def5678",
@@ -891,18 +911,6 @@ select is(
         "attendee_count": 2,
         "banner_url": "https://example.com/event-banner.png",
         "capacity": 500,
-        "cfs_labels": [
-            {
-                "color": "#DBEAFE",
-                "event_cfs_label_id": "0c060000-0000-0000-0000-000000000011",
-                "name": "track / ai + ml"
-            },
-            {
-                "color": "#FEE2E2",
-                "event_cfs_label_id": "0c060000-0000-0000-0000-000000000012",
-                "name": "track / web"
-            }
-        ],
         "description_short": "Annual Kubernetes conference",
         "ends_at": 1718557200,
         "event_series_id": "0c060000-0000-0000-0000-00000000000b",
@@ -1059,6 +1067,13 @@ select is(
                     "ends_at": 1718441100,
                     "session_id": "0c060000-0000-0000-0000-00000000001a",
                     "kind": "in-person",
+                    "labels": [
+                        {
+                            "color": "#DBEAFE",
+                            "event_label_id": "0c060000-0000-0000-0000-000000000011",
+                            "name": "track / ai + ml"
+                        }
+                    ],
                     "name": "Breakfast & Registration",
                     "starts_at": 1718438400,
                     "meeting_recording_published": false,
@@ -1114,6 +1129,7 @@ select is(
                     "ends_at": 1718445600,
                     "session_id": "0c060000-0000-0000-0000-000000000018",
                     "kind": "in-person",
+                    "labels": [],
                     "name": "Opening Keynote: The Future of Cloud Native",
                     "starts_at": 1718442000,
                     "location": "Main Hall",
@@ -1167,6 +1183,7 @@ select is(
                     "ends_at": 1718537400,
                     "session_id": "0c060000-0000-0000-0000-000000000019",
                     "kind": "virtual",
+                    "labels": [],
                     "name": "Workshop: Kubernetes Security Best Practices",
                     "starts_at": 1718533800,
                     "meeting_in_sync": true,
@@ -1258,6 +1275,29 @@ select is(
         ]
     }'::jsonb,
     'Should return complete event data with hosts, organizers, and sessions as JSON'
+);
+
+-- Should return session labels independent of the linked submission labels
+select is(
+    (
+        select session_json->'labels'
+        from jsonb_array_elements(
+            get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventID'::uuid
+            )::jsonb->'sessions'->'2024-06-15'
+        ) as session_json
+        where session_json->>'session_id' = :'session3ID'
+    ),
+    jsonb_build_array(
+        jsonb_build_object(
+            'color', '#DBEAFE',
+            'event_label_id', :'label1ID',
+            'name', 'track / ai + ml'
+        )
+    ),
+    'Should return session labels independent of the linked submission labels'
 );
 
 -- Should indicate whether registration questions are configured

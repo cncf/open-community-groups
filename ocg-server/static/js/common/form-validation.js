@@ -264,14 +264,15 @@ const wirePasswordInputs = (form) => {
 };
 
 /**
- * Clears custom validity on input for required fields.
+ * Clears custom validity on input for required fields. Fields marked with
+ * `data-managed-validity` keep the custom validity set by their component.
  * @param {HTMLFormElement} form - The form element
  */
 const wireRequiredInputs = (form) => {
   const fields = form.querySelectorAll(FIELD_SELECTOR);
 
   fields.forEach((field) => {
-    if (!field.required) return;
+    if (!field.required || field.dataset.managedValidity !== undefined) return;
     const clearValidity = () => {
       field.setCustomValidity("");
     };

@@ -1,130 +1,194 @@
+-- Tests replacing the labels linked to a CFS submission.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '0c1c0000-0000-0000-0000-000000000001'
-\set eventCategoryID '0c1c0000-0000-0000-0000-000000000002'
-\set eventID '0c1c0000-0000-0000-0000-000000000003'
-\set eventOtherID '0c1c0000-0000-0000-0000-000000000004'
-\set groupCategoryID '0c1c0000-0000-0000-0000-000000000005'
-\set groupID '0c1c0000-0000-0000-0000-000000000006'
-\set label1ID '0c1c0000-0000-0000-0000-000000000007'
-\set label2ID '0c1c0000-0000-0000-0000-000000000008'
-\set labelOtherID '0c1c0000-0000-0000-0000-000000000009'
-\set proposalID '0c1c0000-0000-0000-0000-00000000000a'
-\set proposalOtherID '0c1c0000-0000-0000-0000-00000000000b'
-\set submissionID '0c1c0000-0000-0000-0000-00000000000c'
-\set submissionOtherID '0c1c0000-0000-0000-0000-00000000000d'
-\set userID '0c1c0000-0000-0000-0000-00000000000e'
+\set clearEmptyProposalID '0c1c0000-0000-0000-0000-000000000001'
+\set clearEmptySubmissionID '0c1c0000-0000-0000-0000-000000000002'
+\set clearNullProposalID '0c1c0000-0000-0000-0000-000000000003'
+\set clearNullSubmissionID '0c1c0000-0000-0000-0000-000000000004'
+\set communityID '0c1c0000-0000-0000-0000-000000000005'
+\set eventCategoryID '0c1c0000-0000-0000-0000-000000000006'
+\set eventID '0c1c0000-0000-0000-0000-000000000007'
+\set eventOtherID '0c1c0000-0000-0000-0000-000000000008'
+\set foreignLabelProposalID '0c1c0000-0000-0000-0000-000000000009'
+\set foreignLabelSubmissionID '0c1c0000-0000-0000-0000-00000000000a'
+\set groupCategoryID '0c1c0000-0000-0000-0000-00000000000b'
+\set groupID '0c1c0000-0000-0000-0000-00000000000c'
+\set label1ID '0c1c0000-0000-0000-0000-00000000000d'
+\set label2ID '0c1c0000-0000-0000-0000-00000000000e'
+\set labelOtherID '0c1c0000-0000-0000-0000-00000000000f'
+\set otherProposalID '0c1c0000-0000-0000-0000-000000000010'
+\set otherSubmissionID '0c1c0000-0000-0000-0000-000000000011'
+\set replaceProposalID '0c1c0000-0000-0000-0000-000000000012'
+\set replaceSubmissionID '0c1c0000-0000-0000-0000-000000000013'
+\set userID '0c1c0000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories, users, groups and events
+-- Community containing the CFS events
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Speaker who owns the session proposals
 select fx_user(:'userID');
+
+-- Event category used by the CFS events
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category used by the CFS events group
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Proposal cleared with an empty payload
+insert into session_proposal (session_proposal_id, description, duration, session_proposal_level_id, title, user_id)
+values (:'clearEmptyProposalID', 'Clear empty description', interval '30 minutes', 'beginner', 'Clear Empty', :'userID');
+
+-- Proposal cleared with a null payload
+insert into session_proposal (session_proposal_id, description, duration, session_proposal_level_id, title, user_id)
+values (:'clearNullProposalID', 'Clear null description', interval '30 minutes', 'beginner', 'Clear Null', :'userID');
+
+-- Proposal whose submission receives a foreign label
+insert into session_proposal (session_proposal_id, description, duration, session_proposal_level_id, title, user_id)
+values (:'foreignLabelProposalID', 'Foreign label description', interval '30 minutes', 'beginner', 'Foreign Label', :'userID');
+
+-- Proposal submitted to the other event
+insert into session_proposal (session_proposal_id, description, duration, session_proposal_level_id, title, user_id)
+values (:'otherProposalID', 'Other description', interval '30 minutes', 'beginner', 'Other', :'userID');
+
+-- Proposal whose submission labels are replaced
+insert into session_proposal (session_proposal_id, description, duration, session_proposal_level_id, title, user_id)
+values (:'replaceProposalID', 'Replace description', interval '30 minutes', 'beginner', 'Replace', :'userID');
+
+-- Group hosting the CFS events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Event whose submissions are labeled
 select fx_event(:'eventID', :'groupID', :'eventCategoryID');
+
+-- Event owning the submission and label used by mismatch scenarios
 select fx_event(:'eventOtherID', :'groupID', :'eventCategoryID');
 
--- Event CFS labels
-insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
-    (:'label1ID', :'eventID', 'Track / Backend', '#DBEAFE'),
-    (:'label2ID', :'eventID', 'Track / Frontend', '#FEE2E2'),
-    (:'labelOtherID', :'eventOtherID', 'Track / Other', '#CCFBF1');
-
--- Session proposal
-insert into session_proposal (
-    session_proposal_id,
-    user_id,
-    title,
-    description,
-    duration,
-    session_proposal_level_id
-) values
-    (
-        :'proposalID',
-        :'userID',
-        'Proposal',
-        'Proposal description',
-        interval '45 minutes',
-        'intermediate'
-    ),
-    (
-        :'proposalOtherID',
-        :'userID',
-        'Other Proposal',
-        'Other proposal description',
-        interval '45 minutes',
-        'intermediate'
-    );
-
--- CFS submission
+-- Submission cleared with an empty payload
 insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
-values
-    (:'submissionID', :'eventID', :'proposalID', 'not-reviewed'),
-    (:'submissionOtherID', :'eventOtherID', :'proposalOtherID', 'not-reviewed');
+values (:'clearEmptySubmissionID', :'eventID', :'clearEmptyProposalID', 'not-reviewed');
 
--- Existing submission label
-insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id)
-values
-    (:'submissionID', :'label1ID'),
-    (:'submissionOtherID', :'labelOtherID');
+-- Submission cleared with a null payload
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'clearNullSubmissionID', :'eventID', :'clearNullProposalID', 'not-reviewed');
+
+-- Submission receiving a label from another event
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'foreignLabelSubmissionID', :'eventID', :'foreignLabelProposalID', 'not-reviewed');
+
+-- Submission belonging to the other event
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'otherSubmissionID', :'eventOtherID', :'otherProposalID', 'not-reviewed');
+
+-- Submission whose labels are replaced
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'replaceSubmissionID', :'eventID', :'replaceProposalID', 'not-reviewed');
+
+-- First label of the event
+insert into event_label (event_label_id, color, event_id, name)
+values (:'label1ID', '#DBEAFE', :'eventID', 'Track / Backend');
+
+-- Second label of the event
+insert into event_label (event_label_id, color, event_id, name)
+values (:'label2ID', '#FEE2E2', :'eventID', 'Track / Frontend');
+
+-- Label of the other event
+insert into event_label (event_label_id, color, event_id, name)
+values (:'labelOtherID', '#CCFBF1', :'eventOtherID', 'Track / Other');
+
+-- Label linked to the submission cleared with an empty payload
+insert into cfs_submission_label (cfs_submission_id, event_label_id)
+values (:'clearEmptySubmissionID', :'label1ID');
+
+-- Label linked to the submission cleared with a null payload
+insert into cfs_submission_label (cfs_submission_id, event_label_id)
+values (:'clearNullSubmissionID', :'label1ID');
+
+-- Label linked to the submission receiving a foreign label
+insert into cfs_submission_label (cfs_submission_id, event_label_id)
+values (:'foreignLabelSubmissionID', :'label1ID');
+
+-- Label linked to the other event submission
+insert into cfs_submission_label (cfs_submission_id, event_label_id)
+values (:'otherSubmissionID', :'labelOtherID');
+
+-- Label replaced on the submission
+insert into cfs_submission_label (cfs_submission_id, event_label_id)
+values (:'replaceSubmissionID', :'label1ID');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should replace labels and remove duplicates
+-- Should clear labels when the payload is empty
 select lives_ok(
     format(
-        $$select sync_cfs_submission_labels(%L::uuid, %L::uuid, array[%L::uuid, %L::uuid, %L::uuid])$$,
-        :'submissionID',
-        :'eventID',
-        :'label2ID',
-        :'label2ID',
-        :'label1ID'
+        $$select sync_cfs_submission_labels(%L::uuid, %L::uuid, array[]::uuid[])$$,
+        :'clearEmptySubmissionID',
+        :'eventID'
     ),
-    'Should replace labels and remove duplicates'
+    'Should clear labels when the payload is empty'
 );
-
 select is(
-    (
-        select jsonb_agg(event_cfs_label_id order by event_cfs_label_id)
-        from cfs_submission_label
-        where cfs_submission_id = :'submissionID'::uuid
-    ),
-    jsonb_build_array(:'label1ID'::uuid, :'label2ID'::uuid),
-    'Should store unique labels'
+    (select count(*)::int from cfs_submission_label where cfs_submission_id = :'clearEmptySubmissionID'),
+    0,
+    'Should remove existing labels for an empty payload'
 );
 
--- Should clear labels when payload is null
+-- Should clear labels when the payload is null
 select lives_ok(
-    format($$select sync_cfs_submission_labels(%L::uuid, %L::uuid, null)$$, :'submissionID', :'eventID'),
-    'Should clear labels when payload is null'
+    format(
+        $$select sync_cfs_submission_labels(%L::uuid, %L::uuid, null)$$,
+        :'clearNullSubmissionID',
+        :'eventID'
+    ),
+    'Should clear labels when the payload is null'
+);
+select is(
+    (select count(*)::int from cfs_submission_label where cfs_submission_id = :'clearNullSubmissionID'),
+    0,
+    'Should remove existing labels for a null payload'
 );
 
-select is(
-    (select count(*) from cfs_submission_label where cfs_submission_id = :'submissionID'::uuid),
-    0::bigint,
-    'Should remove existing labels'
+-- Should reject labels from another event
+select throws_ok(
+    format(
+        $$select sync_cfs_submission_labels(%L::uuid, %L::uuid, array[%L::uuid])$$,
+        :'foreignLabelSubmissionID',
+        :'eventID',
+        :'labelOtherID'
+    ),
+    'OCG01',
+    'invalid event labels',
+    'Should reject labels from another event'
+);
+select results_eq(
+    format(
+        $$select event_label_id from cfs_submission_label where cfs_submission_id = %L::uuid$$,
+        :'foreignLabelSubmissionID'
+    ),
+    format($$values (%L::uuid)$$, :'label1ID'),
+    'Should keep labels when rejecting labels from another event'
 );
 
 -- Should reject mismatched submission and event IDs
 select throws_ok(
     format(
         $$select sync_cfs_submission_labels(%L::uuid, %L::uuid, array[%L::uuid])$$,
-        :'submissionOtherID',
+        :'otherSubmissionID',
         :'eventID',
         :'label1ID'
     ),
@@ -132,28 +196,33 @@ select throws_ok(
     'submission not found',
     'Should reject mismatched submission and event IDs'
 );
-
-select is(
-    (
-        select jsonb_agg(event_cfs_label_id order by event_cfs_label_id)
-        from cfs_submission_label
-        where cfs_submission_id = :'submissionOtherID'::uuid
+select results_eq(
+    format(
+        $$select event_label_id from cfs_submission_label where cfs_submission_id = %L::uuid$$,
+        :'otherSubmissionID'
     ),
-    jsonb_build_array(:'labelOtherID'::uuid),
+    format($$values (%L::uuid)$$, :'labelOtherID'),
     'Should leave mismatched submission labels unchanged'
 );
 
--- Should reject labels from another event
-select throws_ok(
+-- Should replace labels and remove duplicates
+select lives_ok(
     format(
-        $$select sync_cfs_submission_labels(%L::uuid, %L::uuid, array[%L::uuid])$$,
-        :'submissionID',
+        $$select sync_cfs_submission_labels(%L::uuid, %L::uuid, array[%L::uuid, %L::uuid])$$,
+        :'replaceSubmissionID',
         :'eventID',
-        :'labelOtherID'
+        :'label2ID',
+        :'label2ID'
     ),
-    'OCG01',
-    'invalid event CFS labels',
-    'Should reject labels from another event'
+    'Should replace labels and remove duplicates'
+);
+select results_eq(
+    format(
+        $$select event_label_id from cfs_submission_label where cfs_submission_id = %L::uuid$$,
+        :'replaceSubmissionID'
+    ),
+    format($$values (%L::uuid)$$, :'label2ID'),
+    'Should store the replacement labels once'
 );
 
 -- ============================================================================

@@ -1,15 +1,16 @@
 import { setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
 import {
   appendCopySuffix,
+  resetSessions,
   setAttendeeApprovalRequired,
   setCategoryValue,
   setDiscountCodes,
   setEventReminderEnabled,
   setGalleryImages,
   setHosts,
+  setLabels,
   setPaymentCurrencyCode,
   setRegistrationQuestions,
-  setSessions,
   setSponsors,
   setTags,
   setTicketTaxConfiguration,
@@ -139,5 +140,6 @@ export const applyCopiedEventDetails = async (details) => {
   copyManualMeetingFields(details);
   setHosts(details.hosts);
   setSponsors(details.sponsors);
-  setSessions([]);
+  setLabels(details.labels || []);
+  resetSessions();
 };

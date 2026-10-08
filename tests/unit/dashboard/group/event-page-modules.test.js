@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
+import "/static/js/common/labels-editor.js";
 import "/static/js/dashboard/event/sessions/section.js";
 import { initializeEventAddPage, initializeEventAddPageRoots } from "/static/js/dashboard/group/event-add.js";
 import {
@@ -48,7 +49,6 @@ const sharedEventFormsMarkup = () => `
   <input id="cfs_starts_at" />
   <input id="cfs_ends_at" />
   <textarea id="cfs_description"></textarea>
-  <div id="cfs-labels-editor"></div>
   <select id="kind_id">
     <option value="">Select</option>
     <option value="virtual">Virtual</option>
@@ -154,6 +154,68 @@ describe("event page modules", () => {
     // Verify initializes the add page and syncs boolean hidden fields.
     expect(document.getElementById("test_event").value).to.equal("true");
     expect(document.getElementById("event_reminder_enabled").value).to.equal("true");
+  });
+
+  it("keeps the labels editor enabled when toggling CFS", async () => {
+    // Mount the add page shell with the labels editor.
+    mountAddPageShell();
+    const pageRoot = document.querySelector('[data-event-page="add"]');
+    pageRoot.insertAdjacentHTML("beforeend", '<labels-editor id="labels-editor"></labels-editor>');
+    const labelsEditor = document.getElementById("labels-editor");
+
+    // Initialize the page and toggle CFS on and off.
+    initializeEventAddPage();
+    const cfsToggle = document.getElementById("toggle_cfs_enabled");
+    cfsToggle.checked = true;
+    cfsToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    cfsToggle.checked = false;
+    cfsToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    await labelsEditor.updateComplete;
+
+    // Verify the labels editor is not tied to the CFS toggle.
+    expect(labelsEditor.disabled).to.equal(false);
+    expect(labelsEditor.querySelector('input[type="text"]').disabled).to.equal(false);
+    expect(document.getElementById("cfs_description").disabled).to.equal(true);
+  });
+
+  it("passes the event labels to the sessions section", async () => {
+    // Mount the add page shell with the labels editor and sessions section.
+    mountAddPageShell();
+    const pageRoot = document.querySelector('[data-event-page="add"]');
+    pageRoot.insertAdjacentHTML(
+      "beforeend",
+      `
+        <labels-editor
+          colors='["#bfdbfe"]'
+          labels='[{"color":"#bfdbfe","event_label_id":"label-1","name":"Backend"}]'
+        ></labels-editor>
+        <sessions-section></sessions-section>
+      `,
+    );
+    const labelsEditor = pageRoot.querySelector("labels-editor");
+    const sessionsSection = pageRoot.querySelector("sessions-section");
+
+    // Initialize the page twice and wait for the editor state.
+    initializeEventAddPage();
+    initializeEventAddPage(pageRoot);
+    await customElements.whenDefined("labels-editor");
+    await waitForMicrotask();
+
+    // Verify the initial labels and ids reach the sessions section.
+    expect(sessionsSection.labels).to.deep.equal([
+      { color: "#bfdbfe", event_label_id: "label-1", name: "Backend" },
+    ]);
+    expect(sessionsSection.labelIds).to.deep.equal(["label-1"]);
+
+    // Add a label row and verify the ids follow the editor rows.
+    let labelsChangedCount = 0;
+    labelsEditor.addEventListener("labels-changed", () => {
+      labelsChangedCount += 1;
+    });
+    labelsEditor._addRow();
+    expect(labelsChangedCount).to.equal(1);
+    expect(sessionsSection.labelIds).to.have.length(2);
+    expect(sessionsSection.labels).to.have.length(1);
   });
 
   it("reads event form ids from template markers", () => {
@@ -1036,6 +1098,7 @@ describe("event page modules", () => {
           cfsSubmissionId: "12",
           submission: {
             cfs_submission_id: "12",
+            label_ids: ["label-1"],
             session_proposal_id: "99",
             title: "Platform Engineering at Scale",
             speaker_name: "Ada Lovelace",
@@ -1049,6 +1112,7 @@ describe("event page modules", () => {
       JSON.stringify([
         {
           cfs_submission_id: "12",
+          label_ids: ["label-1"],
           session_proposal_id: "99",
           title: "Platform Engineering at Scale",
           speaker_name: "Ada Lovelace",

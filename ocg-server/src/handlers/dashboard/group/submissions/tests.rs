@@ -62,7 +62,7 @@ async fn test_list_page_success() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_list_event_cfs_labels()
+    db.expect_list_event_labels()
         .times(1)
         .withf(move |eid| *eid == event_id)
         .returning(|_| Ok(vec![]));
@@ -134,7 +134,7 @@ async fn test_list_page_with_pagination_params() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_list_event_cfs_labels()
+    db.expect_list_event_labels()
         .times(1)
         .withf(move |eid| *eid == event_id)
         .returning(|_| Ok(vec![]));

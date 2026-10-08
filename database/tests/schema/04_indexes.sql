@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(126);
+select plan(127);
 
 -- ============================================================================
 -- TESTS
@@ -112,7 +112,7 @@ select indexes_are('cfs_submission', array[
 -- Test: cfs_submission_label indexes should match expected
 select indexes_are('cfs_submission_label', array[
     'cfs_submission_label_pkey',
-    'cfs_submission_label_event_cfs_label_id_idx'
+    'cfs_submission_label_event_label_id_idx'
 ]);
 
 -- Test: cfs_submission_rating indexes should match expected
@@ -289,6 +289,13 @@ select indexes_are('event_kind', array[
     'event_kind_display_name_key'
 ]);
 
+-- Test: event_label indexes should match expected
+select indexes_are('event_label', array[
+    'event_label_pkey',
+    'event_label_event_id_idx',
+    'event_label_event_id_name_key'
+]);
+
 -- Test: event_organizer indexes should match expected
 select indexes_are('event_organizer', array[
     'event_organizer_pkey',
@@ -426,13 +433,6 @@ select indexes_are('event_ticket_type', array[
     'event_ticket_type_pkey',
     'event_ticket_type_event_id_idx',
     'event_ticket_type_event_id_event_ticket_type_id_key'
-]);
-
--- Test: event_cfs_label indexes should match expected
-select indexes_are('event_cfs_label', array[
-    'event_cfs_label_pkey',
-    'event_cfs_label_event_id_name_key',
-    'event_cfs_label_event_id_idx'
 ]);
 
 -- Test: group indexes should match expected
@@ -671,6 +671,12 @@ select indexes_are('session', array[
     'session_meeting_sync_claim_idx',
     'session_meeting_sync_idx',
     'session_session_kind_id_idx'
+]);
+
+-- Test: session_label indexes should match expected
+select indexes_are('session_label', array[
+    'session_label_pkey',
+    'session_label_event_label_id_idx'
 ]);
 
 -- Test: session_proposal indexes should match expected

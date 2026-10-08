@@ -2,6 +2,36 @@ import { expect } from "../../../fixtures.js";
 
 import { openPaymentsSection } from "./helpers.js";
 
+/**
+ * Adds a session through the session modal and assigns the given event labels.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {{
+ *   endTime?: string,
+ *   kind?: string,
+ *   labels?: string[],
+ *   name: string,
+ *   startTime: string
+ * }} values - Session values; times use the `HH:MM` format of the event day.
+ */
+export const addSession = async (page, values) => {
+  await openSessionsSection(page);
+  await page.locator("sessions-section").getByRole("button", { name: "Add session" }).first().click();
+
+  const sessionModal = page.locator("session-form-modal");
+  const sessionDialog = sessionModal.getByRole("dialog", { name: "Add session" });
+  await expect(sessionDialog).toBeVisible();
+  await sessionModal.locator('input[data-name="name"]').fill(values.name);
+  await sessionModal.locator('select[data-name="kind"]').selectOption(values.kind ?? "virtual");
+  await sessionModal.locator('input[type="time"]').nth(0).fill(values.startTime);
+  if (values.endTime) {
+    await sessionModal.locator('input[type="time"]').nth(1).fill(values.endTime);
+  }
+  await selectLabels(sessionModal.locator("label-selector"), values.labels ?? []);
+
+  await sessionModal.getByRole("button", { name: "Add session" }).click();
+  await expect(sessionDialog).toHaveCount(0);
+};
+
 /** Adds a ticket type through the ticketing modal and saves it. */
 export const addTicketType = async (page, values) => {
   await page.locator("#add-ticket-type-button").click();
@@ -91,6 +121,24 @@ export const expectManualMeetingFields = async (page) => {
   await expect(page.locator("#meeting_recording_url")).toBeVisible();
 };
 
+/**
+ * Verifies the label chips rendered on a session card in the sessions section.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {string} sessionName - Session name shown on the card.
+ * @param {string[]} labelNames - Expected label names, in display order.
+ */
+export const expectSessionCardLabels = async (page, sessionName, labelNames) => {
+  const sessionCard = page.locator("sessions-section session-card").filter({ hasText: sessionName });
+
+  await expect(sessionCard).toHaveCount(1);
+  // Overflowing chips collapse behind a counter whose tooltip lists every label.
+  const labelNamesLocator = sessionCard.locator(
+    "[data-session-labels-more] [data-session-label-name], [data-session-labels]:not(:has([data-session-labels-more])) [data-session-label]",
+  );
+
+  await expect(labelNamesLocator).toHaveText(labelNames);
+};
+
 /** Opens the event details section and waits until it is active. */
 export const openDetailsSection = async (page) => {
   const detailsSectionButton = page.locator('button[data-section="details"]');
@@ -98,6 +146,24 @@ export const openDetailsSection = async (page) => {
   await detailsSectionButton.scrollIntoViewIfNeeded();
   await detailsSectionButton.click({ force: true });
   await expect(detailsSectionButton).toHaveAttribute("data-active", "true");
+};
+
+/** Opens the event labels section and waits until it is active. */
+export const openLabelsSection = async (page) => {
+  const labelsSectionButton = page.locator('button[data-section="labels"]');
+
+  await labelsSectionButton.scrollIntoViewIfNeeded();
+  await labelsSectionButton.click({ force: true });
+  await expect(labelsSectionButton).toHaveAttribute("data-active", "true");
+};
+
+/** Opens the event sessions section and waits until it is active. */
+export const openSessionsSection = async (page) => {
+  const sessionsSectionButton = page.locator('button[data-section="sessions"]');
+
+  await sessionsSectionButton.scrollIntoViewIfNeeded();
+  await sessionsSectionButton.click({ force: true });
+  await expect(sessionsSectionButton).toHaveAttribute("data-active", "true");
 };
 
 /** Removes a discount code from the ticketing summary. */
@@ -109,6 +175,21 @@ export const removeDiscountCode = async (page, code) => {
   await expect(discountRow).toHaveCount(0);
 };
 
+/**
+ * Selects labels by name in a label selector and waits for their chips.
+ * @param {import("@playwright/test").Locator} labelSelector - `label-selector` element.
+ * @param {string[]} labelNames - Label names to select.
+ */
+export const selectLabels = async (labelSelector, labelNames) => {
+  for (const labelName of labelNames) {
+    await labelSelector.getByRole("combobox").fill(labelName);
+    await labelSelector.getByRole("option", { name: labelName, exact: true }).click();
+    await expect(
+      labelSelector.getByRole("button", { name: `Remove ${labelName}`, exact: true }),
+    ).toBeVisible();
+  }
+};
+
 /** Keeps automatic meeting coverage within the configured provider capacity. */
 export const setAutomaticMeetingCapacity = async (page) => {
   await openPaymentsSection(page);
@@ -118,26 +199,6 @@ export const setAutomaticMeetingCapacity = async (page) => {
     title: "General Admission",
   });
   await openDetailsSection(page);
-};
-
-/** Sets CFS label names through the editor component API and asserts inputs. */
-export const setCfsLabels = async (page, labels) => {
-  const editor = page.locator("cfs-labels-editor");
-
-  await editor.evaluate(async (element, nextLabels) => {
-    const cfsLabelsEditor = element;
-
-    cfsLabelsEditor.setLabels?.(
-      nextLabels.map((name) => ({
-        color: "",
-        name,
-      })),
-    );
-    await cfsLabelsEditor.updateComplete;
-  }, labels);
-
-  // Verify the editor rendered one submitted input for each label.
-  await expect(editor.locator('input[name^="cfs_labels"][name$="[name]"]')).toHaveCount(labels.length);
 };
 
 /** Sets event hosts and speakers through selector APIs and asserts submitted inputs. */
@@ -165,6 +226,27 @@ export const setEventPeople = async (page, values) => {
       'speakers-selector[field-name-prefix="speakers"] input[name^="speakers"][name$="[user_id]"]',
     ),
   ).toHaveCount(values.speakers.length);
+};
+
+/** Opens the Labels tab and sets event label names through the editor component API. */
+export const setLabels = async (page, labels) => {
+  await openLabelsSection(page);
+
+  const editor = page.locator("labels-editor");
+  await editor.evaluate(async (element, nextLabels) => {
+    const labelsEditor = element;
+
+    labelsEditor.setLabels?.(
+      nextLabels.map((name) => ({
+        color: "",
+        name,
+      })),
+    );
+    await labelsEditor.updateComplete;
+  }, labels);
+
+  // Verify the editor rendered one submitted input for each label.
+  await expect(editor.locator('input[name^="labels"][name$="[name]"]')).toHaveCount(labels.length);
 };
 
 /** Sets registration questions through the editor API and asserts submitted inputs. */
