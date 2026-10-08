@@ -1,0 +1,62 @@
+{# Recipients summary -#}
+<div id="community-contact-summary"
+     class="rounded-lg border border-stone-200 bg-stone-50 p-4"
+     data-people-count="{{ summary.people_count }}"
+     data-filters-key="{{ filters_key }}">
+  {% if summary.people_count == 0 -%}
+    <p class="text-sm text-stone-600">No group team members match these filters.</p>
+  {% else -%}
+    <details class="group text-sm text-stone-700">
+      <summary class="cursor-pointer">
+        <span class="font-semibold text-stone-900">
+          {{ summary.people_count }}
+          {% if summary.people_count == 1 -%}
+            person
+          {% else -%}
+            people
+          {% endif -%}
+        </span>
+        ({{ summary.seats_count }} team
+        {% if summary.seats_count == 1 -%}
+          seat
+        {% else -%}
+          seats
+        {% endif -%}
+        across {{ summary.groups_count }}
+        {% if summary.groups_count == 1 -%}
+          group)
+        {% else -%}
+          groups)
+        {% endif -%}
+        <span class="ms-1 font-medium text-primary-500 group-open:hidden">Show groups</span>
+        <span class="ms-1 hidden font-medium text-primary-500 group-open:inline">Hide groups</span>
+      </summary>
+      <ul class="scrollbar-visible mt-3 max-h-72 divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          tabindex="0"
+          aria-label="Matching groups">
+        {% for group in summary.groups -%}
+          <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+            <div class="min-w-0">
+              <div class="truncate font-medium text-stone-900">{{ group.name }}</div>
+              <div class="text-xs text-stone-500">
+                {{ group.group_category_name }}
+                {% if let Some(region_name) = group.region_name -%}
+                  · {{ region_name }}
+                {% endif -%}
+              </div>
+            </div>
+            <div class="shrink-0 text-xs text-stone-600">
+              {{ group.seats_count }}
+              {% if group.seats_count == 1 -%}
+                seat
+              {% else -%}
+                seats
+              {% endif -%}
+            </div>
+          </li>
+        {% endfor -%}
+      </ul>
+    </details>
+  {% endif -%}
+</div>
+{# End recipients summary -#}

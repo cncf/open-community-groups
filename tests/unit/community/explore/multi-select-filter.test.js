@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/community/explore/multi-select-filter.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
+import { renderViewportBottomLayout } from "/tests/unit/test-utils/dom.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("multi-select-filter", () => {
@@ -95,5 +96,73 @@ describe("multi-select-filter", () => {
 
     // Verify supports keyboard navigation and closes on outside clicks.
     expect(element._combobox.isOpen).to.equal(false);
+  });
+
+  it("emits one current filter-change and no native change per toggle", async () => {
+    // Render the filter inside a form.
+    document.body.innerHTML = '<form id="filters-form"></form>';
+    const form = document.getElementById("filters-form");
+    const element = document.createElement("multi-select-filter");
+    Object.assign(element, {
+      title: "Group",
+      name: "group",
+      options: [
+        { value: "cloud", name: "Cloud" },
+        { value: "ai", name: "AI" },
+      ],
+    });
+    form.append(element);
+    await element.updateComplete;
+    const filterChangeValues = [];
+    let changeEvents = 0;
+    form.addEventListener("filter-change", () => {
+      filterChangeValues.push(new FormData(form).getAll("group[]"));
+    });
+    form.addEventListener("change", () => {
+      changeEvents += 1;
+    });
+
+    // Toggle options through the listbox.
+    element.querySelector('input[type="text"]').dispatchEvent(new FocusEvent("focus"));
+    await element.updateComplete;
+    element.querySelectorAll('[role="option"]')[1].click();
+    await element.updateComplete;
+    element.querySelectorAll('[role="option"]')[0].click();
+    await element.updateComplete;
+
+    // Verify the kept option order and the current form values.
+    expect(
+      [...element.querySelectorAll('[role="option"]')].map((option) => option.textContent.trim()),
+    ).to.deep.equal(["Cloud", "AI"]);
+    expect(filterChangeValues).to.deep.equal([["ai"], ["ai", "cloud"]]);
+    expect(changeEvents).to.equal(0);
+  });
+
+  it("opens the options above the search box near the viewport bottom", async () => {
+    // Render the filter near the bottom of the viewport.
+    renderViewportBottomLayout(80);
+    document.head.insertAdjacentHTML(
+      "beforeend",
+      '<style id="multi-select-filter-test-styles">.max-h-48 { max-height: 12rem; }</style>',
+    );
+    const element = await mountLitComponent("multi-select-filter", {
+      title: "Group",
+      options: Array.from({ length: 12 }, (_, index) => ({
+        value: `group-${index}`,
+        name: `Group ${index}`,
+      })),
+    });
+
+    // Open the options dropdown.
+    element.querySelector('input[type="text"]').dispatchEvent(new FocusEvent("focus"));
+    await element.updateComplete;
+
+    // Verify the options open upward and stay inside the viewport.
+    const search = element.querySelector("[data-multi-select-search]");
+    const dropdownBounds = element.querySelector("[data-multi-select-dropdown]").getBoundingClientRect();
+    document.getElementById("multi-select-filter-test-styles").remove();
+    expect(dropdownBounds.height).to.be.greaterThan(0);
+    expect(dropdownBounds.bottom).to.be.at.most(search.getBoundingClientRect().top);
+    expect(dropdownBounds.top).to.be.at.least(0);
   });
 });

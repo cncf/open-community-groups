@@ -41,6 +41,11 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
     // Read-only community dashboard endpoints
     let dashboard_read = Router::new()
         .route("/analytics", get(dashboard::community::analytics::page))
+        .route("/contact", get(dashboard::community::contact::page))
+        .route(
+            "/contact/recipients",
+            get(dashboard::community::contact::recipients),
+        )
         .route(
             "/event-categories",
             get(dashboard::community::event_categories::list_page),
@@ -105,6 +110,10 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/groups/{group_id}/update",
             put(dashboard::community::groups::update),
+        )
+        .route(
+            "/notifications",
+            post(dashboard::community::contact::send_community_custom_notification),
         )
         .route_layer(check_selected_community_permission(
             CommunityPermission::GroupsWrite,

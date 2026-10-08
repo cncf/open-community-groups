@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(239);
+select plan(240);
 
 -- ============================================================================
 -- TESTS
@@ -129,6 +129,7 @@ select col_is_fk('community_role_group_permission', 'group_permission_id', 'grou
 select col_is_fk('community_team', 'community_id', 'community');
 select col_is_fk('community_team', 'user_id', 'user');
 select col_is_fk('community_views', 'community_id', 'community');
+select col_is_fk('custom_notification', 'community_id', 'community');
 select col_is_fk('custom_notification', 'created_by', 'user');
 select col_is_fk('custom_notification', 'event_id', 'event');
 select col_is_fk('custom_notification', 'group_id', 'group');

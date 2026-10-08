@@ -22,6 +22,7 @@ Path: [/dashboard/community](/dashboard/community ':ignore')
 - [Event Categories: Event Taxonomy](#event-categories-event-taxonomy)
 - [Analytics: Momentum](#analytics-momentum)
 - [Groups: Portfolio](#groups-portfolio)
+- [Groups: Contact Group Teams](#groups-contact-group-teams)
 - [Audit: Logs](#audit-logs)
 - [Recommended Cadence](#recommended-cadence)
 
@@ -42,6 +43,8 @@ Main areas:
 - [Analytics](/dashboard/community?tab=analytics ':ignore'): community growth trends and volume metrics.
 - [Groups](/dashboard/community?tab=groups ':ignore'): group creation, maintenance, activation state,
   and lifecycle transitions.
+- [Contact](/dashboard/community?tab=contact ':ignore'): custom emails to the teams of the groups in
+  the community.
 - [Logs](/dashboard/community?tab=logs ':ignore'): read-only audit trail for community dashboard actions.
 
 ![Community dashboard analytics](../screenshots/dashboard-community-analytics.png)
@@ -233,6 +236,39 @@ When a group is inactive, its public-view shortcut is disabled in the groups tab
 
 ![Community groups actions](../screenshots/dashboard-community-groups-actions.png)
 
+## Groups: Contact Group Teams
+
+`Contact`, directly below `Groups` in the menu, sends a custom email to the team members of the
+groups in the community. Everyone on the community team can open it and review the recipients;
+only the `admin` and `groups-manager` roles can send.
+
+Choose the recipients with three filters:
+
+- `Group categories`: groups in the selected categories.
+- `Regions`: groups in the selected regions. `No region` selects groups without a region, and this
+  filter is only shown when the community has regions. Regions are independent of categories.
+- `Team roles`: team members holding the selected roles.
+
+An empty filter means all, so categories and regions added later are included automatically.
+Category and region options show how many active groups they hold.
+
+A person receives the email when at least one of their group team seats passes the three filters
+together. For example, selecting a category and the `Admin` role reaches admins of groups in that
+category, not people who are admins elsewhere and viewers in that category. Only accepted team
+members with a verified email address in active groups qualify, subgroups included, and the sender
+is included when they qualify. Each person receives one email, however many seats they hold.
+
+The summary below the filters updates as you change them, showing the number of people, the team
+seats they hold, and the groups those seats belong to. `Show groups` lists the groups. `Send email`
+stays disabled until the summary matches the selected filters and includes at least one person,
+and a confirmation shows the number of people before the email is sent. OCG finds the recipients
+again when the email is sent; if nobody matches the filters by then, the email is not sent. After
+a successful send, the subject and body are cleared and the filters are kept.
+
+These emails are always sent: recipients can't turn them off in their notification preferences,
+and group mutes don't apply to them. Each send is recorded in `Logs` with the number of recipients,
+the subject, and the names of the selected filters.
+
 ## Audit: Logs
 
 `AUDIT -> Logs` is the last section in the left dashboard menu. It gives community leads a
@@ -245,6 +281,7 @@ Coverage in this view includes:
 - Region, group category, and event category changes.
 - Group portfolio actions done from the community dashboard, including add, activate, deactivate,
   delete, and update.
+- Custom emails sent to group teams from `Contact`.
 
 Rows are ordered by newest first by default, and you can switch the ordering to oldest first. You
 can filter by `Action`, `Actor`, and date range, and pagination keeps the active filters applied.

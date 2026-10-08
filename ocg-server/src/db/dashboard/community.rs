@@ -15,6 +15,10 @@ use crate::{
             common::{AuditLogFilters, AuditLogsOutput},
             community::{
                 analytics::CommunityDashboardStats,
+                contact::{
+                    CommunityContactFilterOptions, CommunityContactFilters,
+                    CommunityContactRecipientsSummary,
+                },
                 event_categories::EventCategoryInput,
                 group_categories::GroupCategoryInput,
                 groups::GroupInput,
@@ -127,6 +131,13 @@ pub(crate) trait DBDashboardCommunity {
         region_id: Uuid,
     ) -> Result<()>;
 
+    /// Summarizes the group team members matching the community contact filters.
+    async fn get_community_contact_recipients_summary(
+        &self,
+        community_id: Uuid,
+        filters: &CommunityContactFilters,
+    ) -> Result<CommunityContactRecipientsSummary>;
+
     /// Retrieves analytics statistics for a community.
     ///
     /// Cached for up to one hour per process. Aggregates mutable data; see
@@ -140,6 +151,12 @@ pub(crate) trait DBDashboardCommunity {
         community_id: Uuid,
         filters: &AuditLogFilters,
     ) -> Result<AuditLogsOutput>;
+
+    /// Lists the filter options of the community contact page.
+    async fn list_community_contact_filter_options(
+        &self,
+        community_id: Uuid,
+    ) -> Result<CommunityContactFilterOptions>;
 
     /// Lists all available community roles.
     ///
@@ -393,6 +410,20 @@ where
         .await
     }
 
+    /// [`DBDashboardCommunity::get_community_contact_recipients_summary`]
+    #[instrument(skip(self, filters), err)]
+    async fn get_community_contact_recipients_summary(
+        &self,
+        community_id: Uuid,
+        filters: &CommunityContactFilters,
+    ) -> Result<CommunityContactRecipientsSummary> {
+        self.fetch_json_one(
+            "select get_community_contact_recipients_summary($1::uuid, $2::jsonb)",
+            &[&community_id, &Json(filters)],
+        )
+        .await
+    }
+
     /// [`DBDashboardCommunity::get_community_stats`]
     #[instrument(skip(self), err)]
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats> {
@@ -425,6 +456,19 @@ where
         self.fetch_json_one(
             "select list_community_audit_logs($1::uuid, $2::jsonb)",
             &[&community_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardCommunity::list_community_contact_filter_options`]
+    #[instrument(skip(self), err)]
+    async fn list_community_contact_filter_options(
+        &self,
+        community_id: Uuid,
+    ) -> Result<CommunityContactFilterOptions> {
+        self.fetch_json_one(
+            "select list_community_contact_filter_options($1::uuid)",
+            &[&community_id],
         )
         .await
     }

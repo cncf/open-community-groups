@@ -12,7 +12,8 @@ use crate::{
         dashboard::{
             audit,
             community::{
-                analytics, event_categories, group_categories, groups, regions, settings, team,
+                analytics, contact, event_categories, group_categories, groups, regions, settings,
+                team,
             },
         },
         filters,
@@ -48,6 +49,8 @@ pub(crate) struct Page {
 pub(crate) enum Content {
     /// Analytics page.
     Analytics(Box<analytics::Page>),
+    /// Contact group teams page.
+    Contact(Box<contact::Page>),
     /// Event categories management page.
     EventCategories(event_categories::ListPage),
     /// Group categories management page.
@@ -68,6 +71,11 @@ impl Content {
     /// Check if the content is the analytics page.
     fn is_analytics(&self) -> bool {
         matches!(self, Content::Analytics(_))
+    }
+
+    /// Check if the content is the contact page.
+    fn is_contact(&self) -> bool {
+        matches!(self, Content::Contact(_))
     }
 
     /// Check if the content is the event categories page.
@@ -110,6 +118,7 @@ impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Content::Analytics(template) => write!(f, "{}", template.render()?),
+            Content::Contact(template) => write!(f, "{}", template.render()?),
             Content::EventCategories(template) => write!(f, "{}", template.render()?),
             Content::GroupCategories(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
@@ -130,6 +139,8 @@ impl std::fmt::Display for Content {
 pub(crate) enum Tab {
     /// Analytics tab.
     Analytics,
+    /// Contact group teams tab.
+    Contact,
     /// Event categories management tab.
     EventCategories,
     /// Group categories management tab.

@@ -313,6 +313,11 @@ mock! {
             group_category_id: Uuid,
         ) -> Result<()>;
         async fn delete_region(&self, actor_user_id: Uuid, community_id: Uuid, region_id: Uuid) -> Result<()>;
+        async fn get_community_contact_recipients_summary(
+            &self,
+            community_id: Uuid,
+            filters: &crate::types::dashboard::community::contact::CommunityContactFilters,
+        ) -> Result<crate::types::dashboard::community::contact::CommunityContactRecipientsSummary>;
         async fn get_community_stats(
             &self,
             community_id: Uuid,
@@ -322,6 +327,10 @@ mock! {
             community_id: Uuid,
             filters: &crate::types::dashboard::common::AuditLogFilters,
         ) -> Result<crate::types::dashboard::common::AuditLogsOutput>;
+        async fn list_community_contact_filter_options(
+            &self,
+            community_id: Uuid,
+        ) -> Result<crate::types::dashboard::community::contact::CommunityContactFilterOptions>;
         async fn list_community_team_members(
             &self,
             community_id: Uuid,
@@ -1327,6 +1336,10 @@ mock! {
             &self,
             notification: &crate::types::notifications::NewNotification,
         ) -> Result<()>;
+        async fn enqueue_tracked_community_custom_notification(
+            &self,
+            input: crate::db::notifications::CommunityCustomNotificationEnqueue,
+        ) -> Result<usize>;
         async fn enqueue_tracked_custom_notification(
             &self,
             notification: &crate::types::notifications::NewNotification,

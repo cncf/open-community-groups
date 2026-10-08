@@ -22,6 +22,42 @@
 {% endmacro active_table_filter_remove_button -%}
 {# End active table filter remove button #}
 
+{# Custom notification fields #}
+{# Used by the group members, event attendees, and community contact email forms. #}
+{% macro custom_notification_fields(subject_id, body_id, default_subject) -%}
+  <div class="mb-4">
+    <label for="{{ subject_id }}" class="form-label">
+      Subject <span class="asterisk">*</span>
+    </label>
+    <div class="mt-2">
+      <input type="text"
+             id="{{ subject_id }}"
+             name="subject"
+             required
+             maxlength="{{ crate::validation::MAX_LEN_M }}"
+             class="input-primary"
+             value="{{ default_subject }}"
+             placeholder="Enter notification subject">
+    </div>
+  </div>
+  <div class="mb-6">
+    <label for="{{ body_id }}" class="form-label">
+      Body <span class="asterisk">*</span>
+    </label>
+    <div class="mt-2">
+      <textarea id="{{ body_id }}"
+                name="body"
+                required
+                rows="6"
+                maxlength="{{ crate::validation::MAX_LEN_NOTIFICATION_BODY }}"
+                class="input-primary"
+                placeholder="Enter notification body (plain text only)"></textarea>
+      <p class="mt-1 text-xs text-stone-500">Plain text only. No HTML formatting.</p>
+    </div>
+  </div>
+{% endmacro custom_notification_fields -%}
+{# End custom notification fields #}
+
 {# Dashboard menu shell #}
 {# Used by dashboard home pages for the title, spinner, and menu wrapper. #}
 {% macro dashboard_menu_shell(title, spinner_classes = "group hx-spinner -mt-0.5 relative", navigation_target = "body", navigation_select = "", navigation_select_oob = "", navigation_swap = "") -%}

@@ -7,10 +7,12 @@
 {% endblock dashboard_context_attributes -%}
 
 {% block scripts -%}
+  <script type="module" src="/static/js/common/multi-select.js"></script>
   <script type="module" src="/static/js/common/tooltip-panel.js"></script>
   <script type="module" src="/static/js/dashboard/form-page-elements.js"></script>
   <script type="module" src="/static/js/dashboard/confirm-actions.js"></script>
   <script type="module" src="/static/js/dashboard/menu-drawer.js"></script>
+  <script type="module" src="/static/js/dashboard/community/contact.js"></script>
   <script type="module" src="/static/js/dashboard/community/groups-list.js"></script>
   <script type="module" src="/static/js/dashboard/community/settings-form.js"></script>
   <script type="module" src="/static/js/dashboard/community/team-add-member.js"></script>
@@ -54,6 +56,7 @@
   <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5 max-md:hidden">
     {{ dashboard::menu_title(text = "Groups", extra_styles = "py-1.5") -}}
     {{ dashboard::menu_item(name = "Groups", icon = "groups", is_active = content.is_groups() , href = "/dashboard/community?tab=groups") -}}
+    {{ dashboard::menu_item(name = "Contact", icon = "email", is_active = content.is_contact() , href = "/dashboard/community?tab=contact") -}}
   </div>
   {# End groups -#}
 
@@ -68,7 +71,7 @@
 
 {% block dashboard_main -%}
   <div id="dashboard-content"
-       hx-get="/dashboard/community/{%- if content.is_team() -%}team{%- elif content.is_settings() -%}settings/update{%- elif content.is_regions() -%}regions{%- elif content.is_logs() -%}logs{%- elif content.is_group_categories() -%}group-categories{%- elif content.is_event_categories() -%}event-categories{%- elif content.is_analytics() -%}analytics{%- else -%}groups{%- endif -%}"
+       hx-get="/dashboard/community/{%- if content.is_team() -%}team{%- elif content.is_settings() -%}settings/update{%- elif content.is_regions() -%}regions{%- elif content.is_logs() -%}logs{%- elif content.is_group_categories() -%}group-categories{%- elif content.is_event_categories() -%}event-categories{%- elif content.is_analytics() -%}analytics{%- elif content.is_contact() -%}contact{%- else -%}groups{%- endif -%}"
        hx-trigger="refresh-community-dashboard-table"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"

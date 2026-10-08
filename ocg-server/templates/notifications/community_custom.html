@@ -1,0 +1,26 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Community Custom Notification -#}
+{% block subject -%}
+  {{ subject }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Notification from {{ community_display_name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default group mb-15">
+    <strong>{{ community_display_name }}</strong>
+  </p>
+  <p class="default big mb-15">{{ subject }}</p>
+  <p class="default mb-30 preline" style="margin-bottom: 30px">{{ body }}</p>
+  {{ email::button(link = link, text = "Visit community page", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you're on the team of one or more groups
+  in the {{ community_display_name }} community.
+{% endblock footer -%}
+{# End community custom notification -#}

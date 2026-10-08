@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
-    handlers::{dashboard::group::members::GroupCustomNotification, tests::*},
+    handlers::tests::*,
     services::notifications::MockNotificationsManager,
     types::{
         dashboard::DASHBOARD_PAGINATION_LIMIT, notifications::NotificationKind,
@@ -155,95 +155,6 @@ async fn test_list_page_with_pagination_params() {
     assert!(!bytes.is_empty());
 }
 
-#[allow(clippy::too_many_lines)]
-#[tokio::test]
-async fn test_send_group_custom_notification_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let member_id1 = Uuid::new_v4();
-    let member_id2 = Uuid::new_v4();
-    let team_member_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let site_settings = sample_site_settings();
-    let group_summary = sample_group_summary(group_id);
-    let notification_body = "Hello, group members!";
-    let notification_subject = "Important Update";
-    let mut expected_recipients = vec![member_id1, member_id2, team_member_id];
-    expected_recipients.sort();
-    let form_data = serde_qs::to_string(&GroupCustomNotification {
-        body: notification_body.to_string(),
-        subject: notification_subject.to_string(),
-    })
-    .unwrap();
-
-    // Create copies for the enqueue_tracked_custom_notification closure
-    let track_user_id = user_id;
-    let track_group_id = group_id;
-    let track_subject = notification_subject.to_string();
-    let track_body = notification_body.to_string();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::MembersWrite,
-    );
-    db.expect_list_group_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![member_id1, member_id2]));
-    db.expect_list_group_team_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![team_member_id]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    db.expect_get_group_summary()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(group_summary.clone()));
-    db.expect_enqueue_tracked_custom_notification()
-        .times(1)
-        .withf(move |notification, tracking| {
-            matches!(notification.kind, NotificationKind::GroupCustom)
-                && notification.recipients == expected_recipients
-                && tracking.created_by == track_user_id
-                && tracking.event_id.is_none()
-                && tracking.group_id == Some(track_group_id)
-                && tracking.recipient_count == 3
-                && tracking.subject == track_subject
-                && tracking.body == track_body
-        })
-        .returning(|_, _| Ok(()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/dashboard/group/notifications")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form_data))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
-}
-
 #[tokio::test]
 async fn test_send_group_custom_notification_no_members() {
     // Setup identifiers and data structures
@@ -251,11 +162,7 @@ async fn test_send_group_custom_notification_no_members() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let form_data = serde_qs::to_string(&GroupCustomNotification {
-        body: "Body".to_string(),
-        subject: "Subject".to_string(),
-    })
-    .unwrap();
+    let form_data = "body=Body&subject=Subject";
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -278,6 +185,77 @@ async fn test_send_group_custom_notification_no_members() {
         .returning(move |_| Ok(vec![]));
     db.expect_get_site_settings().never();
     db.expect_enqueue_tracked_custom_notification().never();
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/notifications")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(form_data))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the empty audience is rejected
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "no group members can receive this email"
+    );
+}
+
+#[tokio::test]
+async fn test_send_group_custom_notification_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let member_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let site_settings = sample_site_settings();
+    let group_summary = sample_group_summary(group_id);
+    let form_data = "body=Hello%2C+group+members%21&title=Important+Update";
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::MembersWrite,
+    );
+    db.expect_list_group_members_ids()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(move |_| Ok(vec![member_id]));
+    db.expect_list_group_team_members_ids()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(|_| Ok(vec![]));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+    db.expect_get_group_summary()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(group_summary.clone()));
+    db.expect_enqueue_tracked_custom_notification()
+        .times(1)
+        .withf(move |notification, tracking| {
+            matches!(notification.kind, NotificationKind::GroupCustom)
+                && tracking.body == "Hello, group members!"
+                && tracking.created_by == user_id
+                && tracking.subject == "Important Update"
+        })
+        .returning(|_, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

@@ -184,6 +184,7 @@ select indexes_are('community_views', array[
 
 -- Test: custom_notification indexes should match expected
 select indexes_are('custom_notification', array[
+    'custom_notification_community_id_idx',
     'custom_notification_created_by_idx',
     'custom_notification_event_id_idx',
     'custom_notification_group_id_idx',

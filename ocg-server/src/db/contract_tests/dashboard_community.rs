@@ -6,11 +6,96 @@ use crate::{
     db::dashboard::community::DBDashboardCommunity,
     types::{
         community::CommunityRole,
-        dashboard::{common::AuditLogFilters, community::team::CommunityTeamFilters},
+        dashboard::{
+            common::AuditLogFilters,
+            community::{
+                contact::{CommunityContactFilters, RegionFilterValue},
+                team::CommunityTeamFilters,
+            },
+        },
+        group::GroupRole,
     },
 };
 
 use super::helpers::*;
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_community_contact_recipients_summary_deserializes() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Summarize every qualifying contact seat through the Rust contract
+    let summary = db
+        .get_community_contact_recipients_summary(
+            contact_community_id(),
+            &CommunityContactFilters::default(),
+        )
+        .await?;
+
+    // Check distinct people, seats and contributing groups
+    assert_eq!(summary.groups.len(), 2);
+    assert_eq!(summary.groups[0].group_category_name, "Contact Category A");
+    assert_eq!(summary.groups[0].group_id, contact_group_a_id());
+    assert_eq!(summary.groups[0].name, "Contact Group A");
+    assert_eq!(summary.groups[0].seats_count, 2);
+    assert_eq!(
+        summary.groups[0].region_name.as_deref(),
+        Some("Contact Region")
+    );
+    assert_eq!(summary.groups[1].group_category_name, "Contact Category B");
+    assert_eq!(summary.groups[1].name, "Contact Group B");
+    assert_eq!(summary.groups[1].seats_count, 1);
+    assert_eq!(summary.groups[1].region_name, None);
+    assert_eq!(summary.groups_count, 2);
+    assert_eq!(summary.people_count, 2);
+    assert_eq!(summary.seats_count, 3);
+
+    // Summarize the seats matching every filter together
+    let filtered = db
+        .get_community_contact_recipients_summary(
+            contact_community_id(),
+            &CommunityContactFilters {
+                group_category_ids: vec![contact_category_b_id()],
+                regions: vec![RegionFilterValue::NoRegion],
+                roles: vec![GroupRole::Viewer],
+            },
+        )
+        .await?;
+
+    // Check only the viewer seat in the group without a region matches
+    assert_eq!(filtered.groups_count, 1);
+    assert_eq!(filtered.people_count, 1);
+    assert_eq!(filtered.seats_count, 1);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_community_contact_recipients_summary_rejects_foreign_filters()
+-> Result<()> {
+    // Setup the contract database and a category of another community
+    let db = contract_tests_db()?;
+    let filters = CommunityContactFilters {
+        group_category_ids: vec![group_category_id()],
+        ..Default::default()
+    };
+
+    // Summarize recipients with the foreign category
+    let err = db
+        .get_community_contact_recipients_summary(contact_community_id(), &filters)
+        .await
+        .expect_err("foreign category should be rejected");
+
+    // Check the user-facing rejection is raised
+    assert_eq!(
+        ocg01_message(&err).as_deref(),
+        Some("group category not found")
+    );
+
+    Ok(())
+}
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
@@ -57,6 +142,35 @@ async fn db_contracts_list_community_audit_logs_deserializes() -> Result<()> {
         output.logs[0].actor_username.as_deref(),
         Some("contract-organizer")
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_community_contact_filter_options_deserializes() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the contact filter options through the Rust contract
+    let options = db
+        .list_community_contact_filter_options(contact_community_id())
+        .await?;
+
+    // Check categories, regions and the no region count cover active groups only
+    assert_eq!(options.group_categories.len(), 2);
+    assert_eq!(
+        options.group_categories[0].group_category_id,
+        contact_category_a_id()
+    );
+    assert_eq!(options.group_categories[0].groups_count, 1);
+    assert_eq!(options.group_categories[0].name, "Contact Category A");
+    assert_eq!(options.group_categories[1].groups_count, 1);
+    assert_eq!(options.no_region_groups_count, 1);
+    assert_eq!(options.regions.len(), 1);
+    assert_eq!(options.regions[0].groups_count, 1);
+    assert_eq!(options.regions[0].name, "Contact Region");
+    assert_eq!(options.regions[0].region_id, contact_region_id());
 
     Ok(())
 }

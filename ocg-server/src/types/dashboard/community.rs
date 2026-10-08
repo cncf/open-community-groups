@@ -1,6 +1,7 @@
 //! Community dashboard type definitions.
 
 pub mod analytics;
+pub mod contact;
 pub mod event_categories;
 pub mod group_categories;
 pub mod groups;

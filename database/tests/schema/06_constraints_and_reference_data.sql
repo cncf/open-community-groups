@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(188);
+select plan(189);
 
 -- ============================================================================
 -- TESTS
@@ -66,6 +66,18 @@ select has_check(
 
 -- Test: custom_notification table expected constraints exist
 select has_check('custom_notification');
+
+-- Test: custom notifications should have exactly one scope
+select is(
+    (
+        select pg_get_constraintdef(oid)
+        from pg_constraint
+        where conname = 'custom_notification_scope_check'
+        and conrelid = 'custom_notification'::regclass
+    ),
+    'CHECK ((num_nonnulls(community_id, event_id, group_id) = 1))',
+    'Custom notifications should have exactly one scope'
+);
 
 -- Test: event table expected constraints exist
 select has_check('event', 'event_check');
@@ -555,6 +567,7 @@ select results_eq(
         ('badge-awarded', 'badges'::text),
         ('badge-revoked', 'badges'::text),
         ('cfs-submission-updated', null::text),
+        ('community-custom', null::text),
         ('community-team-invitation', null::text),
         ('email-verification', null::text),
         ('event-admission-offer-canceled', null::text),

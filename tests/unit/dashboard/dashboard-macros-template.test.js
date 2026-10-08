@@ -27,6 +27,36 @@ describe("dashboard macros template", () => {
     expect(template).to.include("{{ caller() }}");
   });
 
+  it("renders the shared custom notification fields", async () => {
+    // Load the dashboard macros template before checking the email form fields.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the macro keeps the submitted names, limits, and caller-provided ids.
+    expect(template).to.include("macro custom_notification_fields(subject_id, body_id, default_subject)");
+    expect(template).to.include('id="{{ subject_id }}" name="subject" required');
+    expect(template).to.include('maxlength="{{ crate::validation::MAX_LEN_M }}"');
+    expect(template).to.include('value="{{ default_subject }}"');
+    expect(template).to.include('id="{{ body_id }}" name="body" required');
+    expect(template).to.include('maxlength="{{ crate::validation::MAX_LEN_NOTIFICATION_BODY }}"');
+    expect(template).to.include("Plain text only. No HTML formatting.");
+  });
+
+  it("is used by every custom notification form", async () => {
+    // Load the templates that send custom notifications.
+    const templates = await Promise.all([
+      loadTemplate("dashboard/group/members_list.html"),
+      loadTemplate("dashboard/group/attendees_list.html"),
+      loadTemplate("dashboard/community/contact.html"),
+    ]);
+
+    // Verify each form delegates its subject and body fields to the shared macro.
+    templates.forEach((source) => {
+      const template = normalizeWhitespace(source);
+      expect(template).to.include("{{ dashboard::custom_notification_fields(");
+      expect(template).not.to.include('placeholder="Enter notification subject"');
+    });
+  });
+
   it("inherits dashboard navigation swap options from the menu shell", async () => {
     // Load the dashboard macros template before checking HTMX navigation ownership.
     const template = normalizeWhitespace(await loadTemplate());

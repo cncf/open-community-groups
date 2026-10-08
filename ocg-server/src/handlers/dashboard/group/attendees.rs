@@ -42,15 +42,15 @@ use crate::{
     templates::dashboard::group::attendees,
     types::{
         dashboard::group::attendees::{Attendee, AttendeeEnrollmentStatusFilter, AttendeesFilters},
-        notifications::EventCustomNotificationInput,
+        notifications::{CustomNotificationContent, EventCustomNotificationInput},
         pagination::{self, NavigationLinks, Pagination},
         payments::EventPurchaseChargeModel,
         permissions::GroupPermission,
         questionnaire::QuestionnaireQuestion,
     },
     validation::{
-        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, blank_string_as_none,
-        trimmed_non_empty, trimmed_non_empty_opt,
+        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, blank_string_as_none, trimmed_non_empty,
+        trimmed_non_empty_opt,
     },
 };
 
@@ -406,9 +406,9 @@ pub(crate) async fn send_event_custom_notification(
         EventCustomNotificationRecipientScope::All => None,
         EventCustomNotificationRecipientScope::Selected => {
             if notification.recipient_user_ids.is_empty() {
-                return Ok(
-                    (StatusCode::BAD_REQUEST, "Select at least one attendee.").into_response()
-                );
+                return Err(HandlerError::Rejected(
+                    "Select at least one attendee.".to_string(),
+                ));
             }
             Some(notification.recipient_user_ids.clone())
         }
@@ -434,7 +434,7 @@ pub(crate) async fn send_event_custom_notification(
                 "No selected attendees can receive this email."
             }
         };
-        return Ok((StatusCode::BAD_REQUEST, message).into_response());
+        return Err(HandlerError::Rejected(message.to_string()));
     }
 
     // Enqueue the custom notification with its audit entry
@@ -443,12 +443,11 @@ pub(crate) async fn send_event_custom_notification(
         &server_cfg,
         &EventCustomNotificationInput {
             actor_user_id: user.user_id,
-            body: notification.body,
             community_id,
+            content: notification.content,
             event_id,
             group_id,
             recipients: event_attendees_ids,
-            subject: notification.subject,
         },
     )
     .await?;
@@ -545,9 +544,11 @@ pub(crate) struct EventAttendeeInvitation {
 /// Form data for custom event notifications.
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct EventCustomNotification {
-    /// Body text for the notification.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_NOTIFICATION_BODY))]
-    pub body: String,
+    /// Subject and body of the notification.
+    #[serde(flatten)]
+    #[garde(dive)]
+    pub content: CustomNotificationContent,
+
     /// Recipient scope for the notification.
     #[serde(default)]
     #[garde(skip)]
@@ -556,10 +557,6 @@ pub(crate) struct EventCustomNotification {
     #[serde(default)]
     #[garde(skip)]
     pub recipient_user_ids: Vec<Uuid>,
-    /// Subject line for the notification email.
-    #[serde(alias = "title")]
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
-    pub subject: String,
 }
 
 /// Recipient scope for custom event notifications.

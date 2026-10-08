@@ -133,6 +133,29 @@ impl NotificationTemplate for CfsSubmissionUpdated {
     }
 }
 
+/// Template for community custom notification sent to group teams.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/community_custom.html")]
+pub(crate) struct CommunityCustom {
+    /// Body text provided for the community notification.
+    pub body: String,
+    /// Community display name.
+    pub community_display_name: String,
+    /// Link to the community page.
+    pub link: String,
+    /// Subject provided for the community notification.
+    pub subject: String,
+    /// Theme configuration for the notification.
+    pub theme: Theme,
+}
+
+impl NotificationTemplate for CommunityCustom {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        self.subject.clone()
+    }
+}
+
 /// Template for community team invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/community_team_invitation.html")]

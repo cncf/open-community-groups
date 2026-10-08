@@ -15,7 +15,6 @@ export const createNotificationModal = ({
   cancelButtonId,
   overlayId,
   successMessage,
-  updateEndpoint,
   root = document,
 }) => {
   // Locate the modal once and mark it ready so we only bind listeners once.
@@ -31,26 +30,8 @@ export const createNotificationModal = ({
   const form = formId ? getElementById(root, formId) : null;
   const toggleModal = () => toggleModalVisibility(modalId);
 
-  // Allow callers to adjust the form action before the modal opens.
-  const updateFormEndpoint = () => {
-    if (!form || typeof updateEndpoint !== "function") {
-      return;
-    }
-
-    updateEndpoint({
-      form,
-      openButton,
-      closeButton,
-      cancelButton,
-      overlay,
-    });
-  };
-
   if (openButton) {
-    openButton.addEventListener("click", () => {
-      updateFormEndpoint();
-      toggleModal();
-    });
+    openButton.addEventListener("click", toggleModal);
   }
 
   bindModalControlClicks([closeButton, cancelButton, overlay], toggleModal);
@@ -69,6 +50,4 @@ export const createNotificationModal = ({
       }
     });
   }
-
-  updateFormEndpoint();
 };
