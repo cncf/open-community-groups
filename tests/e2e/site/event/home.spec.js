@@ -636,12 +636,43 @@ test.describe("event page - multi-day agenda", () => {
     await expect(page.getByText("Summit Wrap-Up")).toBeVisible();
     await expect(secondDayPanel.getByText(emptyMessage)).toBeHidden();
 
-    // Verify clearing the selection restores the unfiltered agenda.
-    await labelFilter.getByRole("button", { name: "Clear selected labels" }).click();
+    // Verify removing the selected chips below the input restores the unfiltered agenda.
+    await labelFilter.getByRole("button", { name: "Remove Keynotes", exact: true }).click();
+    await expect(filterStatus).toHaveText("Showing 1 of 2 sessions.");
+    await labelFilter.getByRole("button", { name: "Remove Community", exact: true }).click();
     await expect(filterStatus).toHaveText("");
     await expect(page.getByText("Summit Wrap-Up")).toBeVisible();
     await page.locator("button[data-day-tab]").first().click();
     await expect(page.getByText("Summit Kickoff")).toBeVisible();
+  });
+
+  test("labels filter closes after a pick and reopens from the focused input", async ({ page }) => {
+    // Target the labels filter search input and its options list.
+    const labelFilter = page.locator("label-selector#agenda-label-filter");
+    const searchInput = labelFilter.getByRole("combobox");
+    const optionsList = labelFilter.getByRole("listbox");
+
+    // Verify picking a label closes the list and keeps the input focused.
+    await searchInput.click();
+    await expect(optionsList).toBeVisible();
+    await labelFilter.getByRole("option", { name: "Keynotes", exact: true }).click();
+    await expect(optionsList).toBeHidden();
+    await expect(searchInput).toBeFocused();
+    await expect(labelFilter.getByRole("button", { name: "Remove Keynotes", exact: true })).toBeVisible();
+
+    // Verify clicking the focused input reopens the list and clicking it again closes it.
+    await searchInput.click();
+    await expect(optionsList).toBeVisible();
+    await searchInput.click();
+    await expect(optionsList).toBeHidden();
+
+    // Verify typing shows a single clear button and picking a label clears the search.
+    await searchInput.fill("Comm");
+    await expect(labelFilter.getByRole("button", { name: "Clear search" })).toHaveCount(1);
+    await labelFilter.getByRole("option", { name: "Community", exact: true }).click();
+    await expect(searchInput).toHaveValue("");
+    await expect(labelFilter.getByRole("button", { name: "Clear search" })).toHaveCount(0);
+    await expect(labelFilter.getByRole("button", { name: "Remove Community", exact: true })).toBeVisible();
   });
 
   test("labels filter opens on touch without focusing the search input @mobile", async ({ page }) => {
@@ -654,12 +685,16 @@ test.describe("event page - multi-day agenda", () => {
     await expect(labelFilter.getByRole("option", { name: "Keynotes", exact: true })).toBeVisible();
     await expect(searchInput).not.toBeFocused();
 
-    // Verify picking a label filters the agenda and keeps the input unfocused.
+    // Verify picking a label filters the agenda, closes the list and keeps the input unfocused.
     await labelFilter.getByRole("option", { name: "Keynotes", exact: true }).tap();
     await expect(page.locator("[data-agenda-filter-status]")).toHaveText("Showing 1 of 2 sessions.");
+    await expect(labelFilter.getByRole("listbox")).toBeHidden();
     await expect(searchInput).not.toBeFocused();
 
-    // Verify a second touch focuses the input to search.
+    // Verify the next touch reopens the list and a second touch focuses the input to search.
+    await searchInput.tap();
+    await expect(labelFilter.getByRole("listbox")).toBeVisible();
+    await expect(searchInput).not.toBeFocused();
     await searchInput.tap();
     await expect(searchInput).toBeFocused();
     await expect(labelFilter.getByRole("listbox")).toBeVisible();

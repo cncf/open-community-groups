@@ -99,7 +99,7 @@ describe("label-selector", () => {
     });
 
     // Open the dropdown and select a label.
-    element.querySelector('input[type="search"]').dispatchEvent(new FocusEvent("focus"));
+    element.querySelector('input[role="combobox"]').dispatchEvent(new FocusEvent("focus"));
     await element.updateComplete;
     element.querySelector('[role="option"]').click();
     await element.updateComplete;

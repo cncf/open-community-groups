@@ -51,11 +51,12 @@ describe("multi-select-filter", () => {
     expect(element.selected).to.deep.equal(["security"]);
     expect(element.querySelector('input[type="hidden"][value="security"]')).to.not.equal(null);
     expect(element.textContent).to.include("Security");
-    expect(element.querySelector('[aria-label="Clear Group"]')).to.not.equal(null);
+    expect(input.value).to.equal("");
+    expect(element.querySelector('[aria-label="Clear Group"]')).to.equal(null);
     expect(element.querySelector('[aria-label="Remove Security"]')).to.not.equal(null);
 
     // Verify selected options stay mirrored in hidden inputs.
-    element.querySelectorAll(".icon-close")[1]?.closest("button")?.click();
+    element.querySelector('[aria-label="Remove Security"]').click();
     await element.updateComplete;
 
     // Verify filters typed options and renders hidden inputs for selected values.

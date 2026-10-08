@@ -297,6 +297,7 @@ class SessionItem extends LitWrapper {
             .maxSelected=${Number(this.labelMaxSelected) || 0}
             .name=${""}
             .selected=${selected}
+            close-on-select
             ?disabled=${this.disabled}
             @change=${(event) => this._onLabelsChange(event)}
           ></label-selector>

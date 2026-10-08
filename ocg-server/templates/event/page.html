@@ -537,7 +537,7 @@
     {# Agenda labels filter -#}
     {% if !agenda_labels.is_empty() -%}
       <div class="w-full md:w-1/2 pb-12">
-        <label-selector id="agenda-label-filter" data-agenda-filter name="" label="Filter agenda by labels" labels="{{ agenda_labels|json }}" placeholder="Filter by labels" compact selected-in-input touch-browse>
+        <label-selector id="agenda-label-filter" data-agenda-filter name="" label="Filter agenda by labels" labels="{{ agenda_labels|json }}" placeholder="Filter by labels" close-on-select touch-browse>
         </label-selector>
       </div>
       <p data-agenda-filter-status role="status" class="sr-only"></p>

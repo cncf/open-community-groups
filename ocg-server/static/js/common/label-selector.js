@@ -24,8 +24,6 @@ export class LabelSelector extends MultiSelect {
     this.labels = [];
     this.name = "label_ids";
     this.placeholder = DEFAULT_PLACEHOLDER;
-    this._addMorePlaceholder = "Add labels";
-    this._clearSelectionLabel = "Clear selected labels";
   }
 
   /**

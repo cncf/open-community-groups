@@ -35,7 +35,6 @@ let generatedIdPrefixCount = 0;
  *   Available options
  * @property {string} placeholder Search input placeholder
  * @property {Array<string>} selected Selected option values
- * @property {boolean} selectedInInput Whether selected chips render inside the input
  * @property {boolean} touchBrowse Whether a touch on the closed input opens the
  *   options without focusing it, so on-screen keyboards stay closed until a
  *   second touch focuses the input to search
@@ -56,7 +55,6 @@ export class MultiSelect extends LitWrapper {
     options: { type: Array },
     placeholder: { type: String },
     selected: { type: Array },
-    selectedInInput: { type: Boolean, attribute: "selected-in-input", reflect: true },
     touchBrowse: { type: Boolean, attribute: "touch-browse", reflect: true },
   };
 
@@ -75,12 +73,7 @@ export class MultiSelect extends LitWrapper {
     this.options = [];
     this.placeholder = DEFAULT_PLACEHOLDER;
     this.selected = [];
-    this.selectedInInput = false;
     this.touchBrowse = false;
-
-    // Texts subclasses may replace to match their domain.
-    this._addMorePlaceholder = "Add more";
-    this._clearSelectionLabel = "Clear selection";
 
     this._filteredCache = { query: "", source: null, value: [] };
     this._generatedIdPrefix = "";
@@ -231,21 +224,6 @@ export class MultiSelect extends LitWrapper {
   }
 
   /**
-   * Clears every selection.
-   * @param {Event} [event] Click event
-   */
-  async _clearSelections(event) {
-    event?.stopPropagation();
-    if (this.disabled || this.selected.length === 0) {
-      return;
-    }
-
-    this.selected = [];
-    await this.updateComplete;
-    this._dispatchSelectionChange();
-  }
-
-  /**
    * Dispatches the selection change event once the new state has rendered.
    */
   _dispatchSelectionChange() {
@@ -268,7 +246,7 @@ export class MultiSelect extends LitWrapper {
   }
 
   /**
-   * Closes the dropdown when clicking the input while it is already open.
+   * Toggles the dropdown when clicking the input while it is already focused.
    *
    * In touch browse mode, a touch on the unfocused input opens the dropdown
    * without focusing it, and a touch while open focuses it to search.
@@ -293,6 +271,9 @@ export class MultiSelect extends LitWrapper {
     if (this._combobox.isOpen) {
       event.preventDefault();
       this._combobox.close();
+    } else if (document.activeElement === event.currentTarget) {
+      // Reopen when focus stayed on the input after a close-on-select pick.
+      this._combobox.open();
     }
   }
 
@@ -381,7 +362,7 @@ export class MultiSelect extends LitWrapper {
         style=${colorStyle}
         title=${option.name}
       >
-        <span class="truncate ${this.selectedInInput ? "max-w-[160px]" : "max-w-full"}">${option.name}</span>
+        <span class="truncate max-w-full">${option.name}</span>
         <button
           type="button"
           class="inline-flex size-3 items-center justify-center rounded-full border-0 bg-transparent text-stone-700 hover:text-stone-900"
@@ -472,41 +453,15 @@ export class MultiSelect extends LitWrapper {
     const hasSelection = selected.length > 0;
 
     return html`
-      <div class=${this.selectedInInput ? "space-y-0" : "space-y-3"}>
+      <div class="space-y-3">
         <div>
           <div class="relative" data-multi-select-search>
             <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
               <div class="svg-icon size-4 icon-search bg-stone-300" aria-hidden="true"></div>
             </div>
+            ${search}
             ${
-              this.selectedInInput
-                ? html`
-                    <div
-                      class="input-primary min-h-[42px] w-full ps-9 pe-2 py-1 flex flex-wrap items-center gap-1.5"
-                    >
-                      ${chips} ${search}
-                      ${
-                        hasSelection
-                          ? html`
-                              <button
-                                type="button"
-                                class="inline-flex shrink-0 items-center justify-center rounded-full bg-transparent p-1 text-stone-400 hover:text-stone-700"
-                                @click=${(event) => this._clearSelections(event)}
-                                ?disabled=${this.disabled}
-                                aria-label=${this._clearSelectionLabel}
-                                title=${this._clearSelectionLabel}
-                              >
-                                <div class="svg-icon size-4 icon-close bg-current" aria-hidden="true"></div>
-                              </button>
-                            `
-                          : nothing
-                      }
-                    </div>
-                  `
-                : search
-            }
-            ${
-              this._combobox.query && !this.selectedInInput
+              this._combobox.query
                 ? html`
                     <button
                       type="button"
@@ -523,8 +478,7 @@ export class MultiSelect extends LitWrapper {
           </div>
           ${legendText ? html`<p id=${this._legendId()} class="form-legend mt-2">${legendText}</p>` : nothing}
         </div>
-        ${!this.selectedInInput && hasSelection ? html`<div class="flex flex-wrap gap-2">${chips}</div>` : nothing}
-        ${hiddenInputs}
+        ${hasSelection ? html`<div class="flex flex-wrap gap-2">${chips}</div>` : nothing} ${hiddenInputs}
       </div>
     `;
   }
@@ -579,20 +533,12 @@ export class MultiSelect extends LitWrapper {
    * @returns {import("lit").TemplateResult}
    */
   _renderSearchInput() {
-    const hasSelection = this.selected.length > 0;
-    const placeholder =
-      this.selectedInInput && hasSelection
-        ? this._addMorePlaceholder
-        : this.placeholder || DEFAULT_PLACEHOLDER;
-    const inputClass = this.selectedInInput
-      ? "min-w-[120px] flex-1 border-0 bg-transparent p-0 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-0"
-      : "input-primary w-full ps-9 pe-9";
-
     return html`
       <input
+        id=${this._searchInputId()}
         type="search"
-        class=${inputClass}
-        placeholder=${placeholder}
+        class="input-primary w-full ps-9 pe-9"
+        placeholder=${this.placeholder || DEFAULT_PLACEHOLDER}
         autocomplete="off"
         autocorrect="off"
         autocapitalize="off"
@@ -637,7 +583,17 @@ export class MultiSelect extends LitWrapper {
   }
 
   /**
-   * Toggles an option selection, honoring the maximum selection count.
+   * Gets the search input ID. The "search" suffix keeps Safari from offering
+   * contact AutoFill, such as addresses, on the combobox input.
+   * @returns {string}
+   */
+  _searchInputId() {
+    return `${this._idPrefix}-search`;
+  }
+
+  /**
+   * Toggles an option selection, honoring the maximum selection count, and
+   * clears the search query so the next search starts from every option.
    * @param {string} value Option value to toggle
    */
   async _toggleSelection(value) {
@@ -653,6 +609,9 @@ export class MultiSelect extends LitWrapper {
     this.selected = isSelected
       ? this.selected.filter((selectedValue) => selectedValue !== value)
       : [...this.selected, value];
+    if (this._combobox.query) {
+      this._clearQuery();
+    }
     if (this.closeOnSelect) {
       this._combobox.close();
     }

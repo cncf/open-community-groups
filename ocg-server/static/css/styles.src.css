@@ -214,6 +214,12 @@
     @apply resize-y;
   }
 
+  /* Multi-select search inputs render their own clear button */
+  [data-multi-select-search] input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   .select-primary {
     @apply relative col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-stone-900 border border-stone-200 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-700 focus:ring-transparent sm:text-sm/6;
   }
