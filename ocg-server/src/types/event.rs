@@ -494,6 +494,23 @@ pub struct EventFull {
 }
 
 impl EventFull {
+    /// Collect the unique labels assigned to the event sessions, sorted by name.
+    pub fn agenda_labels(&self) -> Vec<&EventLabel> {
+        // Collect each session label once
+        let mut seen = HashSet::new();
+        let mut labels: Vec<&EventLabel> = self
+            .sessions
+            .values()
+            .flatten()
+            .flat_map(|session| &session.labels)
+            .filter(|label| seen.insert(label.event_label_id))
+            .collect();
+
+        // Sort labels by name
+        labels.sort_by(|a, b| a.name.cmp(&b.name));
+        labels
+    }
+
     /// Check if call for speakers has closed.
     pub fn cfs_is_closed(&self) -> bool {
         if self.cfs_enabled.unwrap_or(false)

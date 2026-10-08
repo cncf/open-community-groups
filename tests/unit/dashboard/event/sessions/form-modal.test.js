@@ -197,6 +197,24 @@ describe("session-form-modal", () => {
       expect(parts.selector.selected).to.deep.equal([]);
     });
 
+    it("closes the labels list after each pick", async () => {
+      // Open a new session and the labels list.
+      const parts = await openModal();
+      const input = parts.selector.querySelector('input[role="combobox"]');
+      input.dispatchEvent(new FocusEvent("focus"));
+      await settle(parts);
+      expect(parts.selector._combobox.isOpen).to.equal(true);
+
+      // Pick a label.
+      parts.selector.querySelector('[role="option"]').click();
+      await settle(parts);
+
+      // Verify the label is selected and the list is closed.
+      expect(parts.selector.closeOnSelect).to.equal(true);
+      expect(parts.selector.selected).to.have.length(1);
+      expect(parts.selector._combobox.isOpen).to.equal(false);
+    });
+
     it("keeps label edits after linking and when switching mode", async () => {
       // Link a submission, then edit the pre-filled labels.
       const parts = await openModal();

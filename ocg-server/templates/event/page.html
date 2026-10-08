@@ -43,6 +43,7 @@
   <script type="module" src="/static/js/common/label-selector.js"></script>
   <script type="module" src="/static/js/common/tooltip-panel.js"></script>
   <script type="module" src="/static/js/event/attendance.js"></script>
+  <script type="module" src="/static/js/event/agenda-filter.js"></script>
   <script type="module" src="/static/js/event/agenda-tabs.js"></script>
   <script type="module" src="/static/js/event/cfs.js"></script>
 {% endblock scripts -%}
@@ -526,18 +527,33 @@
 
 {# Sessions section -#}
 {% if !event.sessions.is_empty() -%}
+  {% let agenda_labels = event.agenda_labels() -%}
   {% let days_count = event.sessions.len() -%}
-  <div>
+  <div data-agenda>
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
       Agenda
     </div>
 
+    {# Agenda labels filter -#}
+    {% if !agenda_labels.is_empty() -%}
+      <div class="w-full md:w-1/2 pb-12">
+        <label-selector id="agenda-label-filter" data-agenda-filter name="" label="Filter agenda by labels" labels="{{ agenda_labels|json }}" placeholder="Filter by labels" close-on-select touch-browse>
+        </label-selector>
+      </div>
+      <p data-agenda-filter-status role="status" class="sr-only"></p>
+    {% endif -%}
+    {# End agenda labels filter -#}
+
     {# Single-day agenda -#}
     {% if days_count == 1 -%}
       {% for day in event.sessions -%}
-        <ol class="relative border-s border-stone-200">
-          {% for session in day.1 %}{{ session_item(session = session, is_last = loop.last) -}}{% endfor %}
-        </ol>
+        <div data-agenda-day>
+          <ol data-agenda-sessions
+              class="relative flex flex-col gap-5 border-s border-stone-200">
+            {% for session in day.1 %}{{ session_item(session = session) -}}{% endfor %}
+          </ol>
+          {{ agenda_empty_message() -}}
+        </div>
       {% endfor -%}
       {# End single-day agenda -#}
     {% else -%}
@@ -558,13 +574,16 @@
 
       {% for day in event.sessions -%}
         <div data-day-content="day-{{ loop.index0 }}"
+             data-agenda-day
              {% if !loop.first -%}
                hidden
              {% endif -%}
              class="pt-10">
-          <ol class="relative border-s border-stone-200">
-            {% for session in day.1 %}{{ session_item(session = session, is_last = loop.last) -}}{% endfor %}
+          <ol data-agenda-sessions
+              class="relative flex flex-col gap-5 border-s border-stone-200">
+            {% for session in day.1 %}{{ session_item(session = session) -}}{% endfor %}
           </ol>
+          {{ agenda_empty_message() -}}
         </div>
       {% endfor -%}
       {# End multi-day agenda -#}
@@ -782,6 +801,12 @@
 {# End user info modal -#}
 {% endblock content -%}
 
+{# Macro for rendering the agenda empty filter message -#}
+{% macro agenda_empty_message() -%}
+  <p data-agenda-empty hidden class="text-sm text-stone-500 italic">No sessions match the selected labels.</p>
+{% endmacro -%}
+{# End macro for rendering the agenda empty filter message -#}
+
 {# Macro for rendering a single host social link -#}
 {% macro host_social_link(url, label, icon) -%}
   <a href="{{ url|safe_href }}"
@@ -795,8 +820,10 @@
 {# End macro for rendering a single host social link -#}
 
 {# Macro for rendering a single session item -#}
-{% macro session_item(session, is_last = false) -%}
-  <li class="{% if !is_last %}mb-5 {% endif %}ms-4">
+{% macro session_item(session) -%}
+  <li class="ms-4"
+      data-agenda-session
+      data-label-ids="{% for label in session.labels %}{% if !loop.first %} {% endif %}{{ label.event_label_id }}{% endfor %}">
     <div class="absolute size-3 bg-stone-300 rounded-full mt-1 -start-1.5 border border-white"></div>
     <div class="mb-2 text-sm text-stone-500/75">
       {% if let Some(ends_at) = &session.ends_at -%}

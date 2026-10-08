@@ -53,6 +53,17 @@ const pressKey = async (element, key) => {
   await element.updateComplete;
 };
 
+/**
+ * Dispatches a touch pointerdown event on the search input.
+ * @param {HTMLInputElement} input Search input
+ * @returns {PointerEvent}
+ */
+const touchInput = (input) => {
+  const event = new PointerEvent("pointerdown", { bubbles: true, cancelable: true, pointerType: "touch" });
+  input.dispatchEvent(event);
+  return event;
+};
+
 describe("multi-select", () => {
   useMountedElementsCleanup("multi-select");
 
@@ -152,9 +163,9 @@ describe("multi-select", () => {
     expect(cloudOption.hasAttribute("aria-disabled")).to.equal(false);
   });
 
-  it("emits change after the hidden inputs render for toggle, remove and clear", async () => {
+  it("emits change after the hidden inputs render for toggle and remove", async () => {
     // Render the component inside a form.
-    const { element, form } = await mountInForm({ options: OPTIONS, selectedInInput: true });
+    const { element, form } = await mountInForm({ options: OPTIONS });
     const submittedValues = [];
     element.addEventListener("change", (event) => {
       expect(event.bubbles).to.equal(true);
@@ -168,14 +179,62 @@ describe("multi-select", () => {
     element.querySelectorAll('[role="option"]')[1].click();
     await element.updateComplete;
 
-    // Remove one chip and clear the rest.
+    // Remove both chips.
     element.querySelector('[aria-label="Remove AI"]').click();
     await element.updateComplete;
-    element.querySelector('[aria-label="Clear selection"]').click();
+    element.querySelector('[aria-label="Remove Backend"]').click();
     await element.updateComplete;
 
     // Verify every listener saw the current form values.
     expect(submittedValues).to.deep.equal([["1"], ["1", "2"], ["2"], []]);
+  });
+
+  it("renders a search input with a single clear button", async () => {
+    // Render the component and type a search query.
+    const element = await mountLitComponent("multi-select", { options: OPTIONS });
+    const input = await openDropdown(element);
+    input.value = "Clo";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await element.updateComplete;
+
+    // Verify the search input renders the component clear button inside its search wrapper.
+    expect(input.type).to.equal("search");
+    expect(input.id).to.match(/-search$/);
+    expect(input.closest("[data-multi-select-search]")).to.not.equal(null);
+    expect(element.querySelectorAll('[aria-label="Clear search"]')).to.have.length(1);
+  });
+
+  it("hides the native search clear button inside multi-select search inputs", async () => {
+    // Load the stylesheet source.
+    const response = await fetch("/ocg-server/static/css/styles.src.css");
+    expect(response.ok).to.equal(true);
+    const styles = (await response.text()).replace(/\s+/g, " ");
+
+    // Verify the native clear button is hidden only within the multi-select search wrapper.
+    expect(styles).to.include(
+      '[data-multi-select-search] input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }',
+    );
+  });
+
+  it("clears the search query after picking an option", async () => {
+    // Render the component and type a search query.
+    const element = await mountLitComponent("multi-select", { options: OPTIONS });
+    const input = await openDropdown(element);
+    input.value = "Clo";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await element.updateComplete;
+
+    // Pick the filtered option.
+    element.querySelector('[role="option"]').click();
+    await element.updateComplete;
+
+    // Verify the query is cleared and every option is listed again.
+    expect(element.selected).to.deep.equal(["3"]);
+    expect(input.value).to.equal("");
+    expect(element._combobox.query).to.equal("");
+    expect(element._combobox.activeIndex).to.equal(null);
+    expect(element.querySelectorAll('[role="option"]')).to.have.length(OPTIONS.length);
+    expect(element.querySelector('[aria-label="Clear search"]')).to.equal(null);
   });
 
   it("does not leak the search input change event", async () => {
@@ -219,7 +278,6 @@ describe("multi-select", () => {
     // Try to change the selection.
     await element._toggleSelection("2");
     await element._removeSelection("1");
-    await element._clearSelections();
 
     // Verify the selection and controls stay disabled.
     expect(element._combobox.isOpen).to.equal(false);
@@ -387,6 +445,68 @@ describe("multi-select", () => {
     expect(element._combobox.isOpen).to.equal(false);
   });
 
+  it("reopens when clicking the focused input after a close-on-select pick", async () => {
+    // Render the component with close-on-select and pick an option from the focused input.
+    const element = await mountLitComponentWithAttributes("multi-select", {
+      attributes: { "close-on-select": "" },
+      properties: { options: OPTIONS },
+    });
+    const input = await openDropdown(element);
+    input.focus();
+    element.querySelector('[role="option"]').click();
+    await element.updateComplete;
+    expect(element._combobox.isOpen).to.equal(false);
+    expect(document.activeElement).to.equal(input);
+
+    // Click the still focused input.
+    input.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, pointerType: "mouse" }));
+    await element.updateComplete;
+
+    // Verify the dropdown opens again.
+    expect(element._combobox.isOpen).to.equal(true);
+    expect(input.getAttribute("aria-expanded")).to.equal("true");
+  });
+
+  it("opens on touch without focusing the input when touch-browse is set", async () => {
+    // Render the component with touch browse mode.
+    const element = await mountLitComponentWithAttributes("multi-select", {
+      attributes: { "touch-browse": "" },
+      properties: { options: OPTIONS },
+    });
+    const input = element.querySelector('input[role="combobox"]');
+
+    // Touch the closed input.
+    const firstTouch = touchInput(input);
+    await element.updateComplete;
+
+    // Verify the dropdown opens while focus is prevented.
+    expect(firstTouch.defaultPrevented).to.equal(true);
+    expect(element._combobox.isOpen).to.equal(true);
+    expect(input.getAttribute("aria-expanded")).to.equal("true");
+
+    // Touch the input again while the dropdown is open.
+    const secondTouch = touchInput(input);
+    await element.updateComplete;
+
+    // Verify the second touch is allowed to focus the input for searching.
+    expect(secondTouch.defaultPrevented).to.equal(false);
+    expect(element._combobox.isOpen).to.equal(true);
+  });
+
+  it("keeps the default touch behavior without touch-browse", async () => {
+    // Render the component without touch browse mode.
+    const element = await mountLitComponent("multi-select", { options: OPTIONS });
+    const input = element.querySelector('input[role="combobox"]');
+
+    // Touch the closed input.
+    const touch = touchInput(input);
+    await element.updateComplete;
+
+    // Verify focus is not prevented and the dropdown waits for focus.
+    expect(touch.defaultPrevented).to.equal(false);
+    expect(element._combobox.isOpen).to.equal(false);
+  });
+
   it("opens the dropdown above the search input near the viewport bottom", async () => {
     // Render the component near the bottom of the viewport.
     renderViewportBottomLayout(80);
@@ -440,11 +560,13 @@ describe("multi-select", () => {
     input.value = "Region 1999";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     await element.updateComplete;
+    expect(element.querySelectorAll('[role="option"]')).to.have.length(1);
     element.querySelector('[role="option"]').click();
     await element.updateComplete;
 
-    // Verify the filtered result and selection.
-    expect(element.querySelectorAll('[role="option"]')).to.have.length(1);
+    // Verify the selection and that clearing the query restores the full option set.
     expect(element.selected).to.deep.equal(["1999"]);
+    expect(input.value).to.equal("");
+    expect(element.querySelectorAll('[role="option"]')).to.have.length(2000);
   });
 });
