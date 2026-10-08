@@ -871,14 +871,12 @@
     {% if !session.speakers.is_empty() -%}
       <div class="mt-4">
         <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
-        <div class="featured-sessions-grid grid gap-3">
+        <div class="flex flex-wrap items-center gap-3">
           {% for speaker in session.speakers -%}
             {% if speaker.featured && speaker.user.name.is_some() -%}
               <user-chip user='{{ speaker.user|json }}' featured small display-modal></user-chip>
             {% endif -%}
           {% endfor -%}
-        </div>
-        <div class="regular-sessions-speakers flex flex-wrap gap-3">
           {% for speaker in session.speakers -%}
             {% if !speaker.featured && speaker.user.name.is_some() -%}
               <user-chip user='{{ speaker.user|json }}' small display-modal></user-chip>

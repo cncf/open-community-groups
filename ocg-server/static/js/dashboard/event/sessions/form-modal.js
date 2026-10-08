@@ -151,12 +151,12 @@ class SessionFormModal extends LitWrapper {
   }
 
   /**
-   * Handles Escape key to close modal.
+   * Handles Escape key to close modal unless a nested control already handled it.
    * @param {KeyboardEvent} event
    * @private
    */
   _handleKeydown(event) {
-    if (isEscapeEvent(event) && this._isOpen) {
+    if (!event.defaultPrevented && isEscapeEvent(event) && this._isOpen) {
       this.close();
     }
   }

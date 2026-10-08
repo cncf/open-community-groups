@@ -298,5 +298,49 @@ describe("session-form-modal", () => {
         selected.forEach((id) => expect(available).to.include(id));
       });
     });
+
+    it("hides the labels field when the event has no named labels", async () => {
+      // Open the modal for an event with only blank labels.
+      const modal = await mountLitComponent("session-form-modal", {
+        labels: [{ color: "#bfdbfe", event_label_id: "label-1", name: " " }],
+        sessionKinds: [{ session_kind_id: "talk", display_name: "Talk" }],
+      });
+      modal.open(null, "2025-05-10");
+      await modal.updateComplete;
+      const item = modal.querySelector("session-item");
+      await item.updateComplete;
+
+      // Verify no labels selector or heading is rendered.
+      expect(item.querySelector("label-selector")).to.equal(null);
+      expect(item.querySelector("#session-0-labels-title")).to.equal(null);
+    });
+
+    it("closes the labels dropdown before the modal on Escape", async () => {
+      // Open the modal and the labels dropdown.
+      const parts = await openModal();
+      const input = parts.selector.querySelector('input[role="combobox"]');
+      input.dispatchEvent(new FocusEvent("focus"));
+      await settle(parts);
+      expect(input.getAttribute("aria-expanded")).to.equal("true");
+
+      // Press Escape inside the dropdown.
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Escape" }),
+      );
+      await settle(parts);
+
+      // Verify only the dropdown closes.
+      expect(input.getAttribute("aria-expanded")).to.equal("false");
+      expect(parts.modal._isOpen).to.equal(true);
+
+      // Press Escape again with the dropdown closed.
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Escape" }),
+      );
+      await parts.modal.updateComplete;
+
+      // Verify the second Escape closes the modal.
+      expect(parts.modal._isOpen).to.equal(false);
+    });
   });
 });

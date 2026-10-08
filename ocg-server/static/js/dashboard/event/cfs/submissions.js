@@ -66,6 +66,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     return {
       currentUserId: { type: String, attribute: "current-user-id" },
       eventId: { type: String, attribute: "event-id" },
+      labelMaxSelected: { type: Number, attribute: "label-max-selected" },
       labels: { type: Array, attribute: false },
       messageMaxLength: { type: Number, attribute: "message-max-length" },
       statuses: { type: Array, attribute: false },
@@ -172,11 +173,11 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
-   * Handles Escape key to close modal.
+   * Handles Escape key to close modal unless a nested control already handled it.
    * @param {KeyboardEvent} event
    */
   _handleKeydown(event) {
-    if (isEscapeEvent(event) && this._isOpen) {
+    if (!event.defaultPrevented && isEscapeEvent(event) && this._isOpen) {
       this.close();
     }
   }
@@ -383,6 +384,7 @@ export class ReviewSubmissionModal extends LitWrapper {
   _renderDetailsPanel() {
     return renderCfsDetailsPanel({
       isActive: this._activeTab === REVIEW_TABS.DETAILS,
+      labelMaxSelected: this.labelMaxSelected,
       labels: this.labels,
       onLabelsChange: (event) => this._onLabelsChange(event),
       selectedLabelIds: this._selectedLabelIds,

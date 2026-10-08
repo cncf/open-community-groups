@@ -256,6 +256,7 @@ export const buildReviewModalOpenState = (submission, currentUserRating) => ({
 export const getReviewModalDefaultProperties = () => ({
   currentUserId: "",
   eventId: "",
+  labelMaxSelected: 0,
   labels: [],
   messageMaxLength: 5000,
   statuses: [],

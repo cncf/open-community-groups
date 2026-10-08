@@ -656,5 +656,8 @@ describe("dashboard group event update template", () => {
     );
     expect(template).to.include('labels="{{ event.labels|json }}" max-items=');
     expect(template).to.include('statuses="{{ cfs_submission_statuses|json }}" labels="{{ event.labels|json }}"');
+    expect(template).to.include(
+      'labels="{{ event.labels|json }}" label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}" current-user-id=',
+    );
   });
 });

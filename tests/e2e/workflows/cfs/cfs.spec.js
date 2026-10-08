@@ -1,8 +1,8 @@
 import { expect, test } from "../../fixtures.js";
 import { queryE2eDatabase, queryE2eDatabaseRows } from "../../database.js";
 import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
-import { TEST_EVENT_IDS, TEST_USER_IDS } from "../../seed.js";
-import { navigateToPath, uniqueName, waitForActionResponse } from "../../utils.js";
+import { TEST_COMMUNITY_NAME, TEST_EVENT_IDS, TEST_GROUP_SLUGS, TEST_USER_IDS } from "../../seed.js";
+import { navigateToEvent, navigateToPath, uniqueName, waitForActionResponse } from "../../utils.js";
 import {
   listEventLabels,
   listSessionLabels,
@@ -317,6 +317,84 @@ test.describe("CFS submission workflow", () => {
       deleteNotifications(notificationIds);
       deleteSessionProposalsByTitle(TEST_USER_IDS.pending1, [proposalTitle]);
       restoreEventLabelColors(seededLabels);
+    }
+  });
+
+  test("speaker labels picked in the public modal reach the review modal", async ({
+    eventsManagerGroupPage,
+    pending2Page,
+  }) => {
+    // Create a unique proposal before opening the public CFS modal.
+    const proposalTitle = uniqueName("pending2 public labels proposal");
+
+    try {
+      await createSessionProposal(pending2Page, proposalTitle);
+      await navigateToEvent(
+        pending2Page,
+        TEST_COMMUNITY_NAME,
+        TEST_GROUP_SLUGS.community1.alpha,
+        "alpha-cfs-summit",
+      );
+      await pending2Page.getByRole("button", { name: "Submit session proposal" }).click();
+      const submitModal = pending2Page.getByRole("dialog", { name: "Submit a proposal" });
+      await expect(submitModal).toBeVisible();
+      await submitModal.locator("#session_proposal_id").selectOption({ label: proposalTitle });
+
+      // Verify the public picker lists the event labels and the assigned labels limit.
+      const publicLabelSelector = submitModal.locator("label-selector#cfs-submission-labels");
+      await publicLabelSelector.getByRole("combobox").click();
+      await expect(publicLabelSelector.getByRole("option")).toHaveCount(2);
+      await expect(publicLabelSelector.getByRole("option", { name: "Platform", exact: true })).toBeVisible();
+      await expect(publicLabelSelector.getByRole("option", { name: "Workshop", exact: true })).toBeVisible();
+      await expect(submitModal.getByText("You can select up to 10 labels.")).toBeVisible();
+
+      // Pick one label and submit the proposal.
+      await selectLabels(publicLabelSelector, ["Workshop"]);
+      await waitForActionResponse(
+        pending2Page,
+        () => submitModal.getByRole("button", { name: "Submit proposal" }).click(),
+        {
+          method: "POST",
+          urlIncludes: "/cfs-submissions",
+        },
+      );
+      await expect(submitModal.getByText("Submission received. We'll review it soon.")).toBeVisible();
+
+      // Verify the submission stores the picked label.
+      const submissionId = readSubmissionIdByTitle(proposalTitle);
+      expect(readSubmissionLabels(submissionId)).toEqual(["Workshop"]);
+
+      // Open the review modal and verify the speaker label and the labels limit hint.
+      const submissionsContent = await openCfsEventSubmissionsTab(eventsManagerGroupPage);
+      const reviewModal = await openSubmissionReview(
+        eventsManagerGroupPage,
+        submissionsContent,
+        proposalTitle,
+      );
+      const reviewLabelSelector = reviewModal.locator("label-selector#cfs-submission-labels");
+      await expect(
+        reviewLabelSelector.getByRole("button", { name: "Remove Workshop", exact: true }),
+      ).toBeVisible();
+      await expect(
+        reviewModal.getByText(
+          "Add labels to categorize this submission for your review team. You can select up to 10 labels.",
+        ),
+      ).toBeVisible();
+
+      // Escape closes the labels dropdown first and keeps the review modal open.
+      const reviewCombobox = reviewLabelSelector.getByRole("combobox");
+      await reviewCombobox.click();
+      await expect(reviewCombobox).toHaveAttribute("aria-expanded", "true");
+      await eventsManagerGroupPage.keyboard.press("Escape");
+      await expect(reviewCombobox).toHaveAttribute("aria-expanded", "false");
+      await expect(reviewModal).toBeVisible();
+
+      // A second Escape closes the review modal.
+      await eventsManagerGroupPage.keyboard.press("Escape");
+      await expect(reviewModal).toBeHidden();
+    } finally {
+      // Remove the temporary proposal graph.
+      deleteSessionProposalsByTitle(TEST_USER_IDS.pending2, [proposalTitle]);
     }
   });
 });

@@ -613,11 +613,9 @@
         {# End CFS description -#}
 
         {# Labels pointer -#}
-        <div class="col-span-full">
-          <p class="form-legend">
-            Submitters can pick from the event labels when submitting their proposals. Manage them from the
-            <span class="font-semibold">Labels</span> tab.
-          </p>
+        <div class="col-span-full rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+          Submitters can pick from the event labels when submitting their proposals. Manage them from the
+          <span class="font-semibold">Labels</span> tab.
         </div>
         {# End labels pointer -#}
       </div>
@@ -885,7 +883,7 @@
       </div>
     </div>
   </div>
-  <review-submission-modal id="review-submission-modal" event-id="{{ event.event_id }}" statuses="{{ cfs_submission_statuses|json }}" labels="{{ event.labels|json }}" current-user-id="{{ current_user_id }}" message-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"></review-submission-modal>
+  <review-submission-modal id="review-submission-modal" event-id="{{ event.event_id }}" statuses="{{ cfs_submission_statuses|json }}" labels="{{ event.labels|json }}" label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}" current-user-id="{{ current_user_id }}" message-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"></review-submission-modal>
 </div>
 {# End Submissions Tab -#}
 

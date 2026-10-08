@@ -210,6 +210,7 @@ describe("cfs submissions review utils", () => {
     expect(getReviewModalDefaultProperties()).to.deep.equal({
       currentUserId: "",
       eventId: "",
+      labelMaxSelected: 0,
       labels: [],
       messageMaxLength: 5000,
       statuses: [],

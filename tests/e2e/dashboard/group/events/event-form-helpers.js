@@ -131,7 +131,12 @@ export const expectSessionCardLabels = async (page, sessionName, labelNames) => 
   const sessionCard = page.locator("sessions-section session-card").filter({ hasText: sessionName });
 
   await expect(sessionCard).toHaveCount(1);
-  await expect(sessionCard.locator(".custom-badge")).toHaveText(labelNames);
+  // Overflowing chips collapse behind a counter whose tooltip lists every label.
+  const labelNamesLocator = sessionCard.locator(
+    "[data-session-labels-more] [data-session-label-name], [data-session-labels]:not(:has([data-session-labels-more])) [data-session-label]",
+  );
+
+  await expect(labelNamesLocator).toHaveText(labelNames);
 };
 
 /** Opens the event details section and waits until it is active. */

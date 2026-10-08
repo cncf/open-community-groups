@@ -221,6 +221,82 @@ describe("review-submission-modal", () => {
     expect(element.querySelector("#cfs-submission-tabpanel-details > .border-t")).to.equal(null);
   });
 
+  it("passes the assigned labels limit to the selector and its legend", async () => {
+    // Render the modal with the server-provided labels limit.
+    const element = await renderModal({
+      labelMaxSelected: 10,
+      labels: [{ event_label_id: "4", name: "Backend", color: "blue" }],
+    });
+
+    // Open the submission details modal.
+    element.open(buildSubmission());
+    await element.updateComplete;
+    const selector = element.querySelector("#cfs-submission-labels");
+    await selector.updateComplete;
+
+    // Verify the selector limit and legend share the same value.
+    expect(selector.maxSelected).to.equal(10);
+    expect(selector.querySelector(".form-legend").textContent.trim()).to.equal(
+      "Add labels to categorize this submission for your review team. You can select up to 10 labels.",
+    );
+  });
+
+  it("omits the labels limit hint when no limit is provided", async () => {
+    // Render the modal without a labels limit.
+    const element = await renderModal({
+      labels: [{ event_label_id: "4", name: "Backend", color: "blue" }],
+    });
+
+    // Open the submission details modal.
+    element.open(buildSubmission());
+    await element.updateComplete;
+    const selector = element.querySelector("#cfs-submission-labels");
+    await selector.updateComplete;
+
+    // Verify the selector is unlimited and the legend has no limit hint.
+    expect(selector.maxSelected).to.equal(0);
+    expect(selector.querySelector(".form-legend").textContent.trim()).to.equal(
+      "Add labels to categorize this submission for your review team.",
+    );
+  });
+
+  it("closes the labels dropdown before the modal on Escape", async () => {
+    // Render and open the modal with labels.
+    const element = await renderModal({
+      labels: [{ event_label_id: "4", name: "Backend", color: "blue" }],
+    });
+    element.open(buildSubmission());
+    await element.updateComplete;
+    const selector = element.querySelector("#cfs-submission-labels");
+    await selector.updateComplete;
+
+    // Open the labels dropdown from its combobox input.
+    const input = selector.querySelector('input[role="combobox"]');
+    input.dispatchEvent(new FocusEvent("focus"));
+    await selector.updateComplete;
+    expect(input.getAttribute("aria-expanded")).to.equal("true");
+
+    // Press Escape inside the dropdown.
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Escape" }),
+    );
+    await selector.updateComplete;
+    await element.updateComplete;
+
+    // Verify only the dropdown closes.
+    expect(input.getAttribute("aria-expanded")).to.equal("false");
+    expect(element._isOpen).to.equal(true);
+
+    // Press Escape again with the dropdown closed.
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Escape" }),
+    );
+    await element.updateComplete;
+
+    // Verify the second Escape closes the modal.
+    expect(element._isOpen).to.equal(false);
+  });
+
   it("tracks pending changes while keeping label order snapshots stable", async () => {
     // Render the modal fixture.
     const element = await renderModal();

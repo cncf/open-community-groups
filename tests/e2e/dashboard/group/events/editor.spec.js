@@ -2,7 +2,12 @@ import { expect, test } from "../../../fixtures.js";
 
 import { queryE2eDatabase } from "../../../database.js";
 import { cleanupEventsByIds } from "../../../data-graphs/events.js";
-import { TEST_EVENT_IDS, TEST_PAYMENT_EVENT_NAMES, TEST_USER_IDS } from "../../../seed.js";
+import {
+  TEST_CANCELED_PUBLIC_EVENT,
+  TEST_EVENT_IDS,
+  TEST_PAYMENT_EVENT_NAMES,
+  TEST_USER_IDS,
+} from "../../../seed.js";
 
 import {
   futureDate,
@@ -848,6 +853,28 @@ test.describe("group dashboard event editor", () => {
     }
   });
 
+  test("labels tab is locked for viewers", async ({ groupViewerPage }) => {
+    // Open the seeded CFS event editor as a read-only viewer.
+    await openEventUpdateFormByName(groupViewerPage, "Event With Active CFS", TEST_EVENT_IDS.alpha.cfsSummit);
+    await openLabelsSection(groupViewerPage);
+
+    // Verify the saved labels are shown but cannot be edited.
+    await expectLockedLabelsTab(groupViewerPage, ["Platform", "Workshop"]);
+  });
+
+  test("labels tab is locked on canceled events", async ({ organizerGroupPage }) => {
+    // Open the seeded canceled event editor as an organizer.
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      TEST_CANCELED_PUBLIC_EVENT.name,
+      TEST_CANCELED_PUBLIC_EVENT.id,
+    );
+    await openLabelsSection(organizerGroupPage);
+
+    // Verify the starter label row cannot be edited.
+    await expectLockedLabelsTab(organizerGroupPage, [""]);
+  });
+
   test("location search results stay inside the viewport near its bottom", async ({ organizerGroupPage }) => {
     // Return a full page of deterministic location results.
     await organizerGroupPage.route(/nominatim\.openstreetmap\.org\/search/, (route) =>
@@ -898,6 +925,29 @@ const createEventWithLabeledSession = async (page, values) => {
   await addSession(page, values.session);
 
   return saveNewEvent(page);
+};
+
+/**
+ * Verifies the labels tab renders its rows inside the inert read-only form.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {string[]} labelNames - Expected label row names in display order.
+ */
+const expectLockedLabelsTab = async (page, labelNames) => {
+  // Inert controls leave the accessibility tree, so CSS locators target them.
+  const labelsForm = page.locator(".inert-form[inert] #labels-form");
+  await expect(labelsForm).toBeVisible();
+  const nameInputs = labelsForm.locator('labels-editor input[type="text"]');
+  await expect(nameInputs).toHaveCount(labelNames.length);
+  for (const [index, labelName] of labelNames.entries()) {
+    await expect(nameInputs.nth(index)).toHaveValue(labelName);
+  }
+
+  // Inert controls cannot receive focus.
+  await nameInputs.first().focus();
+  await expect(nameInputs.first()).not.toBeFocused();
+  const addLabelButton = labelsForm.locator("labels-editor button", { hasText: "Add label" });
+  await addLabelButton.focus();
+  await expect(addLabelButton).not.toBeFocused();
 };
 
 /**
