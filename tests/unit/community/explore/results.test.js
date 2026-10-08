@@ -2,7 +2,11 @@ import { expect } from "@open-wc/testing";
 
 import { Calendar } from "/static/js/community/explore/calendar.js";
 import {
-  fetchData,
+  createLatestRequest,
+  ExploreFetchError,
+  fetchWidgetData,
+  isAbortError,
+  reportFetchError,
   updateResults,
   updateResultsFromSummary,
 } from "/static/js/community/explore/results.js";
@@ -16,6 +20,77 @@ import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockMapLibre } from "/tests/unit/test-utils/maps.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
+
+const RESULTS_ERROR_MESSAGE = "Something went wrong loading results. Please try again later.";
+const CALENDAR_VIEW_HTML = `
+  <div id="main-loading-calendar" class="hidden"></div>
+  <div id="loading-calendar" class="hidden"></div>
+  <div>
+    <div id="calendar-box"></div>
+    <div class="no-results-default hidden"></div>
+    <div class="no-results-filtered hidden"></div>
+  </div>
+  <div id="calendar-date"></div>
+  <form id="events-form" class="filters-form">
+    <input name="date_from" value="2026-04-01" />
+    <input name="date_to" value="2026-04-30" />
+  </form>
+  <input name="ts_query" value="" />
+  <button id="current-month-btn"></button>
+  <button id="prev-month-btn"></button>
+  <button id="next-month-btn"></button>
+  <script type="application/json" data-explore-calendar-data>
+    { "events": [{ "event_id": "event-1", "name": "Meetup", "slug": "meetup", "starts_at": 1712000000 }] }
+  </script>
+`;
+
+/**
+ * Mocks FullCalendar so declarative initializers create inspectable calendars.
+ * @returns {object[]} Created calendar instances.
+ */
+const mockFullCalendar = () => {
+  const instances = [];
+  globalThis.FullCalendar = {
+    Calendar: class {
+      constructor(element) {
+        this.element = element;
+        this.currentData = { viewTitle: "April 2026" };
+        this.destroyCalls = 0;
+        this.events = [];
+        this.todayCalls = 0;
+        this.nextCalls = 0;
+        this.previousCalls = 0;
+        this.viewDate = new Date("2026-04-01T00:00:00Z");
+        instances.push(this);
+      }
+
+      // Render is a no-op because the tests inspect the captured API directly.
+      render() {}
+      destroy() {
+        this.destroyCalls += 1;
+      }
+      getDate() {
+        return this.viewDate;
+      }
+      removeAllEvents() {
+        this.events = [];
+      }
+      addEventSource(events) {
+        this.events = events.filter(Boolean);
+      }
+      today() {
+        this.todayCalls += 1;
+      }
+      next() {
+        this.nextCalls += 1;
+      }
+      prev() {
+        this.previousCalls += 1;
+      }
+    },
+  };
+  return instances;
+};
 
 describe("explore helpers", () => {
   const originalFullCalendar = globalThis.FullCalendar;
@@ -172,65 +247,9 @@ describe("explore helpers", () => {
   });
 
   it("initializes calendar widgets from declarative payloads", async () => {
-    let calendarApi;
-
-    // Mock FullCalendar so the declarative initializer can create a calendar.
-    globalThis.FullCalendar = {
-      Calendar: class {
-        constructor(element) {
-          this.element = element;
-          this.currentData = { viewTitle: "April 2026" };
-          this.events = [];
-          this.todayCalls = 0;
-          this.nextCalls = 0;
-          this.previousCalls = 0;
-          this.viewDate = new Date("2026-04-01T00:00:00Z");
-          calendarApi = this;
-        }
-
-        // Render is a no-op because the test inspects the captured API directly.
-        render() {}
-        getDate() {
-          return this.viewDate;
-        }
-        removeAllEvents() {
-          this.events = [];
-        }
-        addEventSource(events) {
-          this.events = events.filter(Boolean);
-        }
-        today() {
-          this.todayCalls += 1;
-        }
-        next() {
-          this.nextCalls += 1;
-        }
-        prev() {
-          this.previousCalls += 1;
-        }
-      },
-    };
-    document.body.innerHTML = `
-      <div id="main-loading-calendar" class="hidden"></div>
-      <div id="loading-calendar" class="hidden"></div>
-      <div>
-        <div id="calendar-box"></div>
-        <div class="no-results-default hidden"></div>
-        <div class="no-results-filtered hidden"></div>
-      </div>
-      <div id="calendar-date"></div>
-      <form id="events-form" class="filters-form">
-        <input name="date_from" value="2026-04-01" />
-        <input name="date_to" value="2026-04-30" />
-      </form>
-      <input name="ts_query" value="" />
-      <button id="current-month-btn"></button>
-      <button id="prev-month-btn"></button>
-      <button id="next-month-btn"></button>
-      <script type="application/json" data-explore-calendar-data>
-        { "events": [{ "name": "Meetup", "slug": "meetup", "starts_at": 1712000000 }] }
-      </script>
-    `;
+    // Mock FullCalendar and render the calendar view payload.
+    const calendars = mockFullCalendar();
+    document.body.innerHTML = CALENDAR_VIEW_HTML;
 
     // Initialize the calendar from the JSON marker and use delegated controls.
     await initializeExploreWidgets(document);
@@ -240,10 +259,34 @@ describe("explore helpers", () => {
     document.getElementById("next-month-btn").click();
 
     // The payload initializes the calendar and the buttons call its public API.
+    const [calendarApi] = calendars;
     expect(calendarApi.events).to.have.length(1);
     expect(calendarApi.todayCalls).to.equal(1);
     expect(calendarApi.previousCalls).to.equal(1);
     expect(calendarApi.nextCalls).to.equal(1);
+  });
+
+  it("destroys the calendar after a swap removes the calendar view", async () => {
+    // Initialize the calendar inside the swappable explore view.
+    const calendars = mockFullCalendar();
+    document.body.innerHTML = `<div id="explore-view">${CALENDAR_VIEW_HTML}</div>`;
+    await initializeExploreWidgets(document);
+    await waitForMicrotask();
+    const [calendarApi] = calendars;
+
+    // A swap that keeps the calendar view leaves the calendar alive.
+    document
+      .getElementById("calendar-date")
+      .dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true }));
+    expect(calendarApi.destroyCalls).to.equal(0);
+    expect(Calendar._instance.fullCalendar).to.equal(calendarApi);
+
+    // Swapping in the list view destroys the calendar.
+    const view = document.getElementById("explore-view");
+    view.innerHTML = '<div id="cards-list"></div>';
+    view.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true }));
+    expect(calendarApi.destroyCalls).to.equal(1);
+    expect(Calendar._instance.fullCalendar).to.equal(null);
   });
 
   it("initializes map widgets from declarative payloads", async () => {
@@ -395,106 +438,154 @@ describe("explore helpers", () => {
     expect(document.getElementById("drawer-backdrop")?.classList.contains("hidden")).to.equal(true);
   });
 
-  it("fetches explore data as json", async () => {
-    // Mock the fetch response.
+  it("tracks only the latest widget data request", () => {
+    // Start a request and replace it with a newer one.
+    const request = createLatestRequest();
+    const first = request.start();
+    const second = request.start();
+
+    // Starting a request aborts and invalidates the previous one.
+    expect(first.signal.aborted).to.equal(true);
+    expect(request.isCurrent(first.id)).to.equal(false);
+    expect(second.signal.aborted).to.equal(false);
+    expect(request.isCurrent(second.id)).to.equal(true);
+
+    // Cancelling aborts and invalidates the latest request too.
+    request.cancel();
+    expect(second.signal.aborted).to.equal(true);
+    expect(request.isCurrent(second.id)).to.equal(false);
+  });
+
+  it("fetches minimal explore data as json without alerts", async () => {
+    // Mock the minimal response.
+    const abortController = new AbortController();
     fetchMock.setImpl(async (url, options) => {
       // The request asks the search endpoint for JSON.
       expect(url).to.equal("/explore/events/search?kind=conference");
       expect(options.headers).to.be.instanceOf(Headers);
       expect(options.headers.get("Accept")).to.equal("application/json");
       expect(options.headers.get("X-OCG-Fetch")).to.equal("true");
+      expect(options.signal).to.equal(abortController.signal);
 
-      // Return the value used by the assertion.
+      // Return the minimal envelope.
       return {
         ok: true,
-        json: async () => ({ items: [1, 2, 3] }),
+        json: async () => ({ events: [{ event_id: "event-1" }], total: 1, truncated: false }),
       };
     });
 
     // Capture the async result.
-    const result = await fetchData("events", "kind=conference");
+    const result = await fetchWidgetData("events", "kind=conference", { signal: abortController.signal });
 
-    // The parsed JSON response is returned without showing an alert.
-    expect(result).to.deep.equal({ items: [1, 2, 3] });
+    // The parsed envelope is returned without showing an alert.
+    expect(result).to.deep.equal({ events: [{ event_id: "event-1" }], total: 1, truncated: false });
     expect(swal.calls).to.have.length(0);
   });
 
-  it("shows an alert and throws when the request fails", async () => {
-    // Mock the fetch response.
+  it("rethrows aborted requests as-is without alerts", async () => {
+    // Abort the request.
+    const abortError = new DOMException("The operation was aborted.", "AbortError");
     fetchMock.setImpl(async () => {
-      throw new Error("network error");
+      throw abortError;
     });
 
-    // Set up thrown error.
+    // Run the fetch call that should reject with the abort error.
     let thrownError = null;
-
-    // Run the fetch call that should throw.
     try {
-      await fetchData("groups", "region=emea");
+      await fetchWidgetData("groups", "region=emea");
     } catch (error) {
       thrownError = error;
     }
 
-    // The original network error is surfaced and the fallback alert is shown.
-    expect(thrownError?.message).to.equal("network error");
-    expect(swal.calls).to.have.length(1);
-    expect(swal.calls[0].text).to.equal(
-      "Something went wrong loading results. Please try again later.",
-    );
+    // The abort error is not wrapped and reporting it shows no alert.
+    expect(thrownError).to.equal(abortError);
+    expect(isAbortError(thrownError)).to.equal(true);
+    reportFetchError(thrownError);
+    expect(swal.calls).to.have.length(0);
   });
 
-  it("shows an alert and throws when the server responds with an error", async () => {
-    // Mock the fetch response.
+  it("wraps network failures without alerts", async () => {
+    // Fail the request at the network level.
+    const networkError = new TypeError("Failed to fetch");
+    fetchMock.setImpl(async () => {
+      throw networkError;
+    });
+
+    // Run the fetch call that should throw.
+    let thrownError = null;
+    try {
+      await fetchWidgetData("groups", "region=emea");
+    } catch (error) {
+      thrownError = error;
+    }
+
+    // The typed error keeps the cause and no alert is shown.
+    expect(thrownError).to.be.instanceOf(ExploreFetchError);
+    expect(thrownError.message).to.equal("Failed to fetch groups data");
+    expect(thrownError.cause).to.equal(networkError);
+    expect(thrownError.status).to.equal(null);
+    expect(isAbortError(thrownError)).to.equal(false);
+    expect(swal.calls).to.have.length(0);
+  });
+
+  it("wraps server error responses without alerts", async () => {
+    // Mock the error response.
     fetchMock.setImpl(async () => ({
       ok: false,
       status: 500,
       text: async () => "Internal error",
     }));
 
-    // Set up thrown error.
-    let thrownError = null;
-
     // Run the fetch call that should reject the error response.
+    let thrownError = null;
     try {
-      await fetchData("groups", "region=emea");
+      await fetchWidgetData("groups", "region=emea");
     } catch (error) {
       thrownError = error;
     }
 
-    // The error response is reported with the status code and fallback alert.
-    expect(thrownError?.message).to.equal(
-      "Failed to fetch groups data (status 500)",
-    );
-    expect(swal.calls).to.have.length(1);
-    expect(swal.calls[0].text).to.equal(
-      "Something went wrong loading results. Please try again later.",
-    );
+    // The typed error keeps the status and body, and no alert is shown.
+    expect(thrownError).to.be.instanceOf(ExploreFetchError);
+    expect(thrownError.message).to.equal("Failed to fetch groups data (status 500)");
+    expect(thrownError.status).to.equal(500);
+    expect(thrownError.responseText).to.equal("Internal error");
+    expect(swal.calls).to.have.length(0);
   });
 
-  it("shows an alert and throws when the response body is not valid json", async () => {
-    // Mock the fetch response.
+  it("wraps invalid json responses without alerts", async () => {
+    // Mock a response whose body is not valid JSON.
+    const parseError = new SyntaxError("Unexpected token");
     fetchMock.setImpl(async () => ({
       ok: true,
       json: async () => {
-        throw new Error("invalid json");
+        throw parseError;
       },
     }));
 
-    // Set up thrown error.
-    let thrownError = null;
-
     // Run the fetch call that should reject invalid JSON.
+    let thrownError = null;
     try {
-      await fetchData("events", "kind=conference");
+      await fetchWidgetData("events", "kind=conference");
     } catch (error) {
       thrownError = error;
     }
 
-    // The JSON parsing error is surfaced with the fallback alert.
-    expect(thrownError?.message).to.equal("invalid json");
-    expect(swal.calls).to.have.length(1);
-    expect(swal.calls[0].text).to.equal(
-      "Something went wrong loading results. Please try again later.",
+    // The typed error keeps the parse cause and no alert is shown.
+    expect(thrownError).to.be.instanceOf(ExploreFetchError);
+    expect(thrownError.message).to.equal("Failed to parse events data");
+    expect(thrownError.cause).to.equal(parseError);
+    expect(swal.calls).to.have.length(0);
+  });
+
+  it("reports fetch failures through the results alert", () => {
+    // Report a network failure and a server failure.
+    reportFetchError(
+      new ExploreFetchError("Failed to fetch groups data", { cause: new TypeError("Failed to fetch") }),
     );
+    reportFetchError(new ExploreFetchError("Failed", { responseText: "Internal error", status: 500 }));
+
+    // Each failure shows the results error alert.
+    expect(swal.calls).to.have.length(2);
+    expect(swal.calls.map((call) => call.text)).to.deep.equal([RESULTS_ERROR_MESSAGE, RESULTS_ERROR_MESSAGE]);
   });
 });

@@ -1,15 +1,24 @@
 import { showErrorAlert } from "/static/js/common/alerts.js";
-import { fitCohostsLines } from "/static/js/common/cohosts-line.js";
 import { navigateWithHtmx } from "/static/js/common/htmx-navigation.js";
 import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/loading-spinner.js";
 import { createMapMarker, loadMap, loadMapScript } from "/static/js/common/location/maplibre.js";
-import { fetchData } from "/static/js/community/explore/results.js";
 import {
-  cancelDelayedPopover,
+  createLatestRequest,
+  fetchWidgetData,
+  isAbortError,
+  reportFetchError,
+} from "/static/js/community/explore/results.js";
+import {
+  bindExploreCardTooltip,
+  bindExploreCardTrigger,
+  createCardController,
+  createExploreCardLoader,
   getExploreItemUrl,
+  isPlainLeftClick,
   loadWidgetScripts,
-  renderPopoverCardShell,
-  scheduleDelayedPopover,
+  renderExploreCard,
+  syncExploreCardTooltip,
+  updateTruncationNotice,
 } from "/static/js/community/explore/widgets.js";
 
 const LOCATIONS_SOURCE_ID = "explore-locations";
@@ -24,6 +33,7 @@ const MAP_STATUS = Object.freeze({
   loading: "loading",
   ready: "ready",
 });
+const TRUNCATION_NOTICE_SELECTOR = "[data-explore-truncation-notice]";
 
 /**
  * Community explore map with native clustering and custom HTML markers.
@@ -40,9 +50,8 @@ export class Map {
     if (!Map._instance) {
       this.markers = new globalThis.Map();
       this.pendingSourceUpdate = null;
-      this.tooltipTimers = new WeakMap();
       this.dataRevision = 0;
-      this.requestId = 0;
+      this.request = createLatestRequest();
       this.setupPromise = Promise.resolve();
       this.state = { status: MAP_STATUS.idle };
 
@@ -50,6 +59,10 @@ export class Map {
       Map._instance = this;
     }
 
+    // Keep cached cards while the entity stays the same
+    if (controller.cardLoader?.entity !== entity) {
+      controller.cardLoader = createExploreCardLoader(entity, "map");
+    }
     controller.entity = entity;
     controller.enabledMoveEnd = false;
     loadWidgetScripts({
@@ -66,8 +79,10 @@ export class Map {
   /**
    * Updates the source while retaining markers until the replacement is ready.
    * @param {Array} items Explore items with coordinates.
+   * @param {object} truncation Notice metadata committed once the source update completes.
+   * @param {number} requestId Request whose results are drawn.
    */
-  addMarkers(items) {
+  addMarkers(items, truncation, requestId) {
     this.markers.forEach((entry) => {
       const element = entry.marker.getElement();
       if (element instanceof HTMLButtonElement) {
@@ -77,7 +92,7 @@ export class Map {
     });
     this.items = items.filter(hasValidCoordinates);
     this.dataRevision += 1;
-    this.pendingSourceUpdate = { failed: false, requestId: this.requestId };
+    this.pendingSourceUpdate = { failed: false, requestId, truncation };
     this.map.getSource(LOCATIONS_SOURCE_ID).setData({
       type: "FeatureCollection",
       features: this.items.map((item, index) => ({
@@ -92,7 +107,7 @@ export class Map {
   }
 
   /**
-   * Removes HTML markers, popups, and pending hover timers.
+   * Removes HTML markers, popups, and pending card controllers.
    */
   clearMarkers() {
     if (this.clusterPopup?.getElement()?.contains(document.activeElement)) {
@@ -124,59 +139,53 @@ export class Map {
   }
 
   /**
-   * Creates a linked pin with a delayed hover or keyboard-focus card.
+   * Creates a linked pin with a delayed hover or keyboard-focus card loaded on demand.
    * @param {object} feature Point feature returned by the source.
-   * @returns {object} Marker entry and optional popup.
+   * @returns {object} Marker entry with its card controller.
    */
   createItemMarker(feature) {
     const item = this.items[feature.properties.index];
+    const name = item.name || item.slug;
     const element = createItemLink(this.entity, item);
     element.className = `marker-${item.slug}`;
-    element.setAttribute("aria-label", item.name || item.slug);
+    element.setAttribute("aria-label", name);
     const pin = document.createElement("div");
     pin.className = "svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker";
     pin.setAttribute("aria-hidden", "true");
     element.replaceChildren(pin);
     const marker = createMapMarker([Number(item.longitude), Number(item.latitude)], { element });
-    const entry = { marker };
+    const popup = new maplibregl.Popup({
+      className: "explore-map-tooltip",
+      closeButton: false,
+      closeOnClick: false,
+      focusAfterOpen: false,
+      maxWidth: "none",
+      offset: 30,
+    });
+    const tooltipId = `explore-map-tooltip-${this.dataRevision}-${feature.properties.index}`;
+    let releaseTooltip = null;
 
-    if (item.popover_html) {
-      entry.popup = new maplibregl.Popup({
-        className: "explore-map-tooltip",
-        closeButton: false,
-        closeOnClick: false,
-        focusAfterOpen: false,
-        maxWidth: "none",
-        offset: 30,
-      }).setHTML(renderPopoverCardShell(item.popover_html));
-      const open = () => {
-        scheduleDelayedPopover(this.tooltipTimers, marker, () => {
-          entry.popup.setLngLat(marker.getLngLat()).addTo(this.map);
-          const tooltip = entry.popup.getElement();
-          tooltip.id = `explore-map-tooltip-${this.dataRevision}-${feature.properties.index}`;
-          tooltip.setAttribute("role", "tooltip");
-          tooltip.querySelectorAll("a[href]").forEach((link) => link.removeAttribute("href"));
-          fitCohostsLines(tooltip);
-          element.setAttribute("aria-describedby", tooltip.id);
-        });
-      };
-      const close = () => {
-        cancelDelayedPopover(this.tooltipTimers, marker);
-        entry.popup.remove();
+    // Render the card in a non-interactive tooltip described by the pin
+    const controller = createCardController({
+      item,
+      loader: this.cardLoader,
+      close: () => {
+        releaseTooltip?.();
+        releaseTooltip = null;
+        popup.remove();
         element.removeAttribute("aria-describedby");
-      };
-      element.addEventListener("mouseenter", open);
-      element.addEventListener("mouseleave", close);
-      element.addEventListener("focus", open);
-      element.addEventListener("blur", close);
-      element.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          event.stopPropagation();
-          close();
-        }
-      });
-    }
-    return entry;
+      },
+      render: (result) => {
+        if (!this.map) return;
+        popup.setHTML(renderExploreCard(result, name));
+        if (!popup.isOpen()) popup.setLngLat(marker.getLngLat()).addTo(this.map);
+        const tooltip = popup.getElement();
+        syncExploreCardTooltip({ result, tooltip, tooltipId, trigger: element });
+        releaseTooltip ||= bindExploreCardTooltip(tooltip, element, controller);
+      },
+    });
+    const releaseTrigger = bindExploreCardTrigger(element, controller);
+    return { controller, marker, popup, releaseTrigger };
   }
 
   /**
@@ -248,12 +257,12 @@ export class Map {
   }
 
   /**
-   * Fetches locations using the current filters and map bounds.
-   * @returns {Promise<object>} Explore response payload.
+   * Fetches every location in view using the current filters and map bounds.
+   * @param {AbortSignal} signal Signal aborting the request.
+   * @returns {Promise<object>} Minimal explore response payload.
    */
-  async fetchLocationData() {
+  async fetchLocationData(signal) {
     const params = new URLSearchParams(location.search);
-    // Map mode makes the server apply the map result limit and offset.
     params.set("view_mode", "map");
     params.delete("kind", "virtual");
 
@@ -264,7 +273,15 @@ export class Map {
     params.append("bbox_sw_lon", normalizeLongitude(southWest.lng));
     params.append("bbox_ne_lat", normalizeLatitude(northEast.lat));
     params.append("bbox_ne_lon", normalizeLongitude(northEast.lng));
-    return fetchData(this.entity, params.toString());
+    return fetchWidgetData(this.entity, params.toString(), { signal });
+  }
+
+  /**
+   * Checks whether the map is still mounted in the document.
+   * @returns {boolean} Whether results can be applied.
+   */
+  isAttached() {
+    return Boolean(this.map?.getContainer()?.isConnected);
   }
 
   /**
@@ -272,36 +289,54 @@ export class Map {
    * @param {object|null} currentData Optional data instead of a network request.
    */
   async refresh(currentData = null) {
-    const requestId = ++this.requestId;
+    // Replace any pending request with this one
+    const { id: requestId, signal } = this.request.start();
     this.setStatus(MAP_STATUS.loading);
+
+    // Fetch the locations in view unless the data was provided
     let data = currentData;
     if (!data) {
       try {
-        data = await this.fetchLocationData();
-      } catch {
-        if (requestId === this.requestId) this.setStatus(MAP_STATUS.error);
+        data = await this.fetchLocationData(signal);
+      } catch (error) {
+        if (this.request.isCurrent(requestId) && !isAbortError(error) && this.isAttached()) {
+          this.setStatus(MAP_STATUS.error);
+          reportFetchError(error);
+        }
         return;
       }
     }
-    if (requestId !== this.requestId) return;
+
+    // Ignore results of replaced requests or removed maps
+    if (!this.request.isCurrent(requestId) || !this.isAttached()) return;
     if (!data) {
       this.setStatus(MAP_STATUS.error);
       return;
     }
 
-    const items = (data[this.entity] || []).filter(hasValidCoordinates);
-    this.addMarkers(items);
+    // Draw every returned location and keep the notice metadata for the source update
+    const items = data[this.entity] || [];
+    this.addMarkers(
+      items,
+      {
+        shown: items.length,
+        total: data.total ?? items.length,
+        truncated: Boolean(data.truncated),
+      },
+      requestId,
+    );
   }
 
   /**
-   * Releases one marker and its delayed card.
+   * Releases one marker and its card.
    * @param {object} entry Cached marker entry.
    */
   removeMarker(entry) {
     if (entry.marker.getElement() === document.activeElement) {
       this.map?.getCanvas().focus({ preventScroll: true });
     }
-    cancelDelayedPopover(this.tooltipTimers, entry.marker);
+    entry.controller?.destroy();
+    entry.releaseTrigger?.();
     entry.popup?.remove();
     entry.marker.remove();
   }
@@ -378,7 +413,7 @@ export class Map {
       if (mapLoaded) {
         if (event?.sourceId === LOCATIONS_SOURCE_ID && this.pendingSourceUpdate) {
           this.pendingSourceUpdate.failed = true;
-          if (this.pendingSourceUpdate.requestId === this.requestId) this.setStatus(MAP_STATUS.error);
+          if (this.request.isCurrent(this.pendingSourceUpdate.requestId)) this.setStatus(MAP_STATUS.error);
         }
         return;
       }
@@ -389,7 +424,7 @@ export class Map {
       }
     });
     map.on("remove", () => {
-      this.requestId += 1;
+      this.request.cancel();
       this.pendingSourceUpdate = null;
       this.clearMarkers();
       this.map = null;
@@ -441,7 +476,11 @@ export class Map {
       replacement?.marker.getElement().focus({ preventScroll: true });
     }
     if (this.pendingSourceUpdate) {
-      if (this.pendingSourceUpdate.requestId === this.requestId) {
+      updateTruncationNotice(
+        document.querySelector(TRUNCATION_NOTICE_SELECTOR),
+        this.pendingSourceUpdate.truncation,
+      );
+      if (this.request.isCurrent(this.pendingSourceUpdate.requestId)) {
         this.setStatus(this.items.length ? MAP_STATUS.ready : MAP_STATUS.empty);
       }
       this.pendingSourceUpdate = null;
@@ -463,7 +502,7 @@ const createItemLink = (entity, item) => {
   if (url) {
     link.href = url;
     link.addEventListener("click", (event) => {
-      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (!isPlainLeftClick(event)) return;
       event.preventDefault();
       navigateWithHtmx(url);
     });
@@ -485,12 +524,24 @@ const getMapBounds = (bbox) => {
 };
 
 /**
- * Checks for finite, non-zero coordinates used by explore locations.
+ * Checks for present, finite, in-range coordinates used by explore locations.
  * @param {object} item Explore item.
  * @returns {boolean} Whether a marker can be rendered.
  */
 const hasValidCoordinates = (item) =>
-  [item.latitude, item.longitude].every((value) => Number.isFinite(Number(value)) && Number(value) !== 0);
+  isCoordinateInRange(item.latitude, 90) && isCoordinateInRange(item.longitude, 180);
+
+/**
+ * Checks that a coordinate is present, finite, and within its absolute limit.
+ * @param {unknown} value Coordinate value.
+ * @param {number} limit Maximum absolute value.
+ * @returns {boolean} Whether the coordinate is usable.
+ */
+const isCoordinateInRange = (value, limit) => {
+  if (value === null || value === undefined || value === "") return false;
+  const coordinate = Number(value);
+  return Number.isFinite(coordinate) && Math.abs(coordinate) <= limit;
+};
 
 /**
  * Clamps latitude to the server's accepted range.

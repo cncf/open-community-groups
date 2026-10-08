@@ -9,8 +9,8 @@ use uuid::Uuid;
 use crate::types::{
     community::CommunitySummary,
     dashboard::group::events::EventInput,
-    event::{EventCohostGroup, EventFull, EventKind, EventSummary},
-    group::{GroupCategory, GroupRegion, GroupSummary},
+    event::{EventCohostGroup, EventFull, EventKind, EventMinimal, EventSummary},
+    group::{GroupCategory, GroupMinimal, GroupRegion, GroupSummary},
     inbox::{
         InboxConversation, InboxConversationStatus, InboxConversationSummary, InboxEvent,
         InboxMessage, InboxMessageKind,
@@ -110,6 +110,24 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
     }
 }
 
+/// Sample minimal event drawn on the explore map and calendar.
+pub(crate) fn sample_event_minimal(event_id: Uuid) -> EventMinimal {
+    let starts_at = Utc.with_ymd_and_hms(2030, 1, 10, 18, 0, 0).unwrap();
+    EventMinimal {
+        community_name: "test-community".to_string(),
+        event_id,
+        group_slug: "def5678".to_string(),
+        name: "Sample Minimal Event".to_string(),
+        slug: "ghi9abc".to_string(),
+
+        ends_at: Some(starts_at + Duration::hours(2)),
+        group_slug_pretty: None,
+        latitude: Some(42.3601),
+        longitude: Some(-71.0589),
+        starts_at: Some(starts_at),
+    }
+}
+
 /// Sample event summary used in listings.
 pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSummary {
     let starts_at = Utc::now() + Duration::hours(1);
@@ -151,7 +169,6 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         meeting_provider: None,
         payment_currency_code: None,
         pending_cohosts_count: None,
-        popover_html: None,
         registration_ends_at: None,
         registration_starts_at: None,
         remaining_capacity: None,
@@ -178,6 +195,21 @@ pub(crate) fn sample_group_category() -> GroupCategory {
         name: "Meetup".to_string(),
         normalized_name: "meetup".to_string(),
         order: Some(1),
+    }
+}
+
+/// Sample minimal group used in dashboard selectors and the explore map.
+pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
+    GroupMinimal {
+        active: true,
+        community_name: "test-community".to_string(),
+        group_id,
+        name: "Test Group".to_string(),
+        slug: "test-group".to_string(),
+
+        latitude: Some(37.0),
+        longitude: Some(-122.0),
+        slug_pretty: None,
     }
 }
 
@@ -224,7 +256,6 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         latitude: Some(37.0),
         longitude: Some(-122.0),
         og_image_url: None,
-        popover_html: None,
         region: Some(sample_group_region()),
         slug_pretty: None,
         state: Some("CA".to_string()),

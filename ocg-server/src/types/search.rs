@@ -1,15 +1,12 @@
 //! Shared search filter types and helpers used across the application.
 
 use anyhow::Result;
-use axum::http::HeaderMap;
-use chrono::{Datelike, Months, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::{NoneAsEmptyString, serde_as, skip_serializing_none};
-use tracing::{instrument, trace};
 
 use crate::{
-    router::serde_qs_config,
     types::{
         event::{EventKind, EventSummary},
         group::GroupSummary,
@@ -23,6 +20,9 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
+
+/// Maximum number of items returned to draw the explore map and calendar.
+pub(crate) const EXPLORE_WIDGET_MAX_ITEMS: usize = 1000;
 
 // Search filters.
 
@@ -85,9 +85,6 @@ pub(crate) struct SearchEventsFilters {
     /// Maximum distance in meters from user's location.
     #[garde(skip)]
     pub distance: Option<u64>,
-    /// Whether to include bounding box in results (for map view).
-    #[garde(skip)]
-    pub include_bbox: Option<bool>,
     /// User's latitude for distance-based filtering.
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
@@ -117,36 +114,32 @@ pub(crate) struct SearchEventsFilters {
 }
 
 impl SearchEventsFilters {
-    /// Create a new `SearchEventsFilters` instance from the raw query string and headers.
-    #[instrument(err)]
-    pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
-        let mut filters: SearchEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
-        filters.validate()?;
+    /// Normalizes parsed filters by dropping empty entries and applying view defaults.
+    ///
+    /// Missing date bounds default to the month of `now` in calendar view, and
+    /// to the twelve months starting on `now` in other views.
+    pub(crate) fn normalize(&mut self, now: DateTime<Utc>) {
+        // Drop entries that are empty strings
+        self.event_category.retain(|c| !c.is_empty());
+        self.group.retain(|g| !g.is_empty());
+        self.group_category.retain(|c| !c.is_empty());
+        self.region.retain(|r| !r.is_empty());
 
-        // Clean up entries that are empty strings
-        filters.event_category.retain(|c| !c.is_empty());
-        filters.group.retain(|g| !g.is_empty());
-        filters.group_category.retain(|c| !c.is_empty());
-        filters.region.retain(|r| !r.is_empty());
-
-        // Populate the latitude and longitude fields from the headers provided
-        (filters.latitude, filters.longitude) = extract_location(headers);
-
-        // Set missing date bounds to the current month for calendar view, or from
-        // today through 12 months from now for other views.
-        let now = Utc::now();
-        if filters.date_from.is_none() {
-            let default_date_from = if filters.view_mode == Some(ViewMode::Calendar) {
+        // Default the missing start date for the active view
+        if self.date_from.is_none() {
+            let default_date_from = if self.view_mode == Some(ViewMode::Calendar) {
                 // First day of the current month
                 NaiveDate::from_ymd_opt(now.year(), now.month(), 1).expect("valid date")
             } else {
                 // Today
                 now.date_naive()
             };
-            filters.date_from = Some(default_date_from);
+            self.date_from = Some(default_date_from);
         }
-        if filters.date_to.is_none() {
-            let default_to_date = if filters.view_mode == Some(ViewMode::Calendar) {
+
+        // Default the missing end date for the active view
+        if self.date_to.is_none() {
+            let default_to_date = if self.view_mode == Some(ViewMode::Calendar) {
                 // Last day of the current month
                 NaiveDate::from_ymd_opt(now.year(), now.month() + 1, 1)
                     .unwrap_or(NaiveDate::from_ymd_opt(now.year() + 1, 1, 1).expect("valid date"))
@@ -158,23 +151,8 @@ impl SearchEventsFilters {
                     .checked_add_months(Months::new(12))
                     .expect("valid date")
             };
-            filters.date_to = Some(default_to_date);
+            self.date_to = Some(default_to_date);
         }
-
-        // Set some defaults when the view mode is calendar or map
-        if filters.view_mode == Some(ViewMode::Calendar) || filters.view_mode == Some(ViewMode::Map)
-        {
-            filters.limit = Some(100);
-            filters.offset = Some(0);
-        }
-
-        // Set some defaults when the view mode is map
-        if filters.view_mode == Some(ViewMode::Map) {
-            filters.include_bbox = Some(true);
-        }
-
-        trace!(?filters);
-        Ok(filters)
     }
 
     /// Returns whether this search depends on viewer location headers.
@@ -261,9 +239,6 @@ pub(crate) struct SearchGroupsFilters {
     /// Maximum distance in meters from user's location.
     #[garde(skip)]
     pub distance: Option<f64>,
-    /// Whether to include bounding box in results.
-    #[garde(skip)]
-    pub include_bbox: Option<bool>,
     /// Whether to include inactive groups in results.
     #[serde(default, skip_deserializing)]
     #[garde(skip)]
@@ -294,34 +269,11 @@ pub(crate) struct SearchGroupsFilters {
 }
 
 impl SearchGroupsFilters {
-    /// Create a new `SearchGroupsFilters` instance from the raw query string and headers
-    /// provided.
-    #[instrument(err)]
-    pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
-        let mut filters: SearchGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
-        filters.validate()?;
-
-        // Clean up entries that are empty strings
-        filters.group_category.retain(|c| !c.is_empty());
-        filters.region.retain(|r| !r.is_empty());
-
-        // Populate the latitude and longitude fields from the headers provided
-        (filters.latitude, filters.longitude) = extract_location(headers);
-
-        // Set some defaults when the view mode is calendar or map
-        if filters.view_mode == Some(ViewMode::Calendar) || filters.view_mode == Some(ViewMode::Map)
-        {
-            filters.limit = Some(100);
-            filters.offset = Some(0);
-        }
-
-        // Set some defaults when the view mode is map
-        if filters.view_mode == Some(ViewMode::Map) {
-            filters.include_bbox = Some(true);
-        }
-
-        trace!(?filters);
-        Ok(filters)
+    /// Normalizes parsed filters by dropping empty entries.
+    pub(crate) fn normalize(&mut self) {
+        // Drop entries that are empty strings
+        self.group_category.retain(|c| !c.is_empty());
+        self.region.retain(|r| !r.is_empty());
     }
 
     /// Returns whether this search depends on viewer location headers.
@@ -375,40 +327,42 @@ pub(crate) struct BBox {
     pub sw_lon: f64,
 }
 
-/// Error that can occur when creating filter instances.
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum FilterError {
-    /// Error parsing the query string.
-    #[error("parse error: {0}")]
-    Parse(#[from] serde_qs::Error),
-
-    /// Validation error.
-    #[error("validation error: {0}")]
-    Validation(#[from] garde::Report),
-}
-
 /// Output structure for events search operations.
+///
+/// List searches return a page of `EventSummary` items. The explore map and
+/// calendar return `EventMinimal` items, up to `EXPLORE_WIDGET_MAX_ITEMS`.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct SearchEventsOutput {
-    /// Events on the current result page.
-    pub events: Vec<EventSummary>,
+pub(crate) struct SearchEventsOutput<T = EventSummary> {
+    /// Matching events on the current result page or up to the items cap.
+    pub events: Vec<T>,
     /// Total matching event count.
     pub total: usize,
 
-    /// Optional geographic bounds covering the results.
+    /// Geographic bounds covering every matching event in map view.
     pub bbox: Option<BBox>,
+    /// Whether some matching events were left out by the items cap.
+    #[serde(default)]
+    pub truncated: bool,
 }
 
 /// Output structure for groups search operations.
+///
+/// List searches return a page of `GroupSummary` items. The explore map
+/// returns located `GroupMinimal` items, up to `EXPLORE_WIDGET_MAX_ITEMS`.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct SearchGroupsOutput {
-    /// Groups on the current result page.
-    pub groups: Vec<GroupSummary>,
+pub(crate) struct SearchGroupsOutput<T = GroupSummary> {
+    /// Matching groups on the current result page or up to the items cap.
+    pub groups: Vec<T>,
     /// Total matching group count.
     pub total: usize,
 
-    /// Optional geographic bounds covering the results.
+    /// Geographic bounds covering every matching group in map view.
     pub bbox: Option<BBox>,
+    /// Whether some matching groups were left out by the items cap.
+    #[serde(default)]
+    pub truncated: bool,
 }
 
 /// Display mode for explore results.
@@ -439,23 +393,4 @@ fn default_limit() -> Option<usize> {
 #[allow(clippy::unnecessary_wraps)]
 fn default_offset() -> Option<usize> {
     Some(0)
-}
-
-// Helpers.
-
-/// Extract geolocation coordinates from request headers.
-fn extract_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>) {
-    let try_from =
-        |latitude_header: &str, longitude_header: &str| -> Option<(Option<f64>, Option<f64>)> {
-            let latitude = headers.get(latitude_header)?.to_str().ok()?.parse().ok()?;
-            let longitude = headers.get(longitude_header)?.to_str().ok()?.parse().ok()?;
-            Some((Some(latitude), Some(longitude)))
-        };
-
-    if let Some(coordinates) = try_from("CloudFront-Viewer-Latitude", "CloudFront-Viewer-Longitude")
-    {
-        return coordinates;
-    }
-
-    (None, None)
 }

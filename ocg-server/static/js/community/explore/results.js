@@ -8,6 +8,110 @@ const RESULTS_ERROR_MESSAGE = "Something went wrong loading results. Please try 
 const ENTITY_SECTION_ID = "entity-section";
 
 /**
+ * Error raised when explore widget data cannot be loaded.
+ */
+export class ExploreFetchError extends Error {
+  /**
+   * @param {string} message - Error message
+   * @param {object} [details] - Failure details
+   * @param {unknown} [details.cause] - Underlying error
+   * @param {string} [details.responseText] - Response body of a failed request
+   * @param {number|null} [details.status] - HTTP status of a failed request
+   */
+  constructor(message, { cause, responseText = "", status = null } = {}) {
+    super(message, { cause });
+    this.name = "ExploreFetchError";
+    this.responseText = responseText;
+    this.status = status;
+  }
+}
+
+/**
+ * Creates the tracker of a widget's latest data request.
+ * Starting a request aborts and invalidates the previous one, so only the
+ * latest request can apply its results.
+ * @returns {{cancel: () => void, isCurrent: (id: number) => boolean, start: () => {id: number, signal: AbortSignal}}} Request tracker
+ */
+export const createLatestRequest = () => {
+  let abortController = null;
+  let currentId = 0;
+
+  return {
+    cancel() {
+      currentId += 1;
+      abortController?.abort();
+      abortController = null;
+    },
+    isCurrent: (id) => id === currentId,
+    start() {
+      this.cancel();
+      abortController = new AbortController();
+      return { id: currentId, signal: abortController.signal };
+    },
+  };
+};
+
+/**
+ * Fetches the minimal events or groups drawn by the explore map and calendar.
+ * Never alerts; callers report failures of their current request only.
+ * @param {string} entity - The type of entity to fetch ('events' or 'groups')
+ * @param {string} params - URL search parameters as a string
+ * @param {object} [options] - Request options
+ * @param {AbortSignal} [options.signal] - Signal aborting the request
+ * @returns {Promise<object>} Search response envelope
+ * @throws {DOMException} When the request is aborted
+ * @throws {ExploreFetchError} When the request, status, or JSON body fails
+ */
+export const fetchWidgetData = async (entity, params, { signal } = {}) => {
+  const url = `/explore/${entity}/search?${params}`;
+
+  // Request the widget data
+  /** @type {Response} */
+  let response;
+  try {
+    response = await ocgFetch(url, { headers: { Accept: "application/json" }, signal });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new ExploreFetchError(`Failed to fetch ${entity} data`, { cause: error });
+  }
+
+  // Reject unsuccessful responses with their status
+  if (!response.ok) {
+    const responseText = await response.text().catch(() => "");
+    throw new ExploreFetchError(`Failed to fetch ${entity} data (status ${response.status})`, {
+      responseText,
+      status: response.status,
+    });
+  }
+
+  // Parse the response envelope
+  try {
+    return await response.json();
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new ExploreFetchError(`Failed to parse ${entity} data`, { cause: error });
+  }
+};
+
+/**
+ * Checks whether an error comes from an aborted request.
+ * @param {unknown} error - Error to check
+ * @returns {boolean} Whether the request was aborted
+ */
+export const isAbortError = (error) => error?.name === "AbortError";
+
+/**
+ * Shows the results error alert for a failed widget data request.
+ * Aborted requests are ignored because a newer request replaced them.
+ * @param {unknown} error - Error raised by fetchWidgetData
+ */
+export const reportFetchError = (error) => {
+  if (isAbortError(error)) return;
+  const xhr = error?.status ? { status: error.status, responseText: error.responseText || "" } : null;
+  handleHtmxResponse({ xhr, successMessage: "", errorMessage: RESULTS_ERROR_MESSAGE });
+};
+
+/**
  * Updates the results container in the DOM with new content.
  * @param {string} content - The text content to insert into the results container
  */
@@ -45,42 +149,5 @@ const initializeExploreResults = (root = document) => {
     }
   });
 };
-
-/**
- * Fetches events or groups data from the API based on entity type and search parameters.
- * @param {string} entity - The type of entity to fetch ('events' or 'groups')
- * @param {string} params - URL search parameters as a string
- * @returns {Promise<object>} The JSON response data
- * @throws {Error} When the request fails or the server responds with an error
- */
-export async function fetchData(entity, params) {
-  const url = `/explore/${entity}/search?${params}`;
-
-  /** @type {Response} */
-  let response;
-  try {
-    response = await ocgFetch(url, { headers: { Accept: "application/json" } });
-  } catch (error) {
-    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: RESULTS_ERROR_MESSAGE });
-    throw error;
-  }
-
-  if (!response.ok) {
-    const responseText = await response.text().catch(() => "");
-    handleHtmxResponse({
-      xhr: { status: response.status, responseText },
-      successMessage: "",
-      errorMessage: RESULTS_ERROR_MESSAGE,
-    });
-    throw new Error(`Failed to fetch ${entity} data (status ${response.status})`);
-  }
-
-  try {
-    return await response.json();
-  } catch (error) {
-    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: RESULTS_ERROR_MESSAGE });
-    throw error;
-  }
-}
 
 initializeExploreResults();

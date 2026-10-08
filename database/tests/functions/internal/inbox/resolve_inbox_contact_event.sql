@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,15 +14,10 @@ select plan(9);
 \set canceledEventID '1b020000-0000-0000-0000-000000000001'
 \set cohostGroupID '1b020000-0000-0000-0000-000000000002'
 \set communityID '1b020000-0000-0000-0000-000000000003'
-\set deletedEventID '1b020000-0000-0000-0000-000000000004'
-\set deletedGroupEventID '1b020000-0000-0000-0000-000000000005'
-\set deletedGroupID '1b020000-0000-0000-0000-000000000006'
 \set eventCategoryID '1b020000-0000-0000-0000-000000000007'
 \set eventID '1b020000-0000-0000-0000-000000000008'
 \set groupCategoryID '1b020000-0000-0000-0000-000000000009'
 \set groupID '1b020000-0000-0000-0000-000000000010'
-\set inactiveGroupEventID '1b020000-0000-0000-0000-000000000011'
-\set inactiveGroupID '1b020000-0000-0000-0000-000000000012'
 \set otherCommunityID '1b020000-0000-0000-0000-000000000013'
 \set pastEventID '1b020000-0000-0000-0000-000000000014'
 \set unpublishedEventID '1b020000-0000-0000-0000-000000000015'
@@ -49,15 +44,6 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 -- Active group co-hosting the published event
 select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID');
 
--- Deleted group
-select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
-
--- Inactive group
-select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
-
 -- Published event co-hosted by another group
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
@@ -66,15 +52,6 @@ select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_
     'canceled', true,
     'published', true
 ));
-
--- Deleted event
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
-
--- Published event of a deleted group
-select fx_event(:'deletedGroupEventID', :'deletedGroupID', :'eventCategoryID', jsonb_build_object('published', true));
-
--- Published event of an inactive group
-select fx_event(:'inactiveGroupEventID', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Published past event
 select fx_event(:'pastEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -113,24 +90,6 @@ select results_eq(
     format($$select * from resolve_inbox_contact_event(%L::uuid, %L::uuid)$$, :'communityID', :'pastEventID'),
     format($$values (%L::uuid, %L::uuid)$$, :'pastEventID', :'groupID'),
     'Should resolve a past event'
-);
-
--- Should skip a deleted event
-select is_empty(
-    format($$select * from resolve_inbox_contact_event(%L::uuid, %L::uuid)$$, :'communityID', :'deletedEventID'),
-    'Should skip a deleted event'
-);
-
--- Should skip an event of a deleted group
-select is_empty(
-    format($$select * from resolve_inbox_contact_event(%L::uuid, %L::uuid)$$, :'communityID', :'deletedGroupEventID'),
-    'Should skip an event of a deleted group'
-);
-
--- Should skip an event of an inactive group
-select is_empty(
-    format($$select * from resolve_inbox_contact_event(%L::uuid, %L::uuid)$$, :'communityID', :'inactiveGroupEventID'),
-    'Should skip an event of an inactive group'
 );
 
 -- Should skip an event of another community

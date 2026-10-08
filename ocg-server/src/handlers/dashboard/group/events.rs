@@ -8,6 +8,7 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
+use chrono::Utc;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use tracing::{error, instrument};
@@ -41,6 +42,7 @@ use crate::{
         pagination::{self, NavigationLinks},
         payments::TicketTaxBehavior,
         permissions::GroupPermission,
+        search::SearchEventsFilters,
     },
 };
 
@@ -290,6 +292,31 @@ pub(crate) async fn details(
     let event = db.get_event_full(community_id, group_id, event_id).await?;
 
     Ok(Json(event).into_response())
+}
+
+/// Searches the selected group published events in JSON format.
+#[instrument(skip_all)]
+pub(crate) async fn search(
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    ValidatedQuery(filters): ValidatedQuery<SearchEventsFilters>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Scope the search to the selected group, ignoring any client location
+    let group = db.get_group_summary(community_id, group_id).await?;
+    let mut filters = SearchEventsFilters {
+        community: vec![group.community_name],
+        group: vec![group.slug],
+        latitude: None,
+        longitude: None,
+        ..filters
+    };
+    filters.normalize(Utc::now());
+
+    // Search the group events
+    let output = db.search_events(&filters).await?;
+
+    Ok(Json(output))
 }
 
 /// Lists active fiscal-sponsor Stripe Tax Rates for an event tax behavior.

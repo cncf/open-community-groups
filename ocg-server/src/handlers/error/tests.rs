@@ -39,24 +39,6 @@ async fn test_deserialization_error_returns_422_with_fixed_body() {
 }
 
 #[tokio::test]
-async fn test_filter_parse_error_returns_422_with_fixed_body() {
-    // Setup a query string that cannot deserialize into the target
-    let parse_error = serde_qs_config()
-        .deserialize_str::<Limit>("limit=invalid")
-        .unwrap_err();
-
-    // Convert the filter error and render the response
-    let error: HandlerError = FilterError::Parse(parse_error).into();
-    let response = error.into_response();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the parser detail is not exposed
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
-}
-
-#[tokio::test]
 async fn test_fiscal_sponsor_not_ready_returns_422_with_message() {
     let message = "fiscal sponsor Stripe account is not ready";
     let error: HandlerError = FiscalSponsorReadinessError::NotReady(message.to_string()).into();

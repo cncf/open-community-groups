@@ -451,14 +451,13 @@ input:placeholder-shown {
   z-index: 20;
 }
 
-.fc-daygrid-event-harness:hover div[data-popover] {
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 300ms;
+.fc-daygrid-event-harness:has(div[data-popover][data-open]) {
+  z-index: 20;
 }
 
-.fc-daygrid-event-harness div[data-popover] {
-  transition-delay: 0s;
+.fc-daygrid-event-harness div[data-popover][data-open] {
+  opacity: 1;
+  visibility: visible;
 }
 
 .fc-daygrid-day-frame {
@@ -487,6 +486,7 @@ input:placeholder-shown {
 
 .explore-popover-card-shell {
   background-color: white;
+  cursor: pointer;
   border: 1px solid rgb(209, 213, 219);
   border-radius: 0.5rem;
   box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px;
@@ -519,7 +519,6 @@ input:placeholder-shown {
   font-family: "Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   max-width: none;
   padding: 0;
-  pointer-events: none;
 }
 
 .explore-map-tooltip .maplibregl-popup-tip {

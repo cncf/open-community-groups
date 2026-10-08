@@ -1593,6 +1593,14 @@ mock! {
             community_name: Option<String>,
             entity: Option<crate::types::site::explore::Entity>,
         ) -> Result<crate::types::site::explore::FiltersOptions>;
+        async fn get_public_event_summary(
+            &self,
+            event_id: Uuid,
+        ) -> Result<Option<crate::types::event::EventSummary>>;
+        async fn get_public_group_summary(
+            &self,
+            group_id: Uuid,
+        ) -> Result<Option<crate::types::group::GroupSummary>>;
         async fn get_site_home_stats(&self) -> Result<crate::types::site::SiteHomeStats>;
         async fn get_site_recently_added_groups(
             &self,
@@ -1604,5 +1612,19 @@ mock! {
             event_kinds: Vec<crate::types::event::EventKind>,
         ) -> Result<Vec<crate::types::event::EventSummary>>;
         async fn list_communities(&self) -> Result<Vec<crate::types::community::CommunitySummary>>;
+        async fn search_events_minimal(
+            &self,
+            filters: &crate::types::search::SearchEventsFilters,
+            limit: usize,
+        ) -> Result<crate::types::search::SearchEventsOutput<
+                crate::types::event::EventMinimal,
+            >>;
+        async fn search_groups_minimal(
+            &self,
+            filters: &crate::types::search::SearchGroupsFilters,
+            limit: usize,
+        ) -> Result<crate::types::search::SearchGroupsOutput<
+                crate::types::group::GroupMinimal,
+            >>;
     }
 }

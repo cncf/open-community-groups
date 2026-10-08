@@ -37,6 +37,10 @@ const EXPLORE_WIDGET_READY_KEY = "exploreWidgetReady";
 const CURRENT_MONTH_BUTTON_ID = "current-month-btn";
 const PREV_MONTH_BUTTON_ID = "prev-month-btn";
 const NEXT_MONTH_BUTTON_ID = "next-month-btn";
+const CALENDAR_MODULE_PATH = "/static/js/community/explore/calendar.js";
+
+/** Calendar module, once a calendar view has loaded it. */
+let calendarModule = null;
 
 /**
  * Gets the active desktop explore form id.
@@ -211,9 +215,20 @@ const handleExploreHistoryRestore = async () => {
  */
 const handleExploreAfterSwap = (event) => {
   if (event.target instanceof Element) {
+    destroyDetachedCalendar();
     syncNoResultsPlaceholders(event.target);
     initializeExploreWidgets(event.target);
   }
+};
+
+/**
+ * Destroys the calendar once its view is no longer in the document.
+ */
+const destroyDetachedCalendar = () => {
+  if (!calendarModule || document.querySelector(CALENDAR_DATA_SELECTOR)) {
+    return;
+  }
+  calendarModule.Calendar._instance?.destroy();
 };
 
 /**
@@ -258,8 +273,8 @@ export const initializeExploreWidgets = async (root = document, { force = false 
     const data = readExplorePayload(calendarMarker);
     if (data) {
       markDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY);
-      const module = await import("/static/js/community/explore/calendar.js");
-      const calendar = new module.Calendar(data);
+      calendarModule = await import(CALENDAR_MODULE_PATH);
+      const calendar = new calendarModule.Calendar(data);
       bindCalendarControls(root, calendar, { force });
     }
   }

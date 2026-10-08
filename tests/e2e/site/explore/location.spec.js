@@ -14,27 +14,17 @@ const OBSERVABILITY_DISTANCE_ORDER = TEST_EVENT_NAMES.gamma;
 const OBSERVABILITY_NEW_YORK_EVENT = TEST_EVENT_NAMES.gamma[0];
 
 test.describe("site explore location search", () => {
-  test("orders and filters event JSON by CloudFront viewer distance", async ({ request }) => {
-    // types/search.rs extracts CloudFront-Viewer-Latitude/Longitude and search_events sorts by distance.
-    const sortedResponse = await request.get(buildE2eUrl(buildEventSearchPath()), {
+  test("filters minimal event JSON by CloudFront viewer distance", async ({ request }) => {
+    // The explore handlers read CloudFront-Viewer-Latitude/Longitude for the distance radius filter.
+    const response = await request.get(buildE2eUrl(buildEventSearchPath({ distance: "1000" })), {
       headers: CLOUDFRONT_NEW_YORK_HEADERS,
     });
-    const sortedPayload = await sortedResponse.json();
+    const payload = await response.json();
 
-    // Verify distance-sensitive JSON is not cached and follows seeded NY-before-Seattle coordinates.
-    expect(sortedResponse.status()).toBe(200);
-    expect(sortedResponse.headers()["cache-control"]).toBe("no-store");
-    expect(sortedPayload.events.map((event) => event.name)).toEqual(OBSERVABILITY_DISTANCE_ORDER);
-
-    // Verify the same CloudFront location powers the distance radius filter.
-    const filteredResponse = await request.get(buildE2eUrl(buildEventSearchPath({ distance: "1000" })), {
-      headers: CLOUDFRONT_NEW_YORK_HEADERS,
-    });
-    const filteredPayload = await filteredResponse.json();
-
-    // Verify the distance radius filter keeps only the nearby event.
-    expect(filteredResponse.status()).toBe(200);
-    expect(filteredPayload.events.map((event) => event.name)).toEqual([OBSERVABILITY_NEW_YORK_EVENT]);
+    // Verify distance-sensitive JSON is not cached and keeps only the nearby event.
+    expect(response.status()).toBe(200);
+    expect(response.headers()["cache-control"]).toBe("no-store");
+    expect(payload.events.map((event) => event.name)).toEqual([OBSERVABILITY_NEW_YORK_EVENT]);
   });
 
   test("browser distance sort shows the CloudFront-nearest events first", async ({ page }) => {
@@ -46,7 +36,7 @@ test.describe("site explore location search", () => {
         `&ts_query=${encodeURIComponent(DISTANCE_SORT_QUERY)}&sort_by=distance`,
     );
 
-    // Verify the list view keeps the same NY-before-Seattle order as the JSON endpoint.
+    // Verify the list view follows seeded NY-before-Seattle coordinates.
     await expect(page.locator("#sort_selector")).toHaveValue("distance-asc");
     const eventCards = page.locator("#cards-list article");
     await expect(eventCards).toHaveCount(OBSERVABILITY_DISTANCE_ORDER.length);
@@ -86,14 +76,12 @@ test.describe("site explore location search", () => {
   });
 });
 
-/** Builds the event search API path for distance sorting assertions. */
+/** Builds the event search API path for distance filter assertions. */
 const buildEventSearchPath = (extraParams = {}) => {
   const params = new URLSearchParams({
     "community[0]": TEST_COMMUNITY_NAME,
-    limit: "10",
-    sort_by: "distance",
-    sort_direction: "asc",
     ts_query: DISTANCE_SORT_QUERY,
+    view_mode: "map",
     ...extraParams,
   });
 

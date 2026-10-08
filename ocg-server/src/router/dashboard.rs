@@ -229,6 +229,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route("/cohosts", get(dashboard::group::cohosts::list_page))
         .route("/events", get(dashboard::group::events::list_page))
         .route("/events/add", get(dashboard::group::events::add_page))
+        .route("/events/search", get(dashboard::group::events::search))
         .route(
             "/events/tax-rates",
             get(dashboard::group::events::tax_rates),

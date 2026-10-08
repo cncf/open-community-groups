@@ -1,4 +1,4 @@
--- Tests the deterministic ordering, pagination and bbox of searched events.
+-- Tests the deterministic ordering and pagination of searched events.
 -- Split from search_events.sql because these scenarios add searchable events
 -- that would change the base file's unfiltered results and totals.
 
@@ -7,7 +7,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -103,19 +103,6 @@ select fx_event(:'eventUndatedID', :'groupUndatedID', :'eventCategoryID', jsonb_
 -- ============================================================================
 -- TESTS
 -- ============================================================================
-
--- Should compute the bbox from all matches, not only the page
-select is(
-    search_events(jsonb_build_object(
-        'community', jsonb_build_array('ordering-community'),
-        'group', jsonb_build_array('ordering-located-group', 'ordering-unlocated-group'),
-        'include_bbox', true,
-        'limit', 1,
-        'offset', 0
-    ))::jsonb->'bbox',
-    '{"ne_lat": 47.6062, "ne_lon": -122.3321, "sw_lat": 45.5231, "sw_lon": -122.6765}'::jsonb,
-    'Should compute the bbox from all matches, not only the page'
-);
 
 -- Should include undated events in unbounded searches
 select ok(
