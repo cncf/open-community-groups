@@ -21,7 +21,6 @@ let generatedIdPrefixCount = 0;
  * event by overriding `_dispatchSelectionChange`.
  *
  * @property {boolean} closeOnSelect Whether the dropdown closes after a selection
- * @property {boolean} compact Whether selected chips use the compact size
  * @property {boolean} disabled Whether interactions are disabled
  * @property {string} emptyMessage Text displayed when no option matches the search
  * @property {boolean} keepOrder Whether options keep their given order instead of
@@ -43,7 +42,6 @@ let generatedIdPrefixCount = 0;
 export class MultiSelect extends LitWrapper {
   static properties = {
     closeOnSelect: { type: Boolean, attribute: "close-on-select", reflect: true },
-    compact: { type: Boolean, reflect: true },
     disabled: { type: Boolean, reflect: true },
     emptyMessage: { type: String, attribute: "empty-message" },
     keepOrder: { type: Boolean, attribute: "keep-order", reflect: true },
@@ -61,7 +59,6 @@ export class MultiSelect extends LitWrapper {
   constructor() {
     super();
     this.closeOnSelect = false;
-    this.compact = false;
     this.disabled = false;
     this.emptyMessage = DEFAULT_EMPTY_MESSAGE;
     this.keepOrder = false;
@@ -351,14 +348,12 @@ export class MultiSelect extends LitWrapper {
    * @returns {import("lit").TemplateResult}
    */
   _renderChip(option) {
-    const sizeClass = this.compact ? "h-[22px] gap-0.5 px-2 py-0.5 text-[11px]" : "gap-2 px-2.5 py-1 text-xs";
     const colorClass = option.color ? "" : "border-stone-300 bg-stone-100";
     const colorStyle = option.color ? labelColorStyle(option.color) : nothing;
-    const iconSizeClass = this.compact ? "size-2.5" : "size-3";
 
     return html`
       <span
-        class="inline-flex items-center rounded-full border font-medium text-stone-900 max-w-full ${sizeClass} ${colorClass}"
+        class="inline-flex items-center rounded-full border font-medium text-stone-900 max-w-full gap-2 px-2.5 py-1 text-xs ${colorClass}"
         style=${colorStyle}
         title=${option.name}
       >
@@ -370,7 +365,7 @@ export class MultiSelect extends LitWrapper {
           ?disabled=${this.disabled}
           aria-label="Remove ${option.name}"
         >
-          <div class="svg-icon ${iconSizeClass} icon-close bg-current" aria-hidden="true"></div>
+          <div class="svg-icon size-3 icon-close bg-current" aria-hidden="true"></div>
         </button>
       </span>
     `;
