@@ -10,8 +10,10 @@
 {% endif -%}
 
 {# Contact form -#}
+{# History snapshots lose the selected filters, so going back reloads the page instead. -#}
 <form id="community-contact-form"
-      class="mt-6"
+      class="mt-8"
+      hx-history="false"
       hx-post="/dashboard/community/notifications"
       hx-trigger="confirmed"
       hx-sync="this:drop"
@@ -28,21 +30,21 @@
     <div>
       <label id="community-contact-categories-label" class="form-label">Group categories</label>
       <div class="mt-2">
-        <multi-select id="community-contact-categories" labelledby="community-contact-categories-label" name="filters[group_category_ids]" keep-order placeholder="All categories" options="{{ self.category_options()|json }}"></multi-select>
+        <multi-select id="community-contact-categories" labelledby="community-contact-categories-label" name="filters[group_category_ids]" keep-order close-on-select placeholder="All categories" options="{{ self.category_options()|json }}"></multi-select>
       </div>
     </div>
     {% if self.has_regions() -%}
       <div>
         <label id="community-contact-regions-label" class="form-label">Regions</label>
         <div class="mt-2">
-          <multi-select id="community-contact-regions" labelledby="community-contact-regions-label" name="filters[regions]" keep-order placeholder="All regions" options="{{ self.region_options()|json }}"></multi-select>
+          <multi-select id="community-contact-regions" labelledby="community-contact-regions-label" name="filters[regions]" keep-order close-on-select placeholder="All regions" options="{{ self.region_options()|json }}"></multi-select>
         </div>
       </div>
     {% endif -%}
     <div>
       <label id="community-contact-roles-label" class="form-label">Team roles</label>
       <div class="mt-2">
-        <multi-select id="community-contact-roles" labelledby="community-contact-roles-label" name="filters[roles]" keep-order placeholder="All roles" options="{{ self.role_options()|json }}"></multi-select>
+        <multi-select id="community-contact-roles" labelledby="community-contact-roles-label" name="filters[roles]" keep-order close-on-select placeholder="All roles" options="{{ self.role_options()|json }}"></multi-select>
       </div>
     </div>
   </div>
@@ -50,7 +52,7 @@
 
   {# Recipients summary -#}
   <div id="community-contact-recipients"
-       class="mt-4 rounded-lg border border-stone-200 bg-stone-50 p-4"
+       class="mt-4 transition-opacity aria-busy:opacity-50"
        aria-live="polite"
        data-skip-validation="true"
        hx-get="/dashboard/community/contact/recipients"
@@ -63,14 +65,17 @@
   {# End recipients summary -#}
 
   {# Message -#}
-  <div class="mt-8 text-lg font-medium text-stone-900">Message</div>
+  <div class="mt-10 text-lg font-medium text-stone-900">Message</div>
+  <p class="mt-1 text-sm text-stone-500">
+    Each recipient gets a single email, even if they're on several teams. Replies aren't delivered.
+  </p>
   <div class="mt-4">
     {{ dashboard::custom_notification_fields(subject_id = "community-contact-subject", body_id = "community-contact-body", default_subject = default_notification_subject) -}}
   </div>
   {# End message -#}
 
   {# Actions -#}
-  <div class="flex justify-end gap-3 pt-6 border-t border-stone-200">
+  <div class="flex justify-end gap-3 pt-6">
     <button id="community-contact-submit"
             type="submit"
             class="btn-primary relative

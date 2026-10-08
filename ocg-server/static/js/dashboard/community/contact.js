@@ -8,7 +8,8 @@ const FILTERS_CHANGED_EVENT = "contact-filters-changed";
 const FILTERS_ID = "community-contact-filters";
 const FORM_SELECTOR = "#community-contact-form";
 const PREVIEW_ERROR_MESSAGE = "Something went wrong while loading the recipients. Please try again.";
-const RECIPIENTS_CHANGED_MESSAGE = "Recipients changed, please review the updated count";
+const PREVIEW_RETRY_SELECTOR = "[data-contact-recipients-retry]";
+const RECIPIENTS_CHANGED_MESSAGE = "Recipients changed, please review the updated count.";
 const RECIPIENTS_ID = "community-contact-recipients";
 const SUBJECT_ID = "community-contact-subject";
 const SUBMIT_ID = "community-contact-submit";
@@ -19,9 +20,19 @@ const SUMMARY_ID = "community-contact-summary";
 const initializedForms = new WeakSet();
 
 /**
+ * Elements and state shared by the contact form handlers.
+ * @typedef {object} ContactFormContext
+ * @property {Element} filters - Filters container.
+ * @property {HTMLFormElement} form - Community contact form.
+ * @property {Element} recipients - Recipients summary container.
+ * @property {{isBusy: boolean, isSending: boolean, isStale: boolean}} state - Send and preview state.
+ * @property {HTMLButtonElement} submitButton - Send button.
+ */
+
+/**
  * Wires the community contact form so emails are only sent for the recipients
  * summary that matches the filters on screen.
- * @param {HTMLFormElement} form Community contact form.
+ * @param {HTMLFormElement} form - Community contact form.
  * @returns {void}
  */
 export const initializeCommunityContactForm = (form) => {
@@ -37,15 +48,24 @@ export const initializeCommunityContactForm = (form) => {
     return;
   }
 
-  const state = { isBusy: false, isStale: false };
+  const state = { isBusy: false, isSending: false, isStale: false };
   const refreshSendState = () => updateSendState({ filters, form, recipients, state, submitButton });
 
   // Invalidate the preview as soon as the filters change, then refresh it
   filters.addEventListener("change", () => {
     state.isStale = true;
     refreshSendState();
-    recipients.setAttribute("aria-busy", "true");
-    htmx.trigger(recipients, FILTERS_CHANGED_EVENT);
+    requestPreview(recipients);
+  });
+
+  // Reload a failed preview, keeping focus in the summary while it is replaced
+  recipients.addEventListener("click", (event) => {
+    if (!event.target.closest?.(PREVIEW_RETRY_SELECTOR)) {
+      return;
+    }
+    recipients.tabIndex = -1;
+    recipients.focus();
+    requestPreview(recipients);
   });
 
   // Accept a new preview only when it matches the filters on screen
@@ -77,7 +97,11 @@ export const initializeCommunityContactForm = (form) => {
   // Confirm the previewed audience before sending
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (state.isBusy || !isPreviewCurrent({ filters, recipients, state }) || !form.reportValidity()) {
+    if (state.isBusy || !isPreviewCurrent({ filters, recipients, state })) {
+      return;
+    }
+    clearBlankMessageFields(form);
+    if (!form.reportValidity()) {
       return;
     }
 
@@ -109,7 +133,20 @@ export const initializeCommunityContactForm = (form) => {
       return;
     }
 
+    // HTMX starts the request synchronously, so release the form when a
+    // request listener cancelled it before it was sent
     htmx.trigger(form, "confirmed");
+    if (!state.isSending) {
+      state.isBusy = false;
+      refreshSendState();
+    }
+  });
+
+  // Track whether the send request actually started
+  form.addEventListener("htmx:beforeRequest", (event) => {
+    if (event.target === form) {
+      state.isSending = true;
+    }
   });
 
   // Report the send result, clearing the message only on success
@@ -118,11 +155,11 @@ export const initializeCommunityContactForm = (form) => {
       return;
     }
     state.isBusy = false;
-    const xhr = event.detail?.xhr;
+    state.isSending = false;
     const ok = handleHtmxResponse({
-      xhr,
+      xhr: event.detail?.xhr,
       successMessage: SUCCESS_MESSAGE,
-      errorMessage: xhr?.responseText || DEFAULT_ERROR_MESSAGE,
+      errorMessage: DEFAULT_ERROR_MESSAGE,
     });
     if (ok) {
       clearMessage(form);
@@ -136,7 +173,7 @@ export const initializeCommunityContactForm = (form) => {
 /**
  * Builds the canonical query of the selected filters, matching the key the
  * server renders for the recipients summary.
- * @param {Element} filters Filters container.
+ * @param {Element} filters - Filters container.
  * @returns {string} Form-encoded filters in document order.
  */
 export const buildFiltersKey = (filters) => {
@@ -148,8 +185,23 @@ export const buildFiltersKey = (filters) => {
 };
 
 /**
+ * Empties whitespace-only subject and body fields so native validation
+ * reports them before the confirmation dialog opens.
+ * @param {HTMLFormElement} form - Community contact form.
+ * @returns {void}
+ */
+const clearBlankMessageFields = (form) => {
+  [SUBJECT_ID, BODY_ID].forEach((id) => {
+    const field = form.querySelector(`#${id}`);
+    if (field && !field.value.trim()) {
+      field.value = "";
+    }
+  });
+};
+
+/**
  * Clears the subject and body after a successful send, keeping the filters.
- * @param {HTMLFormElement} form Community contact form.
+ * @param {HTMLFormElement} form - Community contact form.
  * @returns {void}
  */
 const clearMessage = (form) => {
@@ -163,7 +215,7 @@ const clearMessage = (form) => {
 
 /**
  * Returns whether the summary on screen was computed for the current filters.
- * @param {{filters: Element, recipients: Element, state: {isStale: boolean}}} context Contact form context.
+ * @param {Pick<ContactFormContext, "filters" | "recipients" | "state">} context - Contact form context.
  * @returns {boolean} True when the preview is current.
  */
 const isPreviewCurrent = ({ filters, recipients, state }) => {
@@ -173,7 +225,7 @@ const isPreviewCurrent = ({ filters, recipients, state }) => {
 
 /**
  * Reads the recipients summary rendered by the server.
- * @param {Element} recipients Summary container.
+ * @param {Element} recipients - Summary container.
  * @returns {{filtersKey: string, peopleCount: number}|null} Summary data.
  */
 const readSummary = (recipients) => {
@@ -188,22 +240,39 @@ const readSummary = (recipients) => {
 };
 
 /**
- * Replaces the summary with an error message.
- * @param {Element} recipients Summary container.
- * @param {string} message Error message.
+ * Replaces the summary with an error message and a retry action.
+ * @param {Element} recipients - Summary container.
+ * @param {string} message - Error message.
  * @returns {void}
  */
 const renderPreviewError = (recipients, message) => {
-  const error = document.createElement("p");
-  error.className = "text-sm text-red-700";
-  error.setAttribute("role", "alert");
-  error.textContent = message;
+  const error = document.createElement("div");
+  error.className = "rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900";
+  const text = document.createElement("p");
+  text.setAttribute("role", "alert");
+  text.textContent = message;
+  const retry = document.createElement("button");
+  retry.type = "button";
+  retry.className = "btn-primary-outline btn-mini mt-3";
+  retry.dataset.contactRecipientsRetry = "";
+  retry.textContent = "Retry";
+  error.append(text, retry);
   recipients.replaceChildren(error);
 };
 
 /**
+ * Marks the summary as loading and requests a fresh preview.
+ * @param {Element} recipients - Summary container.
+ * @returns {void}
+ */
+const requestPreview = (recipients) => {
+  recipients.setAttribute("aria-busy", "true");
+  htmx.trigger(recipients, FILTERS_CHANGED_EVENT);
+};
+
+/**
  * Enables sending only for a current, non-empty preview the user can send to.
- * @param {object} context Contact form context.
+ * @param {ContactFormContext} context - Contact form context.
  * @returns {void}
  */
 const updateSendState = ({ filters, form, recipients, state, submitButton }) => {

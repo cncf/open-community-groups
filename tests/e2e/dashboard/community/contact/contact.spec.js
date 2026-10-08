@@ -73,6 +73,100 @@ test.describe("community dashboard contact view", () => {
     );
   });
 
+  test("going back to the contact tab reloads a current preview", async ({ adminCommunityPage }) => {
+    // Load the contact tab and narrow the audience to admins.
+    await navigateToPath(adminCommunityPage, CONTACT_PATH);
+    await selectOption(adminCommunityPage, "Team roles", "Admin");
+
+    // Leave the tab through the dashboard menu.
+    const groupsLink = adminCommunityPage
+      .locator("#dashboard-menu")
+      .getByRole("link", { name: "Groups", exact: true });
+    await waitForActionResponse(adminCommunityPage, () => groupsLink.click(), {
+      method: "GET",
+      urlIncludes: "tab=groups",
+    });
+
+    // Return through browser history and wait for the page to reload.
+    await waitForActionResponse(adminCommunityPage, () => adminCommunityPage.goBack(), {
+      method: "GET",
+      urlIncludes: "tab=contact",
+    });
+
+    // Verify the filters are reset and the preview matches them.
+    await expect(adminCommunityPage.locator('input[name="filters[roles][]"]')).toHaveCount(0);
+    await expect(summary(adminCommunityPage)).toHaveAttribute(
+      "data-people-count",
+      String(expectedSummary({}).people_count),
+    );
+    await expect(adminCommunityPage.locator("#community-contact-submit")).toBeEnabled();
+  });
+
+  test("a failed preview can be retried", async ({ adminCommunityPage }) => {
+    // Load the contact tab and make the next previews fail.
+    await navigateToPath(adminCommunityPage, CONTACT_PATH);
+    await adminCommunityPage.route(`**${RECIPIENTS_URL}*`, (route) => route.fulfill({ status: 500 }));
+
+    // Change a filter and wait for the failed preview.
+    await adminCommunityPage.getByRole("combobox", { name: "Team roles" }).click();
+    await adminCommunityPage.getByRole("option", { name: "Admin" }).click();
+    const recipients = adminCommunityPage.locator("#community-contact-recipients");
+    await expect(recipients.getByRole("alert")).toContainText(
+      "Something went wrong while loading the recipients",
+    );
+    await expect(adminCommunityPage.locator("#community-contact-submit")).toBeDisabled();
+
+    // Let the previews through again and retry.
+    await adminCommunityPage.unroute(`**${RECIPIENTS_URL}*`);
+    await waitForActionResponse(
+      adminCommunityPage,
+      () => recipients.getByRole("button", { name: "Retry" }).click(),
+      { method: "GET", urlIncludes: RECIPIENTS_URL },
+    );
+
+    // Verify the preview matches the filters and focus stays in the summary.
+    await expect(summary(adminCommunityPage)).toHaveAttribute(
+      "data-people-count",
+      String(expectedSummary({ roles: ["admin"] }).people_count),
+    );
+    await expect(recipients).toBeFocused();
+    await expect(recipients).not.toHaveAttribute("aria-busy");
+    await expect(adminCommunityPage.locator("#community-contact-submit")).toBeEnabled();
+  });
+
+  test("the groups list toggle names its next action", async ({ adminCommunityPage }) => {
+    // Load the contact tab with the unfiltered audience.
+    await navigateToPath(adminCommunityPage, CONTACT_PATH);
+    const toggle = summary(adminCommunityPage).locator("summary");
+
+    // Verify the toggle reads Hide groups when open and Show groups when closed.
+    await expect(toggle.getByText("Show groups")).toBeVisible();
+    await toggle.click();
+    await expect(toggle.getByText("Hide groups")).toBeVisible();
+    await expect(toggle.getByText("Show groups")).toBeHidden();
+    await toggle.click();
+    await expect(toggle.getByText("Show groups")).toBeVisible();
+    await expect(toggle.getByText("Hide groups")).toBeHidden();
+  });
+
+  test("a whitespace-only message is reported before confirming", async ({ adminCommunityPage }) => {
+    // Load the contact tab and write a blank message.
+    await navigateToPath(adminCommunityPage, CONTACT_PATH);
+    const body = adminCommunityPage.locator("#community-contact-body");
+    await body.fill("   ");
+    const snapshot = snapshotNotifications();
+
+    // Try to send the blank message.
+    await adminCommunityPage.locator("#community-contact-submit").click();
+
+    // Verify the field is reported, no dialog opens and sending stays available.
+    await expect(body).toHaveValue("");
+    expect(await body.evaluate((field) => field.validity.valueMissing)).toBe(true);
+    await expect(adminCommunityPage.locator(".swal2-popup")).toHaveCount(0);
+    await expect(adminCommunityPage.locator("#community-contact-submit")).toBeEnabled();
+    expectNewNotifications(snapshot, []);
+  });
+
   test("cancelling the confirmation sends nothing", async ({ adminCommunityPage }) => {
     // Load the contact tab and write a message.
     await navigateToPath(adminCommunityPage, CONTACT_PATH);
@@ -175,14 +269,14 @@ const expectedSummary = (filters) =>
     ),
   );
 
-/** Selects an option of a contact filter and waits for the refreshed preview. */
+/** Selects an option of a contact filter, waits for the refreshed preview and checks the list closed. */
 const selectOption = async (page, filterName, optionName) => {
   await page.getByRole("combobox", { name: filterName }).click();
   await waitForActionResponse(page, () => page.getByRole("option", { name: optionName }).click(), {
     method: "GET",
     urlIncludes: RECIPIENTS_URL,
   });
-  await page.keyboard.press("Escape");
+  await expect(page.getByRole("listbox")).toHaveCount(0);
 };
 
 /** Writes and sends a contact message, confirming the dialog. */

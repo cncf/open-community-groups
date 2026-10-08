@@ -109,6 +109,37 @@ describe("community contact", () => {
     expect(submitButton(form).disabled).to.equal(true);
   });
 
+  it("retries a preview that could not be sent", () => {
+    // Render, initialize and change the filters
+    const form = renderContactForm();
+    initializeCommunityContactForm(form);
+    changeFilter(form, "categories", "filters[group_category_ids][]", CATEGORY_ID);
+
+    // Fail the preview request before it reaches the server
+    const recipients = form.querySelector("#community-contact-recipients");
+    recipients.dispatchEvent(new CustomEvent("htmx:sendError", { bubbles: true, detail: {} }));
+    expect(recipients.querySelector('[role="alert"]').textContent).to.equal(
+      "Something went wrong while loading the recipients. Please try again.",
+    );
+    expect(recipients.hasAttribute("aria-busy")).to.equal(false);
+
+    // Retry the preview
+    recipients.querySelector("button").click();
+
+    // Verify the preview is reloaded with focus kept in the summary
+    expect(recipients.getAttribute("aria-busy")).to.equal("true");
+    expect(document.activeElement).to.equal(recipients);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([
+      [recipients, "contact-filters-changed"],
+      [recipients, "contact-filters-changed"],
+    ]);
+
+    // Swap in the summary for the current filters
+    swapSummary(form, { filtersKey: CATEGORY_KEY, peopleCount: 2 });
+    expect(submitButton(form).disabled).to.equal(false);
+    expect(recipients.hasAttribute("aria-busy")).to.equal(false);
+  });
+
   it("confirms with the previewed count before sending", async () => {
     // Render and initialize the contact form
     const form = renderContactForm({ peopleCount: 3 });
@@ -123,6 +154,53 @@ describe("community contact", () => {
     expect(env.current.swal.calls[0].text).to.equal("Send this email to 3 group team members?");
     expect(env.current.swal.calls[0].confirmButtonText).to.equal("Send");
     expect(env.current.htmx.triggerCalls).to.deep.equal([[form, "confirmed"]]);
+  });
+
+  it("sends nothing and asks for a message when it is only whitespace", async () => {
+    // Render and initialize the contact form with a blank subject
+    const form = renderContactForm();
+    initializeCommunityContactForm(form);
+    form.querySelector("#community-contact-subject").value = "   ";
+
+    // Submit the form
+    form.requestSubmit();
+    await waitForMicrotask();
+
+    // Verify the subject is reported before any confirmation
+    expect(form.querySelector("#community-contact-subject").validity.valueMissing).to.equal(true);
+    expect(env.current.swal.calls).to.have.length(0);
+    expect(env.current.htmx.triggerCalls).to.have.length(0);
+    expect(submitButton(form).disabled).to.equal(false);
+  });
+
+  it("keeps sending disabled while the send request is in flight", async () => {
+    // Render and initialize the contact form, starting requests synchronously like HTMX
+    const form = renderContactForm();
+    initializeCommunityContactForm(form);
+    startRequestsOnTrigger();
+
+    // Submit and confirm the form
+    form.requestSubmit();
+    await waitForMicrotask();
+
+    // Verify sending stays disabled until the request completes
+    expect(submitButton(form).disabled).to.equal(true);
+    dispatchHtmxAfterRequest(form, { status: 204 });
+    expect(submitButton(form).disabled).to.equal(false);
+  });
+
+  it("re-enables sending when the send request is cancelled before it starts", async () => {
+    // Render and initialize the contact form
+    const form = renderContactForm();
+    initializeCommunityContactForm(form);
+
+    // Submit and confirm the form, with no request started
+    form.requestSubmit();
+    await waitForMicrotask();
+
+    // Verify the form is released for another attempt
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[form, "confirmed"]]);
+    expect(submitButton(form).disabled).to.equal(false);
   });
 
   it("sends nothing when the confirmation is cancelled", async () => {
@@ -156,7 +234,7 @@ describe("community contact", () => {
     // Verify only the preview refresh was triggered and the user was warned
     const triggered = env.current.htmx.triggerCalls.map(([, eventName]) => eventName);
     expect(triggered).to.deep.equal(["contact-filters-changed"]);
-    expect(dialog.calls.at(-1).text).to.equal("Recipients changed, please review the updated count");
+    expect(dialog.calls.at(-1).text).to.equal("Recipients changed, please review the updated count.");
     dialog.restore();
   });
 
@@ -211,6 +289,11 @@ describe("community contact", () => {
     expect(form.querySelector("#community-contact-subject").value).to.equal("Community");
     expect(form.querySelector("#community-contact-body").value).to.equal("Hello teams");
     expect(submitButton(form).disabled).to.equal(false);
+
+    // Verify the server error is shown once below the generic message
+    const alertHtml = env.current.swal.calls[0].html;
+    expect(alertHtml).to.include("Something went wrong while trying to send the email.");
+    expect(alertHtml.split("no group team members match the selected filters")).to.have.length(2);
   });
 
   it("ignores preview responses when handling the send result", () => {
@@ -343,6 +426,20 @@ const renderContactForm = ({ canSend = true, filtersKey = "", peopleCount = 2 } 
     </form>
   `;
   return document.getElementById("community-contact-form");
+};
+
+/**
+ * Makes the HTMX mock start the send request synchronously, as HTMX does.
+ * @returns {void}
+ */
+const startRequestsOnTrigger = () => {
+  const trigger = globalThis.htmx.trigger;
+  globalThis.htmx.trigger = (element, eventName) => {
+    trigger(element, eventName);
+    if (eventName === "confirmed") {
+      element.dispatchEvent(new CustomEvent("htmx:beforeRequest", { bubbles: true }));
+    }
+  };
 };
 
 /**
