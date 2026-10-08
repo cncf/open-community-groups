@@ -36,6 +36,9 @@ let generatedIdPrefixCount = 0;
  * @property {string} placeholder Search input placeholder
  * @property {Array<string>} selected Selected option values
  * @property {boolean} selectedInInput Whether selected chips render inside the input
+ * @property {boolean} touchBrowse Whether a touch on the closed input opens the
+ *   options without focusing it, so on-screen keyboards stay closed until a
+ *   second touch focuses the input to search
  * @fires change Bubbling native event dispatched after a selection change renders
  */
 export class MultiSelect extends LitWrapper {
@@ -54,6 +57,7 @@ export class MultiSelect extends LitWrapper {
     placeholder: { type: String },
     selected: { type: Array },
     selectedInInput: { type: Boolean, attribute: "selected-in-input", reflect: true },
+    touchBrowse: { type: Boolean, attribute: "touch-browse", reflect: true },
   };
 
   constructor() {
@@ -72,6 +76,7 @@ export class MultiSelect extends LitWrapper {
     this.placeholder = DEFAULT_PLACEHOLDER;
     this.selected = [];
     this.selectedInInput = false;
+    this.touchBrowse = false;
 
     // Texts subclasses may replace to match their domain.
     this._addMorePlaceholder = "Add more";
@@ -264,10 +269,24 @@ export class MultiSelect extends LitWrapper {
 
   /**
    * Closes the dropdown when clicking the input while it is already open.
+   *
+   * In touch browse mode, a touch on the unfocused input opens the dropdown
+   * without focusing it, and a touch while open focuses it to search.
    * @param {PointerEvent} event Pointer event
    */
   _handleInputPointerDown(event) {
     if (this.disabled) {
+      return;
+    }
+
+    // Browse options by touch without bringing up the on-screen keyboard.
+    const isTouchBrowse =
+      this.touchBrowse && event.pointerType === "touch" && document.activeElement !== event.currentTarget;
+    if (isTouchBrowse) {
+      if (!this._combobox.isOpen) {
+        event.preventDefault();
+        this._combobox.open();
+      }
       return;
     }
 

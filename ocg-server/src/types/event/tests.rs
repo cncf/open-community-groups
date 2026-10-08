@@ -125,6 +125,66 @@ fn event_full_to_summary_maps_event_fields() {
 }
 
 #[test]
+fn event_full_agenda_labels_collects_unique_session_labels_sorted_by_name() {
+    // Setup labels shared across sessions and days
+    let security = sample_event_label(1, "Security");
+    let ai = sample_event_label(2, "AI");
+    let room_a = sample_event_label(3, "Room A");
+    let day1 = Utc.with_ymd_and_hms(2030, 1, 2, 9, 0, 0).unwrap();
+    let day2 = day1 + Duration::days(1);
+    let event = EventFull {
+        sessions: BTreeMap::from([
+            (
+                day1.date_naive(),
+                vec![
+                    Session {
+                        labels: vec![security.clone(), room_a.clone()],
+                        starts_at: day1,
+                        ..Default::default()
+                    },
+                    Session {
+                        starts_at: day1,
+                        ..Default::default()
+                    },
+                ],
+            ),
+            (
+                day2.date_naive(),
+                vec![Session {
+                    labels: vec![ai.clone(), security.clone()],
+                    starts_at: day2,
+                    ..Default::default()
+                }],
+            ),
+        ]),
+        ..Default::default()
+    };
+
+    // Check labels are unique and sorted by name
+    assert_eq!(event.agenda_labels(), vec![&ai, &room_a, &security]);
+}
+
+#[test]
+fn event_full_agenda_labels_ignores_event_labels_not_assigned_to_sessions() {
+    // Setup an event label without session assignments
+    let starts_at = Utc.with_ymd_and_hms(2030, 1, 2, 9, 0, 0).unwrap();
+    let event = EventFull {
+        labels: vec![sample_event_label(1, "Unused")],
+        sessions: BTreeMap::from([(
+            starts_at.date_naive(),
+            vec![Session {
+                starts_at,
+                ..Default::default()
+            }],
+        )]),
+        ..Default::default()
+    };
+
+    // Check no agenda labels are returned
+    assert_eq!(event.agenda_labels(), Vec::<&EventLabel>::new());
+}
+
+#[test]
 fn event_full_cfs_is_enabled_returns_false_when_flag_missing() {
     let event = EventFull {
         cfs_enabled: None,
@@ -735,6 +795,15 @@ fn event_summary_ticket_type_is_sold_out_matches_the_requested_tier() {
 }
 
 // Helpers.
+
+/// Build a sample event label with a deterministic identifier for testing.
+fn sample_event_label(id: u128, name: &str) -> EventLabel {
+    EventLabel {
+        color: "#DBEAFE".to_string(),
+        event_label_id: Uuid::from_u128(id),
+        name: name.to_string(),
+    }
+}
 
 /// Build a sample ticket type with specified properties for testing.
 fn sample_ticket_type(

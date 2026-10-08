@@ -53,6 +53,17 @@ const pressKey = async (element, key) => {
   await element.updateComplete;
 };
 
+/**
+ * Dispatches a touch pointerdown event on the search input.
+ * @param {HTMLInputElement} input Search input
+ * @returns {PointerEvent}
+ */
+const touchInput = (input) => {
+  const event = new PointerEvent("pointerdown", { bubbles: true, cancelable: true, pointerType: "touch" });
+  input.dispatchEvent(event);
+  return event;
+};
+
 describe("multi-select", () => {
   useMountedElementsCleanup("multi-select");
 
@@ -384,6 +395,46 @@ describe("multi-select", () => {
 
     // Verify the dropdown closed.
     expect(element.selected).to.deep.equal(["1"]);
+    expect(element._combobox.isOpen).to.equal(false);
+  });
+
+  it("opens on touch without focusing the input when touch-browse is set", async () => {
+    // Render the component with touch browse mode.
+    const element = await mountLitComponentWithAttributes("multi-select", {
+      attributes: { "touch-browse": "" },
+      properties: { options: OPTIONS },
+    });
+    const input = element.querySelector('input[role="combobox"]');
+
+    // Touch the closed input.
+    const firstTouch = touchInput(input);
+    await element.updateComplete;
+
+    // Verify the dropdown opens while focus is prevented.
+    expect(firstTouch.defaultPrevented).to.equal(true);
+    expect(element._combobox.isOpen).to.equal(true);
+    expect(input.getAttribute("aria-expanded")).to.equal("true");
+
+    // Touch the input again while the dropdown is open.
+    const secondTouch = touchInput(input);
+    await element.updateComplete;
+
+    // Verify the second touch is allowed to focus the input for searching.
+    expect(secondTouch.defaultPrevented).to.equal(false);
+    expect(element._combobox.isOpen).to.equal(true);
+  });
+
+  it("keeps the default touch behavior without touch-browse", async () => {
+    // Render the component without touch browse mode.
+    const element = await mountLitComponent("multi-select", { options: OPTIONS });
+    const input = element.querySelector('input[role="combobox"]');
+
+    // Touch the closed input.
+    const touch = touchInput(input);
+    await element.updateComplete;
+
+    // Verify focus is not prevented and the dropdown waits for focus.
+    expect(touch.defaultPrevented).to.equal(false);
     expect(element._combobox.isOpen).to.equal(false);
   });
 
