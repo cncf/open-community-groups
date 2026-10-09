@@ -212,6 +212,10 @@ export const mockMapLibre = () => {
       return this.element;
     }
 
+    isOpen() {
+      return Boolean(this.map);
+    }
+
     on(name, handler) {
       this.handlers[name] ||= [];
       this.handlers[name].push(handler);

@@ -7,7 +7,6 @@ import {
   findEventById,
   formatEventDate,
   getActiveEventResult,
-  getDashboardSelectionContext,
   getEmptyEventSearchState,
   getEventSelectorKeyAction,
   getEventOptionState,
@@ -17,7 +16,6 @@ import {
   getSelectedEvent,
   normalizeEventId,
   parseEventTimestamp,
-  resolveEventSearchContext,
   uniqueEventsById,
 } from "/static/js/dashboard/group/event-selector/utils.js";
 
@@ -114,74 +112,18 @@ describe("event selector utils", () => {
     // The search URL includes only configured filters.
     expect(
       buildEventSearchUrl({
-        communityName: "open-source",
         dateFrom: "2025-01-01",
-        groupSlug: "maintainers",
         query: "platform",
         sortDirection: "desc",
       }),
     ).to.equal(
       [
-        "/explore/events/search?limit=10",
+        "/dashboard/group/events/search?limit=10",
         "date_from=2025-01-01",
         "sort_direction=desc",
         "ts_query=platform",
-        "group%5B%5D=maintainers",
-        "community%5B%5D=open-source",
       ].join("&"),
     );
-  });
-
-  it("gets dashboard selection context from closest or fallback content", () => {
-    // Closest dashboard content wins when the selector is inside the page root.
-    const fallbackRoot = document.createElement("div");
-    fallbackRoot.innerHTML = `
-      <div id="dashboard-content" data-community="fallback" data-group-slug="fallback-group">
-      </div>
-    `;
-    const pageRoot = document.createElement("div");
-    pageRoot.id = "dashboard-content";
-    pageRoot.dataset.community = "cncf";
-    pageRoot.dataset.groupSlug = "platform-engineering";
-    const selector = document.createElement("event-selector");
-    pageRoot.append(selector);
-
-    expect(getDashboardSelectionContext(selector, fallbackRoot)).to.deep.equal({
-      community: "cncf",
-      groupSlug: "platform-engineering",
-    });
-
-    // A detached selector falls back to the configured dashboard content root.
-    expect(
-      getDashboardSelectionContext(document.createElement("event-selector"), fallbackRoot),
-    ).to.deep.equal({
-      community: "fallback",
-      groupSlug: "fallback-group",
-    });
-  });
-
-  it("resolves event search context from attributes or dashboard fallback", () => {
-    // Explicit selector attributes win over dashboard fallback values.
-    expect(
-      resolveEventSearchContext({
-        community: "cncf",
-        dashboardSelection: { community: "fallback", groupSlug: "fallback-group" },
-        groupSlug: "platform-engineering",
-      }),
-    ).to.deep.equal({
-      communityName: "cncf",
-      groupSlug: "platform-engineering",
-    });
-
-    // Missing attributes fall back to the dashboard selection context.
-    expect(
-      resolveEventSearchContext({
-        dashboardSelection: { community: "fallback", groupSlug: "fallback-group" },
-      }),
-    ).to.deep.equal({
-      communityName: "fallback",
-      groupSlug: "fallback-group",
-    });
   });
 
   it("builds deduplicated primary event results", () => {

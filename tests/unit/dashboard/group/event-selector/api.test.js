@@ -28,9 +28,7 @@ describe("event selector api", () => {
 
     const events = await requestEventSelectorEvents(
       {
-        communityName: "cncf",
         dateFrom: "2026-01-01",
-        groupSlug: "platform-engineering",
         query: "platform",
         sortDirection: "desc",
       },
@@ -38,9 +36,9 @@ describe("event selector api", () => {
     );
 
     expect(events).to.deep.equal([{ event_id: "event-1" }]);
-    expect(fetchMock.calls[0][0]).to.include("/explore/events/search?");
-    expect(fetchMock.calls[0][0]).to.include("community%5B%5D=cncf");
-    expect(fetchMock.calls[0][0]).to.include("group%5B%5D=platform-engineering");
+    expect(fetchMock.calls[0][0]).to.equal(
+      "/dashboard/group/events/search?limit=10&date_from=2026-01-01&sort_direction=desc&ts_query=platform",
+    );
     expect(fetchMock.calls[0][1].headers).to.deep.equal({
       Accept: "application/json",
     });

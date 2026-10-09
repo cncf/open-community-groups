@@ -74,10 +74,13 @@ test.describe("site explore events page", () => {
         `&date_to=${calendarRange.last}`,
     );
 
-    // Verify the calendar popover also omits free price badges.
+    // Verify the calendar popover loads the calendar card and omits free price badges.
     const calendarEvent = page.locator(".fc-daygrid-event").filter({ hasText: freeEventName }).first();
     await expect(calendarEvent).toBeVisible();
-    await calendarEvent.hover();
+    await Promise.all([
+      page.waitForResponse((response) => isEventCardUrl(response.url(), "calendar") && response.ok()),
+      calendarEvent.hover(),
+    ]);
     const calendarPopover = page.locator('[data-popover="true"]').filter({ hasText: freeEventName });
     await expect(calendarPopover).toBeVisible();
     await expect(calendarPopover.getByText("Free", { exact: true })).toHaveCount(0);
@@ -424,14 +427,16 @@ test.describe("site explore events page", () => {
     await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
     await expect(calendarEvents).toHaveCount(0);
 
-    // Navigate into the seeded current month.
-    await waitForActionResponse(page, () => page.locator("#next-month-btn").click(), {
-      method: "GET",
-      urlIncludes: "/explore/events/search",
-    });
+    // Navigate into the seeded current month through the named month button.
+    const populatedRange = getMonthRange(currentMonth);
+    const response = await waitForActionResponse(
+      page,
+      () => page.getByRole("button", { name: "Next month" }).click(),
+      { method: "GET", urlIncludes: "/explore/events/search" },
+    );
+    expectWidgetMonthRequest(response, populatedRange);
 
     // Verify empty fallback content clears after the pinned event appears.
-    const populatedRange = getMonthRange(currentMonth);
     await expect(page.locator(".no-results-filtered:not(.hidden)")).toHaveCount(0);
     await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
     await expect(
@@ -473,13 +478,15 @@ test.describe("site explore events page", () => {
     await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
 
     // Navigate to the adjacent empty month for the same pinned event query.
-    await waitForActionResponse(page, () => page.locator("#next-month-btn").click(), {
-      method: "GET",
-      urlIncludes: "/explore/events/search",
-    });
+    const emptyRange = getMonthRange(emptyMonth);
+    const response = await waitForActionResponse(
+      page,
+      () => page.getByRole("button", { name: "Next month" }).click(),
+      { method: "GET", urlIncludes: "/explore/events/search" },
+    );
+    expectWidgetMonthRequest(response, emptyRange);
 
     // Verify the filtered empty state appears for the empty month because the pinned event query remains active.
-    const emptyRange = getMonthRange(emptyMonth);
     const filteredEmptyState = page.locator(".no-results-filtered:not(.hidden)");
     await expect(filteredEmptyState).toBeVisible();
     await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
@@ -504,10 +511,170 @@ test.describe("site explore events page", () => {
       });
   });
 
+  test("opens a calendar event card on keyboard focus and closes it with Escape", async ({ page }) => {
+    // Load the calendar on the seeded current-month event.
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    const calendarEvent = page
+      .locator(".fc-daygrid-event")
+      .filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name })
+      .first();
+    await expect(calendarEvent).toBeVisible();
+
+    // Focus the event link and wait for its card to load.
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          isEventCardUrl(response.url(), "calendar") &&
+          response.url().includes(TEST_CALENDAR_EVENTS.thisMonth.id) &&
+          response.ok(),
+      ),
+      calendarEvent.focus(),
+    ]);
+
+    // Verify the focused event is described by its card tooltip.
+    const tooltip = page.getByRole("tooltip").filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name });
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toHaveAttribute("aria-busy", "false");
+    const tooltipId = await tooltip.getAttribute("id");
+    await expect(calendarEvent).toHaveAttribute("aria-describedby", tooltipId);
+
+    // Close the card with Escape while focus stays on the event.
+    await page.keyboard.press("Escape");
+    await expect(tooltip).toHaveCount(0);
+    await expect(calendarEvent).not.toHaveAttribute("aria-describedby");
+    await expect(calendarEvent).toBeFocused();
+  });
+
+  test("opens a calendar event in a new tab on a modified click", async ({ page }) => {
+    // Load the calendar on the seeded current-month event.
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    const calendarEvent = page
+      .locator(".fc-daygrid-event")
+      .filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name })
+      .first();
+    await expect(calendarEvent).toBeVisible();
+    await expect(calendarEvent).toHaveAttribute(
+      "href",
+      new RegExp(`/event/${TEST_CALENDAR_EVENTS.thisMonth.slug}$`),
+    );
+    const calendarUrl = page.url();
+
+    // Open the event with the platform modifier and verify a new tab loads it.
+    const [eventPage] = await Promise.all([
+      page.context().waitForEvent("page"),
+      calendarEvent.click({ modifiers: ["ControlOrMeta"] }),
+    ]);
+    await eventPage.waitForURL(new RegExp(`/event/${TEST_CALENDAR_EVENTS.thisMonth.slug}$`));
+    expect(page.url()).toBe(calendarUrl);
+    await eventPage.close();
+  });
+
+  test("opens a calendar event card link in a new tab on a modified click", async ({ page }) => {
+    // Load the calendar on the seeded current-month event and open its card.
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    const calendarEvent = page
+      .locator(".fc-daygrid-event")
+      .filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name })
+      .first();
+    await expect(calendarEvent).toBeVisible();
+    await Promise.all([
+      page.waitForResponse((response) => isEventCardUrl(response.url(), "calendar") && response.ok()),
+      calendarEvent.hover(),
+    ]);
+    const tooltip = page.getByRole("tooltip").filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name });
+    await expect(tooltip).toBeVisible();
+    const calendarUrl = page.url();
+
+    // Click the card with the platform modifier and verify a new tab loads the event.
+    const [eventPage] = await Promise.all([
+      page.context().waitForEvent("page"),
+      tooltip.click({ modifiers: ["ControlOrMeta"] }),
+    ]);
+    await eventPage.waitForURL(new RegExp(`/event/${TEST_CALENDAR_EVENTS.thisMonth.slug}$`));
+    expect(page.url()).toBe(calendarUrl);
+    await eventPage.close();
+  });
+
+  test("keeps calendar cards independent across event segments and the more-events popover", async ({
+    page,
+  }) => {
+    // Serve next month's events and their cards from routed responses.
+    const nextMonth = addMonths(getMonthStart(new Date()), 1);
+    const crowdedEvents = Array.from({ length: 6 }, (_, index) =>
+      buildMinimalEvent(
+        `Crowded day event ${index + 1}`,
+        getMonthDayAt(nextMonth, 3, 9 + index),
+        getMonthDayAt(nextMonth, 3, 10 + index),
+      ),
+    );
+    const multiWeekEvent = buildMinimalEvent(
+      "Multi-week event",
+      getMonthDayAt(nextMonth, 13, 9),
+      getMonthDayAt(nextMonth, 24, 17),
+    );
+    const routedEvents = [...crowdedEvents, multiWeekEvent];
+    await page.route(/\/explore\/events\/search\?/, (route) =>
+      route.fulfill({ json: { events: routedEvents, total: routedEvents.length, truncated: false } }),
+    );
+    const cardRequests = [];
+    await page.route(/\/explore\/events\/[0-9a-f-]+\/card\?/, (route) => {
+      const eventId = new URL(route.request().url()).pathname.split("/")[3];
+      const event = routedEvents.find((item) => item.event_id === eventId);
+      cardRequests.push(eventId);
+      return route.fulfill({ body: `<article>${event.name} card</article>`, contentType: "text/html" });
+    });
+
+    // Load the calendar and move to the routed month.
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await waitForActionResponse(page, () => page.getByRole("button", { name: "Next month" }).click(), {
+      method: "GET",
+      urlIncludes: "/explore/events/search",
+    });
+
+    // Hover two segments of the multi-week event.
+    const segments = page.locator(".fc-daygrid-event").filter({ hasText: multiWeekEvent.name });
+    await expect(segments.first()).toBeVisible();
+    expect(await segments.count()).toBeGreaterThanOrEqual(2);
+    const firstTooltipId = await openCalendarCard(segments.nth(0), `${multiWeekEvent.name} card`);
+    const secondTooltipId = await openCalendarCard(segments.nth(1), `${multiWeekEvent.name} card`);
+
+    // Each segment has its own tooltip, sharing one card request.
+    expect(secondTooltipId).not.toBe(firstTooltipId);
+    await expect(page.locator(`[id="${firstTooltipId}"]`)).toHaveCount(0);
+    await expect(segments.nth(0)).not.toHaveAttribute("aria-describedby");
+    expect(cardRequests.filter((id) => id === multiWeekEvent.event_id)).toHaveLength(1);
+
+    // Hover a crowded-day event in the grid, then open the more-events popover.
+    await page.mouse.move(0, 0);
+    const [crowdedEvent] = crowdedEvents;
+    const gridEvent = page
+      .locator(".fc-daygrid-day-events .fc-daygrid-event")
+      .filter({ hasText: crowdedEvent.name })
+      .first();
+    const gridTooltipId = await openCalendarCard(gridEvent, `${crowdedEvent.name} card`);
+    await page.mouse.move(0, 0);
+    await expect(page.locator(`[id="${gridTooltipId}"]`)).toHaveCount(0);
+    await page.locator(".fc-daygrid-more-link").first().click();
+    const popover = page.locator(".fc-popover");
+    await expect(popover).toBeVisible();
+
+    // The popover mount of the same event gets its own tooltip from the cached card.
+    const popoverEvent = popover.locator(".fc-daygrid-event").filter({ hasText: crowdedEvent.name });
+    const popoverTooltipId = await openCalendarCard(popoverEvent, `${crowdedEvent.name} card`);
+    expect(popoverTooltipId).not.toBe(gridTooltipId);
+    expect(cardRequests.filter((id) => id === crowdedEvent.event_id)).toHaveLength(1);
+
+    // Closing the popover releases the cards mounted inside it.
+    await popover.locator(".fc-popover-close").click();
+    await expect(popover).toHaveCount(0);
+    await expect(page.locator(`[id="${popoverTooltipId}"]`)).toHaveCount(0);
+    await expect(page.getByRole("tooltip")).toHaveCount(0);
+  });
+
   test("treats blank date filters as missing and rejects malformed ones", async ({ request }) => {
     const searchUrl = (dateFrom, dateTo = "") =>
       buildE2eUrl(
-        `/explore/events/search?community[0]=${TEST_COMMUNITY_NAME}&view_mode=list` +
+        `/explore/events/search?community[0]=${TEST_COMMUNITY_NAME}&view_mode=map` +
           `&date_from=${dateFrom}&date_to=${dateTo}`,
       );
 
@@ -545,6 +712,17 @@ const buildCalendarPath = (calendarEvent, month) => {
   return `/explore?${params.toString()}`;
 };
 
+/** Builds a minimal calendar event for routed search responses. */
+const buildMinimalEvent = (name, startsAt, endsAt) => ({
+  community_name: TEST_COMMUNITY_NAME,
+  ends_at: Math.floor(endsAt.getTime() / 1000),
+  event_id: randomUUID(),
+  group_slug: TEST_GROUP_SLUG,
+  name,
+  slug: slugify(name),
+  starts_at: Math.floor(startsAt.getTime() / 1000),
+});
+
 /** Deletes sort fixtures from event, event_ticket_type, and event_ticket_price_window. */
 const deleteSortEvents = (slugs) => {
   if (slugs.length === 0) {
@@ -577,6 +755,14 @@ const deleteSortEvents = (slugs) => {
 /** Escapes a value for embedding in E2E SQL. */
 const escapeSql = (value) => value.replace(/'/g, "''");
 
+/** Verifies a calendar search request covers the expected month. */
+const expectWidgetMonthRequest = (response, range) => {
+  const url = new URL(response.url());
+  expect(url.searchParams.get("view_mode")).toBe("calendar");
+  expect(url.searchParams.get("date_from")).toBe(range.first);
+  expect(url.searchParams.get("date_to")).toBe(range.last);
+};
+
 /** Formats a date as YYYY-MM-DD using UTC components. */
 const formatDate = (date) => {
   const year = date.getUTCFullYear();
@@ -585,6 +771,10 @@ const formatDate = (date) => {
 
   return `${year}-${month}-${day}`;
 };
+
+/** Returns a UTC date at an hour of a day of a UTC month. */
+const getMonthDayAt = (month, day, hour) =>
+  new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth(), day, hour));
 
 /** Returns the last day of the UTC month. */
 const getMonthEnd = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
@@ -597,6 +787,15 @@ const getMonthRange = (date) => ({
 
 /** Returns the first day of the UTC month. */
 const getMonthStart = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+
+/** Checks whether a URL requests an explore event card for a view. */
+const isEventCardUrl = (url, view) => {
+  const parsedUrl = new URL(url);
+  return (
+    /\/explore\/events\/[0-9a-f-]+\/card$/.test(parsedUrl.pathname) &&
+    parsedUrl.searchParams.get("view_mode") === view
+  );
+};
 
 /** Inserts sort fixtures into event, event_ticket_type, and event_ticket_price_window. */
 const insertSortEvent = ({ id, name, priceWindowId, slug, startsAt, endsAt, ticketTypeId }) => {
@@ -636,6 +835,18 @@ const insertSortEvent = ({ id, name, priceWindowId, slug, startsAt, endsAt, tick
       '${escapeSql(ticketTypeId)}'
     );
   `);
+};
+
+/** Hovers a calendar event, waits for its card, and returns the tooltip id. */
+const openCalendarCard = async (calendarEvent, cardText) => {
+  await calendarEvent.hover();
+  await expect(calendarEvent).toHaveAttribute("aria-describedby", /^explore-calendar-card-/);
+  const tooltipId = await calendarEvent.getAttribute("aria-describedby");
+  const tooltip = calendarEvent.page().locator(`[id="${tooltipId}"]`);
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip).toHaveAttribute("role", "tooltip");
+  await expect(tooltip).toContainText(cardText);
+  return tooltipId;
 };
 
 /** Builds a URL slug for deterministic sort fixture names. */

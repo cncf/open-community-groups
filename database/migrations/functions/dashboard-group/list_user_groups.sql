@@ -31,6 +31,7 @@ returns json as $$
             c.name as community_name,
             json_strip_nulls(json_build_object(
                 'active', g.active,
+                'community_name', c.name,
                 'group_id', g.group_id,
                 'name', g.name,
                 'slug', g.slug,

@@ -54,6 +54,10 @@ descriptions quickly; `Calendar` helps when you are planning around time
 conflicts and busy periods; and `Map` helps when place matters, like finding
 nearby groups.
 
+`Calendar` and `Map` show up to 1,000 results at once; when more match, a
+notice tells you how many are shown so you can zoom in or refine your filters,
+and hovering or focusing a result opens its details card.
+
 ![Explore events list](../screenshots/explore-events-list.png)
 
 ![Explore events calendar](../screenshots/explore-events-calendar.png)

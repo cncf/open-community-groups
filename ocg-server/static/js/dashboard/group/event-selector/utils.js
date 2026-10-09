@@ -174,45 +174,13 @@ export const getLoadedQueryEventSearchState = (events) => ({
 });
 
 /**
- * Gets the group dashboard selection context from DOM.
- * @param {Element} element Selector element.
- * @param {Document|Element} documentRoot Document fallback root.
- * @returns {{community: string, groupSlug: string}}
- */
-export const getDashboardSelectionContext = (element, documentRoot = document) => {
-  const container =
-    element?.closest?.("#dashboard-content") || documentRoot?.querySelector?.("#dashboard-content");
-
-  return {
-    community: container?.dataset?.community || "",
-    groupSlug: container?.dataset?.groupSlug || "",
-  };
-};
-
-/**
- * Resolves event search context from selector attributes and dashboard fallback.
- * @param {Object} context Search context values.
- * @returns {{communityName: string, groupSlug: string}}
- */
-export const resolveEventSearchContext = ({
-  community = "",
-  dashboardSelection = {},
-  groupSlug = "",
-} = {}) => ({
-  communityName: community || dashboardSelection.community || "",
-  groupSlug: groupSlug || dashboardSelection.groupSlug || "",
-});
-
-/**
- * Builds the search URL for event selector queries.
+ * Builds the selected group event search URL for event selector queries.
  * @param {Object} config Search configuration.
  * @returns {string} Event search URL.
  */
 export const buildEventSearchUrl = ({
-  communityName = "",
   dateFrom = "",
   dateTo = "",
-  groupSlug = "",
   limit = 10,
   query = "",
   sortDirection = "",
@@ -223,9 +191,7 @@ export const buildEventSearchUrl = ({
   if (dateTo) params.set("date_to", dateTo);
   if (sortDirection) params.set("sort_direction", sortDirection);
   if (query) params.set("ts_query", query);
-  if (groupSlug) params.append("group[]", groupSlug);
-  if (communityName) params.append("community[]", communityName);
-  return `/explore/events/search?${params.toString()}`;
+  return `/dashboard/group/events/search?${params.toString()}`;
 };
 
 /**

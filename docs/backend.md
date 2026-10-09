@@ -99,9 +99,9 @@ Placement inside `types/`:
   and user views of a CFS submission). Identical structs are never
   duplicated; the second occurrence imports the first.
 - Different kinds of shape use suffixes: `*Input` and `*Update` for
-  validated forms, `*Filters` for list filters, `*Output` for paginated
-  results, `*Summary` and `*Full` for read-model projections, `*Stats` for
-  aggregates.
+  validated forms, `*Filters` for list filters, `*Output` for paginated or
+  capped search results, `*Minimal`, `*Summary` and `*Full` for read-model
+  projections, `*Stats` for aggregates.
 - A read model and the form that mutates it never share a name in the same
   crate (`Event` is the read model, `EventInput` the form).
 

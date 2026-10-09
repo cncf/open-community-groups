@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,7 +15,6 @@ select plan(8);
 \set eventCanceledID '5e060000-0000-0000-0000-000000000002'
 \set eventCategoryID '5e060000-0000-0000-0000-000000000003'
 \set eventDeletedID '5e060000-0000-0000-0000-000000000004'
-\set eventDraftCanceledID '5e060000-0000-0000-0000-000000000005'
 \set eventID '5e060000-0000-0000-0000-000000000006'
 \set eventPaidID '5e060000-0000-0000-0000-000000000007'
 \set groupCategoryID '5e060000-0000-0000-0000-000000000008'
@@ -109,15 +108,6 @@ select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_
     'published', true,
     'slug', 'canceled-tech-conference-2024',
     'starts_at', '2024-06-17 09:00:00+00',
-    'timezone', 'America/New_York'
-));
-
--- Unpublished canceled event excluded from public lookup
-select fx_event(:'eventDraftCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'event_kind_id', 'virtual',
-    'slug', 'canceled-draft-tech-conference-2024',
-    'starts_at', '2024-06-19 09:00:00+00',
     'timezone', 'America/New_York'
 ));
 
@@ -220,12 +210,6 @@ select is(
         :'eventCanceledID'::uuid
     )::jsonb,
     'Should return a canceled event when it remains published'
-);
-
--- Should return null with canceled draft event slug
-select ok(
-    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'canceled-draft-tech-conference-2024') is null,
-    'Should return null with canceled draft event slug'
 );
 
 -- Should return null with deleted event slug

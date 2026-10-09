@@ -37,6 +37,8 @@
 {{ template "internal/events/event_labels_json.sql" }}
 {{ template "internal/events/event_venue_snapshot.sql" }}
 {{ template "internal/events/get_event_delete_eligibility.sql" }}
+{{ template "internal/groups/is_group_public.sql" }} -- Dependency for is_event_public
+{{ template "internal/events/is_event_public.sql" }}
 {{ template "internal/events/lock_active_event.sql" }}
 {{ template "internal/events/resolve_event_payload.sql" }}
 {{ template "internal/events/resolve_event_payment_rail.sql" }}
@@ -59,7 +61,6 @@
 
 {{ template "internal/inbox/append_inbox_message.sql" }}
 {{ template "internal/inbox/inbox_user_rate_limits.sql" }}
-{{ template "internal/inbox/is_inbox_event_public.sql" }}
 {{ template "internal/inbox/is_inbox_user_blocked.sql" }}
 {{ template "internal/inbox/resolve_inbox_contact_event.sql" }}
 {{ template "internal/inbox/search_inbox_conversations.sql" }}
@@ -123,6 +124,10 @@
 {{ template "internal/search/escape_ilike_pattern.sql" }}
 {{ template "internal/search/prefix_tsquery.sql" }} -- Dependency for parse_search_filters
 {{ template "internal/search/parse_search_filters.sql" }}
+{{ template "internal/search/search_bbox_envelope.sql" }}
+{{ template "internal/search/search_bbox_json.sql" }}
+{{ template "internal/search/search_events_matches.sql" }}
+{{ template "internal/search/search_groups_matches.sql" }}
 
 {{ template "internal/stats/stats_label_count_series.sql" }}
 {{ template "internal/stats/stats_label_count_series_by_name.sql" }}
@@ -465,12 +470,16 @@
 {{ template "redirector/list_redirects.sql" }}
 
 {{ template "site/get_filters_options.sql" }}
+{{ template "site/get_public_event_summary.sql" }}
+{{ template "site/get_public_group_summary.sql" }}
 {{ template "site/get_site_home_stats.sql" }}
 {{ template "site/get_site_recently_added_groups.sql" }}
 {{ template "site/get_site_settings.sql" }}
 {{ template "site/get_site_stats.sql" }}
 {{ template "site/get_site_upcoming_events.sql" }}
 {{ template "site/list_communities.sql" }}
+{{ template "site/search_events_minimal.sql" }}
+{{ template "site/search_groups_minimal.sql" }}
 
 {{ template "triggers/check_admission_offer_enrollment_state.sql" }}
 {{ template "triggers/check_admission_offer_lifecycle.sql" }}

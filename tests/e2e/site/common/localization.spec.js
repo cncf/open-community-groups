@@ -4,6 +4,7 @@ import { buildE2eUrl, navigateToPath } from "../../utils.js";
 
 const SERVER_DATE_LOCALE = "en-US";
 
+/** Server time zone, also used by the seeded event. */
 const SERVER_TIME_ZONE = "UTC";
 
 test.describe("site localization defaults", () => {
@@ -109,8 +110,10 @@ const getDateParts = (date, timeZone, options) => {
 const getSeededEventTiming = async (request) => {
   const params = new URLSearchParams({
     "community[0]": TEST_COMMUNITY_NAME,
-    limit: "20",
+    date_from: "1900-01-01",
+    date_to: "2100-12-31",
     ts_query: TEST_EVENT_NAME,
+    view_mode: "calendar",
   });
   const response = await request.get(buildE2eUrl(`/explore/events/search?${params.toString()}`));
   expect(response.status()).toBe(200);
@@ -121,6 +124,6 @@ const getSeededEventTiming = async (request) => {
   return {
     endsAt: event.ends_at,
     startsAt: event.starts_at,
-    timezone: event.timezone || SERVER_TIME_ZONE,
+    timezone: SERVER_TIME_ZONE,
   };
 };

@@ -89,3 +89,15 @@
   </div>
 {% endmacro search_bar -%}
 {# End search bar -#}
+
+{# Widget truncation notice -#}
+{# Used by explore map and calendar views when more items match than they draw. -#}
+{% macro widget_truncation_notice(shown, total, truncated, noun, hint) -%}
+  <p role="status"
+     data-explore-truncation-notice
+     class="mb-4 text-sm text-stone-600
+            {% if !truncated -%}hidden{%- endif %}">
+    Showing <span data-truncation-shown>{{ shown }}</span> of <span data-truncation-total>{{ total }}</span> {{ noun }}. {{ hint }}
+  </p>
+{% endmacro widget_truncation_notice -%}
+{# End widget truncation notice -#}

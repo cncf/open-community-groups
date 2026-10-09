@@ -29,7 +29,36 @@ mod tests;
 /// Minutes before the scheduled start when attendee meeting access opens.
 const EVENT_LIVE_LEAD_TIME_MINUTES: i64 = 15;
 
-// Event types: summary and full.
+// Event types: minimal, summary and full.
+
+/// Minimal event information used to draw the explore map and calendar.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventMinimal {
+    /// Name of the community this event belongs to (slug for URLs).
+    pub community_name: String,
+    /// Unique identifier for the event.
+    pub event_id: Uuid,
+    /// Generated URL-friendly identifier for the group hosting this event.
+    pub group_slug: String,
+    /// Display name of the event.
+    pub name: String,
+    /// URL-friendly identifier for this event.
+    pub slug: String,
+
+    /// Event end time in UTC.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub ends_at: Option<DateTime<Utc>>,
+    /// Admin-managed URL-friendly identifier for the group hosting this event.
+    pub group_slug_pretty: Option<String>,
+    /// Latitude of the event's own location.
+    pub latitude: Option<f64>,
+    /// Longitude of the event's own location.
+    pub longitude: Option<f64>,
+    /// UTC timestamp when the event starts.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
+}
 
 /// Summary event information.
 #[skip_serializing_none]
@@ -122,8 +151,6 @@ pub struct EventSummary {
     pub payment_currency_code: Option<String>,
     /// Number of unanswered co-host invitations, in dashboard views.
     pub pending_cohosts_count: Option<i32>,
-    /// Pre-rendered HTML for map/calendar popovers.
-    pub popover_html: Option<String>,
     /// Registration end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub registration_ends_at: Option<DateTime<Utc>>,
@@ -788,7 +815,6 @@ impl From<&EventFull> for EventSummary {
             meeting_provider: event.meeting_provider,
             payment_currency_code: event.payment_currency_code.clone(),
             pending_cohosts_count: None,
-            popover_html: None,
             registration_ends_at: event.registration_ends_at,
             registration_starts_at: event.registration_starts_at,
             remaining_capacity: event.remaining_capacity,

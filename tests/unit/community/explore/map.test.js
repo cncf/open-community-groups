@@ -1,13 +1,18 @@
-import { expect, waitUntil } from "@open-wc/testing";
+import { expect } from "@open-wc/testing";
 
 import { Map as ExploreMap } from "/static/js/community/explore/map.js";
-import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
+import {
+  createDeferred,
+  waitForMicrotask,
+} from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockMapLibre } from "/tests/unit/test-utils/maps.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
+import { mockWindowTimers } from "/tests/unit/test-utils/timers.js";
 
 const GROUP = {
+  group_id: "group-1",
   slug: "malaga-js",
   slug_pretty: "malaga-javascript",
   name: "Málaga JavaScript",
@@ -15,13 +20,47 @@ const GROUP = {
   latitude: 36.7213,
   longitude: -4.4214,
 };
+const SECOND_GROUP = {
+  ...GROUP,
+  group_id: "group-2",
+  name: "Málaga Web",
+  slug: "malaga-web",
+  slug_pretty: "malaga-web",
+};
+const EVENT = {
+  ...GROUP,
+  event_id: "event-1",
+  group_slug: GROUP.slug,
+  group_slug_pretty: GROUP.slug_pretty,
+  name: "Open Source Day",
+  slug: "open-source-day",
+};
+const RESULTS_ERROR_MESSAGE =
+  "Something went wrong loading results. Please try again later.";
+
+/** Builds a successful search or card response. */
+const okResponse = ({ body = {}, html = "" } = {}) => ({
+  ok: true,
+  status: 200,
+  json: async () => body,
+  text: async () => html,
+});
+
+/** Builds an unsuccessful response with the given status. */
+const statusResponse = (status) => ({
+  ok: false,
+  status,
+  text: async () => "",
+});
 
 describe("community explore map", () => {
   const originalAnchorClick = HTMLAnchorElement.prototype.click;
   const originalHtmx = globalThis.htmx;
   let clickedUrls;
+  let fetchMock;
   let mapLibre;
   let swal;
+  let windowTimers;
 
   beforeEach(() => {
     // Create the map fixture and mock browser integrations.
@@ -29,6 +68,7 @@ describe("community explore map", () => {
     ExploreMap._instance = null;
     mapLibre = mockMapLibre();
     swal = mockSwal();
+    fetchMock = mockFetch({ impl: async () => statusResponse(404) });
     clickedUrls = [];
     HTMLAnchorElement.prototype.click = function click() {
       clickedUrls.push(this.getAttribute("href"));
@@ -37,6 +77,10 @@ describe("community explore map", () => {
     document.body.innerHTML = `
       <div id="main-loading-map" class="hidden"></div>
       <div id="loading-map"></div>
+      <p data-explore-truncation-notice class="hidden">
+        Showing <span data-truncation-shown></span> of
+        <span data-truncation-total></span>
+      </p>
       <div id="map-box"></div>
     `;
   });
@@ -45,6 +89,9 @@ describe("community explore map", () => {
     // Release map resources and restore the browser globals.
     mapLibre.restore();
     swal.restore();
+    fetchMock.restore();
+    windowTimers?.restore();
+    windowTimers = null;
     ExploreMap._instance = null;
     HTMLAnchorElement.prototype.click = originalAnchorClick;
     globalThis.htmx = originalHtmx;
@@ -64,6 +111,26 @@ describe("community explore map", () => {
     const map = mapLibre.maps.at(-1);
     map.emit("load").emit("render");
     return { controller, map, source: map.getSource("explore-locations") };
+  };
+
+  // Queues each request so tests settle responses in any order.
+  const mockQueuedFetch = () => {
+    const responses = [];
+    fetchMock.setImpl(() => {
+      const response = createDeferred();
+      responses.push(response);
+      return response.promise;
+    });
+    return responses;
+  };
+
+  const getNotice = () => {
+    const notice = document.querySelector("[data-explore-truncation-notice]");
+    return {
+      hidden: notice.classList.contains("hidden"),
+      shown: notice.querySelector("[data-truncation-shown]").textContent,
+      total: notice.querySelector("[data-truncation-total]").textContent,
+    };
   };
 
   it("loads only MapLibre and configures Bright with attribution and zoom controls at the top", async () => {
@@ -124,22 +191,40 @@ describe("community explore map", () => {
   });
 
   it("filters invalid locations, sets longitude-first bounds, and navigates through linked pins", async () => {
-    // Initialize a mix of valid and invalid locations.
+    // Initialize valid locations, including zero and boundary coordinates.
+    const withoutLatitude = { ...GROUP, slug: "missing-latitude" };
+    delete withoutLatitude.latitude;
     const { controller, map, source } = await initializeMap("groups", {
       groups: [
         GROUP,
-        { ...GROUP, slug: "missing-latitude", latitude: 0 },
-        { ...GROUP, slug: "null-island", latitude: null, longitude: null },
+        { ...GROUP, slug: "zero-latitude", latitude: 0 },
+        { ...GROUP, slug: "zero-longitude", latitude: 51.4779, longitude: 0 },
+        { ...GROUP, slug: "null-island", latitude: 0, longitude: 0 },
+        { ...GROUP, slug: "world-corner", latitude: -90, longitude: 180 },
+        withoutLatitude,
+        { ...GROUP, slug: "null-coordinates", latitude: null, longitude: null },
+        { ...GROUP, slug: "empty-latitude", latitude: "" },
         { ...GROUP, slug: "invalid-longitude", longitude: "invalid" },
+        { ...GROUP, slug: "infinite-latitude", latitude: Infinity },
+        { ...GROUP, slug: "latitude-out-of-range", latitude: 90.5 },
+        { ...GROUP, slug: "longitude-out-of-range", longitude: -180.5 },
       ],
       bbox: { sw_lat: 1, sw_lon: 2, ne_lat: 3, ne_lon: 4 },
     });
 
-    // Verify only valid locations contribute to the source and bounds.
-    expect(source.data.features).to.have.length(1);
-    expect(source.data.features[0].geometry.coordinates).to.deep.equal([
-      -4.4214, 36.7213,
+    // Verify only present, finite, in-range locations are drawn.
+    expect(
+      source.data.features.map((feature) => feature.geometry.coordinates),
+    ).to.deep.equal([
+      [-4.4214, 36.7213],
+      [-4.4214, 0],
+      [0, 51.4779],
+      [0, 0],
+      [180, -90],
     ]);
+    expect(document.querySelector(".marker-zero-latitude")).not.to.equal(null);
+    expect(document.querySelector(".marker-zero-longitude")).not.to.equal(null);
+    expect(document.querySelector(".marker-missing-latitude")).to.equal(null);
     expect(map.options.bounds).to.deep.equal([
       [2, 1],
       [4, 3],
@@ -192,10 +277,15 @@ describe("community explore map", () => {
       response: { ok: true, json: async () => ({ groups: [] }) },
     });
     try {
-      // Fetch locations and verify normalized request coordinates.
-      await controller.fetchLocationData();
+      // Fetch minimal locations and verify normalized request coordinates.
+      const abortController = new AbortController();
+      await controller.fetchLocationData(abortController.signal);
       const url = new URL(fetchMock.calls[0][0], window.location.origin);
       expect(url.pathname).to.equal("/explore/groups/search");
+      expect(fetchMock.calls[0][1].headers.get("Accept")).to.equal(
+        "application/json",
+      );
+      expect(fetchMock.calls[0][1].signal).to.equal(abortController.signal);
       expect(url.searchParams.get("bbox_sw_lat")).to.equal("-90");
       expect(url.searchParams.get("bbox_sw_lon")).to.equal("-180");
       expect(url.searchParams.get("bbox_ne_lat")).to.equal("90");
@@ -338,29 +428,43 @@ describe("community explore map", () => {
     expect(document.activeElement).to.equal(cluster);
   });
 
-  it("opens delayed cards on focus and removes cards and pending timers during cleanup", async () => {
-    // Render a location with the linked card used by explore results.
-    const { controller, map } = await initializeMap("groups", {
-      groups: [
-        {
-          ...GROUP,
-          popover_html:
-            '<a href="/spain/group/malaga-javascript"><article>Málaga JavaScript</article></a>',
-        },
-      ],
-    });
+  it("loads pin cards on focus into a described, non-interactive tooltip", async () => {
+    // Hold the card response while the focused pin waits to open its card.
+    const { map } = await initializeMap();
+    windowTimers = mockWindowTimers();
+    const card = createDeferred();
+    fetchMock.setImpl(() => card.promise);
     const pin = document.querySelector(".marker-malaga-js");
 
-    // Expose the delayed card as the focused pin's accessible description.
+    // Focus starts the card request before the open delay ends.
     pin.focus();
+    expect(fetchMock.calls).to.have.length(1);
+    expect(fetchMock.calls[0][0]).to.equal("/explore/groups/group-1/card");
+    expect(fetchMock.calls[0][1].headers.get("Accept")).to.equal("text/html");
+    windowTimers.advance(299);
     expect(document.querySelector(".explore-map-tooltip")).to.equal(null);
-    await waitUntil(() => document.querySelector(".explore-map-tooltip"));
+
+    // The delayed tooltip shows a busy loading state described by the pin.
+    windowTimers.advance(1);
     const tooltip = document.querySelector(".explore-map-tooltip");
-    expect(tooltip.inert).to.equal(false);
+    expect(tooltip.parentElement).to.equal(map.getContainer());
     expect(tooltip.getAttribute("role")).to.equal("tooltip");
+    expect(tooltip.getAttribute("aria-busy")).to.equal("true");
     expect(pin.getAttribute("aria-describedby")).to.equal(tooltip.id);
+    expect(tooltip.textContent).to.include("Málaga JavaScript");
+    expect(tooltip.textContent).to.include("Loading details…");
+
+    // The loaded card replaces the loading state without focusable links.
+    card.resolve(
+      okResponse({
+        html: '<a href="/spain/group/malaga-javascript"><article>Málaga JavaScript card</article></a>',
+      }),
+    );
+    await waitForMicrotask();
+    expect(tooltip.getAttribute("aria-busy")).to.equal("false");
     expect(tooltip.querySelector("a[href]")).to.equal(null);
-    expect(tooltip.textContent).to.equal("Málaga JavaScript");
+    expect(tooltip.textContent).to.equal("Málaga JavaScript card");
+    expect(document.activeElement).to.equal(pin);
 
     // Dismiss the description without moving focus away from its pin.
     pin.dispatchEvent(
@@ -369,19 +473,239 @@ describe("community explore map", () => {
     expect(document.querySelector(".explore-map-tooltip")).to.equal(null);
     expect(pin.hasAttribute("aria-describedby")).to.equal(false);
     expect(document.activeElement).to.equal(pin);
+  });
 
-    // Release a pending hover card when HTMX removes the map.
+  it("loads event cards on hover, falls back when missing, and forwards tooltip clicks", async () => {
+    // Render an event pin whose card no longer exists.
+    await initializeMap("events", { events: [EVENT] });
+    windowTimers = mockWindowTimers();
+    fetchMock.setImpl(async () => statusResponse(404));
+    const pin = document.querySelector(".marker-open-source-day");
+
+    // Hovering the pin requests the map card of the event.
     pin.dispatchEvent(new MouseEvent("mouseenter"));
-    const marker = mapLibre.markers[0];
-    expect(controller.tooltipTimers.has(marker)).to.equal(true);
+    expect(fetchMock.calls.map(([url]) => url)).to.deep.equal([
+      "/explore/events/event-1/card?view_mode=map",
+    ]);
+    await waitForMicrotask();
+    windowTimers.advance(300);
+
+    // The fallback card names the event and is no longer busy.
+    const tooltip = document.querySelector(".explore-map-tooltip");
+    expect(tooltip.getAttribute("aria-busy")).to.equal("false");
+    expect(tooltip.textContent).to.include("Open Source Day");
+    expect(tooltip.textContent).to.include(
+      "Details are not available right now.",
+    );
+    expect(swal.calls).to.have.length(0);
+
+    // Hovering the tooltip keeps it open after the pointer leaves the pin.
+    pin.dispatchEvent(new MouseEvent("mouseleave"));
+    tooltip.dispatchEvent(new MouseEvent("mouseenter"));
+    windowTimers.advance(500);
+    expect(document.querySelector(".explore-map-tooltip")).to.equal(tooltip);
+
+    // Clicking the tooltip follows the pin link.
+    tooltip
+      .querySelector("p")
+      .dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+    expect(clickedUrls).to.deep.equal([
+      "/spain/group/malaga-javascript/event/open-source-day",
+    ]);
+
+    // Leaving the tooltip closes it after the grace delay.
+    tooltip.dispatchEvent(new MouseEvent("mouseleave"));
+    windowTimers.advance(100);
+    expect(document.querySelector(".explore-map-tooltip")).to.equal(null);
+    expect(pin.hasAttribute("aria-describedby")).to.equal(false);
+
+    // Hovering again reuses the cached fallback card.
+    pin.dispatchEvent(new MouseEvent("mouseenter"));
+    windowTimers.advance(300);
+    expect(fetchMock.calls).to.have.length(1);
+    expect(document.querySelector(".explore-map-tooltip")).not.to.equal(null);
+  });
+
+  it("destroys card controllers when markers are cleaned up", async () => {
+    // Open one pin card and leave another pending.
+    const { map } = await initializeMap("groups", {
+      groups: [GROUP, SECOND_GROUP],
+    });
+    windowTimers = mockWindowTimers();
+    fetchMock.setImpl(() => new Promise(() => {}));
+    document
+      .querySelector(".marker-malaga-js")
+      .dispatchEvent(new MouseEvent("mouseenter"));
+    windowTimers.advance(300);
+    document
+      .querySelector(".marker-malaga-web")
+      .dispatchEvent(new MouseEvent("mouseenter"));
+    expect(document.querySelector(".explore-map-tooltip")).not.to.equal(null);
+    expect(windowTimers.pendingCount).to.equal(1);
+
+    // Remove the map through HTMX cleanup.
     document
       .getElementById("map-box")
       .dispatchEvent(
         new CustomEvent("htmx:beforeCleanupElement", { bubbles: true }),
       );
-    expect(controller.tooltipTimers.has(marker)).to.equal(false);
+
+    // Cards, pending timers, and markers are released.
     expect(map.removed).to.equal(true);
+    expect(windowTimers.pendingCount).to.equal(0);
+    expect(document.querySelector(".explore-map-tooltip")).to.equal(null);
     expect(document.querySelector(".maplibregl-marker")).to.equal(null);
+    windowTimers.advance(300);
+    expect(document.querySelector(".explore-map-tooltip")).to.equal(null);
+  });
+
+  it("applies only the latest viewport response", async () => {
+    // Start two viewport requests.
+    const { controller, map, source } = await initializeMap();
+    const responses = mockQueuedFetch();
+    const firstRefresh = controller.refresh();
+    const secondRefresh = controller.refresh();
+
+    // The newer request aborts the older one.
+    expect(fetchMock.calls).to.have.length(2);
+    expect(fetchMock.calls[0][0]).to.match(/^\/explore\/groups\/search\?/);
+    expect(fetchMock.calls[0][1].signal.aborted).to.equal(true);
+    expect(fetchMock.calls[1][1].signal.aborted).to.equal(false);
+
+    // Answer the newer request first, then the older one.
+    responses[1].resolve(
+      okResponse({ body: { groups: [SECOND_GROUP], total: 1 } }),
+    );
+    await secondRefresh;
+    map.emit("render");
+    responses[0].resolve(
+      okResponse({ body: { groups: [GROUP, SECOND_GROUP], total: 2 } }),
+    );
+    await firstRefresh;
+    map.emit("render");
+
+    // Only the newer locations are drawn.
+    expect(source.data.features).to.have.length(1);
+    expect(document.querySelector(".marker-malaga-web")).not.to.equal(null);
+    expect(document.querySelector(".marker-malaga-js")).to.equal(null);
+    expect(controller.state.status).to.equal("ready");
+    expect(swal.calls).to.have.length(0);
+  });
+
+  it("ignores stale network, http, and json failures", async () => {
+    const { controller, map, source } = await initializeMap();
+    const responses = mockQueuedFetch();
+    const failures = [
+      (response) => response.reject(new TypeError("Failed to fetch")),
+      (response) => response.resolve(statusResponse(500)),
+      (response) =>
+        response.resolve({
+          ok: true,
+          status: 200,
+          json: async () => {
+            throw new SyntaxError("Unexpected token");
+          },
+        }),
+    ];
+
+    for (const fail of failures) {
+      // Fail a replaced request while the newer one is still pending.
+      const staleRefresh = controller.refresh();
+      const currentRefresh = controller.refresh();
+      const revision = controller.dataRevision;
+      fail(responses.at(-2));
+      await staleRefresh;
+      expect(controller.state.status).to.equal("loading");
+      expect(controller.dataRevision).to.equal(revision);
+
+      // The newer request still completes normally.
+      responses.at(-1).resolve(okResponse({ body: { groups: [GROUP] } }));
+      await currentRefresh;
+      map.emit("render");
+      expect(controller.state.status).to.equal("ready");
+      expect(source.data.features).to.have.length(1);
+    }
+
+    // No stale failure reached the user.
+    expect(swal.calls).to.have.length(0);
+  });
+
+  it("reports failures of the current request once", async () => {
+    // Fail the only pending viewport request.
+    const { controller } = await initializeMap();
+    fetchMock.setImpl(async () => statusResponse(500));
+    await controller.refresh();
+
+    // The error state and one results alert are shown.
+    expect(controller.state.status).to.equal("error");
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal(RESULTS_ERROR_MESSAGE);
+    expect(document.querySelector(".marker-malaga-js")).not.to.equal(null);
+  });
+
+  it("ignores responses and aborted requests after the map is removed", async () => {
+    // Start two viewport requests that outlive the map.
+    const { controller, map, source } = await initializeMap();
+    const responses = mockQueuedFetch();
+    const refresh = controller.refresh();
+    const signal = fetchMock.calls[0][1].signal;
+    const data = source.data;
+
+    // Removing the map aborts the pending request.
+    document.getElementById("map-box").remove();
+    await waitForMicrotask();
+    expect(map.removed).to.equal(true);
+    expect(signal.aborted).to.equal(true);
+
+    // The aborted request settles without alerts or source updates.
+    responses[0].reject(new DOMException("Aborted", "AbortError"));
+    await refresh;
+    expect(source.data).to.equal(data);
+    expect(swal.calls).to.have.length(0);
+  });
+
+  it("commits the truncation notice only after the source update completes", async () => {
+    // Initialize a truncated result set.
+    const { controller, map, source } = await initializeMap("groups", {
+      groups: [GROUP],
+      total: 1284,
+      truncated: true,
+    });
+    expect(getNotice()).to.deep.equal({
+      hidden: false,
+      shown: "1",
+      total: "1284",
+    });
+
+    // A pending source update keeps the previous notice.
+    source.loaded = false;
+    await controller.refresh({
+      groups: [GROUP, SECOND_GROUP],
+      total: 2,
+      truncated: false,
+    });
+    map.emit("render");
+    expect(getNotice()).to.deep.equal({
+      hidden: false,
+      shown: "1",
+      total: "1284",
+    });
+
+    // The completed source update commits its notice.
+    source.loaded = true;
+    map.emit("render");
+    expect(getNotice()).to.deep.equal({ hidden: true, shown: "2", total: "2" });
+
+    // A failed source update keeps the previous notice.
+    source.loaded = false;
+    await controller.refresh({ groups: [GROUP], total: 5000, truncated: true });
+    map.emit("error", { sourceId: "explore-locations" });
+    source.loaded = true;
+    map.emit("render");
+    expect(getNotice()).to.deep.equal({ hidden: true, shown: "2", total: "2" });
+    expect(controller.state.status).to.equal("error");
   });
 
   it("preserves focused locations across refreshes and falls back when they disappear", async () => {
@@ -542,7 +866,7 @@ describe("community explore map", () => {
     // Preserve old source features while replacing the results with an empty set.
     const { controller, map, source } = await initializeMap();
     const oldFeatures = source.data.features;
-    await controller.refresh({ groups: [{ ...GROUP, latitude: 0 }] });
+    await controller.refresh({ groups: [{ ...GROUP, latitude: 95 }] });
     map.sourceFeatures = oldFeatures;
     map.emit("render");
 
@@ -581,6 +905,8 @@ describe("community explore map", () => {
     expect(
       document.getElementById("loading-map").classList.contains("is-loading"),
     ).to.equal(false);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal(RESULTS_ERROR_MESSAGE);
   });
 
   it("explains map-construction failures and offers a recovery path", async () => {
