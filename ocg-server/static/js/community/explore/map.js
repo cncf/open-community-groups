@@ -48,6 +48,7 @@ export class Map {
     // Check if map is already initialized
     const controller = Map._instance || this;
     if (!Map._instance) {
+      this.cardGroup = { current: null };
       this.markers = new globalThis.Map();
       this.pendingSourceUpdate = null;
       this.dataRevision = 0;
@@ -165,8 +166,9 @@ export class Map {
     const tooltipId = `explore-map-tooltip-${this.dataRevision}-${feature.properties.index}`;
     let releaseTooltip = null;
 
-    // Render the card in a non-interactive tooltip described by the pin
+    // Render the card in a hoverable tooltip described by the pin
     const controller = createCardController({
+      group: this.cardGroup,
       item,
       loader: this.cardLoader,
       close: () => {
@@ -212,20 +214,21 @@ export class Map {
 
       const leaves = await source.getClusterLeaves(clusterId, feature.properties.point_count, 0);
       if (map !== this.map || revision !== this.dataRevision) return;
-      const list = document.createElement("ul");
-      list.className = "max-h-60 overflow-y-auto space-y-2 p-2";
-      leaves.forEach((leaf) => {
-        const listItem = document.createElement("li");
-        const link = createItemLink(this.entity, this.items[leaf.properties.index]);
-        link.className = "block underline";
-        listItem.append(link);
-        list.append(listItem);
-      });
+      const links = leaves.map((leaf) => createItemLink(this.entity, this.items[leaf.properties.index]));
       this.clusterPopup?.remove();
-      const popup = new maplibregl.Popup({ maxWidth: "320px" })
-        .setLngLat(feature.geometry.coordinates)
-        .setDOMContent(list)
-        .addTo(map);
+      const popup = new maplibregl.Popup({
+        className: "explore-map-cluster-popup",
+        closeButton: false,
+        focusAfterOpen: false,
+        maxWidth: "none",
+      });
+      const content = createClusterPopupContent({
+        links,
+        onClose: () => popup.remove(),
+        title: `${links.length} ${this.entity} at this location`,
+      });
+      popup.setLngLat(feature.geometry.coordinates).setDOMContent(content).addTo(map);
+      links[0]?.focus({ preventScroll: true });
       const popupElement = popup.getElement();
       const handleKeydown = (event) => {
         if (event.key === "Escape") {
@@ -487,6 +490,54 @@ export class Map {
     }
   }
 }
+
+/**
+ * Builds the list of locations that share a point at maximum zoom.
+ * @param {object} options - Popup content options
+ * @param {HTMLAnchorElement[]} options.links - Location links
+ * @param {() => void} options.onClose - Closes the popup
+ * @param {string} options.title - Popup title
+ * @returns {HTMLElement} Popup content
+ */
+const createClusterPopupContent = ({ links, onClose, title }) => {
+  const content = document.createElement("div");
+  content.className = "w-72 max-w-[calc(100vw-2rem)]";
+
+  // Header with the title and close button
+  const header = document.createElement("div");
+  header.className = "flex items-center justify-between gap-3 border-b border-stone-200 py-2 ps-4 pe-2";
+  const heading = document.createElement("p");
+  heading.className = "truncate text-sm font-semibold text-stone-900";
+  heading.textContent = title;
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className =
+    "group inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-primary-500";
+  const closeIcon = document.createElement("div");
+  closeIcon.className = "svg-icon size-5 bg-stone-500 transition-colors group-hover:bg-stone-900 icon-close";
+  closeIcon.setAttribute("aria-hidden", "true");
+  const closeLabel = document.createElement("span");
+  closeLabel.className = "sr-only";
+  closeLabel.textContent = "Close";
+  closeButton.append(closeIcon, closeLabel);
+  closeButton.addEventListener("click", onClose);
+  header.append(heading, closeButton);
+
+  // Scrollable list of location links
+  const list = document.createElement("ul");
+  list.className = "max-h-60 overflow-y-auto py-1";
+  links.forEach((link) => {
+    const listItem = document.createElement("li");
+    link.className =
+      "block truncate px-4 py-2 text-sm text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-900 focus-visible:bg-stone-100 focus-visible:outline-none";
+    link.title = link.textContent;
+    listItem.append(link);
+    list.append(listItem);
+  });
+
+  content.append(header, list);
+  return content;
+};
 
 /**
  * Builds an accessible location link while preserving HTMX navigation.

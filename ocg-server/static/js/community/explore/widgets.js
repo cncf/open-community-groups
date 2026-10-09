@@ -4,14 +4,14 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 import { escapeHtml } from "/static/js/common/trusted-html.js";
 
 export const CARD_CACHE_MAX_ENTRIES = 1000;
-// Matches the shared cache lifetime of the card responses.
+// Card cache lifetime, matching the shared cache lifetime of the card responses.
 export const CARD_CACHE_TTL_MS = 300000;
 export const CARD_STATUS = Object.freeze({
   loading: "loading",
   ready: "ready",
   unavailable: "unavailable",
 });
-// Gives the pointer time to cross the gap between a trigger and its card.
+// Grace delay letting the pointer cross the gap between a trigger and its card.
 export const POPOVER_CLOSE_DELAY_MS = 100;
 export const POPOVER_OPEN_DELAY_MS = 300;
 const DEFAULT_TIMERS = Object.freeze({
@@ -82,17 +82,28 @@ export const bindExploreCardTrigger = (trigger, controller) => {
  * The card request starts on the first activation, in parallel with the open
  * delay, and results never render before the delay or after the card closes.
  * A card that failed to load is requested again on the next activation.
+ * Escape dismisses an active card however it was opened, and controllers
+ * sharing a group keep only the most recently opened card visible.
  * @param {object} options - Controller options
  * @param {() => void} options.close - Removes the rendered card
+ * @param {{current: object|null}} [options.group] - Handle shared by the cards of one widget
  * @param {object} options.item - Explore item owning the card
  * @param {object} options.loader - Card loader created by createExploreCardLoader
  * @param {(result: object) => void} options.render - Renders a card result
  * @param {object} [options.timers] - Timer functions, replaceable in tests
  * @returns {object} Controller with activate, deactivate, destroy, dismiss, and state readers
  */
-export const createCardController = ({ close, item, loader, render, timers = DEFAULT_TIMERS }) => {
+export const createCardController = ({
+  close,
+  group = null,
+  item,
+  loader,
+  render,
+  timers = DEFAULT_TIMERS,
+}) => {
   const sources = new Set();
   let closeTimeoutId = null;
+  let controller = null;
   let destroyed = false;
   let open = false;
   let openTimeoutId = null;
@@ -106,15 +117,21 @@ export const createCardController = ({ close, item, loader, render, timers = DEF
     }
   };
 
+  const handleDocumentKeydown = (event) => {
+    if (event.key === "Escape") hide();
+  };
+
   const hide = () => {
     clearCloseTimeout();
     if (openTimeoutId !== null) {
       timers.clearTimeout(openTimeoutId);
       openTimeoutId = null;
     }
+    document.removeEventListener("keydown", handleDocumentKeydown);
     sources.clear();
     result = null;
     token += 1;
+    if (group?.current === controller) group.current = null;
     if (open) {
       open = false;
       close();
@@ -133,11 +150,15 @@ export const createCardController = ({ close, item, loader, render, timers = DEF
 
   const show = () => {
     openTimeoutId = null;
+    if (group) {
+      if (group.current && group.current !== controller) group.current.dismiss();
+      group.current = controller;
+    }
     open = true;
     render(result || loader.peek(item) || { status: CARD_STATUS.loading });
   };
 
-  return {
+  controller = {
     activate(source) {
       if (destroyed) return;
       clearCloseTimeout();
@@ -152,6 +173,7 @@ export const createCardController = ({ close, item, loader, render, timers = DEF
       // Start loading the card while the open delay runs
       requestCard();
       openTimeoutId = timers.setTimeout(show, POPOVER_OPEN_DELAY_MS);
+      document.addEventListener("keydown", handleDocumentKeydown);
     },
     deactivate(source) {
       sources.delete(source);
@@ -178,6 +200,7 @@ export const createCardController = ({ close, item, loader, render, timers = DEF
     isActive: () => open || openTimeoutId !== null,
     isOpen: () => open,
   };
+  return controller;
 };
 
 /**
@@ -333,7 +356,7 @@ export const renderPopoverCardShell = (popoverHtml) =>
 
 /**
  * Syncs a rendered card tooltip with its result and links it to its trigger.
- * The tooltip stays non-interactive, so its links are removed.
+ * Card links are removed so clicks on the card are forwarded to its trigger.
  * @param {object} options - Tooltip options
  * @param {object} options.result - Card result rendered in the tooltip
  * @param {HTMLElement} options.tooltip - Tooltip element holding the rendered card
@@ -351,6 +374,7 @@ export const syncExploreCardTooltip = ({ result, tooltip, tooltipId, trigger }) 
 
 /**
  * Updates the "Showing X of Y" notice of a map or calendar view.
+ * The notice sits inside a status region that stays rendered to announce it.
  * @param {HTMLElement|null} element - Truncation notice element
  * @param {object} metadata - Result metadata
  * @param {number} metadata.shown - Number of items drawn

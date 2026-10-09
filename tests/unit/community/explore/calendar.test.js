@@ -63,9 +63,11 @@ describe("community explore calendar", () => {
     document.body.innerHTML = `
       <div id="main-loading-calendar" class="hidden"></div>
       <div id="loading-calendar" class="hidden"></div>
-      <p data-explore-truncation-notice class="hidden">
-        Showing <span data-truncation-shown></span> of <span data-truncation-total></span>
-      </p>
+      <div role="status">
+        <p data-explore-truncation-notice class="hidden">
+          Showing <span data-truncation-shown></span> of <span data-truncation-total></span>
+        </p>
+      </div>
       <div>
         <div id="calendar-box"></div>
         <div class="no-results-default hidden"></div>
@@ -144,16 +146,37 @@ describe("community explore calendar", () => {
   };
 
   // Mounts one event segment the way FullCalendar does for each rendered segment.
-  const mountEvent = (calendar, event = EVENT, { firstCol = 0, row = 0 } = {}) => {
+  const mountEvent = (calendar, event = EVENT, { container, firstCol = 0, row = 0 } = {}) => {
     const harness = document.createElement("div");
     const element = document.createElement("a");
     element.href = EVENT_URL;
     element.textContent = event.name;
     element.fcSeg = { firstCol, row };
     harness.append(element);
-    document.getElementById("calendar-box").append(harness);
+    (container || document.getElementById("calendar-box")).append(harness);
     calendar.fullCalendar.config.eventDidMount({ el: element, event: { extendedProps: { event } } });
     return element;
+  };
+
+  // Opens a "+N more" popover the way FullCalendar renders it, closing on its close icon.
+  const mountMorePopover = () => {
+    document.getElementById("calendar-box").insertAdjacentHTML(
+      "beforeend",
+      `
+        <a class="fc-daygrid-more-link" tabindex="0" aria-controls="fc-dom-1">+5 more</a>
+        <div class="fc-popover fc-more-popover" id="fc-dom-1">
+          <span class="fc-popover-close"></span>
+          <div class="fc-popover-body"></div>
+        </div>
+      `,
+    );
+    const popover = document.getElementById("fc-dom-1");
+    popover.querySelector(".fc-popover-close").addEventListener("click", () => popover.remove());
+    return {
+      body: popover.querySelector(".fc-popover-body"),
+      moreLink: document.querySelector(".fc-daygrid-more-link"),
+      popover,
+    };
   };
 
   // Queues each request so tests settle responses in any order.
@@ -235,16 +258,71 @@ describe("community explore calendar", () => {
     const edgeEvent = mountEvent(calendar, EVENT, { firstCol: 5, row: 4 });
     const firstCellEvent = mountEvent(calendar, EVENT);
 
-    // Open both cards.
+    // Edge cards open upward and right-aligned.
     edgeEvent.dispatchEvent(new MouseEvent("mouseenter"));
-    firstCellEvent.dispatchEvent(new MouseEvent("mouseenter"));
     windowTimers.advance(300);
-
-    // Edge cards open upward and right-aligned; others open downward.
     expect(getTooltip(edgeEvent).className).to.include("-translate-y-full");
     expect(getTooltip(edgeEvent).className).to.include("end-0");
+    edgeEvent.dispatchEvent(new MouseEvent("mouseleave"));
+    windowTimers.advance(100);
+
+    // Other cards open downward.
+    firstCellEvent.dispatchEvent(new MouseEvent("mouseenter"));
+    windowTimers.advance(300);
     expect(getTooltip(firstCellEvent).className).to.include("pt-1.5");
     expect(getTooltip(firstCellEvent).className).not.to.include("end-0");
+  });
+
+  it("places cards of the scrollable more-events popover beside their event and closes them on scroll", async () => {
+    // Mount an event inside an open "+N more" popover.
+    const calendar = await renderCalendar({ events: [] });
+    windowTimers = mockWindowTimers();
+    const { body, popover } = mountMorePopover();
+    const popoverEvent = mountEvent(calendar, EVENT, { container: body, firstCol: 5, row: 4 });
+
+    // Its card is positioned against the viewport, below and aligned with the event.
+    popoverEvent.dispatchEvent(new MouseEvent("mouseenter"));
+    windowTimers.advance(300);
+    const tooltip = getTooltip(popoverEvent);
+    const rect = popoverEvent.getBoundingClientRect();
+    expect(tooltip.classList.contains("fixed")).to.equal(true);
+    expect(tooltip.classList.contains("absolute")).to.equal(false);
+    expect(tooltip.classList.contains("pt-1.5")).to.equal(true);
+    expect(tooltip.classList.contains("end-0")).to.equal(false);
+    expect(tooltip.style.left).to.equal(`${rect.left}px`);
+    expect(tooltip.style.top).to.equal(`${rect.bottom}px`);
+    expect(popover.isConnected).to.equal(true);
+
+    // Scrolling the popover list closes the card left behind by its event.
+    body.dispatchEvent(new Event("scroll"));
+    expect(getTooltip(popoverEvent)).to.equal(null);
+    expect(popoverEvent.hasAttribute("aria-describedby")).to.equal(false);
+    expect(popover.isConnected).to.equal(true);
+  });
+
+  it("closes the more-events popover when a card of another day opens", async () => {
+    // Focus an event inside an open "+N more" popover.
+    const calendar = await renderCalendar({ events: [] });
+    windowTimers = mockWindowTimers();
+    const { body, moreLink, popover } = mountMorePopover();
+    const popoverEvent = mountEvent(calendar, EVENT, { container: body });
+    const gridEvent = mountEvent(calendar, { ...EVENT, event_id: "event-2", name: "Grid event" });
+    popoverEvent.focus();
+
+    // Passing over another day's event keeps the popover open.
+    gridEvent.dispatchEvent(new MouseEvent("mouseenter"));
+    windowTimers.advance(299);
+    gridEvent.dispatchEvent(new MouseEvent("mouseleave"));
+    windowTimers.advance(100);
+    expect(popover.isConnected).to.equal(true);
+    expect(getTooltip(gridEvent)).to.equal(null);
+
+    // Opening that card closes the popover and returns focus to its "+N more" link.
+    gridEvent.dispatchEvent(new MouseEvent("mouseenter"));
+    windowTimers.advance(300);
+    expect(getTooltip(gridEvent)).not.to.equal(null);
+    expect(popover.isConnected).to.equal(false);
+    expect(document.activeElement).to.equal(moreLink);
   });
 
   it("fetches the minimal month range, returns the envelope, and updates the notice", async () => {
@@ -511,6 +589,14 @@ describe("community explore calendar", () => {
     expect(getTooltip(eventElement)).to.equal(null);
     expect(eventElement.hasAttribute("aria-describedby")).to.equal(false);
     expect(document.activeElement).to.equal(eventElement);
+
+    // Escape also dismisses a hover-opened card while focus is elsewhere.
+    eventElement.blur();
+    eventElement.dispatchEvent(new MouseEvent("mouseenter"));
+    windowTimers.advance(300);
+    expect(getTooltip(eventElement)).not.to.equal(null);
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(getTooltip(eventElement)).to.equal(null);
   });
 
   it("shows the fallback card, stays open while hovered, and forwards tooltip clicks", async () => {
@@ -548,23 +634,25 @@ describe("community explore calendar", () => {
     const firstMount = mountEvent(calendar);
     const secondMount = mountEvent(calendar);
     firstMount.dispatchEvent(new MouseEvent("mouseenter"));
-    secondMount.dispatchEvent(new MouseEvent("mouseenter"));
     await waitForMicrotask();
     windowTimers.advance(300);
-
-    // Each mount has its own tooltip id and description, sharing one request.
     const firstTooltip = getTooltip(firstMount);
-    const secondTooltip = getTooltip(secondMount);
     expect(firstTooltip.id).to.equal("explore-calendar-card-event-1-1");
-    expect(secondTooltip.id).to.equal("explore-calendar-card-event-1-2");
     expect(firstMount.getAttribute("aria-describedby")).to.equal(firstTooltip.id);
+
+    // Focusing the other mount replaces the hovered card with its own, sharing one request.
+    secondMount.focus();
+    windowTimers.advance(300);
+    const secondTooltip = getTooltip(secondMount);
+    expect(secondTooltip.id).to.equal("explore-calendar-card-event-1-2");
     expect(secondMount.getAttribute("aria-describedby")).to.equal(secondTooltip.id);
+    expect(firstTooltip.isConnected).to.equal(false);
+    expect(firstMount.hasAttribute("aria-describedby")).to.equal(false);
+    expect(document.querySelectorAll('[role="tooltip"]')).to.have.length(1);
     expect(fetchMock.calls).to.have.length(1);
 
     // Unmounting one segment releases only its card.
     calendar.fullCalendar.config.eventWillUnmount({ el: firstMount });
-    expect(firstTooltip.isConnected).to.equal(false);
-    expect(firstMount.hasAttribute("aria-describedby")).to.equal(false);
     expect(secondTooltip.isConnected).to.equal(true);
     expect(secondMount.getAttribute("aria-describedby")).to.equal(secondTooltip.id);
 

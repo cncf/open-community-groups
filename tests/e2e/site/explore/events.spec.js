@@ -671,6 +671,148 @@ test.describe("site explore events page", () => {
     await expect(page.getByRole("tooltip")).toHaveCount(0);
   });
 
+  test("keeps one calendar card open and closes hovered cards with Escape", async ({ page }) => {
+    // Serve two next-month events and their cards from routed responses.
+    const nextMonth = addMonths(getMonthStart(new Date()), 1);
+    const focusedEvent = buildMinimalEvent(
+      "Focused card event",
+      getMonthDayAt(nextMonth, 8, 9),
+      getMonthDayAt(nextMonth, 8, 10),
+    );
+    const hoveredEvent = buildMinimalEvent(
+      "Hovered card event",
+      getMonthDayAt(nextMonth, 17, 9),
+      getMonthDayAt(nextMonth, 17, 10),
+    );
+    const routedEvents = [focusedEvent, hoveredEvent];
+    await page.route(/\/explore\/events\/search\?/, (route) =>
+      route.fulfill({ json: { events: routedEvents, total: routedEvents.length, truncated: false } }),
+    );
+    await page.route(/\/explore\/events\/[0-9a-f-]+\/card\?/, (route) => {
+      const eventId = new URL(route.request().url()).pathname.split("/")[3];
+      const event = routedEvents.find((item) => item.event_id === eventId);
+      return route.fulfill({ body: `<article>${event.name} card</article>`, contentType: "text/html" });
+    });
+
+    // Load the calendar and move to the routed month.
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await waitForActionResponse(page, () => page.getByRole("button", { name: "Next month" }).click(), {
+      method: "GET",
+      urlIncludes: "/explore/events/search",
+    });
+
+    // Open the card of a focused event.
+    const focusedLink = page.locator(".fc-daygrid-event").filter({ hasText: focusedEvent.name });
+    await focusedLink.focus();
+    await expect(page.getByRole("tooltip")).toContainText(`${focusedEvent.name} card`);
+
+    // Hovering another event replaces the focused event card.
+    const hoveredLink = page.locator(".fc-daygrid-event").filter({ hasText: hoveredEvent.name });
+    await openCalendarCard(hoveredLink, `${hoveredEvent.name} card`);
+    await expect(page.getByRole("tooltip")).toHaveCount(1);
+    await expect(focusedLink).not.toHaveAttribute("aria-describedby");
+    await expect(focusedLink).toBeFocused();
+
+    // Escape closes the hovered card while focus stays on the other event.
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("tooltip")).toHaveCount(0);
+    await expect(hoveredLink).not.toHaveAttribute("aria-describedby");
+    await expect(focusedLink).toBeFocused();
+  });
+
+  test("scrolls long more-events lists and closes them when another day card opens", async ({ page }) => {
+    // Serve a crowded next-month day, an event on an earlier day, and their cards.
+    const nextMonth = addMonths(getMonthStart(new Date()), 1);
+    const crowdedEvents = Array.from({ length: 30 }, (_, index) =>
+      buildMinimalEvent(
+        `Long day event ${String(index + 1).padStart(2, "0")}`,
+        getMonthDayAt(nextMonth, 10, 9),
+        getMonthDayAt(nextMonth, 10, 10),
+      ),
+    );
+    const otherDayEvent = buildMinimalEvent(
+      "Other day event",
+      getMonthDayAt(nextMonth, 1, 9),
+      getMonthDayAt(nextMonth, 1, 10),
+    );
+    const routedEvents = [...crowdedEvents, otherDayEvent];
+    await page.route(/\/explore\/events\/search\?/, (route) =>
+      route.fulfill({ json: { events: routedEvents, total: routedEvents.length, truncated: false } }),
+    );
+    await page.route(/\/explore\/events\/[0-9a-f-]+\/card\?/, (route) => {
+      const eventId = new URL(route.request().url()).pathname.split("/")[3];
+      const event = routedEvents.find((item) => item.event_id === eventId);
+      return route.fulfill({ body: `<article>${event.name} card</article>`, contentType: "text/html" });
+    });
+
+    // Load the calendar, move to the routed month, and open the crowded day list.
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await waitForActionResponse(page, () => page.getByRole("button", { name: "Next month" }).click(), {
+      method: "GET",
+      urlIncludes: "/explore/events/search",
+    });
+    const moreLink = page.locator(".fc-daygrid-more-link").first();
+    await moreLink.click();
+    const popover = page.locator(".fc-more-popover");
+    await expect(popover).toBeVisible();
+
+    // The list scrolls instead of growing with every event.
+    const popoverBody = popover.locator(".fc-popover-body");
+    expect(await popoverBody.evaluate((body) => body.scrollHeight > body.clientHeight)).toBe(true);
+
+    // A popover event card is positioned against the viewport so the list does not clip it.
+    const popoverEvent = popover.locator(".fc-daygrid-event").filter({ hasText: crowdedEvents[0].name });
+    await popoverEvent.focus();
+    const popoverTooltip = page.getByRole("tooltip");
+    await expect(popoverTooltip).toContainText(`${crowdedEvents[0].name} card`);
+    await expect(popoverTooltip).toHaveClass(/(^|\s)fixed(\s|$)/);
+    await expect(popoverTooltip).toBeInViewport({ ratio: 1 });
+
+    // Scrolling the list closes the card left behind by its event.
+    await popoverBody.evaluate((body) => {
+      body.scrollTop = 100;
+    });
+    await expect(page.getByRole("tooltip")).toHaveCount(0);
+    await expect(popoverEvent).not.toHaveAttribute("aria-describedby");
+    await expect(popover).toBeVisible();
+
+    // Opening another day card closes the list and returns focus to its "+N more" link.
+    const otherDayLink = page.locator(".fc-daygrid-event").filter({ hasText: otherDayEvent.name });
+    await openCalendarCard(otherDayLink, `${otherDayEvent.name} card`);
+    await expect(popover).toHaveCount(0);
+    await expect(moreLink).toBeFocused();
+  });
+
+  test("shows how many events the calendar draws when the month is capped", async ({ page }) => {
+    // Load the calendar and verify the notice starts hidden for uncapped results.
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    const notice = page.locator("[data-explore-truncation-notice]");
+    await expect(notice).toBeHidden();
+
+    // Answer the next month with capped results.
+    const nextMonth = addMonths(getMonthStart(new Date()), 1);
+    const routedEvents = [
+      buildMinimalEvent(
+        "Capped month event",
+        getMonthDayAt(nextMonth, 10, 9),
+        getMonthDayAt(nextMonth, 10, 10),
+      ),
+    ];
+    await page.route(/\/explore\/events\/search\?/, (route) =>
+      route.fulfill({ json: { events: routedEvents, total: 1865, truncated: true } }),
+    );
+    await waitForActionResponse(page, () => page.getByRole("button", { name: "Next month" }).click(), {
+      method: "GET",
+      urlIncludes: "/explore/events/search",
+    });
+
+    // Verify the notice reports the drawn and matching counts inside its status region.
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText("Showing 1 of 1865 events.");
+    await expect(notice).toContainText("Refine your filters to see them all.");
+    await expect(page.getByRole("status").filter({ has: notice })).toHaveCount(1);
+  });
+
   test("treats blank date filters as missing and rejects malformed ones", async ({ request }) => {
     const searchUrl = (dateFrom, dateTo = "") =>
       buildE2eUrl(

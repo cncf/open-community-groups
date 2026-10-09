@@ -132,21 +132,25 @@ describe("community explore widgets", () => {
   it("updates the truncation notice counts and visibility", () => {
     // Mount the notice rendered by the map and calendar views.
     document.body.innerHTML = `
-      <p data-explore-truncation-notice class="hidden">
-        Showing <span data-truncation-shown></span> of <span data-truncation-total></span>
-      </p>
+      <div role="status">
+        <p data-explore-truncation-notice class="hidden">
+          Showing <span data-truncation-shown></span> of <span data-truncation-total></span>
+        </p>
+      </div>
     `;
     const notice = document.querySelector("[data-explore-truncation-notice]");
+    const status = document.querySelector('[role="status"]');
 
-    // Truncated results show the drawn and matching counts.
+    // Truncated results show the drawn and matching counts inside the status region.
     updateTruncationNotice(notice, { shown: 1000, total: 1284, truncated: true });
     expect(notice.classList.contains("hidden")).to.equal(false);
     expect(notice.querySelector("[data-truncation-shown]").textContent).to.equal("1000");
     expect(notice.querySelector("[data-truncation-total]").textContent).to.equal("1284");
 
-    // Complete results hide the notice again.
+    // Complete results hide the notice while the status region stays rendered.
     updateTruncationNotice(notice, { shown: 3, total: 3, truncated: false });
     expect(notice.classList.contains("hidden")).to.equal(true);
+    expect(status.classList.contains("hidden")).to.equal(false);
     expect(notice.querySelector("[data-truncation-shown]").textContent).to.equal("3");
 
     // A missing notice element is ignored.
@@ -329,6 +333,7 @@ describe("community explore widgets", () => {
 
   describe("card controller", () => {
     let closes;
+    let controllers;
     let loader;
     let renders;
     let timers;
@@ -348,24 +353,40 @@ describe("community explore widgets", () => {
       return stub;
     };
 
-    const createController = () =>
-      createCardController({
-        close: () => {
-          closes += 1;
-        },
+    const createController = ({ close, group } = {}) => {
+      const controller = createCardController({
+        close:
+          close ||
+          (() => {
+            closes += 1;
+          }),
+        group,
         item: GROUP,
         loader,
         render: (result) => renders.push(result),
         timers,
       });
+      controllers.push(controller);
+      return controller;
+    };
+
+    // Dispatch an Escape keydown that bubbles from the page body to the document.
+    const pressEscape = () => {
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    };
 
     const READY = { html: "<article>Card</article>", status: "ready" };
 
     beforeEach(() => {
       closes = 0;
+      controllers = [];
       loader = createLoaderStub();
       renders = [];
       timers = createManualTimers();
+    });
+
+    afterEach(() => {
+      controllers.forEach((controller) => controller.destroy());
     });
 
     it("starts loading on activation and waits for the open delay before rendering", async () => {
@@ -534,6 +555,71 @@ describe("community explore widgets", () => {
       expect(controller.isOpen()).to.equal(true);
     });
 
+    it("dismisses pending and hover-opened cards when Escape is pressed anywhere", () => {
+      // Escape cancels a card waiting for its open delay.
+      const controller = createController();
+      controller.activate("hover");
+      pressEscape();
+      expect(controller.isActive()).to.equal(false);
+      timers.advance(POPOVER_OPEN_DELAY_MS);
+      expect(renders).to.deep.equal([]);
+
+      // Other keys keep a hover-opened card open.
+      controller.activate("hover");
+      timers.advance(POPOVER_OPEN_DELAY_MS);
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+      expect(controller.isOpen()).to.equal(true);
+
+      // Escape closes it, and later presses do nothing once it is closed.
+      pressEscape();
+      expect(controller.isOpen()).to.equal(false);
+      expect(closes).to.equal(1);
+      pressEscape();
+      expect(closes).to.equal(1);
+    });
+
+    it("keeps only the most recently opened card of a group visible", () => {
+      // Open a focused card in a shared group.
+      const group = { current: null };
+      let focusedCloses = 0;
+      const focused = createController({
+        close: () => {
+          focusedCloses += 1;
+        },
+        group,
+      });
+      focused.activate("focus");
+      timers.advance(POPOVER_OPEN_DELAY_MS);
+      expect(group.current).to.equal(focused);
+
+      // Waiting to open another card keeps the focused card visible.
+      const hovered = createController({ group });
+      hovered.activate("hover");
+      timers.advance(POPOVER_OPEN_DELAY_MS - 1);
+      expect(focused.isOpen()).to.equal(true);
+
+      // Opening the hovered card dismisses the focused one.
+      timers.advance(1);
+      expect(hovered.isOpen()).to.equal(true);
+      expect(focused.isOpen()).to.equal(false);
+      expect(focusedCloses).to.equal(1);
+      expect(group.current).to.equal(hovered);
+
+      // Closing the hovered card clears the group without reopening the dismissed card.
+      hovered.deactivate("hover");
+      timers.advance(POPOVER_CLOSE_DELAY_MS);
+      expect(group.current).to.equal(null);
+      expect(focused.isOpen()).to.equal(false);
+
+      // Cards outside the group are not affected.
+      const standalone = createController();
+      standalone.activate("hover");
+      focused.activate("hover");
+      timers.advance(POPOVER_OPEN_DELAY_MS);
+      expect(standalone.isOpen()).to.equal(true);
+      expect(focused.isOpen()).to.equal(true);
+    });
+
     it("cancels pending work and ignores activations after destroy", async () => {
       // Destroy a card while it waits to open.
       const controller = createController();
@@ -577,6 +663,10 @@ describe("community explore widgets", () => {
         render: () => {},
         timers,
       });
+    });
+
+    afterEach(() => {
+      controller.destroy();
     });
 
     it("opens cards on trigger hover and focus and dismisses them with Escape", () => {
@@ -694,7 +784,7 @@ describe("community explore widgets", () => {
   });
 
   describe("card tooltip sync", () => {
-    it("describes the trigger with a non-interactive tooltip", () => {
+    it("describes the trigger with a tooltip without focusable card links", () => {
       // Render a ready card with a link inside the tooltip.
       document.body.innerHTML = `
         <a href="/spain/group/malaga-js" id="trigger">Málaga JS</a>

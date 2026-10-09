@@ -42,9 +42,10 @@ const FILTERED_NO_RESULTS_SELECTOR = ".no-results-filtered";
 const FULLCALENDAR_SCRIPT_SRC = "/static/vendor/js/fullcalendar.v6.1.21.min.js";
 const LOADING_CALENDAR_ID = "loading-calendar";
 const MAIN_LOADING_CALENDAR_ID = "main-loading-calendar";
+const MORE_POPOVER_SELECTOR = ".fc-more-popover";
 const NO_RESULTS_SELECTOR = ".no-results-default, .no-results-filtered";
 const POPOVER_BASE_CLASSES =
-  "absolute z-10 invisible inline-block text-sm text-stone-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow";
+  "z-10 invisible inline-block text-sm text-stone-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow";
 const POPOVER_BOTTOM_CLASSES = "pt-1.5";
 const POPOVER_TOP_CLASSES = "top-0 -translate-y-full pb-1.5";
 const RIGHT_ALIGNED_COLUMN_THRESHOLD = 3;
@@ -72,6 +73,7 @@ export class Calendar {
     }
 
     this.calendarElement = null;
+    this.cardGroup = { current: null };
     this.cardLoader = createExploreCardLoader("events", "calendar");
     this.cards = new globalThis.Map();
     this.fullCalendar = null;
@@ -185,15 +187,20 @@ export class Calendar {
     // Give every mounted segment its own tooltip id
     this.mountSequence += 1;
     const alignment = getPopoverAlignment(info);
+    const inMorePopover = Boolean(trigger.closest(MORE_POPOVER_SELECTOR));
     const tooltipId = `explore-calendar-card-${event.event_id}-${this.mountSequence}`;
+    let releaseScrollDismiss = null;
     let releaseTooltip = null;
     let tooltip = null;
 
-    // Render the card in a non-interactive tooltip described by the event
+    // Render the card in a hoverable tooltip described by the event
     const controller = createCardController({
+      group: this.cardGroup,
       item: event,
       loader: this.cardLoader,
       close: () => {
+        releaseScrollDismiss?.();
+        releaseScrollDismiss = null;
         releaseTooltip?.();
         releaseTooltip = null;
         tooltip?.remove();
@@ -202,12 +209,16 @@ export class Calendar {
       },
       render: (result) => {
         if (!tooltip) {
-          tooltip = createTooltipElement(tooltipId, alignment);
+          // The "+N more" popover would cover cards from other days
+          if (!inMorePopover) closeMorePopover(this.calendarElement);
+          tooltip = createTooltipElement(tooltipId, { ...alignment, fixed: inMorePopover });
           parent.append(tooltip);
           releaseTooltip = bindExploreCardTooltip(tooltip, trigger, controller);
+          if (inMorePopover) releaseScrollDismiss = dismissCardOnScroll(controller);
         }
         setTrustedHtml(tooltip, renderExploreCard(result, event.name));
         syncExploreCardTooltip({ result, tooltip, tooltipId, trigger });
+        if (inMorePopover) placeFixedTooltip(tooltip, trigger);
         tooltip.setAttribute("data-open", "");
       },
     });
@@ -387,26 +398,54 @@ export class Calendar {
 }
 
 /**
+ * Closes the open "+N more" popover of the calendar.
+ * Focus inside the popover returns to the "+N more" link that opened it.
+ * @param {HTMLElement|null} calendarElement - Calendar root element
+ */
+const closeMorePopover = (calendarElement) => {
+  const popover = calendarElement?.querySelector(MORE_POPOVER_SELECTOR);
+  if (!popover) return;
+  if (popover.contains(document.activeElement)) {
+    const moreLink = calendarElement.querySelector(
+      `.fc-daygrid-more-link[aria-controls="${CSS.escape(popover.id)}"]`,
+    );
+    moreLink?.focus({ preventScroll: true });
+  }
+  popover.querySelector(".fc-popover-close")?.click();
+};
+
+/**
  * Creates the tooltip element holding an event card.
  * @param {string} id - Tooltip element id
  * @param {object} alignment - Tooltip alignment
+ * @param {boolean} [alignment.fixed] - Whether the tooltip is positioned against the viewport
  * @param {string} alignment.horizontal - Horizontal alignment ('left' or 'right')
  * @param {string} alignment.vertical - Vertical alignment ('top' or 'bottom')
  * @returns {HTMLDivElement} Tooltip element
  */
-const createTooltipElement = (id, { horizontal, vertical }) => {
+const createTooltipElement = (id, { fixed = false, horizontal, vertical }) => {
   const tooltip = document.createElement("div");
   tooltip.id = id;
   tooltip.setAttribute("role", "tooltip");
   tooltip.setAttribute("data-popover", "true");
-  tooltip.className = [
-    POPOVER_BASE_CLASSES,
-    horizontal === "right" ? "end-0" : "",
-    vertical === "top" ? POPOVER_TOP_CLASSES : POPOVER_BOTTOM_CLASSES,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  tooltip.className = `${fixed ? "fixed" : "absolute"} ${POPOVER_BASE_CLASSES}`;
+  setTooltipAlignment(tooltip, { horizontal, vertical });
   return tooltip;
+};
+
+/**
+ * Dismisses a card when the page or any scroll container scrolls or resizes.
+ * @param {object} controller - Card controller
+ * @returns {() => void} Cleanup function removing the listeners
+ */
+const dismissCardOnScroll = (controller) => {
+  const dismiss = () => controller.dismiss();
+  document.addEventListener("scroll", dismiss, { capture: true, passive: true });
+  window.addEventListener("resize", dismiss);
+  return () => {
+    document.removeEventListener("scroll", dismiss, { capture: true });
+    window.removeEventListener("resize", dismiss);
+  };
 };
 
 /**
@@ -487,6 +526,42 @@ const loadFullCalendarScript = () =>
   loadScriptOnce(FULLCALENDAR_SCRIPT_SRC, {
     isLoaded: () => typeof window.FullCalendar !== "undefined",
   });
+
+/**
+ * Places a viewport-positioned tooltip next to its trigger, flipping it to fit.
+ * @param {HTMLElement} tooltip - Fixed tooltip element
+ * @param {HTMLElement} trigger - Event element described by the tooltip
+ */
+const placeFixedTooltip = (tooltip, trigger) => {
+  const rect = trigger.getBoundingClientRect();
+  const viewportWidth = document.documentElement.clientWidth;
+  const alignRight = rect.left + tooltip.offsetWidth > viewportWidth;
+  const alignTop = rect.bottom + tooltip.offsetHeight > window.innerHeight && rect.top > tooltip.offsetHeight;
+  setTooltipAlignment(tooltip, {
+    horizontal: alignRight ? "right" : "left",
+    vertical: alignTop ? "top" : "bottom",
+  });
+  Object.assign(tooltip.style, {
+    bottom: "auto",
+    left: alignRight ? "auto" : `${rect.left}px`,
+    right: alignRight ? `${viewportWidth - rect.right}px` : "auto",
+    top: `${alignTop ? rect.top : rect.bottom}px`,
+  });
+};
+
+/**
+ * Applies the alignment classes positioning a tooltip and its arrow.
+ * @param {HTMLElement} tooltip - Tooltip element
+ * @param {object} alignment - Tooltip alignment
+ * @param {string} alignment.horizontal - Horizontal alignment ('left' or 'right')
+ * @param {string} alignment.vertical - Vertical alignment ('top' or 'bottom')
+ */
+const setTooltipAlignment = (tooltip, { horizontal, vertical }) => {
+  const top = vertical === "top";
+  tooltip.classList.toggle("end-0", horizontal === "right");
+  POPOVER_TOP_CLASSES.split(" ").forEach((className) => tooltip.classList.toggle(className, top));
+  POPOVER_BOTTOM_CLASSES.split(" ").forEach((className) => tooltip.classList.toggle(className, !top));
+};
 
 /**
  * Shows the matching no-results placeholder for the current filter state.

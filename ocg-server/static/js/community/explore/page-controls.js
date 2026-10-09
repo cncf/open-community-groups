@@ -39,7 +39,7 @@ const PREV_MONTH_BUTTON_ID = "prev-month-btn";
 const NEXT_MONTH_BUTTON_ID = "next-month-btn";
 const CALENDAR_MODULE_PATH = "/static/js/community/explore/calendar.js";
 
-/** Calendar module, once a calendar view has loaded it. */
+// Calendar module, once a calendar view has loaded it.
 let calendarModule = null;
 
 /**

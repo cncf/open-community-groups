@@ -182,6 +182,40 @@ describe("event-selector", () => {
     });
   });
 
+  it("shows the copy indicator and ignores repeated copies while copying", async () => {
+    // Hold the event-detail request of a copy next to the page copy indicator.
+    const element = await renderSelector();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div data-copy-indicator class="hidden"><svg-spinner label="Copying event"></svg-spinner></div>',
+    );
+    const indicator = document.querySelector("[data-copy-indicator]");
+    let fetches = 0;
+    let resolveDetails;
+    element._applyEventDetails = () => {};
+    element._fetchEventDetails = () => {
+      fetches += 1;
+      return new Promise((resolve) => {
+        resolveDetails = resolve;
+      });
+    };
+    const button = element.querySelector("#copy-event-trigger");
+    expect(button.hasAttribute("aria-busy")).to.equal(false);
+
+    // The indicator spinner shows, the trigger is busy, and repeated copies are ignored.
+    const copy = element._handleCopyMode({ event_id: "event-9" });
+    expect(indicator.classList.contains("hidden")).to.equal(false);
+    expect(button.getAttribute("aria-busy")).to.equal("true");
+    await element._handleCopyMode({ event_id: "event-10" });
+    expect(fetches).to.equal(1);
+
+    // Completing the copy hides the indicator and clears the busy state.
+    resolveDetails({ event_id: "event-9", name: "Cloud Native Málaga" });
+    await copy;
+    expect(indicator.classList.contains("hidden")).to.equal(true);
+    expect(button.hasAttribute("aria-busy")).to.equal(false);
+  });
+
   it("applies copied event details into the form and resets meeting state", async () => {
     // Render the DOM fixture for applying copied event details into the form.
     document.body.innerHTML = `

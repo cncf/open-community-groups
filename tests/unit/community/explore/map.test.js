@@ -77,10 +77,12 @@ describe("community explore map", () => {
     document.body.innerHTML = `
       <div id="main-loading-map" class="hidden"></div>
       <div id="loading-map"></div>
-      <p data-explore-truncation-notice class="hidden">
-        Showing <span data-truncation-shown></span> of
-        <span data-truncation-total></span>
-      </p>
+      <div role="status">
+        <p data-explore-truncation-notice class="hidden">
+          Showing <span data-truncation-shown></span> of
+          <span data-truncation-total></span>
+        </p>
+      </div>
       <div id="map-box"></div>
     `;
   });
@@ -410,6 +412,10 @@ describe("community explore map", () => {
       "/spain/group/malaga-javascript",
       "/spain/group/malaga-web",
     ]);
+    expect(links.map((link) => link.title)).to.deep.equal([
+      "Málaga JavaScript",
+      "Málaga Web",
+    ]);
     expect(map.easeToCalls).to.have.length(1);
     expect(document.activeElement).to.equal(links[0]);
 
@@ -419,6 +425,19 @@ describe("community explore map", () => {
     );
     expect(document.querySelector(".maplibregl-popup")).to.equal(null);
     expect(controller.clusterPopup).to.equal(null);
+    expect(document.activeElement).to.equal(cluster);
+
+    // The labelled close button dismisses the list and returns focus to the cluster.
+    cluster.click();
+    await waitForMicrotask();
+    const popup = document.querySelector(".maplibregl-popup");
+    expect(popup.classList.contains("explore-map-cluster-popup")).to.equal(true);
+    expect(popup.textContent).to.include("2 groups at this location");
+    const closeButton = popup.querySelector("button");
+    expect(closeButton.textContent).to.equal("Close");
+    closeButton.focus();
+    closeButton.click();
+    expect(document.querySelector(".maplibregl-popup")).to.equal(null);
     expect(document.activeElement).to.equal(cluster);
 
     // Restore trigger focus when the popup closes through another path.
@@ -526,6 +545,35 @@ describe("community explore map", () => {
     windowTimers.advance(300);
     expect(fetchMock.calls).to.have.length(1);
     expect(document.querySelector(".explore-map-tooltip")).not.to.equal(null);
+  });
+
+  it("keeps one pin card open and dismisses hovered cards with Escape", async () => {
+    // Open the card of a focused pin.
+    await initializeMap("groups", { groups: [GROUP, SECOND_GROUP] });
+    windowTimers = mockWindowTimers();
+    fetchMock.setImpl(() => new Promise(() => {}));
+    const focusedPin = document.querySelector(".marker-malaga-js");
+    const hoveredPin = document.querySelector(".marker-malaga-web");
+    focusedPin.focus();
+    windowTimers.advance(300);
+    expect(focusedPin.hasAttribute("aria-describedby")).to.equal(true);
+
+    // Hovering another pin replaces the focused pin card.
+    hoveredPin.dispatchEvent(new MouseEvent("mouseenter"));
+    windowTimers.advance(300);
+    const tooltips = document.querySelectorAll(".explore-map-tooltip");
+    expect(tooltips).to.have.length(1);
+    expect(hoveredPin.getAttribute("aria-describedby")).to.equal(tooltips[0].id);
+    expect(focusedPin.hasAttribute("aria-describedby")).to.equal(false);
+
+    // Escape from the focused pin closes the hovered card and keeps focus.
+    expect(document.activeElement).to.equal(focusedPin);
+    focusedPin.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    expect(document.activeElement).to.equal(focusedPin);
+    expect(document.querySelector(".explore-map-tooltip")).to.equal(null);
+    expect(hoveredPin.hasAttribute("aria-describedby")).to.equal(false);
   });
 
   it("destroys card controllers when markers are cleaned up", async () => {
