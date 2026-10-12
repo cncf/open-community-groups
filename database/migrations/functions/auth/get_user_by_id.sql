@@ -38,13 +38,17 @@ returns json as $$
         'belongs_to_any_group_team', exists (
             select 1
             from group_team gt
+            join "group" g on g.group_id = gt.group_id
             where gt.user_id = u.user_id
             and gt.accepted = true
+            and g.deleted = false
         ) or exists (
             select 1
             from community_team ct
+            join "group" g on g.community_id = ct.community_id
             where ct.user_id = u.user_id
             and ct.accepted = true
+            and g.deleted = false
         ),
         'belongs_to_community_team', exists (
             select 1
