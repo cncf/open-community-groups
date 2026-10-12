@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(531);
+select plan(541);
 
 -- ============================================================================
 -- VARIABLES
@@ -325,6 +325,8 @@ select has_function('get_group_summary', array['uuid', 'uuid']::name[]);
 select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
 select has_function('get_inbox_contact_context', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_public_event_full', array['uuid', 'uuid', 'uuid']::name[]);
+select has_function('get_public_event_summary', array['uuid']::name[]);
+select has_function('get_public_group_summary', array['uuid']::name[]);
 select has_function('get_public_user_badge', array['uuid']::name[]);
 select has_function('get_public_user_provider', array['jsonb']::name[]);
 select has_function('get_user_inbox_conversation', array['uuid', 'uuid']::name[]);
@@ -374,12 +376,14 @@ select has_function('is_event_enrollment_superseded', array['uuid', 'uuid', 'tex
 select has_function('is_event_external_payments_ready', array['uuid']::name[]);
 select has_function('is_event_meeting_in_sync', array['event', 'jsonb']::name[]);
 select has_function('is_event_paid_capable', array['uuid']::name[]);
+select has_function('is_event_public', array['event', '"group"']::name[]);
 select has_function('is_event_simple_rsvp', array['uuid']::name[]);
 select has_function('is_event_ticketing_payload_paid_capable', array['jsonb']::name[]);
 select has_function('is_group_external_payments_ready', array['uuid']::name[]);
 select has_function('is_group_external_payments_selected', array['uuid']::name[]);
 select has_function('is_group_member', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('is_inbox_event_public', array['event', '"group"']::name[]);
+select has_function('is_group_public', array['"group"']::name[]);
+select hasnt_function('is_inbox_event_public', array['event', '"group"']::name[]);
 select has_function('is_inbox_user_blocked', array['uuid', 'uuid']::name[]);
 select has_function('is_open_graph_image', array['text']::name[]);
 select has_function(
@@ -632,11 +636,17 @@ select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
 select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);
 select has_function('revoke_group_user_badge', array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('revoke_user_badge', array['uuid', 'uuid']::name[]);
+select has_function('search_bbox_envelope', array['jsonb']::name[]);
+select has_function('search_bbox_json', array['geometry']::name[]);
 select has_function('search_event_attendees', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('search_event_invitation_requests', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('search_event_waitlist', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('search_events', array['jsonb']::name[]);
+select has_function('search_events_matches', array['jsonb']::name[]);
+select has_function('search_events_minimal', array['jsonb', 'integer']::name[]);
 select has_function('search_groups', array['jsonb']::name[]);
+select has_function('search_groups_matches', array['jsonb']::name[]);
+select has_function('search_groups_minimal', array['jsonb', 'integer']::name[]);
 select has_function('search_inbox_conversations', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('search_user', array['text']::name[]);
 select has_function('set_meeting_auto_end_check_outcome', array['timestamp with time zone', 'uuid', 'text']::name[]);

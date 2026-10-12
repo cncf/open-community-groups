@@ -87,7 +87,7 @@ begin
                                 when e.event_id is null then null
                                 else jsonb_build_object(
                                     'event_id', e.event_id,
-                                    'is_public', is_inbox_event_public(e, g),
+                                    'is_public', is_event_public(e, g),
                                     'name', e.name
                                 )
                             end
@@ -125,6 +125,7 @@ begin
     into v_result
     from conversations_json, totals;
 
+    -- Return the page payload
     return v_result;
 end;
 $$ language plpgsql stable;

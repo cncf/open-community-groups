@@ -5,13 +5,17 @@ use async_trait::async_trait;
 use cached::cached;
 use tokio_postgres::types::Json;
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
     db::{PgClient, PgExecutor},
     types::{
         community::CommunitySummary,
-        event::{EventKind, EventSummary},
-        group::GroupSummary,
+        event::{EventKind, EventMinimal, EventSummary},
+        group::{GroupMinimal, GroupSummary},
+        search::{
+            SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters, SearchGroupsOutput,
+        },
         site::{
             SiteHomeStats, SiteSettings,
             explore::{Entity, FiltersOptions},
@@ -31,6 +35,12 @@ pub(crate) trait DBSite {
         community_name: Option<String>,
         entity: Option<Entity>,
     ) -> Result<FiltersOptions>;
+
+    /// Retrieves the summary of an event whose public page is available.
+    async fn get_public_event_summary(&self, event_id: Uuid) -> Result<Option<EventSummary>>;
+
+    /// Retrieves the summary of a group whose public page is available.
+    async fn get_public_group_summary(&self, group_id: Uuid) -> Result<Option<GroupSummary>>;
 
     /// Retrieves the site home stats.
     ///
@@ -64,6 +74,22 @@ pub(crate) trait DBSite {
     ///
     /// Cached for up to five minutes per process.
     async fn list_communities(&self) -> Result<Vec<CommunitySummary>>;
+
+    /// Searches the events to draw on the explore map or calendar, returning at
+    /// most `limit` minimal items together with the uncapped total.
+    async fn search_events_minimal(
+        &self,
+        filters: &SearchEventsFilters,
+        limit: usize,
+    ) -> Result<SearchEventsOutput<EventMinimal>>;
+
+    /// Searches the groups to draw on the explore map, returning at most
+    /// `limit` minimal items together with the uncapped total.
+    async fn search_groups_minimal(
+        &self,
+        filters: &SearchGroupsFilters,
+        limit: usize,
+    ) -> Result<SearchGroupsOutput<GroupMinimal>>;
 }
 
 #[async_trait]
@@ -82,6 +108,18 @@ where
             &[&community_name, &entity.map(|e| e.to_string())],
         )
         .await
+    }
+
+    #[instrument(skip(self), err)]
+    async fn get_public_event_summary(&self, event_id: Uuid) -> Result<Option<EventSummary>> {
+        self.fetch_json_opt("select get_public_event_summary($1::uuid)", &[&event_id])
+            .await
+    }
+
+    #[instrument(skip(self), err)]
+    async fn get_public_group_summary(&self, group_id: Uuid) -> Result<Option<GroupSummary>> {
+        self.fetch_json_opt("select get_public_group_summary($1::uuid)", &[&group_id])
+            .await
     }
 
     #[instrument(skip(self), err)]
@@ -177,5 +215,33 @@ where
 
         let db = self.client().await?;
         inner(db).await
+    }
+
+    #[instrument(skip(self, filters), err)]
+    async fn search_events_minimal(
+        &self,
+        filters: &SearchEventsFilters,
+        limit: usize,
+    ) -> Result<SearchEventsOutput<EventMinimal>> {
+        let limit = i32::try_from(limit)?;
+        self.fetch_json_one(
+            "select search_events_minimal($1::jsonb, $2::int)",
+            &[&Json(filters), &limit],
+        )
+        .await
+    }
+
+    #[instrument(skip(self, filters), err)]
+    async fn search_groups_minimal(
+        &self,
+        filters: &SearchGroupsFilters,
+        limit: usize,
+    ) -> Result<SearchGroupsOutput<GroupMinimal>> {
+        let limit = i32::try_from(limit)?;
+        self.fetch_json_one(
+            "select search_groups_minimal($1::jsonb, $2::int)",
+            &[&Json(filters), &limit],
+        )
+        .await
     }
 }

@@ -1,217 +1,117 @@
-use axum::http::HeaderValue;
+use chrono::TimeZone;
 
 use super::*;
 
 #[test]
-fn test_events_filters_new_list_cleans_empty_entries() {
-    // Prepare headers and raw query (using bracket notation for arrays)
-    let raw_query = [
-        "event_category[0]=",
-        "event_category[1]=conference",
-        "group_category[0]=",
-        "group_category[1]=rust",
-        "region[0]=",
-        "region[1]=europe",
-        "view_mode=list",
-    ]
-    .join("&");
+fn test_events_filters_normalize_calendar_sets_month_date_range() {
+    // Setup calendar filters without date bounds
+    let mut filters = SearchEventsFilters {
+        view_mode: Some(ViewMode::Calendar),
+        ..Default::default()
+    };
 
-    // Create filters
-    let filters =
-        SearchEventsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
+    // Normalize filters in the last month of the year
+    filters.normalize(sample_now(2031, 12, 15));
 
-    // Check filters match expected values
+    // Check the range covers the whole month
+    assert_eq!(filters.date_from, NaiveDate::from_ymd_opt(2031, 12, 1));
+    assert_eq!(filters.date_to, NaiveDate::from_ymd_opt(2031, 12, 31));
+}
+
+#[test]
+fn test_events_filters_normalize_drops_empty_entries() {
+    // Setup filters with empty entries
+    let mut filters = SearchEventsFilters {
+        event_category: vec![String::new(), "conference".to_string()],
+        group: vec![String::new(), "rust-madrid".to_string()],
+        group_category: vec![String::new(), "rust".to_string()],
+        region: vec![String::new(), "europe".to_string()],
+        view_mode: Some(ViewMode::List),
+        ..Default::default()
+    };
+
+    // Normalize filters
+    filters.normalize(sample_now(2031, 1, 15));
+
+    // Check empty entries were dropped
     assert_eq!(filters.event_category, vec!["conference".to_string()]);
+    assert_eq!(filters.group, vec!["rust-madrid".to_string()]);
     assert_eq!(filters.group_category, vec!["rust".to_string()]);
     assert_eq!(filters.region, vec!["europe".to_string()]);
-    assert_eq!(filters.view_mode, Some(ViewMode::List));
 }
 
 #[test]
-fn test_events_filters_new_list_extracts_location_from_headers() {
-    // Prepare headers and raw query
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "CloudFront-Viewer-Latitude",
-        HeaderValue::from_static("51.5"),
-    );
-    headers.insert(
-        "CloudFront-Viewer-Longitude",
-        HeaderValue::from_static("-0.12"),
-    );
+fn test_events_filters_normalize_list_keeps_provided_date_range() {
+    // Setup list filters with date bounds
+    let mut filters = SearchEventsFilters {
+        date_from: NaiveDate::from_ymd_opt(2031, 1, 15),
+        date_to: NaiveDate::from_ymd_opt(2031, 2, 20),
+        limit: Some(20),
+        offset: Some(40),
+        view_mode: Some(ViewMode::List),
+        ..Default::default()
+    };
 
-    // Create filters
-    let filters =
-        SearchEventsFilters::new(&headers, "view_mode=list").expect("filters to be created");
+    // Normalize filters
+    filters.normalize(sample_now(2030, 6, 1));
 
-    // Check filters match expected values
-    assert_eq!(filters.latitude, Some(51.5));
-    assert_eq!(filters.longitude, Some(-0.12));
-    assert_eq!(filters.view_mode, Some(ViewMode::List));
-}
-
-#[test]
-fn test_events_filters_new_list_sets_default_date_range_when_missing() {
-    // Capture the time before
-    let before = Utc::now().date_naive();
-
-    // Create filters
-    let filters = SearchEventsFilters::new(&HeaderMap::new(), "view_mode=list")
-        .expect("filters to be created");
-
-    // Capture the time after
-    let after = Utc::now().date_naive();
-
-    // Read the dates from the filters
-    let date_from = filters.date_from.expect("date_from to exist");
-    let date_to = filters.date_to.expect("date_to to exist");
-    let expected_date_to = date_from
-        .checked_add_months(Months::new(12))
-        .expect("valid future date");
-
-    // Check filters match expected values
-    assert_eq!(filters.view_mode, Some(ViewMode::List));
-    assert!(
-        date_from == before || date_from == after,
-        "date_from should match today"
-    );
-    assert_eq!(date_to, expected_date_to);
-}
-
-#[test]
-fn test_events_filters_new_calendar_sets_month_date_range() {
-    // Capture the time before
-    let before = Utc::now();
-
-    // Create filters
-    let filters = SearchEventsFilters::new(&HeaderMap::new(), "view_mode=calendar")
-        .expect("filters to be created");
-
-    // Capture the time after
-    let after = Utc::now();
-
-    // Read the dates from the filters
-    let date_from = filters.date_from.expect("date_from to exist");
-    let date_to = filters.date_to.expect("date_to to exist");
-    let month_first_day_before =
-        NaiveDate::from_ymd_opt(before.year(), before.month(), 1).expect("valid date");
-    let month_first_day_after =
-        NaiveDate::from_ymd_opt(after.year(), after.month(), 1).expect("valid date");
-    let month_last_day = date_from
-        .checked_add_months(Months::new(1))
-        .expect("valid next month")
-        .pred_opt()
-        .expect("valid month end");
-
-    // Check filters match expected values
-    assert_eq!(filters.view_mode, Some(ViewMode::Calendar));
-    assert_eq!(filters.limit, Some(100));
-    assert_eq!(filters.offset, Some(0));
-    assert!(
-        date_from == month_first_day_before || date_from == month_first_day_after,
-        "date_from should match the first day of the current month"
-    );
-    assert_eq!(date_to, month_last_day);
-}
-
-#[test]
-fn test_events_filters_new_list_uses_provided_date_range() {
-    // Create filters
-    let filters = SearchEventsFilters::new(
-        &HeaderMap::new(),
-        "date_from=2031-01-15&date_to=2031-02-20&view_mode=list",
-    )
-    .expect("filters to be created");
-
-    // Check filters match expected values
+    // Check the provided range and pagination were kept
     assert_eq!(filters.date_from, NaiveDate::from_ymd_opt(2031, 1, 15));
     assert_eq!(filters.date_to, NaiveDate::from_ymd_opt(2031, 2, 20));
-    assert_eq!(filters.view_mode, Some(ViewMode::List));
+    assert_eq!(filters.limit, Some(20));
+    assert_eq!(filters.offset, Some(40));
 }
 
 #[test]
-fn test_events_filters_new_list_treats_blank_dates_as_missing() {
-    // Capture the time before
-    let before = Utc::now().date_naive();
+fn test_events_filters_normalize_list_sets_default_date_range() {
+    // Setup list filters without date bounds
+    let mut filters = SearchEventsFilters {
+        view_mode: Some(ViewMode::List),
+        ..Default::default()
+    };
 
-    // Create filters with blank date values, as sent by a cleared date input
-    let filters = SearchEventsFilters::new(&HeaderMap::new(), "date_from=&date_to=&view_mode=list")
-        .expect("filters to be created");
+    // Normalize filters
+    filters.normalize(sample_now(2031, 1, 31));
 
-    // Capture the time after
-    let after = Utc::now().date_naive();
-
-    // Check the default date range was applied
-    let date_from = filters.date_from.expect("date_from to exist");
-    let date_to = filters.date_to.expect("date_to to exist");
-    assert!(
-        date_from == before || date_from == after,
-        "date_from should match today"
-    );
-    assert_eq!(
-        date_to,
-        date_from
-            .checked_add_months(Months::new(12))
-            .expect("valid future date")
-    );
+    // Check the range starts today and spans twelve months
+    assert_eq!(filters.date_from, NaiveDate::from_ymd_opt(2031, 1, 31));
+    assert_eq!(filters.date_to, NaiveDate::from_ymd_opt(2032, 1, 31));
 }
 
 #[test]
-fn test_events_filters_new_rejects_invalid_dates() {
-    // Check invalid values in either date field fail at deserialization
-    for raw_query in [
-        "date_from=not-a-date",
-        "date_to=2031-13-45",
-        "date_from=2031/01/15",
-    ] {
-        let err = SearchEventsFilters::new(&HeaderMap::new(), raw_query)
-            .expect_err("invalid date to be rejected");
-        assert!(
-            matches!(err, FilterError::Parse(_)),
-            "{raw_query} should fail with a parse error, got: {err}"
-        );
-    }
+fn test_events_filters_normalize_map_keeps_bbox_and_pagination() {
+    // Setup map filters
+    let mut filters = SearchEventsFilters {
+        bbox_ne_lat: Some(45.0),
+        bbox_ne_lon: Some(10.0),
+        bbox_sw_lat: Some(40.0),
+        bbox_sw_lon: Some(5.0),
+        limit: Some(10),
+        offset: Some(30),
+        view_mode: Some(ViewMode::Map),
+        ..Default::default()
+    };
 
-    // Check years PostgreSQL cannot cast fail at validation
-    for raw_query in [
-        "date_from=0000-01-01",
-        "date_from=-5000-01-01",
-        "date_to=%2B12345-01-01",
-    ] {
-        let err = SearchEventsFilters::new(&HeaderMap::new(), raw_query)
-            .expect_err("out of range year to be rejected");
-        assert!(
-            matches!(err, FilterError::Validation(_)),
-            "{raw_query} should fail with a validation error, got: {err}"
-        );
-    }
-}
+    // Normalize filters
+    filters.normalize(sample_now(2031, 1, 15));
 
-#[test]
-fn test_events_filters_new_map_sets_bbox_and_pagination() {
-    // Prepare headers and raw query
-    let raw_query = [
-        "bbox_ne_lat=45.0",
-        "bbox_ne_lon=10.0",
-        "bbox_sw_lat=40.0",
-        "bbox_sw_lon=5.0",
-        "view_mode=map",
-    ]
-    .join("&");
-
-    // Create filters
-    let filters =
-        SearchEventsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
-
-    // Check filters match expected values
-    assert_eq!(filters.view_mode, Some(ViewMode::Map));
-    assert_eq!(filters.include_bbox, Some(true));
-    assert_eq!(filters.limit, Some(100));
-    assert_eq!(filters.offset, Some(0));
+    // Check the bbox and pagination were kept
     assert_eq!(filters.bbox_ne_lat, Some(45.0));
     assert_eq!(filters.bbox_ne_lon, Some(10.0));
     assert_eq!(filters.bbox_sw_lat, Some(40.0));
     assert_eq!(filters.bbox_sw_lon, Some(5.0));
+    assert_eq!(filters.limit, Some(10));
+    assert_eq!(filters.offset, Some(30));
+}
+
+#[test]
+fn test_events_filters_parse_legacy_include_bbox() {
+    // Parse a bookmarked query string that still carries the removed key
+    let filters: SearchEventsFilters =
+        serde_qs::from_str("include_bbox=true&view_mode=map").expect("filters to be parsed");
+
+    // Check the legacy key is ignored
+    assert_eq!(filters.view_mode, Some(ViewMode::Map));
 }
 
 #[test]
@@ -221,7 +121,6 @@ fn test_events_filters_to_raw_query_preserves_custom_values() {
         date_from: NaiveDate::from_ymd_opt(2030, 1, 1),
         date_to: NaiveDate::from_ymd_opt(2030, 6, 1),
         event_category: vec!["conference".to_string()],
-        include_bbox: Some(false),
         kind: vec![EventKind::Hybrid],
         latitude: Some(51.5),
         limit: Some(40),
@@ -240,7 +139,6 @@ fn test_events_filters_to_raw_query_preserves_custom_values() {
     assert!(query.contains("date_from=2030-01-01"));
     assert!(query.contains("date_to=2030-06-01"));
     assert!(query.contains("event_category[0]=conference"));
-    assert!(query.contains("include_bbox=false"));
     assert!(query.contains("kind[0]=hybrid"));
     assert!(query.contains("limit=40"));
     assert!(query.contains("offset=15"));
@@ -260,7 +158,6 @@ fn test_events_filters_to_raw_query_resets_default_values() {
         date_from: Some(date_from),
         date_to: Some(date_to),
         event_category: vec!["meetup".to_string()],
-        include_bbox: Some(true),
         kind: vec![EventKind::InPerson],
         latitude: Some(52.0),
         limit: Some(20),
@@ -277,7 +174,6 @@ fn test_events_filters_to_raw_query_resets_default_values() {
 
     // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
     assert!(query.contains("event_category[0]=meetup"));
-    assert!(query.contains("include_bbox=true"));
     assert!(query.contains("limit=20"));
     assert!(query.contains("offset=5"));
     assert!(query.contains("ts_query=rust"));
@@ -291,113 +187,85 @@ fn test_events_filters_to_raw_query_resets_default_values() {
 
 #[test]
 fn test_events_filters_uses_viewer_location_for_distance_searches() {
-    // Prepare headers
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "CloudFront-Viewer-Latitude",
-        HeaderValue::from_static("51.5"),
-    );
-    headers.insert(
-        "CloudFront-Viewer-Longitude",
-        HeaderValue::from_static("-0.12"),
-    );
+    // Setup filters with a viewer location
+    let default_filters = SearchEventsFilters {
+        latitude: Some(51.5),
+        longitude: Some(-0.12),
+        ..Default::default()
+    };
+    let distance_filter_filters = SearchEventsFilters {
+        distance: Some(25000),
+        ..default_filters.clone()
+    };
+    let distance_sort_filters = SearchEventsFilters {
+        sort_by: Some("distance".to_string()),
+        ..default_filters.clone()
+    };
+    let no_location_filters = SearchEventsFilters {
+        distance: Some(25000),
+        sort_by: Some("distance".to_string()),
+        ..Default::default()
+    };
 
-    // Create filters
-    let default_filters = SearchEventsFilters::new(&headers, "").expect("filters to be created");
-    let distance_filter_filters =
-        SearchEventsFilters::new(&headers, "distance=25000").expect("filters to be created");
-    let distance_sort_filters =
-        SearchEventsFilters::new(&headers, "sort_by=distance").expect("filters to be created");
-
-    // Check filters match expected values
+    // Check only location sensitive searches with a location use it
     assert!(!default_filters.uses_viewer_location());
     assert!(distance_filter_filters.uses_viewer_location());
     assert!(distance_sort_filters.uses_viewer_location());
+    assert!(!no_location_filters.uses_viewer_location());
 }
 
 #[test]
-fn test_groups_filters_new_list_cleans_empty_entries() {
-    // Prepare headers and raw query (using bracket notation for arrays)
-    let raw_query = [
-        "group_category[0]=",
-        "group_category[1]=rust",
-        "region[0]=",
-        "region[1]=europe",
-        "view_mode=list",
-    ]
-    .join("&");
+fn test_groups_filters_normalize_drops_empty_entries() {
+    // Setup filters with empty entries
+    let mut filters = SearchGroupsFilters {
+        group_category: vec![String::new(), "rust".to_string()],
+        region: vec![String::new(), "europe".to_string()],
+        view_mode: Some(ViewMode::List),
+        ..Default::default()
+    };
 
-    // Create filters
-    let filters =
-        SearchGroupsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
+    // Normalize filters
+    filters.normalize();
 
-    // Check filters match expected values
+    // Check empty entries were dropped
     assert_eq!(filters.group_category, vec!["rust".to_string()]);
     assert_eq!(filters.region, vec!["europe".to_string()]);
-    assert_eq!(filters.view_mode, Some(ViewMode::List));
 }
 
 #[test]
-fn test_groups_filters_new_list_extracts_location_from_headers() {
-    // Prepare headers and raw query
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "CloudFront-Viewer-Latitude",
-        HeaderValue::from_static("51.5"),
-    );
-    headers.insert(
-        "CloudFront-Viewer-Longitude",
-        HeaderValue::from_static("-0.12"),
-    );
+fn test_groups_filters_normalize_map_keeps_bbox_and_pagination() {
+    // Setup map filters
+    let mut filters = SearchGroupsFilters {
+        bbox_ne_lat: Some(45.0),
+        bbox_ne_lon: Some(10.0),
+        bbox_sw_lat: Some(40.0),
+        bbox_sw_lon: Some(5.0),
+        limit: Some(10),
+        offset: Some(30),
+        view_mode: Some(ViewMode::Map),
+        ..Default::default()
+    };
 
-    // Create filters
-    let filters =
-        SearchGroupsFilters::new(&headers, "view_mode=list").expect("filters to be created");
+    // Normalize filters
+    filters.normalize();
 
-    // Check filters match expected values
-    assert_eq!(filters.latitude, Some(51.5));
-    assert_eq!(filters.longitude, Some(-0.12));
-    assert_eq!(filters.view_mode, Some(ViewMode::List));
-}
-
-#[test]
-fn test_groups_filters_new_calendar_sets_pagination_defaults() {
-    // Create filters
-    let filters = SearchGroupsFilters::new(&HeaderMap::new(), "view_mode=calendar")
-        .expect("filters to be created");
-
-    // Check filters match expected values
-    assert_eq!(filters.view_mode, Some(ViewMode::Calendar));
-    assert_eq!(filters.limit, Some(100));
-    assert_eq!(filters.offset, Some(0));
-    assert_eq!(filters.include_bbox, None);
-}
-
-#[test]
-fn test_groups_filters_new_map_sets_bbox_and_pagination_defaults() {
-    // Prepare headers and raw query
-    let raw_query = [
-        "bbox_ne_lat=45.0",
-        "bbox_ne_lon=10.0",
-        "bbox_sw_lat=40.0",
-        "bbox_sw_lon=5.0",
-        "view_mode=map",
-    ]
-    .join("&");
-
-    // Create filters
-    let filters =
-        SearchGroupsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
-
-    // Check filters match expected values
-    assert_eq!(filters.view_mode, Some(ViewMode::Map));
-    assert_eq!(filters.include_bbox, Some(true));
-    assert_eq!(filters.limit, Some(100));
-    assert_eq!(filters.offset, Some(0));
+    // Check the bbox and pagination were kept
     assert_eq!(filters.bbox_ne_lat, Some(45.0));
     assert_eq!(filters.bbox_ne_lon, Some(10.0));
     assert_eq!(filters.bbox_sw_lat, Some(40.0));
     assert_eq!(filters.bbox_sw_lon, Some(5.0));
+    assert_eq!(filters.limit, Some(10));
+    assert_eq!(filters.offset, Some(30));
+}
+
+#[test]
+fn test_groups_filters_parse_legacy_include_bbox() {
+    // Parse a bookmarked query string that still carries the removed key
+    let filters: SearchGroupsFilters =
+        serde_qs::from_str("include_bbox=true&view_mode=map").expect("filters to be parsed");
+
+    // Check the legacy key is ignored
+    assert_eq!(filters.view_mode, Some(ViewMode::Map));
 }
 
 #[test]
@@ -406,7 +274,6 @@ fn test_groups_filters_to_raw_query_preserves_custom_values() {
     let filters = SearchGroupsFilters {
         distance: Some(25.5),
         group_category: vec!["rust".to_string()],
-        include_bbox: Some(false),
         latitude: Some(51.5),
         limit: Some(40),
         longitude: Some(-0.12),
@@ -424,7 +291,6 @@ fn test_groups_filters_to_raw_query_preserves_custom_values() {
     // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
     assert!(query.contains("distance=25.5"));
     assert!(query.contains("group_category[0]=rust"));
-    assert!(query.contains("include_bbox=false"));
     assert!(query.contains("limit=40"));
     assert!(query.contains("offset=15"));
     assert!(query.contains("region[0]=europe"));
@@ -440,7 +306,6 @@ fn test_groups_filters_to_raw_query_resets_default_values() {
     // Prepare filters
     let filters = SearchGroupsFilters {
         group_category: vec!["dev".to_string()],
-        include_bbox: Some(true),
         latitude: Some(40.0),
         limit: Some(20),
         longitude: Some(-3.7),
@@ -457,7 +322,6 @@ fn test_groups_filters_to_raw_query_resets_default_values() {
 
     // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
     assert!(query.contains("group_category[0]=dev"));
-    assert!(query.contains("include_bbox=true"));
     assert!(query.contains("limit=20"));
     assert!(query.contains("offset=5"));
     assert!(query.contains("region[0]=emea"));
@@ -470,72 +334,38 @@ fn test_groups_filters_to_raw_query_resets_default_values() {
 
 #[test]
 fn test_groups_filters_uses_viewer_location_for_distance_searches() {
-    // Prepare headers
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "CloudFront-Viewer-Latitude",
-        HeaderValue::from_static("51.5"),
-    );
-    headers.insert(
-        "CloudFront-Viewer-Longitude",
-        HeaderValue::from_static("-0.12"),
-    );
+    // Setup filters with a viewer location
+    let default_filters = SearchGroupsFilters {
+        latitude: Some(51.5),
+        longitude: Some(-0.12),
+        ..Default::default()
+    };
+    let distance_filter_filters = SearchGroupsFilters {
+        distance: Some(25000.0),
+        ..default_filters.clone()
+    };
+    let distance_sort_filters = SearchGroupsFilters {
+        sort_by: Some("distance".to_string()),
+        ..default_filters.clone()
+    };
+    let no_location_filters = SearchGroupsFilters {
+        distance: Some(25000.0),
+        sort_by: Some("distance".to_string()),
+        ..Default::default()
+    };
 
-    // Create filters
-    let default_filters = SearchGroupsFilters::new(&headers, "").expect("filters to be created");
-    let distance_filter_filters =
-        SearchGroupsFilters::new(&headers, "distance=25000").expect("filters to be created");
-    let distance_sort_filters =
-        SearchGroupsFilters::new(&headers, "sort_by=distance").expect("filters to be created");
-
-    // Check filters match expected values
+    // Check only location sensitive searches with a location use it
     assert!(!default_filters.uses_viewer_location());
     assert!(distance_filter_filters.uses_viewer_location());
     assert!(distance_sort_filters.uses_viewer_location());
+    assert!(!no_location_filters.uses_viewer_location());
 }
 
-#[test]
-fn test_extract_location_valid_headers() {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "CloudFront-Viewer-Latitude",
-        HeaderValue::from_static("10.123"),
-    );
-    headers.insert(
-        "CloudFront-Viewer-Longitude",
-        HeaderValue::from_static("-20.456"),
-    );
+// Helpers.
 
-    let (latitude, longitude) = extract_location(&headers);
-
-    assert_eq!(latitude, Some(10.123));
-    assert_eq!(longitude, Some(-20.456));
-}
-
-#[test]
-fn test_extract_location_missing_headers() {
-    let headers = HeaderMap::new();
-
-    let (latitude, longitude) = extract_location(&headers);
-
-    assert_eq!(latitude, None);
-    assert_eq!(longitude, None);
-}
-
-#[test]
-fn test_extract_location_invalid_values() {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "CloudFront-Viewer-Latitude",
-        HeaderValue::from_static("invalid"),
-    );
-    headers.insert(
-        "CloudFront-Viewer-Longitude",
-        HeaderValue::from_static("10.0"),
-    );
-
-    let (latitude, longitude) = extract_location(&headers);
-
-    assert_eq!(latitude, None);
-    assert_eq!(longitude, None);
+/// Returns a fixed noon UTC instant for the given date.
+fn sample_now(year: i32, month: u32, day: u32) -> DateTime<Utc> {
+    Utc.with_ymd_and_hms(year, month, day, 12, 0, 0)
+        .single()
+        .expect("valid instant")
 }

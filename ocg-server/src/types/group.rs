@@ -16,11 +16,14 @@ use crate::types::{
 
 // Group types: minimal, summary and full.
 
-/// Minimal group information for dashboard selectors.
+/// Minimal group information for dashboard selectors and the explore map.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupMinimal {
     /// Whether the group is active.
     pub active: bool,
+    /// Name of the community this group belongs to (slug for URLs).
+    pub community_name: String,
     /// Unique identifier for the group.
     pub group_id: Uuid,
     /// Display name of the group.
@@ -28,6 +31,10 @@ pub struct GroupMinimal {
     /// URL-friendly identifier for this group.
     pub slug: String,
 
+    /// Latitude of the group's location.
+    pub latitude: Option<f64>,
+    /// Longitude of the group's location.
+    pub longitude: Option<f64>,
     /// Admin-managed URL-friendly identifier for this group.
     pub slug_pretty: Option<String>,
 }
@@ -81,8 +88,6 @@ pub struct GroupSummary {
     pub longitude: Option<f64>,
     /// URL to the group's Open Graph image used for link previews.
     pub og_image_url: Option<String>,
-    /// Pre-rendered HTML for map popovers.
-    pub popover_html: Option<String>,
     /// Geographic region this group belongs to.
     pub region: Option<GroupRegion>,
     /// Admin-managed URL-friendly identifier for this group.

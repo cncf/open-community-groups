@@ -174,11 +174,22 @@ test.describe("site explore groups page", () => {
     await expect(page.locator("#map-box.maplibregl-map")).toBeVisible();
     await expect(page.locator("#sort_selector")).toHaveCount(0);
 
-    // Verify the filtered group marker exposes its card and public destination.
+    // Verify hovering the filtered group marker loads its card on demand.
     const groupMarker = page.locator(`.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.gamma}`);
     await expect(groupMarker).toBeVisible();
-    await groupMarker.hover();
-    await expect(page.locator(".maplibregl-popup.explore-map-tooltip")).toContainText(TEST_GROUP_NAMES.gamma);
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" && isGroupCardUrl(response.url()) && response.ok(),
+      ),
+      groupMarker.hover(),
+    ]);
+    const tooltip = page.locator(".maplibregl-popup.explore-map-tooltip");
+    await expect(tooltip).toHaveAttribute("role", "tooltip");
+    await expect(tooltip).toContainText(TEST_GROUP_NAMES.gamma);
+    await expect(tooltip).toHaveAttribute("aria-busy", "false");
+
+    // Verify the marker navigates to the group's public destination.
     await Promise.all([
       page.waitForURL(new RegExp(`/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.gamma}$`)),
       groupMarker.click(),
@@ -228,8 +239,61 @@ test.describe("site explore groups page", () => {
     expect(searchData.groups.map((group) => group.slug).sort()).toEqual(
       [TEST_GROUP_SLUGS.community1.externalPayments, TEST_GROUP_SLUGS.community1.gamma].sort(),
     );
+    expect(searchData.truncated).toBe(false);
     await expect(externalPaymentsMarker).toBeVisible();
     await expect(gammaMarker).toBeVisible();
+  });
+
+  test("shows the group name when a map card cannot be loaded", async ({ page }) => {
+    // Keep the real map runtime and make every group card unavailable.
+    await routeEmptyBasemap(page);
+    await page.route(
+      (url) => isGroupCardUrl(url.href),
+      (route) => route.fulfill({ status: 404, body: "" }),
+    );
+
+    // Load the map with the seeded community groups.
+    await navigateToPath(page, `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}&view_mode=map`);
+
+    // Hover a group marker and verify the fallback card names the group.
+    const groupMarker = page.locator(`.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.gamma}`);
+    await expect(groupMarker).toBeVisible();
+    await groupMarker.hover();
+    const tooltip = page.locator(".maplibregl-popup.explore-map-tooltip");
+    await expect(tooltip).toContainText(TEST_GROUP_NAMES.gamma);
+    await expect(tooltip).toContainText("Details are not available right now.");
+  });
+
+  test("shows how many groups the map draws when the results are capped", async ({ page }) => {
+    // Keep the real map runtime while removing external basemap dependencies.
+    await routeEmptyBasemap(page);
+
+    // Load the map and verify the notice starts hidden for uncapped results.
+    await navigateToPath(page, `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}&view_mode=map`);
+    const notice = page.locator("[data-explore-truncation-notice]");
+    await expect(notice).toBeHidden();
+    await expect(
+      page.locator(`.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.gamma}`),
+    ).toBeVisible();
+
+    // Answer the next viewport refresh with capped results.
+    await page.route(
+      (url) => url.pathname === "/explore/groups/search",
+      async (route) => {
+        const response = await route.fetch();
+        const data = await response.json();
+        await route.fulfill({ response, json: { ...data, total: 1284, truncated: true } });
+      },
+    );
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes("/explore/groups/search")),
+      page.getByRole("button", { name: "Zoom out" }).click(),
+    ]);
+
+    // Verify the notice reports the drawn and matching counts.
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText("Showing 2 of 1284 groups.");
+    await expect(notice).toContainText("Zoom in or refine your filters to see them all.");
   });
 
   test("shows an empty state when no groups match the search", async ({ page }) => {
@@ -261,3 +325,10 @@ test.describe("site explore groups page", () => {
     ).toBeVisible();
   });
 });
+
+/**
+ * Checks whether a URL requests an explore group card.
+ * @param {string} url Request URL.
+ * @returns {boolean} Whether the URL is a group card request.
+ */
+const isGroupCardUrl = (url) => /\/explore\/groups\/[0-9a-f-]+\/card$/.test(new URL(url).pathname);

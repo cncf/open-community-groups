@@ -402,7 +402,6 @@ async fn db_contracts_search_events_deserializes() -> Result<()> {
 
         date_from: NaiveDate::from_ymd_opt(2099, 1, 1),
         date_to: NaiveDate::from_ymd_opt(2099, 12, 31),
-        include_bbox: Some(true),
         limit: Some(10),
         offset: Some(0),
 
@@ -412,10 +411,9 @@ async fn db_contracts_search_events_deserializes() -> Result<()> {
     // Search events through the Rust contract
     let output = db.search_events(&filters).await?;
 
-    // Check result totals and map bounds
+    // Check result totals
     assert_eq!(output.total, 1);
     assert_eq!(output.events.len(), 1);
-    assert!(output.bbox.is_some());
 
     Ok(())
 }
@@ -428,7 +426,6 @@ async fn db_contracts_search_groups_deserializes() -> Result<()> {
     let filters = SearchGroupsFilters {
         community: vec!["contract-community".to_string()],
 
-        include_bbox: Some(true),
         limit: Some(10),
         offset: Some(0),
 
@@ -438,10 +435,9 @@ async fn db_contracts_search_groups_deserializes() -> Result<()> {
     // Search groups through the Rust contract
     let output = db.search_groups(&filters).await?;
 
-    // Check result totals and map bounds
+    // Check result totals
     assert_eq!(output.total, 2);
     assert_eq!(output.groups.len(), 2);
-    assert!(output.bbox.is_some());
 
     Ok(())
 }

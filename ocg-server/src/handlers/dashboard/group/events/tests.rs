@@ -7,14 +7,17 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
-use serde_json::{from_slice, json, to_value};
+use serde_json::{Value, from_slice, json, to_value};
 use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     config::{HttpClientConfig, PaymentsConfig, PaymentsStripeConfig},
     db::mock::MockDB,
-    handlers::{error::HandlerError, tests::*},
+    handlers::{
+        error::{HandlerError, INVALID_REQUEST_PAYLOAD},
+        tests::*,
+    },
     services::{
         events::{AutomaticTaxCheckError, EventsError, MockEventsManager},
         notifications::MockNotificationsManager,
@@ -1062,6 +1065,117 @@ async fn test_preview_uses_submitted_payload_without_event_db_calls() {
     assert!(body.contains("Test Community"));
     assert!(body.contains("7:00 PM Europe/Madrid"));
     assert!(!body.contains("Only approved co-hosts are shown on the public page."));
+}
+
+#[tokio::test]
+async fn test_search_rejects_invalid_filters() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock (search must not be reached)
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    db.expect_get_group_summary().never();
+    db.expect_search_events().never();
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/group/events/search?date_from=not-a-date")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the request is rejected before searching
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        INVALID_REQUEST_PAYLOAD
+    );
+}
+
+#[tokio::test]
+async fn test_search_scopes_events_to_selected_group() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let group = sample_group_summary(group_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    db.expect_get_group_summary()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(group.clone()));
+    db.expect_search_events()
+        .times(1)
+        .withf(|filters| {
+            filters.community == vec!["test-community".to_string()]
+                && filters.group == vec!["npq6789".to_string()]
+                && filters.date_from.is_some()
+                && filters.latitude.is_none()
+                && filters.limit == Some(5)
+                && filters.longitude.is_none()
+                && filters.sort_direction.as_deref() == Some("desc")
+                && filters.ts_query.as_deref() == Some("kubernetes")
+        })
+        .returning(move |_| Ok(sample_search_events_output(event_id)));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request with filters for another group and location
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(
+            "/dashboard/group/events/search?community[0]=other-community&group[0]=other-group\
+             &latitude=51.5&limit=5&longitude=-0.12&sort_direction=desc&ts_query=kubernetes",
+        )
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let payload: Value = from_slice(&bytes).unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("application/json"),
+    );
+    assert_eq!(payload["events"][0]["event_id"], event_id.to_string());
+    assert_eq!(payload["total"], 1);
 }
 
 #[tokio::test]

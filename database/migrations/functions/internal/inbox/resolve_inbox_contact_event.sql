@@ -10,5 +10,5 @@ returns table (event_id uuid, group_id uuid) as $$
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
     and g.community_id = p_community_id
-    and is_inbox_event_public(e, g);
+    and is_event_public(e, g);
 $$ language sql stable;

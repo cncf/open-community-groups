@@ -5,19 +5,17 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '1b060000-0000-0000-0000-000000000001'
-\set conversationDeletedEventID '1b060000-0000-0000-0000-000000000002'
 \set conversationDeletedUserID '1b060000-0000-0000-0000-000000000003'
 \set conversationID '1b060000-0000-0000-0000-000000000004'
 \set conversationUnpublishedEventID '1b060000-0000-0000-0000-000000000005'
 \set conversationWithoutEventID '1b060000-0000-0000-0000-000000000006'
-\set deletedEventID '1b060000-0000-0000-0000-000000000007'
 \set eventCategoryID '1b060000-0000-0000-0000-000000000008'
 \set eventID '1b060000-0000-0000-0000-000000000009'
 \set groupCategoryID '1b060000-0000-0000-0000-000000000010'
@@ -72,9 +70,6 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'slug', 'inbox-json-event'
 ));
 
--- Soft-deleted event
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
-
 -- Unpublished event
 select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID');
 
@@ -98,10 +93,6 @@ insert into inbox_conversation (
     :'eventID',
     :'userID'
 );
-
--- Conversation about the soft-deleted event
-insert into inbox_conversation (inbox_conversation_id, group_id, event_id, user_id)
-values (:'conversationDeletedEventID', :'groupID', :'deletedEventID', :'userID');
 
 -- Conversation whose user account was deleted
 insert into inbox_conversation (inbox_conversation_id, group_id, event_id)
@@ -134,13 +125,6 @@ select ok(
     inbox_conversation_json(:'conversationDeletedUserID'::uuid)::jsonb @> '{"user": null, "messages": [{"author": null}]}'::jsonb
     and inbox_conversation_json(:'conversationDeletedUserID'::uuid)::jsonb ? 'user',
     'Should emit a deleted user and a deleted author as JSON null'
-);
-
--- Should flag a soft-deleted event as not public
-select is(
-    inbox_conversation_json(:'conversationDeletedEventID'::uuid)::jsonb->'event'->'is_public',
-    'false'::jsonb,
-    'Should flag a soft-deleted event as not public'
 );
 
 -- Should flag an unpublished event as not public

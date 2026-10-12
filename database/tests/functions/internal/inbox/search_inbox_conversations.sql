@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -25,6 +25,7 @@ select plan(9);
 \set groupID '1b070000-0000-0000-0000-000000000011'
 \set otherGroupID '1b070000-0000-0000-0000-000000000012'
 \set otherUserID '1b070000-0000-0000-0000-000000000013'
+\set unpublishedEventID '1b070000-0000-0000-0000-000000000016'
 \set userID '1b070000-0000-0000-0000-000000000014'
 
 -- ============================================================================
@@ -70,6 +71,9 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published', true
 ));
 
+-- Unpublished event of another group the user asked about
+select fx_event(:'unpublishedEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object('published', false));
+
 -- Answered conversation of another user
 insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, user_id)
 values (:'conversationAnsweredID', '2030-01-10 10:30:00+00', :'groupID', 'answered', '2030-01-10 11:00:00+00', :'otherUserID');
@@ -103,9 +107,26 @@ insert into inbox_conversation (
     :'userID'
 );
 
--- Open conversation of the user with another group
-insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, user_id)
-values (:'conversationOtherGroupID', '2030-01-10 09:00:00+00', :'otherGroupID', 'open', '2030-01-10 09:00:00+00', :'userID');
+-- Open conversation of the user with another group about its unpublished event
+insert into inbox_conversation (
+    inbox_conversation_id,
+    created_at,
+    group_id,
+    inbox_conversation_status_id,
+    last_message_at,
+
+    event_id,
+    user_id
+) values (
+    :'conversationOtherGroupID',
+    '2030-01-10 09:00:00+00',
+    :'otherGroupID',
+    'open',
+    '2030-01-10 09:00:00+00',
+
+    :'unpublishedEventID',
+    :'userID'
+);
 
 -- Conversation of the user marked as spam, with the latest activity in the group
 insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, user_id)
@@ -159,6 +180,13 @@ select is(
     ),
     jsonb_build_object('ids', jsonb_build_array(:'conversationOpenID'::uuid), 'total', 1),
     'Should filter conversations by status'
+);
+
+-- Should flag an unpublished event as not public
+select is(
+    search_inbox_conversations(null, :'userID'::uuid, '{}'::jsonb)::jsonb->'conversations'->2->'event',
+    jsonb_build_object('event_id', :'unpublishedEventID'::uuid, 'is_public', false, 'name', 'Fixture Event'),
+    'Should flag an unpublished event as not public'
 );
 
 -- Should list group conversations marked as spam when filtered by them

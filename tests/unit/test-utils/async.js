@@ -7,3 +7,14 @@ export const waitForAnimationFrames = async (count = 2) => {
     await new Promise((resolve) => requestAnimationFrame(() => resolve()));
   }
 };
+
+/** Creates a promise that the test resolves or rejects explicitly. */
+export const createDeferred = () => {
+  let reject;
+  let resolve;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
+};

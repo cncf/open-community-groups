@@ -10,7 +10,6 @@ import {
   buildSelectedEventFromDetails,
   findEventById,
   getActiveEventResult,
-  getDashboardSelectionContext,
   getEmptyEventSearchState,
   getEventSelectorKeyAction,
   getLoadedPrimaryEventSearchState,
@@ -18,7 +17,6 @@ import {
   getNoGroupEventSearchState,
   getSelectedEvent,
   normalizeEventId,
-  resolveEventSearchContext,
 } from "/static/js/dashboard/group/event-selector/utils.js";
 import { requestEventSelectorEvents } from "/static/js/dashboard/group/event-selector/api.js";
 import {
@@ -40,8 +38,6 @@ class EventSelector extends LitWrapper {
    * - selectedEventId: currently applied event uuid
    * - selectedEvent: preloaded event payload to render selected label
    * - groupId: optional override group uuid
-   * - community: community slug for event search
-   * - groupSlug: group slug for event search
    * - buttonId: optional button id to control focus interactions
    * - _isOpen: dropdown visibility flag
    * - _query: current search term
@@ -62,8 +58,6 @@ class EventSelector extends LitWrapper {
       },
     },
     groupId: { type: String, attribute: "group-id" },
-    community: { type: String, attribute: "community" },
-    groupSlug: { type: String, attribute: "group-slug" },
     buttonId: { type: String, attribute: "button-id" },
     _isOpen: { state: true },
     _query: { state: true },
@@ -79,8 +73,6 @@ class EventSelector extends LitWrapper {
     this.selectedEventId = "";
     this.selectedEvent = null;
     this.groupId = "";
-    this.community = "";
-    this.groupSlug = "";
     this.buttonId = "";
     this._isOpen = false;
     this._query = "";
@@ -119,7 +111,7 @@ class EventSelector extends LitWrapper {
       this._hasFetched = false;
       this._primaryResults = [];
     }
-    if (changed.has("groupId") || changed.has("community") || changed.has("groupSlug")) {
+    if (changed.has("groupId")) {
       this._hasFetched = false;
       this._primaryResults = [];
     }
@@ -348,28 +340,12 @@ class EventSelector extends LitWrapper {
   }
 
   /**
-   * Gets the group dashboard selection context from DOM.
-   * @returns {{community: string, groupSlug: string}}
-   */
-  _getDashboardSelection() {
-    return getDashboardSelectionContext(this);
-  }
-
-  /**
    * Performs a remote search using the provided config.
    * @param {{sortDirection?: string, query?: string, dateFrom?: string, dateTo?: string}} config
    * @returns {Promise<object[]>}
    */
   async _requestEvents(config) {
-    const searchContext = resolveEventSearchContext({
-      community: this.community,
-      dashboardSelection: this._getDashboardSelection(),
-      groupSlug: this.groupSlug,
-    });
-    return requestEventSelectorEvents({
-      ...config,
-      ...searchContext,
-    });
+    return requestEventSelectorEvents(config);
   }
 
   /**

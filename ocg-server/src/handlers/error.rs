@@ -16,7 +16,6 @@ use crate::{
         inbox::InboxError,
         payments::{AutomaticTaxReadinessError, FiscalSponsorReadinessError, PaymentsError},
     },
-    types::search::FilterError,
 };
 
 #[cfg(test)]
@@ -164,15 +163,6 @@ impl From<EventsError> for HandlerError {
         match err {
             EventsError::Other(err) => HandlerError::from(err),
             EventsError::Rejected(message) => HandlerError::Rejected(message),
-        }
-    }
-}
-
-impl From<FilterError> for HandlerError {
-    fn from(err: FilterError) -> Self {
-        match err {
-            FilterError::Parse(e) => HandlerError::Deserialization(e.to_string()),
-            FilterError::Validation(report) => HandlerError::Validation(report),
         }
     }
 }

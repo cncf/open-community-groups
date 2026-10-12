@@ -148,6 +148,7 @@ select is(
             "groups": [
                 {
                     "active": true,
+                    "community_name": "cloud-native-seattle-list-user-groups",
                     "group_id": "3a290000-0000-0000-0000-000000000005",
                     "name": "Group A",
                     "slug": "abc1234",
@@ -155,6 +156,7 @@ select is(
                 },
                 {
                     "active": true,
+                    "community_name": "cloud-native-seattle-list-user-groups",
                     "group_id": "3a290000-0000-0000-0000-000000000006",
                     "name": "Group B",
                     "slug": "def5678"
@@ -182,6 +184,7 @@ select is(
             "groups": [
                 {
                     "active": true,
+                    "community_name": "cloud-native-seattle-list-user-groups",
                     "group_id": "3a290000-0000-0000-0000-000000000005",
                     "name": "Group A",
                     "slug": "abc1234",
@@ -189,12 +192,14 @@ select is(
                 },
                 {
                     "active": true,
+                    "community_name": "cloud-native-seattle-list-user-groups",
                     "group_id": "3a290000-0000-0000-0000-000000000006",
                     "name": "Group B",
                     "slug": "def5678"
                 },
                 {
                     "active": true,
+                    "community_name": "cloud-native-seattle-list-user-groups",
                     "group_id": "3a290000-0000-0000-0000-000000000007",
                     "name": "Group C",
                     "slug": "ghi9abc"
@@ -222,6 +227,7 @@ select is(
             "groups": [
                 {
                     "active": true,
+                    "community_name": "cloud-native-seattle-list-user-groups",
                     "group_id": "3a290000-0000-0000-0000-000000000005",
                     "name": "Group A",
                     "slug": "abc1234",
@@ -229,12 +235,14 @@ select is(
                 },
                 {
                     "active": true,
+                    "community_name": "cloud-native-seattle-list-user-groups",
                     "group_id": "3a290000-0000-0000-0000-000000000006",
                     "name": "Group B",
                     "slug": "def5678"
                 },
                 {
                     "active": true,
+                    "community_name": "cloud-native-seattle-list-user-groups",
                     "group_id": "3a290000-0000-0000-0000-000000000007",
                     "name": "Group C",
                     "slug": "ghi9abc"
@@ -262,6 +270,7 @@ select is(
             "groups": [
                 {
                     "active": true,
+                    "community_name": "cloud-native-seattle-list-user-groups",
                     "group_id": "3a290000-0000-0000-0000-000000000005",
                     "name": "Group A",
                     "slug": "abc1234",
@@ -282,6 +291,7 @@ select is(
             "groups": [
                 {
                     "active": true,
+                    "community_name": "devops-nyc",
                     "group_id": "3a290000-0000-0000-0000-000000000009",
                     "name": "NYC DevOps Meetup",
                     "slug": "mno3ghi"

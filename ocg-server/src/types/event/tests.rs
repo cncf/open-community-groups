@@ -110,7 +110,6 @@ fn event_full_to_summary_maps_event_fields() {
     assert_eq!(summary.logo_url, "https://example.com/logo.png");
     assert_eq!(summary.name, "Event Name");
     assert_eq!(summary.payment_currency_code.as_deref(), Some("USD"));
-    assert_eq!(summary.popover_html, None);
     assert!(summary.published);
     assert_eq!(summary.registration_ends_at, Some(registration_ends_at));
     assert_eq!(summary.registration_starts_at, Some(registration_starts_at));
@@ -876,7 +875,6 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         meeting_password: None,
         meeting_provider: None,
         pending_cohosts_count: None,
-        popover_html: None,
         remaining_capacity: None,
         starts_at: None,
         venue_address: None,

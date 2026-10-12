@@ -1,160 +1,71 @@
--- Returns the groups that match the filters provided.
+-- Returns a page of the groups that match the filters provided, with the total.
+-- Uses PL/pgSQL with `force_custom_plan` so each call is planned with the
+-- actual pagination values.
 create or replace function search_groups(p_filters jsonb)
 returns json as $$
 declare
-    v_bbox geometry;
-    v_community_ids uuid[];
     v_filters record;
-    v_group_category text[];
-    v_include_inactive boolean := coalesce((p_filters->>'include_inactive')::boolean, false);
-    v_max_distance real;
-    v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'name');
-    v_tsquery_with_prefix_matching tsquery;
-    v_user_location geography;
 begin
-    -- Prepare filters
+    -- Prepare pagination filters
     select *
     into v_filters
     from parse_search_filters(p_filters);
 
-    -- Prepare geographic bounds
-    if p_filters ? 'bbox_ne_lat' and p_filters ? 'bbox_ne_lon' and p_filters ? 'bbox_sw_lat' and p_filters ? 'bbox_sw_lon' then
-        v_bbox := st_makeenvelope(
-            (p_filters->>'bbox_sw_lon')::real,
-            (p_filters->>'bbox_sw_lat')::real,
-            (p_filters->>'bbox_ne_lon')::real,
-            (p_filters->>'bbox_ne_lat')::real,
-            4326
-        );
-    end if;
-
-    -- Resolve selected communities by public names
-    if p_filters ? 'community' and jsonb_array_length(p_filters->'community') > 0 then
-        select coalesce(array_agg(c.community_id), array[]::uuid[]) into v_community_ids
-        from jsonb_array_elements_text(p_filters->'community') e
-        join community c on c.name = e;
-    end if;
-
-    -- Normalize selected group categories
-    if p_filters ? 'group_category' then
-        select array_agg(lower(e::text)) into v_group_category
-        from jsonb_array_elements_text(p_filters->'group_category') e;
-    end if;
-
-    -- Prepare proximity filtering
-    if p_filters ? 'latitude' and p_filters ? 'longitude' then
-        v_user_location := jsonb_geography_point(p_filters);
-
-        -- Apply an optional maximum distance around the user location
-        if p_filters ? 'distance' then
-            v_max_distance := (p_filters->>'distance')::real;
-        end if;
-    end if;
-
-    -- Normalize selected regions
-    if p_filters ? 'region' then
-        select array_agg(lower(e::text)) into v_region
-        from jsonb_array_elements_text(p_filters->'region') e;
-    end if;
-
-    -- Build a prefix-matching text search query
-    if v_filters.ts_query is not null then
-        v_tsquery_with_prefix_matching := prefix_tsquery(
-            get_current_ts_config(),
-            v_filters.ts_query
-        );
-    end if;
-
-    -- Filter, paginate and aggregate matching groups
+    -- Match, paginate and aggregate groups
     return (
-    with filtered_groups as (
-        select
-            g.community_id,
-            g.created_at,
-            case
-                when v_sort_by = 'distance'
-                and v_user_location is not null then
-                    st_distance(g.location, v_user_location)
-                else null
-            end as distance,
-            g.group_id,
-            g.location,
-            g.name
-        from "group" g
-        join community c on c.community_id = g.community_id
-        join group_category gc using (group_category_id)
-        left join region r using (region_id)
-        where c.active = true
-        and (g.active = true or v_include_inactive)
-        and g.deleted = false
-        and
-            case when v_bbox is not null then
-            st_intersects(g.location, v_bbox) else true end
-        and
-            case when v_community_ids is not null then
-            g.community_id = any(v_community_ids) else true end
-        and
-            case when cardinality(v_group_category) > 0 then
-            gc.normalized_name = any(v_group_category) else true end
-        and
-            case when v_max_distance is not null and v_user_location is not null then
-            st_dwithin(v_user_location, g.location, v_max_distance) else true end
-        and
-            case when cardinality(v_region) > 0 then
-            r.normalized_name = any(v_region) else true end
-        and
-            case when v_tsquery_with_prefix_matching is not null then
-                v_tsquery_with_prefix_matching @@ g.tsdoc
-            else true end
+    with matches as (
+        select *
+        from search_groups_matches(p_filters)
     ),
-    -- Select the requested page with the selected sort strategy
-    filtered_groups_page as (
-        select community_id, group_id
-        from filtered_groups
-        order by
-            (case when v_sort_by = 'date' then created_at end) desc,
-            (case when v_sort_by = 'distance' and v_user_location is not null then distance end) asc,
-            (case when v_sort_by = 'name' then name end) asc,
-            created_at desc
-        limit v_filters.limit_value
-        offset v_filters.offset_value
+    -- Keep the requested page with the selected sort strategy and number it;
+    -- limiting before numbering lets the planner keep only the top rows instead
+    -- of sorting every match, so keep both order lists identical
+    page as (
+        select
+            community_id,
+            group_id,
+            row_number() over (
+                order by
+                    (case when v_sort_by = 'date' then created_at end) desc,
+                    (case when v_sort_by = 'distance' then distance end) asc,
+                    (case when v_sort_by = 'name' then name end) asc,
+                    created_at desc,
+                    group_id asc
+            ) as ordinal
+        from (
+            select
+                community_id,
+                created_at,
+                distance,
+                group_id,
+                name
+            from matches
+            order by
+                (case when v_sort_by = 'date' then created_at end) desc,
+                (case when v_sort_by = 'distance' then distance end) asc,
+                (case when v_sort_by = 'name' then name end) asc,
+                created_at desc,
+                group_id asc
+            limit v_filters.limit_value
+            offset v_filters.offset_value
+        ) as page_matches
     )
-    -- Build response payload with optional bbox and total count
+    -- Build response payload with total count
     select json_build_object(
-        'bbox',
-        (
-            case when p_filters ? 'include_bbox' and (p_filters->>'include_bbox')::boolean = true then
-                (
-                    select
-                        case when bb is not null then
-                            json_build_object(
-                                'ne_lat', st_ymax(bb),
-                                'ne_lon', st_xmax(bb),
-                                'sw_lat', st_ymin(bb),
-                                'sw_lon', st_xmin(bb)
-                            )
-                        else null end
-                    from (
-                        -- Build a bounding box from the filtered groups locations
-                        select st_envelope(st_union(st_envelope(location::geometry))) as bb
-                        from filtered_groups
-                    ) as filtered_groups_bbox
-                )
-            else null end
-        ),
         'groups',
         (
-            -- Render paginated groups as summaries
+            -- Render paginated groups as summaries in page order
             select coalesce(json_agg(
                 get_group_summary(community_id, group_id)
+                order by ordinal
             ), '[]'::json)
-            from filtered_groups_page
+            from page
         ),
         'total',
         (
             -- Count total groups before pagination
-            select count(*)::bigint from filtered_groups
+            select count(*)::bigint from matches
         )
     )
     );

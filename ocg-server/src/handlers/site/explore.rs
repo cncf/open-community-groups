@@ -9,15 +9,21 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     Json,
-    extract::{Query, RawQuery, State},
+    extract::{Path, Query, RawQuery, State},
     http::{HeaderMap, HeaderName, HeaderValue, Uri, header::CACHE_CONTROL},
     response::{Html, IntoResponse},
 };
-use tracing::instrument;
+use chrono::Utc;
+use garde::Validate;
+use serde::Deserialize;
+use tracing::{instrument, trace};
+use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extend_public_shared_cache_headers},
+    handlers::{
+        error::HandlerError, extend_public_shared_cache_headers, extractors::ValidatedQuery,
+    },
     router::CACHE_CONTROL_NO_STORE,
     templates::{
         PageId,
@@ -29,8 +35,8 @@ use crate::{
     types::{
         pagination::{self, NavigationLinks},
         search::{
-            SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters, SearchGroupsOutput,
-            ViewMode,
+            EXPLORE_WIDGET_MAX_ITEMS, SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters,
+            SearchGroupsOutput, ViewMode,
         },
         site::explore::Entity,
     },
@@ -66,12 +72,12 @@ pub(crate) async fn page(
     // Attach events or groups section template to the page template
     match entity {
         Entity::Events => {
-            let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+            let filters = parse_events_filters(&headers, &raw_query.unwrap_or_default())?;
             let events_section = prepare_events_section(&db, &filters).await?;
             template.events_section = Some(events_section);
         }
         Entity::Groups => {
-            let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+            let filters = parse_groups_filters(&headers, &raw_query.unwrap_or_default())?;
             let groups_section = prepare_groups_section(&db, &filters).await?;
             template.groups_section = Some(groups_section);
         }
@@ -92,6 +98,30 @@ pub(crate) async fn page(
     Ok((headers, Html(template.render()?)))
 }
 
+/// Handler that renders the card of a public event for the explore map or calendar.
+#[instrument(skip_all)]
+pub(crate) async fn event_card(
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+    ValidatedQuery(query): ValidatedQuery<EventCardQuery>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Load the event only when its public page is available
+    let Some(event) = db.get_public_event_summary(event_id).await? else {
+        return Err(HandlerError::NotFound);
+    };
+
+    // Render the card for the requested view
+    let html = match query.view_mode {
+        EventCardView::Calendar => render_calendar_event_popover(&event)?,
+        EventCardView::Map => render_event_popover(&event)?,
+    };
+
+    // Prepare response headers
+    let headers = extend_public_shared_cache_headers(&[])?;
+
+    Ok((headers, Html(html)))
+}
+
 /// Handler that renders the events results section of the explore page.
 #[instrument(skip_all)]
 pub(crate) async fn events_results_section(
@@ -100,7 +130,7 @@ pub(crate) async fn events_results_section(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events results section template
-    let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = parse_events_filters(&headers, &raw_query.unwrap_or_default())?;
     let template = prepare_events_result_section(&db, &filters).await?;
 
     // Prepare response headers
@@ -121,7 +151,7 @@ pub(crate) async fn events_section(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events section template
-    let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = parse_events_filters(&headers, &raw_query.unwrap_or_default())?;
     let template = prepare_events_section(&db, &filters).await?;
 
     // Prepare response headers
@@ -134,6 +164,26 @@ pub(crate) async fn events_section(
     Ok((headers, Html(template.render()?)))
 }
 
+/// Handler that renders the card of a public group for the explore map.
+#[instrument(skip_all)]
+pub(crate) async fn group_card(
+    State(db): State<DynDB>,
+    Path(group_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Load the group only when its public page is available
+    let Some(group) = db.get_public_group_summary(group_id).await? else {
+        return Err(HandlerError::NotFound);
+    };
+
+    // Render the card
+    let html = render_group_popover(&group)?;
+
+    // Prepare response headers
+    let headers = extend_public_shared_cache_headers(&[])?;
+
+    Ok((headers, Html(html)))
+}
+
 /// Handler that renders the groups results section of the explore page.
 #[instrument(skip_all)]
 pub(crate) async fn groups_results_section(
@@ -142,7 +192,7 @@ pub(crate) async fn groups_results_section(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups results section template
-    let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = parse_groups_filters(&headers, &raw_query.unwrap_or_default())?;
     let template = prepare_groups_result_section(&db, &filters).await?;
 
     // Prepare response headers
@@ -163,7 +213,7 @@ pub(crate) async fn groups_section(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
-    let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = parse_groups_filters(&headers, &raw_query.unwrap_or_default())?;
     let template = prepare_groups_section(&db, &filters).await?;
 
     // Prepare response headers
@@ -182,24 +232,21 @@ async fn prepare_events_result_section(
     db: &DynDB,
     filters: &SearchEventsFilters,
 ) -> Result<explore::EventsResultsSection> {
-    // Search for events based on filters
-    let SearchEventsOutput {
-        mut events,
-        total,
-
-        bbox,
-    } = db.search_events(filters).await?;
-
-    // Render popover HTML for map and calendar views
-    if filters.view_mode == Some(ViewMode::Map) {
-        for event in &mut events {
-            event.popover_html = Some(render_event_popover(event)?);
-        }
-    } else if filters.view_mode == Some(ViewMode::Calendar) {
-        for event in &mut events {
-            event.popover_html = Some(render_calendar_event_popover(event)?);
-        }
+    // Search the minimal events drawn by the map and calendar views
+    if matches!(filters.view_mode, Some(ViewMode::Calendar | ViewMode::Map)) {
+        let widget_data = db.search_events_minimal(filters, EXPLORE_WIDGET_MAX_ITEMS).await?;
+        return Ok(explore::EventsResultsSection {
+            events: vec![],
+            navigation_links: NavigationLinks::default(),
+            total: widget_data.total,
+            offset: filters.offset,
+            view_mode: filters.view_mode.clone(),
+            widget_data: Some(widget_data),
+        });
     }
+
+    // Search a page of events for the list view
+    let SearchEventsOutput { events, total, .. } = db.search_events(filters).await?;
 
     // Prepare template
     Ok(explore::EventsResultsSection {
@@ -211,9 +258,9 @@ async fn prepare_events_result_section(
             "/explore/events-results-section",
         )?,
         total,
-        bbox,
         offset: filters.offset,
         view_mode: filters.view_mode.clone(),
+        widget_data: None,
     })
 }
 
@@ -249,20 +296,21 @@ async fn prepare_groups_result_section(
     db: &DynDB,
     filters: &SearchGroupsFilters,
 ) -> Result<explore::GroupsResultsSection> {
-    // Search for groups based on filters
-    let SearchGroupsOutput {
-        mut groups,
-        total,
-
-        bbox,
-    } = db.search_groups(filters).await?;
-
-    // Render popover HTML for map and calendar views
-    if filters.view_mode == Some(ViewMode::Map) || filters.view_mode == Some(ViewMode::Calendar) {
-        for group in &mut groups {
-            group.popover_html = Some(render_group_popover(group)?);
-        }
+    // Search the minimal groups drawn by the map view
+    if filters.view_mode == Some(ViewMode::Map) {
+        let widget_data = db.search_groups_minimal(filters, EXPLORE_WIDGET_MAX_ITEMS).await?;
+        return Ok(explore::GroupsResultsSection {
+            groups: vec![],
+            navigation_links: NavigationLinks::default(),
+            total: widget_data.total,
+            offset: filters.offset,
+            view_mode: filters.view_mode.clone(),
+            widget_data: Some(widget_data),
+        });
     }
+
+    // Search a page of groups for the list view
+    let SearchGroupsOutput { groups, total, .. } = db.search_groups(filters).await?;
 
     // Prepare template
     Ok(explore::GroupsResultsSection {
@@ -274,9 +322,9 @@ async fn prepare_groups_result_section(
             "/explore/groups-results-section",
         )?,
         total,
-        bbox,
         offset: filters.offset,
         view_mode: filters.view_mode.clone(),
+        widget_data: None,
     })
 }
 
@@ -308,51 +356,128 @@ async fn prepare_groups_section(
 
 // JSON search handlers.
 
-/// Handler for the events search endpoint (JSON format).
+/// Handler that returns every event to draw on the explore map or calendar, up
+/// to the widget items cap (JSON format).
 #[instrument(skip_all)]
 pub(crate) async fn search_events(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Search events
-    let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let mut search_events_output = db.search_events(&filters).await?;
+    // Require the calendar or map view before parsing the filters
+    let raw_query = raw_query.unwrap_or_default();
+    require_calendar_or_map_view(&raw_query)?;
+    let filters = parse_events_filters(&headers, &raw_query)?;
 
-    // Render popover HTML for each event
-    for event in &mut search_events_output.events {
-        event.popover_html = Some(render_event_popover(event)?);
-    }
+    // Search the minimal events
+    let output = db.search_events_minimal(&filters, EXPLORE_WIDGET_MAX_ITEMS).await?;
 
     // Prepare response headers
     let headers = search_response_headers(filters.uses_viewer_location())?;
 
-    Ok((headers, Json(search_events_output)).into_response())
+    Ok((headers, Json(output)))
 }
 
-/// Handler for the groups search endpoint (JSON format).
+/// Handler that returns every group to draw on the explore map, up to the
+/// widget items cap (JSON format).
 #[instrument(skip_all)]
 pub(crate) async fn search_groups(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Search groups
-    let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let mut search_groups_output = db.search_groups(&filters).await?;
+    // Parse the filters
+    let filters = parse_groups_filters(&headers, &raw_query.unwrap_or_default())?;
 
-    // Render popover HTML for each group
-    for group in &mut search_groups_output.groups {
-        group.popover_html = Some(render_group_popover(group)?);
-    }
+    // Search the minimal groups
+    let output = db.search_groups_minimal(&filters, EXPLORE_WIDGET_MAX_ITEMS).await?;
 
     // Prepare response headers
     let headers = search_response_headers(filters.uses_viewer_location())?;
 
-    Ok((headers, Json(search_groups_output)).into_response())
+    Ok((headers, Json(output)))
+}
+
+// Types.
+
+/// Query parameters of the explore event card endpoint.
+#[derive(Debug, Clone, Deserialize, Validate)]
+pub(crate) struct EventCardQuery {
+    /// Explore view the card is rendered for.
+    #[garde(skip)]
+    pub view_mode: EventCardView,
+}
+
+/// Explore view an event card is rendered for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventCardView {
+    /// Card shown when hovering an event in the calendar.
+    Calendar,
+    /// Card shown when hovering an event on the map.
+    Map,
 }
 
 // Helpers.
+
+/// Parses, validates, and normalizes the events search filters of a request.
+fn parse_events_filters(
+    headers: &HeaderMap,
+    raw_query: &str,
+) -> Result<SearchEventsFilters, HandlerError> {
+    // Parse and validate the query string
+    let mut filters: SearchEventsFilters = ValidatedQuery::parse(raw_query)?;
+
+    // Replace any client supplied location with the viewer location headers
+    (filters.latitude, filters.longitude) = viewer_location(headers);
+
+    // Apply the search defaults
+    filters.normalize(Utc::now());
+
+    trace!(?filters);
+    Ok(filters)
+}
+
+/// Parses, validates, and normalizes the groups search filters of a request.
+fn parse_groups_filters(
+    headers: &HeaderMap,
+    raw_query: &str,
+) -> Result<SearchGroupsFilters, HandlerError> {
+    // Parse and validate the query string
+    let mut filters: SearchGroupsFilters = ValidatedQuery::parse(raw_query)?;
+
+    // Replace any client supplied location with the viewer location headers
+    (filters.latitude, filters.longitude) = viewer_location(headers);
+
+    // Apply the search defaults
+    filters.normalize();
+
+    trace!(?filters);
+    Ok(filters)
+}
+
+/// Rejects events search queries unless every `view_mode` is calendar or map.
+///
+/// The raw query is checked before the filters are parsed, so missing, unknown
+/// and unsupported view modes all get the same rejection.
+fn require_calendar_or_map_view(raw_query: &str) -> Result<(), HandlerError> {
+    // Collect the requested view modes
+    let pairs: Vec<(String, String)> = serde_urlencoded::from_str(raw_query).unwrap_or_default();
+    let mut view_modes = pairs
+        .iter()
+        .filter(|(key, _)| key == "view_mode")
+        .map(|(_, value)| value.as_str())
+        .peekable();
+
+    // Accept only the calendar and map views
+    let has_view_mode = view_modes.peek().is_some();
+    if has_view_mode && view_modes.all(|view_mode| matches!(view_mode, "calendar" | "map")) {
+        return Ok(());
+    }
+    Err(HandlerError::Rejected(
+        "view_mode must be calendar or map".to_string(),
+    ))
+}
 
 /// Returns search response headers.
 fn search_response_headers(uses_viewer_location: bool) -> Result<HeaderMap> {
@@ -382,4 +507,18 @@ fn search_response_headers_with_extra(
     }
 
     Ok(headers)
+}
+
+/// Returns the viewer coordinates provided by the `CloudFront` location headers.
+///
+/// Both coordinates are returned only when both headers hold valid numbers.
+fn viewer_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>) {
+    let parse = |name: &str| -> Option<f64> { headers.get(name)?.to_str().ok()?.parse().ok() };
+    match (
+        parse("CloudFront-Viewer-Latitude"),
+        parse("CloudFront-Viewer-Longitude"),
+    ) {
+        (Some(latitude), Some(longitude)) => (Some(latitude), Some(longitude)),
+        _ => (None, None),
+    }
 }

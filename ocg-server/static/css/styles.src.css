@@ -451,14 +451,20 @@ input:placeholder-shown {
   z-index: 20;
 }
 
-.fc-daygrid-event-harness:hover div[data-popover] {
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 300ms;
+.fc-daygrid-event-harness:has(div[data-popover][data-open]) {
+  z-index: 20;
 }
 
-.fc-daygrid-event-harness div[data-popover] {
-  transition-delay: 0s;
+.fc-daygrid-event-harness div[data-popover][data-open] {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Cards are inserted already open, so fade them in from transparent. */
+@starting-style {
+  .fc-daygrid-event-harness div[data-popover][data-open] {
+    opacity: 0;
+  }
 }
 
 .fc-daygrid-day-frame {
@@ -477,6 +483,12 @@ input:placeholder-shown {
   background-color: transparent !important;
   color: rgb(55, 65, 81);
 }
+
+/* Long "+N more" lists scroll; their cards are fixed-positioned so the scroll box does not clip them. */
+.fc .fc-more-popover .fc-popover-body {
+  max-height: min(24rem, 60vh);
+  overflow-y: auto;
+}
 /* End full calendar */
 
 /* MapLibre */
@@ -487,6 +499,7 @@ input:placeholder-shown {
 
 .explore-popover-card-shell {
   background-color: white;
+  cursor: pointer;
   border: 1px solid rgb(209, 213, 219);
   border-radius: 0.5rem;
   box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px;
@@ -519,30 +532,47 @@ input:placeholder-shown {
   font-family: "Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   max-width: none;
   padding: 0;
-  pointer-events: none;
 }
 
-.explore-map-tooltip .maplibregl-popup-tip {
+.explore-map-cluster-popup .maplibregl-popup-content {
+  border: 1px solid var(--color-stone-300);
+  border-radius: 0.5rem;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px;
+  font-family: "Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  overflow: hidden;
+  padding: 0;
+}
+
+.explore-map-tooltip .maplibregl-popup-tip,
+.explore-map-cluster-popup .maplibregl-popup-tip {
   border-width: 5px;
 }
 
 .explore-map-tooltip.maplibregl-popup-anchor-top .maplibregl-popup-tip,
 .explore-map-tooltip.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
-.explore-map-tooltip.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+.explore-map-tooltip.maplibregl-popup-anchor-top-right .maplibregl-popup-tip,
+.explore-map-cluster-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.explore-map-cluster-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.explore-map-cluster-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
   border-bottom-color: var(--color-stone-300);
 }
 
 .explore-map-tooltip.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
 .explore-map-tooltip.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
-.explore-map-tooltip.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+.explore-map-tooltip.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip,
+.explore-map-cluster-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.explore-map-cluster-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.explore-map-cluster-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
   border-top-color: var(--color-stone-300);
 }
 
-.explore-map-tooltip.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+.explore-map-tooltip.maplibregl-popup-anchor-left .maplibregl-popup-tip,
+.explore-map-cluster-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
   border-right-color: var(--color-stone-300);
 }
 
-.explore-map-tooltip.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+.explore-map-tooltip.maplibregl-popup-anchor-right .maplibregl-popup-tip,
+.explore-map-cluster-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
   border-left-color: var(--color-stone-300);
 }
 

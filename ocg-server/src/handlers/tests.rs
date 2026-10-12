@@ -76,7 +76,7 @@ use crate::{
             },
         },
         event::{
-            CfsSessionProposal, EventCategory, EventKindSummary, SessionKindSummary,
+            CfsSessionProposal, EventCategory, EventKindSummary, EventMinimal, SessionKindSummary,
             SessionProposal as EventSessionProposal,
         },
         group::{GroupFull, GroupMinimal, GroupRole, GroupRoleSummary, GroupSponsor},
@@ -89,9 +89,10 @@ use crate::{
 
 pub(crate) use crate::types::tests::{
     sample_community_summary, sample_event_cohost_group, sample_event_form, sample_event_full,
-    sample_event_summary, sample_group_category, sample_group_payment_recipient,
-    sample_group_region, sample_group_summary, sample_inbox_conversation,
-    sample_inbox_conversation_summary, sample_site_settings, sample_user_search_result,
+    sample_event_minimal, sample_event_summary, sample_group_category, sample_group_minimal,
+    sample_group_payment_recipient, sample_group_region, sample_group_summary,
+    sample_inbox_conversation, sample_inbox_conversation_summary, sample_site_settings,
+    sample_user_search_result,
 };
 
 // Helpers.
@@ -754,18 +755,6 @@ pub(crate) fn sample_group_member() -> GroupMember {
     }
 }
 
-/// Sample minimal group used in dashboard group selector tests.
-pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
-    GroupMinimal {
-        active: true,
-        group_id,
-        name: "Test Group".to_string(),
-        slug: "test-group".to_string(),
-
-        slug_pretty: None,
-    }
-}
-
 /// Sample group stats used in analytics tests.
 pub(crate) fn sample_group_stats() -> GroupDashboardStats {
     GroupDashboardStats {
@@ -953,13 +942,40 @@ pub(crate) fn sample_purchase_summary(status: EventPurchaseStatus) -> EventPurch
     }
 }
 
+/// Sample minimal search output for events.
+pub(crate) fn sample_search_events_minimal_output(
+    event_id: Uuid,
+) -> SearchEventsOutput<EventMinimal> {
+    SearchEventsOutput {
+        events: vec![sample_event_minimal(event_id)],
+        total: 1,
+
+        bbox: Some(sample_bbox()),
+        truncated: false,
+    }
+}
+
 /// Sample search output for events.
 pub(crate) fn sample_search_events_output(event_id: Uuid) -> SearchEventsOutput {
     SearchEventsOutput {
         events: vec![sample_event_summary(event_id, Uuid::new_v4())],
         total: 1,
 
+        bbox: None,
+        truncated: false,
+    }
+}
+
+/// Sample minimal search output for groups.
+pub(crate) fn sample_search_groups_minimal_output(
+    group_id: Uuid,
+) -> SearchGroupsOutput<GroupMinimal> {
+    SearchGroupsOutput {
+        groups: vec![sample_group_minimal(group_id)],
+        total: 1,
+
         bbox: Some(sample_bbox()),
+        truncated: false,
     }
 }
 
@@ -969,7 +985,8 @@ pub(crate) fn sample_search_groups_output(group_id: Uuid) -> SearchGroupsOutput 
         groups: vec![sample_group_summary(group_id)],
         total: 1,
 
-        bbox: Some(sample_bbox()),
+        bbox: None,
+        truncated: false,
     }
 }
 

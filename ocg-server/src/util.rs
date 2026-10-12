@@ -369,7 +369,6 @@ mod tests {
             meeting_provider: None,
             payment_currency_code: None,
             pending_cohosts_count: None,
-            popover_html: None,
             registration_ends_at: None,
             registration_starts_at: None,
             remaining_capacity: Some(15),

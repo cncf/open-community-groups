@@ -1835,6 +1835,12 @@ async fn db_contracts_list_user_groups_deserializes() -> Result<()> {
     assert_eq!(output.len(), 1);
     assert_eq!(output[0].community.community_id, community_id());
     assert_eq!(output[0].groups.len(), 3);
+    assert!(
+        output[0]
+            .groups
+            .iter()
+            .all(|group| group.community_name == "contract-community")
+    );
     assert!(output[0].groups.iter().any(|group| group.group_id == group_id()));
     assert!(output[0].groups.iter().any(|group| group.group_id == subgroup_id()));
     assert!(

@@ -323,7 +323,15 @@ pub(crate) async fn setup(
             get(site::explore::groups_results_section),
         )
         .route("/explore/events/search", get(site::explore::search_events))
+        .route(
+            "/explore/events/{event_id}/card",
+            get(site::explore::event_card),
+        )
         .route("/explore/groups/search", get(site::explore::search_groups))
+        .route(
+            "/explore/groups/{group_id}/card",
+            get(site::explore::group_card),
+        )
         .route("/favicon.ico", get(favicon))
         .route("/health-check", get(health_check))
         .route("/images/badges/{file_name}", get(images::serve_badge))

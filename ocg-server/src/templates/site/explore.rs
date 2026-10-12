@@ -3,8 +3,6 @@
 use anyhow::Result;
 use askama::Template;
 use minify_html::{Cfg as MinifyCfg, minify};
-use serde::Serialize;
-use serde_with::skip_serializing_none;
 use tracing::instrument;
 
 use crate::types::site::explore::{Entity, FiltersOptions};
@@ -17,10 +15,13 @@ use crate::{
         helpers::user_initials,
     },
     types::{
-        event::{EventKind, EventSummary},
-        group::GroupSummary,
+        event::{EventKind, EventMinimal, EventSummary},
+        group::{GroupMinimal, GroupSummary},
         pagination::NavigationLinks,
-        search::{BBox, SearchEventsFilters, SearchGroupsFilters, ViewMode},
+        search::{
+            SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters, SearchGroupsOutput,
+            ViewMode,
+        },
         site::SiteSettings,
     },
 };
@@ -68,24 +69,24 @@ pub(crate) struct EventsSection {
 
 /// Template for displaying event search results.
 ///
-/// This template renders the list of matching events along with pagination controls. It
-/// supports different view modes and includes geographic bounds for map display.
+/// This template renders the list of matching events along with pagination controls,
+/// or the minimal events the map and calendar views draw.
 #[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/events/results.html")]
 pub(crate) struct EventsResultsSection {
-    /// List of events matching the current filters.
+    /// Page of events matching the current filters (list view).
     pub events: Vec<EventCard>,
-    /// Pagination links for navigating results.
+    /// Pagination links for navigating results (list view).
     pub navigation_links: NavigationLinks,
-    /// Total number of matching events (for pagination).
+    /// Total number of matching events.
     pub total: usize,
 
-    /// Geographic bounds of all events (for map centering).
-    pub bbox: Option<BBox>,
     /// Current pagination offset.
     pub offset: Option<usize>,
     /// Current display mode.
     pub view_mode: Option<ViewMode>,
+    /// Minimal events drawn by the map and calendar views.
+    pub widget_data: Option<SearchEventsOutput<EventMinimal>>,
 }
 
 impl EventsResultsSection {
@@ -104,13 +105,11 @@ pub(crate) struct CalendarEventCard {
     pub event: EventSummary,
 }
 
-/// Event card template for explore page display. Serialized for the calendar and map
-/// scripts through the `json` filter.
-#[derive(Debug, Clone, Template, Serialize)]
+/// Event card template for explore page display.
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/events/event_card.html")]
 pub(crate) struct EventCard {
     /// Event data
-    #[serde(flatten)]
     pub event: EventSummary,
 }
 
@@ -131,24 +130,24 @@ pub(crate) struct GroupsSection {
 
 /// Template for displaying group search results.
 ///
-/// This template renders the list of matching groups along with pagination controls. It
-/// supports different view modes and includes geographic bounds for map display.
+/// This template renders the list of matching groups along with pagination controls,
+/// or the minimal groups the map view draws.
 #[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/groups/results.html")]
 pub(crate) struct GroupsResultsSection {
-    /// List of groups matching the current filters.
+    /// Page of groups matching the current filters (list view).
     pub groups: Vec<GroupCard>,
-    /// Pagination links for navigating results.
+    /// Pagination links for navigating results (list view).
     pub navigation_links: NavigationLinks,
-    /// Total number of matching groups (for pagination).
+    /// Total number of matching groups.
     pub total: usize,
 
-    /// Geographic bounds of all groups (for map centering).
-    pub bbox: Option<BBox>,
     /// Current pagination offset.
     pub offset: Option<usize>,
     /// Current display mode.
     pub view_mode: Option<ViewMode>,
+    /// Minimal groups drawn by the map view.
+    pub widget_data: Option<SearchGroupsOutput<GroupMinimal>>,
 }
 
 impl GroupsResultsSection {
@@ -159,14 +158,11 @@ impl GroupsResultsSection {
     }
 }
 
-/// Group card template for explore page display. Serialized for the map script through
-/// the `json` filter.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Template, Serialize)]
+/// Group card template for explore page display.
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/explore/groups/group_card.html")]
 pub(crate) struct GroupCard {
     /// Group data
-    #[serde(flatten)]
     pub group: GroupSummary,
 }
 
