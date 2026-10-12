@@ -1,6 +1,12 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  COMMIT_SHA_HEADER,
+  isDeploymentReloadRequested,
+  resetDeploymentReloadState,
+  setDeploymentReloadHandler,
+} from "/static/js/common/deployment-version.js";
+import {
   waitForAnimationFrames,
   waitForMicrotask,
 } from "/tests/unit/test-utils/async.js";
@@ -98,6 +104,8 @@ describe("site docs shell", () => {
     fetchMock.restore();
     scrollToMock.restore();
     cleanupDocsHead();
+    document.head.querySelector('meta[name="ocg-commit-sha"]')?.remove();
+    resetDeploymentReloadState();
     delete window.$docsify;
     delete window.htmx;
     resetDom();
@@ -139,6 +147,56 @@ describe("site docs shell", () => {
     ).to.equal(
       "We could not load the documentation. Please refresh and try again.",
     );
+  });
+
+  it("loads cached docs styles from an older deployment without reloading the page", async () => {
+    // Render the docs shell on a page loaded from the current deployment.
+    document.body.innerHTML = `
+      <div class="ocg-docs-root">
+        <div id="ocg-docs-app"></div>
+      </div>
+    `;
+    const commitShaMeta = document.createElement("meta");
+    commitShaMeta.name = "ocg-commit-sha";
+    commitShaMeta.content = "current-commit";
+    document.head.appendChild(commitShaMeta);
+
+    // Record reloads and serve stylesheets cached with an older commit SHA.
+    const reloadUrls = [];
+    setDeploymentReloadHandler((url) => reloadUrls.push(url));
+    fetchMock.setImpl(async () => ({
+      headers: new Headers({ [COMMIT_SHA_HEADER]: "older-commit" }),
+      ok: true,
+      status: 200,
+      async text() {
+        return "body { color: black; }";
+      },
+    }));
+
+    // Load the page module after setup.
+    await importDocsShell();
+    await waitForMicrotask();
+    await waitForAnimationFrames(3);
+
+    // Verify the styles load without deployment headers or reloads.
+    const styleCalls = fetchMock.calls.filter(([url]) =>
+      String(url).endsWith(".css"),
+    );
+    expect(styleCalls.map(([url]) => url)).to.have.members([
+      "/static/vendor/css/docsify-vue.v4.13.1.min.css",
+      "/static/docs/assets/theme.css",
+    ]);
+    styleCalls.forEach(([, init]) => {
+      expect(new Headers(init?.headers).has(COMMIT_SHA_HEADER)).to.equal(false);
+    });
+    expect(
+      document.getElementById("ocg-docsify-vue-scoped-style")?.textContent,
+    ).to.include("color: black");
+    expect(
+      document.getElementById("ocg-docs-theme-scoped-style")?.textContent,
+    ).to.include("color: black");
+    expect(isDeploymentReloadRequested()).to.equal(false);
+    expect(reloadUrls).to.deep.equal([]);
   });
 
   it("rewrites app links, mirrors body classes, and enhances markdown tables after mount", async () => {

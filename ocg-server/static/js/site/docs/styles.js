@@ -1,5 +1,4 @@
 import { getElementById } from "/static/js/common/dom.js";
-import { ocgFetch } from "/static/js/common/fetch.js";
 import { scopeCssRules } from "/static/js/site/docs/css-scope.js";
 
 const DOCS_SCOPE_SELECTOR = ".ocg-docs-root";
@@ -17,12 +16,14 @@ const STYLE_IDS = {
 };
 
 /**
- * Fetches text content from a URL.
+ * Fetches text content from a static asset URL.
+ * Uses plain fetch because browser and shared caches keep static assets across
+ * deployments, so they must not take part in deployment version checks.
  * @param {string} url URL to fetch.
  * @returns {Promise<string>} Resolved text.
  */
 const fetchText = async (url) => {
-  const response = await ocgFetch(url, { credentials: "same-origin" });
+  const response = await fetch(url, { credentials: "same-origin" });
   if (!response.ok) {
     throw new Error(`Failed to fetch style asset: ${url}`);
   }
