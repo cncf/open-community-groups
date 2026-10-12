@@ -723,6 +723,35 @@ async fn test_stale_ocg_fetch_request_refreshes_without_running_handler() {
 }
 
 #[tokio::test]
+async fn test_stale_ocg_fetch_static_request_serves_asset_without_commit_sha() {
+    // Setup the application router
+    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Send stale OCG fetch request for a static asset
+    let request = Request::builder()
+        .uri("/static/vendor/css/docsify-vue.v4.13.1.min.css")
+        .header("X-OCG-Fetch", "true")
+        .header(COMMIT_SHA_HEADER, "older-commit")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the asset is served without deployment version headers
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE)
+    );
+    assert!(parts.headers.get(COMMIT_SHA_HEADER).is_none());
+    assert!(parts.headers.get("X-OCG-Refresh").is_none());
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_responses_carry_a_request_id_header() {
     // Setup the application router
     let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
@@ -753,6 +782,32 @@ async fn test_responses_carry_a_request_id_header() {
         propagated.headers().get("x-request-id").unwrap(),
         &HeaderValue::from_static("client-supplied-id")
     );
+}
+
+#[tokio::test]
+async fn test_static_asset_request_omits_commit_sha_header() {
+    // Setup the application router
+    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Request a static asset
+    let request = Request::builder()
+        .uri("/static/images/icons/arrow_left.svg")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check cached copies cannot carry a commit SHA
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_STATIC_IMAGES)
+    );
+    assert!(parts.headers.get(COMMIT_SHA_HEADER).is_none());
+    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]

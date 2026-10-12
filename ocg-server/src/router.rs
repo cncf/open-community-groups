@@ -108,6 +108,9 @@ pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 2] = [
 /// Vary header value for public shared-cache responses.
 pub(crate) const PUBLIC_SHARED_CACHE_VARY: &str = "x-ocg-commit-sha, hx-request, x-ocg-fetch";
 
+/// Path prefix of embedded static assets.
+const STATIC_PATH_PREFIX: &str = "/static/";
+
 /// Static file embedder using rust-embed.
 ///
 /// Embeds all files from the static directory into the binary.
@@ -481,7 +484,7 @@ async fn health_check(
 #[instrument]
 async fn static_handler(uri: Uri) -> impl IntoResponse {
     // Extract file path from URI
-    let path = uri.path().trim_start_matches("/static/");
+    let path = uri.path().trim_start_matches(STATIC_PATH_PREFIX);
 
     // Set cache policy based on resource type
     #[cfg(any(not(debug_assertions), test))]
@@ -612,7 +615,17 @@ async fn redirect_old_hosts(
 }
 
 /// Middleware that refreshes dynamic clients loaded from an older application commit.
+///
+/// Static assets are excluded: browser and shared caches keep them across
+/// deployments, so a commit SHA stored with a cached copy would go stale and
+/// trigger reloads that never pick up a newer version.
 async fn refresh_stale_clients(request: Request, next: Next) -> impl IntoResponse {
+    // Serve static assets without deployment version tracking
+    if request.uri().path().starts_with(STATIC_PATH_PREFIX) {
+        return next.run(request).await;
+    }
+
+    // Refresh stale dynamic clients without running the handler
     let is_htmx = header_value_is_true(request.headers(), "hx-request");
     let is_ocg_fetch = header_value_is_true(request.headers(), "x-ocg-fetch");
 
@@ -620,6 +633,7 @@ async fn refresh_stale_clients(request: Request, next: Next) -> impl IntoRespons
         return stale_client_refresh_response(is_htmx, is_ocg_fetch);
     }
 
+    // Run the handler and report the current commit
     let mut response = next.run(request).await.into_response();
     insert_commit_sha_header(response.headers_mut());
 
