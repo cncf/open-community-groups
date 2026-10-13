@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(542);
+select plan(546);
 
 -- ============================================================================
 -- VARIABLES
@@ -312,6 +312,7 @@ select has_function('get_event_summary_by_id', array['uuid', 'uuid']::name[]);
 select has_function('get_event_summary_dashboard', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_event_ticket_capacity', array['jsonb']::name[]);
 select has_function('get_event_ticket_type_allocated_seat_count', array['uuid', 'uuid']::name[]);
+select has_function('get_event_utm_allowlist', array['uuid']::name[]);
 select has_function('get_filters_options', array['text', 'text']::name[]);
 select has_function('get_group_external_payments_context', array['uuid', 'uuid']::name[]);
 select has_function('get_group_external_payments_eligibility', array['uuid', 'uuid', 'text']::name[]);
@@ -323,6 +324,7 @@ select has_function('get_group_sponsor', array['uuid', 'uuid']::name[]);
 select has_function('get_group_stats', array['uuid', 'uuid', 'boolean']::name[]);
 select has_function('get_group_summary', array['uuid', 'uuid']::name[]);
 select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
+select has_function('get_group_utm_settings', array['uuid', 'uuid']::name[]);
 select has_function('get_inbox_contact_context', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_public_event_full', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_public_event_summary', array['uuid']::name[]);
@@ -391,6 +393,7 @@ select has_function(
     array['timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone']::name[]
 );
 select has_function('is_session_meeting_in_sync', array['session', 'jsonb', 'event', 'jsonb']::name[]);
+select has_function('is_valid_utm_value_list', array['text[]']::name[]);
 select has_function('join_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('jsonb_geography_point', array['jsonb']::name[]);
 select has_function('jsonb_text_array', array['jsonb']::name[]);
@@ -696,6 +699,7 @@ select function_returns(
 );
 select has_function('update_event_category', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function('update_event_views', array['jsonb']::name[]);
+select has_function('update_event_views_utm', array['jsonb']::name[]);
 select has_function('update_group', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function('update_group_category', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function('update_group_sponsor', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);

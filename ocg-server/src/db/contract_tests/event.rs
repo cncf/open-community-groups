@@ -12,6 +12,7 @@ use crate::{
             EventPurchaseChargeModel, EventRefundRequestStatus, ExternalPaymentInfo,
             PaymentProvider,
         },
+        utm::EventUtmAllowlist,
     },
 };
 
@@ -278,6 +279,42 @@ async fn db_contracts_get_event_summary_by_id_deserializes() -> Result<()> {
     );
     assert_eq!(event.kind, EventKind::Hybrid);
     assert_eq!(event.name, "Future Contract Event");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_utm_allowlist_deserializes() -> Result<()> {
+    // Setup the contract database and published event identifier
+    let db = contract_tests_db()?;
+
+    // Load the UTM values accepted for the event views
+    let allowlist = db.get_event_utm_allowlist(event_id()).await?;
+
+    // Check the group values and the default mediums with the group extra medium
+    assert_eq!(
+        allowlist,
+        Some(EventUtmAllowlist {
+            campaigns: vec!["contract-campaign".to_string()],
+            mediums: [
+                "affiliate",
+                "cpc",
+                "display",
+                "email",
+                "organic",
+                "podcast",
+                "qr",
+                "referral",
+                "sms",
+                "social",
+                "video",
+            ]
+            .map(String::from)
+            .to_vec(),
+            sources: vec!["contract-source".to_string()],
+        })
+    );
 
     Ok(())
 }

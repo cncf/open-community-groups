@@ -270,6 +270,7 @@
 {{ template "dashboard-group/get_group_external_payments_eligibility.sql" }}
 {{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/get_group_stats.sql" }}
+{{ template "dashboard-group/get_group_utm_settings.sql" }}
 {{ template "dashboard-group/list_group_automatic_tax_readiness_event_ids.sql" }} -- Dependency for group_requires_automatic_tax_readiness
 {{ template "dashboard-group/group_requires_automatic_tax_readiness.sql" }}
 {{ template "dashboard-group/invite_event_attendee.sql" }}
@@ -375,10 +376,12 @@
 {{ template "event/get_event_enrollment.sql" }}
 {{ template "event/get_event_full_by_slug.sql" }}
 {{ template "event/get_event_summary_by_id.sql" }}
+{{ template "event/get_event_utm_allowlist.sql" }}
 {{ template "event/leave_event.sql" }}
 {{ template "event/list_user_session_proposals_for_cfs_event.sql" }}
 {{ template "event/reconcile_next_event_enrollment.sql" }}
 {{ template "event/update_event_views.sql" }}
+{{ template "event/update_event_views_utm.sql" }}
 
 {{ template "group/get_group_full_by_slug.sql" }}
 {{ template "group/get_group_past_events.sql" }}

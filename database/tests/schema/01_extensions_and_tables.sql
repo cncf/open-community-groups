@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(91);
+select plan(93);
 
 -- ============================================================================
 -- TESTS
@@ -62,6 +62,7 @@ select has_table('event_series');
 select has_table('event_speaker');
 select has_table('event_sponsor');
 select has_table('event_views');
+select has_table('event_views_utm');
 select has_table('event_waitlist');
 select has_table('external_payments_config');
 select has_table('group');
@@ -105,6 +106,7 @@ select has_table('user');
 select has_table('user_badge');
 select has_table('user_group_notification_mute');
 select has_table('user_notification_opt_out');
+select has_table('utm_medium');
 
 -- ============================================================================
 -- CLEANUP

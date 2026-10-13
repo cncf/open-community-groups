@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(248);
+select plan(251);
 
 -- ============================================================================
 -- TESTS
@@ -57,6 +57,7 @@ select has_pk('event_series');
 select has_pk('event_speaker');
 select has_pk('event_sponsor');
 select hasnt_pk('event_views');
+select hasnt_pk('event_views_utm');
 select has_pk('event_waitlist');
 select has_pk('external_payments_config');
 select has_pk('group');
@@ -100,6 +101,7 @@ select has_pk('user');
 select has_pk('user_badge');
 select has_pk('user_group_notification_mute');
 select has_pk('user_notification_opt_out');
+select has_pk('utm_medium');
 
 -- Test: check tables have expected foreign keys
 select col_is_fk('admission_offer', 'event_discount_code_id', 'event_discount_code');
@@ -198,6 +200,7 @@ select col_is_fk('event_speaker', 'user_id', 'user');
 select col_is_fk('event_sponsor', 'event_id', 'event');
 select col_is_fk('event_sponsor', 'group_sponsor_id', 'group_sponsor');
 select col_is_fk('event_views', 'event_id', 'event');
+select col_is_fk('event_views_utm', 'event_id', 'event');
 select col_is_fk('event_waitlist', 'event_id', 'event');
 select col_is_fk('event_waitlist', 'event_ticket_type_id', 'event_ticket_type');
 select col_is_fk('event_waitlist', 'user_id', 'user');

@@ -31,6 +31,7 @@ use crate::{
             EventTicketType, EventTicketTypeAvailability, PreparedEventCheckout,
         },
         questionnaire::{QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers},
+        utm::{EventUtmAllowlist, UtmParams},
     },
 };
 
@@ -2303,37 +2304,295 @@ async fn test_track_view_accepts_same_origin_request() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
 
-    // Setup database mock
-    let db = MockDB::new();
+    // Setup database mock that must not look up UTM values
+    let mut db = MockDB::new();
+    db.expect_get_event_utm_allowlist().never();
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup activity tracker mock
+    // Setup activity tracker mock expecting an unattributed view
     let mut activity_tracker = MockActivityTracker::new();
     activity_tracker
         .expect_track()
         .times(1)
-        .withf(move |activity| *activity == Activity::EventView { event_id })
+        .withf(move |activity| {
+            *activity
+                == Activity::EventView {
+                    event_id,
+                    utm: None,
+                }
+        })
         .returning(|_| Box::pin(async { Ok(()) }));
 
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_activity_tracker(activity_tracker)
-        .with_server_cfg(sample_tracking_server_cfg())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/events/{event_id}/views"))
-        .header("origin", "https://example.test")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    // Send the tracking request
+    let (parts, bytes) =
+        send_track_view_request(db, activity_tracker, &format!("/events/{event_id}/views")).await;
 
-    // Check response matches expectations
+    // Check the view is accepted
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_track_view_drops_utm_params_not_accepted_by_event() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock returning values without the requested campaign
+    let mut db = MockDB::new();
+    db.expect_get_event_utm_allowlist()
+        .times(1)
+        .withf(move |id| *id == event_id)
+        .returning(|_| {
+            Ok(Some(EventUtmAllowlist {
+                sources: vec!["newsletter".to_string()],
+                ..EventUtmAllowlist::default()
+            }))
+        });
+
+    // Setup activity tracker mock expecting an unattributed view
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker
+        .expect_track()
+        .times(1)
+        .withf(move |activity| {
+            *activity
+                == Activity::EventView {
+                    event_id,
+                    utm: None,
+                }
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Send the tracking request
+    let (parts, bytes) = send_track_view_request(
+        db,
+        activity_tracker,
+        &format!("/events/{event_id}/views?utm_campaign=spring-launch&utm_source=newsletter"),
+    )
+    .await;
+
+    // Check the view is counted without attribution
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_track_view_drops_utm_params_of_unpublished_event() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock returning no values for an unpublished event
+    let mut db = MockDB::new();
+    db.expect_get_event_utm_allowlist()
+        .times(1)
+        .withf(move |id| *id == event_id)
+        .returning(|_| Ok(None));
+
+    // Setup activity tracker mock expecting an unattributed view
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker
+        .expect_track()
+        .times(1)
+        .withf(move |activity| {
+            *activity
+                == Activity::EventView {
+                    event_id,
+                    utm: None,
+                }
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Send the tracking request
+    let (parts, bytes) = send_track_view_request(
+        db,
+        activity_tracker,
+        &format!("/events/{event_id}/views?utm_source=newsletter"),
+    )
+    .await;
+
+    // Check the view is counted without attribution
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_track_view_drops_utm_params_when_lookup_fails() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock failing to look up UTM values
+    let mut db = MockDB::new();
+    db.expect_get_event_utm_allowlist()
+        .times(1)
+        .withf(move |id| *id == event_id)
+        .returning(|_| Err(anyhow!("db error")));
+
+    // Setup activity tracker mock expecting an unattributed view
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker
+        .expect_track()
+        .times(1)
+        .withf(move |activity| {
+            *activity
+                == Activity::EventView {
+                    event_id,
+                    utm: None,
+                }
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Send the tracking request
+    let (parts, bytes) = send_track_view_request(
+        db,
+        activity_tracker,
+        &format!("/events/{event_id}/views?utm_source=newsletter"),
+    )
+    .await;
+
+    // Check the view is counted without attribution
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_track_view_ignores_invalid_utm_params() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock that must not look up UTM values
+    let mut db = MockDB::new();
+    db.expect_get_event_utm_allowlist().never();
+
+    // Setup activity tracker mock expecting an unattributed view
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker
+        .expect_track()
+        .times(1)
+        .withf(move |activity| {
+            *activity
+                == Activity::EventView {
+                    event_id,
+                    utm: None,
+                }
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Send the tracking request
+    let (parts, bytes) = send_track_view_request(
+        db,
+        activity_tracker,
+        &format!("/events/{event_id}/views?utm_campaign=spring-launch&utm_source=news%20letter"),
+    )
+    .await;
+
+    // Check the view is counted without attribution
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_track_view_ignores_malformed_query() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock that must not look up UTM values
+    let mut db = MockDB::new();
+    db.expect_get_event_utm_allowlist().never();
+
+    // Setup activity tracker mock expecting an unattributed view
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker
+        .expect_track()
+        .times(1)
+        .withf(move |activity| {
+            *activity
+                == Activity::EventView {
+                    event_id,
+                    utm: None,
+                }
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Send the tracking request
+    let (parts, bytes) = send_track_view_request(
+        db,
+        activity_tracker,
+        &format!("/events/{event_id}/views?utm_source[x]=newsletter"),
+    )
+    .await;
+
+    // Check the view is still counted
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_track_view_ignores_utm_params_without_source_or_campaign() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock that must not look up UTM values
+    let mut db = MockDB::new();
+    db.expect_get_event_utm_allowlist().never();
+
+    // Setup activity tracker mock expecting an unattributed view
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker
+        .expect_track()
+        .times(1)
+        .withf(move |activity| {
+            *activity
+                == Activity::EventView {
+                    event_id,
+                    utm: None,
+                }
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Send the tracking request
+    let (parts, bytes) = send_track_view_request(
+        db,
+        activity_tracker,
+        &format!("/events/{event_id}/views?utm_campaign=%20&utm_medium=email&utm_source=%20"),
+    )
+    .await;
+
+    // Check the view is counted without attribution
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_track_view_records_utm_params_accepted_by_event() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+    let utm = UtmParams::new(Some("spring-launch"), None, Some("newsletter"));
+
+    // Setup database mock returning the values accepted for the event
+    let mut db = MockDB::new();
+    db.expect_get_event_utm_allowlist()
+        .times(1)
+        .withf(move |id| *id == event_id)
+        .returning(|_| Ok(Some(sample_event_utm_allowlist())));
+
+    // Setup activity tracker mock expecting the normalized attribution
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker
+        .expect_track()
+        .times(1)
+        .withf(move |activity| {
+            *activity
+                == Activity::EventView {
+                    event_id,
+                    utm: utm.clone(),
+                }
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Send the tracking request
+    let (parts, bytes) =
+        send_track_view_request(db, activity_tracker, &format!("/events/{event_id}/views?utm_campaign=Spring-Launch&utm_medium=&utm_source=%20Newsletter%20")).await;
+
+    // Check the view is counted with its attribution
     assert_eq!(parts.status, StatusCode::NO_CONTENT);
     assert!(bytes.is_empty());
 }
@@ -2455,6 +2714,15 @@ fn sample_contact_viewer() -> InboxContactViewer {
     }
 }
 
+/// Returns an allowlist accepting the sample attribution.
+fn sample_event_utm_allowlist() -> EventUtmAllowlist {
+    EventUtmAllowlist {
+        campaigns: vec!["spring-launch".to_string()],
+        mediums: vec!["email".to_string()],
+        sources: vec!["newsletter".to_string()],
+    }
+}
+
 /// Sends a contact request through the router.
 async fn send_contact_request(
     db: MockDB,
@@ -2477,6 +2745,30 @@ async fn send_contact_request(
     }
     let request = request
         .body(Body::from(form.unwrap_or_default().to_string()))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    (parts, bytes)
+}
+
+/// Sends a same-origin event view tracking request through the router.
+async fn send_track_view_request(
+    db: MockDB,
+    activity_tracker: MockActivityTracker,
+    uri: &str,
+) -> (axum::http::response::Parts, axum::body::Bytes) {
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_tracking_server_cfg())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(uri)
+        .header("origin", "https://example.test")
+        .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();

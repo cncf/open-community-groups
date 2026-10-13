@@ -8,7 +8,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{PgClient, PgExecutor},
+    db::{PgClient, PgExecutor, cache_probe},
     types::{
         community::{CommunityRole, CommunityRoleSummary, CommunitySummary},
         dashboard::{
@@ -441,17 +441,19 @@ where
             convert = "{ community_id }",
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>, community_id: Uuid) -> Result<CommunityDashboardStats> {
-            let row = db
-                .query_one("select get_community_stats($1::uuid)", &[&community_id])
-                .await?;
-            let stats = row.try_get::<_, Json<CommunityDashboardStats>>(0)?.0;
-
-            Ok(stats)
+        async fn inner(db: &PgClient<'_>, community_id: Uuid) -> Result<CommunityDashboardStats> {
+            db.fetch_json_one("select get_community_stats($1::uuid)", &[&community_id])
+                .await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(stats) = cache_probe(&INNER.0, &community_id).await {
+            return Ok(stats);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db, community_id).await
+        inner(&db, community_id).await
     }
 
     /// [`DBDashboardCommunity::list_community_audit_logs`]
@@ -504,15 +506,18 @@ where
             convert = r#"{ String::from("community_roles") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<Vec<CommunityRoleSummary>> {
-            let row = db.query_one("select list_community_roles()", &[]).await?;
-            let roles = row.try_get::<_, Json<Vec<CommunityRoleSummary>>>(0)?.0;
-
-            Ok(roles)
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<CommunityRoleSummary>> {
+            db.fetch_json_one("select list_community_roles()", &[]).await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(roles) = cache_probe(&INNER.0, "community_roles").await {
+            return Ok(roles);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     /// [`DBDashboardCommunity::list_community_team_members`]

@@ -18,11 +18,15 @@ declare
     v_new_external_payments_seller_display_name text;
     v_new_parent_group_id uuid;
     v_new_payment_recipient jsonb;
+    v_new_utm_campaigns text[];
+    v_new_utm_mediums text[];
+    v_new_utm_sources text[];
     v_parent_group_id_present boolean := false;
     v_payment_recipient_changed boolean := false;
     v_payment_validation jsonb;
     v_previous_payment_recipient jsonb;
     v_provider_account_changed boolean := false;
+    v_utm_present boolean := false;
 begin
     -- Lock and load existing values to compare against the update payload
     v_group := lock_active_group(p_community_id, p_group_id);
@@ -52,6 +56,23 @@ begin
            'group.settings.write'
        ) then
         raise exception 'you must be able to manage the selected parent group' using errcode = 'OCG01';
+    end if;
+
+    -- Resolve the requested UTM values, treating omitted lists as cleared
+    v_utm_present := coalesce((p_group->>'utm_present')::boolean, false);
+    if v_utm_present then
+        v_new_utm_campaigns := coalesce(jsonb_text_array(p_group->'utm_campaigns'), '{}');
+        v_new_utm_mediums := coalesce(jsonb_text_array(p_group->'utm_mediums'), '{}');
+        v_new_utm_sources := coalesce(jsonb_text_array(p_group->'utm_sources'), '{}');
+
+        -- Reject extra mediums that are already accepted by default
+        if exists (
+            select 1
+            from utm_medium um
+            where um.utm_medium_id = any(v_new_utm_mediums)
+        ) then
+            raise exception 'utm mediums cannot include default mediums' using errcode = 'OCG01';
+        end if;
     end if;
 
     -- Resolve the final country and external-payments toggle together
@@ -346,6 +367,24 @@ begin
         state = nullif(p_group->>'state', ''),
         tags = jsonb_text_array(p_group->'tags'),
         twitter_url = nullif(p_group->>'twitter_url', ''),
+        utm_campaigns = case
+            -- Apply the submitted campaigns when the payload addressed them
+            when v_utm_present then v_new_utm_campaigns
+            -- Preserve the campaigns omitted from a partial payload
+            else utm_campaigns
+        end,
+        utm_mediums = case
+            -- Apply the submitted mediums when the payload addressed them
+            when v_utm_present then v_new_utm_mediums
+            -- Preserve the mediums omitted from a partial payload
+            else utm_mediums
+        end,
+        utm_sources = case
+            -- Apply the submitted sources when the payload addressed them
+            when v_utm_present then v_new_utm_sources
+            -- Preserve the sources omitted from a partial payload
+            else utm_sources
+        end,
         website_url = nullif(p_group->>'website_url', ''),
         wechat_url = nullif(p_group->>'wechat_url', ''),
         youtube_url = nullif(p_group->>'youtube_url', '')

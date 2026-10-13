@@ -195,6 +195,7 @@ mock! {
             offset: usize,
             username: &str,
         ) -> Result<Vec<crate::types::badges::PublicUserBadge>>;
+        async fn list_utm_mediums(&self) -> Result<Vec<String>>;
         async fn search_events(
             &self,
             filters: &crate::types::search::SearchEventsFilters,
@@ -584,6 +585,11 @@ mock! {
             group_id: Uuid,
             include_subgroups: bool,
         ) -> Result<crate::types::dashboard::group::analytics::GroupDashboardStats>;
+        async fn get_group_utm_settings(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<crate::types::utm::GroupUtmSettings>;
         async fn group_requires_automatic_tax_readiness(
             &self,
             community_id: Uuid,
@@ -1110,6 +1116,10 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
         ) -> Result<crate::types::event::EventSummary>;
+        async fn get_event_utm_allowlist(
+            &self,
+            event_id: Uuid,
+        ) -> Result<Option<crate::types::utm::EventUtmAllowlist>>;
         async fn leave_event(
             &self,
             community_id: Uuid,
@@ -1128,6 +1138,10 @@ mock! {
     impl crate::db::activity_tracker::DBActivityTracker for DB {
         async fn update_community_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
         async fn update_event_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
+        async fn update_event_views_utm(
+            &self,
+            data: Vec<(Uuid, String, String, String, String, u32)>,
+        ) -> Result<()>;
         async fn update_group_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
     }
 

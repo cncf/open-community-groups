@@ -23,6 +23,7 @@ use crate::{
         group::{GroupFull, GroupParentOption},
         payments::{GroupExternalPaymentsContext, GroupPaymentRecipient, PaymentProvider},
         permissions::GroupPermission,
+        utm::GroupUtmSettings,
     },
 };
 
@@ -76,6 +77,13 @@ async fn test_update_page_success() {
     assert!(!bytes.is_empty());
     let html = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(html.contains(r#"value="Short group description""#));
+    assert!(html.contains(r#"name="utm_present" value="true""#));
+    assert!(html.contains(r#"items="[&#34;newsletter&#34;]""#));
+    assert!(html.contains(r#"items="[&#34;spring-launch&#34;]""#));
+    assert!(html.contains(r#"items="[&#34;podcast&#34;]""#));
+    assert!(html.contains(r#"excluded-values="[&#34;email&#34;,&#34;social&#34;]""#));
+    assert!(html.contains(">email</li>"));
+    assert!(html.contains(">social</li>"));
 }
 
 #[tokio::test]
@@ -296,6 +304,96 @@ async fn test_update_normalizes_unchanged_payment_recipient() {
         &HeaderValue::from_static("refresh-body"),
     );
     assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_passes_utm_values() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut update = sample_group_update();
+    update.utm_campaigns = Some(vec!["spring-launch".to_string()]);
+    update.utm_mediums = Some(vec!["podcast".to_string()]);
+    update.utm_present = Some(true);
+    update.utm_sources = Some(vec!["newsletter".to_string(), "partner.site".to_string()]);
+    let body = serde_qs::to_string(&update).unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
+    db.expect_update_group()
+        .times(1)
+        .withf(move |uid, cid, gid, group| {
+            *uid == user_id
+                && *cid == community_id
+                && *gid == group_id
+                && group.utm_campaigns == Some(vec!["spring-launch".to_string()])
+                && group.utm_mediums == Some(vec!["podcast".to_string()])
+                && group.utm_present == Some(true)
+                && group.utm_sources
+                    == Some(vec!["newsletter".to_string(), "partner.site".to_string()])
+        })
+        .returning(move |_, _, _, _| Ok(()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(MockPaymentsManager::new())
+        .build()
+        .await;
+    let response = router.oneshot(update_request(session_id, body)).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_rejects_invalid_utm_values() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut update = sample_group_update();
+    update.utm_present = Some(true);
+    update.utm_sources = Some(vec!["News Letter".to_string()]);
+    let body = serde_qs::to_string(&update).unwrap();
+
+    // Setup database mock that must not persist the invalid values
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::SettingsWrite,
+    );
+    db.expect_update_group().never();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(MockPaymentsManager::new())
+        .build()
+        .await;
+    let response = router.oneshot(update_request(session_id, body)).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the validation error is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("utm_sources"));
 }
 
 #[tokio::test]
@@ -1482,6 +1580,19 @@ fn expect_update_page_reads(
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(move |_, _| Ok(external_payments.clone()));
+    db.expect_get_group_utm_settings()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| {
+            Ok(GroupUtmSettings {
+                campaigns: vec!["spring-launch".to_string()],
+                mediums: vec!["podcast".to_string()],
+                sources: vec!["newsletter".to_string()],
+            })
+        });
+    db.expect_list_utm_mediums()
+        .times(1)
+        .returning(|| Ok(vec!["email".to_string(), "social".to_string()]));
 }
 
 /// External-payments context for a community without payments configured.

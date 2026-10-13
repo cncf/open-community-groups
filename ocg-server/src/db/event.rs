@@ -2,13 +2,14 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use cached::cached;
 use serde::Serialize;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgExecutor,
+    db::{PgClient, PgExecutor, cache_probe},
     types::{
         event::{
             EventEnrollmentState, EventEnrollmentStatus, EventFull, EventLeaveOutcome,
@@ -16,6 +17,7 @@ use crate::{
         },
         payments::PaymentProvider,
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
+        utm::EventUtmAllowlist,
     },
 };
 
@@ -74,6 +76,13 @@ pub(crate) trait DBEvent {
         community_id: Uuid,
         event_id: Uuid,
     ) -> Result<EventSummary>;
+
+    /// Retrieves the UTM values accepted for the views of a published event.
+    ///
+    /// Returns `None` when the event is not published. Cached for up to one
+    /// minute per process, keeping at most 10,000 events, so changes to the
+    /// group UTM values apply to new views within a minute.
+    async fn get_event_utm_allowlist(&self, event_id: Uuid) -> Result<Option<EventUtmAllowlist>>;
 
     /// Removes a user from an event and returns the leave outcome.
     async fn leave_event(
@@ -225,6 +234,31 @@ where
             &[&community_id, &event_id],
         )
         .await
+    }
+
+    /// [`DBEvent::get_event_utm_allowlist`]
+    #[instrument(skip(self), err)]
+    async fn get_event_utm_allowlist(&self, event_id: Uuid) -> Result<Option<EventUtmAllowlist>> {
+        #[cached(
+            max_size = 10_000,
+            ttl = 60,
+            key = "Uuid",
+            convert = "{ event_id }",
+            sync_writes = "by_key"
+        )]
+        async fn inner(db: &PgClient<'_>, event_id: Uuid) -> Result<Option<EventUtmAllowlist>> {
+            db.fetch_json_opt("select get_event_utm_allowlist($1::uuid)", &[&event_id])
+                .await
+        }
+
+        // Serve a fresh cached value without checking out a client
+        if let Some(allowlist) = cache_probe(&INNER.0, &event_id).await {
+            return Ok(allowlist);
+        }
+
+        // Check out the client before the cached fill takes its key lock
+        let db = self.client().await?;
+        inner(&db, event_id).await
     }
 
     /// [`DBEvent::leave_event`]

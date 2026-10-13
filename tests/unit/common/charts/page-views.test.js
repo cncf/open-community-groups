@@ -6,18 +6,23 @@ import {
   trackPageView,
 } from "/static/js/common/charts/page-views.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { resetDom, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
+import { resetDom, setLocationPath, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
 import { mockFetch, mockSendBeacon, mockVisibilityState } from "/tests/unit/test-utils/network.js";
+
+const HTMX_HISTORY_PATH_STORAGE_KEY = "htmx-current-path-for-history";
 
 describe("page views", () => {
   let eventListeners;
   let fetchMock;
+  let originalLocationPath;
   let sendBeaconMock;
   let visibilityState;
 
   beforeEach(() => {
+    originalLocationPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     resetDom();
     resetPageViewTracker();
+    sessionStorage.removeItem(HTMX_HISTORY_PATH_STORAGE_KEY);
     eventListeners = trackAddedEventListeners();
     fetchMock = mockFetch();
     sendBeaconMock = mockSendBeacon();
@@ -31,6 +36,79 @@ describe("page views", () => {
     fetchMock.restore();
     sendBeaconMock.restore();
     eventListeners.restore();
+    sessionStorage.removeItem(HTMX_HISTORY_PATH_STORAGE_KEY);
+    setLocationPath(originalLocationPath);
+  });
+
+  it("attributes event page views to UTM parameters and removes them from the URL", () => {
+    // Load an event URL with UTM and unrelated parameters.
+    setLocationPath(
+      "/cncf/group/g/event/e?ref=home&utm_source=newsletter&utm_medium=&utm_campaign=launch#details",
+    );
+    history.replaceState({ htmx: true }, "", window.location.href);
+
+    // Track the page view event.
+    trackPageView({ entityId: "event-123", entityType: "event" });
+
+    // The view carries the non-empty UTM parameters.
+    expect(sendBeaconMock.calls).to.have.length(1);
+    expect(sendBeaconMock.calls[0].endpoint).to.equal(
+      "/events/event-123/views?utm_campaign=launch&utm_source=newsletter",
+    );
+
+    // The URL keeps everything except the UTM parameters, and the history state.
+    expect(window.location.pathname).to.equal("/cncf/group/g/event/e");
+    expect(window.location.search).to.equal("?ref=home");
+    expect(window.location.hash).to.equal("#details");
+    expect(history.state).to.deep.equal({ htmx: true });
+
+    // No HTMX history path is recorded when HTMX has not recorded one.
+    expect(sessionStorage.getItem(HTMX_HISTORY_PATH_STORAGE_KEY)).to.equal(null);
+  });
+
+  it("keeps the HTMX history path in sync with the cleaned event URL", () => {
+    // Load an event URL with UTM parameters recorded by HTMX as its history path.
+    const eventPath = "/cncf/group/g/event/e?ref=home&utm_source=newsletter";
+    setLocationPath(eventPath);
+    sessionStorage.setItem(HTMX_HISTORY_PATH_STORAGE_KEY, eventPath);
+
+    // Track the page view event.
+    trackPageView({ entityId: "event-123", entityType: "event" });
+
+    // HTMX saves the page snapshot under the cleaned URL restored on back navigation.
+    expect(sessionStorage.getItem(HTMX_HISTORY_PATH_STORAGE_KEY)).to.equal("/cncf/group/g/event/e?ref=home");
+  });
+
+  it("keeps UTM parameters out of community and group page views", () => {
+    // Load a URL with UTM parameters.
+    setLocationPath("/cncf?utm_source=newsletter");
+
+    // Track community and group page views.
+    trackPageView({ entityId: "cncf", entityType: "community" });
+    trackPageView({ entityId: "group-a", entityType: "group" });
+
+    // The views and the URL are left untouched.
+    expect(sendBeaconMock.calls.map(({ endpoint }) => endpoint)).to.deep.equal([
+      "/communities/cncf/views",
+      "/groups/group-a/views",
+    ]);
+    expect(window.location.search).to.equal("?utm_source=newsletter");
+  });
+
+  it("replays UTM attribution when a persisted event page is shown again", () => {
+    // Load an event URL with UTM parameters.
+    setLocationPath("/cncf/group/g/event/e?utm_source=newsletter");
+
+    // Track the page view event and restore the page from the back-forward cache.
+    trackPageView({ entityId: "event-123", entityType: "event" });
+    window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+
+    // Both views carry the UTM parameters read before the URL was cleaned.
+    expect(sendBeaconMock.calls.map(({ endpoint }) => endpoint)).to.deep.equal([
+      "/events/event-123/views?utm_source=newsletter",
+      "/events/event-123/views?utm_source=newsletter",
+    ]);
+    expect(window.location.search).to.equal("");
   });
 
   it("sends a beacon for visible community page views", () => {
@@ -129,5 +207,20 @@ describe("page views", () => {
     // The request uses the expected endpoint and options.
     expect(sendBeaconMock.calls).to.have.length(0);
     expect(fetchMock.calls).to.have.length(0);
+  });
+});
+
+describe("page views HTMX history contract", () => {
+  it("syncs the history path key used by the HTMX bundle the base template loads", async () => {
+    // Find the HTMX bundle loaded by the base template.
+    const template = await (await fetch("/ocg-server/templates/common/base.html")).text();
+    const htmxBundlePath = template.match(
+      /<script src="(\/static\/vendor\/js\/htmx\.v[\d.]+\.min\.js)">/,
+    )?.[1];
+    expect(htmxBundlePath).to.be.a("string");
+
+    // The bundle records the history path under the key the tracker syncs.
+    const bundle = await (await fetch(`/ocg-server${htmxBundlePath}`)).text();
+    expect(bundle).to.include(`"${HTMX_HISTORY_PATH_STORAGE_KEY}"`);
   });
 });

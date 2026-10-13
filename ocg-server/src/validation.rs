@@ -103,6 +103,9 @@ pub const MAX_LEN_TAG: usize = 50;
 /// Maximum length for timezone identifiers.
 pub const MAX_LEN_TIMEZONE: usize = 64;
 
+/// Maximum length for UTM parameter values, matching the database constraints.
+pub const MAX_LEN_UTM_VALUE: usize = 50;
+
 /// Maximum pagination limit for results per page.
 pub const MAX_PAGINATION_LIMIT: usize = 100;
 
@@ -111,6 +114,10 @@ pub const MAX_RECURRING_ADDITIONAL_OCCURRENCES: i32 = 12;
 
 /// Maximum duration for session proposals (minutes).
 pub const MAX_SESSION_PROPOSAL_DURATION_MINUTES: i32 = 480;
+
+/// Maximum number of UTM values in each list a group defines, matching the
+/// database constraints.
+pub const MAX_UTM_VALUES: usize = 20;
 
 /// Minimum length for passwords.
 pub const MIN_PASSWORD_LEN: usize = 8;
@@ -164,6 +171,15 @@ pub fn image_url_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
 /// Returns whether a URL is safe to render in an HTML href attribute.
 pub(crate) fn is_safe_href(url: &str) -> bool {
     is_safe_web_url(url, true)
+}
+
+/// Returns whether a UTM value has the format accepted by the database.
+pub(crate) fn is_valid_utm_value(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_LEN_UTM_VALUE
+        && value.bytes().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'-' | b'_')
+        })
 }
 
 /// Validates that a string is non-empty after trimming whitespace.
@@ -232,6 +248,36 @@ pub fn url_map_values(value: &Option<BTreeMap<String, String>>, _ctx: &()) -> ga
             }
         }
     }
+    Ok(())
+}
+
+/// Validates an optional list of UTM values defined by a group.
+pub fn utm_value_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
+    let Some(values) = value else {
+        return Ok(());
+    };
+
+    // Enforce the list size accepted by the database
+    if values.len() > MAX_UTM_VALUES {
+        return Err(garde::Error::new(format!(
+            "value exceeds max items of {MAX_UTM_VALUES}"
+        )));
+    }
+
+    // Require unique values in the format matched against UTM parameters
+    for (index, value) in values.iter().enumerate() {
+        if !is_valid_utm_value(value) {
+            return Err(garde::Error::new(format!(
+                "utm value '{value}' must have up to {MAX_LEN_UTM_VALUE} lowercase letters, numbers, dots, hyphens, or underscores"
+            )));
+        }
+        if values[..index].contains(value) {
+            return Err(garde::Error::new(format!(
+                "utm value '{value}' is duplicated"
+            )));
+        }
+    }
+
     Ok(())
 }
 
@@ -635,6 +681,22 @@ mod tests {
     }
 
     #[test]
+    fn test_is_valid_utm_value_invalid() {
+        for value in ["", "News", "news letter", "news!", "news\u{0}"] {
+            assert!(!is_valid_utm_value(value), "{value:?} should be invalid");
+        }
+        assert!(!is_valid_utm_value(&"a".repeat(MAX_LEN_UTM_VALUE + 1)));
+    }
+
+    #[test]
+    fn test_is_valid_utm_value_valid() {
+        for value in ["newsletter", "partner.site", "spring-launch_2026"] {
+            assert!(is_valid_utm_value(value), "{value:?} should be valid");
+        }
+        assert!(is_valid_utm_value(&"a".repeat(MAX_LEN_UTM_VALUE)));
+    }
+
+    #[test]
     fn test_trimmed_non_empty_invalid() {
         assert!(trimmed_non_empty(&"", &()).is_err());
         assert!(trimmed_non_empty(&"   ", &()).is_err());
@@ -836,6 +898,34 @@ mod tests {
 
         // Empty map is valid
         assert!(url_map_values(&Some(BTreeMap::new()), &()).is_ok());
+    }
+
+    #[test]
+    fn test_utm_value_vec_invalid() {
+        // Check values with an unsupported format are rejected
+        assert!(utm_value_vec(&Some(vec!["News Letter".to_string()]), &()).is_err());
+
+        // Check duplicated values are rejected
+        let duplicated = vec!["newsletter".to_string(), "newsletter".to_string()];
+        assert!(utm_value_vec(&Some(duplicated), &()).is_err());
+    }
+
+    #[test]
+    fn test_utm_value_vec_max_items() {
+        let values = (0..=MAX_UTM_VALUES).map(|i| format!("value-{i}")).collect();
+        assert!(utm_value_vec(&Some(values), &()).is_err());
+    }
+
+    #[test]
+    fn test_utm_value_vec_none() {
+        assert!(utm_value_vec(&None, &()).is_ok());
+    }
+
+    #[test]
+    fn test_utm_value_vec_valid() {
+        let values = (0..MAX_UTM_VALUES).map(|i| format!("value-{i}")).collect();
+        assert!(utm_value_vec(&Some(values), &()).is_ok());
+        assert!(utm_value_vec(&Some(vec![]), &()).is_ok());
     }
 
     #[test]

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(127);
+select plan(129);
 
 -- ============================================================================
 -- TESTS
@@ -516,6 +516,11 @@ select indexes_are('event_views', array[
     'event_views_event_id_day_key'
 ]);
 
+-- Test: event_views_utm indexes should match expected
+select indexes_are('event_views_utm', array[
+    'event_views_utm_event_id_day_utm_key'
+]);
+
 -- Test: event_waitlist indexes should match expected
 select indexes_are('event_waitlist', array[
     'event_waitlist_pkey',
@@ -781,6 +786,11 @@ select indexes_are('user_group_notification_mute', array[
 -- Test: user notification opt-out indexes should match expected
 select indexes_are('user_notification_opt_out', array[
     'user_notification_opt_out_pkey'
+]);
+
+-- Test: utm medium indexes should match expected
+select indexes_are('utm_medium', array[
+    'utm_medium_pkey'
 ]);
 
 -- ============================================================================

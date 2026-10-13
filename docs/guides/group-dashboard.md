@@ -97,6 +97,7 @@ You can manage:
 - Optional pretty URL slug for public group links.
 - Social links.
 - Optional tags, photo gallery, and extra links.
+- Optional UTM tracking values for event page views.
 
 Enter social and additional links as absolute HTTP or HTTPS URLs. Other URL
 schemes and protocol-relative URLs are rejected.
@@ -144,6 +145,29 @@ The relationship follows these rules:
 Inactive parents and inactive children are hidden from public relationship displays and merged
 event lists, but the stored link is preserved so reactivation is reversible. Deleting a group clears
 the parent/child links connected to that group.
+
+### UTM Tracking
+
+The `UTM tracking` section in `Settings` lets OCG attribute event page views to the
+`utm_source`, `utm_medium`, and `utm_campaign` parameters of the links that bring visitors to
+the group's events.
+
+UTM tracking is opt-in. A view is only attributed when its link carries a source or a campaign
+defined in this section, so define at least one source or campaign to start tracking:
+
+- `Sources` lists the accepted `utm_source` values, such as `newsletter`.
+- `Campaigns` lists the accepted `utm_campaign` values, such as `spring-launch`.
+- `Additional mediums` lists accepted `utm_medium` values on top of the default mediums shown in
+  the section: `affiliate`, `cpc`, `display`, `email`, `organic`, `qr`, `referral`, `sms`,
+  `social`, and `video`.
+
+Every UTM parameter in a link must be accepted. Views from links with an unknown source, campaign,
+or medium, or without a defined source or campaign, are still counted as page views, but without
+attribution. Links may omit the medium.
+
+Each list holds up to 20 values. Values use 50 or fewer lowercase letters, numbers, dots,
+hyphens, or underscores, cannot repeat within a list, and additional mediums cannot repeat a default
+medium. Link values are matched case-insensitively. Changes apply to new views within a minute.
 
 ![Group settings area](../screenshots/dashboard-group-settings.png)
 
