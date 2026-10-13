@@ -6,27 +6,10 @@
 {{ dashboard::page_title(title = "Events", docs_href = "/docs#/guides/event-operations?id=events-list-work-queue") -}}
 {# End events list header -#}
 
-{# Add event button -#}
-<div class="my-5 flex justify-end">
-  <button id="add-event-button"
-          hx-get="/dashboard/group/events/add"
-          hx-target="#dashboard-content"
-          hx-replace-url="/dashboard/group?tab=events"
-          hx-indicator="#dashboard-spinner"
-          {% if !can_manage_events -%}
-            disabled title="Your role cannot add events."
-          {% endif -%}
-          class="btn-primary
-                 {% if !can_manage_events -%}
-                   opacity-50 cursor-not-allowed
-                 {% endif -%}">Add Event</button>
-</div>
-{# End add event button -#}
-
 {# Events Tabs Navigation -#}
-<div class="my-5">
-  <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200">
-    <li>
+<div class="my-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5 sm:border-b sm:border-stone-200">
+  <ul class="flex gap-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 sm:border-0">
+    <li class="flex-1 sm:flex-none">
       <button type="button"
               id="upcoming-tab"
               data-active="{{ events_tab == EventsTab::Upcoming }}"
@@ -34,11 +17,11 @@
               hx-target="#dashboard-content"
               hx-swap="innerHTML show:window:top"
               hx-indicator="#dashboard-spinner"
-              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
+              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-full sm:w-40">
         Upcoming events
       </button>
     </li>
-    <li>
+    <li class="flex-1 sm:flex-none">
       <button type="button"
               id="past-tab"
               data-active="{{ events_tab == EventsTab::Past }}"
@@ -46,11 +29,27 @@
               hx-target="#dashboard-content"
               hx-swap="innerHTML show:window:top"
               hx-indicator="#dashboard-spinner"
-              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
+              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-full sm:w-40">
         Past events
       </button>
     </li>
   </ul>
+
+  {# Add event button -#}
+  <button id="add-event-button"
+          type="button"
+          hx-get="/dashboard/group/events/add"
+          hx-target="#dashboard-content"
+          hx-replace-url="/dashboard/group?tab=events"
+          hx-indicator="#dashboard-spinner"
+          {% if !can_manage_events -%}
+            disabled title="Your role cannot add events."
+          {% endif -%}
+          class="btn-primary shrink-0 self-end sm:mb-3
+                 {% if !can_manage_events -%}
+                   opacity-50 cursor-not-allowed
+                 {% endif -%}">Add Event</button>
+  {# End add event button -#}
 </div>
 {# End events tabs navigation -#}
 
