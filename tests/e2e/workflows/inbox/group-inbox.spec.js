@@ -247,7 +247,7 @@ test.describe("group inbox workflow", () => {
 
     // Verify the organizer note links to the group inbox instead of the form
     await expect(modal.locator("[data-contact-organizer-note]")).toContainText(
-      `You organize ${TEST_GROUP_NAME}.`,
+      `You're an organizer of the ${TEST_GROUP_NAME} group.`,
     );
     await expect(modal.getByRole("link", { name: "Open group Inbox" })).toHaveAttribute(
       "href",
