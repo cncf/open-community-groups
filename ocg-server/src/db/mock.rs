@@ -208,7 +208,6 @@ mock! {
     #[async_trait]
     impl crate::db::community::DBCommunity for DB {
         async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
-        async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>>;
         async fn get_community_recently_added_groups(
             &self,
             community_id: Uuid,
@@ -331,14 +330,19 @@ mock! {
             &self,
             community_id: Uuid,
         ) -> Result<crate::types::dashboard::community::contact::CommunityContactFilterOptions>;
+        async fn list_community_groups(
+            &self,
+            community_id: Uuid,
+            filters: &crate::types::dashboard::community::groups::CommunityGroupsFilters,
+        ) -> Result<crate::types::dashboard::community::groups::CommunityGroupsOutput>;
+        async fn list_community_roles(
+            &self,
+        ) -> Result<Vec<crate::types::community::CommunityRoleSummary>>;
         async fn list_community_team_members(
             &self,
             community_id: Uuid,
             filters: &crate::types::dashboard::community::team::CommunityTeamFilters,
         ) -> Result<crate::types::dashboard::community::team::CommunityTeamOutput>;
-        async fn list_community_roles(
-            &self,
-        ) -> Result<Vec<crate::types::community::CommunityRoleSummary>>;
         async fn list_group_categories(
             &self,
             community_id: Uuid,

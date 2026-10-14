@@ -21,7 +21,7 @@ use crate::{
                 },
                 event_categories::EventCategoryInput,
                 group_categories::GroupCategoryInput,
-                groups::GroupInput,
+                groups::{CommunityGroupsFilters, CommunityGroupsOutput, GroupInput},
                 regions::RegionInput,
                 settings::CommunityUpdate,
                 team::{CommunityTeamFilters, CommunityTeamOutput},
@@ -157,6 +157,14 @@ pub(crate) trait DBDashboardCommunity {
         &self,
         community_id: Uuid,
     ) -> Result<CommunityContactFilterOptions>;
+
+    /// Lists a page of the community groups, including inactive groups and
+    /// groups of inactive communities.
+    async fn list_community_groups(
+        &self,
+        community_id: Uuid,
+        filters: &CommunityGroupsFilters,
+    ) -> Result<CommunityGroupsOutput>;
 
     /// Lists all available community roles.
     ///
@@ -469,6 +477,20 @@ where
         self.fetch_json_one(
             "select list_community_contact_filter_options($1::uuid)",
             &[&community_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardCommunity::list_community_groups`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_community_groups(
+        &self,
+        community_id: Uuid,
+        filters: &CommunityGroupsFilters,
+    ) -> Result<CommunityGroupsOutput> {
+        self.fetch_json_one(
+            "select list_community_groups($1::uuid, $2::jsonb)",
+            &[&community_id, &Json(filters)],
         )
         .await
     }

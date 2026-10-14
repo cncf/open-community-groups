@@ -180,15 +180,6 @@ export class DashboardSelectorBase extends LitWrapper {
   }
 
   /**
-   * Renders optional content after the selector.
-   * @param {object|null} _selectedItem Selected item
-   * @returns {import("lit").TemplateResult|string}
-   */
-  _renderAfterSelector(_selectedItem) {
-    return "";
-  }
-
-  /**
    * Gets all selector items from the configured property.
    * @returns {Array<object>}
    */
@@ -256,21 +247,17 @@ export class DashboardSelectorBase extends LitWrapper {
   }
 
   /**
-   * Renders the selector and optional trailing content.
+   * Renders the selector, optionally inside its configured wrapper.
    * @returns {import("lit").TemplateResult}
    */
   render() {
-    const selectedItem = this._findSelectedItem();
-    const selector = this._renderSelector(selectedItem);
+    const selector = this._renderSelector(this._findSelectedItem());
 
-    return html`${
-      this._selectorConfig.wrapperClass
-        ? html`<div>
-            <div class=${this._selectorConfig.wrapperClass}>${selector}</div>
-          </div>`
-        : selector
-    }
-    ${this._renderAfterSelector(selectedItem)}`;
+    return this._selectorConfig.wrapperClass
+      ? html`<div>
+          <div class=${this._selectorConfig.wrapperClass}>${selector}</div>
+        </div>`
+      : selector;
   }
 
   /**

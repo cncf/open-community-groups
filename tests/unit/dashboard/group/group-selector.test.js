@@ -31,7 +31,7 @@ describe("group-selector", () => {
     return element;
   };
 
-  it("renders the selected group and its deactivated warning", async () => {
+  it("renders the selected group with the default ids", async () => {
     // Render the selector fixture.
     const element = await renderSelector({
       groups: [
@@ -41,19 +41,17 @@ describe("group-selector", () => {
       selectedGroupId: "1",
     });
 
-    // Read the selected group and deactivated warning state.
+    // Read the selected group controls.
     const button = element.querySelector("#group-selector-button");
     const list = element.querySelector("#group-selector-list");
     const option = element.querySelector("#group-option-1");
     const searchInput = element.querySelector("#group-search-input");
-    const warning = element.querySelector(".text-orange-700");
 
     // Verify the default ids and semantic option class remain unchanged.
     expect(button?.textContent).to.include("Platform Team");
     expect(list).to.exist;
     expect(option?.classList.contains("group-button")).to.equal(true);
     expect(searchInput).to.exist;
-    expect(warning?.textContent).to.include("This group has been deactivated");
   });
 
   it("namespaces DOM ids and focuses the prefixed search input", async () => {

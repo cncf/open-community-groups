@@ -239,10 +239,6 @@ pub(crate) struct SearchGroupsFilters {
     /// Maximum distance in meters from user's location.
     #[garde(skip)]
     pub distance: Option<f64>,
-    /// Whether to include inactive groups in results.
-    #[serde(default, skip_deserializing)]
-    #[garde(skip)]
-    pub include_inactive: Option<bool>,
     /// User's latitude for distance-based filtering.
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,

@@ -148,6 +148,15 @@
 {% endmacro form_title -%}
 {# End form title #}
 
+{# Inactive warning -#}
+{# Used by community and group dashboard menus when the selected community or group is deactivated. -#}
+{% macro inactive_warning(message) -%}
+  <div class="mt-2 rounded border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-700">
+    {{ message }}
+  </div>
+{% endmacro inactive_warning -%}
+{# End inactive warning -#}
+
 {# Menu item -#}
 {# Used by dashboard side menus for user, community, and group navigation. -#}
 {% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0, compact_name = "" ) -%}

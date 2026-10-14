@@ -14,15 +14,16 @@ use crate::{
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
     types::{
+        community::CommunityFull,
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
             common::AuditLogSort,
-            community::contact::{
-                CommunityContactFilterOptions, CommunityContactRecipientsSummary,
+            community::{
+                contact::{CommunityContactFilterOptions, CommunityContactRecipientsSummary},
+                groups::CommunityGroupsOutput,
             },
         },
         permissions::CommunityPermission,
-        search::SearchGroupsOutput,
     },
 };
 
@@ -147,9 +148,9 @@ async fn test_page_groups_tab_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let ts_query = "rust".to_string();
-    let groups_output = SearchGroupsOutput {
-        total: 0,
-        ..sample_search_groups_output(group_id)
+    let groups_output = CommunityGroupsOutput {
+        groups: vec![sample_group_summary(group_id)],
+        total: 1,
     };
 
     // Setup database mock
@@ -175,19 +176,18 @@ async fn test_page_groups_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
-    db.expect_search_groups()
+    db.expect_list_community_groups()
         .times(1)
         .withf({
             let ts_query = ts_query.clone();
-            move |filters| {
-                filters.community == vec!["test".to_string()]
-                    && filters.include_inactive == Some(true)
+            move |cid, filters| {
+                *cid == community_id
                     && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                    && filters.sort_by.as_deref() == Some("name")
+                    && filters.offset == Some(0)
                     && filters.ts_query.as_deref() == Some(ts_query.as_str())
             }
         })
-        .returning(move |_| Ok(groups_output.clone()));
+        .returning(move |_, _| Ok(groups_output.clone()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -314,6 +314,67 @@ async fn test_page_settings_tab_success() {
 }
 
 #[tokio::test]
+async fn test_page_warns_when_community_is_inactive() {
+    // Setup identifiers and an inactive community
+    let community_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let community = CommunityFull {
+        active: false,
+        ..sample_community_full(community_id)
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
+    db.expect_user_has_community_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::SettingsWrite
+        })
+        .returning(|_, _, _| Ok(false));
+    db.expect_get_community_full()
+        .times(1)
+        .withf(move |id| *id == community_id)
+        .returning(move |_| Ok(community.clone()));
+    db.expect_list_user_communities()
+        .times(1)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(sample_user_communities(community_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/community")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the inactive community warning is rendered
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(
+        body.contains(
+            "This community has been deactivated. Please contact the site administrators."
+        )
+    );
+}
+
+#[tokio::test]
 async fn test_page_without_tab_defaults_to_settings() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -366,6 +427,7 @@ async fn test_page_without_tab_defaults_to_settings() {
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("hx-get=\"/dashboard/community/settings/update\""));
     assert!(!body.contains("hx-get=\"/dashboard/community/analytics\""));
+    assert!(!body.contains("This community has been deactivated."));
 }
 
 #[tokio::test]

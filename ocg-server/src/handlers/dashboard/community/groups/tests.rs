@@ -16,10 +16,9 @@ use crate::{
     handlers::{auth::session_context::SELECTED_GROUP_ID_KEY, tests::*},
     services::notifications::MockNotificationsManager,
     types::{
-        dashboard::DASHBOARD_PAGINATION_LIMIT,
+        dashboard::{DASHBOARD_PAGINATION_LIMIT, community::groups::CommunityGroupsOutput},
         group::{GroupFull, GroupParentOption},
         permissions::CommunityPermission,
-        search::SearchGroupsOutput,
     },
 };
 
@@ -31,9 +30,9 @@ async fn test_list_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let ts_query = "rust".to_string();
-    let groups_output = SearchGroupsOutput {
+    let groups_output = CommunityGroupsOutput {
         groups: vec![sample_group_summary(group_id)],
-        ..Default::default()
+        total: 1,
     };
 
     // Setup database mock
@@ -48,23 +47,18 @@ async fn test_list_page_success() {
                 && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
-    db.expect_get_community_name_by_id()
-        .times(1)
-        .withf(move |id| *id == community_id)
-        .returning(|_| Ok(Some("test".to_string())));
-    db.expect_search_groups()
+    db.expect_list_community_groups()
         .times(1)
         .withf({
             let ts_query = ts_query.clone();
-            move |filters| {
-                filters.community == vec!["test".to_string()]
-                    && filters.include_inactive == Some(true)
+            move |cid, filters| {
+                *cid == community_id
                     && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                    && filters.sort_by.as_deref() == Some("name")
+                    && filters.offset == Some(0)
                     && filters.ts_query.as_deref() == Some(ts_query.as_str())
             }
         })
-        .returning(move |_| Ok(groups_output.clone()));
+        .returning(move |_, _| Ok(groups_output.clone()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -81,9 +75,11 @@ async fn test_list_page_success() {
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let html = String::from_utf8(bytes.to_vec()).unwrap();
 
-    // Check response matches expectations
+    // Check the listed groups are rendered
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(html.contains("Open group dashboard: Test Group"));
 }
 
 #[tokio::test]
@@ -93,9 +89,9 @@ async fn test_list_page_allows_empty_search_query() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let groups_output = SearchGroupsOutput {
+    let groups_output = CommunityGroupsOutput {
         groups: vec![sample_group_summary(group_id)],
-        ..Default::default()
+        total: 1,
     };
 
     // Setup database mock
@@ -110,20 +106,15 @@ async fn test_list_page_allows_empty_search_query() {
                 && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
-    db.expect_get_community_name_by_id()
+    db.expect_list_community_groups()
         .times(1)
-        .withf(move |id| *id == community_id)
-        .returning(|_| Ok(Some("test".to_string())));
-    db.expect_search_groups()
-        .times(1)
-        .withf(move |filters| {
-            filters.community == vec!["test".to_string()]
-                && filters.include_inactive == Some(true)
+        .withf(move |cid, filters| {
+            *cid == community_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.sort_by.as_deref() == Some("name")
+                && filters.offset == Some(0)
                 && filters.ts_query.is_none()
         })
-        .returning(move |_| Ok(groups_output.clone()));
+        .returning(move |_, _| Ok(groups_output.clone()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
