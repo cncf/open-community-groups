@@ -20,7 +20,13 @@ import {
   getEventLogo,
   waitForAttendanceState,
 } from "./helpers.js";
-import { buildE2eUrl, getIntroSection, navigateToEvent, routeEmptyBasemap } from "../../utils.js";
+import {
+  buildE2eUrl,
+  getIntroSection,
+  navigateToEvent,
+  navigateToPath,
+  routeEmptyBasemap,
+} from "../../utils.js";
 import { selectLabels } from "../../dashboard/group/events/event-form-helpers.js";
 
 // Approved co-hosts seeded for the cross-community summit.
@@ -113,6 +119,35 @@ test.describe("event page", () => {
     await page.reload();
     const pageViewRequest = await pageViewRequestPromise;
     expect(new URL(pageViewRequest.url()).pathname).toBe(`/events/${eventId}/views`);
+  });
+
+  test("event page sends its UTM attribution and removes it from the URL", async ({ page }) => {
+    // Read the rendered event identifier before watching its page-view endpoint.
+    const eventId = await page
+      .locator('[data-page-view][data-entity-type="event"]')
+      .getAttribute("data-entity-id");
+    expect(eventId).toBeTruthy();
+    const pageViewRequestPromise = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" && new URL(request.url()).pathname === `/events/${eventId}/views`,
+    );
+
+    // Open the event from a campaign link that also carries a non-UTM parameter.
+    const eventPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}`;
+    await navigateToPath(
+      page,
+      `${eventPath}?ref=home&utm_source=newsletter&utm_medium=&utm_campaign=spring-launch#about`,
+    );
+
+    // Verify the beacon carries only the non-empty UTM parameters.
+    const pageViewRequest = await pageViewRequestPromise;
+    expect(Object.fromEntries(new URL(pageViewRequest.url()).searchParams)).toEqual({
+      utm_campaign: "spring-launch",
+      utm_source: "newsletter",
+    });
+
+    // Verify the address bar keeps the other parameter and the hash.
+    await expect(page).toHaveURL(buildE2eUrl(`${eventPath}?ref=home#about`));
   });
 
   test("availability refreshes capacity and remaining spots", async ({ page }) => {

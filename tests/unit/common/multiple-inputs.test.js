@@ -108,4 +108,42 @@ describe("multiple-inputs", () => {
     expect(inputs[0].validity.valid).to.equal(true);
     expect(inputs[1].validity.valid).to.equal(true);
   });
+
+  it("names each input and links it to the legend", async () => {
+    // Render two fixtures, one with a legend and one without it.
+    const element = await mountLitComponent("multiple-inputs", {
+      items: ["newsletter", "mastodon"],
+      label: "Source",
+      legend: "Use lowercase values.",
+    });
+    const otherElement = await mountLitComponent("multiple-inputs", {
+      items: ["podcast"],
+      legend: "Use lowercase values.",
+    });
+    const plainElement = await mountLitComponent("multiple-inputs", { items: ["tag"] });
+
+    // Each input is named by the label and its position and described by the legend.
+    const inputs = element.querySelectorAll("input[data-item-input]");
+    const legend = element.querySelector(".form-legend");
+    expect(Array.from(inputs).map((input) => input.getAttribute("aria-label"))).to.deep.equal([
+      "Source 1",
+      "Source 2",
+    ]);
+    expect(legend.id).to.not.equal("");
+    expect(inputs[0].getAttribute("aria-describedby")).to.equal(legend.id);
+    expect(inputs[1].getAttribute("aria-describedby")).to.equal(legend.id);
+
+    // Legend IDs are unique, and inputs without a legend are only named.
+    expect(otherElement.querySelector(".form-legend").id).to.not.equal(legend.id);
+    const plainInput = plainElement.querySelector("input[data-item-input]");
+    expect(plainInput.getAttribute("aria-label")).to.equal("Item 1");
+    expect(plainInput.hasAttribute("aria-describedby")).to.equal(false);
+
+    // Removing the first item renumbers the remaining input.
+    element._removeItem(element.items[0].id);
+    await element.updateComplete;
+    const [remainingInput] = element.querySelectorAll("input[data-item-input]");
+    expect(remainingInput.value).to.equal("mastodon");
+    expect(remainingInput.getAttribute("aria-label")).to.equal("Source 1");
+  });
 });

@@ -2,6 +2,9 @@ import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
+// Counter used to build unique legend IDs for the rendered inputs.
+let legendIdCount = 0;
+
 /**
  * MultipleInputs component for managing a dynamic list of text inputs.
  * Allows users to add/remove multiple values for array-type form fields like tags.
@@ -60,6 +63,8 @@ export class MultipleInputs extends LitWrapper {
     this.excludedValues = [];
     this.excludedMessage = "";
     this._nextId = 0;
+    legendIdCount += 1;
+    this._legendId = `multiple-inputs-legend-${legendIdCount}`;
   }
 
   /**
@@ -254,13 +259,14 @@ export class MultipleInputs extends LitWrapper {
    */
   render() {
     const validInputType = this._getValidInputType();
+    const hasLegend = Boolean(this.legend && this.legend.trim() !== "");
 
     return html`
       <div class="space-y-3">
         ${repeat(
           this.items,
           (item) => item.id,
-          (item) => {
+          (item, index) => {
             const isItemEmpty = item.value.trim() === "";
             const isRemoveDisabled = isItemEmpty || (this.items.length <= 1 && this.required);
 
@@ -273,6 +279,8 @@ export class MultipleInputs extends LitWrapper {
                     placeholder=${this.placeholder}
                     value=${item.value}
                     @input=${(event) => this._handleInputChange(item.id, event)}
+                    aria-label=${`${this.label || "Item"} ${index + 1}`}
+                    aria-describedby=${hasLegend ? this._legendId : nothing}
                     autocomplete="off"
                     autocorrect="off"
                     autocapitalize="off"
@@ -298,7 +306,7 @@ export class MultipleInputs extends LitWrapper {
         )}
 
         <!-- Legend text -->
-        ${this.legend && this.legend.trim() !== "" ? html`<p class="form-legend">${this.legend}</p>` : ""}
+        ${hasLegend ? html`<p id=${this._legendId} class="form-legend">${this.legend}</p>` : ""}
 
         <button
           type="button"

@@ -66,6 +66,45 @@ describe("page views", () => {
     expect(sessionStorage.getItem(HTMX_HISTORY_PATH_STORAGE_KEY)).to.equal(null);
   });
 
+  it("keeps the other query parameters exactly as written when removing UTM parameters", () => {
+    // Load an event URL whose other parameters use encodings URLSearchParams would rewrite.
+    const eventPath = "/cncf/group/g/event/e?q=a%20b&utm_source=newsletter&flag&x=1+2&utm%5Fcampaign=launch";
+    setLocationPath(`${eventPath}#top`);
+    sessionStorage.setItem(HTMX_HISTORY_PATH_STORAGE_KEY, eventPath);
+
+    // Track the page view event.
+    trackPageView({ entityId: "event-123", entityType: "event" });
+
+    // The view carries the UTM parameters, including the percent-encoded name.
+    expect(sendBeaconMock.calls.map(({ endpoint }) => endpoint)).to.deep.equal([
+      "/events/event-123/views?utm_campaign=launch&utm_source=newsletter",
+    ]);
+
+    // Only the UTM segments are removed from the URL and the HTMX history path.
+    expect(window.location.search).to.equal("?q=a%20b&flag&x=1+2");
+    expect(window.location.hash).to.equal("#top");
+    expect(sessionStorage.getItem(HTMX_HISTORY_PATH_STORAGE_KEY)).to.equal(
+      "/cncf/group/g/event/e?q=a%20b&flag&x=1+2",
+    );
+  });
+
+  it("leaves event URLs without UTM parameters untouched", () => {
+    // Load an event URL without UTM parameters and a recorded HTMX history path.
+    const eventPath = "/cncf/group/g/event/e?q=a%20b&flag";
+    setLocationPath(eventPath);
+    history.replaceState({ htmx: true }, "", eventPath);
+    sessionStorage.setItem(HTMX_HISTORY_PATH_STORAGE_KEY, "/recorded");
+
+    // Track the page view event.
+    trackPageView({ entityId: "event-123", entityType: "event" });
+
+    // The view is not attributed and the URL, state, and history path stay the same.
+    expect(sendBeaconMock.calls.map(({ endpoint }) => endpoint)).to.deep.equal(["/events/event-123/views"]);
+    expect(window.location.search).to.equal("?q=a%20b&flag");
+    expect(history.state).to.deep.equal({ htmx: true });
+    expect(sessionStorage.getItem(HTMX_HISTORY_PATH_STORAGE_KEY)).to.equal("/recorded");
+  });
+
   it("keeps the HTMX history path in sync with the cleaned event URL", () => {
     // Load an event URL with UTM parameters recorded by HTMX as its history path.
     const eventPath = "/cncf/group/g/event/e?ref=home&utm_source=newsletter";
@@ -95,7 +134,7 @@ describe("page views", () => {
     expect(window.location.search).to.equal("?utm_source=newsletter");
   });
 
-  it("replays UTM attribution when a persisted event page is shown again", () => {
+  it("sends back-forward cache restores of event pages without UTM attribution", () => {
     // Load an event URL with UTM parameters.
     setLocationPath("/cncf/group/g/event/e?utm_source=newsletter");
 
@@ -103,12 +142,33 @@ describe("page views", () => {
     trackPageView({ entityId: "event-123", entityType: "event" });
     window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
 
-    // Both views carry the UTM parameters read before the URL was cleaned.
+    // Only the first view carries the UTM parameters read before the URL was cleaned.
     expect(sendBeaconMock.calls.map(({ endpoint }) => endpoint)).to.deep.equal([
       "/events/event-123/views?utm_source=newsletter",
-      "/events/event-123/views?utm_source=newsletter",
+      "/events/event-123/views",
     ]);
     expect(window.location.search).to.equal("");
+  });
+
+  it("keeps the UTM attribution for the first view of a hidden event page", () => {
+    // Load a hidden event page with UTM parameters.
+    visibilityState.set("hidden");
+    setLocationPath("/cncf/group/g/event/e?utm_campaign=launch");
+
+    // Track the page view event and restore the page before it is shown.
+    trackPageView({ entityId: "event-123", entityType: "event" });
+    window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+    expect(sendBeaconMock.calls).to.have.length(0);
+
+    // Show the page.
+    visibilityState.set("visible");
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    // The queued views are sent once, and only the first one is attributed.
+    expect(sendBeaconMock.calls.map(({ endpoint }) => endpoint)).to.deep.equal([
+      "/events/event-123/views?utm_campaign=launch",
+      "/events/event-123/views",
+    ]);
   });
 
   it("sends a beacon for visible community page views", () => {

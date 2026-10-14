@@ -521,7 +521,7 @@
   <input type="hidden" name="utm_present" value="true">
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# UTM sources -#}
-    <fieldset class="col-span-full lg:col-span-3">
+    <fieldset class="col-span-full lg:col-span-4 lg:col-start-1 xl:col-span-3 xl:col-start-1">
       <legend class="form-label">Sources</legend>
       <div class="mt-2">
         <multiple-inputs field-name="utm_sources" input-type="text" items="{{ utm.sources|json }}" label="Source" placeholder="newsletter" max-items="{{ crate::validation::MAX_UTM_VALUES }}" max-length="{{ crate::validation::MAX_LEN_UTM_VALUE }}" pattern="{{ utm_value_pattern }}" pattern-message="{{ utm_value_message }}" unique legend="Values accepted for utm_source, such as newsletter or mastodon. {{ utm_value_rules }}">
@@ -531,7 +531,7 @@
     {# End UTM sources -#}
 
     {# UTM campaigns -#}
-    <fieldset class="col-span-full lg:col-span-3">
+    <fieldset class="col-span-full lg:col-span-4 lg:col-start-1 xl:col-span-3 xl:col-start-1">
       <legend class="form-label">Campaigns</legend>
       <div class="mt-2">
         <multiple-inputs field-name="utm_campaigns" input-type="text" items="{{ utm.campaigns|json }}" label="Campaign" placeholder="spring-launch" max-items="{{ crate::validation::MAX_UTM_VALUES }}" max-length="{{ crate::validation::MAX_LEN_UTM_VALUE }}" pattern="{{ utm_value_pattern }}" pattern-message="{{ utm_value_message }}" unique legend="Values accepted for utm_campaign. {{ utm_value_rules }}">
@@ -541,7 +541,7 @@
     {# End UTM campaigns -#}
 
     {# UTM mediums -#}
-    <fieldset class="col-span-full lg:col-span-3">
+    <fieldset class="col-span-full lg:col-span-4 lg:col-start-1 xl:col-span-3 xl:col-start-1">
       <legend class="form-label">Additional mediums</legend>
       <div class="mt-2 space-y-3">
         <div>
