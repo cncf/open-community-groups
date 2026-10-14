@@ -23,7 +23,6 @@ use crate::{
         dashboard::community::groups::{CommunityGroupsFilters, GroupInput},
         pagination::{self, NavigationLinks},
         permissions::CommunityPermission,
-        search::SearchGroupsFilters,
     },
 };
 
@@ -50,7 +49,6 @@ pub(crate) async fn list_page(
         community_id,
         user.user_id,
         raw_query.as_deref().unwrap_or_default(),
-        None,
     )
     .await?;
 
@@ -238,32 +236,12 @@ pub(crate) async fn prepare_list_page(
     community_id: Uuid,
     user_id: Uuid,
     raw_query: &str,
-    community_name: Option<String>,
 ) -> Result<(CommunityGroupsFilters, groups::ListPage), HandlerError> {
-    // Use the provided community name when available to avoid an extra lookup
-    let community_name = if let Some(community_name) = community_name {
-        community_name
-    } else {
-        let Some(community_name) = db.get_community_name_by_id(community_id).await? else {
-            return Err(anyhow::anyhow!("community not found").into());
-        };
-        community_name
-    };
-
-    // Fetch groups
+    // Fetch groups, including inactive ones
     let filters: CommunityGroupsFilters = ValidatedQuery::parse(raw_query)?;
-    let search_filters = SearchGroupsFilters {
-        community: vec![community_name],
-        include_inactive: Some(true),
-        limit: filters.limit,
-        offset: filters.offset,
-        sort_by: Some(String::from("name")),
-        ts_query: filters.ts_query.clone(),
-        ..SearchGroupsFilters::default()
-    };
     let (can_manage_groups, results) = tokio::try_join!(
         db.user_has_community_permission(&community_id, &user_id, CommunityPermission::GroupsWrite),
-        db.search_groups(&search_filters)
+        db.list_community_groups(community_id, &filters)
     )?;
 
     // Prepare template

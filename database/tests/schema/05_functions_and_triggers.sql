@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(541);
+select plan(542);
 
 -- ============================================================================
 -- VARIABLES
@@ -290,7 +290,7 @@ select has_function('get_cfs_submission_notification_data', array['uuid', 'uuid'
 select has_function('get_community_contact_recipients_summary', array['uuid', 'jsonb']::name[]);
 select has_function('get_community_full', array['uuid']::name[]);
 select has_function('get_community_id_by_name', array['text']::name[]);
-select has_function('get_community_name_by_id', array['uuid']::name[]);
+select hasnt_function('get_community_name_by_id', array['uuid']::name[]);
 select has_function('get_community_recently_added_groups', array['uuid']::name[]);
 select has_function('get_community_site_stats', array['uuid']::name[]);
 select has_function('get_community_stats', array['uuid']::name[]);
@@ -405,6 +405,7 @@ select has_function('list_communities', '{}'::name[]);
 select has_function('list_community_admin_ids', array['uuid']::name[]);
 select has_function('list_community_audit_logs', array['uuid', 'jsonb']::name[]);
 select has_function('list_community_contact_filter_options', array['uuid']::name[]);
+select has_function('list_community_groups', array['uuid', 'jsonb']::name[]);
 select has_function('list_community_roles', '{}'::name[]);
 select has_function('list_community_team_members', array['uuid', 'jsonb']::name[]);
 select has_function('list_event_approved_cfs_submissions', array['uuid']::name[]);

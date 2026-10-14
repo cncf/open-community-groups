@@ -781,6 +781,62 @@ async fn test_page_settings_tab_success() {
 }
 
 #[tokio::test]
+async fn test_page_warns_when_selected_group_is_inactive() {
+    // Setup identifiers and an inactive selected group
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut groups = sample_user_groups_by_community(community_id, group_id);
+    groups[0].groups[0].active = false;
+
+    // Setup dashboard context expectations
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            (*cid, *gid, *uid, permission) == (community_id, group_id, user_id, &CheckInsWrite)
+        })
+        .returning(|_, _, _, _| Ok(false));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(false));
+    expect_inbox_permission_denied(&mut db, community_id, group_id, user_id, 1);
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(groups.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup default settings tab expectations
+    expect_settings_content(&mut db, community_id, group_id, user_id, false);
+
+    // Request the dashboard without selecting a tab
+    let (parts, bytes) = send_home_request(db, session_id, "/dashboard/group").await;
+
+    // Check the inactive group warning is rendered
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("This group has been deactivated. Please contact a community admin."));
+}
+
+#[tokio::test]
 async fn test_page_without_tab_defaults_to_settings() {
     // Setup a readable group session without badge or check-in management
     let community_id = Uuid::new_v4();
@@ -803,6 +859,7 @@ async fn test_page_without_tab_defaults_to_settings() {
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("hx-get=\"/dashboard/group/settings\""));
     assert!(!body.contains("hx-get=\"/dashboard/group/analytics\""));
+    assert!(!body.contains("This group has been deactivated."));
 }
 
 #[tokio::test]

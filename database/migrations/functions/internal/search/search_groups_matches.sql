@@ -1,9 +1,8 @@
 -- Returns the groups that match the search filters provided, with the fields
 -- callers need to sort, paginate and locate them. Only publicly visible groups
--- match unless inactive groups are requested, and deleted groups never match.
--- Distances are only computed when sorting by distance from the viewer
--- location. Uses PL/pgSQL with `force_custom_plan` so each call is planned
--- with the actual filter values.
+-- of active communities match. Distances are only computed when sorting by
+-- distance from the viewer location. Uses PL/pgSQL with `force_custom_plan`
+-- so each call is planned with the actual filter values.
 create or replace function search_groups_matches(p_filters jsonb)
 returns table (
     community_id uuid,
@@ -18,7 +17,6 @@ declare
     v_community_ids uuid[];
     v_filters record;
     v_group_category text[];
-    v_include_inactive boolean := coalesce((p_filters->>'include_inactive')::boolean, false);
     v_max_distance real;
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'name');
@@ -87,9 +85,7 @@ begin
     join group_category gc on gc.group_category_id = g.group_category_id
     left join region r on r.region_id = g.region_id
     where c.active = true
-    and
-        case when v_include_inactive then
-        g.deleted = false else is_group_public(g) end
+    and is_group_public(g)
     and
         case when v_bbox is not null then
         st_intersects(g.location, v_bbox) else true end

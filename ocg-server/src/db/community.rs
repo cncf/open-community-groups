@@ -24,11 +24,6 @@ pub(crate) trait DBCommunity {
     /// Cached for up to one day per process.
     async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
 
-    /// Resolves a community name from the provided community ID.
-    ///
-    /// Cached for up to one day per process.
-    async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>>;
-
     /// Retrieves the most recently added groups in the community.
     async fn get_community_recently_added_groups(
         &self,
@@ -78,31 +73,6 @@ where
         }
         let db = self.client().await?;
         inner(db, name).await
-    }
-
-    /// [`DB::get_community_name_by_id`]
-    #[instrument(skip(self), err)]
-    async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>> {
-        #[cached(
-            ttl = 86400,
-            key = "Uuid",
-            convert = r#"{ community_id }"#,
-            sync_writes = "by_key"
-        )]
-        async fn inner(db: PgClient<'_>, community_id: Uuid) -> Result<Option<String>> {
-            let name = db
-                .query_opt(
-                    "select get_community_name_by_id($1::uuid)",
-                    &[&community_id],
-                )
-                .await?
-                .and_then(|row| row.get(0));
-
-            Ok(name)
-        }
-
-        let db = self.client().await?;
-        inner(db, community_id).await
     }
 
     /// [`DB::get_community_recently_added_groups`]

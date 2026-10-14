@@ -199,7 +199,6 @@
 {{ template "common/search_groups.sql" }}
 
 {{ template "community/get_community_id_by_name.sql" }}
-{{ template "community/get_community_name_by_id.sql" }}
 {{ template "community/get_community_recently_added_groups.sql" }}
 {{ template "community/get_community_site_stats.sql" }}
 {{ template "community/get_community_upcoming_events.sql" }}
@@ -227,6 +226,7 @@
 {{ template "dashboard-community/get_community_stats.sql" }}
 {{ template "dashboard-community/list_community_audit_logs.sql" }}
 {{ template "dashboard-community/list_community_contact_filter_options.sql" }}
+{{ template "dashboard-community/list_community_groups.sql" }}
 {{ template "dashboard-community/list_community_roles.sql" }}
 {{ template "dashboard-community/list_community_team_members.sql" }}
 {{ template "dashboard-community/list_group_categories.sql" }}

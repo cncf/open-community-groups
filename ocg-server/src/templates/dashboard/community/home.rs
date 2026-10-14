@@ -28,6 +28,8 @@ use crate::{
 pub(crate) struct Page {
     /// List of communities the user is a team member of.
     pub communities: Vec<CommunitySummary>,
+    /// Whether the selected community is active.
+    pub community_active: bool,
     /// Main content section for the page.
     pub content: Content,
     /// Flash or status messages to display.

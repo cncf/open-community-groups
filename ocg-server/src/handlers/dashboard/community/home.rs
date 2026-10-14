@@ -109,7 +109,6 @@ pub(crate) async fn page(
                 community_id,
                 user_id,
                 raw_query.as_deref().unwrap_or_default(),
-                Some(community.name.clone()),
             )
             .await?;
             Content::Groups(template)
@@ -165,6 +164,7 @@ pub(crate) async fn page(
     // Render the page
     let page = Page {
         communities,
+        community_active: community.active,
         content,
         messages: messages.into_iter().collect(),
         page_id: PageId::CommunityDashboard,

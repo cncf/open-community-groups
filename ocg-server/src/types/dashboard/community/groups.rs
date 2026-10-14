@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::{
     types::{
         dashboard,
+        group::GroupSummary,
         pagination::{Pagination, ToRawQuery},
         payments::{GroupPaymentRecipient, PaymentConfigurationValidation},
     },
@@ -41,6 +42,15 @@ pub(crate) struct CommunityGroupsFilters {
 }
 
 crate::impl_pagination_and_raw_query!(CommunityGroupsFilters, limit, offset);
+
+/// Paginated community groups returned for the community dashboard.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct CommunityGroupsOutput {
+    /// Groups on the current page, including inactive ones.
+    pub groups: Vec<GroupSummary>,
+    /// Total number of groups matching the filters.
+    pub total: usize,
+}
 
 /// Group details for dashboard management.
 #[skip_serializing_none]

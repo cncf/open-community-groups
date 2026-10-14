@@ -10,6 +10,7 @@ use crate::{
             common::AuditLogFilters,
             community::{
                 contact::{CommunityContactFilters, RegionFilterValue},
+                groups::CommunityGroupsFilters,
                 team::CommunityTeamFilters,
             },
         },
@@ -171,6 +172,37 @@ async fn db_contracts_list_community_contact_filter_options_deserializes() -> Re
     assert_eq!(options.regions[0].groups_count, 1);
     assert_eq!(options.regions[0].name, "Contact Region");
     assert_eq!(options.regions[0].region_id, contact_region_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_community_groups_deserializes() -> Result<()> {
+    // Setup the contract database and groups filters
+    let db = contract_tests_db()?;
+    let filters = CommunityGroupsFilters {
+        limit: Some(10),
+        offset: Some(0),
+        ts_query: None,
+    };
+
+    // Load the groups of the inactive contact community through the Rust contract
+    let output = db.list_community_groups(contact_community_id(), &filters).await?;
+
+    // Check active and inactive groups are listed by name
+    assert_eq!(output.total, 3);
+    assert_eq!(output.groups.len(), 3);
+    assert!(output.groups[0].active);
+    assert_eq!(
+        output.groups[0].community_name,
+        "contract-contact-community"
+    );
+    assert_eq!(output.groups[0].group_id, contact_group_a_id());
+    assert_eq!(output.groups[0].name, "Contact Group A");
+    assert_eq!(output.groups[1].name, "Contact Group B");
+    assert!(!output.groups[2].active);
+    assert_eq!(output.groups[2].name, "Contact Inactive Group");
 
     Ok(())
 }

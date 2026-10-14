@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -168,36 +168,20 @@ select results_eq(
     'Should compute distances from the group location when sorting by distance'
 );
 
--- Should exclude deleted groups when include_inactive is enabled
-select ok(
-    not exists (
-        select 1
-        from search_groups_matches('{"include_inactive": true}'::jsonb)
-        where group_id = :'groupDeletedID'
-    ),
-    'Should exclude deleted groups when include_inactive is enabled'
+-- Should exclude groups from inactive communities
+select is_empty(
+    $$select group_id from search_groups_matches('{"community": ["sgm-inactive-community"]}'::jsonb)$$,
+    'Should exclude groups from inactive communities'
 );
 
--- Should exclude groups from inactive communities even when include_inactive is enabled
-select ok(
-    not exists (
-        select 1
-        from search_groups_matches('{
-            "community": ["sgm-inactive-community"],
-            "include_inactive": true
-        }'::jsonb)
-    ),
-    'Should exclude groups from inactive communities even when include_inactive is enabled'
-);
-
--- Should exclude inactive groups by default
+-- Should exclude inactive and deleted groups
 select ok(
     not exists (
         select 1
         from search_groups_matches('{}'::jsonb)
-        where group_id = :'groupInactiveID'
+        where group_id in (:'groupDeletedID', :'groupInactiveID')
     ),
-    'Should exclude inactive groups by default'
+    'Should exclude inactive and deleted groups'
 );
 
 -- Should filter groups by bbox
@@ -274,25 +258,6 @@ select set_eq(
     $$,
     array[:'groupNewYorkID']::uuid[],
     'Should filter groups by text search query'
-);
-
--- Should include inactive groups when include_inactive is enabled
-select set_eq(
-    $$
-        select group_id
-        from search_groups_matches('{
-            "community": ["sgm-community"],
-            "include_inactive": true
-        }'::jsonb)
-    $$,
-    array[
-        :'groupAustinID',
-        :'groupInactiveID',
-        :'groupLondonID',
-        :'groupNewYorkID',
-        :'groupSanFranciscoID'
-    ]::uuid[],
-    'Should include inactive groups when include_inactive is enabled'
 );
 
 -- Should leave distances empty unless sorting by distance

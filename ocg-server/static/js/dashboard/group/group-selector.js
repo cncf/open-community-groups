@@ -1,4 +1,3 @@
-import { html } from "lit";
 import { DashboardSelectorBase } from "/static/js/dashboard/dashboard-selector-base.js";
 
 /**
@@ -75,22 +74,6 @@ export class GroupSelector extends DashboardSelectorBase {
    */
   _isSelected(group) {
     return super._isSelected(group);
-  }
-
-  /**
-   * Renders a warning when the selected group has been deactivated.
-   * @param {object|null} selectedGroup Selected group metadata
-   * @returns {import("lit").TemplateResult|string}
-   */
-  _renderAfterSelector(selectedGroup) {
-    if (!selectedGroup || selectedGroup.active) {
-      return "";
-    }
-    return html`<div
-      class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2"
-    >
-      This group has been deactivated. Please contact to a community admin.
-    </div>`;
   }
 }
 
