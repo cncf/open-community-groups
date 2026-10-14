@@ -188,6 +188,7 @@
         {% if show_waitlist_tab -%}
           {{ event_form::tab_option(section = "waitlist", label = "Waitlist") -}}
         {% endif -%}
+        {{ event_form::tab_option(section = "analytics", label = "Analytics") -}}
       </select>
       <ul class="hidden flex-col gap-1 font-medium xl:flex">
         {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
@@ -211,6 +212,7 @@
     {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content" hx-swap="innerHTML" hx-indicator="#waitlist-loading"{%- endlet %}
   {{ event_form::tab_button(section = "waitlist", icon = "waitlist", label = "Waitlist", extra_attrs = waitlist_attrs) -}}
 {% endif -%}
+{{ event_form::tab_button(section = "analytics", icon = "charts", label = "Analytics") -}}
 </ul>
 </aside>
 
@@ -1344,6 +1346,33 @@
   </div>
   {# End Waitlist Tab -#}
 {% endif -%}
+
+{# Analytics Tab -#}
+<div data-content="analytics"
+     class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">
+  <div id="analytics-content"
+       data-analytics-url="/dashboard/group/events/{{ event.event_id }}/analytics"
+       data-analytics-state="idle"
+       aria-live="polite">
+    {{ dashboard::form_title(title = "Analytics", description = "Traffic, registrations and attendance for this event.") -}}
+    <div id="analytics-loading" class="flex items-center justify-center py-12">
+      <div class="flex flex-col items-center space-y-4">
+        {{ ui::spinner(size = "size-10") -}}
+        <div class="text-sm text-stone-500">Loading analytics...</div>
+      </div>
+    </div>
+    <div id="analytics-error"
+         class="hidden mt-8 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+         role="alert"
+         tabindex="-1">
+      <p>Analytics could not be loaded. Please try again.</p>
+      <button type="button"
+              class="btn-primary-outline btn-mini mt-3"
+              data-analytics-retry>Retry</button>
+    </div>
+  </div>
+</div>
+{# End Analytics Tab -#}
 
 {# Form buttons -#}
 <div class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0">

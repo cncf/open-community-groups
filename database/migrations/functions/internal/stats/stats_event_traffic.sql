@@ -1,0 +1,247 @@
+-- Returns lifecycle traffic and registration series for an event.
+--
+-- Views and registrations are bucketed per UTC day between p_start_day and
+-- p_end_day. Series are empty when the bounds are missing or inverted, while
+-- the all-time totals are always reported.
+create or replace function stats_event_traffic(
+    p_event event,
+    p_start_day date,
+    p_end_day date
+)
+returns json as $$
+with bounds as (
+    select
+        p_end_day as end_day,
+        p_start_day as start_day
+    where p_start_day <= p_end_day
+),
+daily_views as (
+    select
+        ev.day,
+        sum(ev.total)::bigint as total
+    from event_views ev
+    where ev.event_id = p_event.event_id
+    group by ev.day
+),
+tagged_views as (
+    select
+        evu.day,
+        evu.total::bigint as total,
+        evu.utm_source
+    from event_views_utm evu
+    where evu.event_id = p_event.event_id
+),
+daily_tagged_views as (
+    select
+        tv.day,
+        sum(tv.total)::bigint as total
+    from tagged_views tv
+    group by tv.day
+),
+untagged_counts as (
+    select
+        coalesce(dv.day, dtv.day) as day,
+        coalesce(dv.total, 0) - coalesce(dtv.total, 0) as total
+    from daily_views dv
+    full join daily_tagged_views dtv on dtv.day = dv.day
+),
+range_tagged_views as (
+    select
+        tv.day,
+        tv.total,
+        tv.utm_source
+    from tagged_views tv
+    join bounds b on tv.day between b.start_day and b.end_day
+),
+ranked_sources as (
+    select
+        rtv.utm_source,
+        row_number() over (order by sum(rtv.total) desc, rtv.utm_source) as rank
+    from range_tagged_views rtv
+    where rtv.utm_source <> ''
+    group by rtv.utm_source
+),
+classified_tagged_views as (
+    select
+        case
+            when rtv.utm_source = '' then 'no-source'
+            when rs.rank <= 3 then 'source'
+            else 'other-sources'
+        end as kind,
+        case
+            when rtv.utm_source = '' then 5
+            when rs.rank <= 3 then rs.rank
+            else 4
+        end as position,
+        case when rs.rank <= 3 then rtv.utm_source end as source,
+        rtv.day,
+        rtv.total
+    from range_tagged_views rtv
+    left join ranked_sources rs on rs.utm_source = rtv.utm_source
+),
+tagged_series_counts as (
+    select
+        ctv.kind,
+        ctv.position,
+        ctv.source,
+        jsonb_agg(jsonb_build_object('count', ctv.total, 'day', ctv.day)) as counts
+    from classified_tagged_views ctv
+    group by ctv.kind, ctv.position, ctv.source
+    having sum(ctv.total) > 0
+),
+views_series as (
+    select
+        tsc.kind,
+        tsc.position,
+        tsc.source,
+        stats_day_count_series(b.start_day, b.end_day, tsc.counts) as series
+    from tagged_series_counts tsc
+    cross join bounds b
+
+    union all
+
+    select
+        'untagged' as kind,
+        6 as position,
+        null as source,
+        stats_day_count_series(b.start_day, b.end_day, (
+            select jsonb_agg(jsonb_build_object('count', uc.total, 'day', uc.day))
+            from untagged_counts uc
+            where uc.day between b.start_day and b.end_day
+        )) as series
+    from bounds b
+),
+seat_purchases as (
+    select distinct on (ep.user_id)
+        ep.event_ticket_type_id,
+        ep.user_id
+    from event_purchase ep
+    where ep.event_id = p_event.event_id
+    and event_purchase_holds_seat(ep.status)
+    order by
+        ep.user_id,
+        ep.completed_at desc nulls last,
+        ep.created_at desc,
+        ep.event_purchase_id desc
+),
+registrations as (
+    select
+        (ea.created_at at time zone 'UTC')::date as day,
+        ett.event_ticket_type_id,
+        ett."order",
+        ett.title
+    from event_attendee ea
+    left join seat_purchases sp on sp.user_id = ea.user_id
+    left join event_ticket_type ett on ett.event_ticket_type_id = sp.event_ticket_type_id
+    where ea.event_id = p_event.event_id
+    and ea.status = 'confirmed'
+),
+registration_day_counts as (
+    select
+        r.day,
+        r.event_ticket_type_id,
+        r."order",
+        r.title,
+        count(*)::bigint as total
+    from registrations r
+    join bounds b on r.day between b.start_day and b.end_day
+    group by r.day, r.event_ticket_type_id, r."order", r.title
+),
+registration_series as (
+    select
+        case when rdc.event_ticket_type_id is null then 'unknown' else 'ticket-type' end as kind,
+        rdc.event_ticket_type_id,
+        rdc."order",
+        rdc.title,
+        stats_day_count_series(
+            b.start_day,
+            b.end_day,
+            jsonb_agg(jsonb_build_object('count', rdc.total, 'day', rdc.day))
+        ) as series
+    from registration_day_counts rdc
+    cross join bounds b
+    group by rdc.event_ticket_type_id, rdc."order", rdc.title, b.start_day, b.end_day
+),
+registrations_baseline as (
+    select count(*)::bigint as total
+    from registrations r
+    join bounds b on r.day < b.start_day
+),
+registrations_running_total as (
+    select
+        series_day.day,
+        (
+            (select rb.total from registrations_baseline rb)
+            + sum(count(r.day)) over (order by series_day.day)
+        )::bigint as total
+    from bounds b
+    cross join generate_series(
+        b.start_day::timestamp,
+        b.end_day::timestamp,
+        interval '1 day'
+    ) as series_day(day)
+    left join registrations r on r.day = series_day.day::date
+    group by series_day.day
+)
+select json_build_object(
+    'attribution_consistent', (
+        coalesce((select sum(dtv.total) from daily_tagged_views dtv), 0)
+            <= coalesce((select sum(dv.total) from daily_views dv), 0)
+        and not exists (
+            select 1
+            from untagged_counts uc
+            join bounds b on uc.day between b.start_day and b.end_day
+            where uc.total < 0
+        )
+    ),
+    'registrations_baseline', (select rb.total from registrations_baseline rb),
+    'registrations_by_ticket_type_per_day', coalesce((
+        select json_agg(
+            json_build_object(
+                'kind', rs.kind,
+                'series', rs.series,
+
+                'event_ticket_type_id', rs.event_ticket_type_id,
+                'order', rs."order",
+                'title', rs.title
+            )
+            order by
+                rs.event_ticket_type_id is null,
+                rs."order",
+                rs.title,
+                rs.event_ticket_type_id
+        )
+        from registration_series rs
+    ), '[]'::json),
+    'registrations_running_total', coalesce((
+        select json_agg(
+            json_build_array(to_char(rrt.day, 'YYYY-MM-DD'), rrt.total)
+            order by rrt.day
+        )
+        from registrations_running_total rrt
+    ), '[]'::json),
+    'views_after_end', coalesce((
+        select sum(dv.total)
+        from daily_views dv
+        join bounds b on dv.day > b.end_day
+    ), 0)::bigint,
+    'views_before_start', coalesce((
+        select sum(dv.total)
+        from daily_views dv
+        join bounds b on dv.day < b.start_day
+    ), 0)::bigint,
+    'views_by_source_per_day', coalesce((
+        select json_agg(
+            json_build_object(
+                'kind', vs.kind,
+                'series', vs.series,
+
+                'source', vs.source
+            )
+            order by vs.position, vs.source
+        )
+        from views_series vs
+    ), '[]'::json),
+    'views_total', coalesce((select sum(dv.total) from daily_views dv), 0)::bigint
+);
+$$ language sql stable;

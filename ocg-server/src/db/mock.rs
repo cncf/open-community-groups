@@ -548,6 +548,11 @@ mock! {
             event_id: Uuid,
             cfs_submission_id: Uuid,
         ) -> Result<crate::types::dashboard::group::submissions::CfsSubmissionNotificationData>;
+        async fn get_event_analytics(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Option<crate::types::dashboard::group::event_analytics::EventAnalytics>>;
         async fn get_event_cohost_notification_data(
             &self,
             items: &[crate::db::dashboard::group::EventCohostRef],
@@ -590,6 +595,7 @@ mock! {
             community_id: Uuid,
             group_id: Uuid,
         ) -> Result<crate::types::utm::GroupUtmSettings>;
+        async fn group_has_event(&self, group_id: Uuid, event_id: Uuid) -> Result<bool>;
         async fn group_requires_automatic_tax_readiness(
             &self,
             community_id: Uuid,

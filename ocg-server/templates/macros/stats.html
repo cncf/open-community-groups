@@ -1,8 +1,8 @@
 {# Analytics chart container #}
 {# Used by public stats and dashboard analytics pages. #}
-{% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "") -%}
+{% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "", has_data = true, summary = "") -%}
   <div class="bg-white border border-stone-200 rounded-lg px-2 py-4 md:p-6 {{ wrapper_class }}">
-    {% if data.len() > min_points + 0 -%}
+    {% if has_data && data.len() > min_points + 0 -%}
       <div id="{{ chart_id }}" class="{{ class }}">
         <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
         </svg-spinner>
@@ -10,6 +10,9 @@
     {%- else -%}
       <div class="chart-empty-state {{ class }}">No data available yet</div>
     {%- endif %}
+    {% if !summary.is_empty() -%}
+      <p class="sr-only">{{ summary }}</p>
+    {% endif -%}
   </div>
 {% endmacro analytics_chart -%}
 {# End analytics chart container #}
@@ -39,3 +42,14 @@
   </div>
 {% endmacro stat_block -%}
 {# End stat block -#}
+
+{# Stat card -#}
+{# Used by dashboard analytics pages for summary figures. -#}
+{% macro stat_card(title, value, description, extra_class = "") -%}
+  <div class="bg-white border border-stone-200 text-start rounded-lg p-5 {{ extra_class }}">
+    <div class="text-sm text-stone-600">{{ title }}</div>
+    <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">{{ value }}</div>
+    <div class="mt-1 text-xs text-stone-500">{{ description }}</div>
+  </div>
+{% endmacro stat_card -%}
+{# End stat card -#}

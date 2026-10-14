@@ -62,6 +62,42 @@ async fn test_page_hides_cohosted_events_without_cohosted_events() {
 }
 
 #[tokio::test]
+async fn test_page_rejects_invalid_query() {
+    // Setup identifiers
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock without statistics reads
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_group_stats().never();
+    db.expect_group_has_active_subgroups().never();
+
+    // Setup router and send request with an invalid flag
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/group/analytics?include_subgroups=maybe")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the query is rejected before loading statistics
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(bytes.as_ref(), b"invalid request payload");
+}
+
+#[tokio::test]
 async fn test_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

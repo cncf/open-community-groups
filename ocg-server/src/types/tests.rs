@@ -2,20 +2,36 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{Duration, TimeZone, Utc};
+use chrono::{Duration, NaiveDate, TimeZone, Utc};
 use chrono_tz::UTC;
 use uuid::Uuid;
 
 use crate::types::{
     community::CommunitySummary,
-    dashboard::group::events::EventInput,
-    event::{EventCohostGroup, EventFull, EventKind, EventMinimal, EventSummary},
+    dashboard::group::{
+        event_analytics::{
+            EventAdmissionOfferCount, EventAdmissionOfferOutcome, EventAnalytics,
+            EventAnalyticsContext, EventAnalyticsMarker, EventAnalyticsMarkerKind,
+            EventAnalyticsRange, EventAudienceStats, EventCheckInStats, EventDiscountCodeUsage,
+            EventEnrollmentStats, EventInvitationRequestCounts, EventQuestionBreakdown,
+            EventQuestionOptionCount, EventRegistrationPathCounts, EventRegistrationsDailySeries,
+            EventTicketTypeUsage, EventTicketsStats, EventTrafficStats, EventUtmCombination,
+            EventUtmDimension, EventUtmStats, EventUtmValue, EventViewsDailySeries,
+            RegistrationSeriesKind, ViewsSeriesKind,
+        },
+        events::EventInput,
+    },
+    event::{
+        EventAdmissionOfferSource, EventCohostGroup, EventFull, EventKind, EventMinimal,
+        EventSummary,
+    },
     group::{GroupCategory, GroupMinimal, GroupRegion, GroupSummary},
     inbox::{
         InboxConversation, InboxConversationStatus, InboxConversationSummary, InboxEvent,
         InboxMessage, InboxMessageKind,
     },
     payments::{GroupPaymentRecipient, PaymentProvider},
+    questionnaire::QuestionnaireQuestionKind,
     site::{SiteSettings, Theme},
     user::{User, UserSearchResult},
 };
@@ -32,6 +48,186 @@ pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
         ad_banner_link_url: None,
         ad_banner_url: None,
         og_image_url: None,
+    }
+}
+
+/// Sample analytics of a past paid event used across tests.
+#[allow(clippy::too_many_lines)]
+pub(crate) fn sample_event_analytics() -> EventAnalytics {
+    let day_series = |counts: [i64; 3]| {
+        ["2024-03-08", "2024-03-09", "2024-03-10"]
+            .into_iter()
+            .zip(counts)
+            .map(|(day, count)| (day.to_string(), count))
+            .collect::<Vec<_>>()
+    };
+
+    EventAnalytics {
+        audience: EventAudienceStats {
+            questions: vec![EventQuestionBreakdown {
+                kind: QuestionnaireQuestionKind::SingleSelect,
+                options: vec![EventQuestionOptionCount {
+                    count: 3,
+                    label: "Developer".to_string(),
+                    option_id: Uuid::from_u128(11),
+                }],
+                prompt: "Role".to_string(),
+                question_id: Uuid::from_u128(10),
+                respondents: 3,
+                selections: 3,
+            }],
+            window_end_capped: false,
+            window_end_inferred: true,
+            window_start_inferred: true,
+
+            members_joined_in_window: Some(4),
+            members_joined_in_window_registered: Some(2),
+            new_attendees: Some(3),
+            returning_attendees: Some(1),
+            window_ends_at: Some(Utc.with_ymd_and_hms(2024, 3, 10, 19, 0, 0).unwrap()),
+            window_starts_at: Some(Utc.with_ymd_and_hms(2024, 3, 8, 10, 0, 0).unwrap()),
+        },
+        check_ins: EventCheckInStats {
+            bin_minutes: 15,
+            bins: vec![(1_710_087_300_000, 1), (1_710_088_200_000, 2)],
+            outside_range: 0,
+        },
+        enrollment: EventEnrollmentStats {
+            admission_offers: vec![EventAdmissionOfferCount {
+                count: 1,
+                outcome: EventAdmissionOfferOutcome::DeadlinePassed,
+                source: EventAdmissionOfferSource::Waitlist,
+            }],
+            cancellations: 1,
+            checked_in: 3,
+            invitation_requests: EventInvitationRequestCounts {
+                accepted: 1,
+                pending: 0,
+                rejected: 0,
+            },
+            registrations: 4,
+            registrations_by_path: EventRegistrationPathCounts {
+                approval: 0,
+                direct: 3,
+                organizer_invitation: 0,
+                unknown: 0,
+                waitlist: 1,
+            },
+            waitlist: 2,
+        },
+        event: EventAnalyticsContext {
+            canceled: false,
+            is_paid: true,
+            published: true,
+            timezone: chrono_tz::Europe::Madrid,
+
+            capacity: Some(10),
+            ends_at: Some(Utc.with_ymd_and_hms(2024, 3, 10, 19, 0, 0).unwrap()),
+            published_at: Some(Utc.with_ymd_and_hms(2024, 3, 8, 10, 0, 0).unwrap()),
+            registration_ends_at: None,
+            registration_starts_at: None,
+            starts_at: Some(Utc.with_ymd_and_hms(2024, 3, 10, 17, 0, 0).unwrap()),
+        },
+        markers: vec![EventAnalyticsMarker {
+            kind: EventAnalyticsMarkerKind::Published,
+            ts: Utc.with_ymd_and_hms(2024, 3, 8, 10, 0, 0).unwrap(),
+        }],
+        markers_announcements_omitted: 0,
+        traffic: EventTrafficStats {
+            attribution_consistent: true,
+            registrations_baseline: 0,
+            registrations_by_ticket_type_per_day: vec![EventRegistrationsDailySeries {
+                kind: RegistrationSeriesKind::TicketType,
+                series: day_series([1, 2, 1]),
+
+                event_ticket_type_id: Some(Uuid::from_u128(20)),
+                order: Some(1),
+                title: Some("General".to_string()),
+            }],
+            registrations_running_total: day_series([1, 3, 4]),
+            views_after_end: 3,
+            views_before_start: 2,
+            views_by_source_per_day: vec![
+                EventViewsDailySeries {
+                    kind: ViewsSeriesKind::Source,
+                    series: day_series([4, 0, 0]),
+
+                    source: Some("newsletter".to_string()),
+                },
+                EventViewsDailySeries {
+                    kind: ViewsSeriesKind::Untagged,
+                    series: day_series([6, 5, 0]),
+
+                    source: None,
+                },
+            ],
+            views_total: 20,
+        },
+        utm: EventUtmStats {
+            by_campaign: EventUtmDimension {
+                not_specified: 4,
+                remainder_count: 0,
+                remainder_views: 0,
+                values: vec![],
+            },
+            by_medium: EventUtmDimension {
+                not_specified: 0,
+                remainder_count: 0,
+                remainder_views: 0,
+                values: vec![EventUtmValue {
+                    value: "email".to_string(),
+                    views: 4,
+                }],
+            },
+            by_source: EventUtmDimension {
+                not_specified: 0,
+                remainder_count: 0,
+                remainder_views: 0,
+                values: vec![EventUtmValue {
+                    value: "newsletter".to_string(),
+                    views: 4,
+                }],
+            },
+            combinations: vec![EventUtmCombination {
+                first_day: NaiveDate::from_ymd_opt(2024, 3, 8).unwrap(),
+                last_day: NaiveDate::from_ymd_opt(2024, 3, 8).unwrap(),
+                views: 4,
+
+                utm_campaign: None,
+                utm_medium: Some("email".to_string()),
+                utm_source: Some("newsletter".to_string()),
+            }],
+            combinations_remainder_views: 0,
+            combinations_total_count: 1,
+            tagged_views: 4,
+        },
+
+        range: Some(EventAnalyticsRange {
+            end_day: NaiveDate::from_ymd_opt(2024, 3, 10).unwrap(),
+            start_day: NaiveDate::from_ymd_opt(2024, 3, 8).unwrap(),
+        }),
+        tickets: Some(EventTicketsStats {
+            discount_codes: vec![EventDiscountCodeUsage {
+                active: true,
+                code: "SAVE10".to_string(),
+                event_discount_code_id: Uuid::from_u128(30),
+                redemptions: 2,
+                title: "Save ten".to_string(),
+
+                available: Some(8),
+                total_available: Some(10),
+            }],
+            ticket_types: vec![EventTicketTypeUsage {
+                active: true,
+                allocated: 5,
+                event_ticket_type_id: Uuid::from_u128(20),
+                order: 1,
+                remaining: 5,
+                seats_total: 10,
+                sold: 4,
+                title: "General".to_string(),
+            }],
+        }),
     }
 }
 

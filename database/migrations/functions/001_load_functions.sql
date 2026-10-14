@@ -20,6 +20,7 @@
 {{ template "internal/enrollment/event_user_enrollment_conflict.sql" }}
 {{ template "internal/enrollment/get_event_occupied_seat_count.sql" }}
 {{ template "internal/enrollment/is_event_enrollment_superseded.sql" }}
+{{ template "internal/enrollment/registration_window_closes_at.sql" }} -- Dependency for is_registration_window_open
 {{ template "internal/enrollment/is_registration_window_open.sql" }}
 {{ template "internal/enrollment/lock_event_enrollment_rows.sql" }}
 {{ template "internal/enrollment/promote_event_waitlist_entries.sql" }}
@@ -129,6 +130,12 @@
 {{ template "internal/search/search_events_matches.sql" }}
 {{ template "internal/search/search_groups_matches.sql" }}
 
+{{ template "internal/stats/stats_day_count_series.sql" }}
+{{ template "internal/stats/stats_event_audience.sql" }}
+{{ template "internal/stats/stats_event_check_ins.sql" }}
+{{ template "internal/stats/stats_event_enrollment.sql" }}
+{{ template "internal/stats/stats_event_traffic.sql" }}
+{{ template "internal/stats/stats_event_utm.sql" }}
 {{ template "internal/stats/stats_label_count_series.sql" }}
 {{ template "internal/stats/stats_label_count_series_by_name.sql" }}
 {{ template "internal/stats/stats_running_total_series.sql" }}
@@ -145,6 +152,7 @@
 {{ template "internal/ticketing/get_event_ticket_capacity.sql" }}
 {{ template "internal/ticketing/get_event_ticket_type_allocated_seat_count.sql" }}
 {{ template "internal/enrollment/admission_offer_capacity_conflict.sql" }} -- Depends on get_event_ticket_type_allocated_seat_count
+{{ template "internal/stats/stats_event_tickets.sql" }} -- Depends on get_event_ticket_type_allocated_seat_count
 {{ template "internal/ticketing/is_event_paid_capable.sql" }}
 {{ template "internal/ticketing/is_event_simple_rsvp.sql" }}
 {{ template "internal/ticketing/is_event_ticketing_payload_paid_capable.sql" }}
@@ -264,6 +272,7 @@
 {{ template "dashboard-group/delete_group_team_member.sql" }}
 {{ template "dashboard-group/event_ticketing_configuration_changed.sql" }}
 {{ template "dashboard-group/get_cfs_submission_notification_data.sql" }}
+{{ template "dashboard-group/get_event_analytics.sql" }}
 {{ template "dashboard-group/get_event_cohost_notification_data.sql" }}
 {{ template "dashboard-group/get_event_summary_dashboard.sql" }}
 {{ template "dashboard-group/get_group_external_payments_context.sql" }}
@@ -271,6 +280,7 @@
 {{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/get_group_stats.sql" }}
 {{ template "dashboard-group/get_group_utm_settings.sql" }}
+{{ template "dashboard-group/group_has_event.sql" }}
 {{ template "dashboard-group/list_group_automatic_tax_readiness_event_ids.sql" }} -- Dependency for group_requires_automatic_tax_readiness
 {{ template "dashboard-group/group_requires_automatic_tax_readiness.sql" }}
 {{ template "dashboard-group/invite_event_attendee.sql" }}

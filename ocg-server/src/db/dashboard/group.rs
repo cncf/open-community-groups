@@ -27,6 +27,7 @@ use crate::{
                 attendees::{AttendeesFilters, AttendeesOutput},
                 check_in::{CheckInScanResult, GroupCheckInEvent},
                 cohosts::{CohostedEventsFilters, CohostedEventsOutput},
+                event_analytics::EventAnalytics,
                 events::{
                     ApprovedSubmissionSummary, CfsSubmissionStatus, EventCohostsEditor,
                     EventsListFilters, GroupEvents,
@@ -266,6 +267,19 @@ pub(crate) trait DBDashboardGroup {
         cfs_submission_id: Uuid,
     ) -> Result<CfsSubmissionNotificationData>;
 
+    /// Retrieves the analytics of an event owned by a group.
+    ///
+    /// Returns `None` for missing, foreign or deleted events. Cached for up to
+    /// one hour per process, so callers check availability with the uncached
+    /// [`DBDashboardGroup::group_has_event`] first. Aggregates mutable data;
+    /// see "Cached reads and transactions" in `docs/backend.md` before calling
+    /// it from a transaction.
+    async fn get_event_analytics(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Option<EventAnalytics>>;
+
     /// Gets co-hosting notification content for the given event and group pairs.
     async fn get_event_cohost_notification_data(
         &self,
@@ -331,6 +345,9 @@ pub(crate) trait DBDashboardGroup {
         community_id: Uuid,
         group_id: Uuid,
     ) -> Result<GroupUtmSettings>;
+
+    /// Reports whether an event exists, is not deleted and belongs to the group.
+    async fn group_has_event(&self, group_id: Uuid, event_id: Uuid) -> Result<bool>;
 
     /// Reports whether current paid events require automatic tax from a new sponsor.
     async fn group_requires_automatic_tax_readiness(
@@ -1150,6 +1167,42 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::get_event_analytics`].
+    #[instrument(skip(self), err)]
+    async fn get_event_analytics(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Option<EventAnalytics>> {
+        #[cached(
+            max_size = 1_000,
+            ttl = 3600,
+            key = "(Uuid, Uuid)",
+            convert = "{ (group_id, event_id) }",
+            sync_writes = "by_key"
+        )]
+        async fn inner(
+            db: &PgClient<'_>,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Option<EventAnalytics>> {
+            db.fetch_json_opt(
+                "select get_event_analytics($1::uuid, $2::uuid)",
+                &[&group_id, &event_id],
+            )
+            .await
+        }
+
+        // Serve a fresh cached value without checking out a client
+        if let Some(analytics) = cache_probe(&INNER.0, &(group_id, event_id)).await {
+            return Ok(analytics);
+        }
+
+        // Check out the client before the cached fill takes its key lock
+        let db = self.client().await?;
+        inner(&db, group_id, event_id).await
+    }
+
     /// [`DBDashboardGroup::get_event_cohost_notification_data`].
     #[instrument(skip(self, items), fields(entries = items.len()), err)]
     async fn get_event_cohost_notification_data(
@@ -1291,6 +1344,16 @@ where
         self.fetch_json_one(
             "select get_group_utm_settings($1::uuid, $2::uuid)",
             &[&community_id, &group_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::group_has_event`]
+    #[instrument(skip(self), err)]
+    async fn group_has_event(&self, group_id: Uuid, event_id: Uuid) -> Result<bool> {
+        self.fetch_scalar_one(
+            "select group_has_event($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
         )
         .await
     }

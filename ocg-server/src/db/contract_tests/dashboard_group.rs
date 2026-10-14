@@ -37,6 +37,9 @@ use crate::{
                 },
                 check_in::CheckInOutcome,
                 cohosts::CohostedEventsFilters,
+                event_analytics::{
+                    EventAnalyticsMarkerKind, RegistrationSeriesKind, ViewsSeriesKind,
+                },
                 events::{
                     DiscountCodeInput, EventInput, EventsListFilters, TicketPriceWindowInput,
                     TicketTypeInput,
@@ -56,7 +59,7 @@ use crate::{
         },
         group::GroupRole,
         payments::{EventPurchaseChargeModel, PaymentProvider},
-        questionnaire::QuestionnaireAnswerValue,
+        questionnaire::{QuestionnaireAnswerValue, QuestionnaireQuestionKind},
         utm::GroupUtmSettings,
     },
 };
@@ -940,6 +943,185 @@ async fn db_contracts_get_cfs_submission_notification_data_deserializes() -> Res
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+#[allow(clippy::too_many_lines)]
+async fn db_contracts_get_event_analytics_deserializes() -> Result<()> {
+    // Setup the contract database and the event analytics fixture
+    let db = contract_tests_db()?;
+
+    // Load the event analytics through the Rust contract
+    let stats = db
+        .get_event_analytics(analytics_group_id(), analytics_event_id())
+        .await?
+        .context("event analytics should exist")?;
+
+    // Check the event configuration, range and markers
+    assert!(!stats.event.canceled);
+    assert!(stats.event.is_paid);
+    assert!(stats.event.published);
+    assert_eq!(stats.event.timezone, chrono_tz::Europe::Madrid);
+    assert_eq!(stats.event.capacity, Some(50));
+    assert_eq!(
+        stats.event.ends_at,
+        DateTime::from_timestamp(1_741_633_200, 0)
+    );
+    assert_eq!(
+        stats.event.published_at,
+        DateTime::from_timestamp(1_740_823_200, 0)
+    );
+    assert_eq!(stats.event.registration_ends_at, None);
+    assert_eq!(stats.event.registration_starts_at, None);
+    assert_eq!(
+        stats.event.starts_at,
+        DateTime::from_timestamp(1_741_626_000, 0)
+    );
+    let range = stats.range.as_ref().context("range should be resolved")?;
+    assert_eq!(range.end_day, NaiveDate::from_ymd_opt(2025, 3, 10).unwrap());
+    assert_eq!(
+        range.start_day,
+        NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()
+    );
+    let markers = stats
+        .markers
+        .iter()
+        .map(|marker| (marker.kind, marker.ts.timestamp()))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        markers,
+        vec![
+            (EventAnalyticsMarkerKind::Published, 1_740_823_200),
+            (EventAnalyticsMarkerKind::Announcement, 1_741_424_400),
+            (EventAnalyticsMarkerKind::EventStart, 1_741_626_000),
+        ]
+    );
+    assert_eq!(stats.markers_announcements_omitted, 0);
+
+    // Check the traffic series kinds and stack sums
+    assert!(stats.traffic.attribution_consistent);
+    assert_eq!(stats.traffic.views_after_end, 3);
+    assert_eq!(stats.traffic.views_before_start, 2);
+    assert_eq!(stats.traffic.views_total, 15);
+    let views_kinds = stats
+        .traffic
+        .views_by_source_per_day
+        .iter()
+        .map(|series| (series.kind, series.source.clone(), series.series.len()))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        views_kinds,
+        vec![
+            (ViewsSeriesKind::Source, Some("newsletter".to_string()), 10),
+            (ViewsSeriesKind::NoSource, None, 10),
+            (ViewsSeriesKind::Untagged, None, 10),
+        ]
+    );
+    let stacked_views: i64 = stats
+        .traffic
+        .views_by_source_per_day
+        .iter()
+        .flat_map(|series| series.series.iter())
+        .filter(|(day, _)| day == "2025-03-05")
+        .map(|(_, count)| count)
+        .sum();
+    assert_eq!(stacked_views, 10);
+    let registrations = &stats.traffic.registrations_by_ticket_type_per_day;
+    assert_eq!(registrations.len(), 1);
+    assert_eq!(registrations[0].kind, RegistrationSeriesKind::TicketType);
+    assert_eq!(
+        registrations[0].event_ticket_type_id,
+        Some(analytics_ticket_type_id())
+    );
+    assert_eq!(registrations[0].order, Some(1));
+    assert_eq!(registrations[0].title.as_deref(), Some("Analytics Pass"));
+    assert_eq!(stats.traffic.registrations_baseline, 0);
+    assert_eq!(
+        stats.traffic.registrations_running_total.last(),
+        Some(&("2025-03-10".to_string(), 1))
+    );
+
+    // Check the UTM dimensions and combinations
+    assert_eq!(stats.utm.tagged_views, 6);
+    assert_eq!(stats.utm.by_source.not_specified, 2);
+    assert_eq!(stats.utm.by_source.values[0].value, "newsletter");
+    assert_eq!(stats.utm.by_source.values[0].views, 4);
+    assert_eq!(stats.utm.by_campaign.not_specified, 4);
+    assert_eq!(stats.utm.by_medium.remainder_count, 0);
+    assert_eq!(stats.utm.combinations_remainder_views, 0);
+    assert_eq!(stats.utm.combinations_total_count, 2);
+    let first_combination = &stats.utm.combinations[0];
+    assert_eq!(
+        first_combination.first_day,
+        NaiveDate::from_ymd_opt(2025, 3, 5).unwrap()
+    );
+    assert_eq!(first_combination.views, 4);
+    assert_eq!(first_combination.utm_campaign, None);
+    assert_eq!(first_combination.utm_medium.as_deref(), Some("email"));
+    assert_eq!(first_combination.utm_source.as_deref(), Some("newsletter"));
+    assert_eq!(
+        stats.utm.combinations[1].utm_campaign.as_deref(),
+        Some("spring")
+    );
+    assert_eq!(stats.utm.combinations[1].utm_source, None);
+
+    // Check the enrollment and ticket counts
+    assert!(stats.enrollment.admission_offers.is_empty());
+    assert_eq!(stats.enrollment.checked_in, 1);
+    assert_eq!(stats.enrollment.invitation_requests.pending, 0);
+    assert_eq!(stats.enrollment.registrations, 1);
+    let paths = &stats.enrollment.registrations_by_path;
+    assert_eq!(paths.approval, 0);
+    assert_eq!(paths.direct, 1);
+    assert_eq!(paths.organizer_invitation, 0);
+    assert_eq!(paths.unknown, 0);
+    assert_eq!(paths.waitlist, 0);
+    let tickets = stats.tickets.as_ref().context("paid events report tickets")?;
+    assert!(tickets.discount_codes.is_empty());
+    let ticket_type = &tickets.ticket_types[0];
+    assert_eq!(ticket_type.allocated, 1);
+    assert_eq!(ticket_type.event_ticket_type_id, analytics_ticket_type_id());
+    assert_eq!(ticket_type.remaining, 49);
+    assert_eq!(ticket_type.seats_total, 50);
+    assert_eq!(ticket_type.sold, 1);
+
+    // Check the audience window flags and question options
+    let question = &stats.audience.questions[0];
+    assert_eq!(question.kind, QuestionnaireQuestionKind::SingleSelect);
+    assert_eq!(question.options[0].count, 1);
+    assert_eq!(question.options[0].label, "Developer");
+    assert_eq!(question.question_id, analytics_question_id());
+    assert_eq!(question.respondents, 1);
+    assert!(!stats.audience.window_end_capped);
+    assert!(stats.audience.window_end_inferred);
+    assert!(stats.audience.window_start_inferred);
+    assert_eq!(stats.audience.members_joined_in_window, Some(0));
+    assert_eq!(stats.audience.new_attendees, Some(1));
+    assert_eq!(stats.audience.returning_attendees, Some(0));
+    assert_eq!(
+        stats.audience.window_ends_at,
+        DateTime::from_timestamp(1_741_633_200, 0)
+    );
+    assert_eq!(
+        stats.audience.window_starts_at,
+        DateTime::from_timestamp(1_740_823_200, 0)
+    );
+
+    // Check the check-in bins
+    assert_eq!(stats.check_ins.bin_minutes, 15);
+    assert_eq!(
+        stats.check_ins.bins,
+        vec![
+            (1_741_622_400_000, 0),
+            (1_741_623_300_000, 0),
+            (1_741_624_200_000, 0),
+            (1_741_625_100_000, 1),
+        ]
+    );
+    assert_eq!(stats.check_ins.outside_range, 0);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_cohost_notification_data_deserializes() -> Result<()> {
     // Setup the contract database and the requested pairs
     let db = contract_tests_db()?;
@@ -1200,6 +1382,22 @@ async fn db_contracts_get_group_stats_deserializes() -> Result<()> {
     assert_eq!(stats.page_views.events.total_views, 2);
     assert_eq!(stats.page_views.group.total_views, 3);
     assert_eq!(stats.page_views.total_views, 5);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_group_has_event_checks_ownership() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Check the owning group sees its event
+    assert!(db.group_has_event(analytics_group_id(), analytics_event_id()).await?);
+
+    // Check events of other groups are reported as unavailable
+    assert!(!db.group_has_event(analytics_group_id(), event_id()).await?);
+    assert!(!db.group_has_event(group_id(), analytics_event_id()).await?);
 
     Ok(())
 }

@@ -29,6 +29,24 @@ const litImportMapResolver = {
   },
 };
 
+/**
+ * Creates a Chromium launcher with the shared locale and an optional timezone.
+ * @param {string|undefined} timezoneId - IANA timezone emulated by the browser.
+ * @returns {import("@web/test-runner").BrowserLauncher} Browser launcher.
+ */
+const createChromiumLauncher = (timezoneId) =>
+  playwrightLauncher({
+    product: "chromium",
+    createBrowserContext: ({ browser }) => browser.newContext({ locale: "en-US", timezoneId }),
+  });
+
+// Chart bucket helpers must produce the same UTC days in every browser timezone.
+const chartTimezoneGroups = ["Pacific/Auckland", "America/Los_Angeles"].map((timezoneId) => ({
+  name: `chart-config-${timezoneId.toLowerCase().replace("/", "-").replaceAll("_", "-")}`,
+  files: `${repoRootDir}/tests/unit/dashboard/chart-config.test.js`,
+  browsers: [createChromiumLauncher(timezoneId)],
+}));
+
 const importMap = JSON.stringify({
   imports: {
     "/static/": "/ocg-server/static/",
@@ -43,12 +61,8 @@ export default {
   hostname: "127.0.0.1",
   nodeResolve: true,
   plugins: [litImportMapResolver],
-  browsers: [
-    playwrightLauncher({
-      product: "chromium",
-      createBrowserContext: ({ browser }) => browser.newContext({ locale: "en-US" }),
-    }),
-  ],
+  browsers: [createChromiumLauncher()],
+  groups: chartTimezoneGroups,
   testRunnerHtml: (testFrameworkImport) => `<!DOCTYPE html>
 <html lang="en">
   <head>

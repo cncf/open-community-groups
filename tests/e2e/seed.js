@@ -73,6 +73,17 @@ export const TEST_OPEN_CHECK_IN_EVENT = {
   name: "Open Public Check-In",
   slug: "alpha-open-public-check-in",
 };
+/** Test events used by the event analytics coverage. */
+export const TEST_EVENT_ANALYTICS = {
+  futureFree: {
+    id: "55555555-5555-5555-5555-555555555962",
+    name: "Analytics Future Free Event",
+  },
+  pastPaid: {
+    id: "55555555-5555-5555-5555-555555555961",
+    name: "Analytics Past Paid Event",
+  },
+};
 export const TEST_MULTI_DAY_EVENT = {
   id: "55555555-5555-5555-5555-555555555535",
   name: "Multi Day Summit",

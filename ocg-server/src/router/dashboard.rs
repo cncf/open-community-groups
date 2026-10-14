@@ -235,6 +235,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::group::events::tax_rates),
         )
         .route(
+            "/events/{event_id}/analytics",
+            get(dashboard::group::event_analytics::page),
+        )
+        .route(
             "/events/{event_id}/attendees",
             get(dashboard::group::attendees::list_page),
         )
