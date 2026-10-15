@@ -14,7 +14,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{PgClient, PgExecutor},
+    db::{PgClient, PgExecutor, cache_probe},
     types::{
         badges::{
             AwardBadgeOutcome, AwardedBadgesFilters, BadgeArtwork, BadgeAwardInput, BadgeFilters,
@@ -55,6 +55,7 @@ use crate::{
             GroupExternalPaymentsContext, GroupPaymentRecipient, PaymentConfigurationValidation,
             PaymentProvider,
         },
+        utm::GroupUtmSettings,
     },
 };
 
@@ -323,6 +324,13 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         include_subgroups: bool,
     ) -> Result<GroupDashboardStats>;
+
+    /// Retrieves the UTM values a group accepts for its event page views.
+    async fn get_group_utm_settings(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<GroupUtmSettings>;
 
     /// Reports whether current paid events require automatic tax from a new sponsor.
     async fn group_requires_automatic_tax_readiness(
@@ -1249,24 +1257,42 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(
-            db: PgClient<'_>,
+            db: &PgClient<'_>,
             community_id: Uuid,
             group_id: Uuid,
             include_subgroups: bool,
         ) -> Result<GroupDashboardStats> {
-            let row = db
-                .query_one(
-                    "select get_group_stats($1::uuid, $2::uuid, $3::bool)",
-                    &[&community_id, &group_id, &include_subgroups],
-                )
-                .await?;
-            let stats = row.try_get::<_, Json<GroupDashboardStats>>(0)?.0;
-
-            Ok(stats)
+            db.fetch_json_one(
+                "select get_group_stats($1::uuid, $2::uuid, $3::bool)",
+                &[&community_id, &group_id, &include_subgroups],
+            )
+            .await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(stats) =
+            cache_probe(&INNER.0, &(community_id, group_id, include_subgroups)).await
+        {
+            return Ok(stats);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db, community_id, group_id, include_subgroups).await
+        inner(&db, community_id, group_id, include_subgroups).await
+    }
+
+    /// [`DBDashboardGroup::get_group_utm_settings`]
+    #[instrument(skip(self), err)]
+    async fn get_group_utm_settings(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<GroupUtmSettings> {
+        self.fetch_json_one(
+            "select get_group_utm_settings($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
+        )
+        .await
     }
 
     /// [`DBDashboardGroup::group_requires_automatic_tax_readiness`]
@@ -1455,15 +1481,18 @@ where
             convert = r#"{ String::from("event_kinds") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<Vec<EventKind>> {
-            let row = db.query_one("select list_event_kinds()", &[]).await?;
-            let kinds = row.try_get::<_, Json<Vec<EventKind>>>(0)?.0;
-
-            Ok(kinds)
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<EventKind>> {
+            db.fetch_json_one("select list_event_kinds()", &[]).await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(kinds) = cache_probe(&INNER.0, "event_kinds").await {
+            return Ok(kinds);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     /// [`DBDashboardGroup::list_event_series_cancelable_event_ids`].
@@ -1632,15 +1661,18 @@ where
             convert = r#"{ String::from("group_roles") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<Vec<GroupRoleSummary>> {
-            let row = db.query_one("select list_group_roles()", &[]).await?;
-            let roles = row.try_get::<_, Json<Vec<GroupRoleSummary>>>(0)?.0;
-
-            Ok(roles)
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<GroupRoleSummary>> {
+            db.fetch_json_one("select list_group_roles()", &[]).await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(roles) = cache_probe(&INNER.0, "group_roles").await {
+            return Ok(roles);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     /// [`DBDashboardGroup::list_group_sponsors`]
@@ -1688,15 +1720,21 @@ where
             convert = r#"{ String::from("payment_currency_codes") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<Vec<String>> {
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<String>> {
             let row = db.query_one("select list_payment_currency_codes()", &[]).await?;
             let currency_codes = row.try_get::<_, Vec<String>>(0)?;
 
             Ok(currency_codes)
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(currency_codes) = cache_probe(&INNER.0, "payment_currency_codes").await {
+            return Ok(currency_codes);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     /// [`DBDashboardGroup::list_session_kinds`]
@@ -1708,15 +1746,18 @@ where
             convert = r#"{ String::from("session_kinds") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<Vec<SessionKind>> {
-            let row = db.query_one("select list_session_kinds()", &[]).await?;
-            let kinds = row.try_get::<_, Json<Vec<SessionKind>>>(0)?.0;
-
-            Ok(kinds)
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<SessionKind>> {
+            db.fetch_json_one("select list_session_kinds()", &[]).await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(kinds) = cache_probe(&INNER.0, "session_kinds").await {
+            return Ok(kinds);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     /// [`DBDashboardGroup::list_user_groups`]

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(93);
+select plan(95);
 
 -- ============================================================================
 -- TESTS
@@ -670,6 +670,16 @@ select columns_are('event_views', array[
     'total'
 ]);
 
+-- Test: event_views_utm columns should match expected
+select columns_are('event_views_utm', array[
+    'event_id',
+    'day',
+    'total',
+    'utm_campaign',
+    'utm_medium',
+    'utm_source'
+]);
+
 -- Test: event_waitlist columns should match expected
 select columns_are('event_waitlist', array[
     'event_id',
@@ -763,6 +773,9 @@ select columns_are('group', array[
     'state',
     'tags',
     'twitter_url',
+    'utm_campaigns',
+    'utm_mediums',
+    'utm_sources',
     'website_url',
     'wechat_url',
     'youtube_url'
@@ -1186,6 +1199,11 @@ select columns_are('user_notification_opt_out', array[
     'created_at',
     'notification_category_id',
     'user_id'
+]);
+
+-- Test: utm medium columns should match expected
+select columns_are('utm_medium', array[
+    'utm_medium_id'
 ]);
 
 -- ============================================================================

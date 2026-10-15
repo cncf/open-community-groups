@@ -5,6 +5,7 @@ use askama::Template;
 use crate::types::{
     group::{GroupCategory, GroupFull, GroupParentOption, GroupRegion},
     payments::GroupExternalPaymentsContext,
+    utm::GroupUtmSettings,
 };
 
 // Pages templates.
@@ -17,6 +18,8 @@ pub(crate) struct UpdatePage {
     pub can_manage_settings: bool,
     /// List of available group categories.
     pub categories: Vec<GroupCategory>,
+    /// UTM mediums every group accepts by default.
+    pub default_utm_mediums: Vec<String>,
     /// Group-level external-payments eligibility and window limits.
     pub external_payments: GroupExternalPaymentsContext,
     /// Group information.
@@ -29,6 +32,8 @@ pub(crate) struct UpdatePage {
     pub payments_enabled: bool,
     /// List of available regions.
     pub regions: Vec<GroupRegion>,
+    /// UTM values the group accepts for its event page views.
+    pub utm: GroupUtmSettings,
 }
 
 impl UpdatePage {
@@ -46,6 +51,7 @@ mod tests {
     use crate::types::{
         group::GroupFull,
         payments::{GroupExternalPaymentsContext, GroupPaymentRecipient, PaymentProvider},
+        utm::GroupUtmSettings,
     };
 
     use super::UpdatePage;
@@ -94,6 +100,7 @@ mod tests {
         UpdatePage {
             can_manage_settings: true,
             categories: Vec::new(),
+            default_utm_mediums: Vec::new(),
             external_payments,
             group: GroupFull {
                 payment_recipient,
@@ -103,6 +110,7 @@ mod tests {
             parent_options: Vec::new(),
             payments_enabled: true,
             regions: Vec::new(),
+            utm: GroupUtmSettings::default(),
         }
     }
 

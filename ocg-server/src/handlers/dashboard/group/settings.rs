@@ -161,6 +161,8 @@ pub(crate) async fn prepare_update_page(
         parent_options,
         regions,
         external_payments,
+        utm,
+        default_utm_mediums,
     ) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -173,18 +175,22 @@ pub(crate) async fn prepare_update_page(
         db.list_group_categories(community_id),
         db.list_group_parent_options(community_id, user_id, Some(group_id)),
         db.list_regions(community_id),
-        db.get_group_external_payments_context(community_id, group_id)
+        db.get_group_external_payments_context(community_id, group_id),
+        db.get_group_utm_settings(community_id, group_id),
+        db.list_utm_mediums()
     )?;
 
     Ok(settings::UpdatePage {
         can_manage_settings,
         categories,
+        default_utm_mediums,
         external_payments,
         group,
         has_child_links,
         parent_options,
         payments_enabled,
         regions,
+        utm,
     })
 }
 

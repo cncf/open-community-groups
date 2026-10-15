@@ -10,7 +10,7 @@ use axum::{
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -19,7 +19,7 @@ use crate::{
     config::{HttpServerConfig, PaymentsConfig},
     db::DynDB,
     handlers::{
-        extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
+        extractors::{CurrentUser, ValidatedForm, ValidatedFormQs, ValidatedQuery},
         request_headers_match_site_origin,
         site::not_found,
         trim_public_gallery_images,
@@ -42,6 +42,7 @@ use crate::{
         event::{EventAttendanceInput, EventEnrollmentStatus, EventFull},
         inbox::InboxMessageInput,
         payments::{CheckoutInput, EventTicketType, PreparedEventCheckout},
+        utm::UtmParams,
     },
     validation::{MAX_ASSIGNED_EVENT_LABELS, MAX_LEN_DESCRIPTION_SHORT, trimmed_non_empty_opt},
 };
@@ -432,20 +433,32 @@ pub(crate) async fn submit_cfs_submission(
 }
 
 /// Tracks an event page view.
+///
+/// UTM attribution is best-effort: a malformed query string, UTM values the
+/// event group does not accept, or a failed lookup of the accepted values drop
+/// the attribution while the view is still counted.
 #[instrument(skip_all)]
 pub(crate) async fn track_view(
     headers: HeaderMap,
     State(activity_tracker): State<DynActivityTracker>,
+    State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
+    query: Result<ValidatedQuery<EventViewQuery>, Response>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Require same-origin evidence before accepting analytics activity
     if !request_headers_match_site_origin(&server_cfg, &headers)? {
         return Ok(StatusCode::FORBIDDEN);
     }
 
+    // Attribute the view to the UTM parameters accepted for the event
+    let utm = match query {
+        Ok(ValidatedQuery(query)) => accepted_utm_params(&db, event_id, &query).await,
+        Err(_) => None,
+    };
+
     // Record the verified page view
-    activity_tracker.track(Activity::EventView { event_id }).await?;
+    activity_tracker.track(Activity::EventView { event_id, utm }).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -598,6 +611,23 @@ impl EventTicketAvailability {
     }
 }
 
+/// Query parameters accepted when tracking an event page view.
+///
+/// Values are normalized by [`UtmParams::new`] instead of being validated, so
+/// unusable UTM values never prevent the view from being counted.
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct EventViewQuery {
+    /// Raw `utm_campaign` value of the viewed page.
+    #[garde(skip)]
+    utm_campaign: Option<String>,
+    /// Raw `utm_medium` value of the viewed page.
+    #[garde(skip)]
+    utm_medium: Option<String>,
+    /// Raw `utm_source` value of the viewed page.
+    #[garde(skip)]
+    utm_source: Option<String>,
+}
+
 /// Refund request form data.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct RefundRequestInput {
@@ -607,6 +637,38 @@ pub(crate) struct RefundRequestInput {
 }
 
 // Helpers.
+
+/// Returns the UTM parameters of a view when the event accepts all of them.
+///
+/// Parameters are only looked up when they have a supported format, so views
+/// without usable UTM parameters never reach the database.
+async fn accepted_utm_params(
+    db: &DynDB,
+    event_id: Uuid,
+    query: &EventViewQuery,
+) -> Option<UtmParams> {
+    // Normalize the raw parameters, skipping views without a usable attribution
+    let utm = UtmParams::new(
+        query.utm_campaign.as_deref(),
+        query.utm_medium.as_deref(),
+        query.utm_source.as_deref(),
+    )?;
+
+    // Keep the attribution only when the event accepts every parameter
+    match db.get_event_utm_allowlist(event_id).await {
+        Ok(allowlist) => allowlist
+            .is_some_and(|allowlist| allowlist.permits(&utm))
+            .then_some(utm),
+        Err(err) => {
+            warn!(
+                error = %format_args!("{err:#}"),
+                %event_id,
+                "error loading event utm allowlist, dropping view attribution"
+            );
+            None
+        }
+    }
+}
 
 /// Maps an enrollment outcome to the attendee-facing JSON response.
 fn attend_outcome_response(outcome: AttendOutcome) -> Response {

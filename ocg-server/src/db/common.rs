@@ -8,7 +8,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{PgClient, PgExecutor},
+    db::{PgClient, PgExecutor, cache_probe},
     types::{
         badges::{BadgeStatusList, PublicUserBadge, UserBadge},
         community::{CommunityFull, CommunitySummary},
@@ -79,6 +79,11 @@ pub(crate) trait DBCommon {
         offset: usize,
         username: &str,
     ) -> Result<Vec<PublicUserBadge>>;
+
+    /// Lists the UTM mediums every group accepts by default.
+    ///
+    /// Cached for up to one day per process.
+    async fn list_utm_mediums(&self) -> Result<Vec<String>>;
 
     /// Searches for events based on provided filters.
     async fn search_events(&self, filters: &SearchEventsFilters) -> Result<SearchEventsOutput>;
@@ -198,7 +203,7 @@ where
             convert = r#"{ String::from("timezones") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<Vec<String>> {
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<String>> {
             let timezones = db
                 .query(
                     "
@@ -218,8 +223,14 @@ where
             Ok(timezones)
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(timezones) = cache_probe(&INNER.0, "timezones").await {
+            return Ok(timezones);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     /// [`DBCommon::list_user_public_badges`].
@@ -237,6 +248,39 @@ where
             &[&username, &limit, &offset],
         )
         .await
+    }
+
+    /// [`DBCommon::list_utm_mediums`]
+    #[instrument(skip(self), err)]
+    async fn list_utm_mediums(&self) -> Result<Vec<String>> {
+        #[cached(
+            ttl = 86400,
+            key = "String",
+            convert = r#"{ String::from("utm_mediums") }"#,
+            sync_writes = "by_key"
+        )]
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<String>> {
+            let utm_mediums = db
+                .query(
+                    "select utm_medium_id from utm_medium order by utm_medium_id asc;",
+                    &[],
+                )
+                .await?
+                .into_iter()
+                .map(|row| row.get("utm_medium_id"))
+                .collect();
+
+            Ok(utm_mediums)
+        }
+
+        // Serve a fresh cached value without checking out a client
+        if let Some(utm_mediums) = cache_probe(&INNER.0, "utm_mediums").await {
+            return Ok(utm_mediums);
+        }
+
+        // Check out the client before the cached fill takes its key lock
+        let db = self.client().await?;
+        inner(&db).await
     }
 
     /// [`DBCommon::search_events`]

@@ -2,6 +2,9 @@ import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
+// Counter used to build unique legend IDs for the rendered inputs.
+let legendIdCount = 0;
+
 /**
  * MultipleInputs component for managing a dynamic list of text inputs.
  * Allows users to add/remove multiple values for array-type form fields like tags.
@@ -20,6 +23,11 @@ export class MultipleInputs extends LitWrapper {
    * @property {boolean} required - If true, prevents removing the last input
    * @property {number} maxItems - Maximum number of items allowed (0 = unlimited)
    * @property {number} maxLength - Maximum length allowed for each input value
+   * @property {string} pattern - Optional pattern each non-empty value must fully match
+   * @property {string} patternMessage - Validation message for values not matching the pattern
+   * @property {boolean} unique - If true, rejects values repeated in the list
+   * @property {Array<string>} excludedValues - Values that cannot be added to the list
+   * @property {string} excludedMessage - Validation message for excluded values
    */
   static properties = {
     items: { type: Array },
@@ -31,6 +39,11 @@ export class MultipleInputs extends LitWrapper {
     required: { type: Boolean },
     maxItems: { type: Number, attribute: "max-items" },
     maxLength: { type: Number, attribute: "max-length" },
+    pattern: { type: String },
+    patternMessage: { type: String, attribute: "pattern-message" },
+    unique: { type: Boolean },
+    excludedValues: { type: Array, attribute: "excluded-values" },
+    excludedMessage: { type: String, attribute: "excluded-message" },
   };
 
   constructor() {
@@ -44,7 +57,14 @@ export class MultipleInputs extends LitWrapper {
     this.required = false;
     this.maxItems = 0; // 0 means no limit
     this.maxLength = 0; // 0 means no limit
+    this.pattern = "";
+    this.patternMessage = "";
+    this.unique = false;
+    this.excludedValues = [];
+    this.excludedMessage = "";
     this._nextId = 0;
+    legendIdCount += 1;
+    this._legendId = `multiple-inputs-legend-${legendIdCount}`;
   }
 
   /**
@@ -64,6 +84,13 @@ export class MultipleInputs extends LitWrapper {
     if (changedProperties.has("items") && !this.items?.every?.((item) => typeof item?.value === "string")) {
       this._loadInitialData();
     }
+  }
+
+  /**
+   * Synchronizes the validity of the rendered inputs with their values.
+   */
+  updated() {
+    this._syncValidity();
   }
 
   /**
@@ -158,6 +185,51 @@ export class MultipleInputs extends LitWrapper {
   }
 
   /**
+   * Returns the validation message for an item value, or an empty string when valid.
+   * Blank values are valid, as they are not submitted.
+   * @param {string} value - The item value
+   * @param {Set<string>} previousValues - Submitted values of the preceding items
+   * @returns {string} Validation message
+   * @private
+   */
+  _getValidationMessage(value, previousValues) {
+    if (value.trim() === "") {
+      return "";
+    }
+
+    if (this.pattern && !new RegExp(`^(?:${this.pattern})$`).test(value)) {
+      return this.patternMessage || "Please match the requested format.";
+    }
+
+    if (this.excludedValues?.includes(value)) {
+      return this.excludedMessage || "This value is not allowed.";
+    }
+
+    if (this.unique && previousValues.has(value)) {
+      return "This value is already in the list.";
+    }
+
+    return "";
+  }
+
+  /**
+   * Applies the pattern, exclusion, and uniqueness rules to the rendered inputs,
+   * so the form cannot be submitted while any value breaks them.
+   * @private
+   */
+  _syncValidity() {
+    const inputs = this.querySelectorAll("input[data-item-input]");
+    const previousValues = new Set();
+
+    this.items.forEach((item, index) => {
+      inputs[index]?.setCustomValidity(this._getValidationMessage(item.value, previousValues));
+      if (item.value.trim() !== "") {
+        previousValues.add(item.value);
+      }
+    });
+  }
+
+  /**
    * Validates and returns a valid input type.
    * Falls back to "text" if the specified type is not supported.
    * @returns {string} Valid HTML input type
@@ -187,13 +259,14 @@ export class MultipleInputs extends LitWrapper {
    */
   render() {
     const validInputType = this._getValidInputType();
+    const hasLegend = Boolean(this.legend && this.legend.trim() !== "");
 
     return html`
       <div class="space-y-3">
         ${repeat(
           this.items,
           (item) => item.id,
-          (item) => {
+          (item, index) => {
             const isItemEmpty = item.value.trim() === "";
             const isRemoveDisabled = isItemEmpty || (this.items.length <= 1 && this.required);
 
@@ -206,11 +279,14 @@ export class MultipleInputs extends LitWrapper {
                     placeholder=${this.placeholder}
                     value=${item.value}
                     @input=${(event) => this._handleInputChange(item.id, event)}
+                    aria-label=${`${this.label || "Item"} ${index + 1}`}
+                    aria-describedby=${hasLegend ? this._legendId : nothing}
                     autocomplete="off"
                     autocorrect="off"
                     autocapitalize="off"
                     spellcheck="false"
                     maxlength=${this.maxLength > 0 ? this.maxLength : nothing}
+                    data-item-input
                   />
                 </div>
                 <button
@@ -230,7 +306,7 @@ export class MultipleInputs extends LitWrapper {
         )}
 
         <!-- Legend text -->
-        ${this.legend && this.legend.trim() !== "" ? html`<p class="form-legend">${this.legend}</p>` : ""}
+        ${hasLegend ? html`<p id=${this._legendId} class="form-legend">${this.legend}</p>` : ""}
 
         <button
           type="button"

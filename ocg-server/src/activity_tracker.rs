@@ -7,6 +7,7 @@
 
 use std::{
     collections::{HashMap, hash_map::Entry},
+    hash::Hash,
     sync::{
         Arc, LazyLock,
         atomic::{AtomicU64, Ordering},
@@ -30,7 +31,13 @@ use tokio_util::sync::CancellationToken;
 use tracing::{error, warn};
 use uuid::Uuid;
 
-use crate::{db::activity_tracker::DynDBActivityTracker, services::workers::BackgroundTasks};
+use crate::{
+    db::activity_tracker::DynDBActivityTracker, services::workers::BackgroundTasks,
+    types::utm::UtmParams,
+};
+
+#[cfg(test)]
+mod tests;
 
 /// Format used to represent the date in the tracker.
 static DATE_FORMAT: LazyLock<Vec<FormatItem<'static>>> = LazyLock::new(|| {
@@ -59,6 +66,12 @@ const FLUSH_FREQUENCY: Duration = Duration::from_millis(100);
 /// Maximum distinct (entity, day) keys aggregated in one batch across all activities.
 const MAX_BATCH_KEYS: usize = 10_000;
 
+/// Maximum distinct (entity, day, UTM parameters) keys aggregated in one batch.
+///
+/// UTM keys have their own budget, so arbitrary UTM values cannot displace
+/// the view counters.
+const MAX_BATCH_UTM_KEYS: usize = 10_000;
+
 /// Entity identifier tracked by the activity tracker.
 type EntityId = Uuid;
 
@@ -69,15 +82,27 @@ type Day = String;
 type Total = u32;
 
 /// Trackable activities currently supported by the tracker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(clippy::enum_variant_names)]
 pub(crate) enum Activity {
     /// A single community view.
-    CommunityView { community_id: Uuid },
+    CommunityView {
+        /// Viewed community.
+        community_id: Uuid,
+    },
     /// A single event view.
-    EventView { event_id: Uuid },
+    EventView {
+        /// Viewed event.
+        event_id: Uuid,
+
+        /// UTM parameters the view is attributed to.
+        utm: Option<UtmParams>,
+    },
     /// A single group view.
-    GroupView { group_id: Uuid },
+    GroupView {
+        /// Viewed group.
+        group_id: Uuid,
+    },
 }
 
 /// Shared activity tracker handle.
@@ -149,17 +174,46 @@ impl ActivityTracker for ActivityTrackerDB {
     }
 }
 
+/// Outcome of aggregating a single activity into a batch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AggregationOutcome {
+    /// The activity was counted, but its UTM attribution was dropped.
+    AttributionDropped,
+    /// The activity was counted, together with its UTM attribution if any.
+    Counted,
+    /// The activity was dropped, together with its UTM attribution if any.
+    Dropped,
+}
+
 /// Counters describing best-effort activity tracking loss.
 #[derive(Debug, Default)]
 struct ActivityTrackerStats {
     /// Activities dropped because the queue was saturated or a batch reached its key cap.
     dropped_events: AtomicU64,
+    /// Counted views whose UTM attribution was dropped because a batch reached its UTM key cap.
+    dropped_utm_attributions: AtomicU64,
 }
 
 impl ActivityTrackerStats {
     /// Returns how many activities have been dropped since the process started.
     fn dropped_events(&self) -> u64 {
         self.dropped_events.load(Ordering::Relaxed)
+    }
+
+    /// Returns how many UTM attributions have been dropped since the process started.
+    fn dropped_utm_attributions(&self) -> u64 {
+        self.dropped_utm_attributions.load(Ordering::Relaxed)
+    }
+
+    /// Records the loss, if any, of aggregating one activity.
+    fn record_aggregation(&self, outcome: AggregationOutcome) {
+        match outcome {
+            AggregationOutcome::AttributionDropped => {
+                self.dropped_utm_attributions.fetch_add(1, Ordering::Relaxed);
+            }
+            AggregationOutcome::Counted => {}
+            AggregationOutcome::Dropped => self.record_dropped(),
+        }
     }
 
     /// Records one dropped activity.
@@ -187,6 +241,7 @@ impl Aggregator {
 
         let mut batches = Batches::new();
         let mut reported_dropped_events = 0;
+        let mut reported_dropped_utm_attributions = 0;
         loop {
             tokio::select! {
                 biased;
@@ -197,13 +252,13 @@ impl Aggregator {
                         batches = self.hand_over_batches(batches);
                     }
                     reported_dropped_events = self.report_dropped_events(reported_dropped_events);
+                    reported_dropped_utm_attributions =
+                        self.report_dropped_utm_attributions(reported_dropped_utm_attributions);
                 }
 
                 // Aggregate the next queued activity under the current day
                 Some(activity) = activities_rx.recv() => {
-                    if !batches.aggregate_activity(activity) {
-                        self.stats.record_dropped();
-                    }
+                    self.stats.record_aggregation(batches.aggregate_activity(activity));
                 }
 
                 // Flush any pending activity before stopping the worker
@@ -214,22 +269,21 @@ impl Aggregator {
                         _ = self.batches_tx.send(batches).await;
                     }
                     self.report_dropped_events(reported_dropped_events);
+                    self.report_dropped_utm_attributions(reported_dropped_utm_attributions);
                     break;
                 }
             }
         }
     }
 
-    /// Drains queued activities into the batches, counting the ones the cap rejects.
+    /// Drains queued activities into the batches, counting the ones the caps reject.
     fn drain_queued_activities(
         &self,
         batches: &mut Batches,
         activities_rx: &mut mpsc::Receiver<Activity>,
     ) {
         while let Ok(activity) = activities_rx.try_recv() {
-            if !batches.aggregate_activity(activity) {
-                self.stats.record_dropped();
-            }
+            self.stats.record_aggregation(batches.aggregate_activity(activity));
         }
     }
 
@@ -263,6 +317,20 @@ impl Aggregator {
         }
         dropped_events
     }
+
+    /// Logs the UTM attributions dropped since the last report and returns the new total.
+    fn report_dropped_utm_attributions(&self, reported_dropped_utm_attributions: u64) -> u64 {
+        let dropped_utm_attributions = self.stats.dropped_utm_attributions();
+        if dropped_utm_attributions > reported_dropped_utm_attributions {
+            warn!(
+                dropped_utm_attributions =
+                    dropped_utm_attributions - reported_dropped_utm_attributions,
+                total_dropped_utm_attributions = dropped_utm_attributions,
+                "activity utm attributions dropped since the last flush"
+            );
+        }
+        dropped_utm_attributions
+    }
 }
 
 /// Worker responsible for flushing batches into the database.
@@ -291,6 +359,14 @@ impl Flusher {
                 }
             }
 
+            // Process event views attributed to UTM parameters
+            if !batches.event_views_utm.is_empty() {
+                let data = prepare_utm_batch_data(&batches.event_views_utm);
+                if let Err(err) = self.db.update_event_views_utm(data).await {
+                    error!(error = %format_args!("{err:#}"), "error writing event utm views to database");
+                }
+            }
+
             // Process group views
             if !batches.group_views.is_empty() {
                 let data = prepare_batch_data(&batches.group_views);
@@ -300,6 +376,33 @@ impl Flusher {
             }
         }
     }
+}
+
+/// Increments the counter for a key, tracking new keys against a key budget.
+///
+/// Returns `false` without counting when the key is new and `total_keys`
+/// already reached `max_keys`.
+fn increment_counter<K: Eq + Hash>(
+    counters: &mut HashMap<K, Total>,
+    key: K,
+    total_keys: &mut usize,
+    max_keys: usize,
+) -> bool {
+    // Reject a new key once the budget is exhausted
+    if !counters.contains_key(&key) && *total_keys >= max_keys {
+        return false;
+    }
+
+    // Count the activity, tracking the new key when it is one
+    match counters.entry(key) {
+        Entry::Occupied(mut entry) => *entry.get_mut() += 1,
+        Entry::Vacant(entry) => {
+            entry.insert(1);
+            *total_keys += 1;
+        }
+    }
+
+    true
 }
 
 /// Converts aggregated counters into sorted database-ready rows.
@@ -312,6 +415,30 @@ fn prepare_batch_data(data: &HashMap<(EntityId, Day), Total>) -> Vec<(EntityId, 
     db_ready_data
 }
 
+/// Converts aggregated UTM counters into sorted database-ready rows.
+///
+/// Rows hold the campaign, medium, and source values in that order, with
+/// missing values encoded as empty strings.
+fn prepare_utm_batch_data(
+    data: &HashMap<(EntityId, Day, UtmParams), Total>,
+) -> Vec<(EntityId, Day, String, String, String, Total)> {
+    let mut db_ready_data: Vec<(EntityId, Day, String, String, String, Total)> = data
+        .iter()
+        .map(|((entity_id, day, utm), total)| {
+            (
+                *entity_id,
+                day.clone(),
+                utm.campaign().unwrap_or_default().to_string(),
+                utm.medium().unwrap_or_default().to_string(),
+                utm.source().unwrap_or_default().to_string(),
+                *total,
+            )
+        })
+        .collect();
+    db_ready_data.sort();
+    db_ready_data
+}
+
 /// Aggregated in-memory batches.
 #[derive(Debug, Default)]
 struct Batches {
@@ -319,10 +446,14 @@ struct Batches {
     community_views: HashMap<(EntityId, Day), Total>,
     /// Aggregated event view counts.
     event_views: HashMap<(EntityId, Day), Total>,
+    /// Aggregated event view counts attributed to UTM parameters.
+    event_views_utm: HashMap<(EntityId, Day, UtmParams), Total>,
     /// Aggregated group view counts.
     group_views: HashMap<(EntityId, Day), Total>,
-    /// Distinct keys held across all counters, bounded by [`MAX_BATCH_KEYS`].
+    /// Distinct keys held across the view counters, bounded by [`MAX_BATCH_KEYS`].
     total_keys: usize,
+    /// Distinct keys held in the UTM counters, bounded by [`MAX_BATCH_UTM_KEYS`].
+    total_utm_keys: usize,
 }
 
 impl Batches {
@@ -333,480 +464,52 @@ impl Batches {
 
     /// Aggregates a single activity under the current day.
     ///
-    /// Returns `false` when the activity introduces a new key while the batch
-    /// already holds [`MAX_BATCH_KEYS`] distinct keys; the activity is dropped.
-    fn aggregate_activity(&mut self, activity: Activity) -> bool {
+    /// The activity is dropped when it introduces a new key while the batch
+    /// already holds [`MAX_BATCH_KEYS`] distinct keys. Only its UTM attribution
+    /// is dropped when the attribution introduces a new key while the batch
+    /// already holds [`MAX_BATCH_UTM_KEYS`] UTM keys.
+    fn aggregate_activity(&mut self, activity: Activity) -> AggregationOutcome {
         let day = OffsetDateTime::now_utc()
             .format(&DATE_FORMAT)
             .expect("format to succeed");
 
-        // Select the counters and key for the activity
-        let (counters, key) = match activity {
+        // Select the counters and keys for the activity
+        let (counters, key, utm_key) = match activity {
             Activity::CommunityView { community_id } => {
-                (&mut self.community_views, (community_id, day))
+                (&mut self.community_views, (community_id, day), None)
             }
-            Activity::EventView { event_id } => (&mut self.event_views, (event_id, day)),
-            Activity::GroupView { group_id } => (&mut self.group_views, (group_id, day)),
+            Activity::EventView { event_id, utm } => {
+                let utm_key = utm.map(|utm| (event_id, day.clone(), utm));
+                (&mut self.event_views, (event_id, day), utm_key)
+            }
+            Activity::GroupView { group_id } => (&mut self.group_views, (group_id, day), None),
         };
 
-        // Reject a new key once the batch reached its distinct-key cap
-        if !counters.contains_key(&key) && self.total_keys >= MAX_BATCH_KEYS {
-            return false;
+        // Count the view, dropping its attribution too when it is rejected
+        if !increment_counter(counters, key, &mut self.total_keys, MAX_BATCH_KEYS) {
+            return AggregationOutcome::Dropped;
         }
 
-        // Count the activity, tracking the new key when it is one
-        match counters.entry(key) {
-            Entry::Occupied(mut entry) => *entry.get_mut() += 1,
-            Entry::Vacant(entry) => {
-                entry.insert(1);
-                self.total_keys += 1;
-            }
+        // Count the UTM attribution of the view under its own key budget
+        if let Some(utm_key) = utm_key
+            && !increment_counter(
+                &mut self.event_views_utm,
+                utm_key,
+                &mut self.total_utm_keys,
+                MAX_BATCH_UTM_KEYS,
+            )
+        {
+            return AggregationOutcome::AttributionDropped;
         }
 
-        true
+        AggregationOutcome::Counted
     }
 
     /// Returns whether there is no pending data.
+    ///
+    /// UTM counters are only populated alongside a view counter, so checking
+    /// the view keys covers them too.
     fn is_empty(&self) -> bool {
         self.total_keys == 0
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    //! Tests for the activity tracking module.
-    //!
-    //! These tests verify that activities are flushed both periodically and on
-    //! shutdown, and that no flush occurs if no activities are tracked.
-
-    use anyhow::anyhow;
-    use mockall::predicate::eq;
-    use tokio::time::{sleep, timeout};
-
-    use crate::db::activity_tracker::MockDBActivityTracker;
-
-    use super::*;
-
-    /// Static entity IDs used for testing.
-    static COMMUNITY1_ID: LazyLock<Uuid> =
-        LazyLock::new(|| Uuid::parse_str("00000000-0000-0000-0000-000000000201").unwrap());
-    static COMMUNITY2_ID: LazyLock<Uuid> =
-        LazyLock::new(|| Uuid::parse_str("00000000-0000-0000-0000-000000000202").unwrap());
-    static EVENT1_ID: LazyLock<Uuid> =
-        LazyLock::new(|| Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap());
-    static EVENT2_ID: LazyLock<Uuid> =
-        LazyLock::new(|| Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap());
-    static GROUP1_ID: LazyLock<Uuid> =
-        LazyLock::new(|| Uuid::parse_str("00000000-0000-0000-0000-000000000101").unwrap());
-    static GROUP2_ID: LazyLock<Uuid> =
-        LazyLock::new(|| Uuid::parse_str("00000000-0000-0000-0000-000000000102").unwrap());
-
-    /// Test that activities are flushed when the tracker is stopped.
-    #[tokio::test]
-    async fn test_flushes_activities_on_stop() {
-        // Setup mock database
-        let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
-        let mut mock_db = MockDBActivityTracker::new();
-        mock_db
-            .expect_update_community_views()
-            .with(eq(vec![
-                (*COMMUNITY1_ID, day.clone(), 2),
-                (*COMMUNITY2_ID, day.clone(), 1),
-            ]))
-            .times(1)
-            .returning(|_| Ok(()));
-        mock_db
-            .expect_update_event_views()
-            .with(eq(vec![
-                (*EVENT1_ID, day.clone(), 2),
-                (*EVENT2_ID, day.clone(), 1),
-            ]))
-            .times(1)
-            .returning(|_| Ok(()));
-        mock_db
-            .expect_update_group_views()
-            .with(eq(vec![(*GROUP1_ID, day.clone(), 2), (*GROUP2_ID, day, 1)]))
-            .times(1)
-            .returning(|_| Ok(()));
-        let mock_db = Arc::new(mock_db);
-
-        // Setup tracker and track some activities
-        let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
-        let tracker = ActivityTrackerDB::new(mock_db, &background_tasks);
-        tracker
-            .track(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::CommunityView {
-                community_id: *COMMUNITY2_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::EventView {
-                event_id: *EVENT1_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::EventView {
-                event_id: *EVENT1_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::EventView {
-                event_id: *EVENT2_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::GroupView {
-                group_id: *GROUP1_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::GroupView {
-                group_id: *GROUP1_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::GroupView {
-                group_id: *GROUP2_ID,
-            })
-            .await
-            .unwrap();
-
-        // Stop the tracker and wait for the workers to complete
-        background_tasks.shutdown().await;
-    }
-
-    /// Test that activities are flushed periodically.
-    #[tokio::test]
-    async fn test_flushes_activities_periodically() {
-        // Setup mock database
-        let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
-        let mut mock_db = MockDBActivityTracker::new();
-        mock_db
-            .expect_update_community_views()
-            .with(eq(vec![(*COMMUNITY1_ID, day.clone(), 1)]))
-            .times(1)
-            .returning(|_| Ok(()));
-        mock_db
-            .expect_update_event_views()
-            .with(eq(vec![(*EVENT1_ID, day.clone(), 1)]))
-            .times(1)
-            .returning(|_| Ok(()));
-        mock_db
-            .expect_update_group_views()
-            .with(eq(vec![(*GROUP1_ID, day, 1)]))
-            .times(1)
-            .returning(|_| Ok(()));
-        let mock_db = Arc::new(mock_db);
-
-        // Setup tracker and track some activities
-        let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
-        let tracker = ActivityTrackerDB::new(mock_db, &background_tasks);
-        tracker
-            .track(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::EventView {
-                event_id: *EVENT1_ID,
-            })
-            .await
-            .unwrap();
-        tracker
-            .track(Activity::GroupView {
-                group_id: *GROUP1_ID,
-            })
-            .await
-            .unwrap();
-
-        // Wait for the periodic flush to complete
-        sleep(FLUSH_FREQUENCY * 2).await;
-
-        // Stop the tracker and wait for the workers to complete
-        background_tasks.shutdown().await;
-    }
-
-    /// Test that nothing is flushed if no activities are tracked.
-    #[tokio::test]
-    async fn test_skips_flush_when_no_activities_are_tracked() {
-        // Setup tracker with no activities tracked
-        let mock_db = Arc::new(MockDBActivityTracker::new());
-        let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
-        let _tracker = ActivityTrackerDB::new(mock_db, &background_tasks);
-
-        // Wait long enough for a periodic flush attempt
-        sleep(FLUSH_FREQUENCY * 2).await;
-
-        // Stop the tracker and wait for the workers to complete
-        background_tasks.shutdown().await;
-    }
-
-    /// Test that queued activities are drained into the final shutdown batch.
-    #[tokio::test]
-    async fn test_drains_queued_activities_on_stop() {
-        // Setup channels and cancellation state
-        let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
-        let (activities_tx, activities_rx) = mpsc::channel(10);
-        let (batches_tx, mut batches_rx) = mpsc::channel(1);
-        let cancellation_token = CancellationToken::new();
-
-        // Queue activities before the aggregator starts listening
-        activities_tx
-            .send(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
-            })
-            .await
-            .unwrap();
-        activities_tx
-            .send(Activity::EventView {
-                event_id: *EVENT1_ID,
-            })
-            .await
-            .unwrap();
-        activities_tx
-            .send(Activity::GroupView {
-                group_id: *GROUP1_ID,
-            })
-            .await
-            .unwrap();
-
-        // Start the aggregator and stop it immediately to force a drain
-        let aggregator = Aggregator {
-            batches_tx,
-            cancellation_token: cancellation_token.clone(),
-            stats: Arc::new(ActivityTrackerStats::default()),
-        };
-        let aggregator_handle = tokio::spawn(async move {
-            aggregator.run(activities_rx).await;
-        });
-        cancellation_token.cancel();
-        aggregator_handle.await.unwrap();
-
-        // Verify all queued activities were included in the final batch
-        let batches = batches_rx.recv().await.unwrap();
-        assert_eq!(
-            prepare_batch_data(&batches.community_views),
-            vec![(*COMMUNITY1_ID, day.clone(), 1)]
-        );
-        assert_eq!(
-            prepare_batch_data(&batches.event_views),
-            vec![(*EVENT1_ID, day.clone(), 1)]
-        );
-        assert_eq!(
-            prepare_batch_data(&batches.group_views),
-            vec![(*GROUP1_ID, day, 1)]
-        );
-    }
-
-    /// Test that a batch stops accepting new keys at the cap and counts the overflow.
-    #[test]
-    fn test_batches_cap_distinct_keys_and_reject_overflow() {
-        // Fill the batch with the maximum number of distinct keys
-        let mut batches = Batches::new();
-        for _ in 0..MAX_BATCH_KEYS {
-            assert!(batches.aggregate_activity(Activity::EventView {
-                event_id: Uuid::new_v4(),
-            }));
-        }
-
-        // Check a new key is rejected while an existing key still aggregates
-        assert!(!batches.aggregate_activity(Activity::GroupView {
-            group_id: *GROUP1_ID,
-        }));
-        let existing_event_id = *batches.event_views.keys().next().map(|(id, _)| id).unwrap();
-        assert!(batches.aggregate_activity(Activity::EventView {
-            event_id: existing_event_id,
-        }));
-        assert_eq!(batches.total_keys, MAX_BATCH_KEYS);
-        assert!(batches.group_views.is_empty());
-    }
-
-    /// Test that a busy flusher does not block the aggregator and pending counters keep merging.
-    #[tokio::test]
-    async fn test_keeps_aggregating_when_flusher_is_busy() {
-        // Setup a batches queue whose only slot is taken to simulate a busy flusher
-        let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
-        let (activities_tx, activities_rx) = mpsc::channel(10);
-        let (batches_tx, mut batches_rx) = mpsc::channel(1);
-        batches_tx.send(Batches::new()).await.unwrap();
-
-        // Start the aggregator
-        let cancellation_token = CancellationToken::new();
-        let stats = Arc::new(ActivityTrackerStats::default());
-        let aggregator = Aggregator {
-            batches_tx,
-            cancellation_token: cancellation_token.clone(),
-            stats: stats.clone(),
-        };
-        let aggregator_handle = tokio::spawn(async move {
-            aggregator.run(activities_rx).await;
-        });
-
-        // Track an activity and let a flush tick pass while the flusher is busy
-        activities_tx
-            .send(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
-            })
-            .await
-            .unwrap();
-        sleep(FLUSH_FREQUENCY * 2).await;
-
-        // Track another activity for the same key and let it be aggregated while
-        // the flusher is still busy, then free the flusher slot
-        activities_tx
-            .send(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
-            })
-            .await
-            .unwrap();
-        sleep(FLUSH_FREQUENCY * 2).await;
-        let placeholder = batches_rx.recv().await.unwrap();
-        assert!(placeholder.is_empty());
-
-        // Check the next flush hands over a single merged batch with nothing dropped
-        let batches = timeout(FLUSH_FREQUENCY * 5, batches_rx.recv())
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(
-            prepare_batch_data(&batches.community_views),
-            vec![(*COMMUNITY1_ID, day, 2)]
-        );
-        assert_eq!(stats.dropped_events(), 0);
-
-        // Stop the aggregator
-        cancellation_token.cancel();
-        aggregator_handle.await.unwrap();
-    }
-
-    /// Test that a database failure drops the affected counters and the flusher continues.
-    #[tokio::test]
-    async fn test_flusher_continues_after_database_failure() {
-        // Setup a database that rejects the first batch's community views only
-        let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
-        let mut mock_db = MockDBActivityTracker::new();
-        mock_db
-            .expect_update_community_views()
-            .with(eq(vec![(*COMMUNITY1_ID, day.clone(), 1)]))
-            .times(1)
-            .returning(|_| Err(anyhow!("database unavailable")));
-        mock_db
-            .expect_update_event_views()
-            .with(eq(vec![(*EVENT1_ID, day.clone(), 1)]))
-            .times(1)
-            .returning(|_| Ok(()));
-        mock_db
-            .expect_update_group_views()
-            .with(eq(vec![(*GROUP1_ID, day.clone(), 1)]))
-            .times(1)
-            .returning(|_| Ok(()));
-
-        // Queue two batches: one that fails partially and one that follows it
-        let (batches_tx, batches_rx) = mpsc::channel(2);
-        let mut first = Batches::new();
-        first.aggregate_activity(Activity::CommunityView {
-            community_id: *COMMUNITY1_ID,
-        });
-        first.aggregate_activity(Activity::EventView {
-            event_id: *EVENT1_ID,
-        });
-        let mut second = Batches::new();
-        second.aggregate_activity(Activity::GroupView {
-            group_id: *GROUP1_ID,
-        });
-        batches_tx.send(first).await.unwrap();
-        batches_tx.send(second).await.unwrap();
-        drop(batches_tx);
-
-        // Run the flusher until the channel closes
-        let flusher = Flusher {
-            db: Arc::new(mock_db),
-        };
-        flusher.run(batches_rx).await;
-    }
-
-    /// Test that shutdown completes within the grace period while the flusher is congested.
-    #[tokio::test(start_paused = true)]
-    async fn test_shutdown_under_congestion_exits_within_grace_period() {
-        // Setup a batches queue whose only slot is taken and never drained
-        let (activities_tx, activities_rx) = mpsc::channel(10);
-        let (batches_tx, _batches_rx) = mpsc::channel(1);
-        batches_tx.send(Batches::new()).await.unwrap();
-
-        // Start the aggregator under shutdown coordination with a five second grace period
-        let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
-        let stats = Arc::new(ActivityTrackerStats::default());
-        let aggregator = Aggregator {
-            batches_tx,
-            cancellation_token: background_tasks.cancellation_token(),
-            stats: stats.clone(),
-        };
-        background_tasks.spawn("activity-aggregator", async move {
-            aggregator.run(activities_rx).await;
-        });
-
-        // Queue an activity so the shutdown flush has a batch to hand over
-        activities_tx
-            .send(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
-            })
-            .await
-            .unwrap();
-
-        // Stop the tracker and check shutdown returns at the grace period boundary
-        let started_at = Instant::now();
-        background_tasks.shutdown().await;
-        assert_eq!(started_at.elapsed(), Duration::from_secs(5));
-        assert_eq!(stats.dropped_events(), 0);
-    }
-
-    /// Test that tracking never waits on a full queue and counts the dropped activity.
-    #[tokio::test]
-    async fn test_track_drops_activity_when_queue_is_full() {
-        // Setup a tracker whose single-slot queue has no consumer
-        let (activities_tx, _activities_rx) = mpsc::channel(1);
-        let tracker = ActivityTrackerDB {
-            activities_tx,
-            stats: Arc::new(ActivityTrackerStats::default()),
-        };
-
-        // Track two activities without anyone draining the queue
-        let result = timeout(Duration::from_secs(1), async {
-            tracker
-                .track(Activity::EventView {
-                    event_id: *EVENT1_ID,
-                })
-                .await
-                .unwrap();
-            tracker
-                .track(Activity::EventView {
-                    event_id: *EVENT2_ID,
-                })
-                .await
-                .unwrap();
-        })
-        .await;
-
-        // Check the request path returned and the overflow was counted
-        assert!(result.is_ok());
-        assert_eq!(tracker.stats.dropped_events(), 1);
     }
 }

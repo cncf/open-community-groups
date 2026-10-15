@@ -57,6 +57,7 @@ use crate::{
         group::GroupRole,
         payments::{EventPurchaseChargeModel, PaymentProvider},
         questionnaire::QuestionnaireAnswerValue,
+        utm::GroupUtmSettings,
     },
 };
 
@@ -1116,6 +1117,28 @@ async fn db_contracts_get_group_external_payments_eligibility_deserializes() -> 
     assert!(
         !db.get_group_external_payments_eligibility(community_id(), Uuid::new_v4(), None)
             .await?
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_group_utm_settings_deserializes() -> Result<()> {
+    // Setup the contract database and group fixture
+    let db = contract_tests_db()?;
+
+    // Load the UTM values accepted by the group
+    let utm_settings = db.get_group_utm_settings(community_id(), group_id()).await?;
+
+    // Check the group campaigns, extra mediums, and sources
+    assert_eq!(
+        utm_settings,
+        GroupUtmSettings {
+            campaigns: vec!["contract-campaign".to_string()],
+            mediums: vec!["podcast".to_string()],
+            sources: vec!["contract-source".to_string()],
+        }
     );
 
     Ok(())

@@ -8,7 +8,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{PgClient, PgExecutor},
+    db::{PgClient, PgExecutor, cache_probe},
     types::{
         community::CommunitySummary,
         event::{EventKind, EventMinimal, EventSummary},
@@ -130,15 +130,18 @@ where
             convert = r#"{ String::from("site_home_stats") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<SiteHomeStats> {
-            let row = db.query_one("select get_site_home_stats()", &[]).await?;
-            let stats = row.try_get::<_, Json<SiteHomeStats>>(0)?.0;
-
-            Ok(stats)
+        async fn inner(db: &PgClient<'_>) -> Result<SiteHomeStats> {
+            db.fetch_json_one("select get_site_home_stats()", &[]).await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(stats) = cache_probe(&INNER.0, "site_home_stats").await {
+            return Ok(stats);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     #[instrument(skip(self), err)]
@@ -155,15 +158,18 @@ where
             convert = r#"{ String::from("site_settings") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<SiteSettings> {
-            let row = db.query_one("select get_site_settings()", &[]).await?;
-            let settings = row.try_get::<_, Json<SiteSettings>>(0)?.0;
-
-            Ok(settings)
+        async fn inner(db: &PgClient<'_>) -> Result<SiteSettings> {
+            db.fetch_json_one("select get_site_settings()", &[]).await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(settings) = cache_probe(&INNER.0, "site_settings").await {
+            return Ok(settings);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     #[instrument(skip(self), err)]
@@ -174,15 +180,18 @@ where
             convert = r#"{ String::from("site_stats") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<SiteStats> {
-            let row = db.query_one("select get_site_stats()", &[]).await?;
-            let stats = row.try_get::<_, Json<SiteStats>>(0)?.0;
-
-            Ok(stats)
+        async fn inner(db: &PgClient<'_>) -> Result<SiteStats> {
+            db.fetch_json_one("select get_site_stats()", &[]).await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(stats) = cache_probe(&INNER.0, "site_stats").await {
+            return Ok(stats);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     #[instrument(skip(self), err)]
@@ -206,15 +215,18 @@ where
             convert = r#"{ String::from("communities") }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>) -> Result<Vec<CommunitySummary>> {
-            let row = db.query_one("select list_communities();", &[]).await?;
-            let communities = row.try_get::<_, Json<Vec<CommunitySummary>>>(0)?.0;
-
-            Ok(communities)
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<CommunitySummary>> {
+            db.fetch_json_one("select list_communities();", &[]).await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(communities) = cache_probe(&INNER.0, "communities").await {
+            return Ok(communities);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db).await
+        inner(&db).await
     }
 
     #[instrument(skip(self, filters), err)]

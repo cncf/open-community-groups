@@ -17,6 +17,7 @@ use crate::{
         inbox::InboxConversationsOutput,
         payments::GroupExternalPaymentsContext,
         permissions::GroupPermission::{self, CheckInsWrite, InboxWrite},
+        utm::GroupUtmSettings,
     },
 };
 
@@ -1328,6 +1329,13 @@ fn expect_settings_content(
                 seller_display_name: None,
             })
         });
+    db.expect_get_group_utm_settings()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(GroupUtmSettings::default()));
+    db.expect_list_utm_mediums()
+        .times(1)
+        .returning(|| Ok(vec!["email".to_string()]));
 }
 
 /// Sends a group dashboard home request through the router.

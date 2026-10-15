@@ -13,7 +13,7 @@ use tracing::{info, instrument};
 use uuid::Uuid;
 
 use crate::{
-    db::{PgClient, PgExecutor},
+    db::{PgClient, PgExecutor, cache_probe},
     types::{
         dashboard::community::contact::CommunityContactFilters,
         notifications::{Attachment, NewNotification, Notification, NotificationKind},
@@ -357,7 +357,7 @@ where
             convert = "{ attachment_id }",
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>, attachment_id: Uuid) -> Result<Attachment> {
+        async fn inner(db: &PgClient<'_>, attachment_id: Uuid) -> Result<Attachment> {
             let row = db
                 .query_one(
                     "
@@ -376,8 +376,14 @@ where
             })
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(attachment) = cache_probe(&INNER.0, &attachment_id).await {
+            return Ok(attachment);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db, attachment_id).await
+        inner(&db, attachment_id).await
     }
 
     /// [`DBNotifications::mark_notification_delivery_unknown`].

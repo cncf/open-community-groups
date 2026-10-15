@@ -502,6 +502,66 @@
 </div>
 {# End parent group section -#}
 
+{# UTM tracking section -#}
+{% let utm_value_pattern = "[a-z0-9._-]+" -%}
+{% let utm_value_message -%}Use only lowercase letters, numbers, dots, hyphens, and underscores.{%- endlet %}
+{% let utm_value_rules -%}Up to {{ crate::validation::MAX_UTM_VALUES }} values of up to {{ crate::validation::MAX_LEN_UTM_VALUE }} lowercase letters, numbers, dots, hyphens, or underscores.{%- endlet %}
+<div class="border-t border-stone-900/10 pt-12 pb-12">
+  {{ dashboard::form_title(title = "UTM tracking", description = "Optional attribution of event page views to the UTM parameters of the links that bring visitors.") -}}
+
+  <div class="mt-6 max-w-5xl space-y-3 text-sm/6 text-stone-700">
+    <p>
+      UTM tracking is opt-in. Event page views are only attributed when the link's <code>utm_source</code> is one of the sources or its <code>utm_campaign</code> is one of the campaigns defined below, so define at least one source or campaign to start tracking.
+    </p>
+    <p>
+      Every UTM parameter in the link must be accepted: views whose source, campaign, or medium is not listed here are still counted, but without attribution. Links may omit the medium.
+    </p>
+  </div>
+
+  <input type="hidden" name="utm_present" value="true">
+  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+    {# UTM sources -#}
+    <fieldset class="col-span-full lg:col-span-4 lg:col-start-1 xl:col-span-3 xl:col-start-1">
+      <legend class="form-label">Sources</legend>
+      <div class="mt-2">
+        <multiple-inputs field-name="utm_sources" input-type="text" items="{{ utm.sources|json }}" label="Source" placeholder="newsletter" max-items="{{ crate::validation::MAX_UTM_VALUES }}" max-length="{{ crate::validation::MAX_LEN_UTM_VALUE }}" pattern="{{ utm_value_pattern }}" pattern-message="{{ utm_value_message }}" unique legend="Values accepted for utm_source, such as newsletter or mastodon. {{ utm_value_rules }}">
+        </multiple-inputs>
+      </div>
+    </fieldset>
+    {# End UTM sources -#}
+
+    {# UTM campaigns -#}
+    <fieldset class="col-span-full lg:col-span-4 lg:col-start-1 xl:col-span-3 xl:col-start-1">
+      <legend class="form-label">Campaigns</legend>
+      <div class="mt-2">
+        <multiple-inputs field-name="utm_campaigns" input-type="text" items="{{ utm.campaigns|json }}" label="Campaign" placeholder="spring-launch" max-items="{{ crate::validation::MAX_UTM_VALUES }}" max-length="{{ crate::validation::MAX_LEN_UTM_VALUE }}" pattern="{{ utm_value_pattern }}" pattern-message="{{ utm_value_message }}" unique legend="Values accepted for utm_campaign. {{ utm_value_rules }}">
+        </multiple-inputs>
+      </div>
+    </fieldset>
+    {# End UTM campaigns -#}
+
+    {# UTM mediums -#}
+    <fieldset class="col-span-full lg:col-span-4 lg:col-start-1 xl:col-span-3 xl:col-start-1">
+      <legend class="form-label">Additional mediums</legend>
+      <div class="mt-2 space-y-3">
+        <div>
+          <p id="default-utm-mediums-label" class="text-sm/6 text-stone-700">Mediums accepted by default:</p>
+          <ul class="mt-2 flex flex-wrap gap-2"
+              aria-labelledby="default-utm-mediums-label">
+            {% for medium in default_utm_mediums -%}
+              <li class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-0.5 font-mono text-xs text-stone-700">{{ medium }}</li>
+            {% endfor -%}
+          </ul>
+        </div>
+        <multiple-inputs field-name="utm_mediums" input-type="text" items="{{ utm.mediums|json }}" label="Medium" placeholder="podcast" max-items="{{ crate::validation::MAX_UTM_VALUES }}" max-length="{{ crate::validation::MAX_LEN_UTM_VALUE }}" pattern="{{ utm_value_pattern }}" pattern-message="{{ utm_value_message }}" unique excluded-values="{{ default_utm_mediums|json }}" excluded-message="This medium is already accepted by default." legend="Values accepted for utm_medium in addition to the default ones. {{ utm_value_rules }}">
+        </multiple-inputs>
+      </div>
+    </fieldset>
+    {# End UTM mediums -#}
+  </div>
+</div>
+{# End UTM tracking section -#}
+
 <div class="mt-6 flex items-center justify-end gap-x-6">
   {# Save button -#}
   <button type="submit"

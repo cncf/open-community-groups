@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(190);
+select plan(201);
 
 -- ============================================================================
 -- TESTS
@@ -108,6 +108,15 @@ select has_check('event_cohost', 'event_cohost_pending_approval_chk');
 select has_check('event_invitation_request');
 select col_is_null('event_invitation_request', 'event_ticket_type_id');
 
+-- Test: event UTM view counters expected constraints exist
+select has_check('event_views_utm', 'event_views_utm_attribution_chk');
+select has_check('event_views_utm', 'event_views_utm_utm_campaign_chk');
+select has_check('event_views_utm', 'event_views_utm_utm_medium_chk');
+select has_check('event_views_utm', 'event_views_utm_utm_source_chk');
+select col_default_is('event_views_utm', 'utm_campaign', '');
+select col_default_is('event_views_utm', 'utm_medium', '');
+select col_default_is('event_views_utm', 'utm_source', '');
+
 -- Test: event waitlist rows should always belong to a ticket tier
 select col_not_null('event_waitlist', 'event_ticket_type_id');
 
@@ -161,6 +170,9 @@ select has_check('event_ticket_type', 'event_ticket_type_availability_chk');
 select has_check('group', 'group_check');
 select has_check('group', 'group_og_image_url_check');
 select has_check('group', 'group_slug_pretty_chk');
+select has_check('group', 'group_utm_campaigns_chk');
+select has_check('group', 'group_utm_mediums_chk');
+select has_check('group', 'group_utm_sources_chk');
 select col_not_null('group', 'external_payments_enabled');
 select col_default_is('group', 'external_payments_enabled', 'false');
 select col_has_check('group', 'external_payments_seller_display_name');
@@ -644,6 +656,24 @@ select results_eq(
         ('ready-for-submission', 'Ready for submission')
     $$,
     'Session proposal statuses should exist'
+);
+
+-- Test: utm mediums should match expected values
+select results_eq(
+    'select * from utm_medium order by utm_medium_id',
+    $$ values
+        ('affiliate'),
+        ('cpc'),
+        ('display'),
+        ('email'),
+        ('organic'),
+        ('qr'),
+        ('referral'),
+        ('sms'),
+        ('social'),
+        ('video')
+    $$,
+    'Utm mediums should exist'
 );
 
 -- Test: community site layout should match expected

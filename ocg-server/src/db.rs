@@ -1,9 +1,10 @@
 //! This module provides a trait-based abstraction layer over database operations.
 
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::{borrow::Borrow, future::Future, hash::Hash, pin::Pin, sync::Arc};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use cached::{Cached, async_sync::RwLock};
 use deadpool_postgres::{Client, Pool};
 use serde::de::DeserializeOwned;
 use tokio_postgres::types::{FromSql, Json, ToSql};
@@ -291,6 +292,19 @@ impl PgExecutor for PgUnitOfWork {
     }
 }
 
+#[async_trait]
+impl PgExecutor for PgClient<'_> {
+    /// [`PgExecutor::client`].
+    async fn client(&self) -> Result<PgClient<'_>> {
+        let client = match self {
+            Self::Pooled(client) => &**client,
+            Self::Pinned(client) => *client,
+        };
+
+        Ok(PgClient::Pinned(client))
+    }
+}
+
 /// `PostgreSQL` client used for one database operation.
 pub(crate) enum PgClient<'a> {
     /// Client checked out from the pool for this operation.
@@ -384,11 +398,69 @@ where
 /// Boxed transaction callback future.
 pub(crate) type TransactionFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
 
+/// Returns a fresh value from a `#[cached]` store without taking its fill lock.
+///
+/// Cached reads probe the store before checking out a client and fill it
+/// through the cached function only on a miss. The client is therefore always
+/// acquired before the fill lock, and a hit never takes a pool connection.
+pub(crate) async fn cache_probe<C, K, Q, V>(cache: &RwLock<C>, key: &Q) -> Option<V>
+where
+    C: Cached<K, V>,
+    K: Borrow<Q>,
+    Q: Eq + Hash + ?Sized,
+    V: Clone,
+{
+    cache.write().await.cache_get(key).cloned()
+}
+
 #[cfg(test)]
 mod tests {
-    use anyhow::anyhow;
+    use std::{sync::Arc, time::Duration};
 
-    use crate::db::{DBExt, mock::MockDB};
+    use anyhow::{Result, anyhow};
+    use cached::cached;
+    use tokio::{sync::Notify, time::timeout};
+
+    use crate::db::{DBExt, cache_probe, mock::MockDB};
+
+    #[tokio::test]
+    async fn cache_probe_returns_without_waiting_for_in_progress_fill() {
+        // Setup a cached fill that holds its key lock until released
+        #[cached(
+            ttl = 60,
+            key = "String",
+            convert = r#"{ String::from(name) }"#,
+            sync_writes = "by_key"
+        )]
+        async fn fill(name: &str, started: Arc<Notify>, release: Arc<Notify>) -> Result<String> {
+            started.notify_one();
+            release.notified().await;
+            Ok(name.to_uppercase())
+        }
+        let started = Arc::new(Notify::new());
+        let release = Arc::new(Notify::new());
+        let fill_handle = tokio::spawn({
+            let (started, release) = (started.clone(), release.clone());
+            async move { fill("key", started, release).await }
+        });
+        started.notified().await;
+
+        // Probe while the fill is in progress
+        let value = timeout(Duration::from_secs(1), cache_probe(&FILL.0, "key"))
+            .await
+            .expect("probe not to wait for the in-progress fill");
+
+        // Check the in-progress fill is reported as a miss
+        assert_eq!(value, None::<String>);
+
+        // Release the fill and check its value is served
+        release.notify_one();
+        fill_handle
+            .await
+            .expect("fill task to complete")
+            .expect("fill to succeed");
+        assert_eq!(cache_probe(&FILL.0, "key").await, Some("KEY".to_string()));
+    }
 
     #[tokio::test]
     async fn transaction_commits_successful_work() {

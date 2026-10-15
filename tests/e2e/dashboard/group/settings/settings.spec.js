@@ -1,8 +1,18 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { fillMarkdownEditor } from "../../form-helpers.js";
+import { fillMarkdownEditor, fillMultipleInputs } from "../../form-helpers.js";
 import { TEST_PAYMENT_GROUP_RECIPIENT } from "../../../seed.js";
 import { navigateToPath, waitForActionResponse } from "../../../utils.js";
+
+// Group settings page used by the UTM scenarios.
+const SETTINGS_PATH = "/dashboard/group?tab=settings";
+
+// UTM lists rendered in the group settings form.
+const UTM_FIELDS = [
+  { fieldName: "utm_sources", label: "Source" },
+  { fieldName: "utm_campaigns", label: "Campaign" },
+  { fieldName: "utm_mediums", label: "Medium" },
+];
 
 test.describe("group dashboard settings view", () => {
   test("settings form exposes every group configuration area", async ({ organizerGroupPage }) => {
@@ -17,6 +27,7 @@ test.describe("group dashboard settings view", () => {
       "Social links",
       "Additional Content",
       "Parent group",
+      "UTM tracking",
     ]) {
       // Some section titles are repeated by field labels, so target the first.
       await expect(dashboardContent.getByText(sectionName, { exact: true }).first()).toBeVisible();
@@ -78,6 +89,117 @@ test.describe("group dashboard settings view", () => {
     await expect(organizerGroupPage.locator('gallery-field[field-name="photos_urls"]')).toBeVisible();
     await expect(organizerGroupPage.locator('key-value-inputs[field-name="extra_links"]')).toBeVisible();
     await expect(organizerGroupPage.getByLabel("Parent group")).toBeDisabled();
+
+    // Verify every UTM list is named and described by its rules.
+    for (const { fieldName, label } of UTM_FIELDS) {
+      const utmInput = getUtmInputs(organizerGroupPage, fieldName).getByRole("textbox", {
+        name: `${label} 1`,
+      });
+      await expect(utmInput).toBeVisible();
+      await expect(utmInput).toHaveAccessibleDescription(/Up to 20 values of up to 50 lowercase letters/);
+    }
+    await expect(organizerGroupPage.locator('input[type="hidden"][name="utm_present"]')).toHaveValue("true");
+  });
+
+  test("invalid UTM values are blocked before the group settings request", async ({ organizerGroupPage }) => {
+    // Track update requests so browser validation can be distinguished from API errors.
+    let updateRequests = 0;
+    const countUpdateRequests = (request) => {
+      if (request.method() === "PUT" && request.url().includes("/dashboard/group/settings/update")) {
+        updateRequests += 1;
+      }
+    };
+    organizerGroupPage.on("request", countUpdateRequests);
+
+    for (const { fieldName, label, message, values } of [
+      {
+        fieldName: "utm_sources",
+        label: "Source",
+        message: "Use only lowercase letters, numbers, dots, hyphens, and underscores.",
+        values: ["Mastodon"],
+      },
+      {
+        fieldName: "utm_campaigns",
+        label: "Campaign",
+        message: "This value is already in the list.",
+        values: ["spring-launch", "spring-launch"],
+      },
+      {
+        fieldName: "utm_mediums",
+        label: "Medium",
+        message: "This medium is already accepted by default.",
+        values: ["email"],
+      },
+    ]) {
+      // Load group settings and enter the invalid UTM values.
+      await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+      const utmInputs = getUtmInputs(organizerGroupPage, fieldName);
+      await fillMultipleInputs(utmInputs, values, label);
+
+      // Submit the form with the invalid value as the last list item.
+      const invalidInput = utmInputs.getByRole("textbox", { name: `${label} ${values.length}` });
+      await organizerGroupPage.getByRole("button", { name: "Update Group" }).click();
+
+      // Verify the browser blocks the request and reports the invalid value.
+      await expect(invalidInput).toBeFocused();
+      expect(await invalidInput.evaluate((input) => input.validationMessage)).toBe(message);
+      expect(updateRequests).toBe(0);
+    }
+
+    // Remove the request listener after the invalid-submit checks.
+    organizerGroupPage.off("request", countUpdateRequests);
+  });
+
+  test("organizer can save and clear UTM tracking values", async ({ organizerGroupPage }) => {
+    // Load group settings and verify the seeded group has no UTM values.
+    await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+    for (const { fieldName } of UTM_FIELDS) {
+      await expect(getSubmittedUtmInputs(organizerGroupPage, fieldName)).toHaveCount(0);
+    }
+
+    // Enter UTM values.
+    const utmValues = {
+      utm_campaigns: ["spring-launch"],
+      utm_mediums: ["podcast"],
+      utm_sources: ["newsletter", "mastodon"],
+    };
+    for (const { fieldName, label } of UTM_FIELDS) {
+      await fillMultipleInputs(getUtmInputs(organizerGroupPage, fieldName), utmValues[fieldName], label);
+    }
+
+    // Save the UTM values and verify the submitted form contract.
+    const saveResponse = await saveGroupSettings(organizerGroupPage);
+    const savedForm = new URLSearchParams(saveResponse.request().postData() ?? "");
+    expect(savedForm.get("utm_present")).toBe("true");
+    expect(savedForm.getAll("utm_sources[]")).toEqual(["newsletter", "mastodon"]);
+    expect(savedForm.getAll("utm_campaigns[]")).toEqual(["spring-launch"]);
+    expect(savedForm.getAll("utm_mediums[]")).toEqual(["podcast"]);
+
+    // Reload group settings and verify the values persisted.
+    await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+    const sourceInputs = getUtmInputs(organizerGroupPage, "utm_sources");
+    await expect(sourceInputs.getByRole("textbox", { name: "Source 1" })).toHaveValue("newsletter");
+    await expect(sourceInputs.getByRole("textbox", { name: "Source 2" })).toHaveValue("mastodon");
+    await expect(getSubmittedUtmInputs(organizerGroupPage, "utm_campaigns")).toHaveValue("spring-launch");
+    await expect(getSubmittedUtmInputs(organizerGroupPage, "utm_mediums")).toHaveValue("podcast");
+
+    // Clear every UTM value to restore the seeded settings.
+    for (const { fieldName } of UTM_FIELDS) {
+      const valueInputs = getUtmInputs(organizerGroupPage, fieldName).locator("input[data-item-input]");
+      for (let index = 0; index < (await valueInputs.count()); index += 1) {
+        await valueInputs.nth(index).fill("");
+      }
+    }
+    const clearResponse = await saveGroupSettings(organizerGroupPage);
+    const clearedForm = new URLSearchParams(clearResponse.request().postData() ?? "");
+    expect(clearedForm.get("utm_present")).toBe("true");
+    expect(clearedForm.has("utm_sources[]")).toBe(false);
+
+    // Reload group settings and verify the UTM values were cleared.
+    await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+    for (const { fieldName } of UTM_FIELDS) {
+      await expect(getSubmittedUtmInputs(organizerGroupPage, fieldName)).toHaveCount(0);
+    }
   });
 
   test("invalid pretty slugs are blocked before the group settings request", async ({
@@ -336,3 +458,31 @@ test.describe("group dashboard settings view", () => {
     await expect(configuredRecipientInput).toHaveValue(TEST_PAYMENT_GROUP_RECIPIENT);
   });
 });
+
+/**
+ * Finds the hidden inputs submitted for a UTM list.
+ * @param {import("@playwright/test").Page} page - Group settings page.
+ * @param {string} fieldName - UTM list field name.
+ * @returns {import("@playwright/test").Locator} Submitted UTM value inputs.
+ */
+const getSubmittedUtmInputs = (page, fieldName) =>
+  getUtmInputs(page, fieldName).locator(`input[type="hidden"][name="${fieldName}[]"]`);
+
+/**
+ * Finds the repeated input component of a UTM list.
+ * @param {import("@playwright/test").Page} page - Group settings page.
+ * @param {string} fieldName - UTM list field name.
+ * @returns {import("@playwright/test").Locator} UTM list component.
+ */
+const getUtmInputs = (page, fieldName) => page.locator(`multiple-inputs[field-name="${fieldName}"]`);
+
+/**
+ * Submits the group settings form and waits for a successful update.
+ * @param {import("@playwright/test").Page} page - Group settings page.
+ * @returns {Promise<import("@playwright/test").Response>} Settings update response.
+ */
+const saveGroupSettings = (page) =>
+  waitForActionResponse(page, () => page.getByRole("button", { name: "Update Group" }).click(), {
+    method: "PUT",
+    urlIncludes: "/dashboard/group/settings/update",
+  });

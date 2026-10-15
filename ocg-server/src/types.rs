@@ -18,6 +18,7 @@ pub mod questionnaire;
 pub mod search;
 pub mod site;
 pub mod user;
+pub mod utm;
 pub mod workers;
 
 #[cfg(test)]

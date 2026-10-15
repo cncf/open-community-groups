@@ -3,12 +3,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::cached;
-use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{PgClient, PgExecutor},
+    db::{PgClient, PgExecutor, cache_probe},
     types::{
         community::CommunityStats,
         event::{EventKind, EventSummary},
@@ -59,20 +58,23 @@ where
             convert = r#"{ String::from(name) }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>, name: &str) -> Result<Option<Uuid>> {
-            let community_id = db
-                .query_opt("select get_community_id_by_name($1::text)", &[&name])
-                .await?
-                .and_then(|row| row.get(0));
-
-            Ok(community_id)
+        async fn inner(db: &PgClient<'_>, name: &str) -> Result<Option<Uuid>> {
+            db.fetch_scalar_opt("select get_community_id_by_name($1::text)", &[&name])
+                .await
         }
 
         if name.is_empty() {
             return Ok(None);
         }
+
+        // Serve a fresh cached value without checking out a client
+        if let Some(community_id) = cache_probe(&INNER.0, name).await {
+            return Ok(community_id);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db, name).await
+        inner(&db, name).await
     }
 
     /// [`DB::get_community_recently_added_groups`]
@@ -97,20 +99,22 @@ where
             convert = r#"{ community_id }"#,
             sync_writes = "by_key"
         )]
-        async fn inner(db: PgClient<'_>, community_id: Uuid) -> Result<CommunityStats> {
-            let row = db
-                .query_one(
-                    "select get_community_site_stats($1::uuid)",
-                    &[&community_id],
-                )
-                .await?;
-            let stats = row.try_get::<_, Json<CommunityStats>>(0)?.0;
-
-            Ok(stats)
+        async fn inner(db: &PgClient<'_>, community_id: Uuid) -> Result<CommunityStats> {
+            db.fetch_json_one(
+                "select get_community_site_stats($1::uuid)",
+                &[&community_id],
+            )
+            .await
         }
 
+        // Serve a fresh cached value without checking out a client
+        if let Some(stats) = cache_probe(&INNER.0, &community_id).await {
+            return Ok(stats);
+        }
+
+        // Check out the client before the cached fill takes its key lock
         let db = self.client().await?;
-        inner(db, community_id).await
+        inner(&db, community_id).await
     }
 
     /// [`DB::get_community_upcoming_events`]

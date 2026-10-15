@@ -440,21 +440,29 @@ is adopted only when the measured cost is unacceptable.
 
 ### Lossy best-effort pipelines
 
-A best-effort pipeline states whether it is lossy or durable and what
-saturation does to its callers. The activity tracker
-(`src/activity_tracker.rs`) is **deliberately lossy**: page-view analytics
-never delay or fail a request. Every stage hands work on with a non-blocking
-send on a bounded queue, drops and counts what does not fit, and reports the
-drops through tracing; a slow database delays writes instead of stalling the
-request path. On shutdown the aggregator drains what is queued and hands the
-final batch to the flusher; if the flusher is congested, the worker is
-aborted at the end of the grace period like any other stalled worker.
+A best-effort pipeline states whether it is lossy or durable and what saturation
+does to its callers. The activity tracker (`src/activity_tracker.rs`) is
+**deliberately lossy**: page-view analytics never fail a request or make it wait
+on the tracker. Every stage hands work on with a non-blocking send on a bounded
+queue, drops and counts what does not fit, and reports the drops through
+tracing; a slow database delays writes instead of stalling the request path. The
+only read on the request path is the cached lookup of the UTM values an event
+accepts, made only for views carrying usable UTM parameters; a failed lookup
+drops the attribution, never the view. On shutdown the aggregator drains what is
+queued and hands the final batch to the flusher; if the flusher is congested,
+the worker is aborted at the end of the grace period like any other stalled
+worker.
 
 ## Cached reads and transactions
 
 Rule: a `#[cached]` read caches data where staleness up to the TTL is
 acceptable. The cache is a performance tool, not a consistency mechanism, and
 the TTL is the only invalidation. Each cached trait method documents its TTL.
+A cached read probes the cache before checking out a client, so a fast-path hit
+never takes a pool connection or reaches the database. On a miss it checks out
+the client first and only then enters the cached function, whose per-key fill
+lock rechecks the cache. No caller waits for a pool connection while holding
+the fill lock, which transactions holding their connections would queue behind.
 
 The `#[cached]` reads sit on blanket `impl<T: PgExecutor>` blocks, so `PgDB`
 and `PgUnitOfWork` share the same cache entries and there is no transactional

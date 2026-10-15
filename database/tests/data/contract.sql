@@ -602,6 +602,9 @@ insert into "group" (
     slug,
     state,
     tags,
+    utm_campaigns,
+    utm_mediums,
+    utm_sources,
     website_url
 ) values (
     'https://example.com/group-banner-mobile.png',
@@ -626,6 +629,9 @@ insert into "group" (
     'contract-group',
     'CA',
     array['rust', 'database', 'contracts'],
+    array['contract-campaign'],
+    array['podcast'],
+    array['contract-source'],
     'https://example.com/group'
 );
 

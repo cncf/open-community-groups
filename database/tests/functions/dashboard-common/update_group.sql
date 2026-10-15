@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(88);
+select plan(96);
 
 -- ============================================================================
 -- VARIABLES
@@ -52,6 +52,10 @@ select plan(88);
 \set groupNamelessEnableID '1c020000-0000-0000-0000-00000000005a'
 \set groupPayeeID '1c020000-0000-0000-0000-00000000005b'
 \set groupRejectEnableID '1c020000-0000-0000-0000-000000000035'
+\set groupUtmApplyID '1c020000-0000-0000-0000-00000000005c'
+\set groupUtmClearID '1c020000-0000-0000-0000-00000000005d'
+\set groupUtmDefaultMediumID '1c020000-0000-0000-0000-00000000005e'
+\set groupUtmPreserveID '1c020000-0000-0000-0000-00000000005f'
 \set groupVenueCountryID '1c020000-0000-0000-0000-00000000003d'
 \set inactiveParentGroupID '1c020000-0000-0000-0000-00000000001a'
 \set inactiveParentedGroupID '1c020000-0000-0000-0000-00000000001b'
@@ -303,6 +307,38 @@ select fx_group(:'groupPayeeID', :'communityID', :'groupCategory1ID', jsonb_buil
     'external_payments_enabled', true,
     'external_payments_seller_display_name', 'External Payee Co',
     'name', 'External Payee Group'
+));
+
+-- Group whose UTM values are replaced
+select fx_group(:'groupUtmApplyID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'name', 'UTM Apply Group',
+    'utm_campaigns', jsonb_build_array('old-campaign'),
+    'utm_mediums', jsonb_build_array('podcast'),
+    'utm_sources', jsonb_build_array('old-source')
+));
+
+-- Group whose UTM values are cleared
+select fx_group(:'groupUtmClearID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'name', 'UTM Clear Group',
+    'utm_campaigns', jsonb_build_array('old-campaign'),
+    'utm_mediums', jsonb_build_array('podcast'),
+    'utm_sources', jsonb_build_array('old-source')
+));
+
+-- Group rejecting extra mediums that are accepted by default
+select fx_group(:'groupUtmDefaultMediumID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'name', 'UTM Default Medium Group',
+    'utm_campaigns', jsonb_build_array('old-campaign'),
+    'utm_mediums', jsonb_build_array('podcast'),
+    'utm_sources', jsonb_build_array('old-source')
+));
+
+-- Group keeping its UTM values on a partial payload
+select fx_group(:'groupUtmPreserveID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'name', 'UTM Preserve Group',
+    'utm_campaigns', jsonb_build_array('old-campaign'),
+    'utm_mediums', jsonb_build_array('podcast'),
+    'utm_sources', jsonb_build_array('old-source')
 ));
 
 -- Non-allowlisted group enabled by changing country in the same update
@@ -2391,6 +2427,169 @@ select is(
     }'::jsonb,
     'Should persist the allowlisted country and the kept fiscal sponsor together'
 );
+
+-- Should accept submitted UTM values
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "UTM Apply Group Updated",
+            "category_id": "%s",
+            "utm_present": true,
+            "utm_campaigns": ["spring-launch"],
+            "utm_mediums": ["podcast", "print"],
+            "utm_sources": ["newsletter", "partner.site"]
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupUtmApplyID',
+        :'groupCategory1ID'
+    ),
+    'Should accept submitted UTM values'
+);
+
+-- Should persist the submitted UTM values
+select is(
+    (
+        select jsonb_build_object(
+            'utm_campaigns', utm_campaigns,
+            'utm_mediums', utm_mediums,
+            'utm_sources', utm_sources
+        )
+        from "group"
+        where group_id = :'groupUtmApplyID'::uuid
+    ),
+    '{
+        "utm_campaigns": ["spring-launch"],
+        "utm_mediums": ["podcast", "print"],
+        "utm_sources": ["newsletter", "partner.site"]
+    }'::jsonb,
+    'Should persist the submitted UTM values'
+);
+
+-- Should accept a payload that addresses UTM values without lists
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "UTM Clear Group Updated",
+            "category_id": "%s",
+            "utm_present": true
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupUtmClearID',
+        :'groupCategory1ID'
+    ),
+    'Should accept a payload that addresses UTM values without lists'
+);
+
+-- Should clear the UTM values omitted from a payload that addresses them
+select is(
+    (
+        select jsonb_build_object(
+            'utm_campaigns', utm_campaigns,
+            'utm_mediums', utm_mediums,
+            'utm_sources', utm_sources
+        )
+        from "group"
+        where group_id = :'groupUtmClearID'::uuid
+    ),
+    '{
+        "utm_campaigns": [],
+        "utm_mediums": [],
+        "utm_sources": []
+    }'::jsonb,
+    'Should clear the UTM values omitted from a payload that addresses them'
+);
+
+-- Should reject extra mediums that are accepted by default
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "UTM Default Medium Group Updated",
+            "category_id": "%s",
+            "utm_present": true,
+            "utm_mediums": ["email"],
+            "utm_sources": ["newsletter"]
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupUtmDefaultMediumID',
+        :'groupCategory1ID'
+    ),
+    'OCG01',
+    'utm mediums cannot include default mediums',
+    'Should reject extra mediums that are accepted by default'
+);
+
+-- Should keep the UTM values after rejecting extra default mediums
+select is(
+    (
+        select jsonb_build_object(
+            'utm_campaigns', utm_campaigns,
+            'utm_mediums', utm_mediums,
+            'utm_sources', utm_sources
+        )
+        from "group"
+        where group_id = :'groupUtmDefaultMediumID'::uuid
+    ),
+    '{
+        "utm_campaigns": ["old-campaign"],
+        "utm_mediums": ["podcast"],
+        "utm_sources": ["old-source"]
+    }'::jsonb,
+    'Should keep the UTM values after rejecting extra default mediums'
+);
+
+-- Should accept a partial payload that does not address UTM values
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "UTM Preserve Group Updated",
+            "category_id": "%s"
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupUtmPreserveID',
+        :'groupCategory1ID'
+    ),
+    'Should accept a partial payload that does not address UTM values'
+);
+
+-- Should preserve the UTM values when a partial payload does not address them
+select is(
+    (
+        select jsonb_build_object(
+            'utm_campaigns', utm_campaigns,
+            'utm_mediums', utm_mediums,
+            'utm_sources', utm_sources
+        )
+        from "group"
+        where group_id = :'groupUtmPreserveID'::uuid
+    ),
+    '{
+        "utm_campaigns": ["old-campaign"],
+        "utm_mediums": ["podcast"],
+        "utm_sources": ["old-source"]
+    }'::jsonb,
+    'Should preserve the UTM values when a partial payload does not address them'
+);
+
 
 -- ============================================================================
 -- CLEANUP
