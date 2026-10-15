@@ -20,6 +20,14 @@ use crate::{
 
 const ACTIVATION_ID: &str = "00000000-0000-0000-0000-00000000c045";
 const ACTIVE_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0bd";
+/// Past paid event used by the event analytics contracts.
+const ANALYTICS_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f205";
+/// Group owning the event analytics fixture.
+const ANALYTICS_GROUP_ID: &str = "00000000-0000-0000-0000-00000000f203";
+/// Select registration question of the event analytics fixture.
+const ANALYTICS_QUESTION_ID: &str = "00000000-0000-0000-0000-00000000f20b";
+/// Paid ticket type of the event analytics fixture.
+const ANALYTICS_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000f208";
 const ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c042";
 const AUTO_END_MEETING_ID: &str = "00000000-0000-0000-0000-00000000c0a3";
 const BADGE_ARTWORK_ID: &str = "00000000-0000-0000-0000-00000000c0ba";
@@ -245,6 +253,26 @@ pub(super) fn activation_id() -> Uuid {
 /// Returns the active user badge identifier used by the contract fixture.
 pub(super) fn active_user_badge_id() -> Uuid {
     parse_uuid(ACTIVE_USER_BADGE_ID)
+}
+
+/// Returns the past paid event used by the event analytics contracts.
+pub(super) fn analytics_event_id() -> Uuid {
+    parse_uuid(ANALYTICS_EVENT_ID)
+}
+
+/// Returns the group owning the event analytics fixture.
+pub(super) fn analytics_group_id() -> Uuid {
+    parse_uuid(ANALYTICS_GROUP_ID)
+}
+
+/// Returns the select registration question of the event analytics fixture.
+pub(super) fn analytics_question_id() -> Uuid {
+    parse_uuid(ANALYTICS_QUESTION_ID)
+}
+
+/// Returns the paid ticket type of the event analytics fixture.
+pub(super) fn analytics_ticket_type_id() -> Uuid {
+    parse_uuid(ANALYTICS_TICKET_TYPE_ID)
 }
 
 /// Checks the complete paid ticket type JSON contract.

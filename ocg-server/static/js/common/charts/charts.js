@@ -1,4 +1,5 @@
 import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
+import { escapeHtml } from "/static/js/common/trusted-html.js";
 
 /**
  * Dispose of any existing ECharts instance on the given element.
@@ -57,6 +58,21 @@ export const hasChartData = (data = []) => {
 };
 
 /**
+ * Activity check for counts or key/count pairs.
+ * @param {Array<number|[string|number, number|string]>} values - Counts or key/count pairs.
+ * @returns {boolean} True when any count is not zero.
+ */
+export const hasActivity = (values = []) => {
+  return (
+    Array.isArray(values) &&
+    values.some((value) => {
+      const count = Array.isArray(value) ? value[1] : value;
+      return Number(count) !== 0 && !Number.isNaN(Number(count));
+    })
+  );
+};
+
+/**
  * Data availability check for time-series charts that need a trend line.
  * @param {Array} data - Time-series data array.
  * @returns {boolean} True when data has at least two points.
@@ -89,6 +105,56 @@ export const loadEChartsScript = () => {
   });
 };
 
+const ECHARTS_COLOR_PATTERN = /^(#|rgba?\(|hsla?\()/i;
+const chartColorCache = new Map();
+let chartColorContext = null;
+
+/**
+ * Convert a CSS color into a format ECharts can parse. ECharts derives hover
+ * and blur colors itself and leaves elements transparent for formats it does
+ * not understand, such as the oklch values of the Tailwind palette.
+ * @param {string} value - CSS color value.
+ * @returns {string} Color in a format ECharts can parse, or the original value.
+ */
+export const toChartColor = (value) => {
+  if (!value || ECHARTS_COLOR_PATTERN.test(value) || !globalThis.CSS?.supports?.("color", value)) {
+    return value;
+  }
+  if (chartColorCache.has(value)) {
+    return chartColorCache.get(value);
+  }
+
+  if (!chartColorContext) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    chartColorContext = canvas.getContext("2d", { willReadFrequently: true });
+  }
+  if (!chartColorContext) {
+    return value;
+  }
+
+  // Paint the color and read back its sRGB channels
+  chartColorContext.clearRect(0, 0, 1, 1);
+  chartColorContext.fillStyle = value;
+  chartColorContext.fillRect(0, 0, 1, 1);
+  const [red, green, blue, alpha] = chartColorContext.getImageData(0, 0, 1, 1).data;
+  const color =
+    alpha === 255
+      ? `rgb(${red}, ${green}, ${blue})`
+      : `rgba(${red}, ${green}, ${blue}, ${Number((alpha / 255).toFixed(3))})`;
+  chartColorCache.set(value, color);
+  return color;
+};
+
+/**
+ * Read a CSS color variable in a format ECharts can parse.
+ * @param {CSSStyleDeclaration} styles - Computed styles of the root element.
+ * @param {string} name - CSS custom property name.
+ * @returns {string} Chart color, or an empty string when unset.
+ */
+const readChartColor = (styles, name) => toChartColor(styles.getPropertyValue(name).trim());
+
 /**
  * Read theme colors from CSS variables to keep charts aligned with the UI palette.
  * @returns {Object} Primary color scale keyed by shade.
@@ -96,17 +162,17 @@ export const loadEChartsScript = () => {
 export const getThemePalette = () => {
   const styles = getComputedStyle(document.documentElement);
   const palette = {
-    50: styles.getPropertyValue("--color-primary-50").trim(),
-    100: styles.getPropertyValue("--color-primary-100").trim(),
-    200: styles.getPropertyValue("--color-primary-200").trim(),
-    300: styles.getPropertyValue("--color-primary-300").trim(),
-    400: styles.getPropertyValue("--color-primary-400").trim(),
-    500: styles.getPropertyValue("--color-primary-500").trim(),
-    600: styles.getPropertyValue("--color-primary-600").trim(),
-    700: styles.getPropertyValue("--color-primary-700").trim(),
-    800: styles.getPropertyValue("--color-primary-800").trim(),
-    900: styles.getPropertyValue("--color-primary-900").trim(),
-    950: styles.getPropertyValue("--color-primary-950").trim(),
+    50: readChartColor(styles, "--color-primary-50"),
+    100: readChartColor(styles, "--color-primary-100"),
+    200: readChartColor(styles, "--color-primary-200"),
+    300: readChartColor(styles, "--color-primary-300"),
+    400: readChartColor(styles, "--color-primary-400"),
+    500: readChartColor(styles, "--color-primary-500"),
+    600: readChartColor(styles, "--color-primary-600"),
+    700: readChartColor(styles, "--color-primary-700"),
+    800: readChartColor(styles, "--color-primary-800"),
+    900: readChartColor(styles, "--color-primary-900"),
+    950: readChartColor(styles, "--color-primary-950"),
   };
 
   const fallback = palette[700] || palette[500];
@@ -140,9 +206,9 @@ const shortMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
  * @returns {string} Daily bucket key.
  */
 const formatRecentDayKey = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -152,8 +218,8 @@ const formatRecentDayKey = (date) => {
  * @returns {string} Monthly bucket key.
  */
 const formatRecentMonthKey = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
 };
 
@@ -163,7 +229,7 @@ const formatRecentMonthKey = (date) => {
  * @returns {string} Label in DD Mon format.
  */
 const formatRecentDayLabel = (date) => {
-  return `${String(date.getDate()).padStart(2, "0")} ${shortMonthNames[date.getMonth()]}`;
+  return `${String(date.getUTCDate()).padStart(2, "0")} ${shortMonthNames[date.getUTCMonth()]}`;
 };
 
 /**
@@ -172,7 +238,7 @@ const formatRecentDayLabel = (date) => {
  * @returns {string} Label in Mon'YY format.
  */
 const formatRecentMonthLabel = (date) => {
-  return `${shortMonthNames[date.getMonth()]}'${String(date.getFullYear()).slice(-2)}`;
+  return `${shortMonthNames[date.getUTCMonth()]}'${String(date.getUTCFullYear()).slice(-2)}`;
 };
 
 /**
@@ -199,16 +265,38 @@ const formatMonthAxisLabel = (value) => {
 };
 
 /**
- * Build consecutive recent month entries ending in the current month.
+ * Format a YYYY-MM-DD day key as a short axis label without timezone shifts.
+ * @param {string} value - Day key.
+ * @returns {string} Label in DD Mon format, or the value when it is not a day key.
+ */
+export const formatDayAxisLabel = (value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const parts = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!parts) {
+    return value;
+  }
+
+  const monthIndex = Number(parts[2]) - 1;
+  if (monthIndex < 0 || monthIndex >= shortMonthNames.length) {
+    return value;
+  }
+
+  return `${parts[3]} ${shortMonthNames[monthIndex]}`;
+};
+
+/**
+ * Build consecutive recent UTC month entries ending in the current month.
  * @param {number} count - Number of months to generate.
+ * @param {Date} now - Reference time, defaulting to the current time.
  * @returns {Array<{key: string, label: string}>} Month keys and labels.
  */
-const buildRecentMonthEntries = (count) => {
-  const now = new Date();
-
+const buildRecentMonthEntries = (count, now = new Date()) => {
   return Array.from({ length: count }, (_, index) => {
     const offset = count - index - 1;
-    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
 
     return {
       key: formatRecentMonthKey(date),
@@ -241,10 +329,11 @@ const shouldShowSparseAxisLabel = (index, total, targetCount) => {
  * @param {Object} options - Series options.
  * @param {boolean} options.useFormattedMonthLabels - Use short month labels for monthly categories.
  * @param {boolean} options.reservePeriodStart - Reserve empty buckets from the recent period start.
+ * @param {Date} options.now - Reference time used to build UTC buckets.
  * @returns {{categories: Array<string>, values: Array<number>}} Filled series.
  */
 export const buildRecentBarSeries = (points = [], unit, defaultCount, options = {}) => {
-  const { useFormattedMonthLabels = true, reservePeriodStart = true } = options;
+  const { useFormattedMonthLabels = true, reservePeriodStart = true, now = new Date() } = options;
 
   if (!reservePeriodStart) {
     return {
@@ -261,7 +350,7 @@ export const buildRecentBarSeries = (points = [], unit, defaultCount, options = 
   const values = [];
 
   if (unit === "month") {
-    buildRecentMonthEntries(count).forEach(({ key, label }) => {
+    buildRecentMonthEntries(count, now).forEach(({ key, label }) => {
       categories.push(useFormattedMonthLabels ? label : key);
       values.push(valuesByKey.get(key) ?? 0);
     });
@@ -269,9 +358,8 @@ export const buildRecentBarSeries = (points = [], unit, defaultCount, options = 
     return { categories, values };
   }
 
-  const now = new Date();
   for (let offset = count - 1; offset >= 0; offset -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offset));
 
     categories.push(formatRecentDayLabel(date));
     values.push(valuesByKey.get(formatRecentDayKey(date)) ?? 0);
@@ -285,7 +373,7 @@ export const buildRecentBarSeries = (points = [], unit, defaultCount, options = 
  * @returns {string} Grid line color.
  */
 export const getChartGridLineColor = () => {
-  return getComputedStyle(document.documentElement).getPropertyValue("--color-stone-100").trim();
+  return readChartColor(getComputedStyle(document.documentElement), "--color-stone-100");
 };
 
 /**
@@ -296,9 +384,9 @@ const getChartTooltipColors = () => {
   const styles = getComputedStyle(document.documentElement);
 
   return {
-    background: styles.getPropertyValue("--color-white").trim(),
-    border: styles.getPropertyValue("--color-stone-200").trim(),
-    text: styles.getPropertyValue("--color-stone-700").trim(),
+    background: readChartColor(styles, "--color-white"),
+    border: readChartColor(styles, "--color-stone-200"),
+    text: readChartColor(styles, "--color-stone-700"),
   };
 };
 
@@ -310,10 +398,10 @@ export const getChartUiColors = () => {
   const styles = getComputedStyle(document.documentElement);
 
   return {
-    text: styles.getPropertyValue("--color-stone-700").trim(),
-    muted: styles.getPropertyValue("--color-stone-400").trim(),
-    soft: styles.getPropertyValue("--color-stone-300").trim(),
-    surface: styles.getPropertyValue("--color-white").trim(),
+    text: readChartColor(styles, "--color-stone-700"),
+    muted: readChartColor(styles, "--color-stone-400"),
+    soft: readChartColor(styles, "--color-stone-300"),
+    surface: readChartColor(styles, "--color-white"),
   };
 };
 
@@ -624,12 +712,20 @@ export const createDailyBarChart = (title, name, data, palette, options = {}) =>
 };
 
 /**
- * Build a palette for multi-series charts.
+ * Build a palette for multi-series charts. Two or three series spread across
+ * the ramp so neighboring colors stay clearly distinguishable.
  * @param {Object} palette - Theme color palette.
  * @param {number} count - Number of series.
  * @returns {Array<string>} Color list sized to the series count.
  */
 const buildSeriesColors = (palette, count) => {
+  if (count === 2) {
+    return [palette[950], palette[400]];
+  }
+  if (count === 3) {
+    return [palette[950], palette[600], palette[300]];
+  }
+
   const highContrastPalette = [
     palette[950],
     palette[800],
@@ -670,10 +766,11 @@ const buildSeriesColors = (palette, count) => {
  * @param {Object} options - Series options.
  * @param {boolean} options.reservePeriodStart - Reserve empty buckets from the recent period start.
  * @param {number} options.recentWindowMonths - Number of months to display.
+ * @param {Date} options.now - Reference time used to build UTC months.
  * @returns {{months: Array<string>, series: Array<{name: string, data: Array<number>}>}} Aligned data.
  */
 export const buildStackedMonthlySeries = (seriesMap = {}, options = {}) => {
-  const { recentWindowMonths = 24, reservePeriodStart = false } = options;
+  const { now = new Date(), recentWindowMonths = 24, reservePeriodStart = false } = options;
   const seriesEntries = Object.entries(seriesMap).filter(([, points]) => Array.isArray(points));
   const hasSeriesData = seriesEntries.some(([, points]) => points.length > 0);
 
@@ -697,7 +794,7 @@ export const buildStackedMonthlySeries = (seriesMap = {}, options = {}) => {
     };
   }
 
-  const months = buildRecentMonthEntries(recentWindowMonths).map(({ key }) => key);
+  const months = buildRecentMonthEntries(recentWindowMonths, now).map(({ key }) => key);
   const seriesNames = Object.keys(seriesMap).sort((a, b) => a.localeCompare(b));
 
   return {
@@ -840,70 +937,51 @@ export const createStackedAreaChart = (title, seriesData, palette, options = {})
 /**
  * Create horizontal bar chart configuration for category data.
  * @param {string} title - Chart title.
- * @param {Array} categoryData - Category series data.
+ * @param {Array<{name: string, value: number}>} categoryData - Category series data.
  * @param {Object} palette - Theme color palette.
- * @param {number|Object} leftMarginOrOptions - Left margin for labels or chart options.
  * @param {Object} options - Chart options.
  * @param {string} options.description - Short chart description.
+ * @param {boolean} options.inverse - Whether the first category is drawn at the top.
+ * @param {number} options.leftMargin - Left margin reserved for category labels.
+ * @param {number} options.percentBase - Total used to compute percentages, defaulting to the data total.
+ * @param {boolean} options.showValueAxisLabels - Whether the value axis shows its labels.
+ * @param {"percent"|"count"} options.valueLabel - Value shown next to each bar; count mode also omits tooltip percentages.
  * @returns {Object} ECharts option.
  */
-export const createHorizontalBarChart = (
-  title,
-  categoryData,
-  palette,
-  leftMarginOrOptions = 140,
-  options = {},
-) => {
-  const leftMargin = typeof leftMarginOrOptions === "number" ? leftMarginOrOptions : 140;
-  const chartOptions = typeof leftMarginOrOptions === "object" ? leftMarginOrOptions : options;
-  const { description = "" } = chartOptions;
-  const total = categoryData.reduce((sum, d) => sum + d.value, 0);
-  const gridLineColor = getChartGridLineColor();
-  const tooltipColors = getChartTooltipColors();
+export const createHorizontalBarChart = (title, categoryData, palette, options = {}) => {
+  const {
+    description = "",
+    inverse = false,
+    leftMargin = 140,
+    percentBase,
+    showValueAxisLabels = true,
+    valueLabel = "percent",
+  } = options;
+  const total = percentBase ?? categoryData.reduce((sum, d) => sum + d.value, 0);
+  const formatPercent = (value) => (total > 0 ? ((value / total) * 100).toFixed(1) : 0);
   const uiColors = getChartUiColors();
 
   return Object.assign(baseText(), {
-    title: {
-      text: title,
-      ...(description
-        ? {
-            subtext: description,
-            itemGap: 6,
-            subtextStyle: {
-              color: uiColors.muted,
-              fontFamily: dashboardFontFamily,
-              fontSize: 12,
-              lineHeight: 16,
-            },
-          }
-        : {}),
-      left: "center",
-      top: 12,
-      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: palette[950] },
-    },
+    title: getChartTitleConfig(title, palette, description),
     color: [palette[700]],
-    tooltip: {
-      trigger: "item",
-      backgroundColor: tooltipColors.background,
-      borderColor: tooltipColors.border,
-      borderWidth: 1,
-      textStyle: { color: tooltipColors.text },
+    tooltip: Object.assign(getItemTooltipConfig(), {
       formatter: (params) => {
-        const percent = total > 0 ? ((params.value / total) * 100).toFixed(1) : 0;
-        return `${params.name}: ${params.value} (${percent}%)`;
+        const label = `${escapeHtml(String(params.name ?? ""))}: ${params.value}`;
+        return valueLabel === "count" ? label : `${label} (${formatPercent(params.value)}%)`;
       },
-    },
+    }),
     grid: { left: leftMargin, right: 80, bottom: 40, top: getChartGridTop(description) },
     xAxis: {
       type: "value",
       minInterval: 1,
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: uiColors.muted, fontSize: 11 },
-      splitLine: { lineStyle: { color: gridLineColor, type: "dashed" } },
+      axisLabel: { color: uiColors.muted, fontSize: 11, show: showValueAxisLabels },
+      splitLine: { lineStyle: { color: getChartGridLineColor(), type: "dashed" } },
     },
     yAxis: {
       type: "category",
+      inverse,
       data: categoryData.map((d) => d.name),
       axisLine: { show: false },
       axisTick: { show: false },
@@ -917,10 +995,8 @@ export const createHorizontalBarChart = (
         label: {
           show: true,
           position: "right",
-          formatter: (params) => {
-            const percent = total > 0 ? ((params.value / total) * 100).toFixed(1) : 0;
-            return `${percent}%`;
-          },
+          formatter: (params) =>
+            valueLabel === "count" ? `${params.value}` : `${formatPercent(params.value)}%`,
           fontSize: 11,
           color: uiColors.muted,
         },
@@ -933,36 +1009,24 @@ export const createHorizontalBarChart = (
  * Create pie chart configuration for distribution data.
  * @param {string} title - Chart title.
  * @param {string} name - Series name.
- * @param {Array} data - Category series data.
+ * @param {Array<{name: string, value: number}>} data - Category series data.
  * @param {Object} palette - Theme color palette.
  * @param {Object} options - Chart options.
+ * @param {Array<string>} options.colors - Explicit colors aligned with the data.
  * @param {string} options.description - Short chart description.
+ * @param {boolean} options.groupTail - Whether slices beyond the sixth are grouped as "Other".
+ * @param {"right"|"bottom"} options.legendPosition - Where the legend is placed next to the pie.
+ * @param {boolean} options.showLabels - Whether slices show percentage labels.
  * @returns {Object} ECharts option.
  */
 export const createPieChart = (title, name, data, palette, options = {}) => {
-  const { description = "" } = options;
-  const tooltipColors = getChartTooltipColors();
+  const { colors, description = "", groupTail = true, legendPosition = "right", showLabels = true } = options;
+  const isBottomLegend = legendPosition === "bottom";
   const uiColors = getChartUiColors();
-  // Small pies use fewer, higher-contrast colors; larger pies need the full ramp.
-  const pieColors =
-    data.length <= 6
-      ? [palette[950], palette[800], palette[600], palette[400], palette[200], palette[50]]
-      : [
-          palette[950],
-          palette[900],
-          palette[800],
-          palette[700],
-          palette[600],
-          palette[500],
-          palette[400],
-          palette[300],
-          palette[200],
-          palette[100],
-          palette[50],
-        ];
+  const pieColors = colors || buildSeriesColors(palette, data.length);
 
   let chartData = data;
-  if (data.length > 6) {
+  if (groupTail && data.length > 6) {
     // Keep dense distributions legible by grouping the long tail as "Other".
     const sorted = [...data].sort((a, b) => b.value - a.value);
     const top6 = sorted.slice(0, 6);
@@ -974,45 +1038,23 @@ export const createPieChart = (title, name, data, palette, options = {}) => {
   }
 
   return Object.assign(baseText(), {
-    title: {
-      text: title,
-      ...(description
-        ? {
-            subtext: description,
-            itemGap: 6,
-            subtextStyle: {
-              color: uiColors.muted,
-              fontFamily: dashboardFontFamily,
-              fontSize: 12,
-              lineHeight: 16,
-            },
-          }
-        : {}),
-      left: "center",
-      top: 12,
-      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: palette[950] },
-    },
+    title: getChartTitleConfig(title, palette, description),
     color: pieColors,
-    tooltip: {
-      trigger: "item",
-      backgroundColor: tooltipColors.background,
-      borderColor: tooltipColors.border,
-      borderWidth: 1,
-      textStyle: { color: tooltipColors.text },
-      formatter: "{b}: {c} ({d}%)",
-    },
+    tooltip: Object.assign(getItemTooltipConfig(), { formatter: "{b}: {c} ({d}%)" }),
     legend: {
-      orient: "vertical",
-      left: "55%",
-      top: "30%",
+      // Bottom legends stay compact on a single line, scrolling when entries overflow
+      ...(isBottomLegend
+        ? { orient: "horizontal", left: "center", bottom: 0, type: "scroll" }
+        : { orient: "vertical", left: "55%", top: "30%" }),
       icon: "circle",
-      itemWidth: 10,
-      itemHeight: 10,
-      itemGap: 12,
-      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14 },
+      itemWidth: isBottomLegend ? 8 : 10,
+      itemHeight: isBottomLegend ? 8 : 10,
+      itemGap: isBottomLegend ? 8 : 12,
+      textStyle: { fontFamily: dashboardFontFamily, fontSize: isBottomLegend ? 11 : 14 },
       formatter: (label) => {
-        if (label.length > 25) {
-          return `${label.substring(0, 25)}...`;
+        const maxLength = isBottomLegend ? 14 : 25;
+        if (label.length > maxLength) {
+          return `${label.substring(0, maxLength)}...`;
         }
         return label;
       },
@@ -1021,19 +1063,19 @@ export const createPieChart = (title, name, data, palette, options = {}) => {
       {
         name,
         type: "pie",
-        radius: ["30%", "55%"],
-        center: ["28%", "58%"],
+        radius: isBottomLegend ? ["32%", "56%"] : ["30%", "55%"],
+        center: isBottomLegend ? ["50%", "54%"] : ["28%", "58%"],
         avoidLabelOverlap: true,
         itemStyle: { borderColor: uiColors.surface, borderWidth: 2 },
         label: {
-          show: true,
+          show: showLabels,
           position: "outside",
           formatter: "{d}%",
           fontSize: 11,
           color: uiColors.muted,
         },
         labelLine: {
-          show: true,
+          show: showLabels,
           length: 8,
           length2: 6,
           lineStyle: { color: uiColors.soft },
@@ -1045,4 +1087,169 @@ export const createPieChart = (title, name, data, palette, options = {}) => {
       },
     ],
   });
+};
+
+/**
+ * Build line symbol options that keep a single-day series visible.
+ * @param {number} dayCount - Number of days on the category axis.
+ * @returns {{symbol: string, showSymbol: boolean}} ECharts line symbol options.
+ */
+export const getDailyLineSymbolConfig = (dayCount) => {
+  const isSingleDay = dayCount === 1;
+  return { symbol: isSingleDay ? "circle" : "none", showSymbol: isSingleDay };
+};
+
+/**
+ * Create the formatter of tooltip dates and times in a timezone, labelled with
+ * its UTC offset.
+ * @param {string} timeZone - IANA timezone.
+ * @returns {Intl.DateTimeFormat} Date and time formatter.
+ */
+export const createTooltipDateTimeFormatter = (timeZone = "UTC") => {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZone,
+    timeZoneName: "shortOffset",
+    year: "numeric",
+  });
+};
+
+/**
+ * Build mark lines placing timed markers on their UTC day.
+ * @param {Array<{kind: string, ts: number}>} markers - Markers with Unix seconds timestamps.
+ * @param {Object} options - Marker options.
+ * @param {string} options.color - Mark line color.
+ * @param {Array<string>} options.days - YYYY-MM-DD day keys shown on the axis.
+ * @param {Function} options.labelForKind - Maps a marker kind to its display label.
+ * @param {string} options.timeZone - IANA timezone used in tooltips.
+ * @returns {Object|null} ECharts markLine config, or null without visible markers.
+ */
+export const getDayMarkersConfig = (markers = [], options = {}) => {
+  const { color, days = [], labelForKind = (kind) => kind, timeZone = "UTC" } = options;
+  const visibleDays = new Set(days);
+  const formatter = createTooltipDateTimeFormatter(timeZone);
+  const detailsByDay = new Map();
+
+  (markers || []).forEach(({ kind, ts }) => {
+    const date = new Date(Number(ts) * 1000);
+    if (Number.isNaN(date.getTime())) {
+      return;
+    }
+
+    const day = date.toISOString().slice(0, 10);
+    if (!visibleDays.has(day)) {
+      return;
+    }
+
+    const details = detailsByDay.get(day) || [];
+    details.push(`${labelForKind(kind)}: ${formatter.format(date)}`);
+    detailsByDay.set(day, details);
+  });
+
+  if (detailsByDay.size === 0) {
+    return null;
+  }
+
+  return {
+    symbol: "none",
+    silent: false,
+    animation: false,
+    label: { show: false },
+    lineStyle: { color, type: "dashed", width: 1 },
+    tooltip: {
+      trigger: "item",
+      formatter: (params) => (params.data?.details || []).join("<br/>"),
+    },
+    data: Array.from(detailsByDay, ([day, details]) => ({
+      details,
+      name: details.join(", "),
+      xAxis: day,
+    })),
+  };
+};
+
+/**
+ * Create stacked bar chart configuration for UTC day series.
+ * @param {string} title - Chart title.
+ * @param {Array<string>} days - YYYY-MM-DD day keys.
+ * @param {Array<{name: string, data: Array<number>, color?: string}>} seriesData - Aligned series.
+ * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
+ * @param {Object|null} options.markLine - Mark line config attached to the first series.
+ * @returns {Object} ECharts option.
+ */
+export const createStackedDailyBarChart = (title, days, seriesData, palette, options = {}) => {
+  const { description = "", markLine = null } = options;
+  const colors = getExplicitSeriesColors(seriesData, palette);
+  const barSeriesStyle = getVerticalBarSeriesStyle(days.length);
+
+  return Object.assign(baseText(), {
+    title: getChartTitleConfig(title, palette, description),
+    color: colors,
+    tooltip: Object.assign(getAxisTooltipConfig(), { axisPointer: { type: "shadow" } }),
+    legend: getStackedLegendConfig(seriesData.length),
+    grid: { left: 70, right: 40, bottom: 100, top: getChartGridTop(description) },
+    xAxis: getDailyCategoryAxisConfig(days),
+    yAxis: getValueAxisConfig(),
+    series: seriesData.map((series, index) => ({
+      name: series.name,
+      type: "bar",
+      stack: "total",
+      emphasis: { focus: "series" },
+      itemStyle: { color: colors[index] },
+      data: series.data,
+      ...barSeriesStyle,
+      ...(index === 0 && markLine ? { markLine } : {}),
+    })),
+  });
+};
+
+/**
+ * Build a category x-axis configuration for UTC day keys.
+ * @param {Array<string>} days - YYYY-MM-DD day keys.
+ * @returns {Object} ECharts category axis config.
+ */
+const getDailyCategoryAxisConfig = (days = []) => {
+  return {
+    type: "category",
+    data: days,
+    axisLine: { show: false },
+    axisTick: { show: false },
+    axisLabel: {
+      fontSize: 10,
+      formatter: (value, index) => {
+        return shouldShowSparseAxisLabel(index, days.length, 8) ? formatDayAxisLabel(value) : "";
+      },
+    },
+    splitLine: { show: false },
+  };
+};
+
+/**
+ * Resolve series colors, keeping explicit colors and filling the rest from the palette.
+ * @param {Array<{color?: string}>} seriesData - Series data.
+ * @param {Object} palette - Theme color palette.
+ * @returns {Array<string>} Colors aligned with the series.
+ */
+const getExplicitSeriesColors = (seriesData, palette) => {
+  const fallbackColors = buildSeriesColors(palette, seriesData.length || 1);
+  return seriesData.map((series, index) => series.color || fallbackColors[index]);
+};
+
+/**
+ * Build the bottom legend used by stacked charts.
+ * @param {number} count - Number of series.
+ * @returns {Object} ECharts legend config.
+ */
+const getStackedLegendConfig = (count) => {
+  return {
+    type: count > 5 ? "scroll" : "plain",
+    bottom: 10,
+    left: "center",
+    textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
+  };
 };

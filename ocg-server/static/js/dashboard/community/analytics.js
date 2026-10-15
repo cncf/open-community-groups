@@ -17,11 +17,7 @@ import {
 import { initializePageViewCharts } from "/static/js/dashboard/analytics-page-views.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
 import { initializeOnReadyAndHtmxLoad, setElementHidden } from "/static/js/common/dom.js";
-import {
-  addRenderedChart,
-  initializeChartsFromJsonMarker,
-  registerChartResizeHandler,
-} from "/static/js/common/charts/stats.js";
+import { addRenderedChart, initializeChartsFromJsonMarker } from "/static/js/common/charts/stats.js";
 
 const COMMUNITY_ANALYTICS_DATA_SELECTOR = "[data-community-analytics]";
 const COMMUNITY_ANALYTICS_READY_KEY = "communityAnalyticsReady";
@@ -592,30 +588,25 @@ const setupAnalyticsTabs = (stats, palette) => {
   }
 
   const initializedTabs = new Set();
-  const chartsByTab = new Map();
-  const allCharts = new Set();
 
+  // Charts render once per tab and follow their container size afterwards.
   const initTabCharts = async (tab) => {
     if (initializedTabs.has(tab)) {
       return false;
     }
 
-    let charts = [];
     if (tab === "groups") {
-      charts = await initGroupsCharts(stats.groups, palette);
+      await initGroupsCharts(stats.groups, palette);
     } else if (tab === "members") {
-      charts = await initMembersCharts(stats.members, palette);
+      await initMembersCharts(stats.members, palette);
     } else if (tab === "events") {
-      charts = await initEventsCharts(stats.events, palette);
+      await initEventsCharts(stats.events, palette);
     } else if (tab === "attendees") {
-      charts = await initAttendeesCharts(stats.attendees, palette);
+      await initAttendeesCharts(stats.attendees, palette);
     } else if (tab === "page-views") {
-      charts = await initPageViewsCharts(stats.page_views, palette);
+      await initPageViewsCharts(stats.page_views, palette);
     }
 
-    const hydratedCharts = charts.filter(Boolean);
-    hydratedCharts.forEach((chart) => allCharts.add(chart));
-    chartsByTab.set(tab, hydratedCharts);
     initializedTabs.add(tab);
     return true;
   };
@@ -630,11 +621,7 @@ const setupAnalyticsTabs = (stats, palette) => {
       setElementHidden(content, !visible);
     });
 
-    initTabCharts(tab)
-      .then(() => {
-        (chartsByTab.get(tab) || []).forEach((chart) => chart.resize());
-      })
-      .catch((error) => console.error("Failed to initialize analytics charts", error));
+    initTabCharts(tab).catch((error) => console.error("Failed to initialize analytics charts", error));
   };
 
   showTab("groups");
@@ -645,8 +632,6 @@ const setupAnalyticsTabs = (stats, palette) => {
       showTab(tab);
     });
   });
-
-  registerChartResizeHandler(() => Array.from(allCharts));
 };
 
 /**

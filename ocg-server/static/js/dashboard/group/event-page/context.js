@@ -96,7 +96,8 @@ export const createSessionsDateRangeSync =
  * Initializes the shared pending-changes alert for event pages.
  * @param {Object} config Pending-changes configuration.
  * @param {Document|Element} config.pageRoot Page root.
- * @param {string} config.confirmMessage Confirmation text shown on cancel.
+ * @param {string} config.confirmMessage Confirmation text shown when leaving
+ * the page with pending changes.
  * @returns {{hasPendingChanges: () => boolean, refresh: () => void}}
  * Pending-changes API.
  */
@@ -107,6 +108,8 @@ export const initializeEventPagePendingChanges = ({ pageRoot, confirmMessage }) 
     cancelButtonId: "cancel-button",
     confirmMessage,
     confirmText: "Leave",
+    guardRoot: pageRoot instanceof Element ? pageRoot : null,
+    guardSelector: "[data-pending-changes-guard]",
   });
 };
 

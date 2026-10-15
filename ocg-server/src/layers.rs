@@ -74,6 +74,7 @@ const HANDLER_OPERATION_TYPE_ALLOWANCES: &[(&str, &str)] = &[];
 const MUTABLE_AGGREGATE_CACHED_READS: &[&str] = &[
     "get_community_site_stats",
     "get_community_stats",
+    "get_event_analytics",
     "get_group_stats",
     "get_site_home_stats",
     "get_site_stats",

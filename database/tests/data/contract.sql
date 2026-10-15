@@ -4759,6 +4759,226 @@ insert into group_member (
     '00000000-0000-0000-0000-00000000f104'
 );
 
+-- ============================================================================
+-- EVENT ANALYTICS
+-- ============================================================================
+
+-- Inactive community holding the event analytics fixture; inactive so
+-- site-wide and community statistics exclude its views and attendees
+insert into community (
+    active,
+    banner_mobile_url,
+    banner_url,
+    community_id,
+    description,
+    display_name,
+    logo_url,
+    name
+) values (
+    false,
+    'https://example.com/analytics-community-banner-mobile.png',
+    'https://example.com/analytics-community-banner.png',
+    '00000000-0000-0000-0000-00000000f201',
+    'A community used to verify event analytics in Rust database contract tests',
+    'Contract Analytics Community',
+    'https://example.com/analytics-community-logo.png',
+    'contract-analytics-community'
+);
+
+-- Group category of the analytics community
+insert into group_category (
+    community_id,
+    group_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000f201',
+    '00000000-0000-0000-0000-00000000f202',
+    'Analytics'
+);
+
+-- Event category of the analytics community
+insert into event_category (
+    community_id,
+    event_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000f201',
+    '00000000-0000-0000-0000-00000000f204',
+    'Analytics'
+);
+
+-- Group owning the analytics event
+insert into "group" (
+    community_id,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    '00000000-0000-0000-0000-00000000f201',
+    '00000000-0000-0000-0000-00000000f202',
+    '00000000-0000-0000-0000-00000000f203',
+    'Contract Analytics Group',
+    'contract-analytics-group'
+);
+
+-- Attendee of the analytics event
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_analytics_attendee',
+    'analytics-attendee.contract@example.com',
+    true,
+    'Contract Analytics Attendee',
+    '00000000-0000-0000-0000-00000000f206',
+    'analytics-attendee'
+);
+
+-- Past paid event with a select registration question
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    registration_questions,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'A past event used by the event analytics contract tests',
+    '2025-03-10 19:00:00+00',
+    '00000000-0000-0000-0000-00000000f204',
+    '00000000-0000-0000-0000-00000000f205',
+    'in-person',
+    '00000000-0000-0000-0000-00000000f203',
+    'Contract Analytics Event',
+    'USD',
+    true,
+    '2025-03-01 10:00:00+00',
+    '[{"id": "00000000-0000-0000-0000-00000000f20b", "kind": "single-select", "prompt": "Role", "required": false, "options": [{"id": "00000000-0000-0000-0000-00000000f20c", "label": "Developer"}]}]'::jsonb,
+    'contract-analytics-event',
+    '2025-03-10 17:00:00+00',
+    'Europe/Madrid'
+);
+
+-- Paid ticket type of the analytics event
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    '00000000-0000-0000-0000-00000000f205',
+    '00000000-0000-0000-0000-00000000f208',
+    1,
+    50,
+    'Analytics Pass'
+);
+
+-- Paid price window of the analytics ticket type
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    2500,
+    '00000000-0000-0000-0000-00000000f209',
+    '00000000-0000-0000-0000-00000000f208'
+);
+
+-- Announcement sent to the analytics event attendees
+insert into custom_notification (
+    body,
+    created_at,
+    event_id,
+    subject
+) values (
+    'Doors open at five',
+    '2025-03-08 09:00:00+00',
+    '00000000-0000-0000-0000-00000000f205',
+    'Analytics announcement'
+);
+
+-- Checked-in attendee who answered the select question
+insert into event_attendee (
+    checked_in,
+    checked_in_at,
+    created_at,
+    event_id,
+    registration_answers,
+    user_id
+) values (
+    true,
+    '2025-03-10 16:50:00+00',
+    '2025-03-05 12:00:00+00',
+    '00000000-0000-0000-0000-00000000f205',
+    '{"answers": [{"question_id": "00000000-0000-0000-0000-00000000f20b", "value": "00000000-0000-0000-0000-00000000f20c"}]}'::jsonb,
+    '00000000-0000-0000-0000-00000000f206'
+);
+
+-- Completed purchase holding the attendee seat
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    2500,
+    'external',
+    '2025-03-05 12:00:00+00',
+    '2025-03-05 11:55:00+00',
+    'USD',
+    0,
+    '00000000-0000-0000-0000-00000000f205',
+    '00000000-0000-0000-0000-00000000f20a',
+    '00000000-0000-0000-0000-00000000f208',
+    'completed',
+    'Analytics Pass',
+    '00000000-0000-0000-0000-00000000f206'
+);
+
+-- Daily views before the publication, during the lifecycle and after the end
+insert into event_views (
+    day,
+    event_id,
+    total
+) values
+    ('2025-02-27', '00000000-0000-0000-0000-00000000f205', 2),
+    ('2025-03-05', '00000000-0000-0000-0000-00000000f205', 10),
+    ('2025-03-12', '00000000-0000-0000-0000-00000000f205', 3);
+
+-- Tagged views with a source and medium plus a campaign-only row
+insert into event_views_utm (
+    day,
+    event_id,
+    total,
+    utm_campaign,
+    utm_medium,
+    utm_source
+) values
+    ('2025-03-05', '00000000-0000-0000-0000-00000000f205', 4, '', 'email', 'newsletter'),
+    ('2025-03-05', '00000000-0000-0000-0000-00000000f205', 2, 'spring', '', '');
+
 -- Every remaining event uses a default free tier in the contract fixture
 insert into event_ticket_type (
     event_id,

@@ -717,6 +717,117 @@ attendee selected. The email form includes a required `Subject`, defaults it to
 
 ![Event attendees](../screenshots/dashboard-group-event-attendees.png)
 
+### Analytics
+
+The `Analytics` tab of the event editor shows how the event page attracts visitors and how they turn
+into registrations and check-ins. Every role that can read the group dashboard can view it, and only
+the group that owns the event sees it. Analytics are cached for up to an hour, so recent activity
+can take that long to appear.
+
+The tab reports counts only. It never shows revenue, refunds, discount amounts, or any other
+monetary figure.
+
+The summary cards show:
+
+- `Page views`: raw loads of the event page across all days, not unique visitors.
+- `Registrations`: attendees currently confirmed, including manual invitations.
+- `Fill rate`: registrations divided by the event capacity, or `-` without a capacity.
+- `Conversion`: registrations divided by all page views. It is approximate, is not capped
+  at 100%, and shows `-` while the event has no views.
+- `Check-in rate`: checked-in registrations divided by registrations, shown once the event ends.
+
+Below the summary cards, the tab groups its figures into `Traffic`, `Registrations`, `Tickets` (paid
+events only), `Audience`, and `Check-ins` (once the event ends).
+
+#### Daily charts
+
+The daily charts run in UTC days from the publication day to the event's last day, or to today
+while the event is still current. Counters are kept per UTC day, so the first and last days cover
+the full UTC day. Dashed markers show the publication, the configured registration open and close,
+the event reminder, announcements (the 50 most recent), and the event start. Hover a marker to see
+its time in the event timezone.
+
+Unpublishing an event clears its publication date, so republishing starts the daily charts again
+from the new publication day. When the event is not published, has no recorded publication date,
+or was published after it ended, an explanation replaces the daily charts and the other figures
+stay available.
+
+#### Traffic
+
+- `Total page views`, `Attributed views`, and `Unattributed views` split all page views by whether
+  they came from links with UTM values the group accepts (see
+  [UTM Tracking](group-dashboard.md#utm-tracking)), with their share of all page views.
+- `Page views per day` stacks views by the top three UTM sources of the charted days, `Other` for
+  the remaining sources and campaign-only links, and `Untagged` for views without recorded UTM
+  attribution. Totals still count every view; views recorded before the publication day, for
+  example during an earlier publication, and views recorded after the event's last day are noted
+  below the chart.
+
+Traffic sources report the attributed page views across all days. Views whose source, medium, or
+campaign is empty are shown as `Not specified`, and shares are computed against all page views.
+
+- The share chart splits all page views into the top three sources, `Other`, and `Untagged`.
+- `Views by value` shows the top eight values of the selected parameter (`Source`, `Medium`, or
+  `Campaign`), plus `Not specified` and `Other` for the remaining values.
+- The combinations table lists the top 10 source, medium, and campaign combinations by views, with
+  their share and first and last days. Sorting applies to these rows, and a final row summarizes
+  the remaining combinations.
+
+Page views and attributed views are counted separately, so attributed views can exceed the total.
+When that happens on any day or overall, the tab marks attribution as unavailable: the shares are
+hidden, the daily page views show raw totals, and the counts are shown as recorded.
+
+#### Registrations
+
+- `Registrations per day` stacks registrations by the ticket type of each attendee's latest purchase
+  that holds a seat. Registrations without one appear as `Unknown ticket type`, or as
+  `Registrations` on free events. Registrations are dated by when they were created, which is
+  approximate.
+- The fill curve shows cumulative registrations per UTC day against the capacity. It starts from
+  the registrations created before the publication day.
+- The funnel compares page views, registrations, and, once the event ends, checked-in attendees.
+- `How attendees registered` splits current registrations by the path that admitted them: `Direct`
+  registrations and purchases, `Approved request`, `Waiting list`, and `Organizer invitation`
+  offers. Attendees without a recorded path appear as `Unknown`.
+- The enrollment state cards show attendance cancellations, the waiting list size, and invitation
+  requests by status.
+- The admission offers cards count the offers sent from each origin, by outcome. Pending offers
+  whose deadline has passed count as `expired (deadline passed)`.
+
+Enrollment figures describe the current state of the event, not its history.
+
+The fill curve also shades the registration window. The window opens at the registration start, or
+at the publication when none is set. It closes at the registration end; when only a registration
+start is set it closes at the event start, and otherwise it stays open. The close is then cut short
+at the event end and at the current time. Opens taken from the publication, windows without a
+configured close, and cut-short closes are drawn with a dashed border and named in the label.
+
+#### Tickets
+
+Paid events add seat usage per ticket type: seats sold (purchases that hold a seat), seats reserved
+(checkout holds and admission offers in progress), and seats remaining of the total. Ticket types
+without seats show `No seats configured`. Discount codes show their redemptions, counting purchases
+that still hold a seat, and the redemptions still available.
+
+#### Audience
+
+- `New attendees` and `Returning attendees` split registrations by whether the attendee was
+  confirmed for an earlier event of the same group. Canceled, deleted, and test events do not
+  count. Events without a start date show `-`.
+- `Joined during registration` counts people who joined the group inside the registration window,
+  and how many of them registered. The window is shown below the cards in the event timezone.
+- Single- and multi-select registration questions list their current options by selections, most
+  selected first, with each option's count and share of respondents. The 10 most selected options
+  are shown, and a button reveals the rest. Multi-select percentages use respondents and can add up
+  to more than 100%. Long prompts are shortened to two lines; hover to read them in full.
+  Free-text answers are not shown.
+
+#### Check-ins
+
+After the event ends, the check-ins chart shows arrivals in 15-minute intervals, or hourly intervals
+for spans longer than three days, in the event timezone. It covers check-ins from six hours before
+the start to six hours after the end; check-ins outside that span are counted in a note.
+
 ## CFS Workflow (End to End)
 
 CFS spans organizer setup, speaker submission, and review loop. Treat it as one connected system.

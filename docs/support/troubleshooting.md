@@ -150,8 +150,8 @@ another accepted team member first, then retry.
 
 ## Analytics Looks Outdated
 
-Analytics is cached and can lag by a few minutes. Refresh the page, wait briefly, and refresh
-again.
+Analytics are cached for up to an hour, so recent activity can take that long to appear. Refresh
+the page later to see newer figures.
 
 ## Email Send Is Disabled
 

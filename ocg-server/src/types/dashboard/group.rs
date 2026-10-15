@@ -7,6 +7,7 @@ pub mod attendees;
 pub mod badges;
 pub mod check_in;
 pub mod cohosts;
+pub mod event_analytics;
 pub mod events;
 pub mod home;
 pub mod invitation_requests;

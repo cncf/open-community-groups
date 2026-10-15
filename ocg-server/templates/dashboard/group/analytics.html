@@ -3,7 +3,7 @@
 
 {# Page title #}
 {{ dashboard::page_title(title = "Analytics", docs_href = "/docs#/guides/group-dashboard?id=analytics-delivery-health",
-  description = "Group statistics and growth trends. Analytics are cached for a few minutes and may not display up to date information.") }}
+  description = "Group statistics and growth trends. Analytics are cached for up to an hour and may not display up to date information.") }}
 {# End page title #}
 
 {% if has_subgroups -%}
@@ -33,34 +33,10 @@
 
 {# Summary stat cards #}
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-10">
-  <div class="bg-white border border-stone-200 text-start rounded-lg p-5">
-    <div class="text-sm text-stone-600">Members</div>
-    <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
-      {{ stats.members.total|num_fmt }}
-    </div>
-    <div class="mt-1 text-xs text-stone-500">People in this group</div>
-  </div>
-  <div class="bg-white border border-stone-200 text-start rounded-lg p-5">
-    <div class="text-sm text-stone-600">Events</div>
-    <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
-      {{ stats.events.total|num_fmt }}
-    </div>
-    <div class="mt-1 text-xs text-stone-500">Published and past events</div>
-  </div>
-  <div class="bg-white border border-stone-200 text-start rounded-lg p-5">
-    <div class="text-sm text-stone-600">Attendees</div>
-    <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
-      {{ stats.attendees.total|num_fmt }}
-    </div>
-    <div class="mt-1 text-xs text-stone-500">Total RSVPs</div>
-  </div>
-  <div class="bg-white border border-stone-200 text-start rounded-lg p-5">
-    <div class="text-sm text-stone-600">Page views</div>
-    <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
-      {{ stats.page_views.total_views|num_fmt }}
-    </div>
-    <div class="mt-1 text-xs text-stone-500">Group and event page views</div>
-  </div>
+  {{ stats_macro::stat_card(title = "Members", value = stats.members.total|num_fmt, description = "People in this group") -}}
+  {{ stats_macro::stat_card(title = "Events", value = stats.events.total|num_fmt, description = "Published and past events") -}}
+  {{ stats_macro::stat_card(title = "Attendees", value = stats.attendees.total|num_fmt, description = "Total RSVPs") -}}
+  {{ stats_macro::stat_card(title = "Page views", value = stats.page_views.total_views|num_fmt, description = "Group and event page views") -}}
 </div>
 {# End summary stat cards #}
 
@@ -70,11 +46,11 @@
     {{ dashboard::form_title(title = "Members") }}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
-        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Running total</div>
         {{ stats_macro::analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, min_points = 1, wrapper_class = "mt-3") -}}
       </div>
       <div>
-        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Per month</div>
         {{ stats_macro::analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month, wrapper_class = "mt-3") -}}
       </div>
     </div>
@@ -84,11 +60,11 @@
     {{ dashboard::form_title(title = "Events") }}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
-        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Running total</div>
         {{ stats_macro::analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, min_points = 1, wrapper_class = "mt-3") -}}
       </div>
       <div>
-        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Per month</div>
         {{ stats_macro::analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month, wrapper_class = "mt-3") -}}
       </div>
     </div>
@@ -99,11 +75,11 @@
       {{ dashboard::form_title(title = "Co-hosted events") }}
       <div class="mt-6 grid grid-cols-1 gap-6">
         <div>
-          <div class="text-sm font-semibold text-stone-500">Running total</div>
+          <div class="text-sm font-semibold uppercase text-stone-500">Running total</div>
           {{ stats_macro::analytics_chart(chart_id = "cohosted-events-running-chart", data = stats.cohosted_events.running_total, min_points = 1, wrapper_class = "mt-3") -}}
         </div>
         <div>
-          <div class="text-sm font-semibold text-stone-500">Per month</div>
+          <div class="text-sm font-semibold uppercase text-stone-500">Per month</div>
           {{ stats_macro::analytics_chart(chart_id = "cohosted-events-monthly-chart", data = stats.cohosted_events.per_month, wrapper_class = "mt-3") -}}
         </div>
       </div>
@@ -114,11 +90,11 @@
     {{ dashboard::form_title(title = "Attendees") }}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
-        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Running total</div>
         {{ stats_macro::analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, min_points = 1, wrapper_class = "mt-3") -}}
       </div>
       <div>
-        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Per month</div>
         {{ stats_macro::analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month, wrapper_class = "mt-3") -}}
       </div>
     </div>
@@ -128,21 +104,21 @@
     {{ dashboard::form_title(title = "Page views") }}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
-        <div class="text-sm font-semibold text-stone-500">Total</div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Total</div>
         <div class="mt-3 grid grid-cols-1 xl:grid-cols-2 gap-6">
           {{ stats_macro::analytics_chart(chart_id = "total-views-monthly-chart", data = stats.page_views.total.per_month_views) -}}
           {{ stats_macro::analytics_chart(chart_id = "total-views-daily-chart", data = stats.page_views.total.per_day_views) -}}
         </div>
       </div>
       <div>
-        <div class="text-sm font-semibold text-stone-500">Group page</div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Group page</div>
         <div class="mt-3 grid grid-cols-1 xl:grid-cols-2 gap-6">
           {{ stats_macro::analytics_chart(chart_id = "group-views-monthly-chart", data = stats.page_views.group.per_month_views) -}}
           {{ stats_macro::analytics_chart(chart_id = "group-views-daily-chart", data = stats.page_views.group.per_day_views) -}}
         </div>
       </div>
       <div>
-        <div class="text-sm font-semibold text-stone-500">Event pages</div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Event pages</div>
         <div class="mt-3 grid grid-cols-1 xl:grid-cols-2 gap-6">
           {{ stats_macro::analytics_chart(chart_id = "event-views-monthly-chart", data = stats.page_views.events.per_month_views) -}}
           {{ stats_macro::analytics_chart(chart_id = "event-views-daily-chart", data = stats.page_views.events.per_day_views) -}}

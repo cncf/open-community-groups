@@ -128,6 +128,10 @@ const buildFormsSnapshot = (forms) => {
  * @param {string} [config.cancelButtonId] Cancel button id to guard.
  * @param {string} [config.confirmMessage] Confirmation text shown on cancel.
  * @param {string} [config.confirmText] Confirmation button label.
+ * @param {Element|null} [config.guardRoot] Root delegating the confirmation to
+ * matching triggers, including triggers rendered after initialization.
+ * @param {string} [config.guardSelector] Selector of triggers guarded within
+ * the guard root. Matching triggers need an id and an htmx `confirmed` trigger.
  * @returns {{hasPendingChanges: () => boolean, refresh: () => void}} API.
  */
 export const initializePendingChangesAlert = ({
@@ -136,6 +140,8 @@ export const initializePendingChangesAlert = ({
   cancelButtonId = "",
   confirmMessage = "",
   confirmText = "Leave",
+  guardRoot = null,
+  guardSelector = "",
 }) => {
   const pendingChangesAlert = getElementById(document, alertId);
   const trackedForms = (formIds || []).map((formId) => getElementById(document, formId)).filter(Boolean);
@@ -216,6 +222,23 @@ export const initializePendingChangesAlert = ({
       event.stopImmediatePropagation();
       showConfirmAlert(confirmMessage, cancelButton.id, confirmText);
     });
+  }
+
+  if (guardRoot && guardSelector && confirmMessage) {
+    // Capture the click before HTMX handles it on the trigger itself
+    guardRoot.addEventListener(
+      "click",
+      (event) => {
+        const trigger = event.target instanceof Element ? event.target.closest(guardSelector) : null;
+        if (!trigger?.id || !guardRoot.contains(trigger) || !hasPendingChanges) {
+          return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        showConfirmAlert(confirmMessage, trigger.id, confirmText);
+      },
+      { capture: true },
+    );
   }
 
   return {

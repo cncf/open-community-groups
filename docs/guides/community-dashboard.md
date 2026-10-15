@@ -181,7 +181,7 @@ steady progress and notice unusual jumps with better context.
 The `Page views` tab starts with total community, group, and event page views, then breaks
 views down by page type with daily charts for the last month.
 
-Analytics data is cached and may lag for a few minutes.
+Analytics are cached for up to an hour, so recent activity can take that long to appear.
 
 ![Community dashboard analytics](../screenshots/dashboard-community-analytics.png)
 

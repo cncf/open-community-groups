@@ -165,6 +165,9 @@ Every UTM parameter in a link must be accepted. Views from links with an unknown
 or medium, or without a defined source or campaign, are still counted as page views, but without
 attribution. Links may omit the medium.
 
+Attributed views are reported per event in the `Analytics` tab of the event editor (see
+[Event Operations](event-operations.md#analytics)).
+
 Each list holds up to 20 values. Values use 50 or fewer lowercase letters, numbers, dots,
 hyphens, or underscores, cannot repeat within a list, and additional mediums cannot repeat a default
 medium. Link values are matched case-insensitively. Changes apply to new views within a minute.
@@ -331,7 +334,10 @@ only when there is at least one such event.
 The `Page views` section starts with total group and event page views, then breaks views down by
 page type with daily charts for the last month.
 
-Analytics values can lag briefly due to caching.
+Analytics are cached for up to an hour, so recent activity can take that long to appear.
+
+For the traffic, registrations, ticket usage, audience, and check-ins of a single event, open the
+event's `Analytics` tab (see [Event Operations](event-operations.md#analytics)).
 
 When the group has active subgroups, the analytics page shows an `Include subgroups` switch. Turning
 it on recalculates every metric on the page across the group and its active subgroups. Member metrics

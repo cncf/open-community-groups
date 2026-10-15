@@ -1,7 +1,24 @@
 import "/static/js/common/svg-spinner.js";
-import { clearChartElement, initChart, showChartEmptyState } from "/static/js/common/charts/charts.js";
-import { isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
-import { debounce, parseJsonText } from "/static/js/common/utils.js";
+import {
+  clearChartElement,
+  initChart,
+  loadEChartsScript,
+  showChartEmptyState,
+} from "/static/js/common/charts/charts.js";
+import { getElementById, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
+import { parseJsonText } from "/static/js/common/utils.js";
+
+/** Delay applied before resizing a chart after its container changes size. */
+const CHART_RESIZE_DELAY = 200;
+
+/** Rendered charts keyed by their container element. */
+const chartRegistry = new Map();
+
+/** JSON markers whose charts are being initialized. */
+const markersInFlight = new WeakSet();
+
+/** Shared observer resizing registered charts when their containers change size. */
+let chartResizeObserver = null;
 
 /**
  * Render a chart or show an empty state based on data availability.
@@ -19,6 +36,7 @@ export const renderChart = (elementId, option, hasData, options = {}) => {
   const canRender = hasData && (!needsTrendLine || seriesData.length >= minTimeSeriesPoints);
 
   if (!canRender) {
+    unregisterChart(getElementById(document, elementId));
     showChartEmptyState(elementId);
     return null;
   }
@@ -28,7 +46,12 @@ export const renderChart = (elementId, option, hasData, options = {}) => {
     return null;
   }
 
-  return initChart(elementId, option);
+  const chart = initChart(elementId, option);
+  if (chart) {
+    registerChart(element, chart);
+  }
+
+  return chart;
 };
 
 /**
@@ -47,20 +70,33 @@ export const addRenderedChart = (charts, elementId, chartOptions, hasData) => {
 };
 
 /**
- * Register a debounced resize handler for chart instances.
- * @param {Iterable<echarts.ECharts>|Function} chartsSource - Chart list or getter.
- * @param {number} delay - Debounce delay in milliseconds.
- * @returns {Function} Debounced resize handler.
+ * Disposes the registered charts rendered inside an element.
+ * @param {Element} root - Element being removed or cleaned up.
+ * @returns {void}
  */
-export const registerChartResizeHandler = (chartsSource, delay = 200) => {
-  const getCharts = typeof chartsSource === "function" ? chartsSource : () => Array.from(chartsSource || []);
-  const resizeCharts = debounce(() => {
-    const charts = (getCharts() || []).filter(Boolean);
-    charts.forEach((chart) => chart.resize());
-  }, delay);
+export const disposeChartsWithin = (root) => {
+  if (!(root instanceof Element) || chartRegistry.size === 0) {
+    return;
+  }
 
-  window.addEventListener("resize", resizeCharts);
-  return resizeCharts;
+  Array.from(chartRegistry.keys())
+    .filter((element) => root === element || root.contains(element))
+    .forEach((element) => unregisterChart(element));
+};
+
+/**
+ * Compute a reasonable label interval for category axes.
+ * @param {number} count - Total number of labels.
+ * @param {number} target - Target labels to show.
+ * @returns {number} ECharts interval value.
+ */
+export const getCategoryLabelInterval = (count, target = 12) => {
+  if (!count) {
+    return 0;
+  }
+
+  const step = Math.ceil(count / target);
+  return Math.max(step - 1, 0);
 };
 
 /**
@@ -78,7 +114,25 @@ export const getStatsMarker = (root, selector) => {
 };
 
 /**
+ * Compute a reasonable split count for time axes.
+ * @param {number} count - Total number of points.
+ * @returns {number} ECharts splitNumber value.
+ */
+export const getTimeSplitNumber = (count) => {
+  if (!count) {
+    return 4;
+  }
+
+  return Math.min(6, Math.max(3, Math.round(count / 6)));
+};
+
+/**
  * Initializes charts from an inert JSON marker once.
+ *
+ * The marker is marked ready only after the initializer succeeds, so a failed
+ * initialization can be retried on a later load. Concurrent calls for the same
+ * marker are ignored, and initialization stops when the marker is removed
+ * while ECharts loads.
  * @param {Object} config - Initialization configuration.
  * @param {Document|Element} config.root - Root element to search from.
  * @param {string} config.selector - JSON marker selector.
@@ -99,7 +153,7 @@ export const initializeChartsFromJsonMarker = async ({
   force = false,
 }) => {
   const marker = getStatsMarker(root, selector);
-  if (!marker || (!force && isDatasetReady(marker, readyKey))) {
+  if (!marker || markersInFlight.has(marker) || (!force && isDatasetReady(marker, readyKey))) {
     return;
   }
 
@@ -110,39 +164,93 @@ export const initializeChartsFromJsonMarker = async ({
     return;
   }
 
-  markDatasetReady(marker, readyKey);
-
+  markersInFlight.add(marker);
   try {
-    await initialize(stats);
+    await loadEChartsScript();
+    if (!marker.isConnected) {
+      return;
+    }
+
+    await initialize(stats, { marker });
+    markDatasetReady(marker, readyKey);
   } catch (error) {
     console.error(initErrorMessage, error);
+  } finally {
+    markersInFlight.delete(marker);
   }
 };
 
 /**
- * Compute a reasonable label interval for category axes.
- * @param {number} count - Total number of labels.
- * @param {number} target - Target labels to show.
- * @returns {number} ECharts interval value.
+ * Returns the shared resize observer, creating it on first use.
+ * @returns {ResizeObserver|null} Observer, or null when unsupported.
  */
-export const getCategoryLabelInterval = (count, target = 12) => {
-  if (!count) {
-    return 0;
+const getChartResizeObserver = () => {
+  if (!chartResizeObserver && typeof ResizeObserver !== "undefined") {
+    chartResizeObserver = new ResizeObserver((entries) => {
+      entries.forEach((entry) => chartRegistry.get(entry.target)?.scheduleResize());
+    });
   }
 
-  const step = Math.ceil(count / target);
-  return Math.max(step - 1, 0);
+  return chartResizeObserver;
 };
 
 /**
- * Compute a reasonable split count for time axes.
- * @param {number} count - Total number of points.
- * @returns {number} ECharts splitNumber value.
+ * Stops tracking chart containers removed from the document without an HTMX
+ * cleanup, so the registry does not keep detached charts alive.
+ * @returns {void}
  */
-export const getTimeSplitNumber = (count) => {
-  if (!count) {
-    return 4;
+const pruneDetachedCharts = () => {
+  Array.from(chartRegistry.keys())
+    .filter((element) => !element.isConnected)
+    .forEach((element) => unregisterChart(element));
+};
+
+/**
+ * Registers a rendered chart so it follows its container size, replacing any
+ * chart previously registered for the same container.
+ * @param {Element} element - Chart container.
+ * @param {echarts.ECharts} chart - Chart instance.
+ * @returns {void}
+ */
+const registerChart = (element, chart) => {
+  pruneDetachedCharts();
+  unregisterChart(element, { keepChart: chart });
+
+  let timeoutId = null;
+  chartRegistry.set(element, {
+    cancelResize: () => clearTimeout(timeoutId),
+    chart,
+    scheduleResize: () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => chart.resize(), CHART_RESIZE_DELAY);
+    },
+  });
+  getChartResizeObserver()?.observe(element);
+};
+
+/**
+ * Stops tracking a chart container, cancelling pending resizes and disposing
+ * its chart.
+ * @param {Element|null} element - Chart container.
+ * @param {Object} options - Unregister options.
+ * @param {echarts.ECharts} options.keepChart - Chart instance that must stay alive.
+ * @returns {void}
+ */
+const unregisterChart = (element, { keepChart = null } = {}) => {
+  const entry = element ? chartRegistry.get(element) : null;
+  if (!entry) {
+    return;
   }
 
-  return Math.min(6, Math.max(3, Math.round(count / 6)));
+  entry.cancelResize();
+  chartRegistry.delete(element);
+  chartResizeObserver?.unobserve(element);
+  if (entry.chart !== keepChart && !entry.chart.isDisposed?.()) {
+    entry.chart.dispose?.();
+  }
 };
+
+// Dispose charts inside content HTMX removes or replaces.
+document.addEventListener("htmx:beforeCleanupElement", (event) => {
+  disposeChartsWithin(event.target);
+});

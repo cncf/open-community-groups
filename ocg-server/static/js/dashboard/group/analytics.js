@@ -9,11 +9,7 @@ import {
 import { initializePageViewCharts } from "/static/js/dashboard/analytics-page-views.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
-import {
-  addRenderedChart,
-  initializeChartsFromJsonMarker,
-  registerChartResizeHandler,
-} from "/static/js/common/charts/stats.js";
+import { addRenderedChart, initializeChartsFromJsonMarker } from "/static/js/common/charts/stats.js";
 
 const GROUP_ANALYTICS_DATA_SELECTOR = "[data-group-analytics]";
 const GROUP_ANALYTICS_READY_KEY = "groupAnalyticsReady";
@@ -210,17 +206,11 @@ export const initAnalyticsCharts = async (stats) => {
     await loadEChartsScript();
     const palette = getThemePalette();
 
-    const charts = [
-      ...initPageViewsCharts(stats.page_views, palette),
-      ...initMembersCharts(stats.members, palette),
-      ...initEventsCharts(stats.events, palette),
-      ...initCohostedEventsCharts(stats.cohosted_events, palette),
-      ...initAttendeesCharts(stats.attendees, palette),
-    ];
-
-    const hydratedCharts = charts.filter(Boolean);
-
-    registerChartResizeHandler(hydratedCharts);
+    initPageViewsCharts(stats.page_views, palette);
+    initMembersCharts(stats.members, palette);
+    initEventsCharts(stats.events, palette);
+    initCohostedEventsCharts(stats.cohosted_events, palette);
+    initAttendeesCharts(stats.attendees, palette);
   });
 };
 

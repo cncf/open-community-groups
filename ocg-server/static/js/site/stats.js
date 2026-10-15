@@ -12,7 +12,6 @@ import {
   getCategoryLabelInterval,
   getTimeSplitNumber,
   initializeChartsFromJsonMarker,
-  registerChartResizeHandler,
   renderChart,
 } from "/static/js/common/charts/stats.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
@@ -120,7 +119,6 @@ export const initSiteStatsCharts = async (stats) => {
   await loadEChartsScript();
   const palette = getThemePalette();
 
-  const charts = [];
   const sections = [
     { key: "groups", label: "Groups" },
     { key: "members", label: "Members" },
@@ -129,11 +127,8 @@ export const initSiteStatsCharts = async (stats) => {
   ];
 
   for (const section of sections) {
-    const sectionCharts = await initSectionCharts(section.key, section.label, stats, palette);
-    charts.push(...sectionCharts);
+    await initSectionCharts(section.key, section.label, stats, palette);
   }
-
-  registerChartResizeHandler(charts);
 };
 
 /**

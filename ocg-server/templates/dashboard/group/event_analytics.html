@@ -1,0 +1,475 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/stats.html" as stats_macro -%}
+{% let has_ended = self.has_ended() -%}
+
+{# Page title -#}
+{{ dashboard::page_title(title = "Analytics", docs_href = "/docs#/guides/event-operations?id=analytics",
+  description = "Traffic, registrations and attendance for this event. Analytics are cached for up to an hour and may not display up to date information.") }}
+{# End page title -#}
+
+{# Summary stat cards -#}
+<div class="grid grid-cols-1 gap-4 mt-8 md:grid-cols-2
+            {% if has_ended -%}
+              lg:grid-cols-3 2xl:grid-cols-5 {%- else -%} 2xl:grid-cols-4 {%- endif %}">
+  {{ stats_macro::stat_card(title = "Page views", value = stats.traffic.views_total|num_fmt, description = "Page loads, not unique visitors") -}}
+  {{ stats_macro::stat_card(title = "Registrations", value = stats.enrollment.registrations|num_fmt, description = "Confirmed attendees") -}}
+  {{ stats_macro::stat_card(title = "Fill rate", value = self.fill_rate_label(), description = "Registrations of the event capacity") -}}
+  {{ stats_macro::stat_card(title = "Conversion", value = self.conversion_rate_label(), description = "Approximate registrations per page view") -}}
+  {% if has_ended -%}
+    {{ stats_macro::stat_card(title = "Check-in rate", value = self.check_in_rate_label(), description = "Registrations checked in") -}}
+  {% endif -%}
+</div>
+{# End summary stat cards -#}
+
+<div class="space-y-16 mt-16">
+  {# Traffic -#}
+  <section data-event-analytics-traffic>
+    {{ dashboard::form_title(title = "Traffic", description = "Page views of the event page and the UTM links that brought visitors to it.") -}}
+    <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {{ stats_macro::stat_card(title = "Total page views", value = stats.traffic.views_total|num_fmt, description = "Page loads across all days") -}}
+      {{ stats_macro::stat_card(title = "Attributed views", value = stats.utm.tagged_views|num_fmt, description = self.attributed_views_description()) -}}
+      {{ stats_macro::stat_card(title = "Unattributed views", value = self.unattributed_views_label(), description = self.unattributed_views_description()) -}}
+    </div>
+
+    {# Page views per day -#}
+    <div class="mt-8">
+      <div class="text-sm font-semibold uppercase text-stone-500">Page views per day</div>
+      {% if let Some(range) = stats.range -%}
+        <p class="form-legend">
+          UTC days from {{ range.start_day }}, the publication day, to {{ range.end_day }}. The first and last days cover the full UTC day.
+        </p>
+        {% if !stats.traffic.attribution_consistent -%}
+          {{ dashboard::permission_warning(message = "Traffic source attribution is unavailable: the recorded UTM views exceed the total page views. Daily views are shown as raw totals.", extra_classes = "mt-4") -}}
+        {% endif -%}
+        {{ stats_macro::analytics_chart(chart_id = "event-views-daily-chart", data = stats.traffic.views_by_source_per_day, wrapper_class = "mt-3", has_data = stats.traffic.has_views_activity(), summary = self.views_summary()) -}}
+        {% if stats.traffic.views_before_start > 0 || stats.traffic.views_after_end > 0 -%}
+          <ul class="mt-4 space-y-1 text-sm text-stone-600">
+            {% if stats.traffic.views_before_start > 0 -%}
+              <li>
+                {{ stats.traffic.views_before_start|num_fmt }} views recorded before the publication day (UTC) are not shown, for example from an earlier publication.
+              </li>
+            {% endif -%}
+            {% if stats.traffic.views_after_end > 0 -%}
+              <li>{{ stats.traffic.views_after_end|num_fmt }} views recorded after the event's last day (UTC) are not shown.</li>
+            {% endif -%}
+          </ul>
+        {% endif -%}
+      {% else -%}
+        <p class="mt-2 text-sm text-stone-600"
+           data-event-analytics-range-unavailable>{{ self.range_unavailable_message() }}</p>
+      {% endif -%}
+    </div>
+    {# End page views per day -#}
+
+    {# Traffic sources -#}
+    <div class="mt-8">
+      <div class="text-sm font-semibold uppercase text-stone-500">Traffic sources</div>
+      {% if stats.utm.tagged_views == 0 -%}
+        <p class="mt-2 text-sm text-stone-600">
+          No page views with UTM attribution yet. Add the accepted
+          <a id="analytics-utm-settings-link"
+             href="/dashboard/group?tab=settings"
+             hx-get="/dashboard/group?tab=settings"
+             hx-trigger="click, confirmed"
+             hx-target="body"
+             hx-push-url="true"
+             hx-indicator="#dashboard-spinner"
+             data-pending-changes-guard
+             class="underline hover:text-stone-900">UTM values</a>
+          in the group settings and use them in the links you share.
+          <a href="/docs#/guides/group-dashboard?id=utm-tracking"
+             target="_blank"
+             rel="noopener noreferrer"
+             class="underline hover:text-stone-900">Learn more about UTM tracking</a>.
+        </p>
+      {% else -%}
+        <p class="form-legend">
+          Only allowlisted UTM values are recorded, across all days. Views without a source, medium or campaign are shown as Not specified. Shares are computed against all page views.
+        </p>
+        <div class="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-2">
+          {% if stats.traffic.attribution_consistent -%}
+            <div>
+              <div class="hidden min-h-8 xl:block" aria-hidden="true"></div>
+              {{ stats_macro::analytics_chart(chart_id = "event-utm-share-chart", data = stats.utm.combinations, wrapper_class = "mt-3", summary = self.utm_summary()) -}}
+            </div>
+          {% else -%}
+            {{ dashboard::permission_warning(message = "Shares of page views are unavailable: the recorded UTM views exceed the total page views. The counts below are raw totals.", extra_classes = "") -}}
+          {% endif -%}
+          <div>
+            <div class="flex min-h-8 items-center justify-end">
+              <div role="group"
+                   aria-label="UTM parameter"
+                   class="inline-flex"
+                   data-utm-dimension-switch>
+                <button type="button"
+                        class="relative inline-flex w-[90px] items-center justify-center border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 xl:w-[115px] rounded-s-md"
+                        aria-pressed="true"
+                        data-utm-dimension="source">Source</button>
+                <button type="button"
+                        class="relative inline-flex w-[90px] items-center justify-center border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 xl:w-[115px] -ms-px"
+                        aria-pressed="false"
+                        data-utm-dimension="medium">Medium</button>
+                <button type="button"
+                        class="relative inline-flex w-[90px] items-center justify-center border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 xl:w-[115px] -ms-px rounded-e-md"
+                        aria-pressed="false"
+                        data-utm-dimension="campaign">Campaign</button>
+              </div>
+            </div>
+            {{ stats_macro::analytics_chart(chart_id = "event-utm-values-chart", data = stats.utm.combinations, wrapper_class = "mt-3", summary = self.utm_summary()) -}}
+          </div>
+        </div>
+
+        {# UTM combinations table -#}
+        <div class="mt-6 overflow-x-auto">
+          <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500"
+                 data-utm-combinations>
+            <caption class="caption-bottom pt-3 text-left text-xs text-stone-500">
+              Top 10 combinations by views; sorting applies to these rows.
+            </caption>
+            <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+              <tr>
+                <th scope="col" class="group px-3 py-3 xl:px-5" aria-sort="none">
+                  <button type="button"
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="source">
+                    Source
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" class="group px-3 py-3 xl:px-5" aria-sort="none">
+                  <button type="button"
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="medium">
+                    Medium
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" class="group px-3 py-3 xl:px-5" aria-sort="none">
+                  <button type="button"
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="campaign">
+                    Campaign
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col"
+                    class="group px-3 py-3 text-right xl:px-5"
+                    aria-sort="descending">
+                  <button type="button"
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="views">
+                    Views
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" class="px-3 py-3 text-right xl:px-5">Share</th>
+                <th scope="col"
+                    class="group hidden px-3 py-3 2xl:table-cell xl:px-5"
+                    aria-sort="none">
+                  <button type="button"
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="first-day">
+                    First day
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col"
+                    class="group hidden px-3 py-3 2xl:table-cell xl:px-5"
+                    aria-sort="none">
+                  <button type="button"
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="last-day">
+                    Last day
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for combination in stats.utm.combinations -%}
+                <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200"
+                    data-utm-row
+                    data-source="{{ combination.utm_source.as_deref().unwrap_or("") }}"
+                    data-medium="{{ combination.utm_medium.as_deref().unwrap_or("") }}"
+                    data-campaign="{{ combination.utm_campaign.as_deref().unwrap_or("") }}"
+                    data-views="{{ combination.views }}"
+                    data-first-day="{{ combination.first_day }}"
+                    data-last-day="{{ combination.last_day }}">
+                  <td class="px-3 py-3 text-stone-900 xl:px-5">{{ combination.utm_source.as_deref().unwrap_or("Not specified") }}</td>
+                  <td class="px-3 py-3 xl:px-5">{{ combination.utm_medium.as_deref().unwrap_or("Not specified") }}</td>
+                  <td class="px-3 py-3 xl:px-5">{{ combination.utm_campaign.as_deref().unwrap_or("Not specified") }}</td>
+                  <td class="px-3 py-3 text-right xl:px-5">{{ combination.views|num_fmt }}</td>
+                  <td class="px-3 py-3 text-right xl:px-5">{{ self.share_label(combination.views) }}</td>
+                  <td class="hidden px-3 py-3 2xl:table-cell xl:px-5">{{ combination.first_day }}</td>
+                  <td class="hidden px-3 py-3 2xl:table-cell xl:px-5">{{ combination.last_day }}</td>
+                </tr>
+              {% endfor -%}
+            </tbody>
+            {% let combinations_remainder_count = stats.utm.combinations_remainder_count() -%}
+            {% if combinations_remainder_count > 0 -%}
+              <tfoot>
+                <tr class="bg-white">
+                  <td colspan="7" class="px-3 py-3 text-stone-600 xl:px-5">
+                    {{ combinations_remainder_count|num_fmt }} more combinations · {{ stats.utm.combinations_remainder_views|num_fmt }} views
+                  </td>
+                </tr>
+              </tfoot>
+            {% endif -%}
+          </table>
+        </div>
+        {# End UTM combinations table -#}
+      {% endif -%}
+    </div>
+    {# End traffic sources -#}
+  </section>
+  {# End traffic -#}
+
+  {# Registrations -#}
+  <section data-event-analytics-registrations>
+    {{ dashboard::form_title(title = "Registrations", description = "How registrations grew, how attendees got in and the current enrollment state.") -}}
+
+    {# Registrations over time -#}
+    {% if stats.range.is_some() -%}
+      <div class="mt-6 grid grid-cols-1 gap-6">
+        <div>
+          <div class="text-sm font-semibold uppercase text-stone-500">Registrations per day</div>
+          <p class="form-legend">Registrations are dated by when they were created, which is approximate.</p>
+          {{ stats_macro::analytics_chart(chart_id = "event-registrations-daily-chart", data = stats.traffic.registrations_by_ticket_type_per_day, wrapper_class = "mt-3", has_data = stats.traffic.has_registrations_activity(), summary = self.registrations_summary()) -}}
+        </div>
+        <div>
+          <div class="text-sm font-semibold uppercase text-stone-500">Fill curve</div>
+          {% if stats.traffic.registrations_baseline > 0 -%}
+            <p class="form-legend">
+              The curve starts at {{ stats.traffic.registrations_baseline|num_fmt }} registrations created before the publication day.
+            </p>
+          {% endif -%}
+          {{ stats_macro::analytics_chart(chart_id = "event-fill-curve-chart", data = stats.traffic.registrations_running_total, wrapper_class = "mt-3", has_data = stats.traffic.registrations_baseline > 0 || stats.traffic.has_registrations_activity(), summary = self.fill_curve_summary()) -}}
+        </div>
+      </div>
+    {% else -%}
+      <p class="mt-4 text-sm text-stone-600"
+         data-event-analytics-range-unavailable>{{ self.range_unavailable_message() }}</p>
+    {% endif -%}
+    {# End registrations over time -#}
+
+    {# Funnel and registration paths -#}
+    {% let registration_paths = self.registration_paths() -%}
+    <div class="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div>
+        <div class="text-sm font-semibold uppercase text-stone-500">Funnel</div>
+        {{ stats_macro::analytics_chart(chart_id = "event-funnel-chart", data = self.funnel_stages(), wrapper_class = "mt-3", has_data = stats.traffic.views_total > 0 || stats.enrollment.registrations > 0, summary = self.funnel_summary()) -}}
+      </div>
+      <div>
+        <div class="text-sm font-semibold uppercase text-stone-500">How attendees registered</div>
+        {{ stats_macro::analytics_chart(chart_id = "event-registration-paths-chart", data = registration_paths, wrapper_class = "mt-3", summary = self.registration_paths_summary()) -}}
+      </div>
+    </div>
+    {# End funnel and registration paths -#}
+
+    {# Enrollment state -#}
+    <div class="mt-8">
+      <div class="text-sm font-semibold uppercase text-stone-500">Enrollment state</div>
+      {% let invitation_requests_total = self.invitation_requests_total() -%}
+      <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {{ stats_macro::stat_card(title = "Cancellations", value = stats.enrollment.cancellations|num_fmt, description = "Attendances canceled") -}}
+        {{ stats_macro::stat_card(title = "Waiting list", value = stats.enrollment.waitlist|num_fmt, description = "People waiting for a seat") -}}
+        {{ stats_macro::stat_card(title = "Invitation requests", value = invitation_requests_total|num_fmt, description = self.invitation_requests_summary()) -}}
+      </div>
+    </div>
+    {# End enrollment state -#}
+
+    {# Admission offers -#}
+    {% let admission_offer_sources = self.admission_offer_sources() -%}
+    {% if !admission_offer_sources.is_empty() -%}
+      <div class="mt-8" data-event-analytics-admission-offers>
+        <div class="text-sm font-semibold uppercase text-stone-500">Admission offers</div>
+        <p class="form-legend">
+          Offers sent from approved requests, the waiting list and organizer invitations, by outcome. Pending offers whose deadline has passed count as expired.
+        </p>
+        <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {% for source in admission_offer_sources -%}
+            {{ stats_macro::stat_card(title = source.label, value = source.total|num_fmt, description = source.outcomes) -}}
+          {% endfor -%}
+        </div>
+      </div>
+    {% endif -%}
+    {# End admission offers -#}
+  </section>
+  {# End registrations -#}
+
+  {% if let Some(tickets) = stats.tickets -%}
+    {# Tickets -#}
+    <section data-event-analytics-tickets>
+      {{ dashboard::form_title(title = "Tickets", description = "Seat usage per ticket type. Reserved seats are checkout holds and admission offers in progress.") -}}
+      <ul class="mt-6 space-y-5">
+        {% for ticket_type in tickets.ticket_types -%}
+          <li>
+            <div class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+              <span class="font-medium text-stone-900">
+                {{ ticket_type.title }}
+                {% if !ticket_type.active -%}
+                  <span class="ms-1 text-xs font-normal text-stone-500">(inactive)</span>
+                {% endif -%}
+              </span>
+              {% if ticket_type.seats_total > 0 -%}
+                <span class="text-stone-600">{{ self.ticket_type_summary(ticket_type) }}</span>
+              {% else -%}
+                <span class="text-stone-600">No seats configured</span>
+              {% endif -%}
+            </div>
+            {% if ticket_type.seats_total > 0 -%}
+              <div class="mt-2 flex h-2.5 w-full overflow-hidden rounded-full bg-stone-200"
+                   role="progressbar"
+                   aria-label="{{ ticket_type.title }} seats"
+                   aria-valuemin="0"
+                   aria-valuemax="{{ ticket_type.seats_total }}"
+                   aria-valuenow="{{ self.ticket_type_progress_value(ticket_type) }}"
+                   aria-valuetext="{{ self.ticket_type_summary(ticket_type) }}">
+                <div class="h-full bg-primary-500"
+                     style="width: {{ self.ticket_type_sold_width(ticket_type) }}%"></div>
+                <div class="h-full bg-primary-200"
+                     style="width: {{ self.ticket_type_reserved_width(ticket_type) }}%"></div>
+              </div>
+            {% endif -%}
+          </li>
+        {% endfor -%}
+      </ul>
+      {% if !tickets.discount_codes.is_empty() -%}
+        <div class="mt-8 overflow-x-auto">
+          <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+            <caption class="caption-bottom pt-3 text-left text-xs text-stone-500">
+              Redemptions count purchases that still hold a seat.
+            </caption>
+            <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+              <tr>
+                <th scope="col" class="px-3 py-3 xl:px-5">Code</th>
+                <th scope="col" class="px-3 py-3 xl:px-5">Title</th>
+                <th scope="col" class="px-3 py-3 text-right xl:px-5">Redemptions</th>
+                <th scope="col" class="px-3 py-3 text-right xl:px-5">Remaining</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for discount_code in tickets.discount_codes -%}
+                <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+                  <td class="px-3 py-3 font-mono text-stone-900 xl:px-5">
+                    {{ discount_code.code }}
+                    {% if !discount_code.active -%}
+                      <span class="ms-1 font-sans text-xs text-stone-500">(inactive)</span>
+                    {% endif -%}
+                  </td>
+                  <td class="px-3 py-3 xl:px-5">{{ discount_code.title }}</td>
+                  <td class="px-3 py-3 text-right xl:px-5">{{ discount_code.redemptions|num_fmt }}</td>
+                  <td class="px-3 py-3 text-right xl:px-5">
+                    {% if let Some(available) = discount_code.available -%}
+                      {{ available|num_fmt }}
+                    {% else -%}
+                      Unlimited
+                    {% endif -%}
+                  </td>
+                </tr>
+              {% endfor -%}
+            </tbody>
+          </table>
+        </div>
+      {% endif -%}
+    </section>
+    {# End tickets -#}
+  {% endif -%}
+
+  {# Audience -#}
+  <section>
+    {{ dashboard::form_title(title = "Audience", description = "Who registered for this event, based on the current registrations.") -}}
+    <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {{ stats_macro::stat_card(title = "New attendees", value = self.optional_count_label(stats.audience.new_attendees), description = "No earlier attendance at this group's events") -}}
+      {{ stats_macro::stat_card(title = "Returning attendees", value = self.optional_count_label(stats.audience.returning_attendees), description = "Attended an earlier event of this group") -}}
+      {{ stats_macro::stat_card(title = "Joined during registration", value = self.optional_count_label(stats.audience.members_joined_in_window), description = self.members_joined_description()) -}}
+    </div>
+    <p class="mt-3 text-xs text-stone-500">
+      {% if let Some(window_label) = self.membership_window_label() -%}
+        {{ window_label }}
+      {% else -%}
+        No registration window to report yet.
+      {% endif -%}
+    </p>
+    {% if !stats.audience.questions.is_empty() -%}
+      {# Registration questions -#}
+      <div class="mt-8 space-y-8">
+        {% for question in stats.audience.questions -%}
+          {% let options_id = "event-question-{}-options"|format(loop.index0) -%}
+          {% let hidden_options_count = self.question_hidden_options_count(question) -%}
+          <div data-event-analytics-question>
+            <div class="break-words text-sm font-semibold text-stone-700">{{ question.prompt }}</div>
+            <div class="mb-3 mt-1 text-xs text-stone-500">
+              {{ question.respondents|num_fmt }} respondents · {{ question.selections|num_fmt }} selections
+            </div>
+            <div class="rounded-lg border border-stone-200 bg-white p-5">
+              {% if question.respondents > 0 -%}
+                <ul id="{{ options_id }}" class="space-y-4">
+                  {% for option in self.question_options(question) -%}
+                    <li {% if option.hidden %}hidden data-question-option-hidden{% endif %}>
+                      <div class="flex items-baseline justify-between gap-3 text-sm">
+                        <span class="min-w-0 break-words text-stone-900">{{ option.label }}</span>
+                        <span class="shrink-0 text-stone-600">{{ option.count|num_fmt }} · {{ option.share_label }}</span>
+                      </div>
+                      <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-stone-200"
+                           aria-hidden="true">
+                        <div class="h-full bg-primary-500" style="width: {{ option.width }}%"></div>
+                      </div>
+                    </li>
+                  {% endfor -%}
+                </ul>
+                {% if hidden_options_count > 0 -%}
+                  <button type="button"
+                          class="group mt-3 inline-flex cursor-pointer items-center gap-1 rounded-sm text-xs/6 font-medium text-stone-500 transition-colors hover:text-stone-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                          aria-controls="{{ options_id }}"
+                          aria-expanded="false"
+                          data-question-options-toggle
+                          data-label-collapsed="Show {{ hidden_options_count }} more options"
+                          data-label-expanded="Show fewer options">
+                    <span data-question-options-label>Show {{ hidden_options_count }} more options</span>
+                    <span class="svg-icon block size-3 icon-caret-down-filled bg-current transition-transform group-aria-expanded:rotate-180"
+                          aria-hidden="true"></span>
+                  </button>
+                {% endif -%}
+                {% if self.is_multi_select(question) -%}
+                  <p class="mt-4 text-xs text-stone-500">
+                    Several options can be selected, so percentages of respondents can add up to more than 100%.
+                  </p>
+                {% endif -%}
+              {% else -%}
+                <p class="text-sm text-stone-500">No answers yet.</p>
+              {% endif -%}
+            </div>
+          </div>
+        {% endfor -%}
+      </div>
+      {# End registration questions -#}
+    {% endif -%}
+  </section>
+  {# End audience -#}
+
+  {% if has_ended -%}
+    {# Check-ins -#}
+    <section data-event-analytics-check-ins>
+      {{ dashboard::form_title(title = "Check-ins", description = "Attendee arrivals over time, shown in the event timezone.") -}}
+      {{ stats_macro::analytics_chart(chart_id = "event-check-ins-chart", data = stats.check_ins.bins, wrapper_class = "mt-6", has_data = stats.check_ins.has_activity(), summary = self.check_ins_summary()) -}}
+      {% if stats.check_ins.outside_range > 0 -%}
+        <p class="mt-4 text-sm text-stone-600">
+          {{ stats.check_ins.outside_range|num_fmt }} check-ins recorded more than six hours before the start or after the end are not shown.
+        </p>
+      {% endif -%}
+    </section>
+    {# End check-ins -#}
+  {% endif -%}
+</div>
+
+{# djlint:off #}
+<script type="application/json" data-event-analytics data-event-id="{{ event_id }}">{{ stats|json|safe }}</script>
+{# djlint:on #}
+<script type="module" src="/static/js/dashboard/group/event-analytics.js"></script>
