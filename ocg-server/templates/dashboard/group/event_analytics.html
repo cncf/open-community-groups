@@ -39,9 +39,7 @@
           UTC days from {{ range.start_day }}, the publication day, to {{ range.end_day }}. The first and last days cover the full UTC day.
         </p>
         {% if !stats.traffic.attribution_consistent -%}
-          <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Traffic source attribution is unavailable: the recorded UTM views exceed the total page views. Daily views are shown as raw totals.
-          </div>
+          {{ dashboard::permission_warning(message = "Traffic source attribution is unavailable: the recorded UTM views exceed the total page views. Daily views are shown as raw totals.", extra_classes = "mt-4") -}}
         {% endif -%}
         {{ stats_macro::analytics_chart(chart_id = "event-views-daily-chart", data = stats.traffic.views_by_source_per_day, wrapper_class = "mt-3", has_data = stats.traffic.has_views_activity(), summary = self.views_summary()) -}}
         {% if stats.traffic.views_before_start > 0 || stats.traffic.views_after_end > 0 -%}
@@ -69,7 +67,14 @@
       {% if stats.utm.tagged_views == 0 -%}
         <p class="mt-2 text-sm text-stone-600">
           No page views with UTM attribution yet. Add the accepted
-          <a href="/dashboard/group?tab=settings"
+          <a id="analytics-utm-settings-link"
+             href="/dashboard/group?tab=settings"
+             hx-get="/dashboard/group?tab=settings"
+             hx-trigger="click, confirmed"
+             hx-target="body"
+             hx-push-url="true"
+             hx-indicator="#dashboard-spinner"
+             data-pending-changes-guard
              class="underline hover:text-stone-900">UTM values</a>
           in the group settings and use them in the links you share.
           <a href="/docs#/guides/group-dashboard?id=utm-tracking"
@@ -84,17 +89,14 @@
         <div class="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-2">
           {% if stats.traffic.attribution_consistent -%}
             <div>
-              <div class="flex min-h-8 items-center text-sm font-medium text-stone-600">Share of page views</div>
+              <div class="hidden min-h-8 xl:block" aria-hidden="true"></div>
               {{ stats_macro::analytics_chart(chart_id = "event-utm-share-chart", data = stats.utm.combinations, wrapper_class = "mt-3", summary = self.utm_summary()) -}}
             </div>
           {% else -%}
-            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Shares of page views are unavailable: the recorded UTM views exceed the total page views. The counts below are raw totals.
-            </div>
+            {{ dashboard::permission_warning(message = "Shares of page views are unavailable: the recorded UTM views exceed the total page views. The counts below are raw totals.", extra_classes = "") -}}
           {% endif -%}
           <div>
-            <div class="flex min-h-8 flex-wrap items-center justify-between gap-3">
-              <div class="text-sm font-medium text-stone-600">Views by value</div>
+            <div class="flex min-h-8 items-center justify-end">
               <div role="group"
                    aria-label="UTM parameter"
                    class="inline-flex"
@@ -126,40 +128,66 @@
             </caption>
             <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
               <tr>
-                <th scope="col" class="px-3 py-3 xl:px-5" aria-sort="none">
+                <th scope="col" class="group px-3 py-3 xl:px-5" aria-sort="none">
                   <button type="button"
-                          class="uppercase cursor-pointer"
-                          data-utm-sort="source">Source</button>
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="source">
+                    Source
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
                 </th>
-                <th scope="col" class="px-3 py-3 xl:px-5" aria-sort="none">
+                <th scope="col" class="group px-3 py-3 xl:px-5" aria-sort="none">
                   <button type="button"
-                          class="uppercase cursor-pointer"
-                          data-utm-sort="medium">Medium</button>
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="medium">
+                    Medium
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
                 </th>
-                <th scope="col" class="px-3 py-3 xl:px-5" aria-sort="none">
+                <th scope="col" class="group px-3 py-3 xl:px-5" aria-sort="none">
                   <button type="button"
-                          class="uppercase cursor-pointer"
-                          data-utm-sort="campaign">Campaign</button>
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="campaign">
+                    Campaign
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
                 </th>
                 <th scope="col"
-                    class="px-3 py-3 text-right xl:px-5"
+                    class="group px-3 py-3 text-right xl:px-5"
                     aria-sort="descending">
-                  <button type="button" class="uppercase cursor-pointer" data-utm-sort="views">Views</button>
+                  <button type="button"
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="views">
+                    Views
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
                 </th>
                 <th scope="col" class="px-3 py-3 text-right xl:px-5">Share</th>
                 <th scope="col"
-                    class="hidden px-3 py-3 xl:table-cell xl:px-5"
+                    class="group hidden px-3 py-3 2xl:table-cell xl:px-5"
                     aria-sort="none">
                   <button type="button"
-                          class="uppercase cursor-pointer"
-                          data-utm-sort="first-day">First day</button>
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="first-day">
+                    First day
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
                 </th>
                 <th scope="col"
-                    class="hidden px-3 py-3 xl:table-cell xl:px-5"
+                    class="group hidden px-3 py-3 2xl:table-cell xl:px-5"
                     aria-sort="none">
                   <button type="button"
-                          class="uppercase cursor-pointer"
-                          data-utm-sort="last-day">Last day</button>
+                          class="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          data-utm-sort="last-day">
+                    Last day
+                    <span class="svg-icon block size-3 shrink-0 bg-current icon-caret-down-filled opacity-0 transition-transform group-aria-[sort=ascending]:rotate-180 group-aria-[sort=ascending]:opacity-100 group-aria-[sort=descending]:opacity-100"
+                          aria-hidden="true"></span>
+                  </button>
                 </th>
               </tr>
             </thead>
@@ -178,8 +206,8 @@
                   <td class="px-3 py-3 xl:px-5">{{ combination.utm_campaign.as_deref().unwrap_or("Not specified") }}</td>
                   <td class="px-3 py-3 text-right xl:px-5">{{ combination.views|num_fmt }}</td>
                   <td class="px-3 py-3 text-right xl:px-5">{{ self.share_label(combination.views) }}</td>
-                  <td class="hidden px-3 py-3 xl:table-cell xl:px-5">{{ combination.first_day }}</td>
-                  <td class="hidden px-3 py-3 xl:table-cell xl:px-5">{{ combination.last_day }}</td>
+                  <td class="hidden px-3 py-3 2xl:table-cell xl:px-5">{{ combination.first_day }}</td>
+                  <td class="hidden px-3 py-3 2xl:table-cell xl:px-5">{{ combination.last_day }}</td>
                 </tr>
               {% endfor -%}
             </tbody>
@@ -376,8 +404,7 @@
           {% let options_id = "event-question-{}-options"|format(loop.index0) -%}
           {% let hidden_options_count = self.question_hidden_options_count(question) -%}
           <div data-event-analytics-question>
-            <div class="line-clamp-2 text-sm font-semibold text-stone-700"
-                 title="{{ question.prompt }}">{{ question.prompt }}</div>
+            <div class="break-words text-sm font-semibold text-stone-700">{{ question.prompt }}</div>
             <div class="mb-3 mt-1 text-xs text-stone-500">
               {{ question.respondents|num_fmt }} respondents · {{ question.selections|num_fmt }} selections
             </div>
@@ -406,8 +433,8 @@
                           data-label-collapsed="Show {{ hidden_options_count }} more options"
                           data-label-expanded="Show fewer options">
                     <span data-question-options-label>Show {{ hidden_options_count }} more options</span>
-                    <div class="svg-icon size-3 icon-caret-down-filled bg-current transition-transform group-aria-expanded:rotate-180"
-                         aria-hidden="true"></div>
+                    <span class="svg-icon block size-3 icon-caret-down-filled bg-current transition-transform group-aria-expanded:rotate-180"
+                          aria-hidden="true"></span>
                   </button>
                 {% endif -%}
                 {% if self.is_multi_select(question) -%}

@@ -28,7 +28,7 @@ insert into event (
     true,
     now() - interval '3 days',
     now() - interval '3 days' + interval '2 hours',
-    '[{"id": "5a555555-5555-5555-5555-555555555961", "kind": "single-select", "prompt": "Role", "required": false, "options": [{"id": "5b555555-5555-5555-5555-555555555961", "label": "Developer"}, {"id": "5b555555-5555-5555-5555-555555555962", "label": "Operator"}]}]'::jsonb
+    '[{"id": "5a555555-5555-5555-5555-555555555961", "kind": "single-select", "prompt": "Role", "required": false, "options": [{"id": "5b555555-5555-5555-5555-555555555961", "label": "Developer"}, {"id": "5b555555-5555-5555-5555-555555555962", "label": "Operator"}]}, {"id": "5a555555-5555-5555-5555-555555555962", "kind": "multi-select", "prompt": "Interests", "required": false, "options": [{"id": "5b555555-5555-5555-5555-555555555971", "label": "AI"}, {"id": "5b555555-5555-5555-5555-555555555972", "label": "Cloud"}, {"id": "5b555555-5555-5555-5555-555555555973", "label": "Databases"}, {"id": "5b555555-5555-5555-5555-555555555974", "label": "DevOps"}, {"id": "5b555555-5555-5555-5555-555555555975", "label": "Frontend"}, {"id": "5b555555-5555-5555-5555-555555555976", "label": "Mobile"}, {"id": "5b555555-5555-5555-5555-555555555977", "label": "Networking"}, {"id": "5b555555-5555-5555-5555-555555555978", "label": "Observability"}, {"id": "5b555555-5555-5555-5555-555555555979", "label": "Platform engineering"}, {"id": "5b555555-5555-5555-5555-555555555980", "label": "Security"}, {"id": "5b555555-5555-5555-5555-555555555981", "label": "Storage"}, {"id": "5b555555-5555-5555-5555-555555555982", "label": "WebAssembly"}]}]'::jsonb
 ), (
     '55555555-5555-5555-5555-555555555962',
     'Analytics Future Free Event',
@@ -98,7 +98,7 @@ insert into event_ticket_price_window (
     '56555555-5555-5555-5555-555555555962'
 );
 
--- Checked-in attendees with select answers
+-- Checked-in attendees with single and multi-select answers
 insert into event_attendee (
     event_id, user_id, checked_in, checked_in_at, created_at, registration_answers
 ) values (
@@ -107,14 +107,14 @@ insert into event_attendee (
     true,
     now() - interval '3 days' - interval '10 minutes',
     now() - interval '10 days',
-    '{"answers": [{"question_id": "5a555555-5555-5555-5555-555555555961", "value": "5b555555-5555-5555-5555-555555555961"}]}'::jsonb
+    '{"answers": [{"question_id": "5a555555-5555-5555-5555-555555555961", "value": "5b555555-5555-5555-5555-555555555961"}, {"question_id": "5a555555-5555-5555-5555-555555555962", "value": ["5b555555-5555-5555-5555-555555555971", "5b555555-5555-5555-5555-555555555972"]}]}'::jsonb
 ), (
     '55555555-5555-5555-5555-555555555961',
     '77777777-7777-7777-7777-777777777962',
     true,
     now() - interval '3 days' + interval '5 minutes',
     now() - interval '6 days',
-    '{"answers": [{"question_id": "5a555555-5555-5555-5555-555555555961", "value": "5b555555-5555-5555-5555-555555555962"}]}'::jsonb
+    '{"answers": [{"question_id": "5a555555-5555-5555-5555-555555555961", "value": "5b555555-5555-5555-5555-555555555962"}, {"question_id": "5a555555-5555-5555-5555-555555555962", "value": ["5b555555-5555-5555-5555-555555555971"]}]}'::jsonb
 );
 
 -- Completed purchases holding the attendee seats

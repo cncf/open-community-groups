@@ -264,10 +264,15 @@ describe("dashboard group event update template", () => {
     expect(analyticsIndex).to.be.greaterThan(template.indexOf("{# End Waitlist Tab -#}"));
     expect(analyticsIndex).to.be.greaterThan(formEndIndex);
     expect(template).to.include(
-      '<div id="analytics-content" data-analytics-url="/dashboard/group/events/{{ event.event_id }}/analytics" data-analytics-state="idle" aria-live="polite">',
+      '<p id="analytics-status" class="sr-only" role="status"></p> <div id="analytics-content" data-analytics-url="/dashboard/group/events/{{ event.event_id }}/analytics" data-analytics-state="idle">',
+    );
+    expect(template).to.include(
+      'dashboard::page_title(title = "Analytics", docs_href = "/docs#/guides/event-operations?id=analytics"',
     );
     expect(template).to.include('<div id="analytics-loading" class="flex items-center justify-center py-12">');
-    expect(template).to.include('<div id="analytics-error" class="hidden');
+    expect(template).to.include(
+      '<div id="analytics-error" class="hidden mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert"',
+    );
     expect(template).to.include("data-analytics-retry>Retry</button>");
   });
 

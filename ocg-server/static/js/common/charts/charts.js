@@ -1042,17 +1042,19 @@ export const createPieChart = (title, name, data, palette, options = {}) => {
     color: pieColors,
     tooltip: Object.assign(getItemTooltipConfig(), { formatter: "{b}: {c} ({d}%)" }),
     legend: {
+      // Bottom legends stay compact on a single line, scrolling when entries overflow
       ...(isBottomLegend
-        ? { orient: "horizontal", left: "center", bottom: 0 }
+        ? { orient: "horizontal", left: "center", bottom: 0, type: "scroll" }
         : { orient: "vertical", left: "55%", top: "30%" }),
       icon: "circle",
-      itemWidth: 10,
-      itemHeight: 10,
-      itemGap: 12,
-      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14 },
+      itemWidth: isBottomLegend ? 8 : 10,
+      itemHeight: isBottomLegend ? 8 : 10,
+      itemGap: isBottomLegend ? 8 : 12,
+      textStyle: { fontFamily: dashboardFontFamily, fontSize: isBottomLegend ? 11 : 14 },
       formatter: (label) => {
-        if (label.length > 25) {
-          return `${label.substring(0, 25)}...`;
+        const maxLength = isBottomLegend ? 14 : 25;
+        if (label.length > maxLength) {
+          return `${label.substring(0, maxLength)}...`;
         }
         return label;
       },
@@ -1098,6 +1100,24 @@ export const getDailyLineSymbolConfig = (dayCount) => {
 };
 
 /**
+ * Create the formatter of tooltip dates and times in a timezone, labelled with
+ * its UTC offset.
+ * @param {string} timeZone - IANA timezone.
+ * @returns {Intl.DateTimeFormat} Date and time formatter.
+ */
+export const createTooltipDateTimeFormatter = (timeZone = "UTC") => {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZone,
+    timeZoneName: "shortOffset",
+    year: "numeric",
+  });
+};
+
+/**
  * Build mark lines placing timed markers on their UTC day.
  * @param {Array<{kind: string, ts: number}>} markers - Markers with Unix seconds timestamps.
  * @param {Object} options - Marker options.
@@ -1110,15 +1130,7 @@ export const getDailyLineSymbolConfig = (dayCount) => {
 export const getDayMarkersConfig = (markers = [], options = {}) => {
   const { color, days = [], labelForKind = (kind) => kind, timeZone = "UTC" } = options;
   const visibleDays = new Set(days);
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    month: "short",
-    timeZone,
-    timeZoneName: "short",
-    year: "numeric",
-  });
+  const formatter = createTooltipDateTimeFormatter(timeZone);
   const detailsByDay = new Map();
 
   (markers || []).forEach(({ kind, ts }) => {

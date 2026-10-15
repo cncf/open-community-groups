@@ -18,10 +18,10 @@ const renderEventPageFixture = () => {
       </ul>
       <div data-content="waitlist"></div>
       <div data-content="analytics" class="hidden">
+        <p id="analytics-status" class="sr-only" role="status"></p>
         <div id="analytics-content"
              data-analytics-url="/dashboard/group/events/event-1/analytics"
-             data-analytics-state="idle"
-             aria-live="polite">
+             data-analytics-state="idle">
           <div id="analytics-loading">Loading analytics...</div>
           <div id="analytics-error" class="hidden" role="alert" tabindex="-1">
             <button type="button" data-analytics-retry>Retry</button>
@@ -93,6 +93,7 @@ describe("dashboard group event analytics tab", () => {
     expect(requests[0].context.swap).to.equal("innerHTML");
     expect(content.dataset.analyticsState).to.equal("loading");
     expect(content.getAttribute("aria-busy")).to.equal("true");
+    expect(pageRoot.querySelector("#analytics-status").textContent).to.equal("Loading analytics.");
   });
 
   it("loads analytics from the compact section select", () => {
@@ -130,9 +131,34 @@ describe("dashboard group event analytics tab", () => {
     pageRoot.querySelector('[data-section="waitlist"]').click();
     analyticsButton.click();
 
-    // Assert the loaded tab is not requested again.
+    // Assert the loaded tab is not requested again and its load was announced.
     expect(content.dataset.analyticsState).to.equal("loaded");
     expect(requests).to.have.length(1);
+    expect(pageRoot.querySelector("#analytics-status").textContent).to.equal("Analytics loaded.");
+  });
+
+  it("loads again a tab restored from history while it was loading", () => {
+    // Render the page and start loading the tab.
+    const pageRoot = renderEventPageFixture();
+    const analyticsButton = pageRoot.querySelector('[data-section="analytics"]');
+    analyticsButton.click();
+    expect(requests).to.have.length(1);
+
+    // Replace the content with a copy, as the HTMX history cache restores it.
+    const content = pageRoot.querySelector("#analytics-content");
+    const restoredContent = content.cloneNode(true);
+    content.replaceWith(restoredContent);
+    expect(restoredContent.dataset.analyticsState).to.equal("loading");
+
+    // Activate the tab again.
+    pageRoot.querySelector('[data-section="waitlist"]').click();
+    analyticsButton.click();
+
+    // Assert the restored tab requests its content and handles the response.
+    expect(requests).to.have.length(2);
+    expect(requests[1].context.target).to.equal(restoredContent);
+    restoredContent.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true }));
+    expect(restoredContent.dataset.analyticsState).to.equal("loaded");
   });
 
   it("shows an error with Retry and loads again after a failure", () => {
@@ -143,8 +169,9 @@ describe("dashboard group event analytics tab", () => {
     pageRoot.querySelector('[data-section="analytics"]').click();
     content.dispatchEvent(new CustomEvent("htmx:responseError", { bubbles: true }));
 
-    // Assert the error is shown, focused and the spinner hidden.
+    // Assert the error is shown, focused and the spinner hidden, leaving the alert to announce it.
     expect(content.dataset.analyticsState).to.equal("error");
+    expect(pageRoot.querySelector("#analytics-status").textContent).to.equal("");
     expect(error.classList.contains("hidden")).to.equal(false);
     expect(pageRoot.querySelector("#analytics-loading").classList.contains("hidden")).to.equal(true);
     expect(document.activeElement).to.equal(error);

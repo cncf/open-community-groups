@@ -4,7 +4,7 @@ import { disposeChartsWithin } from "/static/js/common/charts/stats.js";
 import {
   formatCheckInBinLabels,
   getRegistrationsSeriesLabel,
-  groupOtherViewsSeries,
+  getViewsSeriesLabel,
   initEventAnalyticsCharts,
   initializeEventAnalyticsFromPage,
   toggleQuestionOptions,
@@ -259,14 +259,13 @@ describe("dashboard group event analytics", () => {
     expect(optionsById.size).to.equal(0);
   });
 
-  it("groups other sources and no source views into one other series", () => {
-    // Group the series of other sources and views without a source.
-    const grouped = groupOtherViewsSeries(getEventAnalyticsPayload().traffic.views_by_source_per_day);
+  it("labels sources, other sources, views without a source and unattributed views apart", () => {
+    // Label each views series kind.
+    const labels = getEventAnalyticsPayload().traffic.views_by_source_per_day.map(getViewsSeriesLabel);
 
-    // Assert the other series sums both groups where the first one was.
-    expect(grouped.map((series) => series.kind)).to.deep.equal(["source", "source", "other", "untagged"]);
-    expect(grouped[2].series).to.deep.equal(daySeries([1, 0, 2]));
-    expect(groupOtherViewsSeries([])).to.deep.equal([]);
+    // Assert synthetic series keep their own labels.
+    expect(labels).to.deep.equal(["alpha", "other", "Other sources", "Not specified", "Unattributed"]);
+    expect(getViewsSeriesLabel({ kind: "source", source: null })).to.equal("Not specified");
   });
 
   it("labels and colors stacked views consistently, keeping a literal other source distinct", async () => {
@@ -278,8 +277,9 @@ describe("dashboard group event analytics", () => {
     // Assert the daily views series labels and stacked markers.
     const viewsOption = getOption("event-views-daily-chart");
     const viewsNames = viewsOption.series.map((series) => series.name);
-    expect(viewsNames).to.deep.equal(["alpha", "other", "Other", "Untagged"]);
-    expect(viewsOption.series[2].data).to.deep.equal([1, 0, 2]);
+    expect(viewsNames).to.deep.equal(["alpha", "other", "Other sources", "Not specified", "Unattributed"]);
+    expect(viewsOption.series[2].data).to.deep.equal([1, 0, 0]);
+    expect(viewsOption.series[3].data).to.deep.equal([0, 0, 2]);
     expect(viewsOption.series[0].markLine.data.map((marker) => marker.xAxis)).to.deep.equal([
       "2025-03-01",
       "2025-03-03",
@@ -295,14 +295,19 @@ describe("dashboard group event analytics", () => {
       "alpha",
       "other",
       "beta",
-      "Other",
-      "Untagged",
+      "Not specified",
+      "Unattributed",
     ]);
     expect(shareSlices[3].value).to.equal(2);
+    expect(shareSlices[4].value).to.equal(15);
     expect(shareOption.color[0]).to.equal(viewsColors.alpha);
     expect(shareOption.color[1]).to.equal(viewsColors.other);
-    expect(shareOption.color[3]).to.equal(viewsColors.Other);
-    expect(viewsColors.other).to.not.equal(viewsColors.Other);
+    expect(shareOption.color[3]).to.equal(viewsColors["Not specified"]);
+    expect(shareOption.color[4]).to.equal(viewsColors.Unattributed);
+    expect(viewsColors.other).to.not.equal(viewsColors["Other sources"]);
+    expect(
+      new Set([viewsColors["Other sources"], viewsColors["Not specified"], viewsColors.Unattributed]).size,
+    ).to.equal(3);
 
     // Assert the share chart keeps its legend below the pie with percentage slice labels.
     expect(shareOption.legend.orient).to.equal("horizontal");

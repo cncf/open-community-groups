@@ -2,36 +2,6 @@ import { expect, test } from "../../../fixtures.js";
 import { TEST_EVENT_ANALYTICS, TEST_UNPUBLISHED_EVENT } from "../../../seed.js";
 import { openEventUpdateFormByName } from "./helpers.js";
 
-/**
- * Opens the analytics section of the loaded event editor and waits for its charts.
- * @param {import("@playwright/test").Page} page - Playwright page.
- * @param {string} eventId - Event whose analytics load.
- * @param {(page: import("@playwright/test").Page) => Promise<void>} activate - Section activation.
- * @returns {Promise<import("@playwright/test").Locator>} Analytics content locator.
- */
-const openAnalyticsSection = async (page, eventId, activate) => {
-  const [response] = await Promise.all([
-    page.waitForResponse(
-      (candidate) =>
-        candidate.request().method() === "GET" &&
-        candidate.url().includes(`/dashboard/group/events/${eventId}/analytics`),
-    ),
-    activate(page),
-  ]);
-  expect(response.ok()).toBe(true);
-
-  const content = page.locator("#analytics-content");
-  await expect(content).toHaveAttribute("data-analytics-state", "loaded");
-  await expect(content.locator("[data-event-analytics]")).toHaveAttribute(
-    "data-event-analytics-ready",
-    "true",
-  );
-  return content;
-};
-
-/** Activates the analytics section from the desktop tab list. */
-const clickAnalyticsTab = (page) => page.locator('button[data-section="analytics"]').click();
-
 test.describe("group dashboard event analytics tab", () => {
   test("organizer views traffic, registrations, tickets and check-ins of a past paid event", async ({
     organizerGroupPage,
@@ -91,6 +61,66 @@ test.describe("group dashboard event analytics tab", () => {
       "newsletter",
       "Not specified",
     ]);
+
+    // Sort the combinations by source again to reverse them, keeping Not specified last.
+    await table.locator('[data-utm-sort="source"]').click();
+    await expect(sourceHeader).toHaveAttribute("aria-sort", "descending");
+    await expect(table.locator("th", { has: organizerGroupPage.locator('[data-utm-sort="views"]') })).toHaveAttribute(
+      "aria-sort",
+      "none",
+    );
+    await expect(table.locator("tbody tr td:first-child")).toHaveText([
+      "newsletter",
+      "mastodon",
+      "Not specified",
+    ]);
+  });
+
+  test("organizer expands the options of a long registration question", async ({ organizerGroupPage }) => {
+    // Open the past paid event analytics.
+    const { id, name } = TEST_EVENT_ANALYTICS.pastPaid;
+    await openEventUpdateFormByName(organizerGroupPage, name, id, { eventsTab: "past" });
+    const content = await openAnalyticsSection(organizerGroupPage, id, clickAnalyticsTab);
+
+    // Verify only the first options of the long question are visible.
+    const question = content.locator("[data-event-analytics-question]", { hasText: "Interests" });
+    const options = question.getByRole("listitem");
+    await expect(options).toHaveCount(12);
+    await expect(question.locator("li:visible")).toHaveCount(10);
+
+    // Expand the hidden options.
+    const toggle = question.getByRole("button", { name: "Show 2 more options" });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(toggle).toHaveText("Show fewer options");
+    await expect(question.locator("li:visible")).toHaveCount(12);
+
+    // Collapse them again.
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(question.locator("li:visible")).toHaveCount(10);
+  });
+
+  test("organizer retries analytics after a failed load", async ({ organizerGroupPage }) => {
+    // Open the past paid event and fail its first analytics request.
+    const { id, name } = TEST_EVENT_ANALYTICS.pastPaid;
+    await openEventUpdateFormByName(organizerGroupPage, name, id, { eventsTab: "past" });
+    await organizerGroupPage.route(
+      (url) => url.pathname === `/dashboard/group/events/${id}/analytics`,
+      (route) => route.fulfill({ status: 500, body: "" }),
+      { times: 1 },
+    );
+    await clickAnalyticsTab(organizerGroupPage);
+
+    // Verify the error message replaces the analytics.
+    const content = organizerGroupPage.locator("#analytics-content");
+    const error = content.getByRole("alert");
+    await expect(error).toContainText("Analytics could not be loaded. Please try again.");
+    await expect(content).toHaveAttribute("data-analytics-state", "error");
+
+    // Retry and verify the analytics load.
+    await openAnalyticsSection(organizerGroupPage, id, () => error.getByRole("button", { name: "Retry" }).click());
+    await expect(error).toBeHidden();
   });
 
   test("organizer sees no tickets or check-ins for a future free event", async ({ organizerGroupPage }) => {
@@ -105,6 +135,12 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(content.locator("[data-event-analytics-check-ins]")).toHaveCount(0);
     await expect(content.getByText("Check-in rate", { exact: true })).toHaveCount(0);
     await expect(content.getByText(/revenue/i)).toHaveCount(0);
+
+    // Verify the traffic sources explain how to get UTM attribution.
+    await expect(content.locator("[data-event-analytics-traffic]")).toContainText(
+      "No page views with UTM attribution yet",
+    );
+    await expect(content.locator("table[data-utm-combinations]")).toHaveCount(0);
   });
 
   test("organizer sees why daily charts are missing for an unpublished event", async ({
@@ -132,11 +168,10 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(content.getByText("Page views", { exact: true }).first()).toBeVisible();
   });
 
-  test("organizer opens analytics from the compact section select", async ({ organizerGroupPage }) => {
-    // Open the past paid event and narrow the viewport to show the section select.
+  test("organizer opens analytics from the compact section select @mobile", async ({ organizerGroupPage }) => {
+    // Open the past paid event, where the mobile viewport shows the section select.
     const { id, name } = TEST_EVENT_ANALYTICS.pastPaid;
     await openEventUpdateFormByName(organizerGroupPage, name, id, { eventsTab: "past" });
-    await organizerGroupPage.setViewportSize({ width: 1024, height: 900 });
 
     // Choose analytics from the section select.
     const content = await openAnalyticsSection(organizerGroupPage, id, (page) =>
@@ -147,3 +182,39 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(content.locator("#event-views-daily-chart")).toHaveAttribute("_echarts_instance_", /.+/);
   });
 });
+
+// Helpers.
+
+/**
+ * Activates the analytics section from the desktop tab list.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @returns {Promise<void>} Resolves once the tab is clicked.
+ */
+const clickAnalyticsTab = (page) => page.locator('button[data-section="analytics"]').click();
+
+/**
+ * Opens the analytics section of the loaded event editor and waits for its charts.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {string} eventId - Event whose analytics load.
+ * @param {(page: import("@playwright/test").Page) => Promise<void>} activate - Section activation.
+ * @returns {Promise<import("@playwright/test").Locator>} Analytics content locator.
+ */
+const openAnalyticsSection = async (page, eventId, activate) => {
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (candidate) =>
+        candidate.request().method() === "GET" &&
+        candidate.url().includes(`/dashboard/group/events/${eventId}/analytics`),
+    ),
+    activate(page),
+  ]);
+  expect(response.ok()).toBe(true);
+
+  const content = page.locator("#analytics-content");
+  await expect(content).toHaveAttribute("data-analytics-state", "loaded");
+  await expect(content.locator("[data-event-analytics]")).toHaveAttribute(
+    "data-event-analytics-ready",
+    "true",
+  );
+  return content;
+};

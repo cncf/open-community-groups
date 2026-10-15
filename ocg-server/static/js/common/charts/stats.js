@@ -195,6 +195,17 @@ const getChartResizeObserver = () => {
 };
 
 /**
+ * Stops tracking chart containers removed from the document without an HTMX
+ * cleanup, so the registry does not keep detached charts alive.
+ * @returns {void}
+ */
+const pruneDetachedCharts = () => {
+  Array.from(chartRegistry.keys())
+    .filter((element) => !element.isConnected)
+    .forEach((element) => unregisterChart(element));
+};
+
+/**
  * Registers a rendered chart so it follows its container size, replacing any
  * chart previously registered for the same container.
  * @param {Element} element - Chart container.
@@ -202,6 +213,7 @@ const getChartResizeObserver = () => {
  * @returns {void}
  */
 const registerChart = (element, chart) => {
+  pruneDetachedCharts();
   unregisterChart(element, { keepChart: chart });
 
   let timeoutId = null;

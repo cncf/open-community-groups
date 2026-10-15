@@ -322,7 +322,16 @@ describe("dashboard chart config helpers", () => {
       legendPosition: "bottom",
       showLabels: false,
     });
-    expect(compact.legend).to.include({ bottom: 0, left: "center", orient: "horizontal" });
+    expect(compact.legend).to.include({
+      bottom: 0,
+      itemGap: 8,
+      left: "center",
+      orient: "horizontal",
+      type: "scroll",
+    });
+    expect(compact.legend.textStyle.fontSize).to.equal(11);
+    expect(compact.legend.formatter("Platform engineering")).to.equal("Platform engin...");
+    expect(compact.legend.formatter("Unattributed")).to.equal("Unattributed");
     expect(compact.series[0].center).to.deep.equal(["50%", "54%"]);
     expect(compact.series[0].label.show).to.equal(false);
     expect(compact.series[0].labelLine.show).to.equal(false);

@@ -2,6 +2,7 @@ import {
   createHorizontalBarChart,
   createPieChart,
   createStackedDailyBarChart,
+  createTooltipDateTimeFormatter,
   dashboardFontFamily,
   formatDayAxisLabel,
   getAxisTooltipConfig,
@@ -20,9 +21,6 @@ import {
   renderChart,
 } from "/static/js/common/charts/stats.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
-
-/** Dataset key guarding the delegated analytics controls. */
-const EVENT_ANALYTICS_CONTROLS_KEY = "eventAnalyticsControlsBound";
 
 /** Selector of the event analytics JSON marker. */
 const EVENT_ANALYTICS_DATA_SELECTOR = "[data-event-analytics]";
@@ -58,14 +56,18 @@ const REGISTRATION_PATHS = [
 /** Number of sources shown individually in the share chart. */
 const SHARE_TOP_SOURCES = 3;
 
-/** Views series kinds grouped into the single "Other" series. */
-const OTHER_VIEWS_KINDS = new Set(["no-source", "other-sources"]);
-
 /** Display labels of synthetic views series. */
 const VIEWS_SERIES_LABELS = {
-  other: "Other",
-  untagged: "Untagged",
+  "no-source": NOT_SPECIFIED_LABEL,
+  "other-sources": "Other sources",
+  untagged: "Unattributed",
 };
+
+/**
+ * Analytics roots whose delegated controls are bound. Kept in memory, unlike a
+ * dataset marker, so roots restored from the HTMX history cache bind again.
+ */
+const boundRoots = new WeakSet();
 
 /** Statistics of each initialized analytics root, read by delegated controls. */
 const statsByRoot = new WeakMap();
@@ -147,8 +149,10 @@ export const buildEventSeriesColors = (stats, palette) => {
   shareKeys.filter((key) => !colors.has(key)).forEach((key, index) => colors.set(key, freeColors[index]));
 
   // Synthetic groups use fixed colors so they never shift between charts
-  colors.set("other", palette[200]);
-  colors.set("untagged", getChartUiColors().soft);
+  const uiColors = getChartUiColors();
+  colors.set("other-sources", palette[200]);
+  colors.set("no-source", uiColors.muted);
+  colors.set("untagged", uiColors.soft);
 
   return colors;
 };
@@ -203,38 +207,6 @@ export const getViewsSeriesLabel = (series) => {
   }
 
   return VIEWS_SERIES_LABELS[series.kind] || series.kind;
-};
-
-/**
- * Groups the other sources and no source views series into one "Other"
- * series placed where the first grouped series was.
- * @param {Array<Object>} viewsSeries - Views series from the server.
- * @returns {Array<Object>} Views series with at most one "Other" series.
- */
-export const groupOtherViewsSeries = (viewsSeries = []) => {
-  const grouped = [];
-  let other = null;
-
-  viewsSeries.forEach((series) => {
-    // Keep sources and untagged views as they are
-    if (!OTHER_VIEWS_KINDS.has(series.kind)) {
-      grouped.push(series);
-      return;
-    }
-
-    // Start the "Other" series, or add the counts of each day to it
-    if (!other) {
-      other = { kind: "other", series: series.series.map(([day, count]) => [day, Number(count)]) };
-      grouped.push(other);
-    } else {
-      other.series = other.series.map(([day, count], index) => [
-        day,
-        count + Number(series.series[index]?.[1] || 0),
-      ]);
-    }
-  });
-
-  return grouped;
 };
 
 /**
@@ -320,10 +292,10 @@ export const toggleQuestionOptions = (button) => {
  * @returns {void}
  */
 const bindAnalyticsControls = (root) => {
-  if (root.dataset?.[EVENT_ANALYTICS_CONTROLS_KEY] === "true") {
+  if (boundRoots.has(root)) {
     return;
   }
-  root.dataset[EVENT_ANALYTICS_CONTROLS_KEY] = "true";
+  boundRoots.add(root);
 
   root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
@@ -371,15 +343,7 @@ const buildCheckInsOption = (checkIns, palette, timeZone) => {
     bins.map(([ts]) => Number(ts)),
     timeZone,
   );
-  const tooltipFormatter = new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    month: "short",
-    timeZone,
-    timeZoneName: "shortOffset",
-    year: "numeric",
-  });
+  const tooltipFormatter = createTooltipDateTimeFormatter(timeZone);
 
   return {
     textStyle: { fontFamily: dashboardFontFamily },
@@ -707,8 +671,8 @@ const renderRegistrationsDailyChart = (stats, palette) => {
 };
 
 /**
- * Renders the share of page views by the top sources, the other attributed
- * views and the untagged views.
+ * Renders the share of page views by the top sources, the other sources, the
+ * attributed views without a source and the unattributed views.
  * @param {Object} stats - Event analytics payload.
  * @param {Object} palette - Theme color palette.
  * @param {Map<string, string>} colors - Series colors.
@@ -718,10 +682,9 @@ const renderUtmShareChart = (stats, palette, colors) => {
   const bySource = stats.utm?.by_source || {};
   const values = bySource.values || [];
   const topValues = values.slice(0, SHARE_TOP_SOURCES);
-  const otherViews =
+  const otherSourcesViews =
     values.slice(SHARE_TOP_SOURCES).reduce((sum, { views }) => sum + Number(views), 0) +
-    Number(bySource.remainder_views || 0) +
-    Number(bySource.not_specified || 0);
+    Number(bySource.remainder_views || 0);
   const untaggedViews = Number(stats.traffic?.views_total || 0) - Number(stats.utm?.tagged_views || 0);
   const slices = [
     ...topValues.map(({ value, views }) => ({
@@ -729,7 +692,12 @@ const renderUtmShareChart = (stats, palette, colors) => {
       name: value,
       value: Number(views),
     })),
-    { color: colors.get("other"), name: VIEWS_SERIES_LABELS.other, value: otherViews },
+    { color: colors.get("other-sources"), name: VIEWS_SERIES_LABELS["other-sources"], value: otherSourcesViews },
+    {
+      color: colors.get("no-source"),
+      name: VIEWS_SERIES_LABELS["no-source"],
+      value: Number(bySource.not_specified || 0),
+    },
     { color: colors.get("untagged"), name: VIEWS_SERIES_LABELS.untagged, value: untaggedViews },
   ].filter((slice) => slice.value > 0);
 
@@ -798,7 +766,7 @@ const renderUtmValuesChart = (stats, palette, dimension) => {
  */
 const renderViewsDailyChart = (stats, palette, colors) => {
   const days = getChartDays(stats);
-  const viewsSeries = groupOtherViewsSeries(stats.traffic?.views_by_source_per_day || []);
+  const viewsSeries = stats.traffic?.views_by_source_per_day || [];
   let seriesData = viewsSeries.map((series) => ({
     color: colors.get(getViewsSeriesKey(series)),
     data: series.series.map(([, count]) => Number(count)),

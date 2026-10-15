@@ -165,6 +165,24 @@ describe("stats utilities", () => {
     expect(secondChart.disposeCalls).to.equal(1);
   });
 
+  it("disposes charts whose containers were removed without an htmx cleanup", () => {
+    // Render a chart and remove its container directly.
+    document.body.innerHTML = `<div id="detached-chart"></div><div id="next-chart"></div>`;
+    const detachedChart = renderChart("detached-chart", { series: [{ data: [1] }] }, true);
+    const detachedElement = document.getElementById("detached-chart");
+    detachedElement.remove();
+
+    // Render another chart.
+    const nextChart = renderChart("next-chart", { series: [{ data: [1] }] }, true);
+    const observer = ResizeObserverStub.instances.at(-1);
+
+    // Assert the detached chart was disposed and unobserved, keeping the new one.
+    expect(detachedChart.disposeCalls).to.equal(1);
+    expect(observer.observed.has(detachedElement)).to.equal(false);
+    expect(nextChart.disposeCalls).to.equal(0);
+    expect(observer.observed.has(document.getElementById("next-chart"))).to.equal(true);
+  });
+
   it("finds stats markers from matching roots and descendants", () => {
     // Build the marker fixture.
     document.body.innerHTML = `

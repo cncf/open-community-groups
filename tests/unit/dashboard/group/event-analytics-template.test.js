@@ -9,6 +9,11 @@ const loadTemplate = async (path) => {
   return response.text();
 };
 
+/**
+ * Collapses whitespace runs so template assertions ignore indentation.
+ * @param {string} value - Template source.
+ * @returns {string} Source with single spaces between tokens.
+ */
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group event analytics template", () => {
@@ -48,14 +53,15 @@ describe("dashboard group event analytics template", () => {
     expect(template).to.not.include("event-question-{}-chart");
   });
 
-  it("lists registration question options with clamped prompts and an options toggle", async () => {
+  it("lists registration question options with wrapped prompts and an options toggle", async () => {
     // Load the event analytics partial.
     const template = normalizeWhitespace(await loadTemplate("dashboard/group/event_analytics.html"));
 
-    // Assert prompts are clamped with the full text available on hover.
+    // Assert prompts wrap in full instead of being clamped.
     expect(template).to.include(
-      'class="line-clamp-2 text-sm font-semibold text-stone-700" title="{{ question.prompt }}"',
+      '<div class="break-words text-sm font-semibold text-stone-700">{{ question.prompt }}</div>',
     );
+    expect(template).not.to.include("line-clamp");
 
     // Assert options render as decorative bars next to their counts and shares.
     expect(template).to.include("{% for option in self.question_options(question) -%}");
@@ -114,17 +120,36 @@ describe("dashboard group event analytics template", () => {
     expect(template).to.include('aria-pressed="true" data-utm-dimension="source">Source</button>');
     expect(template).to.include('aria-pressed="false" data-utm-dimension="campaign">Campaign</button>');
 
-    // Assert the first and last day columns only show on extra large screens.
+    // Assert the first and last day columns only show on 2xl screens.
     expect(template).to.include(
-      '<td class="hidden px-3 py-3 xl:table-cell xl:px-5">{{ combination.first_day }}</td>',
+      '<td class="hidden px-3 py-3 2xl:table-cell xl:px-5">{{ combination.first_day }}</td>',
     );
+    expect(template).to.include(
+      '<td class="hidden px-3 py-3 2xl:table-cell xl:px-5">{{ combination.last_day }}</td>',
+    );
+    expect(template).not.to.include(" xl:table-cell");
     expect(template).not.to.include("lg:table-cell");
 
     // Assert the table caption, sortable headers and remainder row.
     expect(template).to.include("Top 10 combinations by views; sorting applies to these rows.");
     expect(template).to.include(
-      'aria-sort="descending"> <button type="button" class="uppercase cursor-pointer" data-utm-sort="views">Views</button>',
+      'class="group px-3 py-3 text-right xl:px-5" aria-sort="descending"> <button type="button" class="inline-flex cursor-pointer items-center gap-1 uppercase" data-utm-sort="views"> Views <span class="svg-icon block size-3',
     );
+    expect(template.match(/group-aria-\[sort=ascending\]:rotate-180/g)).to.have.length(6);
+
+    // Assert the charts rely on their own titles instead of outer labels.
+    expect(template).not.to.include("Share of page views</div>");
+    expect(template).not.to.include("Views by value");
+
+    // Assert warnings reuse the shared dashboard warning macro.
+    expect(template).to.include('{{ dashboard::permission_warning(message = "Traffic source attribution is unavailable');
+    expect(template).to.include('{{ dashboard::permission_warning(message = "Shares of page views are unavailable');
+
+    // Assert the UTM settings link is guarded against pending event changes.
+    expect(template).to.include(
+      '<a id="analytics-utm-settings-link" href="/dashboard/group?tab=settings" hx-get="/dashboard/group?tab=settings" hx-trigger="click, confirmed"',
+    );
+    expect(template).to.include("data-pending-changes-guard");
     expect(template).to.include("more combinations ·");
     expect(template).to.include(
       'data-utm-row data-source="{{ combination.utm_source.as_deref().unwrap_or("") }}"',

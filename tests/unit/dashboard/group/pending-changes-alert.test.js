@@ -184,4 +184,61 @@ describe("pending changes alert", () => {
     expect(swal.calls[0].confirmButtonText).to.equal("Discard");
     expect(htmx.triggerCalls).to.deep.equal([["#cancel-button", "confirmed"]]);
   });
+
+  it("asks for confirmation when following guarded links rendered later", async () => {
+    // Render the DOM fixture for guarded links inside the page root.
+    document.body.innerHTML = `
+      <div id="pending-alert" class="hidden"></div>
+      <div id="page-root">
+        <form id="event-form">
+          <input name="title" value="Original title" />
+        </form>
+        <div id="lazy-content"></div>
+      </div>
+    `;
+    const pageRoot = document.getElementById("page-root");
+
+    // Prepare API guarding links within the page root.
+    const api = initializePendingChangesAlert({
+      alertId: "pending-alert",
+      formIds: ["event-form"],
+      confirmMessage: "Discard pending changes?",
+      confirmText: "Discard",
+      guardRoot: pageRoot,
+      guardSelector: "[data-pending-changes-guard]",
+    });
+    await waitForAnimationFrames();
+
+    // Render the guarded link after initialization, as lazy tabs do.
+    document.getElementById("lazy-content").innerHTML = `
+      <a id="settings-link" href="#settings" data-pending-changes-guard>Settings</a>
+    `;
+    const link = document.getElementById("settings-link");
+    let linkClicks = 0;
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      linkClicks += 1;
+    });
+
+    // Following the link without pending changes skips confirmation.
+    link.click();
+    await waitForMicrotask();
+    expect(linkClicks).to.equal(1);
+    expect(swal.calls).to.have.length(0);
+
+    // Edit the form to create pending changes.
+    const titleInput = document.querySelector('#event-form input[name="title"]');
+    titleInput.value = "Updated title";
+    titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await waitForAnimationFrames();
+
+    // Following the link with pending changes asks for confirmation instead.
+    link.click();
+    await waitForMicrotask();
+    expect(api.hasPendingChanges()).to.equal(true);
+    expect(linkClicks).to.equal(1);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Discard pending changes?");
+    expect(htmx.triggerCalls).to.deep.equal([["#settings-link", "confirmed"]]);
+  });
 });
