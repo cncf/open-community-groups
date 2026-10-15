@@ -87,7 +87,8 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(question.locator("li:visible")).toHaveCount(10);
 
     // Expand the hidden options.
-    const toggle = question.getByRole("button", { name: "Show 2 more options" });
+    const toggle = question.locator("[data-question-options-toggle]");
+    await expect(toggle).toHaveText("Show 2 more options");
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     await expect(toggle).toHaveText("Show fewer options");
@@ -96,6 +97,7 @@ test.describe("group dashboard event analytics tab", () => {
     // Collapse them again.
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(toggle).toHaveText("Show 2 more options");
     await expect(question.locator("li:visible")).toHaveCount(10);
   });
 
