@@ -36,7 +36,7 @@ use crate::{
             EventLabelInput, EventRecurrencePattern,
         },
         event::{EventCohostStatus, EventFull, EventSummary, Speaker},
-        meetings::MeetingProvider,
+        meetings::{MeetingProvider, MeetingProviderLimits},
         notifications::NotificationKind,
         payments::{
             EventTicketPriceWindow, EventTicketType, PaymentProvider, TicketTaxBehavior,
@@ -253,7 +253,7 @@ async fn test_add_free_success() {
     tx.expect_add_event()
         .times(1)
         .withf(
-            move |uid, id, event, cfg_max_participants, payment_provider| {
+            move |uid, id, event, cfg_meeting_limits, payment_provider| {
                 let event_name = event
                     .get("name")
                     .and_then(serde_json::Value::as_str)
@@ -261,7 +261,12 @@ async fn test_add_free_success() {
                 *uid == user_id
                     && *id == group_id
                     && event_name == event_form.name
-                    && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
+                    && cfg_meeting_limits.get(&MeetingProvider::Zoom)
+                        == Some(&MeetingProviderLimits {
+                            max_duration_minutes: 720,
+                            max_participants: 100,
+                            min_duration_minutes: 5,
+                        })
                     && payment_provider.is_none()
             },
         )
@@ -650,7 +655,7 @@ async fn test_add_recurring_success() {
     tx.expect_add_event_series()
         .times(1)
         .withf(
-            move |uid, id, events, recurrence, cfg_max_participants, payment_provider| {
+            move |uid, id, events, recurrence, cfg_meeting_limits, payment_provider| {
                 let names_match = events.iter().all(|event| {
                     event
                         .get("name")
@@ -678,7 +683,12 @@ async fn test_add_recurring_success() {
                         == Some(2)
                     && recurrence.get("pattern").and_then(serde_json::Value::as_str)
                         == Some("weekly")
-                    && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
+                    && cfg_meeting_limits.get(&MeetingProvider::Zoom)
+                        == Some(&MeetingProviderLimits {
+                            max_duration_minutes: 720,
+                            max_participants: 100,
+                            min_duration_minutes: 5,
+                        })
                     && payment_provider.is_none()
             },
         )
@@ -3266,13 +3276,13 @@ async fn test_update_free_success() {
     tx.expect_update_event()
         .times(1)
         .withf(
-            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
                 *uid == user_id
                     && *gid == group_id
                     && *eid == event_id
                     && event.get("name").and_then(serde_json::Value::as_str)
                         == Some(event_form.name.as_str())
-                    && cfg_max_participants.is_empty()
+                    && cfg_meeting_limits.is_empty()
                     && payment_provider.is_none()
             },
         )
@@ -3681,13 +3691,13 @@ async fn test_update_reschedule_notification_success() {
     tx.expect_update_event()
         .times(1)
         .withf(
-            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
                 *uid == user_id
                     && *gid == group_id
                     && *eid == event_id
                     && event.get("name").and_then(serde_json::Value::as_str)
                         == Some(event_form.name.as_str())
-                    && cfg_max_participants.is_empty()
+                    && cfg_meeting_limits.is_empty()
                     && payment_provider.is_none()
             },
         )
@@ -3786,13 +3796,13 @@ async fn test_update_reschedule_rollback_on_enqueue_failure() {
     tx.expect_update_event()
         .times(1)
         .withf(
-            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
                 *uid == user_id
                     && *gid == group_id
                     && *eid == event_id
                     && event.get("name").and_then(serde_json::Value::as_str)
                         == Some(event_form.name.as_str())
-                    && cfg_max_participants.is_empty()
+                    && cfg_meeting_limits.is_empty()
                     && payment_provider.is_none()
             },
         )
@@ -3880,13 +3890,13 @@ async fn test_update_reschedule_rollback_on_notification_context_failure() {
     tx.expect_update_event()
         .times(1)
         .withf(
-            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
                 *uid == user_id
                     && *gid == group_id
                     && *eid == event_id
                     && event.get("name").and_then(serde_json::Value::as_str)
                         == Some(event_form.name.as_str())
-                    && cfg_max_participants.is_empty()
+                    && cfg_meeting_limits.is_empty()
                     && payment_provider.is_none()
             },
         )
@@ -3955,13 +3965,13 @@ async fn test_update_reschedule_skips_notification_when_shift_too_small() {
     tx.expect_update_event()
         .times(1)
         .withf(
-            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
                 *uid == user_id
                     && *gid == group_id
                     && *eid == event_id
                     && event.get("name").and_then(serde_json::Value::as_str)
                         == Some(event_form.name.as_str())
-                    && cfg_max_participants.is_empty()
+                    && cfg_meeting_limits.is_empty()
                     && payment_provider.is_none()
             },
         )
@@ -4034,13 +4044,13 @@ async fn test_update_reschedule_skips_notification_when_unpublished() {
     tx.expect_update_event()
         .times(1)
         .withf(
-            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
                 *uid == user_id
                     && *gid == group_id
                     && *eid == event_id
                     && event.get("name").and_then(serde_json::Value::as_str)
                         == Some(event_form.name.as_str())
-                    && cfg_max_participants.is_empty()
+                    && cfg_meeting_limits.is_empty()
                     && payment_provider.is_none()
             },
         )
@@ -4102,7 +4112,7 @@ async fn test_update_skips_notification_for_past_event() {
     tx.expect_update_event()
         .times(1)
         .withf(
-            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
                 *uid == user_id
                     && *gid == group_id
                     && *eid == event_id
@@ -4110,7 +4120,7 @@ async fn test_update_skips_notification_for_past_event() {
                         == Some("Updated past event description")
                     && event.get("name").and_then(serde_json::Value::as_str)
                         == Some("Past Event Updated")
-                    && cfg_max_participants.is_empty()
+                    && cfg_meeting_limits.is_empty()
                     && payment_provider.is_none()
             },
         )

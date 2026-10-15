@@ -171,7 +171,7 @@ class SessionFormModal extends LitWrapper {
   }
 
   /**
-   * Saves the session and closes the modal.
+   * Validates the session meeting settings, saves the session and closes the modal.
    * @private
    */
   _onSave() {
@@ -191,14 +191,18 @@ class SessionFormModal extends LitWrapper {
       return;
     }
 
-    if (sessionItem) {
-      const onlineEventDetails = sessionItem.querySelector("online-event-details");
-      if (onlineEventDetails && typeof onlineEventDetails.getMeetingData === "function") {
-        this._session = {
-          ...this._session,
-          ...onlineEventDetails.getMeetingData(),
-        };
-      }
+    const onlineEventDetails = sessionItem?.querySelector("online-event-details");
+
+    // Keep the modal open while the automatic meeting settings are invalid.
+    if (typeof onlineEventDetails?.validate === "function" && !onlineEventDetails.validate()) {
+      return;
+    }
+
+    if (typeof onlineEventDetails?.getMeetingData === "function") {
+      this._session = {
+        ...this._session,
+        ...onlineEventDetails.getMeetingData(),
+      };
     }
 
     this.dispatchEvent(

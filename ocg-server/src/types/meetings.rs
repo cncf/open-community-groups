@@ -103,6 +103,44 @@ pub(crate) enum MeetingProvider {
     Zoom,
 }
 
+impl MeetingProvider {
+    /// Returns the longest meeting duration in minutes accepted by the provider.
+    pub(crate) const fn max_duration_minutes(self) -> i64 {
+        match self {
+            Self::Zoom => 720,
+        }
+    }
+
+    /// Returns the shortest meeting duration in minutes accepted by the provider.
+    pub(crate) const fn min_duration_minutes(self) -> i64 {
+        match self {
+            Self::Zoom => 5,
+        }
+    }
+}
+
+/// Limits enforced when an event or session requests an automatic meeting.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+pub(crate) struct MeetingProviderLimits {
+    /// Longest meeting duration in minutes accepted by the provider.
+    pub max_duration_minutes: i64,
+    /// Maximum number of participants allowed in a meeting.
+    pub max_participants: i32,
+    /// Shortest meeting duration in minutes accepted by the provider.
+    pub min_duration_minutes: i64,
+}
+
+impl MeetingProviderLimits {
+    /// Creates the limits of a provider with its configured participant limit.
+    pub(crate) fn new(provider: MeetingProvider, max_participants: i32) -> Self {
+        Self {
+            max_duration_minutes: provider.max_duration_minutes(),
+            max_participants,
+            min_duration_minutes: provider.min_duration_minutes(),
+        }
+    }
+}
+
 /// Outcome stored after checking an overdue meeting for automatic ending.
 #[derive(AsRefStr, Clone, Copy, Debug, Display, EnumString, Eq, PartialEq)]
 #[strum(serialize_all = "snake_case")]
@@ -119,7 +157,46 @@ pub(crate) enum MeetingAutoEndCheckOutcome {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use serde_json::json;
+
     use super::*;
+
+    #[test]
+    fn test_meeting_provider_limits_new_uses_provider_durations() {
+        let limits = MeetingProviderLimits::new(MeetingProvider::Zoom, 100);
+
+        assert_eq!(
+            limits,
+            MeetingProviderLimits {
+                max_duration_minutes: 720,
+                max_participants: 100,
+                min_duration_minutes: 5,
+            }
+        );
+    }
+
+    #[test]
+    fn test_meeting_provider_limits_serializes_by_provider() {
+        // Setup the limits keyed by provider as passed to the database
+        let limits = HashMap::from([(
+            MeetingProvider::Zoom,
+            MeetingProviderLimits::new(MeetingProvider::Zoom, 100),
+        )]);
+
+        // Check the provider-keyed JSON shape read by the database
+        assert_eq!(
+            serde_json::to_value(&limits).unwrap(),
+            json!({
+                "zoom": {
+                    "max_duration_minutes": 720,
+                    "max_participants": 100,
+                    "min_duration_minutes": 5
+                }
+            })
+        );
+    }
 
     #[test]
     fn test_provider_reference_prefers_event() {

@@ -1,7 +1,7 @@
 -- validate_event_capacity validates provider limits and update attendee floors.
 create or replace function validate_event_capacity(
     p_event jsonb,
-    p_cfg_max_participants jsonb default null,
+    p_cfg_meeting_limits jsonb default null,
     p_existing_event_id uuid default null,
     p_effective_capacity int default null
 )
@@ -20,8 +20,12 @@ begin
 
     -- Validate event capacity against provider limits for meetings
     if (p_event->>'meeting_requested')::boolean = true then
-        v_provider_max_participants := (p_cfg_max_participants->>(p_event->>'meeting_provider_id'))::int;
+        -- Resolve the participant limit configured for the meeting provider
+        v_provider_max_participants := (
+            p_cfg_meeting_limits->(p_event->>'meeting_provider_id')->>'max_participants'
+        )::int;
 
+        -- Reject capacities above the configured participant limit
         if v_provider_max_participants is not null
            and v_capacity > v_provider_max_participants
         then
@@ -32,6 +36,7 @@ begin
 
     -- Validate event capacity against attendee count for existing events
     if p_existing_event_id is not null and v_capacity is not null then
+        -- Count the seats already occupied by attendees
         select get_event_occupied_seat_count(p_existing_event_id) into v_attendee_count;
 
         -- Manual occupied seats are organizer-controlled overbooked seats, so they offset the attendee floor
@@ -42,6 +47,7 @@ begin
         and ea.manually_invited = true
         and ea.status in ('confirmed', 'registration-questions-pending');
 
+        -- Reject capacities below the attendee floor
         if v_capacity + v_manual_occupied_seat_count < v_attendee_count then
             raise exception 'event capacity (%) cannot be less than current number of attendees (%)',
                 v_capacity, v_attendee_count using errcode = 'OCG01';

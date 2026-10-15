@@ -4,7 +4,7 @@ create or replace function update_event(
     p_group_id uuid,
     p_event_id uuid,
     p_event jsonb,
-    p_cfg_max_participants jsonb default null,
+    p_cfg_meeting_limits jsonb default null,
     p_configured_provider text default null
 )
 returns boolean as $$
@@ -175,10 +175,13 @@ begin
     -- Validate capacity
     perform validate_event_capacity(
         p_event,
-        p_cfg_max_participants,
+        p_cfg_meeting_limits,
         p_existing_event_id => p_event_id,
         p_effective_capacity => v_event.capacity
     );
+
+    -- Validate automatic meeting durations against provider limits
+    perform validate_event_meeting_durations(p_event, p_cfg_meeting_limits);
 
     -- Validate the labels payload when supplied
     if p_event ? 'labels' then

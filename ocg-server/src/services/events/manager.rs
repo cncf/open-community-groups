@@ -30,7 +30,7 @@ use crate::{
     types::{
         dashboard::group::events::{CohostsUpdate, EventActionScope, EventInput},
         event::{EventCohostStatus, EventSummary},
-        meetings::MeetingProvider,
+        meetings::{MeetingProvider, MeetingProviderLimits},
         payments::{
             PaymentConfigurationValidation, TicketTaxBehavior, TicketTaxCalculationMode,
             TicketTaxRate,
@@ -100,8 +100,8 @@ pub(crate) type DynEventsManager = Arc<dyn EventsManager + Send + Sync>;
 pub(crate) struct PgEventsManager {
     /// Database handle for event persistence.
     db: DynDB,
-    /// Maximum participants per configured meetings provider.
-    meetings_max_participants: HashMap<MeetingProvider, i32>,
+    /// Automatic meeting limits per configured meetings provider.
+    meeting_limits: HashMap<MeetingProvider, MeetingProviderLimits>,
     /// Payments manager used for fiscal sponsor validation.
     payments_manager: DynPaymentsManager,
     /// Server configuration used to build notification links.
@@ -118,8 +118,8 @@ impl PgEventsManager {
     ) -> Self {
         Self {
             db,
-            meetings_max_participants: meetings_cfg
-                .map(MeetingsConfig::max_participants_by_provider)
+            meeting_limits: meetings_cfg
+                .map(MeetingsConfig::meeting_limits_by_provider)
                 .unwrap_or_default(),
             payments_manager,
             server_cfg,
@@ -359,7 +359,7 @@ impl EventsManager for PgEventsManager {
             .map_err(|err| EventsError::Rejected(err.to_string()))?;
 
         // Persist the events and required notifications atomically
-        let cfg_max_participants = self.meetings_max_participants.clone();
+        let cfg_meeting_limits = self.meeting_limits.clone();
         let cohosts_update = event.cohosts_update().filter(|update| !update.group_ids.is_empty());
         let server_cfg = self.server_cfg.clone();
         let event_ids = self
@@ -380,7 +380,7 @@ impl EventsManager for PgEventsManager {
                             group_id,
                             &recurring_event_payloads.events,
                             &recurring_event_payloads.recurrence,
-                            &cfg_max_participants,
+                            &cfg_meeting_limits,
                             payment_provider,
                         )
                         .await?
@@ -390,7 +390,7 @@ impl EventsManager for PgEventsManager {
                                 actor_user_id,
                                 group_id,
                                 &event_payload,
-                                &cfg_max_participants,
+                                &cfg_meeting_limits,
                                 payment_provider,
                             )
                             .await?,
@@ -852,7 +852,7 @@ impl EventsManager for PgEventsManager {
         }
 
         // Persist the update and required notifications atomically
-        let cfg_max_participants = self.meetings_max_participants.clone();
+        let cfg_meeting_limits = self.meeting_limits.clone();
         let cohosts_update = event.cohosts_update();
         let server_cfg = self.server_cfg.clone();
         self.db
@@ -877,7 +877,7 @@ impl EventsManager for PgEventsManager {
                             group_id,
                             event_id,
                             &event_json,
-                            &cfg_max_participants,
+                            &cfg_meeting_limits,
                             payment_provider,
                         )
                         .await?;

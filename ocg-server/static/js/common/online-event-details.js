@@ -2,11 +2,13 @@ import { html } from "lit";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
   validateMeetingRequest,
+  parseMeetingDateTime,
   MIN_MEETING_MINUTES,
   MAX_MEETING_MINUTES,
   DEFAULT_MEETING_PROVIDER,
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { getCommonAlertOptions, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import { resolveEventTimezone } from "/static/js/common/datetime.js";
 import {
   MEETING_RECORDING_RAW_URLS_LEGEND,
   MEETING_RECORDING_URL_LEGEND,
@@ -628,8 +630,9 @@ export class OnlineEventDetails extends LitWrapper {
     if (!this.startsAt || !this.endsAt) {
       reasons.push("Set start and end times.");
     } else {
-      const startDate = new Date(this.startsAt);
-      const endDate = new Date(this.endsAt);
+      const timezone = resolveEventTimezone();
+      const startDate = parseMeetingDateTime(this.startsAt, timezone);
+      const endDate = parseMeetingDateTime(this.endsAt, timezone);
 
       if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
         reasons.push("Provide valid start and end times.");
@@ -685,6 +688,9 @@ export class OnlineEventDetails extends LitWrapper {
       capacityFromTicketTypes: !this._isSession(),
       showError: showErrorAlert,
       displaySection,
+      timezone: resolveEventTimezone(),
+      // Synced session meetings keep working without the capacity rules for new meetings
+      validateCapacity: !(this._isSession() && this.meetingInSync),
     });
   }
 

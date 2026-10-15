@@ -75,6 +75,7 @@
 {{ template "internal/meetings/is_event_meeting_in_sync.sql" }}
 {{ template "internal/meetings/is_session_meeting_in_sync.sql" }}
 {{ template "internal/meetings/release_meeting_sync.sql" }}
+{{ template "internal/meetings/validate_event_meeting_durations.sql" }}
 
 {{ template "internal/notifications/community_contact_filter_values.sql" }}
 {{ template "internal/notifications/community_contact_team_seats.sql" }}

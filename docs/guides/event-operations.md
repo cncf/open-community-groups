@@ -919,6 +919,8 @@ Constraint violations can disable automatic mode until fixed.
 - After an automatic meeting or session has started, OCG keeps an already synced provider meeting
   settled instead of re-queueing provider updates for a past start time.
 - Schedule or type changes can disable automatic mode if constraints are no longer met.
+- Saving an event whose event or session automatic meeting falls outside the provider duration
+  limits is rejected until the schedule is adjusted or automatic mode is disabled.
 - If sync fails, meeting errors surface in the editor until resolved.
 - In deployments without automatic-meeting support, only manual meeting URL fields are available.
 

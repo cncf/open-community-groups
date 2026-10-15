@@ -422,7 +422,10 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             event: &serde_json::Value,
-            cfg_max_participants: &HashMap<crate::types::meetings::MeetingProvider, i32>,
+            cfg_meeting_limits: &HashMap<
+                crate::types::meetings::MeetingProvider,
+                crate::types::meetings::MeetingProviderLimits,
+            >,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<Uuid>;
         async fn add_event_series(
@@ -431,7 +434,10 @@ mock! {
             group_id: Uuid,
             events: &[serde_json::Value],
             recurrence: &serde_json::Value,
-            cfg_max_participants: &HashMap<crate::types::meetings::MeetingProvider, i32>,
+            cfg_meeting_limits: &HashMap<
+                crate::types::meetings::MeetingProvider,
+                crate::types::meetings::MeetingProviderLimits,
+            >,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<Vec<Uuid>>;
         async fn add_group_sponsor(
@@ -854,7 +860,10 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
             event: &serde_json::Value,
-            cfg_max_participants: &HashMap<crate::types::meetings::MeetingProvider, i32>,
+            cfg_meeting_limits: &HashMap<
+                crate::types::meetings::MeetingProvider,
+                crate::types::meetings::MeetingProviderLimits,
+            >,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<bool>;
         async fn update_group_sponsor(
