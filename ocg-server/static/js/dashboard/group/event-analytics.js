@@ -692,7 +692,11 @@ const renderUtmShareChart = (stats, palette, colors) => {
       name: value,
       value: Number(views),
     })),
-    { color: colors.get("other-sources"), name: VIEWS_SERIES_LABELS["other-sources"], value: otherSourcesViews },
+    {
+      color: colors.get("other-sources"),
+      name: VIEWS_SERIES_LABELS["other-sources"],
+      value: otherSourcesViews,
+    },
     {
       color: colors.get("no-source"),
       name: VIEWS_SERIES_LABELS["no-source"],

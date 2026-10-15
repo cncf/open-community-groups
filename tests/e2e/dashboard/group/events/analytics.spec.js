@@ -65,10 +65,9 @@ test.describe("group dashboard event analytics tab", () => {
     // Sort the combinations by source again to reverse them, keeping Not specified last.
     await table.locator('[data-utm-sort="source"]').click();
     await expect(sourceHeader).toHaveAttribute("aria-sort", "descending");
-    await expect(table.locator("th", { has: organizerGroupPage.locator('[data-utm-sort="views"]') })).toHaveAttribute(
-      "aria-sort",
-      "none",
-    );
+    await expect(
+      table.locator("th", { has: organizerGroupPage.locator('[data-utm-sort="views"]') }),
+    ).toHaveAttribute("aria-sort", "none");
     await expect(table.locator("tbody tr td:first-child")).toHaveText([
       "newsletter",
       "mastodon",
@@ -84,8 +83,7 @@ test.describe("group dashboard event analytics tab", () => {
 
     // Verify only the first options of the long question are visible.
     const question = content.locator("[data-event-analytics-question]", { hasText: "Interests" });
-    const options = question.getByRole("listitem");
-    await expect(options).toHaveCount(12);
+    await expect(question.locator("li")).toHaveCount(12);
     await expect(question.locator("li:visible")).toHaveCount(10);
 
     // Expand the hidden options.
@@ -119,7 +117,9 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(content).toHaveAttribute("data-analytics-state", "error");
 
     // Retry and verify the analytics load.
-    await openAnalyticsSection(organizerGroupPage, id, () => error.getByRole("button", { name: "Retry" }).click());
+    await openAnalyticsSection(organizerGroupPage, id, () =>
+      error.getByRole("button", { name: "Retry" }).click(),
+    );
     await expect(error).toBeHidden();
   });
 
@@ -168,10 +168,11 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(content.getByText("Page views", { exact: true }).first()).toBeVisible();
   });
 
-  test("organizer opens analytics from the compact section select @mobile", async ({ organizerGroupPage }) => {
-    // Open the past paid event, where the mobile viewport shows the section select.
+  test("organizer opens analytics from the compact section select", async ({ organizerGroupPage }) => {
+    // Open the past paid event and narrow the viewport to show the section select.
     const { id, name } = TEST_EVENT_ANALYTICS.pastPaid;
     await openEventUpdateFormByName(organizerGroupPage, name, id, { eventsTab: "past" });
+    await organizerGroupPage.setViewportSize({ width: 1024, height: 900 });
 
     // Choose analytics from the section select.
     const content = await openAnalyticsSection(organizerGroupPage, id, (page) =>

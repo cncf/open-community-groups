@@ -194,6 +194,7 @@ describe("dashboard group event analytics", () => {
       );
     });
     document.documentElement.style.setProperty("--color-stone-300", "#d6d3d1");
+    document.documentElement.style.setProperty("--color-stone-400", "#a8a29e");
     optionsById = new Map();
     failInit = false;
     globalThis.echarts = {
