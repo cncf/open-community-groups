@@ -18,6 +18,7 @@ import {
   getVerticalBarSeriesStyle,
   hasActivity,
   toCategorySeries,
+  toChartColor,
 } from "/static/js/common/charts/charts.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -130,6 +131,19 @@ describe("dashboard chart config helpers", () => {
       borderWidth: 1,
       textStyle: { color: "#44403c" },
     });
+  });
+
+  it("converts css colors that echarts cannot parse into rgb", () => {
+    // Assert formats echarts parses are kept as they are.
+    expect(toChartColor("#d6d3d1")).to.equal("#d6d3d1");
+    expect(toChartColor("rgb(214, 211, 209)")).to.equal("rgb(214, 211, 209)");
+    expect(toChartColor("")).to.equal("");
+
+    // Assert oklch theme colors read from css variables become rgb.
+    document.documentElement.style.setProperty("--color-stone-100", "oklch(97% 0.001 106.424)");
+    expect(getChartGridLineColor()).to.match(/^rgb\(\d+, \d+, \d+\)$/);
+    expect(toChartColor("oklch(0% 0 0)")).to.equal("rgb(0, 0, 0)");
+    expect(toChartColor("oklch(100% 0 0 / 50%)")).to.match(/^rgba\(\d+, \d+, \d+, 0\.5\d*\)$/);
   });
 
   it("builds title and value axis configs", () => {
@@ -358,9 +372,18 @@ describe("dashboard chart config helpers", () => {
     expect(barOption.xAxis.axisLabel.formatter("2025-03-01", 0)).to.equal("01 Mar");
     expect(barOption.series.map((series) => series.stack)).to.deep.equal(["total", "total"]);
     expect(barOption.series[0].itemStyle.color).to.equal("#123456");
-    expect(barOption.series[1].itemStyle.color).to.equal(palette[800]);
+    expect(barOption.series[1].itemStyle.color).to.equal(palette[400]);
     expect(barOption.series[0].markLine).to.equal(markLine);
     expect(barOption.series[1].markLine).to.equal(undefined);
+
+    // Assert three series spread across the palette for contrast.
+    const threeSeries = ["a", "b", "c"].map((name) => ({ name, data: [1, 2] }));
+    const threeOption = createStackedDailyBarChart("Views per day", days, threeSeries, palette);
+    expect(threeOption.series.map((series) => series.itemStyle.color)).to.deep.equal([
+      palette[950],
+      palette[600],
+      palette[300],
+    ]);
   });
 
   it("keeps single-day line points visible", () => {

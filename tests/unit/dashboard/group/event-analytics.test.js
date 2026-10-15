@@ -304,9 +304,10 @@ describe("dashboard group event analytics", () => {
     expect(shareOption.color[3]).to.equal(viewsColors.Other);
     expect(viewsColors.other).to.not.equal(viewsColors.Other);
 
-    // Assert the share chart keeps its legend below the pie without slice labels.
+    // Assert the share chart keeps its legend below the pie with percentage slice labels.
     expect(shareOption.legend.orient).to.equal("horizontal");
-    expect(shareOption.series[0].label.show).to.equal(false);
+    expect(shareOption.series[0].label).to.include({ formatter: "{d}%", show: true });
+    expect(shareOption.series[0].labelLine.show).to.equal(true);
   });
 
   it("keeps share chart source colors distinct when charted and all-time top sources differ", async () => {
@@ -459,7 +460,8 @@ describe("dashboard group event analytics", () => {
       </ul>
       <button type="button" aria-controls="event-question-0-options" aria-expanded="false"
         data-question-options-toggle data-label-collapsed="Show 1 more options"
-        data-label-expanded="Show fewer options">Show 1 more options</button>`,
+        data-label-expanded="Show fewer options"><span data-question-options-label>Show 1 more options</span
+        ><div class="svg-icon" aria-hidden="true"></div></button>`,
     );
     await initEventAnalyticsCharts(payload, { marker: root.querySelector("[data-event-analytics]") });
     const toggle = root.querySelector("[data-question-options-toggle]");
@@ -470,6 +472,7 @@ describe("dashboard group event analytics", () => {
     expect(hiddenOption.hidden).to.equal(false);
     expect(toggle.getAttribute("aria-expanded")).to.equal("true");
     expect(toggle.textContent).to.equal("Show fewer options");
+    expect(toggle.querySelector(".svg-icon")).to.not.equal(null);
 
     // Collapse them again.
     toggleQuestionOptions(toggle);

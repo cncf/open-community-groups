@@ -105,6 +105,56 @@ export const loadEChartsScript = () => {
   });
 };
 
+const ECHARTS_COLOR_PATTERN = /^(#|rgba?\(|hsla?\()/i;
+const chartColorCache = new Map();
+let chartColorContext = null;
+
+/**
+ * Convert a CSS color into a format ECharts can parse. ECharts derives hover
+ * and blur colors itself and leaves elements transparent for formats it does
+ * not understand, such as the oklch values of the Tailwind palette.
+ * @param {string} value - CSS color value.
+ * @returns {string} Color in a format ECharts can parse, or the original value.
+ */
+export const toChartColor = (value) => {
+  if (!value || ECHARTS_COLOR_PATTERN.test(value) || !globalThis.CSS?.supports?.("color", value)) {
+    return value;
+  }
+  if (chartColorCache.has(value)) {
+    return chartColorCache.get(value);
+  }
+
+  if (!chartColorContext) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    chartColorContext = canvas.getContext("2d", { willReadFrequently: true });
+  }
+  if (!chartColorContext) {
+    return value;
+  }
+
+  // Paint the color and read back its sRGB channels
+  chartColorContext.clearRect(0, 0, 1, 1);
+  chartColorContext.fillStyle = value;
+  chartColorContext.fillRect(0, 0, 1, 1);
+  const [red, green, blue, alpha] = chartColorContext.getImageData(0, 0, 1, 1).data;
+  const color =
+    alpha === 255
+      ? `rgb(${red}, ${green}, ${blue})`
+      : `rgba(${red}, ${green}, ${blue}, ${Number((alpha / 255).toFixed(3))})`;
+  chartColorCache.set(value, color);
+  return color;
+};
+
+/**
+ * Read a CSS color variable in a format ECharts can parse.
+ * @param {CSSStyleDeclaration} styles - Computed styles of the root element.
+ * @param {string} name - CSS custom property name.
+ * @returns {string} Chart color, or an empty string when unset.
+ */
+const readChartColor = (styles, name) => toChartColor(styles.getPropertyValue(name).trim());
+
 /**
  * Read theme colors from CSS variables to keep charts aligned with the UI palette.
  * @returns {Object} Primary color scale keyed by shade.
@@ -112,17 +162,17 @@ export const loadEChartsScript = () => {
 export const getThemePalette = () => {
   const styles = getComputedStyle(document.documentElement);
   const palette = {
-    50: styles.getPropertyValue("--color-primary-50").trim(),
-    100: styles.getPropertyValue("--color-primary-100").trim(),
-    200: styles.getPropertyValue("--color-primary-200").trim(),
-    300: styles.getPropertyValue("--color-primary-300").trim(),
-    400: styles.getPropertyValue("--color-primary-400").trim(),
-    500: styles.getPropertyValue("--color-primary-500").trim(),
-    600: styles.getPropertyValue("--color-primary-600").trim(),
-    700: styles.getPropertyValue("--color-primary-700").trim(),
-    800: styles.getPropertyValue("--color-primary-800").trim(),
-    900: styles.getPropertyValue("--color-primary-900").trim(),
-    950: styles.getPropertyValue("--color-primary-950").trim(),
+    50: readChartColor(styles, "--color-primary-50"),
+    100: readChartColor(styles, "--color-primary-100"),
+    200: readChartColor(styles, "--color-primary-200"),
+    300: readChartColor(styles, "--color-primary-300"),
+    400: readChartColor(styles, "--color-primary-400"),
+    500: readChartColor(styles, "--color-primary-500"),
+    600: readChartColor(styles, "--color-primary-600"),
+    700: readChartColor(styles, "--color-primary-700"),
+    800: readChartColor(styles, "--color-primary-800"),
+    900: readChartColor(styles, "--color-primary-900"),
+    950: readChartColor(styles, "--color-primary-950"),
   };
 
   const fallback = palette[700] || palette[500];
@@ -323,7 +373,7 @@ export const buildRecentBarSeries = (points = [], unit, defaultCount, options = 
  * @returns {string} Grid line color.
  */
 export const getChartGridLineColor = () => {
-  return getComputedStyle(document.documentElement).getPropertyValue("--color-stone-100").trim();
+  return readChartColor(getComputedStyle(document.documentElement), "--color-stone-100");
 };
 
 /**
@@ -334,9 +384,9 @@ const getChartTooltipColors = () => {
   const styles = getComputedStyle(document.documentElement);
 
   return {
-    background: styles.getPropertyValue("--color-white").trim(),
-    border: styles.getPropertyValue("--color-stone-200").trim(),
-    text: styles.getPropertyValue("--color-stone-700").trim(),
+    background: readChartColor(styles, "--color-white"),
+    border: readChartColor(styles, "--color-stone-200"),
+    text: readChartColor(styles, "--color-stone-700"),
   };
 };
 
@@ -348,10 +398,10 @@ export const getChartUiColors = () => {
   const styles = getComputedStyle(document.documentElement);
 
   return {
-    text: styles.getPropertyValue("--color-stone-700").trim(),
-    muted: styles.getPropertyValue("--color-stone-400").trim(),
-    soft: styles.getPropertyValue("--color-stone-300").trim(),
-    surface: styles.getPropertyValue("--color-white").trim(),
+    text: readChartColor(styles, "--color-stone-700"),
+    muted: readChartColor(styles, "--color-stone-400"),
+    soft: readChartColor(styles, "--color-stone-300"),
+    surface: readChartColor(styles, "--color-white"),
   };
 };
 
@@ -662,12 +712,20 @@ export const createDailyBarChart = (title, name, data, palette, options = {}) =>
 };
 
 /**
- * Build a palette for multi-series charts.
+ * Build a palette for multi-series charts. Two or three series spread across
+ * the ramp so neighboring colors stay clearly distinguishable.
  * @param {Object} palette - Theme color palette.
  * @param {number} count - Number of series.
  * @returns {Array<string>} Color list sized to the series count.
  */
 const buildSeriesColors = (palette, count) => {
+  if (count === 2) {
+    return [palette[950], palette[400]];
+  }
+  if (count === 3) {
+    return [palette[950], palette[600], palette[300]];
+  }
+
   const highContrastPalette = [
     palette[950],
     palette[800],

@@ -155,7 +155,7 @@ fn test_offer_labels_describe_outcomes_and_sources() {
 
 #[test]
 fn test_percent_label_formats_ratios() {
-    assert_eq!(percent_label(None), "Not applicable");
+    assert_eq!(percent_label(None), "-");
     assert_eq!(percent_label(Some(0.004)), "0.4%");
     assert_eq!(percent_label(Some(0.05)), "5%");
     assert_eq!(percent_label(Some(0.123)), "12%");
@@ -259,8 +259,8 @@ fn test_rate_labels_use_not_applicable_without_denominator() {
     page.stats.traffic.views_total = 0;
 
     assert_eq!(page.check_in_rate_label(), "75%");
-    assert_eq!(page.conversion_rate_label(), "Not applicable");
-    assert_eq!(page.fill_rate_label(), "Not applicable");
+    assert_eq!(page.conversion_rate_label(), "-");
+    assert_eq!(page.fill_rate_label(), "-");
 }
 
 #[test]

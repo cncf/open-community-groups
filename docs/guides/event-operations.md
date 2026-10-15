@@ -731,9 +731,9 @@ The summary cards show:
 
 - `Page views`: raw loads of the event page across all days, not unique visitors.
 - `Registrations`: attendees currently confirmed, including manual invitations.
-- `Fill rate`: registrations divided by the event capacity, or `Not applicable` without a capacity.
+- `Fill rate`: registrations divided by the event capacity, or `-` without a capacity.
 - `Conversion`: registrations divided by all page views. It is approximate, is not capped
-  at 100%, and shows `Not applicable` while the event has no views.
+  at 100%, and shows `-` while the event has no views.
 - `Check-in rate`: checked-in registrations divided by registrations, shown once the event ends.
 
 Below the summary cards, the tab groups its figures into `Traffic`, `Registrations`, `Tickets` (paid
@@ -813,7 +813,7 @@ that still hold a seat, and the redemptions still available.
 
 - `New attendees` and `Returning attendees` split registrations by whether the attendee was
   confirmed for an earlier event of the same group. Canceled, deleted, and test events do not
-  count. Events without a start date show `Not applicable`.
+  count. Events without a start date show `-`.
 - `Joined during registration` counts people who joined the group inside the registration window,
   and how many of them registered. The window is shown below the cards in the event timezone.
 - Single- and multi-select registration questions list their current options by selections, most

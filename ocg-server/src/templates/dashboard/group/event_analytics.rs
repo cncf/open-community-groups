@@ -22,6 +22,9 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+/// Placeholder displayed when a metric does not apply.
+const NOT_APPLICABLE_LABEL: &str = "-";
+
 /// Number of options shown for each registration question until expanded.
 pub(crate) const QUESTION_VISIBLE_OPTIONS: usize = 10;
 
@@ -228,10 +231,10 @@ impl Page {
         }
     }
 
-    /// Returns an optional count for display, or not applicable when missing.
+    /// Returns an optional count for display, or a dash when missing.
     #[allow(clippy::ref_option, clippy::unused_self)]
     pub(crate) fn optional_count_label(&self, count: &Option<i64>) -> String {
-        count.map_or_else(|| "Not applicable".to_string(), count_label)
+        count.map_or_else(|| NOT_APPLICABLE_LABEL.to_string(), count_label)
     }
 
     /// Returns the number of question options hidden until expanded.
@@ -459,10 +462,10 @@ fn count_label(count: i64) -> String {
     count.to_formatted_string(&Locale::en)
 }
 
-/// Formats a ratio as a percentage, or as not applicable when missing.
+/// Formats a ratio as a percentage, or as a dash when missing.
 fn percent_label(value: Option<f64>) -> String {
     let Some(value) = value else {
-        return "Not applicable".to_string();
+        return NOT_APPLICABLE_LABEL.to_string();
     };
     let percent = value * 100.0;
     if percent >= 10.0 || (percent - percent.round()).abs() < f64::EPSILON {

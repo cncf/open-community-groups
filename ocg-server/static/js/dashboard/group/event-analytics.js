@@ -309,7 +309,8 @@ export const toggleQuestionOptions = (button) => {
     option.hidden = !expanded;
   });
   button.setAttribute("aria-expanded", String(expanded));
-  button.textContent = expanded ? button.dataset.labelExpanded : button.dataset.labelCollapsed;
+  const label = button.querySelector("[data-question-options-label]") || button;
+  label.textContent = expanded ? button.dataset.labelExpanded : button.dataset.labelCollapsed;
 };
 
 /**
@@ -744,7 +745,6 @@ const renderUtmShareChart = (stats, palette, colors) => {
         description: "Share of all page views",
         groupTail: false,
         legendPosition: "bottom",
-        showLabels: false,
       },
     ),
     stats.traffic?.attribution_consistent === true && slices.length > 0,

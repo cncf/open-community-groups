@@ -67,6 +67,12 @@ describe("dashboard group event analytics template", () => {
     expect(template).to.include(
       'aria-controls="{{ options_id }}" aria-expanded="false" data-question-options-toggle',
     );
+    expect(template).to.include(
+      "<span data-question-options-label>Show {{ hidden_options_count }} more options</span>",
+    );
+    expect(template).to.include(
+      "icon-caret-down-filled bg-current transition-transform group-aria-expanded:rotate-180",
+    );
     expect(template).to.include("percentages of respondents can add up to more than 100%");
   });
 
@@ -104,8 +110,15 @@ describe("dashboard group event analytics template", () => {
 
     // Assert the switch exposes pressed state on grouped buttons.
     expect(template).to.include('<div role="group" aria-label="UTM parameter"');
+    expect(template).to.include("aria-pressed:border-primary-500 aria-pressed:text-primary-500");
     expect(template).to.include('aria-pressed="true" data-utm-dimension="source">Source</button>');
     expect(template).to.include('aria-pressed="false" data-utm-dimension="campaign">Campaign</button>');
+
+    // Assert the first and last day columns only show on extra large screens.
+    expect(template).to.include(
+      '<td class="hidden px-3 py-3 xl:table-cell xl:px-5">{{ combination.first_day }}</td>',
+    );
+    expect(template).not.to.include("lg:table-cell");
 
     // Assert the table caption, sortable headers and remainder row.
     expect(template).to.include("Top 10 combinations by views; sorting applies to these rows.");
