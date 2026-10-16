@@ -4,7 +4,7 @@ create or replace function add_event_series(
     p_group_id uuid,
     p_events jsonb,
     p_recurrence jsonb,
-    p_cfg_max_participants jsonb default null,
+    p_cfg_meeting_limits jsonb default null,
     p_configured_provider text default null
 )
 returns uuid[] as $$
@@ -38,6 +38,7 @@ begin
         raise exception 'unsupported recurrence pattern' using errcode = 'OCG01';
     end if;
 
+    -- Resolve the anchor event that defines the series schedule
     v_first_event := p_events->0;
     v_timezone := v_first_event->>'timezone';
 
@@ -74,21 +75,25 @@ begin
     -- Create each event using the existing single-event behavior and then link it
     for v_event in select jsonb_array_elements(p_events)
     loop
+        -- Create the event with the single-event validations
         v_event_id := add_event(
             p_actor_user_id,
             p_group_id,
             v_event,
-            p_cfg_max_participants,
+            p_cfg_meeting_limits,
             p_configured_provider
         );
 
+        -- Link the created event to the series
         update event
         set event_series_id = v_event_series_id
         where event_id = v_event_id;
 
+        -- Collect the created event identifier
         v_event_ids := array_append(v_event_ids, v_event_id);
     end loop;
 
+    -- Return the created event identifiers in series order
     return v_event_ids;
 end;
 $$ language plpgsql;

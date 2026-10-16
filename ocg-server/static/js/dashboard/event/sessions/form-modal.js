@@ -1,4 +1,5 @@
 import { html } from "lit";
+import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
   bindModalDismissListeners,
@@ -171,7 +172,7 @@ class SessionFormModal extends LitWrapper {
   }
 
   /**
-   * Saves the session and closes the modal.
+   * Validates the session meeting settings, saves the session and closes the modal.
    * @private
    */
   _onSave() {
@@ -191,14 +192,24 @@ class SessionFormModal extends LitWrapper {
       return;
     }
 
-    if (sessionItem) {
-      const onlineEventDetails = sessionItem.querySelector("online-event-details");
-      if (onlineEventDetails && typeof onlineEventDetails.getMeetingData === "function") {
-        this._session = {
-          ...this._session,
-          ...onlineEventDetails.getMeetingData(),
-        };
-      }
+    const onlineEventDetails = sessionItem?.querySelector("online-event-details");
+
+    // Keep the modal open while the automatic meeting settings are invalid.
+    if (
+      typeof onlineEventDetails?.validate === "function" &&
+      !onlineEventDetails.validate(null, {
+        endsAtInput: getElementById(sessionItem, `session-${sessionItem.index}-ends-at`),
+        startsAtInput: getElementById(sessionItem, `session-${sessionItem.index}-starts-at`),
+      })
+    ) {
+      return;
+    }
+
+    if (typeof onlineEventDetails?.getMeetingData === "function") {
+      this._session = {
+        ...this._session,
+        ...onlineEventDetails.getMeetingData(),
+      };
     }
 
     this.dispatchEvent(

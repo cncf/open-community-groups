@@ -3,7 +3,7 @@ create or replace function add_event(
     p_actor_user_id uuid,
     p_group_id uuid,
     p_event jsonb,
-    p_cfg_max_participants jsonb default null,
+    p_cfg_meeting_limits jsonb default null,
     p_configured_provider text default null
 )
 returns uuid as $$
@@ -91,9 +91,12 @@ begin
     -- Validate capacity rules
     perform validate_event_capacity(
         p_event,
-        p_cfg_max_participants,
+        p_cfg_meeting_limits,
         p_effective_capacity => v_event.capacity
     );
+
+    -- Validate automatic meeting durations against provider limits
+    perform validate_event_meeting_durations(p_event, p_cfg_meeting_limits);
 
     -- Validate the labels payload when supplied
     if p_event ? 'labels' then
@@ -102,6 +105,7 @@ begin
 
     -- Insert event with unique slug generation and collision retry
     loop
+        -- Generate a candidate slug
         v_slug := generate_slug(7);
 
         -- Attempt the insert with the candidate slug

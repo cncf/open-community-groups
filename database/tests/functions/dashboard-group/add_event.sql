@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(56);
+select plan(58);
 
 -- ============================================================================
 -- VARIABLES
@@ -826,7 +826,7 @@ select throws_ok(
         null::uuid,
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Capacity Exceed Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
-        '{"zoom": 100}'::jsonb
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
     )$$,
     'OCG01',
     'event capacity (500) exceeds maximum participants allowed (100)',
@@ -839,7 +839,7 @@ select ok(
         null::uuid,
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Valid Capacity Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
-        '{"zoom": 500}'::jsonb
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 500, "min_duration_minutes": 5}}'::jsonb
     ) is not null),
     'Should succeed when default tier capacity equals max participants'
 );
@@ -850,12 +850,12 @@ select ok(
         null::uuid,
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{"name": "No Meeting Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
-        '{"zoom": 100}'::jsonb
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
     ) is not null),
     'Should succeed with high capacity when meeting_requested is false'
 );
 
--- Should succeed when cfg_max_participants is null
+-- Should succeed when cfg_meeting_limits is null
 select ok(
     (select add_event(
         null::uuid,
@@ -863,7 +863,7 @@ select ok(
         '{"name": "No Limit Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         null
     ) is not null),
-    'Should succeed when cfg_max_participants is null'
+    'Should succeed when cfg_meeting_limits is null'
 );
 
 -- Should reject ticket-derived capacity above the meeting provider limit
@@ -898,12 +898,38 @@ select throws_ok(
                 }
             ]
         }'::jsonb,
-        '{"zoom": 100}'::jsonb,
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb,
         'stripe'
     )$$,
     'OCG01',
     'event capacity (150) exceeds maximum participants allowed (100)',
     'Should reject ticket-derived capacity above the meeting provider limit'
+);
+
+-- Should reject an event meeting longer than the provider maximum duration
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Long Meeting Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T22:01:00"}'::jsonb,
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 500, "min_duration_minutes": 5}}'::jsonb
+    )$$,
+    'OCG01',
+    'event meeting duration (721 minutes) must be between 5 and 720 minutes',
+    'Should reject an event meeting longer than the provider maximum duration'
+);
+
+-- Should reject a session meeting longer than the provider maximum duration
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Long Session Meeting Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T23:00:00", "sessions": [{"name": "Marathon Session", "kind": "virtual", "meeting_provider_id": "zoom", "meeting_requested": true, "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T23:00:00"}]}'::jsonb,
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
+    )$$,
+    'OCG01',
+    'session "Marathon Session" meeting duration (780 minutes) must be between 5 and 720 minutes',
+    'Should reject a session meeting longer than the provider maximum duration'
 );
 
 -- Should create a paid-capable hybrid event with a complete physical venue

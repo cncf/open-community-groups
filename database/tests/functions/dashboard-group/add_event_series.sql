@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -523,6 +523,50 @@ select throws_ok(
     'OCG01',
     'recurring events require starts_at',
     'Should reject missing start date on the anchor event'
+);
+
+-- Should reject generated events whose meeting exceeds the provider maximum duration
+select throws_ok(
+    format(
+        $$
+        select add_event_series(
+            %L::uuid,
+            %L::uuid,
+            '[
+                {
+                    "name": "Long Meeting Study Group",
+                    "description": "Base event",
+                    "timezone": "UTC",
+                    "category_id": "%s",
+                    "kind_id": "virtual",
+                    "capacity": 50,
+                    "meeting_provider_id": "zoom",
+                    "meeting_requested": true,
+                    "starts_at": "2030-10-05T09:00:00",
+                    "ends_at": "2030-10-05T22:00:00"
+                },
+                {
+                    "name": "Long Meeting Study Group",
+                    "description": "Base event",
+                    "timezone": "UTC",
+                    "category_id": "%s",
+                    "kind_id": "virtual",
+                    "capacity": 50,
+                    "meeting_provider_id": "zoom",
+                    "meeting_requested": true,
+                    "starts_at": "2030-10-12T09:00:00",
+                    "ends_at": "2030-10-12T22:00:00"
+                }
+            ]'::jsonb,
+            '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb,
+            '{"zoom": {"max_duration_minutes": 720, "max_participants": 500, "min_duration_minutes": 5}}'::jsonb
+        )
+        $$,
+        :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
+    ),
+    'OCG01',
+    'event meeting duration (780 minutes) must be between 5 and 720 minutes',
+    'Should reject generated events whose meeting exceeds the provider maximum duration'
 );
 
 -- Should roll back the whole series when one generated event fails

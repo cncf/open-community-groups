@@ -27,7 +27,7 @@ use strum::AsRefStr;
 use tracing::instrument;
 
 use crate::types::{
-    meetings::MeetingProvider,
+    meetings::{MeetingProvider, MeetingProviderLimits},
     payments::{PaymentMode, PaymentProvider},
 };
 
@@ -292,6 +292,20 @@ impl MeetingsConfig {
             max_participants.insert(MeetingProvider::Zoom, zoom.max_participants);
         }
         max_participants
+    }
+
+    /// Returns the automatic meeting limits enforced per configured provider.
+    pub(crate) fn meeting_limits_by_provider(
+        &self,
+    ) -> HashMap<MeetingProvider, MeetingProviderLimits> {
+        let mut limits = HashMap::new();
+        if let Some(zoom) = &self.zoom {
+            limits.insert(
+                MeetingProvider::Zoom,
+                MeetingProviderLimits::new(MeetingProvider::Zoom, zoom.max_participants),
+            );
+        }
+        limits
     }
 
     /// Check if at least one meetings provider is enabled.

@@ -12,7 +12,11 @@ use serde_with::skip_serializing_none;
 use tokio::{sync::Mutex, time::sleep};
 use tracing::{instrument, trace};
 
-use crate::{config::MeetingsZoomConfig, types::meetings::Meeting, util::build_http_client};
+use crate::{
+    config::MeetingsZoomConfig,
+    types::meetings::{Meeting, MeetingProvider},
+    util::build_http_client,
+};
 
 use super::MeetingProviderError;
 
@@ -29,10 +33,10 @@ const DEFAULT_RATE_LIMIT_RETRY: Duration = Duration::from_mins(1);
 const LIST_MEETINGS_PAGE_SIZE: u16 = 300;
 
 /// Maximum meeting duration in minutes.
-const MAX_DURATION_MINUTES: i64 = 720;
+const MAX_DURATION_MINUTES: i64 = MeetingProvider::Zoom.max_duration_minutes();
 
 /// Minimum meeting duration in minutes.
-const MIN_DURATION_MINUTES: i64 = 5;
+const MIN_DURATION_MINUTES: i64 = MeetingProvider::Zoom.min_duration_minutes();
 
 /// Margin before token expiry to trigger refresh.
 const TOKEN_EXPIRY_MARGIN: Duration = Duration::from_mins(5);

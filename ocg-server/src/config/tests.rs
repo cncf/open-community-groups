@@ -328,6 +328,28 @@ fn test_http_server_config_uses_image_hotlinking_setting() {
 }
 
 #[test]
+fn test_meetings_config_meeting_limits_by_provider_includes_zoom_limits() {
+    let meetings_cfg = sample_config().meetings.unwrap();
+
+    assert_eq!(
+        meetings_cfg.meeting_limits_by_provider(),
+        HashMap::from([(
+            MeetingProvider::Zoom,
+            MeetingProviderLimits {
+                max_duration_minutes: 720,
+                max_participants: 100,
+                min_duration_minutes: 5,
+            },
+        )])
+    );
+}
+
+#[test]
+fn test_meetings_config_meeting_limits_by_provider_is_empty_without_providers() {
+    assert!(MeetingsConfig::default().meeting_limits_by_provider().is_empty());
+}
+
+#[test]
 fn test_payments_config_accepts_maximum_platform_fee_bps() {
     // Setup a Stripe configuration with the maximum platform fee
     let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {

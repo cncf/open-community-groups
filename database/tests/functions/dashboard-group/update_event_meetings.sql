@@ -6,7 +6,7 @@
 -- ============================================================================
 
 begin;
-select plan(26);
+select plan(29);
 
 -- ============================================================================
 -- VARIABLES
@@ -252,6 +252,71 @@ where e.group_id = :'group1ID';
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reject an event meeting longer than the provider maximum duration
+select throws_ok(
+    $$select update_event(
+        null::uuid,
+        '3a3b0000-0000-0000-0000-000000000008'::uuid,
+        '3a3b0000-0000-0000-0000-000000000003'::uuid,
+        '{
+            "name": "Event With Pending Sync",
+            "description": "Extended schedule",
+            "timezone": "America/New_York",
+            "category_id": "3a3b0000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "capacity": 100,
+            "meeting_provider_id": "zoom",
+            "meeting_requested": true,
+            "starts_at": "2030-03-01T10:00:00",
+            "ends_at": "2030-03-01T22:30:00"
+        }'::jsonb,
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
+    )$$,
+    'OCG01',
+    'event meeting duration (750 minutes) must be between 5 and 720 minutes',
+    'Should reject an event meeting longer than the provider maximum duration'
+);
+
+-- Should keep the event schedule after rejecting a long meeting duration
+select is(
+    (select ends_at from event where event_id = :'event5ID'::uuid),
+    '2030-03-01 12:00:00-05'::timestamptz,
+    'Should keep the event schedule after rejecting a long meeting duration'
+);
+
+-- Should reject a session meeting longer than the provider maximum duration
+select throws_ok(
+    $$select update_event(
+        null::uuid,
+        '3a3b0000-0000-0000-0000-000000000008'::uuid,
+        '3a3b0000-0000-0000-0000-000000000004'::uuid,
+        '{
+            "name": "Event With Session Pending Sync",
+            "description": "Extended session schedule",
+            "timezone": "America/New_York",
+            "category_id": "3a3b0000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "starts_at": "2030-04-01T09:00:00",
+            "ends_at": "2030-04-01T23:00:00",
+            "sessions": [
+                {
+                    "session_id": "3a3b0000-0000-0000-0000-000000000014",
+                    "name": "Session With Pending Sync",
+                    "starts_at": "2030-04-01T10:00:00",
+                    "ends_at": "2030-04-01T22:01:00",
+                    "kind": "virtual",
+                    "meeting_provider_id": "zoom",
+                    "meeting_requested": true
+                }
+            ]
+        }'::jsonb,
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
+    )$$,
+    'OCG01',
+    'session "Session With Pending Sync" meeting duration (721 minutes) must be between 5 and 720 minutes',
+    'Should reject a session meeting longer than the provider maximum duration'
+);
 
 -- Should execute unrelated update with pending event meeting sync
 select lives_ok(

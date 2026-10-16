@@ -1,5 +1,6 @@
 import { getElementById, setElementHidden } from "/static/js/common/dom.js";
 import { getCommonAlertOptions } from "/static/js/common/alerts.js";
+import { toUtcIsoInTimezone } from "/static/js/common/datetime.js";
 
 /**
  * Zoom API limits meeting duration to 5 to 720 minutes.
@@ -26,7 +27,19 @@ export const updateSectionVisibility = (kind, root = document) => {
 };
 
 /**
+ * Parses an event-local datetime-local value as an instant in the event timezone.
+ * Falls back to the browser timezone when no event timezone is available.
+ * @param {string} value Datetime-local string
+ * @param {string} [timezone=""] Event IANA timezone
+ * @returns {Date} Parsed date, invalid when the value cannot be parsed
+ */
+export const parseMeetingDateTime = (value, timezone = "") =>
+  new Date(toUtcIsoInTimezone(value, timezone) ?? Number.NaN);
+
+/**
  * Validates whether automatic meeting creation is allowed for the provided data.
+ * Schedule fields are focused before the error is shown so the alert returns
+ * focus to them when it closes.
  * @param {object} params Validation inputs
  * @param {boolean} params.requested Whether automatic meeting is requested
  * @param {string} params.kindValue Event kind value
@@ -39,6 +52,8 @@ export const updateSectionVisibility = (kind, root = document) => {
  * @param {function} [params.displaySection] Optional section switcher
  * @param {HTMLElement} [params.startsAtInput] Start input element to focus
  * @param {HTMLElement} [params.endsAtInput] End input element to focus
+ * @param {string} [params.timezone=""] Event IANA timezone of the start and end values
+ * @param {boolean} [params.validateCapacity=true] Whether capacity rules apply
  * @returns {boolean} True when valid, false otherwise
  */
 export const validateMeetingRequest = ({
@@ -53,6 +68,8 @@ export const validateMeetingRequest = ({
   displaySection,
   startsAtInput,
   endsAtInput,
+  timezone = "",
+  validateCapacity = true,
 }) => {
   if (!requested) return true;
 
@@ -64,51 +81,53 @@ export const validateMeetingRequest = ({
   }
 
   if (!startsAtValue || !endsAtValue) {
-    showError(
-      "Automatic meetings require both start and end times to be set. Please provide the event schedule or disable automatic meeting creation.",
-    );
     displaySection?.("date-venue");
     if (!startsAtValue && startsAtInput) {
       startsAtInput.focus();
     } else if (endsAtInput) {
       endsAtInput.focus();
     }
+    showError(
+      "Automatic meetings require both start and end times to be set. Please provide the event schedule or disable automatic meeting creation.",
+    );
     return false;
   }
 
-  const startDate = new Date(startsAtValue);
-  const endDate = new Date(endsAtValue);
+  const startDate = parseMeetingDateTime(startsAtValue, timezone);
+  const endDate = parseMeetingDateTime(endsAtValue, timezone);
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    showError(
-      "Automatic meetings need valid start and end dates. Update the schedule or disable automatic meeting creation.",
-    );
     displaySection?.("date-venue");
     if (Number.isNaN(startDate.getTime())) {
       startsAtInput?.focus();
     } else {
       endsAtInput?.focus();
     }
+    showError(
+      "Automatic meetings need valid start and end dates. Update the schedule or disable automatic meeting creation.",
+    );
     return false;
   }
   const durationMinutes = (endDate - startDate) / 60000;
 
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    displaySection?.("date-venue");
+    endsAtInput?.focus();
     showError(
       "Automatic meetings require an end time after the start time. Update the schedule or disable automatic meeting creation.",
     );
-    displaySection?.("date-venue");
-    endsAtInput?.focus();
     return false;
   }
 
   if (durationMinutes < MIN_MEETING_MINUTES || durationMinutes > MAX_MEETING_MINUTES) {
+    displaySection?.("date-venue");
+    endsAtInput?.focus();
     showError(
       `Automatic meetings must last between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES} minutes (meeting provider limits). Adjust start and end times or disable automatic meeting creation.`,
     );
-    displaySection?.("date-venue");
-    endsAtInput?.focus();
     return false;
   }
+
+  if (!validateCapacity) return true;
 
   if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
     showError(

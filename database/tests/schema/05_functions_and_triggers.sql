@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(556);
+select plan(557);
 
 -- ============================================================================
 -- VARIABLES
@@ -746,6 +746,7 @@ select has_function('validate_event_discount_codes_payload', array['jsonb']::nam
 select has_function('validate_event_enrollment_payload', array['boolean', 'boolean']::name[]);
 select has_function('validate_event_label_ids', array['uuid', 'uuid[]']::name[]);
 select has_function('validate_event_labels_payload', array['jsonb']::name[]);
+select has_function('validate_event_meeting_durations', array['jsonb', 'jsonb']::name[]);
 select has_function('validate_event_payment_validation', array['jsonb', 'jsonb', 'text[]', 'text', 'text']::name[]);
 select has_function('validate_event_series_action_event_ids', array['uuid', 'uuid[]', 'boolean']::name[]);
 select has_function('validate_event_ticket_types_payload', array['jsonb']::name[]);

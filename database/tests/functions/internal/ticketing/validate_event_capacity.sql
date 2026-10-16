@@ -93,7 +93,7 @@ insert into event_attendee (event_id, user_id, manually_invited, status) values
 select throws_ok(
     $$select validate_event_capacity(
         '{"capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom"}'::jsonb,
-        '{"zoom": 100}'::jsonb
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
     )$$,
     'OCG01',
     'event capacity (200) exceeds maximum participants allowed (100)',
@@ -104,7 +104,7 @@ select throws_ok(
 select lives_ok(
     $$select validate_event_capacity(
         '{"capacity": 100, "meeting_requested": true, "meeting_provider_id": "zoom"}'::jsonb,
-        '{"zoom": 100}'::jsonb
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
     )$$,
     'Should accept capacity within the meeting provider limit'
 );
@@ -113,7 +113,7 @@ select lives_ok(
 select lives_ok(
     $$select validate_event_capacity(
         '{"capacity": 200, "meeting_requested": false}'::jsonb,
-        '{"zoom": 100}'::jsonb
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
     )$$,
     'Should ignore provider limits when no meeting is requested'
 );
@@ -122,7 +122,7 @@ select lives_ok(
 select throws_ok(
     $$select validate_event_capacity(
         '{"capacity": 10, "meeting_requested": true, "meeting_provider_id": "zoom"}'::jsonb,
-        '{"zoom": 100}'::jsonb,
+        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb,
         null,
         200
     )$$,

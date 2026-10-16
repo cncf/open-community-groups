@@ -51,7 +51,7 @@ use crate::{
             SessionKindSummary as SessionKind,
         },
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
-        meetings::MeetingProvider,
+        meetings::{MeetingProvider, MeetingProviderLimits},
         payments::{
             GroupExternalPaymentsContext, GroupPaymentRecipient, PaymentConfigurationValidation,
             PaymentProvider,
@@ -98,7 +98,7 @@ pub(crate) trait DBDashboardGroup {
         actor_user_id: Uuid,
         group_id: Uuid,
         event: &serde_json::Value,
-        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        cfg_meeting_limits: &HashMap<MeetingProvider, MeetingProviderLimits>,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<Uuid>;
 
@@ -109,7 +109,7 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         events: &[serde_json::Value],
         recurrence: &serde_json::Value,
-        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        cfg_meeting_limits: &HashMap<MeetingProvider, MeetingProviderLimits>,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<Vec<Uuid>>;
 
@@ -687,7 +687,7 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_id: Uuid,
         event: &serde_json::Value,
-        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        cfg_meeting_limits: &HashMap<MeetingProvider, MeetingProviderLimits>,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<bool>;
 
@@ -794,13 +794,13 @@ where
     }
 
     /// [`DBDashboardGroup::add_event`]
-    #[instrument(skip(self, event, cfg_max_participants), err)]
+    #[instrument(skip(self, event, cfg_meeting_limits), err)]
     async fn add_event(
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
         event: &serde_json::Value,
-        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        cfg_meeting_limits: &HashMap<MeetingProvider, MeetingProviderLimits>,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
@@ -809,7 +809,7 @@ where
                 &actor_user_id,
                 &group_id,
                 &Json(event),
-                &Json(cfg_max_participants),
+                &Json(cfg_meeting_limits),
                 &payment_provider.map(|provider| provider.to_string()),
             ],
         )
@@ -817,14 +817,14 @@ where
     }
 
     /// [`DBDashboardGroup::add_event_series`]
-    #[instrument(skip(self, events, recurrence, cfg_max_participants), err)]
+    #[instrument(skip(self, events, recurrence, cfg_meeting_limits), err)]
     async fn add_event_series(
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
         events: &[serde_json::Value],
         recurrence: &serde_json::Value,
-        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        cfg_meeting_limits: &HashMap<MeetingProvider, MeetingProviderLimits>,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<Vec<Uuid>> {
         self.fetch_scalar_one(
@@ -834,7 +834,7 @@ where
                 &group_id,
                 &Json(events),
                 &Json(recurrence),
-                &Json(cfg_max_participants),
+                &Json(cfg_meeting_limits),
                 &payment_provider.map(|provider| provider.to_string()),
             ],
         )
@@ -2123,14 +2123,14 @@ where
     }
 
     /// [`DBDashboardGroup::update_event`]
-    #[instrument(skip(self, event, cfg_max_participants), err)]
+    #[instrument(skip(self, event, cfg_meeting_limits), err)]
     async fn update_event(
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
         event_id: Uuid,
         event: &serde_json::Value,
-        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        cfg_meeting_limits: &HashMap<MeetingProvider, MeetingProviderLimits>,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<bool> {
         self.fetch_scalar_one(
@@ -2140,7 +2140,7 @@ where
                 &group_id,
                 &event_id,
                 &Json(event),
-                &Json(cfg_max_participants),
+                &Json(cfg_meeting_limits),
                 &payment_provider.map(|provider| provider.to_string()),
             ],
         )

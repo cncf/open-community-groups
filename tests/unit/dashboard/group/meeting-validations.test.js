@@ -7,6 +7,7 @@ import {
   clearVenueFields,
   confirmVenueDataDeletion,
   hasVenueData,
+  parseMeetingDateTime,
   updateSectionVisibility,
   validateMeetingRequest,
 } from "/static/js/dashboard/group/meeting-validations.js";
@@ -378,6 +379,97 @@ describe("meeting validations", () => {
     expect(errors[1]).to.include("Total ticket seats (150)");
     expect(errors[1]).to.include("Reduce ticket seats");
     expect(sections[1]).to.equal("payments");
+  });
+
+  it("parses meeting datetimes in the event timezone", () => {
+    // Event-local values resolve to the instant in the event timezone.
+    expect(parseMeetingDateTime("2030-03-09T18:00", "America/New_York").toISOString()).to.equal(
+      "2030-03-09T23:00:00.000Z",
+    );
+    expect(parseMeetingDateTime("2030-03-10T07:00", "America/New_York").toISOString()).to.equal(
+      "2030-03-10T11:00:00.000Z",
+    );
+
+    // Missing or malformed values produce invalid dates.
+    expect(Number.isNaN(parseMeetingDateTime("", "America/New_York").getTime())).to.equal(true);
+    expect(Number.isNaN(parseMeetingDateTime("not-a-date", "America/New_York").getTime())).to.equal(true);
+  });
+
+  it("measures meeting durations in the event timezone across daylight saving changes", () => {
+    // Capture validation errors.
+    const errors = [];
+
+    // Validate a 720-minute meeting spanning the New York spring-forward change.
+    const result = validateMeetingRequest({
+      requested: true,
+      kindValue: "virtual",
+      startsAtValue: "2030-03-09T18:00",
+      endsAtValue: "2030-03-10T07:00",
+      capacityValue: 50,
+      showError: (message) => errors.push(message),
+      timezone: "America/New_York",
+    });
+
+    // The wall-clock span of 13 hours lasts 720 minutes in the event timezone.
+    expect(result).to.equal(true);
+    expect(errors).to.deep.equal([]);
+  });
+
+  it("focuses the schedule field before showing schedule errors", () => {
+    // Create focusable schedule inputs.
+    const startInput = document.createElement("input");
+    const endInput = document.createElement("input");
+    document.body.append(startInput, endInput);
+    const focusedOnError = [];
+    const showError = () => focusedOnError.push(document.activeElement);
+
+    // Validate a meeting without a start time.
+    validateMeetingRequest({
+      requested: true,
+      kindValue: "virtual",
+      startsAtValue: "",
+      endsAtValue: "2025-03-25T11:00",
+      capacityValue: 50,
+      showError,
+      startsAtInput: startInput,
+      endsAtInput: endInput,
+    });
+
+    // Validate a meeting longer than the maximum duration.
+    validateMeetingRequest({
+      requested: true,
+      kindValue: "virtual",
+      startsAtValue: "2025-03-25T10:00",
+      endsAtValue: "2025-03-25T22:01",
+      capacityValue: 50,
+      showError,
+      startsAtInput: startInput,
+      endsAtInput: endInput,
+    });
+
+    // The alert opens with the relevant field focused, so it returns focus there.
+    expect(focusedOnError).to.deep.equal([startInput, endInput]);
+  });
+
+  it("skips capacity rules when capacity validation is disabled", () => {
+    // Capture validation errors.
+    const errors = [];
+
+    // Validate a meeting whose capacity exceeds the provider limit.
+    const result = validateMeetingRequest({
+      requested: true,
+      kindValue: "virtual",
+      startsAtValue: "2025-03-25T10:00",
+      endsAtValue: "2025-03-25T11:00",
+      capacityValue: 150,
+      capacityLimit: 100,
+      showError: (message) => errors.push(message),
+      validateCapacity: false,
+    });
+
+    // Capacity rules are skipped while schedule rules still pass.
+    expect(result).to.equal(true);
+    expect(errors).to.deep.equal([]);
   });
 
   it("detects and clears venue data, including custom location fields", () => {

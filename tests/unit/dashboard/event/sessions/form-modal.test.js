@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/sessions/section.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import {
   mountLitComponent,
   useMountedElementsCleanup,
@@ -125,6 +126,203 @@ describe("session-form-modal", () => {
     // Session meeting details inherit the parent event's past-event rule.
     expect(sessionItem.eventPast).to.equal(true);
     expect(onlineEventDetails.eventPast).to.equal(true);
+  });
+
+  it("keeps the modal open when an automatic session meeting exceeds the duration limit", async () => {
+    // Create the capacity fixture and mock alerts used by meeting validation.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "50";
+    document.body.append(capacity);
+    const swal = mockSwal();
+
+    try {
+      // Render the session form modal with an automatic session meeting over 720 minutes.
+      const element = await mountLitComponent("session-form-modal", {
+        meetingMaxParticipants: { zoom: 100 },
+        meetingsEnabled: true,
+        sessionKinds: [{ session_kind_id: "virtual", display_name: "Virtual" }],
+      });
+      const savedEvents = [];
+      element.addEventListener("session-saved", (event) => savedEvents.push(event.detail));
+      element.open({
+        id: 7,
+        ends_at: "2030-05-10T22:01",
+        kind: "virtual",
+        meeting_provider_id: "zoom",
+        meeting_requested: true,
+        name: "Marathon session",
+        starts_at: "2030-05-10T10:00",
+      });
+      await element.updateComplete;
+      const sessionItem = element.querySelector("session-item");
+      await sessionItem.updateComplete;
+      await sessionItem.querySelector("online-event-details").updateComplete;
+
+      // Try to save the session.
+      element._onSave();
+      await element.updateComplete;
+
+      // The invalid session stays in the open modal and the limit is reported.
+      expect(savedEvents).to.have.length(0);
+      expect(element._isOpen).to.equal(true);
+      expect(swal.calls).to.have.length(1);
+      expect(swal.calls[0].text).to.include("between 5 and 720 minutes");
+
+      // The end time is focused so the alert returns focus to it when closed.
+      expect(document.activeElement).to.equal(sessionItem.querySelector("#session-0-ends-at"));
+    } finally {
+      swal.restore();
+      capacity.remove();
+    }
+  });
+
+  it("saves an automatic session meeting within the duration limit", async () => {
+    // Create the capacity fixture and mock alerts used by meeting validation.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "50";
+    document.body.append(capacity);
+    const swal = mockSwal();
+
+    try {
+      // Render the session form modal with an automatic session meeting of 720 minutes.
+      const element = await mountLitComponent("session-form-modal", {
+        meetingMaxParticipants: { zoom: 100 },
+        meetingsEnabled: true,
+        sessionKinds: [{ session_kind_id: "virtual", display_name: "Virtual" }],
+      });
+      const savedEvents = [];
+      element.addEventListener("session-saved", (event) => savedEvents.push(event.detail));
+      element.open({
+        id: 7,
+        ends_at: "2030-05-10T22:00",
+        kind: "virtual",
+        meeting_provider_id: "zoom",
+        meeting_requested: true,
+        name: "Full day session",
+        starts_at: "2030-05-10T10:00",
+      });
+      await element.updateComplete;
+      const sessionItem = element.querySelector("session-item");
+      await sessionItem.updateComplete;
+      await sessionItem.querySelector("online-event-details").updateComplete;
+
+      // Save the session.
+      element._onSave();
+      await element.updateComplete;
+
+      // The valid session keeps its automatic meeting and closes the modal.
+      expect(swal.calls).to.have.length(0);
+      expect(savedEvents).to.have.length(1);
+      expect(savedEvents[0].session).to.include({
+        meeting_provider_id: "zoom",
+        meeting_requested: true,
+      });
+      expect(element._isOpen).to.equal(false);
+    } finally {
+      swal.restore();
+      capacity.remove();
+    }
+  });
+
+  it("measures automatic session meeting durations in the event timezone", async () => {
+    // Create the capacity and event timezone fixtures read by meeting validation.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "50";
+    const timezone = document.createElement("input");
+    timezone.name = "timezone";
+    timezone.value = "America/New_York";
+    document.body.append(capacity, timezone);
+    const swal = mockSwal();
+
+    try {
+      // Render a 720-minute session spanning the New York spring-forward change.
+      const element = await mountLitComponent("session-form-modal", {
+        meetingMaxParticipants: { zoom: 100 },
+        meetingsEnabled: true,
+        sessionKinds: [{ session_kind_id: "virtual", display_name: "Virtual" }],
+      });
+      const savedEvents = [];
+      element.addEventListener("session-saved", (event) => savedEvents.push(event.detail));
+      element.open({
+        id: 7,
+        ends_at: "2030-03-10T07:00",
+        kind: "virtual",
+        meeting_provider_id: "zoom",
+        meeting_requested: true,
+        name: "Overnight session",
+        starts_at: "2030-03-09T18:00",
+      });
+      await element.updateComplete;
+      const sessionItem = element.querySelector("session-item");
+      await sessionItem.updateComplete;
+      await sessionItem.querySelector("online-event-details").updateComplete;
+
+      // Save the session.
+      element._onSave();
+      await element.updateComplete;
+
+      // The 13-hour wall-clock span is accepted as 720 minutes in the event timezone.
+      expect(swal.calls).to.have.length(0);
+      expect(savedEvents).to.have.length(1);
+      expect(element._isOpen).to.equal(false);
+    } finally {
+      swal.restore();
+      capacity.remove();
+      timezone.remove();
+    }
+  });
+
+  it("saves a synced automatic session meeting when event capacity exceeds the meeting limit", async () => {
+    // Create a capacity fixture above the meeting participant limit.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "200";
+    document.body.append(capacity);
+    const swal = mockSwal();
+
+    try {
+      // Render a session whose automatic meeting is already synced.
+      const element = await mountLitComponent("session-form-modal", {
+        meetingMaxParticipants: { zoom: 100 },
+        meetingsEnabled: true,
+        sessionKinds: [{ session_kind_id: "virtual", display_name: "Virtual" }],
+      });
+      const savedEvents = [];
+      element.addEventListener("session-saved", (event) => savedEvents.push(event.detail));
+      element.open({
+        id: 7,
+        ends_at: "2030-05-10T11:00",
+        kind: "virtual",
+        meeting_in_sync: true,
+        meeting_provider_id: "zoom",
+        meeting_requested: true,
+        name: "Synced session",
+        starts_at: "2030-05-10T10:00",
+      });
+      await element.updateComplete;
+      const sessionItem = element.querySelector("session-item");
+      await sessionItem.updateComplete;
+      await sessionItem.querySelector("online-event-details").updateComplete;
+
+      // Save the session.
+      element._onSave();
+      await element.updateComplete;
+
+      // The synced meeting is kept without applying new-meeting capacity rules.
+      expect(swal.calls).to.have.length(0);
+      expect(savedEvents).to.have.length(1);
+      expect(savedEvents[0].session).to.include({
+        meeting_provider_id: "zoom",
+        meeting_requested: true,
+      });
+      expect(element._isOpen).to.equal(false);
+    } finally {
+      swal.restore();
+      capacity.remove();
+    }
   });
 
   describe("labels", () => {
