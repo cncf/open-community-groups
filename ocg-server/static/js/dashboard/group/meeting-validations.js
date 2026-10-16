@@ -38,6 +38,8 @@ export const parseMeetingDateTime = (value, timezone = "") =>
 
 /**
  * Validates whether automatic meeting creation is allowed for the provided data.
+ * Schedule fields are focused before the error is shown so the alert returns
+ * focus to them when it closes.
  * @param {object} params Validation inputs
  * @param {boolean} params.requested Whether automatic meeting is requested
  * @param {string} params.kindValue Event kind value
@@ -79,49 +81,49 @@ export const validateMeetingRequest = ({
   }
 
   if (!startsAtValue || !endsAtValue) {
-    showError(
-      "Automatic meetings require both start and end times to be set. Please provide the event schedule or disable automatic meeting creation.",
-    );
     displaySection?.("date-venue");
     if (!startsAtValue && startsAtInput) {
       startsAtInput.focus();
     } else if (endsAtInput) {
       endsAtInput.focus();
     }
+    showError(
+      "Automatic meetings require both start and end times to be set. Please provide the event schedule or disable automatic meeting creation.",
+    );
     return false;
   }
 
   const startDate = parseMeetingDateTime(startsAtValue, timezone);
   const endDate = parseMeetingDateTime(endsAtValue, timezone);
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    showError(
-      "Automatic meetings need valid start and end dates. Update the schedule or disable automatic meeting creation.",
-    );
     displaySection?.("date-venue");
     if (Number.isNaN(startDate.getTime())) {
       startsAtInput?.focus();
     } else {
       endsAtInput?.focus();
     }
+    showError(
+      "Automatic meetings need valid start and end dates. Update the schedule or disable automatic meeting creation.",
+    );
     return false;
   }
   const durationMinutes = (endDate - startDate) / 60000;
 
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    displaySection?.("date-venue");
+    endsAtInput?.focus();
     showError(
       "Automatic meetings require an end time after the start time. Update the schedule or disable automatic meeting creation.",
     );
-    displaySection?.("date-venue");
-    endsAtInput?.focus();
     return false;
   }
 
   if (durationMinutes < MIN_MEETING_MINUTES || durationMinutes > MAX_MEETING_MINUTES) {
+    displaySection?.("date-venue");
+    endsAtInput?.focus();
     showError(
       `Automatic meetings must last between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES} minutes (meeting provider limits). Adjust start and end times or disable automatic meeting creation.`,
     );
-    displaySection?.("date-venue");
-    endsAtInput?.focus();
     return false;
   }
 

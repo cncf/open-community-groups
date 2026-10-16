@@ -671,9 +671,12 @@ export class OnlineEventDetails extends LitWrapper {
   /**
    * Validates automatic meeting request if enabled.
    * @param {Function} displaySection - Optional callback to switch to date-venue section
+   * @param {object} [scheduleInputs] - Optional schedule inputs focused when invalid
+   * @param {HTMLElement} [scheduleInputs.endsAtInput] - End input element
+   * @param {HTMLElement} [scheduleInputs.startsAtInput] - Start input element
    * @returns {boolean} True if valid or not in automatic mode, false otherwise
    */
-  validate(displaySection = null) {
+  validate(displaySection = null, { endsAtInput, startsAtInput } = {}) {
     if (!this._isAutomaticMeetingActive()) {
       return true;
     }
@@ -688,6 +691,8 @@ export class OnlineEventDetails extends LitWrapper {
       capacityFromTicketTypes: !this._isSession(),
       showError: showErrorAlert,
       displaySection,
+      startsAtInput,
+      endsAtInput,
       timezone: resolveEventTimezone(),
       // Synced session meetings keep working without the capacity rules for new meetings
       validateCapacity: !(this._isSession() && this.meetingInSync),

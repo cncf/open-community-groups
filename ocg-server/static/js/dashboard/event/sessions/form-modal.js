@@ -1,4 +1,5 @@
 import { html } from "lit";
+import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
   bindModalDismissListeners,
@@ -194,7 +195,13 @@ class SessionFormModal extends LitWrapper {
     const onlineEventDetails = sessionItem?.querySelector("online-event-details");
 
     // Keep the modal open while the automatic meeting settings are invalid.
-    if (typeof onlineEventDetails?.validate === "function" && !onlineEventDetails.validate()) {
+    if (
+      typeof onlineEventDetails?.validate === "function" &&
+      !onlineEventDetails.validate(null, {
+        endsAtInput: getElementById(sessionItem, `session-${sessionItem.index}-ends-at`),
+        startsAtInput: getElementById(sessionItem, `session-${sessionItem.index}-starts-at`),
+      })
+    ) {
       return;
     }
 

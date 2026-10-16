@@ -283,7 +283,7 @@ export const attachEventSaveBeforeRequestValidation = ({
     if (onlineEventDetails) {
       onlineEventDetails.startsAt = startsAtInput?.value || "";
       onlineEventDetails.endsAt = endsAtInput?.value || "";
-      onlineValid = onlineEventDetails.validate(displayActiveSection);
+      onlineValid = onlineEventDetails.validate(displayActiveSection, { endsAtInput, startsAtInput });
     }
 
     const sessionsOnlineValid = validateSessionOnlineDetails();

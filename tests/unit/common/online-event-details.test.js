@@ -389,6 +389,97 @@ describe("online-event-details", () => {
     }
   });
 
+  it("blocks a synced event automatic meeting when ticket seats exceed the meeting limit", async () => {
+    // Create a capacity fixture above the meeting participant limit.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "150";
+    document.body.append(capacity);
+    const swal = mockSwal();
+
+    try {
+      // Render a synced event-level automatic meeting.
+      const element = await mountLitComponent("online-event-details", {
+        endsAt: "2030-05-10T11:00",
+        kind: "virtual",
+        meetingInSync: true,
+        meetingMaxParticipants: { zoom: 100 },
+        meetingProviderId: "zoom",
+        meetingRequested: true,
+        startsAt: "2030-05-10T10:00",
+      });
+
+      // Event meetings keep enforcing the participant limit after syncing.
+      expect(element.validate()).to.equal(false);
+      expect(swal.calls).to.have.length(1);
+      expect(swal.calls[0].text).to.include(
+        "Total ticket seats (150) exceed the configured meeting participant limit (100)",
+      );
+    } finally {
+      swal.restore();
+      capacity.remove();
+    }
+  });
+
+  it("accepts a synced session automatic meeting when event capacity exceeds the meeting limit", async () => {
+    // Create a capacity fixture above the meeting participant limit.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "150";
+    document.body.append(capacity);
+    const swal = mockSwal();
+
+    try {
+      // Render a synced session automatic meeting.
+      const element = await mountLitComponent("online-event-details", {
+        endsAt: "2030-05-10T11:00",
+        fieldNamePrefix: "sessions[0]",
+        kind: "virtual",
+        meetingInSync: true,
+        meetingMaxParticipants: { zoom: 100 },
+        meetingProviderId: "zoom",
+        meetingRequested: true,
+        startsAt: "2030-05-10T10:00",
+      });
+
+      // Synced session meetings skip the capacity rules for new meetings.
+      expect(element.validate()).to.equal(true);
+      expect(swal.calls).to.have.length(0);
+    } finally {
+      swal.restore();
+      capacity.remove();
+    }
+  });
+
+  it("measures automatic meeting availability in the event timezone", async () => {
+    // Create the capacity and event timezone fixtures read by availability checks.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "50";
+    const timezone = document.createElement("input");
+    timezone.name = "timezone";
+    timezone.value = "America/New_York";
+    document.body.append(capacity, timezone);
+
+    try {
+      // Render a 13-hour wall-clock schedule spanning the New York spring-forward change.
+      const element = await mountLitComponent("online-event-details", {
+        endsAt: "2030-03-10T08:00",
+        kind: "virtual",
+        meetingMaxParticipants: { zoom: 100 },
+        startsAt: "2030-03-09T19:00",
+      });
+
+      // The schedule lasts 720 minutes in the event timezone, within the duration limit.
+      const automaticModeInput = element.renderRoot.querySelector('input[type="radio"][value="automatic"]');
+      expect(automaticModeInput.disabled).to.equal(false);
+      expect(element.textContent).to.not.include("Duration must be");
+    } finally {
+      capacity.remove();
+      timezone.remove();
+    }
+  });
+
   it("does not render an unsafe synced meeting URL", async () => {
     // Mount synced meeting details with an unsafe join URL.
     const element = await mountLitComponent("online-event-details", {

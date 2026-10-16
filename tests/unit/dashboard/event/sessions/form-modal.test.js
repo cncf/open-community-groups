@@ -168,6 +168,9 @@ describe("session-form-modal", () => {
       expect(element._isOpen).to.equal(true);
       expect(swal.calls).to.have.length(1);
       expect(swal.calls[0].text).to.include("between 5 and 720 minutes");
+
+      // The end time is focused so the alert returns focus to it when closed.
+      expect(document.activeElement).to.equal(sessionItem.querySelector("#session-0-ends-at"));
     } finally {
       swal.restore();
       capacity.remove();

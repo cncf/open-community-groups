@@ -415,6 +415,42 @@ describe("meeting validations", () => {
     expect(errors).to.deep.equal([]);
   });
 
+  it("focuses the schedule field before showing schedule errors", () => {
+    // Create focusable schedule inputs.
+    const startInput = document.createElement("input");
+    const endInput = document.createElement("input");
+    document.body.append(startInput, endInput);
+    const focusedOnError = [];
+    const showError = () => focusedOnError.push(document.activeElement);
+
+    // Validate a meeting without a start time.
+    validateMeetingRequest({
+      requested: true,
+      kindValue: "virtual",
+      startsAtValue: "",
+      endsAtValue: "2025-03-25T11:00",
+      capacityValue: 50,
+      showError,
+      startsAtInput: startInput,
+      endsAtInput: endInput,
+    });
+
+    // Validate a meeting longer than the maximum duration.
+    validateMeetingRequest({
+      requested: true,
+      kindValue: "virtual",
+      startsAtValue: "2025-03-25T10:00",
+      endsAtValue: "2025-03-25T22:01",
+      capacityValue: 50,
+      showError,
+      startsAtInput: startInput,
+      endsAtInput: endInput,
+    });
+
+    // The alert opens with the relevant field focused, so it returns focus there.
+    expect(focusedOnError).to.deep.equal([startInput, endInput]);
+  });
+
   it("skips capacity rules when capacity validation is disabled", () => {
     // Capture validation errors.
     const errors = [];
