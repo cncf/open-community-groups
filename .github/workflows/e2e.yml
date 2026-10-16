@@ -13,7 +13,7 @@ concurrency:
 
 env:
   # Keep in sync with ci.yml and cache.yml so Rust caches share keys.
-  RUST_TOOLCHAIN: 1.98.0
+  RUST_TOOLCHAIN: 1.99.1
 
 jobs:
   changes:

@@ -1,5 +1,5 @@
 # Build server
-FROM rust:1.98.0-alpine3.24 AS builder
+FROM rust:1.99.1-alpine3.24 AS builder
 ARG OCG_COMMIT_SHA
 ENV OCG_COMMIT_SHA=$OCG_COMMIT_SHA
 RUN apk --no-cache add musl-dev perl make
@@ -15,7 +15,7 @@ WORKDIR /ocg/ocg-server
 RUN cargo build --locked --release
 
 # Final stage
-FROM alpine:3.24.1
+FROM alpine:3.24.2
 RUN apk --no-cache add ca-certificates postgresql17-client && addgroup -S ocg && adduser -S ocg -G ocg
 USER ocg
 WORKDIR /home/ocg
