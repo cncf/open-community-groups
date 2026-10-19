@@ -90,37 +90,6 @@ const collectIgnoredEntries = (form) => {
 };
 
 /**
- * Builds a stable snapshot for all tracked forms.
- * @param {HTMLFormElement[]} forms Tracked forms.
- * @returns {string} URL-like snapshot payload.
- */
-const buildFormsSnapshot = (forms) => {
-  const entries = [];
-  forms.forEach((form) => {
-    const ignoredEntries = collectIgnoredEntries(form);
-    const formData = new FormData(form);
-    for (const [name, value] of formData.entries()) {
-      const ignoredKey = buildEntryKey(name, value);
-      const ignoredCount = ignoredEntries.get(ignoredKey) || 0;
-      if (ignoredCount > 0) {
-        ignoredEntries.set(ignoredKey, ignoredCount - 1);
-        continue;
-      }
-      entries.push([`${form.id}:${name}`, serializeFormDataValue(value)]);
-    }
-  });
-
-  entries.sort(([leftKey, leftValue], [rightKey, rightValue]) => {
-    if (leftKey === rightKey) {
-      return leftValue.localeCompare(rightValue);
-    }
-    return leftKey.localeCompare(rightKey);
-  });
-
-  return entries.map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join("&");
-};
-
-/**
  * Sets up pending changes visibility and optional cancel confirmation.
  * @param {Object} config Init configuration.
  * @param {string} config.alertId Alert element id.
@@ -245,4 +214,35 @@ export const initializePendingChangesAlert = ({
     hasPendingChanges: () => hasPendingChanges,
     refresh: refreshPendingChangesState,
   };
+};
+
+/**
+ * Builds a stable snapshot for all tracked forms.
+ * @param {HTMLFormElement[]} forms Tracked forms.
+ * @returns {string} URL-like snapshot payload.
+ */
+export const buildFormsSnapshot = (forms) => {
+  const entries = [];
+  forms.forEach((form) => {
+    const ignoredEntries = collectIgnoredEntries(form);
+    const formData = new FormData(form);
+    for (const [name, value] of formData.entries()) {
+      const ignoredKey = buildEntryKey(name, value);
+      const ignoredCount = ignoredEntries.get(ignoredKey) || 0;
+      if (ignoredCount > 0) {
+        ignoredEntries.set(ignoredKey, ignoredCount - 1);
+        continue;
+      }
+      entries.push([`${form.id}:${name}`, serializeFormDataValue(value)]);
+    }
+  });
+
+  entries.sort(([leftKey, leftValue], [rightKey, rightValue]) => {
+    if (leftKey === rightKey) {
+      return leftValue.localeCompare(rightValue);
+    }
+    return leftKey.localeCompare(rightKey);
+  });
+
+  return entries.map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join("&");
 };

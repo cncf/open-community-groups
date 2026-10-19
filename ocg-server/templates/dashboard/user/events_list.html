@@ -2,6 +2,7 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 {% import "macros/question_answers.html" as question_answers -%}
+{% import "macros/surveys.html" as surveys_macros -%}
 
 {# External payment status badge and payment details tooltip. #}
 {% macro external_payment_status_badge(external_payment, timezone, status_instance) -%}
@@ -79,9 +80,32 @@
 {# End refund status badge. #}
 
 {# Dashboard User Events List -#}
+{% if let Some(warning) = warning -%}
+  {{ dashboard::permission_warning(message = warning) -}}
+{% endif -%}
+
 {# Header -#}
 {{ dashboard::page_title(title = "My Events", docs_href = "/docs#/guides/user-dashboard?id=my-events-upcoming-participation",
-  description = "Upcoming participation, active checkouts, and event offers.") -}}
+  description = "Upcoming participation, active checkouts, event offers, and surveys to answer.") -}}
+
+{# Surveys to answer -#}
+{% if !surveys.surveys.is_empty() -%}
+  <section data-user-event-surveys
+           aria-labelledby="user-event-surveys-title"
+           class="mt-6 rounded-lg border border-stone-200 bg-white">
+    <div class="border-b border-stone-200 px-4 py-3">
+      <h2 id="user-event-surveys-title"
+          class="text-base font-semibold text-stone-900">Surveys to answer</h2>
+      <p class="mt-0.5 text-sm text-stone-500">
+        Share your feedback about events you attended. You can edit your answers until a survey closes.
+      </p>
+    </div>
+    <ul class="divide-y divide-stone-200">
+      {{ surveys_macros::user_survey_items(surveys = surveys.surveys, next_offset = self.surveys_next_offset(), remaining = self.surveys_remaining()) -}}
+    </ul>
+  </section>
+{% endif -%}
+{# End surveys to answer -#}
 
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
@@ -426,6 +450,26 @@
 {% endif -%}
 {% endfor -%}
 {# End registration questions modals -#}
+
+{# Survey modal -#}
+<div id="user-event-survey-modal"
+     data-user-event-survey-modal
+     {% if survey.is_some() -%}data-open-on-load{% endif -%}
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="user-event-survey-title"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+  <div data-user-event-survey-close
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="modal-panel p-4 max-w-4xl">
+    <div id="user-event-survey-modal-content" class="modal-card rounded-lg">
+      {% if let Some(survey) = survey -%}
+        {% include "dashboard/user/events_survey.html" -%}
+      {% endif -%}
+    </div>
+  </div>
+</div>
+{# End survey modal -#}
 
 {# Pagination -#}
 {% if total > events.len() -%}

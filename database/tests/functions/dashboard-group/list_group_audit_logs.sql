@@ -32,6 +32,15 @@ select plan(12);
 \set communityID '3a1f0000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a1f0000-0000-0000-0000-000000000022'
 \set eventID '3a1f0000-0000-0000-0000-000000000051'
+\set eventSurveyAddedAuditID '3a1f0000-0000-0000-0000-000000000121'
+\set eventSurveyClosedAuditID '3a1f0000-0000-0000-0000-000000000122'
+\set eventSurveyDeletedAuditID '3a1f0000-0000-0000-0000-000000000123'
+\set eventSurveyDeletedID '3a1f0000-0000-0000-0000-000000000072'
+\set eventSurveyID '3a1f0000-0000-0000-0000-000000000071'
+\set eventSurveyMarkedReadyAuditID '3a1f0000-0000-0000-0000-000000000124'
+\set eventSurveyMovedToDraftAuditID '3a1f0000-0000-0000-0000-000000000125'
+\set eventSurveyReopenedAuditID '3a1f0000-0000-0000-0000-000000000126'
+\set eventSurveyUpdatedAuditID '3a1f0000-0000-0000-0000-000000000127'
 \set groupCategoryID '3a1f0000-0000-0000-0000-000000000021'
 \set groupID '3a1f0000-0000-0000-0000-000000000031'
 \set inboxAuditID '3a1f0000-0000-0000-0000-000000000118'
@@ -71,6 +80,10 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('
 -- Inbox conversation answered by the group
 insert into inbox_conversation (inbox_conversation_id, group_id, inbox_conversation_status_id, user_id)
 values (:'inboxConversationID', :'groupID', 'answered', :'targetUserID');
+
+-- Survey whose audit rows resolve its title
+insert into event_survey (event_survey_id, event_id, title)
+values (:'eventSurveyID', :'eventID', 'Feedback Survey');
 
 -- Audit log rows
 insert into audit_log (
@@ -324,6 +337,90 @@ insert into audit_log (
         :'groupID',
         :'groupID',
         'group'
+    ),
+    (
+        :'eventSurveyAddedAuditID',
+        'event_survey_added',
+        :'actor1ID',
+        'alice-list-group-audit-logs',
+        :'communityID',
+        '2024-01-01 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'eventSurveyID',
+        'event_survey'
+    ),
+    (
+        :'eventSurveyUpdatedAuditID',
+        'event_survey_updated',
+        :'actor1ID',
+        'alice-list-group-audit-logs',
+        :'communityID',
+        '2024-01-02 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'eventSurveyID',
+        'event_survey'
+    ),
+    (
+        :'eventSurveyMarkedReadyAuditID',
+        'event_survey_marked_ready',
+        :'actor1ID',
+        'alice-list-group-audit-logs',
+        :'communityID',
+        '2024-01-03 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'eventSurveyID',
+        'event_survey'
+    ),
+    (
+        :'eventSurveyClosedAuditID',
+        'event_survey_closed',
+        :'actor1ID',
+        'alice-list-group-audit-logs',
+        :'communityID',
+        '2024-01-04 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'eventSurveyID',
+        'event_survey'
+    ),
+    (
+        :'eventSurveyReopenedAuditID',
+        'event_survey_reopened',
+        :'actor1ID',
+        'alice-list-group-audit-logs',
+        :'communityID',
+        '2024-01-05 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'eventSurveyID',
+        'event_survey'
+    ),
+    (
+        :'eventSurveyMovedToDraftAuditID',
+        'event_survey_moved_to_draft',
+        :'actor1ID',
+        'alice-list-group-audit-logs',
+        :'communityID',
+        '2024-01-06 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'eventSurveyID',
+        'event_survey'
+    ),
+    (
+        :'eventSurveyDeletedAuditID',
+        'event_survey_deleted',
+        :'actor1ID',
+        'alice-list-group-audit-logs',
+        :'communityID',
+        '2024-01-07 10:00:00+00',
+        '{"responses_count": 2, "title": "Old Survey"}',
+        :'groupID',
+        :'eventSurveyDeletedID',
+        'event_survey'
     );
 
 -- ============================================================================
@@ -518,10 +615,80 @@ select is(
                 "resource_id": "3a1f0000-0000-0000-0000-000000000061",
                 "resource_name": "Platform",
                 "resource_type": "inbox_conversation"
+            },
+            {
+                "action": "event_survey_deleted",
+                "actor_username": "alice-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000123",
+                "created_at": 1704621600,
+                "details": {"responses_count": 2, "title": "Old Survey"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000072",
+                "resource_name": null,
+                "resource_type": "event_survey"
+            },
+            {
+                "action": "event_survey_moved_to_draft",
+                "actor_username": "alice-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000125",
+                "created_at": 1704535200,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000071",
+                "resource_name": "Feedback Survey",
+                "resource_type": "event_survey"
+            },
+            {
+                "action": "event_survey_reopened",
+                "actor_username": "alice-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000126",
+                "created_at": 1704448800,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000071",
+                "resource_name": "Feedback Survey",
+                "resource_type": "event_survey"
+            },
+            {
+                "action": "event_survey_closed",
+                "actor_username": "alice-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000122",
+                "created_at": 1704362400,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000071",
+                "resource_name": "Feedback Survey",
+                "resource_type": "event_survey"
+            },
+            {
+                "action": "event_survey_marked_ready",
+                "actor_username": "alice-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000124",
+                "created_at": 1704276000,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000071",
+                "resource_name": "Feedback Survey",
+                "resource_type": "event_survey"
+            },
+            {
+                "action": "event_survey_updated",
+                "actor_username": "alice-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000127",
+                "created_at": 1704189600,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000071",
+                "resource_name": "Feedback Survey",
+                "resource_type": "event_survey"
+            },
+            {
+                "action": "event_survey_added",
+                "actor_username": "alice-list-group-audit-logs",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000121",
+                "created_at": 1704103200,
+                "details": {},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000071",
+                "resource_name": "Feedback Survey",
+                "resource_type": "event_survey"
             }
         ]'::jsonb,
         'total',
-        18
+        25
     ),
     'Should return only group dashboard actions for the selected group'
 );

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(557);
+select plan(588);
 
 -- ============================================================================
 -- VARIABLES
@@ -105,6 +105,7 @@ select has_function(
     'add_event_series',
     array['uuid', 'uuid', 'jsonb', 'jsonb', 'jsonb', 'text']::name[]
 );
+select has_function('add_event_survey', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function('add_group', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('add_group_category', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('add_group_sponsor', array['uuid', 'uuid', 'jsonb']::name[]);
@@ -166,6 +167,10 @@ select has_function(
 select has_function('cancel_event_checkout', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('cancel_event_series_events', array['uuid', 'uuid', 'uuid[]']::name[]);
 select has_function(
+    'change_event_survey_status',
+    array['uuid', 'uuid', 'uuid', 'uuid', 'bigint', 'timestamp with time zone', 'text']::name[]
+);
+select has_function(
     'check_in_attendee_by_code',
     array['uuid', 'uuid', 'uuid', 'uuid', 'uuid']::name[]
 );
@@ -223,6 +228,7 @@ select has_function('delete_community_team_member', array['uuid', 'uuid', 'uuid'
 select has_function('delete_event', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_event_category', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_event_series_events', array['uuid', 'uuid', 'uuid[]']::name[]);
+select has_function('delete_event_survey', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_group_category', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_group_sponsor', array['uuid', 'uuid', 'uuid']::name[]);
@@ -232,6 +238,7 @@ select has_function('delete_region', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_session_proposal', array['uuid', 'uuid']::name[]);
 select has_function('describe_community_contact_filters', array['uuid', 'jsonb']::name[]);
 select has_function('enqueue_due_event_reminders', array['text']::name[]);
+select has_function('enqueue_due_event_survey_notifications', array[]::name[]);
 select hasnt_function('enqueue_notification', array['text', 'jsonb', 'jsonb', 'uuid[]']::name[]);
 select has_function(
     'enqueue_notification',
@@ -259,12 +266,18 @@ select has_function('event_effective_ends_at', array['event']::name[]);
 select has_function('event_has_pending_cohosts', array['uuid']::name[]);
 select has_function('event_has_pending_refund_recovery', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('event_labels_json', array['uuid[]']::name[]);
+select has_function('event_public_path', array['text', 'text', 'text', 'text']::name[]);
 select has_function('event_purchase_holds_seat', array['text']::name[]);
 select hasnt_function('event_purchase_refund_to_json', array['event_purchase_refund']::name[]);
 select has_function(
     'event_purchase_refund_to_json',
     array['event_purchase_refund', 'payment_job']::name[]
 );
+select has_function('event_survey_effective_opens_at', array['event_survey', 'event']::name[]);
+select has_function('event_survey_eligible_users', array['uuid', 'text']::name[]);
+select has_function('event_survey_state', array['event_survey', 'event']::name[]);
+select has_function('event_survey_summary_json', array['event_survey', 'event']::name[]);
+select has_function('event_survey_text_answers', array['uuid']::name[]);
 select has_function('event_ticket_type_current_price', array['uuid']::name[]);
 select has_function('event_ticket_types_configuration', array['jsonb']::name[]);
 select has_function('event_ticketing_configuration_changed', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
@@ -311,6 +324,12 @@ select has_function('get_event_registration_questions', array['uuid', 'uuid']::n
 select has_function('get_event_summary', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_event_summary_by_id', array['uuid', 'uuid']::name[]);
 select has_function('get_event_summary_dashboard', array['uuid', 'uuid', 'uuid']::name[]);
+select has_function('get_event_survey', array['uuid', 'uuid', 'uuid']::name[]);
+select has_function(
+    'get_event_survey_export',
+    array['uuid', 'uuid', 'uuid', 'integer', 'bigint']::name[]
+);
+select has_function('get_event_survey_results', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_event_ticket_capacity', array['jsonb']::name[]);
 select has_function('get_event_ticket_type_allocated_seat_count', array['uuid', 'uuid']::name[]);
 select has_function('get_event_utm_allowlist', array['uuid']::name[]);
@@ -356,6 +375,7 @@ select has_function(
 );
 select has_function('get_user_by_username', array['text']::name[]);
 select has_function('get_user_check_in_code', array['uuid', 'uuid']::name[]);
+select has_function('get_user_event_survey', array['uuid', 'uuid']::name[]);
 select has_function('get_user_notification_preferences', array['uuid']::name[]);
 select has_function(
     'get_user_purchase_document_context',
@@ -382,6 +402,10 @@ select has_function('is_event_meeting_in_sync', array['event', 'jsonb']::name[])
 select has_function('is_event_paid_capable', array['uuid']::name[]);
 select has_function('is_event_public', array['event', '"group"']::name[]);
 select has_function('is_event_simple_rsvp', array['uuid']::name[]);
+select has_function(
+    'is_event_survey_public',
+    array['event_survey', 'event', '"group"', 'community']::name[]
+);
 select has_function('is_event_ticketing_payload_paid_capable', array['jsonb']::name[]);
 select has_function('is_group_external_payments_ready', array['uuid']::name[]);
 select has_function('is_group_external_payments_selected', array['uuid']::name[]);
@@ -424,6 +448,15 @@ select has_function('list_event_labels', array['uuid']::name[]);
 select has_function('list_event_series_cancelable_event_ids', array['uuid', 'uuid']::name[]);
 select has_function('list_event_series_event_ids', array['uuid', 'uuid']::name[]);
 select has_function('list_event_series_publishable_event_ids', array['uuid', 'uuid']::name[]);
+select has_function(
+    'list_event_survey_responses',
+    array['uuid', 'uuid', 'uuid', 'jsonb']::name[]
+);
+select has_function(
+    'list_event_survey_text_answers',
+    array['uuid', 'uuid', 'uuid', 'uuid', 'jsonb']::name[]
+);
+select has_function('list_event_surveys', array['uuid', 'uuid']::name[]);
 select has_function('list_event_ticket_types', array['uuid']::name[]);
 select has_function('list_event_waitlist_ids', array['uuid', 'uuid']::name[]);
 select has_function('list_group_audit_logs', array['uuid', 'jsonb']::name[]);
@@ -461,6 +494,7 @@ select has_function('list_user_communities', array['uuid']::name[]);
 select has_function('list_user_community_team_invitations', array['uuid']::name[]);
 select has_function('list_user_dashboard_groups', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_event_invitations', array['uuid']::name[]);
+select has_function('list_user_event_surveys', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_events', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_inbox_conversations', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_purchase_documents', array['uuid', 'jsonb']::name[]);
@@ -479,6 +513,8 @@ select has_function(
 select has_function('load_checkout_context', array['uuid']::name[]);
 select has_function('lock_active_event', array['uuid', 'uuid', 'uuid', 'boolean']::name[]);
 select has_function('lock_active_group', array['uuid', 'uuid']::name[]);
+select has_function('lock_event_for_surveys', array['uuid', 'uuid']::name[]);
+select has_function('lock_event_survey', array['uuid', 'uuid']::name[]);
 select has_function('lock_event_enrollment_rows', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('lock_event_cohost_groups', array['uuid', 'uuid[]']::name[]);
 select has_function('lock_events_for_cancellation', array['uuid', 'uuid[]']::name[]);
@@ -539,7 +575,9 @@ select hasnt_function(
     'publish_event_series_events',
     array['uuid', 'uuid', 'uuid[]', 'text']::name[]
 );
+select has_function('questionnaire_answer_selections', array['jsonb']::name[]);
 select has_function('questionnaire_answers_exist_for_event', array['uuid']::name[]);
+select has_function('questionnaire_option_breakdowns', array['jsonb', 'jsonb']::name[]);
 select has_function(
     'queue_event_refund_request_approval',
     array['uuid', 'uuid', 'uuid', 'text']::name[]
@@ -662,11 +700,13 @@ select has_function('search_user', array['text']::name[]);
 select has_function('set_meeting_auto_end_check_outcome', array['timestamp with time zone', 'uuid', 'text']::name[]);
 select has_function('set_meeting_error', array['text', 'uuid', 'uuid', 'uuid', 'timestamp with time zone', 'text']::name[]);
 select has_function('sign_up_user', array['jsonb', 'boolean', 'uuid', 'jsonb']::name[]);
+select has_function('site_theme', array[]::name[]);
 select has_function('start_inbox_conversation', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('stats_day_count_series', array['date', 'date', 'jsonb']::name[]);
 select has_function('stats_event_audience', array['event']::name[]);
 select has_function('stats_event_check_ins', array['event']::name[]);
 select has_function('stats_event_enrollment', array['event']::name[]);
+select has_function('stats_event_surveys', array['event']::name[]);
 select has_function('stats_event_tickets', array['event']::name[]);
 select has_function('stats_event_traffic', array['event', 'date', 'date']::name[]);
 select has_function('stats_event_utm', array['event']::name[]);
@@ -675,6 +715,7 @@ select has_function('stats_label_count_series_by_name', array['jsonb']::name[]);
 select has_function('stats_running_total_series', array['jsonb']::name[]);
 select has_function('stats_running_total_series_by_name', array['jsonb']::name[]);
 select has_function('submit_event_registration_answers', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
+select has_function('submit_event_survey_response', array['uuid', 'uuid', 'bigint', 'jsonb']::name[]);
 select has_function('sync_cfs_submission_labels', array['uuid', 'uuid', 'uuid[]']::name[]);
 select has_function('sync_event_cohosts', array['uuid', 'uuid', 'uuid', 'uuid[]', 'integer']::name[]);
 select has_function('sync_event_discount_codes', array['uuid', 'jsonb']::name[]);
@@ -711,6 +752,10 @@ select function_returns(
     'boolean'
 );
 select has_function('update_event_category', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
+select has_function(
+    'update_event_survey',
+    array['uuid', 'uuid', 'uuid', 'uuid', 'bigint', 'jsonb']::name[]
+);
 select has_function('update_event_views', array['jsonb']::name[]);
 select has_function('update_event_views_utm', array['jsonb']::name[]);
 select has_function('update_group', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
@@ -749,6 +794,9 @@ select has_function('validate_event_labels_payload', array['jsonb']::name[]);
 select has_function('validate_event_meeting_durations', array['jsonb', 'jsonb']::name[]);
 select has_function('validate_event_payment_validation', array['jsonb', 'jsonb', 'text[]', 'text', 'text']::name[]);
 select has_function('validate_event_series_action_event_ids', array['uuid', 'uuid[]', 'boolean']::name[]);
+select has_function('validate_event_survey_payload', array['event', 'jsonb']::name[]);
+select has_function('validate_event_survey_revision', array['event_survey', 'bigint']::name[]);
+select has_function('validate_event_survey_schedule', array['event_survey', 'event']::name[]);
 select has_function('validate_event_ticket_types_payload', array['jsonb']::name[]);
 select has_function(
     'validate_event_ticketing_payload',
@@ -840,6 +888,14 @@ select has_trigger('session', 'session_cfs_submission_approved_check');
 select has_trigger('session', 'session_within_event_bounds_check');
 select has_trigger('user_badge', 'prevent_user_badge_revocation_reversal');
 select has_trigger('user', 'revoke_user_badges_on_user_delete');
+
+-- Test: survey export should read one snapshot for its size check and rows
+select volatility_is(
+    'get_event_survey_export',
+    array['uuid', 'uuid', 'uuid', 'integer', 'bigint']::name[],
+    'stable',
+    'Survey export should read one snapshot for its size check and rows'
+);
 
 -- Test: event ticketing consistency triggers should enforce the ticketing shape
 -- Check the deferred constraint triggers at the end of each statement

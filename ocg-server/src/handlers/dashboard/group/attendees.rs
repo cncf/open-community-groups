@@ -5,13 +5,9 @@ use askama::Template;
 use axum::{
     Json,
     extract::{Path, State},
-    http::{
-        StatusCode,
-        header::{CONTENT_DISPOSITION, CONTENT_TYPE},
-    },
+    http::StatusCode,
     response::{Html, IntoResponse, Response},
 };
-use chrono::{DateTime, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -22,6 +18,10 @@ use crate::{
     config::{HttpServerConfig, PaymentsConfig},
     db::DynDB,
     handlers::{
+        csv::{
+            attachment_response, csv_optional_timestamp, csv_timestamp, csv_writer, finish_csv,
+            write_safe_record,
+        },
         dashboard::group::{
             EVENT_ENROLLMENT_AND_REFUNDS_REFRESH_TRIGGER, EVENT_ENROLLMENT_REFRESH_TRIGGER,
         },
@@ -41,7 +41,9 @@ use crate::{
     },
     templates::dashboard::group::attendees,
     types::{
-        dashboard::group::attendees::{Attendee, AttendeeEnrollmentStatusFilter, AttendeesFilters},
+        dashboard::group::attendees::{
+            Attendee, AttendeeEnrollmentStatusFilter, AttendeesFilters, format_payment_amount,
+        },
         notifications::{CustomNotificationContent, EventCustomNotificationInput},
         pagination::{self, NavigationLinks, Pagination},
         payments::EventPurchaseChargeModel,
@@ -477,16 +479,7 @@ pub(crate) async fn download_csv(
     let csv = build_attendees_csv(&search_attendees_results.attendees, None)?;
     let file_name = format!("event-{}-attendees.csv", event.slug);
 
-    Ok((
-        [
-            (CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
-            (
-                CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{file_name}\""),
-            ),
-        ],
-        csv,
-    ))
+    Ok(attachment_response(&file_name, csv))
 }
 
 /// Downloads a CSV file with attendees and their registration question answers.
@@ -513,16 +506,7 @@ pub(crate) async fn download_csv_with_answers(
     )?;
     let file_name = format!("event-{}-attendees-with-answers.csv", event.slug);
 
-    Ok((
-        [
-            (CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
-            (
-                CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{file_name}\""),
-            ),
-        ],
-        csv,
-    ))
+    Ok(attachment_response(&file_name, csv))
 }
 
 // Types.
@@ -644,7 +628,8 @@ fn attendees_export_filters() -> AttendeesFilters {
 }
 
 /// Builds the CSV payload for the given attendees, optionally appending one
-/// column per registration question with the attendee's answer.
+/// column per registration question with the attendee's answer. Every cell,
+/// headers included, is protected against spreadsheet formula evaluation.
 ///
 /// Callers are expected to pass only confirmed attendees (see
 /// [`attendees_export_filters`]).
@@ -652,9 +637,7 @@ fn build_attendees_csv(
     attendees: &[Attendee],
     registration_questions: Option<&[QuestionnaireQuestion]>,
 ) -> Result<Vec<u8>, HandlerError> {
-    let mut writer = csv::WriterBuilder::new()
-        .terminator(csv::Terminator::Any(b'\n'))
-        .from_writer(vec![]);
+    let mut writer = csv_writer();
 
     // Write header row
     let mut headers = vec![
@@ -673,7 +656,7 @@ fn build_attendees_csv(
     if let Some(questions) = registration_questions {
         headers.extend(questions.iter().map(|question| question.prompt.clone()));
     }
-    writer.write_record(headers).map_err(anyhow::Error::from)?;
+    write_safe_record(&mut writer, headers)?;
 
     // Write one row per attendee
     for attendee in attendees {
@@ -707,20 +690,15 @@ fn build_attendees_csv(
                     .map(|question| question.format_answer(attendee.registration_answers.as_ref())),
             );
         }
-        writer.write_record(row).map_err(anyhow::Error::from)?;
+        write_safe_record(&mut writer, row)?;
     }
 
-    writer.into_inner().map_err(|err| anyhow::Error::from(err).into())
-}
-
-/// Formats an optional timestamp for attendee CSV export.
-fn csv_optional_timestamp(value: Option<DateTime<Utc>>) -> String {
-    value.map(csv_timestamp).unwrap_or_default()
+    finish_csv(writer)
 }
 
 /// Formats a purchase amount for attendee CSV export.
 fn csv_payment_amount(attendee: &Attendee) -> String {
-    attendees::format_payment_amount(&attendee.amount_minor, attendee.currency_code.as_deref())
+    format_payment_amount(&attendee.amount_minor, attendee.currency_code.as_deref())
         .unwrap_or_default()
 }
 
@@ -732,11 +710,6 @@ fn csv_payment_method(attendee: &Attendee) -> &'static str {
         Some(EventPurchaseChargeModel::OcgFree) => "Free",
         None => "",
     }
-}
-
-/// Formats a timestamp for attendee CSV export.
-fn csv_timestamp(value: DateTime<Utc>) -> String {
-    value.format("%Y-%m-%d %H:%M UTC").to_string()
 }
 
 /// Rejects an export whose confirmed attendee count exceeds the supported size.

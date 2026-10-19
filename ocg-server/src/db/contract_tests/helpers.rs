@@ -239,6 +239,65 @@ const STATUS_PENDING_PAYMENT_USER_ID: &str = "00000000-0000-0000-0000-00000000c1
 const STATUS_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c10a";
 const SUBGROUP_ID: &str = "00000000-0000-0000-0000-00000000c022";
 const SUMMARY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f1";
+/// Open anonymous survey for checked-in attendees of the survey event.
+const SURVEY_ANONYMOUS_ID: &str = "00000000-0000-0000-0000-00000000f306";
+/// Open survey closed while an attendee submits answers.
+const SURVEY_CLOSE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f323";
+/// Open survey deleted while an attendee's submission holds its lock.
+const SURVEY_DELETE_AFTER_SUBMISSION_RACE_ID: &str = "00000000-0000-0000-0000-00000000f327";
+/// Open survey deleted while an attendee submits answers.
+const SURVEY_DELETE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f324";
+/// Draft survey without questions of the survey event.
+const SURVEY_DRAFT_ID: &str = "00000000-0000-0000-0000-00000000f307";
+/// Open survey closed while the opening email job runs.
+const SURVEY_EMAIL_CLOSE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f344";
+/// Past event whose survey opening emails reach its verified attendees.
+const SURVEY_EMAIL_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f340";
+/// Open survey waiting for the opening email of its verified attendees.
+const SURVEY_EMAIL_ID: &str = "00000000-0000-0000-0000-00000000f343";
+/// Verified attendee of the survey email event.
+const SURVEY_EMAIL_RECIPIENT_ID: &str = "00000000-0000-0000-0000-00000000f313";
+/// Open survey whose event is rescheduled while the opening email job runs.
+const SURVEY_EMAIL_RESCHEDULE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f351";
+/// Past test event holding the identified, anonymous and draft surveys.
+const SURVEY_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f301";
+/// Open identified survey without responses answered while it is exported.
+const SURVEY_EXPORT_GROWTH_ID: &str = "00000000-0000-0000-0000-00000000f325";
+/// Number of attendees who answer the export growth survey.
+pub(super) const SURVEY_EXPORT_RESPONDENTS: u8 = 12;
+/// Former attendee who answered the identified survey.
+const SURVEY_FORMER_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000f317";
+/// Open survey answered while its anonymity changes.
+const SURVEY_FIRST_RESPONSE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f321";
+/// Free-text question of the identified survey.
+const SURVEY_FREE_TEXT_QUESTION_ID: &str = "00000000-0000-0000-0000-00000000f308";
+/// Open identified survey with every question kind and three responses, one
+/// of them from a former attendee.
+const SURVEY_IDENTIFIED_ID: &str = "00000000-0000-0000-0000-00000000f305";
+/// Upcoming test event rescheduled while a survey is marked ready.
+const SURVEY_MARK_READY_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f360";
+/// Draft survey marked ready while its event is rescheduled.
+const SURVEY_MARK_READY_RACE_ID: &str = "00000000-0000-0000-0000-00000000f361";
+/// Open anonymous survey without responses whose opening email was handled.
+const SURVEY_OPENED_ANONYMOUS_ID: &str = "00000000-0000-0000-0000-00000000f326";
+/// Confirmed attendee of the survey event who did not check in or answer.
+const SURVEY_PENDING_RESPONDENT_ID: &str = "00000000-0000-0000-0000-00000000f304";
+/// Past test event holding the surveys used by the concurrency contracts.
+const SURVEY_RACE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f320";
+/// Free-text question shared by the concurrency contract surveys.
+const SURVEY_RACE_QUESTION_ID: &str = "00000000-0000-0000-0000-00000000f330";
+/// Attendee answering the concurrency contract surveys.
+const SURVEY_RACER_ID: &str = "00000000-0000-0000-0000-00000000f316";
+/// Past test event rescheduled while the opening email job runs.
+const SURVEY_RESCHEDULE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f350";
+/// Checked-in attendee who answered both open surveys of the survey event.
+const SURVEY_RESPONDENT_ID: &str = "00000000-0000-0000-0000-00000000f302";
+/// Single-select question of the identified survey.
+const SURVEY_SINGLE_SELECT_QUESTION_ID: &str = "00000000-0000-0000-0000-00000000f309";
+/// Open survey reconfigured while an attendee submits answers.
+const SURVEY_STALE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f322";
+/// Unverified attendee of the survey email event.
+const SURVEY_UNVERIFIED_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000f314";
 const SYNC_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0a1";
 const TICKETED_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d0";
 /// Contract event session without labels.
@@ -1195,6 +1254,186 @@ pub(super) fn subgroup_id() -> Uuid {
 /// Returns the purchase summary identifier used by the contract fixture.
 pub(super) fn summary_purchase_id() -> Uuid {
     parse_uuid(SUMMARY_PURCHASE_ID)
+}
+
+/// Returns the open anonymous survey of the survey event.
+pub(super) fn survey_anonymous_id() -> Uuid {
+    parse_uuid(SURVEY_ANONYMOUS_ID)
+}
+
+/// Returns the survey closed while an attendee submits answers.
+pub(super) fn survey_close_race_id() -> Uuid {
+    parse_uuid(SURVEY_CLOSE_RACE_ID)
+}
+
+/// Returns the survey deleted while a submission holds its lock.
+pub(super) fn survey_delete_after_submission_race_id() -> Uuid {
+    parse_uuid(SURVEY_DELETE_AFTER_SUBMISSION_RACE_ID)
+}
+
+/// Returns the survey deleted while an attendee submits answers.
+pub(super) fn survey_delete_race_id() -> Uuid {
+    parse_uuid(SURVEY_DELETE_RACE_ID)
+}
+
+/// Returns the draft survey of the survey event.
+pub(super) fn survey_draft_id() -> Uuid {
+    parse_uuid(SURVEY_DRAFT_ID)
+}
+
+/// Returns the survey closed while the opening email job runs.
+pub(super) fn survey_email_close_race_id() -> Uuid {
+    parse_uuid(SURVEY_EMAIL_CLOSE_RACE_ID)
+}
+
+/// Returns the event whose survey opening emails reach its attendees.
+pub(super) fn survey_email_event_id() -> Uuid {
+    parse_uuid(SURVEY_EMAIL_EVENT_ID)
+}
+
+/// Returns the survey waiting for its opening email.
+pub(super) fn survey_email_id() -> Uuid {
+    parse_uuid(SURVEY_EMAIL_ID)
+}
+
+/// Returns the verified attendee of the survey email event.
+pub(super) fn survey_email_recipient_id() -> Uuid {
+    parse_uuid(SURVEY_EMAIL_RECIPIENT_ID)
+}
+
+/// Returns the survey whose event is rescheduled while the opening email job runs.
+pub(super) fn survey_email_reschedule_race_id() -> Uuid {
+    parse_uuid(SURVEY_EMAIL_RESCHEDULE_RACE_ID)
+}
+
+/// Returns the event holding the identified, anonymous and draft surveys.
+pub(super) fn survey_event_id() -> Uuid {
+    parse_uuid(SURVEY_EVENT_ID)
+}
+
+/// Returns the survey answered while it is exported.
+pub(super) fn survey_export_growth_id() -> Uuid {
+    parse_uuid(SURVEY_EXPORT_GROWTH_ID)
+}
+
+/// Returns the attendee numbered `n` (1 to 12) who answers the export growth
+/// survey.
+pub(super) fn survey_export_respondent_id(n: u8) -> Uuid {
+    parse_uuid(&format!(
+        "00000000-0000-0000-0000-00000000f3{:02x}",
+        127 + n
+    ))
+}
+
+/// Returns the survey answered while its anonymity changes.
+pub(super) fn survey_first_response_race_id() -> Uuid {
+    parse_uuid(SURVEY_FIRST_RESPONSE_RACE_ID)
+}
+
+/// Returns the former attendee who answered the identified survey.
+pub(super) fn survey_former_attendee_id() -> Uuid {
+    parse_uuid(SURVEY_FORMER_ATTENDEE_ID)
+}
+
+/// Returns the free-text question of the identified survey.
+pub(super) fn survey_free_text_question_id() -> Uuid {
+    parse_uuid(SURVEY_FREE_TEXT_QUESTION_ID)
+}
+
+/// Returns the open identified survey of the survey event.
+pub(super) fn survey_identified_id() -> Uuid {
+    parse_uuid(SURVEY_IDENTIFIED_ID)
+}
+
+/// Returns the upcoming event rescheduled while a survey is marked ready.
+pub(super) fn survey_mark_ready_event_id() -> Uuid {
+    parse_uuid(SURVEY_MARK_READY_EVENT_ID)
+}
+
+/// Returns the draft survey marked ready while its event is rescheduled.
+pub(super) fn survey_mark_ready_race_id() -> Uuid {
+    parse_uuid(SURVEY_MARK_READY_RACE_ID)
+}
+
+/// Returns the open anonymous survey whose opening email was handled.
+pub(super) fn survey_opened_anonymous_id() -> Uuid {
+    parse_uuid(SURVEY_OPENED_ANONYMOUS_ID)
+}
+
+/// Returns the survey event attendee who did not check in or answer.
+pub(super) fn survey_pending_respondent_id() -> Uuid {
+    parse_uuid(SURVEY_PENDING_RESPONDENT_ID)
+}
+
+/// Returns the event holding the concurrency contract surveys.
+pub(super) fn survey_race_event_id() -> Uuid {
+    parse_uuid(SURVEY_RACE_EVENT_ID)
+}
+
+/// Returns the free-text question of the concurrency contract surveys.
+pub(super) fn survey_race_question_id() -> Uuid {
+    parse_uuid(SURVEY_RACE_QUESTION_ID)
+}
+
+/// Returns the attendee answering the concurrency contract surveys.
+pub(super) fn survey_racer_id() -> Uuid {
+    parse_uuid(SURVEY_RACER_ID)
+}
+
+/// Returns the event rescheduled while the opening email job runs.
+pub(super) fn survey_reschedule_event_id() -> Uuid {
+    parse_uuid(SURVEY_RESCHEDULE_EVENT_ID)
+}
+
+/// Returns the attendee who answered both open surveys of the survey event.
+pub(super) fn survey_respondent_id() -> Uuid {
+    parse_uuid(SURVEY_RESPONDENT_ID)
+}
+
+/// Returns the changes that make the open surveys of the survey event
+/// unreachable on the public site, each with a short description.
+pub(super) fn survey_scope_changes() -> [(&'static str, &'static str); 6] {
+    [
+        (
+            "canceled event",
+            "update event set canceled = true where event_id = '00000000-0000-0000-0000-00000000f301'",
+        ),
+        (
+            "deleted group",
+            r#"update "group" set active = false, deleted = true where group_id = '00000000-0000-0000-0000-00000000c022'"#,
+        ),
+        (
+            "draft surveys",
+            "update event_survey set status = 'draft', closed_at = null, first_response_at = null, open_notification_processed_at = null, open_notification_recipients = null where event_id = '00000000-0000-0000-0000-00000000f301'",
+        ),
+        (
+            "inactive community",
+            "update community set active = false where community_id = '00000000-0000-0000-0000-00000000c001'",
+        ),
+        (
+            "inactive group",
+            r#"update "group" set active = false where group_id = '00000000-0000-0000-0000-00000000c022'"#,
+        ),
+        (
+            "unpublished event",
+            "update event set published = false where event_id = '00000000-0000-0000-0000-00000000f301'",
+        ),
+    ]
+}
+
+/// Returns the single-select question of the identified survey.
+pub(super) fn survey_single_select_question_id() -> Uuid {
+    parse_uuid(SURVEY_SINGLE_SELECT_QUESTION_ID)
+}
+
+/// Returns the survey reconfigured while an attendee submits answers.
+pub(super) fn survey_stale_race_id() -> Uuid {
+    parse_uuid(SURVEY_STALE_RACE_ID)
+}
+
+/// Returns the unverified attendee of the survey email event.
+pub(super) fn survey_unverified_attendee_id() -> Uuid {
+    parse_uuid(SURVEY_UNVERIFIED_ATTENDEE_ID)
 }
 
 /// Returns the synchronized event identifier used by the contract fixture.

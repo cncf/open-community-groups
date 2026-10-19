@@ -167,307 +167,261 @@
 
   <div class="col-span-full row-start-2 grid h-full content-start min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[11rem_minmax(0,1fr)] xl:content-stretch xl:gap-x-8 xl:gap-y-0">
     <aside class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8">
-      <select id="update-event-section-select"
-              data-section-select
-              aria-label="Event form section"
-              class="select-primary w-full sm:w-sm xl:hidden">
-        {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
-        {{ event_form::tab_option(section = "cohosts", label = "Co-hosts") -}}
-        {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
-        {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
-        {{ event_form::tab_option(section = "payments", label = "Tickets") -}}
-        {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
-        {{ event_form::tab_option(section = "labels", label = "Labels") -}}
-        {{ event_form::tab_option(section = "questions", label = "Questions") -}}
-        {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
-        {{ event_form::tab_option(section = "submissions", label = "Submissions") -}}
-        {{ event_form::tab_option(section = "attendees", label = "Attendees") -}}
-        {% if show_invitation_requests_tab -%}
-          {{ event_form::tab_option(section = "invitation-requests", label = "Requests") -}}
-        {% endif -%}
-        {% if show_waitlist_tab -%}
-          {{ event_form::tab_option(section = "waitlist", label = "Waitlist") -}}
-        {% endif -%}
-        {{ event_form::tab_option(section = "analytics", label = "Analytics") -}}
-      </select>
-      <ul class="hidden flex-col gap-1 font-medium xl:flex">
-        {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
-        {{ event_form::tab_button(section = "cohosts", icon = "cohosts", label = "Co-hosts") -}}
-        {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
-        {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
-        {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Tickets") -}}
-        {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
-        {{ event_form::tab_button(section = "labels", icon = "tag", label = "Labels") -}}
-        {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
-        {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
-        {% let submissions_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/submissions" hx-trigger="click once" hx-target="#submissions-content" hx-swap="innerHTML" hx-indicator="#submissions-loading"{%- endlet %}
-      {{ event_form::tab_button(section = "submissions", icon = "submission", label = "Submissions", extra_attrs = submissions_attrs) -}}
-      {% let attendees_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content" hx-swap="innerHTML" hx-indicator="#attendees-loading"{%- endlet %}
-    {{ event_form::tab_button(section = "attendees", icon = "attendees", label = "Attendees", extra_attrs = attendees_attrs) -}}
-    {% if show_invitation_requests_tab -%}
-      {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests{% if !event.attendee_approval_required %}?status=all{% endif %}" hx-trigger="click once" hx-target="#invitation-requests-content" hx-swap="innerHTML" hx-indicator="#invitation-requests-loading"{%- endlet %}
-    {{ event_form::tab_button(section = "invitation-requests", icon = "request-invitation", label = "Requests", extra_attrs = invitation_requests_attrs) -}}
-  {% endif -%}
-  {% if show_waitlist_tab -%}
-    {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content" hx-swap="innerHTML" hx-indicator="#waitlist-loading"{%- endlet %}
-  {{ event_form::tab_button(section = "waitlist", icon = "waitlist", label = "Waitlist", extra_attrs = waitlist_attrs) -}}
-{% endif -%}
-{{ event_form::tab_button(section = "analytics", icon = "charts", label = "Analytics") -}}
-</ul>
-</aside>
+      {{ event_form::tab_nav(groups = self.form_tab_groups(), id_prefix = "update-event-section") -}}
+    </aside>
 
-<div class="min-w-0">
-  <div class="inert-form" {% if event_read_only -%} inert {% endif -%}>
-    <div class="space-y-12">
-      {# Event Details Tab -#}
-      <div data-content="details">
-        <form id="details-form" data-event-form>
-          <div class="pb-12">
-            {{ dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.", id = event.event_id.to_string()) -}}
+    <div class="min-w-0">
+      <div class="inert-form" {% if event_read_only -%} inert {% endif -%}>
+        <div class="space-y-12">
+          {# Event Details Tab -#}
+          <div data-content="details">
+            <form id="details-form" data-event-form>
+              <div class="pb-12">
+                {{ dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.", id = event.event_id.to_string()) -}}
 
-            <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-              {# Event name -#}
-              <div class="col-span-full min-w-0 2xl:col-span-3">
-                <label for="name" class="form-label">
-                  Name <span class="asterisk">*</span>
-                </label>
+                <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+                  {# Event name -#}
+                  <div class="col-span-full min-w-0 2xl:col-span-3">
+                    <label for="name" class="form-label">
+                      Name <span class="asterisk">*</span>
+                    </label>
+                    <div class="mt-2">
+                      <input type="text"
+                             name="name"
+                             id="name"
+                             maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                             class="input-primary"
+                             autocomplete="off"
+                             autocorrect="off"
+                             autocapitalize="off"
+                             spellcheck="false"
+                             value="{{ event.name }}"
+                             required>
+                    </div>
+                    <p class="form-legend">
+                      Display name of the event (e.g. Kubernetes Amsterdam Meetup). Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
+                    </p>
+                  </div>
+                  {# End Event name -#}
+
+                  <div class="hidden 2xl:flex col-span-3"></div>
+
+                  {# Event kind -#}
+                  <div class="col-span-full 2xl:col-span-3">
+                    <label for="kind_id" class="form-label">
+                      Event Type <span class="asterisk">*</span>
+                    </label>
+                    <div class="mt-2 grid grid-cols-1">
+                      <select id="kind_id" name="kind_id" class="select-primary" required>
+                        <option value="">Select an event type</option>
+                        {% for kind in event_kinds %}
+                          <option value="{{ kind.event_kind_id }}"
+                                  {% if kind.event_kind_id == event.kind.to_string() %}selected{% endif %}>{{ kind.display_name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
+                  </div>
+                  {# End Event kind -#}
+
+                  {# Event category -#}
+                  <div class="col-span-full 2xl:col-span-3">
+                    <label for="category_id" class="form-label">
+                      Category <span class="asterisk">*</span>
+                    </label>
+                    <div class="mt-2 grid grid-cols-1">
+                      <select id="category_id" name="category_id" class="select-primary" required>
+                        <option value="">Select a category</option>
+                        {% for category in categories %}
+                          <option value="{{ category.event_category_id }}"
+                                  {% if category.name == event.category_name %}selected{% endif %}>{{ category.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <p class="form-legend">Type of event or meetup.</p>
+                  </div>
+                  {# End Event category -#}
+
+                  {% let logo_value -%}value="{{ event.logo_url }}"{%- endlet %}
+                {% let banner_value -%}value="{%- if let Some(banner_url) = &event.banner_url -%}{{ banner_url }}{%- endif -%}"{%- endlet %}
+              {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &event.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
+
+            {# Logo URL -#}
+            {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", value_attr = logo_value, field_class = "col-span-full 2xl:col-span-4", input_class = "w-full block") -}}
+            {# End Logo URL -#}
+
+            {# Banner URL -#}
+            {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_value, input_class = "w-full block") -}}
+            {# End Banner URL -#}
+
+            {# Banner Mobile URL -#}
+            {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_mobile_value, input_class = "w-full block") -}}
+            {# End Banner Mobile URL -#}
+
+            {# Short Description -#}
+            <div class="col-span-full">
+              <label for="description_short" class="form-label">Short Description</label>
+              <div class="mt-2">
+                <input type="text"
+                       id="description_short"
+                       name="description_short"
+                       class="input-primary"
+                       maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                       value="{%- if let Some(description_short) = &event.description_short -%}{{ description_short }}{%- endif -%}" />
+              </div>
+              <p class="form-legend">
+                Brief description used in event listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
+              </p>
+            </div>
+            {# End Short Description -#}
+
+            {# Event Description -#}
+            <div class="col-span-full">
+              <label for="description" class="form-label">
+                Description <span class="asterisk">*</span>
+              </label>
+              <div class="mt-2">
+                <markdown-editor id="description" name="description" content="{{ event.description }}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
+              </div>
+              <p class="form-legend">
+                Full description of the event and its purpose. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
+              </p>
+            </div>
+            {# End Event Description -#}
+          </div>
+        </div>
+
+        {# Additional Information section -#}
+        <div class="border-t border-stone-900/10 pt-12">
+          {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
+
+          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-6xl">
+            {# Waitlist enabled -#}
+            <div class="col-span-full 2xl:col-span-3">
+              <label data-enrollment-toggle-label="waitlist"
+                     class="inline-flex items-center cursor-pointer transition-opacity">
+                <input id="toggle_waitlist_enabled"
+                       name="toggle_waitlist_enabled"
+                       value="enabled"
+                       type="checkbox"
+                       class="sr-only peer"
+                       {% if event.waitlist_enabled %}
+                         checked
+                       {% endif %}>
+                <input type="hidden"
+                       id="waitlist_enabled"
+                       name="waitlist_enabled"
+                       value="{{ event.waitlist_enabled }}">
+                <div class="toggle-track"></div>
+                <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
+              </label>
+              <p class="form-legend">
+                Allow full events, including paid ticket events, to add people to a waiting list instead
+                of rejecting them. Capacity is the total of ticket seats. Invitation approval and the waitlist cannot be
+                enabled together.
+              </p>
+            </div>
+            {# End Waitlist enabled -#}
+
+            {# Attendee approval required -#}
+            <div class="col-span-full 2xl:col-span-3">
+              <label data-enrollment-toggle-label="attendee-approval"
+                     class="inline-flex items-center cursor-pointer transition-opacity">
+                <input id="toggle_attendee_approval_required"
+                       name="toggle_attendee_approval_required"
+                       value="required"
+                       type="checkbox"
+                       class="sr-only peer"
+                       {% if event.attendee_approval_required %}
+                         checked
+                       {% endif %}>
+                <input type="hidden"
+                       id="attendee_approval_required"
+                       name="attendee_approval_required"
+                       value="{{ event.attendee_approval_required }}">
+                <div class="toggle-track"></div>
+                <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
+              </label>
+              <p class="form-legend">
+                Let people request organizer approval before attending or claiming a ticket. Paid ticket
+                events can use invitation approval. Invitation approval and the waitlist cannot be enabled
+                together. Accept pending requests and reissue expired offers while the event is still
+                active, including outside the public registration window.
+              </p>
+            </div>
+            {# End Attendee approval required -#}
+
+            {# Test event -#}
+            <div class="col-span-full 2xl:col-span-3">
+              <label class="inline-flex items-center cursor-pointer">
+                <input id="toggle_test_event"
+                       name="toggle_test_event"
+                       value="enabled"
+                       type="checkbox"
+                       class="sr-only peer"
+                       {% if event.test_event %}
+                         checked
+                       {% endif %}>
+                <input type="hidden"
+                       id="test_event"
+                       name="test_event"
+                       value="{{ event.test_event }}">
+                <div class="toggle-track"></div>
+                <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
+              </label>
+              <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
+            </div>
+            {# End Test event -#}
+
+            <div class="col-span-full grid grid-cols-1 gap-x-6 gap-y-8 2xl:grid-cols-2">
+              {# Meetup URL -#}
+              <div>
+                <label for="meetup_url" class="form-label">Meetup.com URL</label>
                 <div class="mt-2">
-                  <input type="text"
-                         name="name"
-                         id="name"
-                         maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                  <input type="url"
+                         name="meetup_url"
+                         id="meetup_url"
                          class="input-primary"
-                         autocomplete="off"
-                         autocorrect="off"
-                         autocapitalize="off"
-                         spellcheck="false"
-                         value="{{ event.name }}"
-                         required>
+                         placeholder="https://meetup.com/group/events/123456"
+                         {% if let Some(meetup_url) = &event.meetup_url %}
+                           value="{{ meetup_url }}"
+                         {% endif %}>
                 </div>
-                <p class="form-legend">
-                  Display name of the event (e.g. Kubernetes Amsterdam Meetup). Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
-                </p>
+                <p class="form-legend">Link to the Meetup.com event page.</p>
               </div>
-              {# End Event name -#}
+              {# End Meetup URL -#}
 
-              <div class="hidden 2xl:flex col-span-3"></div>
-
-              {# Event kind -#}
-              <div class="col-span-full 2xl:col-span-3">
-                <label for="kind_id" class="form-label">
-                  Event Type <span class="asterisk">*</span>
-                </label>
-                <div class="mt-2 grid grid-cols-1">
-                  <select id="kind_id" name="kind_id" class="select-primary" required>
-                    <option value="">Select an event type</option>
-                    {% for kind in event_kinds %}
-                      <option value="{{ kind.event_kind_id }}"
-                              {% if kind.event_kind_id == event.kind.to_string() %}selected{% endif %}>{{ kind.display_name }}</option>
-                    {% endfor %}
-                  </select>
+              {# Luma URL -#}
+              <div>
+                <label for="luma_url" class="form-label">Luma URL</label>
+                <div class="mt-2">
+                  <input type="url"
+                         name="luma_url"
+                         id="luma_url"
+                         class="input-primary"
+                         placeholder="https://luma.com/event"
+                         {% if let Some(luma_url) = &event.luma_url %}
+                           value="{{ luma_url }}"
+                         {% endif %}>
                 </div>
-                <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
+                <p class="form-legend">Link to the Luma event page.</p>
               </div>
-              {# End Event kind -#}
+              {# End Luma URL -#}
+            </div>
 
-              {# Event category -#}
-              <div class="col-span-full 2xl:col-span-3">
-                <label for="category_id" class="form-label">
-                  Category <span class="asterisk">*</span>
-                </label>
-                <div class="mt-2 grid grid-cols-1">
-                  <select id="category_id" name="category_id" class="select-primary" required>
-                    <option value="">Select a category</option>
-                    {% for category in categories %}
-                      <option value="{{ category.event_category_id }}"
-                              {% if category.name == event.category_name %}selected{% endif %}>{{ category.name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <p class="form-legend">Type of event or meetup.</p>
-              </div>
-              {# End Event category -#}
+            {# Photos -#}
+            {% let photos_attr -%}images="{%- if let Some(photos_urls) = &event.photos_urls -%}{{ photos_urls|json }}{%- endif -%}"{%- endlet %}
+          {{ form_fields::gallery_field(legend = "Optional photos related to the event.", images_attr = photos_attr) -}}
+          {# End Photos -#}
 
-              {% let logo_value -%}value="{{ event.logo_url }}"{%- endlet %}
-            {% let banner_value -%}value="{%- if let Some(banner_url) = &event.banner_url -%}{{ banner_url }}{%- endif -%}"{%- endlet %}
-          {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &event.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
-
-        {# Logo URL -#}
-        {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", value_attr = logo_value, field_class = "col-span-full 2xl:col-span-4", input_class = "w-full block") -}}
-        {# End Logo URL -#}
-
-        {# Banner URL -#}
-        {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_value, input_class = "w-full block") -}}
-        {# End Banner URL -#}
-
-        {# Banner Mobile URL -#}
-        {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_mobile_value, input_class = "w-full block") -}}
-        {# End Banner Mobile URL -#}
-
-        {# Short Description -#}
-        <div class="col-span-full">
-          <label for="description_short" class="form-label">Short Description</label>
-          <div class="mt-2">
-            <input type="text"
-                   id="description_short"
-                   name="description_short"
-                   class="input-primary"
-                   maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
-                   value="{%- if let Some(description_short) = &event.description_short -%}{{ description_short }}{%- endif -%}" />
-          </div>
-          <p class="form-legend">
-            Brief description used in event listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
-          </p>
-        </div>
-        {# End Short Description -#}
-
-        {# Event Description -#}
-        <div class="col-span-full">
-          <label for="description" class="form-label">
-            Description <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <markdown-editor id="description" name="description" content="{{ event.description }}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
-          </div>
-          <p class="form-legend">
-            Full description of the event and its purpose. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
-          </p>
-        </div>
-        {# End Event Description -#}
-      </div>
+          {# Tags -#}
+          {% let tags_items -%}items=" {%- if let Some(tags) = &event.tags -%}{{ tags|json }}{%- endif -%}"{%- endlet %}
+        {% let tag_legend -%}Optional tags to help categorize and find the event. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.{%- endlet %}
+      {{ form_fields::tags_field(legend = tag_legend, items_attr = tags_items, field_class = "col-span-full 2xl:col-span-3", label_text = "Tags") -}}
+      {# End Tags -#}
     </div>
-
-    {# Additional Information section -#}
-    <div class="border-t border-stone-900/10 pt-12">
-      {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
-
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-6xl">
-        {# Waitlist enabled -#}
-        <div class="col-span-full 2xl:col-span-3">
-          <label data-enrollment-toggle-label="waitlist"
-                 class="inline-flex items-center cursor-pointer transition-opacity">
-            <input id="toggle_waitlist_enabled"
-                   name="toggle_waitlist_enabled"
-                   value="enabled"
-                   type="checkbox"
-                   class="sr-only peer"
-                   {% if event.waitlist_enabled %}
-                     checked
-                   {% endif %}>
-            <input type="hidden"
-                   id="waitlist_enabled"
-                   name="waitlist_enabled"
-                   value="{{ event.waitlist_enabled }}">
-            <div class="toggle-track"></div>
-            <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
-          </label>
-          <p class="form-legend">
-            Allow full events, including paid ticket events, to add people to a waiting list instead
-            of rejecting them. Capacity is the total of ticket seats. Invitation approval and the waitlist cannot be
-            enabled together.
-          </p>
-        </div>
-        {# End Waitlist enabled -#}
-
-        {# Attendee approval required -#}
-        <div class="col-span-full 2xl:col-span-3">
-          <label data-enrollment-toggle-label="attendee-approval"
-                 class="inline-flex items-center cursor-pointer transition-opacity">
-            <input id="toggle_attendee_approval_required"
-                   name="toggle_attendee_approval_required"
-                   value="required"
-                   type="checkbox"
-                   class="sr-only peer"
-                   {% if event.attendee_approval_required %}
-                     checked
-                   {% endif %}>
-            <input type="hidden"
-                   id="attendee_approval_required"
-                   name="attendee_approval_required"
-                   value="{{ event.attendee_approval_required }}">
-            <div class="toggle-track"></div>
-            <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
-          </label>
-          <p class="form-legend">
-            Let people request organizer approval before attending or claiming a ticket. Paid ticket
-            events can use invitation approval. Invitation approval and the waitlist cannot be enabled
-            together. Accept pending requests and reissue expired offers while the event is still
-            active, including outside the public registration window.
-          </p>
-        </div>
-        {# End Attendee approval required -#}
-
-        {# Test event -#}
-        <div class="col-span-full 2xl:col-span-3">
-          <label class="inline-flex items-center cursor-pointer">
-            <input id="toggle_test_event"
-                   name="toggle_test_event"
-                   value="enabled"
-                   type="checkbox"
-                   class="sr-only peer"
-                   {% if event.test_event %}
-                     checked
-                   {% endif %}>
-            <input type="hidden"
-                   id="test_event"
-                   name="test_event"
-                   value="{{ event.test_event }}">
-            <div class="toggle-track"></div>
-            <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
-          </label>
-          <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
-        </div>
-        {# End Test event -#}
-
-        <div class="col-span-full grid grid-cols-1 gap-x-6 gap-y-8 2xl:grid-cols-2">
-          {# Meetup URL -#}
-          <div>
-            <label for="meetup_url" class="form-label">Meetup.com URL</label>
-            <div class="mt-2">
-              <input type="url"
-                     name="meetup_url"
-                     id="meetup_url"
-                     class="input-primary"
-                     placeholder="https://meetup.com/group/events/123456"
-                     {% if let Some(meetup_url) = &event.meetup_url %}
-                       value="{{ meetup_url }}"
-                     {% endif %}>
-            </div>
-            <p class="form-legend">Link to the Meetup.com event page.</p>
-          </div>
-          {# End Meetup URL -#}
-
-          {# Luma URL -#}
-          <div>
-            <label for="luma_url" class="form-label">Luma URL</label>
-            <div class="mt-2">
-              <input type="url"
-                     name="luma_url"
-                     id="luma_url"
-                     class="input-primary"
-                     placeholder="https://luma.com/event"
-                     {% if let Some(luma_url) = &event.luma_url %}
-                       value="{{ luma_url }}"
-                     {% endif %}>
-            </div>
-            <p class="form-legend">Link to the Luma event page.</p>
-          </div>
-          {# End Luma URL -#}
-        </div>
-
-        {# Photos -#}
-        {% let photos_attr -%}images="{%- if let Some(photos_urls) = &event.photos_urls -%}{{ photos_urls|json }}{%- endif -%}"{%- endlet %}
-      {{ form_fields::gallery_field(legend = "Optional photos related to the event.", images_attr = photos_attr) -}}
-      {# End Photos -#}
-
-      {# Tags -#}
-      {% let tags_items -%}items=" {%- if let Some(tags) = &event.tags -%}{{ tags|json }}{%- endif -%}"{%- endlet %}
-    {% let tag_legend -%}Optional tags to help categorize and find the event. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.{%- endlet %}
-  {{ form_fields::tags_field(legend = tag_legend, items_attr = tags_items, field_class = "col-span-full 2xl:col-span-3", label_text = "Tags") -}}
-  {# End Tags -#}
-</div>
-</div>
-{# End additional information section -#}
+  </div>
+  {# End additional information section -#}
 </form>
 </div>
 {# End Event Details Tab -#}
@@ -529,7 +483,7 @@
         </div>
       {% endif -%}
       <div class="mt-10">
-        <questions-editor name="registration_questions" questions="{{ event.registration_questions|json }}" {% if event.registration_questions_locked %}disabled{% endif %}></questions-editor>
+        <questions-editor name="registration_questions" questions="{{ event.registration_questions|json }}" empty-message='No registration questions yet. Click "Add question" to create one.' empty-disabled-message="No registration questions were added for this event." editing-warning="Questionnaire questions cannot be edited after an attendee has submitted answers." required-help="Required answers are collected with a ticket request, RSVP, checkout, or offer claim. Optional questions can be skipped." prompt-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}" option-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" {% if event.registration_questions_locked %}disabled{% endif %}></questions-editor>
       </div>
     </div>
   </form>
@@ -1345,6 +1299,29 @@
     </div>
   </div>
   {# End Waitlist Tab -#}
+{% endif -%}
+
+{% if !event.canceled -%}
+  {# Surveys Tab -#}
+  <div data-content="surveys"
+       class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">
+    <div id="surveys-refresh"
+         hx-get="/dashboard/group/events/{{ event.event_id }}/surveys"
+         hx-trigger="refresh-event-surveys from:body"
+         hx-target="#surveys-content"
+         hx-swap="innerHTML"
+         hx-indicator="#dashboard-spinner"></div>
+    <div id="surveys-content" data-event-surveys-root>
+      {{ dashboard::form_title(title = "Surveys", description = "Collect feedback from attendees after the event ends.") -}}
+      <div id="surveys-loading" class="flex items-center justify-center py-12">
+        <div class="flex flex-col items-center space-y-4">
+          {{ ui::spinner(size = "size-10") -}}
+          <div class="text-sm text-stone-500">Loading surveys...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {# End Surveys Tab -#}
 {% endif -%}
 
 {# Analytics Tab -#}

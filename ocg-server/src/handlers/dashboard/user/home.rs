@@ -71,7 +71,10 @@ pub(crate) async fn page(
         Tab::Badges => Content::Badges(badges::prepare_list_page(&db, user.user_id).await?),
         Tab::CheckIn => Content::CheckIn(check_in::prepare_list_page(&db, &user).await?),
         Tab::Events => {
-            let (_, template) = events::prepare_list_page(&db, user.user_id, raw_query).await?;
+            // Load the list, opening the survey an email links to
+            let event_survey_id = events::requested_event_survey_id(&query);
+            let (_, template) =
+                events::prepare_list_page(&db, user.user_id, raw_query, event_survey_id).await?;
             Content::Events(template)
         }
         Tab::Groups => {

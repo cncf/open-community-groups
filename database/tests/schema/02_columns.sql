@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(95);
+select plan(97);
 
 -- ============================================================================
 -- TESTS
@@ -661,6 +661,39 @@ select columns_are('event_sponsor', array[
     'event_id',
     'group_sponsor_id',
     'level'
+]);
+
+-- Test: event_survey columns should match expected
+select columns_are('event_survey', array[
+    'event_survey_id',
+    'anonymous',
+    'audience',
+    'created_at',
+    'event_id',
+    'questions',
+    'revision',
+    'status',
+    'title',
+
+    'closed_at',
+    'closes_at',
+    'created_by',
+    'description',
+    'first_response_at',
+    'open_notification_processed_at',
+    'open_notification_recipients',
+    'opens_at',
+    'updated_at'
+]);
+
+-- Test: event_survey_response columns should match expected
+select columns_are('event_survey_response', array[
+    'answers',
+    'created_at',
+    'event_survey_id',
+    'user_id',
+
+    'updated_at'
 ]);
 
 -- Test: event_views columns should match expected

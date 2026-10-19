@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(201);
+select plan(216);
 
 -- ============================================================================
 -- TESTS
@@ -165,6 +165,25 @@ select has_check('event_ticket_price_window', 'event_ticket_price_window_window_
 
 -- Test: event ticket type table expected constraints exist
 select has_check('event_ticket_type', 'event_ticket_type_availability_chk');
+
+-- Test: event survey table expected constraints and defaults exist
+select has_check('event_survey', 'event_survey_audience_chk');
+select has_check('event_survey', 'event_survey_dates_chk');
+select has_check('event_survey', 'event_survey_description_chk');
+select has_check('event_survey', 'event_survey_draft_chk');
+select has_check('event_survey', 'event_survey_open_notification_chk');
+select has_check('event_survey', 'event_survey_questions_chk');
+select has_check('event_survey', 'event_survey_revision_chk');
+select has_check('event_survey', 'event_survey_status_chk');
+select has_check('event_survey', 'event_survey_title_chk');
+select col_default_is('event_survey', 'anonymous', 'true');
+select col_default_is('event_survey', 'audience', 'confirmed');
+select col_default_is('event_survey', 'questions', '[]');
+select col_default_is('event_survey', 'revision', '1');
+select col_default_is('event_survey', 'status', 'draft');
+
+-- Test: event survey response table expected constraints exist
+select has_check('event_survey_response', 'event_survey_response_answers_chk');
 
 -- Test: group table expected constraints exist
 select has_check('group', 'group_check');
@@ -544,6 +563,7 @@ select results_eq(
         ('badges', 'Badges', true),
         ('cohosting-updates', 'Co-hosting updates', false),
         ('event-reminders', 'Event reminders', true),
+        ('event-surveys', 'Event surveys', true),
         ('group-announcements', 'Group announcements', true),
         ('group-inbox', 'Group inbox', false),
         ('new-events', 'New events', true),
@@ -607,6 +627,7 @@ select results_eq(
         ('event-rescheduled', null::text),
         ('event-series-canceled', null::text),
         ('event-series-published', 'new-events'::text),
+        ('event-survey-opened', 'event-surveys'::text),
         ('event-ticket-request-approved', null::text),
         ('event-ticket-waitlist-offer', null::text),
         ('event-waitlist-joined', null::text),

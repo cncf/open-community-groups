@@ -1,13 +1,72 @@
+-- Tests validating questionnaire answers against question definitions.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(20);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should accept free-text answers at the length limit in characters
+select lives_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "free-text",
+                    "prompt": "Feedback",
+                    "required": false,
+                    "options": []
+                }
+            ]'::jsonb,
+            jsonb_build_object('answers', jsonb_build_array(
+                jsonb_build_object(
+                    'question_id', '0c1e0000-0000-0000-0000-000000000001',
+                    'value', repeat('é', 8000)
+                )
+            ))
+        )
+    $$,
+    'Should accept free-text answers at the length limit in characters'
+);
+
+-- Should accept omitted optional answers
+select lives_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "free-text",
+                    "prompt": "Required",
+                    "required": true,
+                    "options": []
+                },
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000002",
+                    "kind": "free-text",
+                    "prompt": "Optional",
+                    "required": false,
+                    "options": []
+                }
+            ]'::jsonb,
+            '{
+                "answers": [
+                    {
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
+                        "value": "Answered"
+                    }
+                ]
+            }'::jsonb
+        )
+    $$,
+    'Should accept omitted optional answers'
+);
 
 -- Should accept valid answers for all supported question types
 select lives_ok(
@@ -77,22 +136,15 @@ select lives_ok(
     'Should accept valid answers for all supported question types'
 );
 
--- Should accept omitted optional answers
-select lives_ok(
+-- Should reject answers for unknown questions
+select throws_ok(
     $$
         select validate_questionnaire_answers_payload(
             '[
                 {
                     "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
-                    "prompt": "Required",
-                    "required": true,
-                    "options": []
-                },
-                {
-                    "id": "0c1e0000-0000-0000-0000-000000000002",
-                    "kind": "free-text",
-                    "prompt": "Optional",
+                    "prompt": "Question",
                     "required": false,
                     "options": []
                 }
@@ -100,14 +152,16 @@ select lives_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
-                        "value": "Answered"
+                        "question_id": "0c1e0000-0000-0000-0000-000000000008",
+                        "value": "Answer"
                     }
                 ]
             }'::jsonb
         )
     $$,
-    'Should accept omitted optional answers'
+    'OCG01',
+    'questionnaire answer references an unknown question',
+    'Should reject answers for unknown questions'
 );
 
 -- Should reject answers when questions are not configured
@@ -128,75 +182,6 @@ select throws_ok(
     'OCG01',
     'questionnaire answers cannot be submitted when questions are not configured',
     'Should reject answers when questions are not configured'
-);
-
--- Should reject missing answers when questions exist
-select throws_ok(
-    $$
-        select validate_questionnaire_answers_payload(
-            '[
-                {
-                    "id": "0c1e0000-0000-0000-0000-000000000001",
-                    "kind": "free-text",
-                    "prompt": "Question",
-                    "required": true,
-                    "options": []
-                }
-            ]'::jsonb,
-            null::jsonb
-        )
-    $$,
-    'OCG01',
-    'questionnaire answers are required',
-    'Should reject missing answers when questions exist'
-);
-
--- Should require an answers array
-select throws_ok(
-    $$
-        select validate_questionnaire_answers_payload(
-            '[
-                {
-                    "id": "0c1e0000-0000-0000-0000-000000000001",
-                    "kind": "free-text",
-                    "prompt": "Question",
-                    "required": true,
-                    "options": []
-                }
-            ]'::jsonb,
-            '{
-                "answers": {}
-            }'::jsonb
-        )
-    $$,
-    'OCG01',
-    'questionnaire answers must contain an answers array',
-    'Should require an answers array'
-);
-
--- Should reject non-object answers
-select throws_ok(
-    $$
-        select validate_questionnaire_answers_payload(
-            '[
-                {
-                    "id": "0c1e0000-0000-0000-0000-000000000001",
-                    "kind": "free-text",
-                    "prompt": "Question",
-                    "required": true,
-                    "options": []
-                }
-            ]'::jsonb,
-            '{
-                "answers": [
-                    "bad"
-                ]
-            }'::jsonb
-        )
-    $$,
-    'OCG01',
-    'questionnaire answer must be an object',
-    'Should reject non-object answers'
 );
 
 -- Should reject answers without a question_id
@@ -258,118 +243,6 @@ select throws_ok(
     'Should reject duplicate answers for a question'
 );
 
--- Should reject answers for unknown questions
-select throws_ok(
-    $$
-        select validate_questionnaire_answers_payload(
-            '[
-                {
-                    "id": "0c1e0000-0000-0000-0000-000000000001",
-                    "kind": "free-text",
-                    "prompt": "Question",
-                    "required": false,
-                    "options": []
-                }
-            ]'::jsonb,
-            '{
-                "answers": [
-                    {
-                        "question_id": "0c1e0000-0000-0000-0000-000000000008",
-                        "value": "Answer"
-                    }
-                ]
-            }'::jsonb
-        )
-    $$,
-    'OCG01',
-    'questionnaire answer references an unknown question',
-    'Should reject answers for unknown questions'
-);
-
--- Should reject missing required answers
-select throws_ok(
-    $$
-        select validate_questionnaire_answers_payload(
-            '[
-                {
-                    "id": "0c1e0000-0000-0000-0000-000000000001",
-                    "kind": "free-text",
-                    "prompt": "Question",
-                    "required": true,
-                    "options": []
-                }
-            ]'::jsonb,
-            '{
-                "answers": []
-            }'::jsonb
-        )
-    $$,
-    'OCG01',
-    'required questionnaire answer is missing',
-    'Should reject missing required answers'
-);
-
--- Should reject empty required free-text answers
-select throws_ok(
-    $$
-        select validate_questionnaire_answers_payload(
-            '[
-                {
-                    "id": "0c1e0000-0000-0000-0000-000000000001",
-                    "kind": "free-text",
-                    "prompt": "Question",
-                    "required": true,
-                    "options": []
-                }
-            ]'::jsonb,
-            '{
-                "answers": [
-                    {
-                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
-                        "value": "  "
-                    }
-                ]
-            }'::jsonb
-        )
-    $$,
-    'OCG01',
-    'required questionnaire answer is empty',
-    'Should reject empty required free-text answers'
-);
-
--- Should reject unknown single-select options
-select throws_ok(
-    $$
-        select validate_questionnaire_answers_payload(
-            '[
-                {
-                    "id": "0c1e0000-0000-0000-0000-000000000001",
-                    "kind": "single-select",
-                    "prompt": "Question",
-                    "required": true,
-                    "options": [
-                        {
-                            "id": "0c1e0000-0000-0000-0000-000000000004",
-                            "label": "One"
-                        }
-                    ]
-                }
-            ]'::jsonb,
-            '{
-                "answers": [
-                    {
-                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
-                        "value": "0c1e0000-0000-0000-0000-000000000008"
-                    }
-                ]
-            }'::jsonb
-        )
-    $$,
-    'OCG01',
-    'questionnaire answer references an unknown option',
-    'Should reject unknown single-select options'
-);
-
 -- Should reject duplicate multi-select options
 select throws_ok(
     $$
@@ -404,6 +277,87 @@ select throws_ok(
     'OCG01',
     'multi-select questionnaire answers cannot repeat options',
     'Should reject duplicate multi-select options'
+);
+
+-- Should reject empty required free-text answers
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "free-text",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": []
+                }
+            ]'::jsonb,
+            '{
+                "answers": [
+                    {
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
+                        "value": "  "
+                    }
+                ]
+            }'::jsonb
+        )
+    $$,
+    'OCG01',
+    'required questionnaire answer is empty',
+    'Should reject empty required free-text answers'
+);
+
+-- Should reject free-text answers above the length limit
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "free-text",
+                    "prompt": "Feedback",
+                    "required": false,
+                    "options": []
+                }
+            ]'::jsonb,
+            jsonb_build_object('answers', jsonb_build_array(
+                jsonb_build_object(
+                    'question_id', '0c1e0000-0000-0000-0000-000000000001',
+                    'value', repeat('a', 8001)
+                )
+            ))
+        )
+    $$,
+    'OCG01',
+    'free-text questionnaire answer is too long',
+    'Should reject free-text answers above the length limit'
+);
+
+-- Should reject free-text answers without a value
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "free-text",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": []
+                }
+            ]'::jsonb,
+            '{
+                "answers": [
+                    {
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001"
+                    }
+                ]
+            }'::jsonb
+        )
+    $$,
+    'OCG01',
+    'free-text questionnaire answer must be a string',
+    'Should reject free-text answers without a value'
 );
 
 -- Should reject invalid multi-select option ids
@@ -441,6 +395,107 @@ select throws_ok(
     'Should reject invalid multi-select option ids'
 );
 
+-- Should reject missing answers when questions exist
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "free-text",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": []
+                }
+            ]'::jsonb,
+            null::jsonb
+        )
+    $$,
+    'OCG01',
+    'questionnaire answers are required',
+    'Should reject missing answers when questions exist'
+);
+
+-- Should reject missing required answers
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "free-text",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": []
+                }
+            ]'::jsonb,
+            '{
+                "answers": []
+            }'::jsonb
+        )
+    $$,
+    'OCG01',
+    'required questionnaire answer is missing',
+    'Should reject missing required answers'
+);
+
+-- Should reject multi-select answers without a value
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "multi-select",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": [
+                        {
+                            "id": "0c1e0000-0000-0000-0000-000000000004",
+                            "label": "One"
+                        }
+                    ]
+                }
+            ]'::jsonb,
+            '{
+                "answers": [
+                    {
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001"
+                    }
+                ]
+            }'::jsonb
+        )
+    $$,
+    'OCG01',
+    'multi-select questionnaire answer must be an option id array',
+    'Should reject multi-select answers without a value'
+);
+
+-- Should reject non-object answers
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "free-text",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": []
+                }
+            ]'::jsonb,
+            '{
+                "answers": [
+                    "bad"
+                ]
+            }'::jsonb
+        )
+    $$,
+    'OCG01',
+    'questionnaire answer must be an object',
+    'Should reject non-object answers'
+);
+
 -- Should reject non-string free-text answers
 select throws_ok(
     $$
@@ -467,33 +522,6 @@ select throws_ok(
     'OCG01',
     'free-text questionnaire answer must be a string',
     'Should reject non-string free-text answers'
-);
-
--- Should reject free-text answers without a value
-select throws_ok(
-    $$
-        select validate_questionnaire_answers_payload(
-            '[
-                {
-                    "id": "0c1e0000-0000-0000-0000-000000000001",
-                    "kind": "free-text",
-                    "prompt": "Question",
-                    "required": true,
-                    "options": []
-                }
-            ]'::jsonb,
-            '{
-                "answers": [
-                    {
-                        "question_id": "0c1e0000-0000-0000-0000-000000000001"
-                    }
-                ]
-            }'::jsonb
-        )
-    $$,
-    'OCG01',
-    'free-text questionnaire answer must be a string',
-    'Should reject free-text answers without a value'
 );
 
 -- Should reject single-select answers without a value
@@ -528,14 +556,14 @@ select throws_ok(
     'Should reject single-select answers without a value'
 );
 
--- Should reject multi-select answers without a value
+-- Should reject unknown single-select options
 select throws_ok(
     $$
         select validate_questionnaire_answers_payload(
             '[
                 {
                     "id": "0c1e0000-0000-0000-0000-000000000001",
-                    "kind": "multi-select",
+                    "kind": "single-select",
                     "prompt": "Question",
                     "required": true,
                     "options": [
@@ -549,15 +577,39 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "0c1e0000-0000-0000-0000-000000000001"
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
+                        "value": "0c1e0000-0000-0000-0000-000000000008"
                     }
                 ]
             }'::jsonb
         )
     $$,
     'OCG01',
-    'multi-select questionnaire answer must be an option id array',
-    'Should reject multi-select answers without a value'
+    'questionnaire answer references an unknown option',
+    'Should reject unknown single-select options'
+);
+
+-- Should require an answers array
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
+                    "kind": "free-text",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": []
+                }
+            ]'::jsonb,
+            '{
+                "answers": {}
+            }'::jsonb
+        )
+    $$,
+    'OCG01',
+    'questionnaire answers must contain an answers array',
+    'Should require an answers array'
 );
 
 -- ============================================================================

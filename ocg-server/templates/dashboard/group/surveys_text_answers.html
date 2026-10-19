@@ -1,0 +1,18 @@
+{# Event survey free-text answers page -#}
+{% for answer in answers.answers -%}
+  <li class="whitespace-pre-line break-words rounded-lg bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-700">{{ answer }}</li>
+{% endfor -%}
+{% if let Some(next_offset) = self.next_offset() -%}
+  <li>
+    <button type="button"
+            hx-get="/dashboard/group/events/{{ event_id }}/surveys/{{ event_survey_id }}/results/questions/{{ question_id }}/answers?offset={{ next_offset }}&limit={{ limit }}"
+            hx-target="closest li"
+            hx-swap="outerHTML"
+            hx-indicator="#dashboard-spinner"
+            hx-disabled-elt="this"
+            data-htmx-response
+            data-error-message="Something went wrong loading more answers. Please try again later."
+            class="btn-primary-outline btn-mini">Show more answers ({{ self.remaining() }} left)</button>
+  </li>
+{% endif -%}
+{# End event survey free-text answers page -#}

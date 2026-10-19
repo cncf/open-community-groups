@@ -1,4 +1,5 @@
 import { expect, test } from "../../../fixtures.js";
+import { TEST_EVENT_ANALYTICS_SURVEYS } from "../../../data-graphs/surveys.js";
 import { TEST_EVENT_ANALYTICS, TEST_UNPUBLISHED_EVENT } from "../../../seed.js";
 import { openEventUpdateFormByName } from "./helpers.js";
 
@@ -101,6 +102,41 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(question.locator("li:visible")).toHaveCount(10);
   });
 
+  test("organizer reviews the survey responses of a past event", async ({ organizerGroupPage }) => {
+    // Open the past paid event analytics.
+    const { id, name } = TEST_EVENT_ANALYTICS.pastPaid;
+    await openEventUpdateFormByName(organizerGroupPage, name, id, { eventsTab: "past" });
+    const content = await openAnalyticsSection(organizerGroupPage, id, clickAnalyticsTab);
+    const section = content.locator("[data-event-analytics-surveys]");
+
+    // Verify the overall rate weights the open and closed surveys by their audience.
+    await expect(section).toContainText("Overall response rate");
+    await expect(section).toContainText("75%");
+    await expect(section).toContainText("3 of 4 eligible attendees, across open and closed surveys");
+
+    // Verify each survey that is not a draft shows its state, responses and rate.
+    const rows = section.locator("[data-event-analytics-survey]");
+    await expect(rows).toHaveCount(3);
+    const { closed, draft, open, scheduled } = TEST_EVENT_ANALYTICS_SURVEYS;
+    await expect(rows.nth(0)).toContainText(open.title);
+    await expect(rows.nth(0).locator(".custom-badge")).toHaveText("Open");
+    await expect(rows.nth(0)).toContainText(
+      "1 of 2 eligible attendees responded · 2 responses in total · 50%",
+    );
+    await expect(rows.nth(1)).toContainText(closed.title);
+    await expect(rows.nth(1).locator(".custom-badge")).toHaveText("Closed");
+    await expect(rows.nth(1)).toContainText("2 of 2 eligible attendees responded · 100%");
+    await expect(rows.nth(2)).toContainText(scheduled.title);
+    await expect(rows.nth(2).locator(".custom-badge")).toHaveText("Scheduled");
+    await expect(rows.nth(2)).toContainText("0 of 2 eligible attendees responded · 0%");
+    await expect(section.getByText(draft.title)).toHaveCount(0);
+
+    // Verify the section explains its counts and offers no links to the surveys tab.
+    await expect(section).toContainText("Survey counts are cached for up to an hour.");
+    await expect(section).toContainText("Counts are per survey");
+    await expect(section.locator("a, button, [hx-get]")).toHaveCount(0);
+  });
+
   test("organizer retries analytics after a failed load", async ({ organizerGroupPage }) => {
     // Open the past paid event and fail its first analytics request.
     const { id, name } = TEST_EVENT_ANALYTICS.pastPaid;
@@ -125,7 +161,9 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(error).toBeHidden();
   });
 
-  test("organizer sees no tickets or check-ins for a future free event", async ({ organizerGroupPage }) => {
+  test("organizer sees no tickets, check-ins or surveys for a future free event", async ({
+    organizerGroupPage,
+  }) => {
     // Open the future free event analytics.
     const { id, name } = TEST_EVENT_ANALYTICS.futureFree;
     await openEventUpdateFormByName(organizerGroupPage, name, id);
@@ -136,6 +174,7 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(content.locator("[data-event-analytics-tickets]")).toHaveCount(0);
     await expect(content.locator("[data-event-analytics-check-ins]")).toHaveCount(0);
     await expect(content.getByText("Check-in rate", { exact: true })).toHaveCount(0);
+    await expect(content.locator("[data-event-analytics-surveys]")).toHaveCount(0);
     await expect(content.getByText(/revenue/i)).toHaveCount(0);
 
     // Verify the traffic sources explain how to get UTM attribution.

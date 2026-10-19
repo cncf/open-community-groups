@@ -1,6 +1,11 @@
 import { expect, test } from "../../../fixtures.js";
 import { queryE2eDatabase } from "../../../database.js";
 import {
+  cleanupEventSurveys,
+  setupOwnedEventSurvey,
+  TEST_EVENT_SURVEYS,
+} from "../../../data-graphs/surveys.js";
+import {
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
   TEST_GROUP_SLUGS,
@@ -49,6 +54,69 @@ test.describe("user dashboard my events view", () => {
     // Assert how many matching elements are shown.
     await expect(dashboardContent.getByText("Past Event For Filtering")).toHaveCount(0);
     await expect(dashboardContent.getByText(TEST_EVENT_NAMES.beta[0])).toHaveCount(0);
+  });
+
+  test("my events lists surveys to answer with unanswered surveys first", async ({ member1Page }) => {
+    // Open nine more surveys for Member One so the panel needs a second page.
+    const ownedSurveys = Array.from({ length: 9 }, (_, index) =>
+      setupOwnedEventSurvey({
+        eventId: TEST_EVENT_SURVEYS.event.id,
+        status: "ready",
+        title: `E2E panel survey ${index + 1}`,
+      }),
+    );
+
+    try {
+      // Load My Events and verify the first page of the panel.
+      await navigateToPath(member1Page, "/dashboard/user?tab=events");
+      const panel = member1Page.locator("[data-user-event-surveys]");
+      await expect(panel.getByRole("heading", { name: "Surveys to answer" })).toBeVisible();
+      const items = panel.locator("[data-user-event-survey]");
+      await expect(items).toHaveCount(10);
+
+      // Verify the unanswered survey with a closing date comes first and offers to answer it.
+      const sessionSurvey = items.first();
+      await expect(sessionSurvey).toHaveAttribute(
+        "data-user-event-survey",
+        TEST_EVENT_SURVEYS.surveys.openIdentified.id,
+      );
+      await expect(sessionSurvey).toContainText("Not answered");
+      await expect(sessionSurvey.getByRole("button", { name: /Answer/ })).toHaveAttribute(
+        "hx-get",
+        `/dashboard/user/events/surveys/${TEST_EVENT_SURVEYS.surveys.openIdentified.id}`,
+      );
+
+      // Load the next page and verify the answered survey comes last.
+      await waitForActionResponse(
+        member1Page,
+        () => panel.getByRole("button", { name: "Show more" }).click(),
+        {
+          method: "GET",
+          urlIncludes: "/dashboard/user/events/surveys?offset=10",
+        },
+      );
+      await expect(items).toHaveCount(11);
+      const venueSurvey = items.last();
+      await expect(venueSurvey).toHaveAttribute(
+        "data-user-event-survey",
+        TEST_EVENT_SURVEYS.surveys.openAnonymous.id,
+      );
+      await expect(venueSurvey).toContainText("Answered");
+      await expect(venueSurvey.getByRole("button", { name: /Edit answers/ })).toBeVisible();
+      await expect(panel.getByRole("button", { name: "Show more" })).toHaveCount(0);
+    } finally {
+      // Remove the surveys created for this scenario.
+      cleanupEventSurveys(ownedSurveys.map(({ id }) => id));
+    }
+  });
+
+  test("my events hides the surveys panel without surveys to answer", async ({ emptyUserPage }) => {
+    // Load My Events for the user without event participation.
+    await navigateToPath(emptyUserPage, "/dashboard/user?tab=events");
+
+    // Verify the panel is not rendered.
+    await expect(emptyUserPage.locator("#dashboard-content")).toContainText("My Events");
+    await expect(emptyUserPage.getByRole("heading", { name: "Surveys to answer" })).toHaveCount(0);
   });
 
   test("my events shows rejected refund status and reason", async ({ pending1Page }) => {

@@ -1,32 +1,27 @@
 //! Templates for the event analytics tab in the group dashboard.
 
-use std::{cmp::Reverse, fmt::Write};
+use std::fmt::Write;
 
 use askama::Template;
 use chrono::Utc;
-use num_format::{Locale, ToFormattedString};
 use uuid::Uuid;
 
 use crate::{
-    templates::filters,
+    templates::{
+        filters,
+        helpers::{NOT_APPLICABLE_LABEL, bar_width, count_label, percent_label},
+    },
     types::{
         dashboard::group::event_analytics::{
-            EventAdmissionOfferOutcome, EventAnalytics, EventQuestionBreakdown,
+            EventAdmissionOfferOutcome, EventAnalytics, EventSurveyResponseStats,
             EventTicketTypeUsage,
         },
         event::EventAdmissionOfferSource,
-        questionnaire::QuestionnaireQuestionKind,
     },
 };
 
 #[cfg(test)]
 mod tests;
-
-/// Placeholder displayed when a metric does not apply.
-const NOT_APPLICABLE_LABEL: &str = "-";
-
-/// Number of options shown for each registration question until expanded.
-pub(crate) const QUESTION_VISIBLE_OPTIONS: usize = 10;
 
 /// Format used to display registration window bounds in the event timezone.
 pub(crate) const WINDOW_DATE_FORMAT: &str = "%b %-d, %Y %H:%M";
@@ -154,12 +149,6 @@ impl Page {
         self.stats.has_ended_at(Utc::now())
     }
 
-    /// Returns whether a question accepts several options per respondent.
-    #[allow(clippy::unused_self)]
-    pub(crate) fn is_multi_select(&self, question: &EventQuestionBreakdown) -> bool {
-        question.kind == QuestionnaireQuestionKind::MultiSelect
-    }
-
     /// Returns the invitation requests by review status for display.
     pub(crate) fn invitation_requests_summary(&self) -> String {
         let requests = &self.stats.enrollment.invitation_requests;
@@ -237,44 +226,6 @@ impl Page {
         count.map_or_else(|| NOT_APPLICABLE_LABEL.to_string(), count_label)
     }
 
-    /// Returns the number of question options hidden until expanded.
-    #[allow(clippy::unused_self)]
-    pub(crate) fn question_hidden_options_count(&self, question: &EventQuestionBreakdown) -> usize {
-        question.options.len().saturating_sub(QUESTION_VISIBLE_OPTIONS)
-    }
-
-    /// Returns the options of a question by selections, most selected first,
-    /// with their share of respondents.
-    #[allow(clippy::cast_precision_loss, clippy::unused_self)]
-    pub(crate) fn question_options(
-        &self,
-        question: &EventQuestionBreakdown,
-    ) -> Vec<QuestionOptionShare> {
-        // Order options by selections, keeping the definition order on ties
-        let mut options = question.options.iter().collect::<Vec<_>>();
-        options.sort_by_key(|option| Reverse(option.count));
-
-        // Describe each option with its share of respondents
-        options
-            .into_iter()
-            .enumerate()
-            .map(|(index, option)| {
-                let share = if question.respondents > 0 {
-                    option.count as f64 / question.respondents as f64
-                } else {
-                    0.0
-                };
-                QuestionOptionShare {
-                    count: option.count,
-                    hidden: index >= QUESTION_VISIBLE_OPTIONS,
-                    label: option.label.clone(),
-                    share_label: percent_label(Some(share)),
-                    width: bar_width(option.count, question.respondents),
-                }
-            })
-            .collect()
-    }
-
     /// Returns why the daily charts are unavailable for the event.
     pub(crate) fn range_unavailable_message(&self) -> &'static str {
         if !self.stats.event.published {
@@ -332,6 +283,62 @@ impl Page {
             return "Unavailable".to_string();
         }
         percent_label(self.stats.share_of_views(*views))
+    }
+
+    /// Returns the response rate of a survey for display.
+    #[allow(clippy::unused_self)]
+    pub(crate) fn survey_rate_label(&self, survey: &EventSurveyResponseStats) -> String {
+        percent_label(survey.response_rate())
+    }
+
+    /// Returns the width percentage of a survey response rate bar.
+    #[allow(clippy::unused_self)]
+    pub(crate) fn survey_response_width(&self, survey: &EventSurveyResponseStats) -> String {
+        bar_width(survey.eligible_respondents_count, survey.eligible_count)
+    }
+
+    /// Returns the eligible respondents of a survey for display, adding the
+    /// stored total when respondents who are no longer eligible also answered.
+    #[allow(clippy::unused_self)]
+    pub(crate) fn survey_responses_summary(&self, survey: &EventSurveyResponseStats) -> String {
+        // Describe the eligible respondents
+        let mut summary = if survey.eligible_count > 0 {
+            format!(
+                "{} of {} eligible attendees responded",
+                count_label(survey.eligible_respondents_count),
+                count_label(survey.eligible_count)
+            )
+        } else {
+            "No eligible attendees".to_string()
+        };
+
+        // Add the stored total when it differs from the eligible respondents
+        if survey.responses_count != survey.eligible_respondents_count {
+            let _ = write!(
+                summary,
+                " · {} responses in total",
+                count_label(survey.responses_count)
+            );
+        }
+        summary
+    }
+
+    /// Returns the description of the overall survey response rate card.
+    pub(crate) fn surveys_response_rate_description(&self) -> String {
+        let surveys = &self.stats.surveys;
+        if surveys.total_eligible_count == 0 {
+            return "No eligible attendees in open or closed surveys yet".to_string();
+        }
+        format!(
+            "{} of {} eligible attendees, across open and closed surveys",
+            count_label(surveys.total_eligible_respondents_count),
+            count_label(surveys.total_eligible_count)
+        )
+    }
+
+    /// Returns the overall survey response rate for display.
+    pub(crate) fn surveys_response_rate_label(&self) -> String {
+        percent_label(self.stats.surveys.response_rate())
     }
 
     /// Returns the allocated seats of a ticket type, bounded by its seats.
@@ -430,50 +437,7 @@ pub(crate) struct AdmissionOfferSourceSummary {
     pub total: i64,
 }
 
-/// Selections of one question option, with its share of respondents.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct QuestionOptionShare {
-    /// Selections of the option.
-    pub count: i64,
-    /// Whether the option is hidden until the question is expanded.
-    pub hidden: bool,
-    /// Option label.
-    pub label: String,
-    /// Share of respondents for display.
-    pub share_label: String,
-    /// Width percentage of the option bar.
-    pub width: String,
-}
-
 // Helpers.
-
-/// Returns a bar segment width as a percentage of a total.
-#[allow(clippy::cast_precision_loss)]
-fn bar_width(value: i64, total: i64) -> String {
-    if total <= 0 {
-        return "0".to_string();
-    }
-    let width = (value as f64 / total as f64 * 100.0).clamp(0.0, 100.0);
-    format!("{width:.1}")
-}
-
-/// Formats a count with thousands separators.
-fn count_label(count: i64) -> String {
-    count.to_formatted_string(&Locale::en)
-}
-
-/// Formats a ratio as a percentage, or as a dash when missing.
-fn percent_label(value: Option<f64>) -> String {
-    let Some(value) = value else {
-        return NOT_APPLICABLE_LABEL.to_string();
-    };
-    let percent = value * 100.0;
-    if percent >= 10.0 || (percent - percent.round()).abs() < f64::EPSILON {
-        format!("{percent:.0}%")
-    } else {
-        format!("{percent:.1}%")
-    }
-}
 
 /// Returns the sum of a day series.
 fn series_total(series: &[(String, i64)]) -> i64 {

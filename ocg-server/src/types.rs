@@ -5,6 +5,7 @@ pub mod badges;
 pub mod community;
 pub mod dashboard;
 pub mod event;
+pub mod event_survey;
 pub mod group;
 pub mod images;
 pub mod inbox;

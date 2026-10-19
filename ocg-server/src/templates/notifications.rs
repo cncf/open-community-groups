@@ -925,6 +925,45 @@ impl NotificationTemplate for EventSeriesPublished {
     }
 }
 
+/// Template for an opened post-event survey notification.
+///
+/// The template data is stored by the `enqueue_due_event_survey_notifications`
+/// database function, with links relative to the site root.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_survey_opened.html")]
+pub(crate) struct EventSurveyOpened {
+    /// Whether organizers see answers without respondent identities.
+    pub anonymous: bool,
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link that opens the survey in the user dashboard, stored relative to
+    /// the site root.
+    pub link: String,
+    /// Survey title.
+    pub survey_title: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+
+    /// Scheduled closing time of the survey.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub closes_at: Option<DateTime<Utc>>,
+}
+
+impl NotificationTemplate for EventSurveyOpened {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.link, base_url);
+    }
+
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        scoped_subject(
+            &self.event.group_name,
+            &format!("Share your feedback on {}", self.event.name),
+        )
+    }
+}
+
 /// Template for an approved ticket request notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_ticket_request_approved.html")]

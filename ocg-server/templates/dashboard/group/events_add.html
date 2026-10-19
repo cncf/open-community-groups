@@ -60,31 +60,7 @@
 
   <div class="col-span-full row-start-2 grid h-full content-start min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[12rem_minmax(0,1fr)] xl:content-stretch xl:gap-x-8 xl:gap-y-0">
     <aside class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8">
-      <select id="add-event-section-select"
-              data-section-select
-              aria-label="Event form section"
-              class="select-primary w-full sm:w-sm xl:hidden">
-        {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
-        {{ event_form::tab_option(section = "cohosts", label = "Co-hosts") -}}
-        {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
-        {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
-        {{ event_form::tab_option(section = "payments", label = "Tickets") -}}
-        {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
-        {{ event_form::tab_option(section = "labels", label = "Labels") -}}
-        {{ event_form::tab_option(section = "questions", label = "Questions") -}}
-        {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
-      </select>
-      <ul class="hidden flex-col gap-1 font-medium xl:flex">
-        {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
-        {{ event_form::tab_button(section = "cohosts", icon = "cohosts", label = "Co-hosts") -}}
-        {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
-        {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
-        {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Tickets") -}}
-        {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
-        {{ event_form::tab_button(section = "labels", icon = "tag", label = "Labels") -}}
-        {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
-        {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
-      </ul>
+      {{ event_form::tab_nav(groups = self.form_tab_groups(), id_prefix = "add-event-section") -}}
     </aside>
 
     <div class="min-w-0">
@@ -384,7 +360,7 @@
               waiting list does not collect answers. Ticket-request answers are available from Requests.
             </div>
             <div class="mt-10">
-              <questions-editor name="registration_questions" questions="[]"></questions-editor>
+              <questions-editor name="registration_questions" questions="[]" empty-message='No registration questions yet. Click "Add question" to create one.' empty-disabled-message="No registration questions were added for this event." editing-warning="Questionnaire questions cannot be edited after an attendee has submitted answers." required-help="Required answers are collected with a ticket request, RSVP, checkout, or offer claim. Optional questions can be skipped." prompt-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}" option-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"></questions-editor>
             </div>
           </div>
         </form>

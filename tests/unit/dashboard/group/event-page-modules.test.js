@@ -798,23 +798,41 @@ describe("event page modules", () => {
     expect(document.querySelector('[data-event-page="update"]').dataset.eventPageReady).to.equal("true");
   });
 
-  it("keeps canceled event review tabs interactive for event managers", () => {
-    // Mount the update page shell.
+  it("keeps the canceled event submissions review interactive for event managers", () => {
+    // Mount and initialize a canceled event page for an event manager.
     mountUpdatePageShell({ canManageEvents: true, eventCanceled: true });
+    initializeEventUpdatePage();
+    const inertForm = document.querySelector(".inert-form");
 
-    // Initialize the update page behavior.
+    // Open the submissions review section inside the inert form.
+    document
+      .querySelector('[data-section="submissions"]')
+      .dispatchEvent(new Event("click", { bubbles: true }));
+    expect(inertForm.hasAttribute("inert")).to.equal(false);
+
+    // Open the attendees section, which sits outside the inert form.
+    document.querySelector('[data-section="attendees"]').dispatchEvent(new Event("click", { bubbles: true }));
+    expect(inertForm.hasAttribute("inert")).to.equal(true);
+
+    // Open an editable section of the canceled event.
+    document
+      .querySelector('[data-section="submissions"]')
+      .dispatchEvent(new Event("click", { bubbles: true }));
+    document.querySelector('[data-section="details"]').dispatchEvent(new Event("click", { bubbles: true }));
+    expect(inertForm.hasAttribute("inert")).to.equal(true);
+  });
+
+  it("keeps the canceled event submissions review inert for read-only members", () => {
+    // Mount and initialize a canceled event page for a read-only member.
+    mountUpdatePageShell({ canManageEvents: false, eventCanceled: true });
     initializeEventUpdatePage();
 
-    // Dispatch the click event.
-    document.querySelector('[data-section="attendees"]').dispatchEvent(new Event("click", { bubbles: true }));
+    // Open the submissions review section.
+    document
+      .querySelector('[data-section="submissions"]')
+      .dispatchEvent(new Event("click", { bubbles: true }));
 
-    // Verify keeps canceled event review tabs interactive for event managers.
-    expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(false);
-
-    // Verify keeps canceled event review tabs interactive.
-    document.querySelector('[data-section="details"]').dispatchEvent(new Event("click", { bubbles: true }));
-
-    // Verify keeps canceled event review tabs interactive for event managers.
+    // Verify the inert form stays inert.
     expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(true);
   });
 

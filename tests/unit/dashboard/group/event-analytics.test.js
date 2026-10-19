@@ -7,7 +7,6 @@ import {
   getViewsSeriesLabel,
   initEventAnalyticsCharts,
   initializeEventAnalyticsFromPage,
-  toggleQuestionOptions,
 } from "/static/js/dashboard/group/event-analytics.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -454,7 +453,7 @@ describe("dashboard group event analytics", () => {
     expect(pathsOption.xAxis.axisLabel.show).to.equal(false);
   });
 
-  it("expands and collapses the hidden options of a registration question", async () => {
+  it("binds the registration question options toggles of the analytics root", async () => {
     // Render a question list with a hidden option and initialize the controls.
     const payload = getEventAnalyticsPayload();
     const root = renderAnalyticsFixture(payload);
@@ -481,7 +480,7 @@ describe("dashboard group event analytics", () => {
     expect(toggle.querySelector(".svg-icon")).to.not.equal(null);
 
     // Collapse them again.
-    toggleQuestionOptions(toggle);
+    toggle.click();
     expect(hiddenOption.hidden).to.equal(true);
     expect(toggle.getAttribute("aria-expanded")).to.equal("false");
     expect(toggle.textContent).to.equal("Show 1 more options");

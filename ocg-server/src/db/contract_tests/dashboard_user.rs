@@ -1,17 +1,17 @@
 //! Contract tests for the `DBDashboardUser` functions.
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use tokio_postgres::{error::SqlState, types::Json};
 
 use crate::{
-    db::dashboard::user::DBDashboardUser,
+    db::{PgExecutor, dashboard::user::DBDashboardUser},
     types::{
         community::CommunityRole,
         dashboard::{
             common::AuditLogFilters,
             user::{
-                events::{UserEventRole, UserEventsFilters},
+                events::{UserEventRole, UserEventSurveysFilters, UserEventsFilters},
                 groups::UserGroupsFilters,
                 purchases::PurchaseDocumentsFilters,
                 session_proposals::SessionProposalsFilters,
@@ -23,7 +23,7 @@ use crate::{
         },
         group::GroupRole,
         payments::{EventRefundRequestStatus, ExternalPaymentInfo},
-        questionnaire::QuestionnaireAnswerValue,
+        questionnaire::{QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers},
     },
     util::compute_hash,
 };
@@ -107,6 +107,111 @@ async fn db_contracts_decline_event_admission_offer_deserializes() -> Result<()>
     assert_eq!(outcome.community_id, community_id());
     assert_eq!(outcome.event_id, offer_decline_event_id());
     assert_eq!(outcome.group_id, subgroup_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_user_event_survey_deserializes() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the identified survey of a respondent
+    let survey = db
+        .get_user_event_survey(survey_identified_id(), survey_respondent_id())
+        .await?
+        .context("identified survey should be returned")?;
+
+    // Check the complete survey
+    assert!(!survey.anonymous);
+    assert_eq!(survey.event.event_id, survey_event_id());
+    assert_eq!(survey.event.name, "Contract Survey Event");
+    assert_eq!(survey.event_survey_id, survey_identified_id());
+    assert_eq!(survey.questions.len(), 3);
+    assert_eq!(survey.revision, 2);
+    assert_eq!(survey.title, "Contract identified survey");
+    assert_eq!(
+        survey.closes_at,
+        Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).single()
+    );
+    assert_eq!(
+        survey.description.as_deref(),
+        Some("Tell us how the contract event went")
+    );
+
+    // Check the response the respondent already submitted
+    let response = survey.response.context("response should be returned")?;
+    assert_eq!(response.answers.answers.len(), 3);
+    assert_eq!(
+        response.created_at,
+        Utc.with_ymd_and_hms(2025, 4, 2, 9, 0, 0).unwrap()
+    );
+    assert_eq!(
+        response.updated_at,
+        Utc.with_ymd_and_hms(2025, 4, 3, 9, 0, 0).single()
+    );
+
+    // Check the optional fields of an open-ended anonymous survey
+    let anonymous = db
+        .get_user_event_survey(survey_anonymous_id(), survey_respondent_id())
+        .await?
+        .context("anonymous survey should be returned")?;
+    assert!(anonymous.anonymous);
+    assert!(anonymous.closes_at.is_none());
+    assert!(anonymous.description.is_none());
+
+    // Check eligible attendees who have not answered get no response
+    let unanswered = db
+        .get_user_event_survey(survey_identified_id(), survey_pending_respondent_id())
+        .await?
+        .context("identified survey should be returned")?;
+    assert!(unanswered.response.is_none());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_user_event_survey_hides_unavailable_surveys() -> Result<()> {
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
+
+    // Check drafts and surveys outside the user's audience are not returned
+    let draft = uow
+        .get_user_event_survey(survey_draft_id(), survey_respondent_id())
+        .await?;
+    assert!(draft.is_none());
+    let not_eligible = uow
+        .get_user_event_survey(survey_anonymous_id(), survey_pending_respondent_id())
+        .await?;
+    assert!(not_eligible.is_none());
+
+    // Check closed surveys are not returned
+    uow.execute("savepoint survey_scope", &[]).await?;
+    uow.execute(
+        "update event_survey set closed_at = current_timestamp where event_survey_id = '00000000-0000-0000-0000-00000000f305'",
+        &[],
+    )
+    .await?;
+    let closed = uow
+        .get_user_event_survey(survey_identified_id(), survey_respondent_id())
+        .await?;
+    assert!(closed.is_none());
+    uow.execute("rollback to savepoint survey_scope", &[]).await?;
+
+    for (scenario, change) in survey_scope_changes() {
+        // Apply the change inside its own savepoint
+        uow.execute("savepoint survey_scope", &[]).await?;
+        uow.execute(change, &[]).await?;
+
+        // Check the survey is no longer returned
+        let survey = uow
+            .get_user_event_survey(survey_identified_id(), survey_respondent_id())
+            .await?;
+        assert!(survey.is_none(), "{scenario}");
+        uow.execute("rollback to savepoint survey_scope", &[]).await?;
+    }
 
     Ok(())
 }
@@ -280,6 +385,98 @@ async fn db_contracts_list_user_event_invitations_deserializes() -> Result<()> {
         Some(DateTime::parse_from_rfc3339("2099-05-20T17:00:00Z")?.with_timezone(&Utc),)
     );
     assert_eq!(invitations[0].ticket_title, "General Admission");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_event_surveys_deserializes() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // List the surveys of a respondent who answered both open surveys
+    let output = db
+        .list_user_event_surveys(survey_respondent_id(), &UserEventSurveysFilters::default())
+        .await?;
+
+    // Check the complete item of the identified survey
+    assert_eq!(output.surveys.len(), 2);
+    assert_eq!(output.total, 2);
+    let survey = &output.surveys[0];
+    assert!(survey.answered);
+    assert_eq!(survey.event_name, "Contract Survey Event");
+    assert_eq!(survey.event_survey_id, survey_identified_id());
+    assert_eq!(survey.group_name, "Contract Subgroup");
+    assert_eq!(survey.timezone, chrono_tz::Europe::Madrid);
+    assert_eq!(survey.title, "Contract identified survey");
+    assert_eq!(
+        survey.closes_at,
+        Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).single()
+    );
+
+    // Check open-ended surveys come last and pages keep the total
+    let page = db
+        .list_user_event_surveys(
+            survey_respondent_id(),
+            &UserEventSurveysFilters {
+                limit: Some(1),
+                offset: Some(1),
+            },
+        )
+        .await?;
+    assert_eq!(page.surveys.len(), 1);
+    assert_eq!(page.surveys[0].event_survey_id, survey_anonymous_id());
+    assert!(page.surveys[0].closes_at.is_none());
+    assert_eq!(page.total, 2);
+
+    // Check attendees only get the unanswered surveys of their audience
+    let pending = db
+        .list_user_event_surveys(
+            survey_pending_respondent_id(),
+            &UserEventSurveysFilters::default(),
+        )
+        .await?;
+    assert_eq!(pending.total, 1);
+    assert!(!pending.surveys[0].answered);
+    assert_eq!(pending.surveys[0].event_survey_id, survey_identified_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_event_surveys_hides_unreachable_surveys() -> Result<()> {
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
+
+    for (scenario, change) in survey_scope_changes() {
+        // Apply the change inside its own savepoint
+        uow.execute("savepoint survey_scope", &[]).await?;
+        uow.execute(change, &[]).await?;
+
+        // Check the surveys are no longer listed
+        let output = uow
+            .list_user_event_surveys(survey_respondent_id(), &UserEventSurveysFilters::default())
+            .await?;
+        assert!(output.surveys.is_empty(), "{scenario}");
+        assert_eq!(output.total, 0, "{scenario}");
+        uow.execute("rollback to savepoint survey_scope", &[]).await?;
+    }
+
+    // Check closed surveys are no longer listed
+    uow.execute(
+        "update event_survey set closed_at = current_timestamp where event_survey_id = $1::uuid",
+        &[&survey_identified_id()],
+    )
+    .await?;
+    let output = uow
+        .list_user_event_surveys(
+            survey_pending_respondent_id(),
+            &UserEventSurveysFilters::default(),
+        )
+        .await?;
+    assert_eq!(output.total, 0);
 
     Ok(())
 }
@@ -648,6 +845,190 @@ async fn db_contracts_refresh_user_badge_identity_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_submit_event_survey_response_rejects_invalid_requests() -> Result<()> {
+    // Setup a rolled-back unit of work and the requests to reject
+    let uow = contract_unit_of_work().await?;
+    let rating = rating_answers();
+    let scenarios = [
+        (
+            "a closed survey",
+            Some(
+                "update event_survey set closed_at = current_timestamp where event_survey_id = '00000000-0000-0000-0000-00000000f305'",
+            ),
+            survey_identified_id(),
+            survey_pending_respondent_id(),
+            2,
+            rating.clone(),
+            "event survey is not open",
+        ),
+        (
+            "a missing required answer",
+            None,
+            survey_identified_id(),
+            survey_pending_respondent_id(),
+            2,
+            QuestionnaireAnswers::default(),
+            "required questionnaire answer is missing",
+        ),
+        (
+            "a stale revision",
+            None,
+            survey_identified_id(),
+            survey_pending_respondent_id(),
+            1,
+            rating.clone(),
+            "the survey changed; review and try again",
+        ),
+        (
+            "an attendee outside the audience",
+            None,
+            survey_anonymous_id(),
+            survey_pending_respondent_id(),
+            3,
+            QuestionnaireAnswers::default(),
+            "you are not eligible to answer this survey",
+        ),
+    ];
+
+    for (scenario, change, event_survey_id, user_id, revision, answers, message) in scenarios {
+        // Apply the change inside its own savepoint
+        uow.execute("savepoint survey_submission", &[]).await?;
+        if let Some(change) = change {
+            uow.execute(change, &[]).await?;
+        }
+
+        // Check the submission is rejected with its message
+        let err = uow
+            .submit_event_survey_response(event_survey_id, user_id, revision, &answers)
+            .await
+            .expect_err(scenario);
+        assert_eq!(ocg01_message(&err).as_deref(), Some(message), "{scenario}");
+        uow.execute("rollback to savepoint survey_submission", &[]).await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_submit_event_survey_response_rejects_unreachable_surveys() -> Result<()> {
+    // Setup a rolled-back unit of work and the requests to reject
+    let uow = contract_unit_of_work().await?;
+    let scenarios = [
+        ("a draft survey", survey_draft_id()),
+        ("an unknown survey", survey_event_id()),
+    ];
+
+    for (scenario, event_survey_id) in scenarios {
+        // Submit inside its own savepoint
+        uow.execute("savepoint survey_scope", &[]).await?;
+        let err = uow
+            .submit_event_survey_response(
+                event_survey_id,
+                survey_pending_respondent_id(),
+                2,
+                &rating_answers(),
+            )
+            .await
+            .expect_err(scenario);
+
+        // Check the survey is not found
+        assert_eq!(
+            ocg01_message(&err).as_deref(),
+            Some("event survey not found"),
+            "{scenario}"
+        );
+        uow.execute("rollback to savepoint survey_scope", &[]).await?;
+    }
+
+    for (scenario, change) in survey_scope_changes() {
+        // Apply the change inside its own savepoint
+        uow.execute("savepoint survey_scope", &[]).await?;
+        uow.execute(change, &[]).await?;
+
+        // Check the survey is no longer found
+        let err = uow
+            .submit_event_survey_response(
+                survey_identified_id(),
+                survey_pending_respondent_id(),
+                2,
+                &rating_answers(),
+            )
+            .await
+            .expect_err(scenario);
+        assert_eq!(
+            ocg01_message(&err).as_deref(),
+            Some("event survey not found"),
+            "{scenario}"
+        );
+        uow.execute("rollback to savepoint survey_scope", &[]).await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_submit_event_survey_response_stores_answers() -> Result<()> {
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
+
+    // Submit the first response of the pending attendee
+    uow.submit_event_survey_response(
+        survey_identified_id(),
+        survey_pending_respondent_id(),
+        2,
+        &rating_answers(),
+    )
+    .await?;
+
+    // Check the response is returned with the survey
+    let survey = uow
+        .get_user_event_survey(survey_identified_id(), survey_pending_respondent_id())
+        .await?
+        .context("identified survey should be returned")?;
+    let response = survey.response.context("response should be returned")?;
+    assert_eq!(response.answers.answers.len(), 1);
+    assert!(response.updated_at.is_none());
+
+    // Edit the response
+    uow.submit_event_survey_response(
+        survey_identified_id(),
+        survey_pending_respondent_id(),
+        2,
+        &QuestionnaireAnswers {
+            answers: vec![
+                QuestionnaireAnswer {
+                    question_id: survey_single_select_question_id(),
+                    value: QuestionnaireAnswerValue::One(
+                        "00000000-0000-0000-0000-00000000f30b".to_string(),
+                    ),
+                },
+                QuestionnaireAnswer {
+                    question_id: survey_free_text_question_id(),
+                    value: QuestionnaireAnswerValue::One("Longer breaks".to_string()),
+                },
+            ],
+        },
+    )
+    .await?;
+
+    // Check the edit kept the creation time
+    let edited = uow
+        .get_user_event_survey(survey_identified_id(), survey_pending_respondent_id())
+        .await?
+        .context("identified survey should be returned")?
+        .response
+        .context("edited response should be returned")?;
+    assert_eq!(edited.answers.answers.len(), 2);
+    assert_eq!(edited.created_at, response.created_at);
+    assert!(edited.updated_at.is_some());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_update_session_proposal_blocks_key_share() -> Result<()> {
     // Setup independent proposal update and lock-probe connections
     let pool = contract_tests_pool()?;
@@ -690,4 +1071,18 @@ async fn db_contracts_update_session_proposal_blocks_key_share() -> Result<()> {
     assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
 
     Ok(())
+}
+
+// Helpers.
+
+/// Builds a valid answer to the required question of the identified survey.
+fn rating_answers() -> QuestionnaireAnswers {
+    QuestionnaireAnswers {
+        answers: vec![QuestionnaireAnswer {
+            question_id: survey_single_select_question_id(),
+            value: QuestionnaireAnswerValue::One(
+                "00000000-0000-0000-0000-00000000f30a".to_string(),
+            ),
+        }],
+    }
 }

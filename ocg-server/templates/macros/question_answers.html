@@ -1,5 +1,61 @@
 {% import "macros/dashboard.html" as dashboard -%}
 
+{# Breakdown -#}
+{# Used by event analytics and survey results to chart select question answers. -#}
+{# The prompt heading id is the options id with a -prompt suffix; number adds a position badge. -#}
+{% macro breakdown(question, options_id, empty_message, number = "") -%}
+  {% let hidden_options_count = crate::templates::questionnaire::hidden_options_count(question) -%}
+  <h3 id="{{ options_id }}-prompt"
+      class="flex items-start gap-2 break-words text-sm font-semibold text-stone-700">
+    {% if !number.is_empty() -%}
+      <span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">{{ number }}</span>
+    {% endif -%}
+    <span class="min-w-0">{{ question.prompt }}</span>
+  </h3>
+  <div class="mb-3 mt-1 text-xs text-stone-500">
+    {{ question.respondents|num_fmt }} respondents · {{ question.selections|num_fmt }} selections
+  </div>
+  <div class="rounded-lg border border-stone-200 bg-white p-5">
+    {% if question.respondents > 0 -%}
+      <ul id="{{ options_id }}" class="space-y-4">
+        {% for option in crate::templates::questionnaire::option_shares(question) -%}
+          <li {% if option.hidden %}hidden data-question-option-hidden{% endif %}>
+            <div class="flex items-baseline justify-between gap-3 text-sm">
+              <span class="min-w-0 break-words text-stone-900">{{ option.label }}</span>
+              <span class="shrink-0 text-stone-600">{{ option.count|num_fmt }} · {{ option.share_label }}</span>
+            </div>
+            <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-stone-200"
+                 aria-hidden="true">
+              <div class="h-full bg-primary-500" style="width: {{ option.width }}%"></div>
+            </div>
+          </li>
+        {% endfor -%}
+      </ul>
+      {% if hidden_options_count > 0 -%}
+        <button type="button"
+                class="group mt-3 inline-flex cursor-pointer items-center gap-1 rounded-sm text-xs/6 font-medium text-stone-500 transition-colors hover:text-stone-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                aria-controls="{{ options_id }}"
+                aria-expanded="false"
+                data-question-options-toggle
+                data-label-collapsed="Show {{ hidden_options_count }} more options"
+                data-label-expanded="Show fewer options">
+          <span data-question-options-label>Show {{ hidden_options_count }} more options</span>
+          <span class="svg-icon block size-3 icon-caret-down-filled bg-current transition-transform group-aria-expanded:rotate-180"
+                aria-hidden="true"></span>
+        </button>
+      {% endif -%}
+      {% if crate::templates::questionnaire::is_multi_select(question) -%}
+        <p class="mt-4 text-xs text-stone-500">
+          Several options can be selected, so percentages of respondents can add up to more than 100%.
+        </p>
+      {% endif -%}
+    {% else -%}
+      <p class="text-sm text-stone-500">{{ empty_message }}</p>
+    {% endif -%}
+  </div>
+{% endmacro breakdown -%}
+{# End breakdown -#}
+
 {# Fields -#}
 {# Used by attendee answers, user event lists, and sponsor question forms. -#}
 {% macro fields(questions, answers, answer_attr, radio_name_prefix) -%}
@@ -8,7 +64,8 @@
               data-question-kind="{{ question.kind.to_string() }}"
               data-question-required="{{ question.required }}"
               class="space-y-2">
-      <legend class="form-label">
+      {% let prompt_id = "{}-{}-prompt"|format(radio_name_prefix, question.id) -%}
+      <legend id="{{ prompt_id }}" class="form-label">
         <span class="flex items-start gap-2">
           <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold leading-6 text-stone-700">
             {{ loop.index }}
@@ -22,6 +79,8 @@
       {% if question.kind.to_string() == "free-text" -%}
         <div class="ms-8">
           <textarea class="input-primary min-h-24 text-stone-500"
+                    aria-labelledby="{{ prompt_id }}"
+                    maxlength="{{ crate::validation::MAX_LEN_QUESTIONNAIRE_ANSWER }}"
                     {{ answer_attr|safe }}
                     {% if question.required %}
                       required

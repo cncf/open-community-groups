@@ -795,6 +795,7 @@ input:placeholder-shown {
 .icon-ticket { --icon-url: url('/static/images/icons/ticket.svg'); }
 .icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
+.icon-undo { --icon-url: url('/static/images/icons/undo.svg'); }
 .icon-user { --icon-url: url('/static/images/icons/user.svg'); }
 .icon-user-plus { --icon-url: url('/static/images/icons/user_plus.svg'); }
 .icon-user-small { --icon-url: url('/static/images/icons/user_small.svg'); }

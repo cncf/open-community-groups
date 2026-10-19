@@ -15,8 +15,10 @@ use crate::{
             DASHBOARD_PAGINATION_LIMIT,
             common::AuditLogSort,
             user::{
-                events::UserEventsOutput, groups::UserGroupsOutput,
-                notifications::NotificationPreferences, purchases::PurchaseDocumentsOutput,
+                events::{UserEventSurveysOutput, UserEventsOutput},
+                groups::UserGroupsOutput,
+                notifications::NotificationPreferences,
+                purchases::PurchaseDocumentsOutput,
                 session_proposals::SessionProposalsOutput,
             },
         },
@@ -63,6 +65,41 @@ async fn test_page_account_tab_success() {
 }
 
 #[tokio::test]
+async fn test_page_events_tab_opens_requested_survey() {
+    // Setup identifiers and data structures
+    let event_survey_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let survey = sample_user_event_survey(event_survey_id, Uuid::new_v4());
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_empty_events_tab(&mut db, user_id);
+    db.expect_get_user_event_survey()
+        .times(1)
+        .withf(move |sid, uid| *sid == event_survey_id && *uid == user_id)
+        .returning(move |_, _| Ok(Some(survey.clone())));
+
+    // Send the request the survey opening email links to
+    let (parts, bytes) = send_home_request(
+        db,
+        session_id,
+        &format!("/dashboard/user?tab=events&event_survey_id={event_survey_id}"),
+    )
+    .await;
+
+    // Check the survey modal opens on load without a warning
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("data-open-on-load"));
+    assert!(body.contains(&format!(
+        r#"hx-put="/dashboard/user/events/surveys/{event_survey_id}/response""#
+    )));
+    assert!(!body.contains("This survey is closed or isn&#39;t available to you."));
+}
+
+#[tokio::test]
 async fn test_page_events_tab_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
@@ -83,6 +120,16 @@ async fn test_page_events_tab_success() {
                 && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(events_output.clone()));
+    db.expect_list_user_event_surveys()
+        .times(1)
+        .withf(move |uid, _| *uid == user_id)
+        .returning(|_, _| {
+            Ok(UserEventSurveysOutput {
+                surveys: vec![],
+                total: 0,
+            })
+        });
+    db.expect_get_user_event_survey().never();
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -104,6 +151,37 @@ async fn test_page_events_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_page_events_tab_warns_about_unavailable_survey() {
+    // Setup identifiers
+    let event_survey_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_empty_events_tab(&mut db, user_id);
+    db.expect_get_user_event_survey()
+        .times(1)
+        .withf(move |sid, uid| *sid == event_survey_id && *uid == user_id)
+        .returning(|_, _| Ok(None));
+
+    // Send the request of a survey that already closed
+    let (parts, bytes) = send_home_request(
+        db,
+        session_id,
+        &format!("/dashboard/user?tab=events&event_survey_id={event_survey_id}"),
+    )
+    .await;
+
+    // Check the list warns about the survey without opening it
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("This survey is closed or isn&#39;t available to you."));
+    assert!(!body.contains("data-open-on-load"));
 }
 
 #[tokio::test]
@@ -525,6 +603,31 @@ async fn test_page_submissions_tab_success() {
 }
 
 // Helpers.
+
+/// Expects the reads of an events tab without events or surveys to answer.
+fn expect_empty_events_tab(db: &mut MockDB, user_id: Uuid) {
+    db.expect_list_user_events()
+        .times(1)
+        .withf(move |uid, _| *uid == user_id)
+        .returning(|_, _| {
+            Ok(UserEventsOutput {
+                events: vec![],
+                total: 0,
+            })
+        });
+    db.expect_list_user_event_surveys()
+        .times(1)
+        .withf(move |uid, _| *uid == user_id)
+        .returning(|_, _| {
+            Ok(UserEventSurveysOutput {
+                surveys: vec![],
+                total: 0,
+            })
+        });
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+}
 
 /// Sends a user dashboard home request through the router.
 async fn send_home_request(

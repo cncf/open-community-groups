@@ -1,0 +1,222 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/surveys.html" as surveys_macros -%}
+
+{# Event surveys header -#}
+<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+  <div class="min-w-0">
+    {{ dashboard::page_title(title = "Surveys",
+      docs_href = "/docs#/guides/event-operations?id=surveys",
+      description = "Ready surveys open when the event ends, or later at a custom time, and eligible attendees get one email when they open.") -}}
+    <p class="mt-1 text-xs text-stone-500" data-event-surveys-count>
+      {{ surveys.len() }} of {{ crate::validation::MAX_EVENT_SURVEYS }} surveys
+    </p>
+  </div>
+  <button id="add-event-survey-button"
+          type="button"
+          hx-get="/dashboard/group/events/{{ event.event_id }}/surveys/add"
+          hx-target="#surveys-content"
+          hx-swap="innerHTML show:#surveys-content:top"
+          hx-indicator="#dashboard-spinner"
+          hx-disabled-elt="this"
+          class="btn-primary shrink-0
+                 {% if !can_manage_surveys || self.limit_reached() -%}
+                   opacity-50 cursor-not-allowed
+                 {% endif -%}"
+          {% if !can_manage_surveys -%}
+            disabled title="Your role cannot add, update or delete surveys."
+          {% else if self.limit_reached() -%}
+            disabled title="Events can have up to {{ crate::validation::MAX_EVENT_SURVEYS }} surveys."
+          {% endif -%}>Add survey</button>
+</div>
+{% if !can_manage_surveys -%}
+  {{ dashboard::permission_warning(message = "Your role cannot manage surveys. You can still view results and download responses.", extra_classes = "mt-5") -}}
+{% endif -%}
+{# End event surveys header -#}
+
+{# Event surveys table -#}
+<div class="relative mt-5 overflow-visible">
+  <table class="mb-8 w-full table-auto text-left text-xs text-stone-500 lg:text-sm"
+         role="table"
+         aria-label="Event surveys list">
+    {# Table header -#}
+    <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700"
+           role="rowgroup">
+      <tr>
+        <th scope="col" class="px-3 py-3 xl:px-5">Survey</th>
+        <th scope="col" class="px-3 py-3 xl:px-5">Status</th>
+        <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Questions</th>
+        <th scope="col" class="px-3 py-3 xl:px-5">Responses</th>
+        <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Closes</th>
+        <th scope="col" class="px-3 py-3 xl:px-5">
+          <span class="sr-only">Actions</span>
+        </th>
+      </tr>
+    </thead>
+    {# End table header -#}
+    <tbody id="event-surveys-list" role="rowgroup">
+      {% if surveys.is_empty() -%}
+        {# Empty state -#}
+        <tr class="border-b border-stone-200 bg-white">
+          <td class="px-8 py-12 text-center" colspan="6">
+            {% call dashboard::empty_state("This event does not have any surveys yet.") -%}
+            <p class="text-sm text-stone-700 lg:text-base">
+              {% if can_manage_surveys -%}
+                You can add a survey by clicking on the <span class="font-semibold">Add survey</span> button.
+                Drafts never email anyone.
+              {% else -%}
+                Your role has view-only access to event surveys.
+              {% endif -%}
+            </p>
+            {% endcall -%}
+          </td>
+        </tr>
+        {# End empty state -#}
+      {% else -%}
+        {% for survey in surveys -%}
+          {% let survey_id = survey.event_survey_id -%}
+          {# Survey row -#}
+          <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50"
+              data-event-survey-id="{{ survey_id }}">
+            {# Survey -#}
+            <td class="min-w-[160px] max-w-[260px] px-3 py-4 xl:max-w-[360px] xl:px-5">
+              <div class="truncate font-medium text-stone-900">{{ survey.title }}</div>
+              <div class="mt-1 text-xs text-stone-500">
+                {% if survey.audience == EventSurveyAudience::CheckedIn -%}
+                  Checked-in attendees
+                {% else -%}
+                  Confirmed attendees
+                {% endif -%}
+                ·
+                {% if survey.anonymous -%}
+                  Anonymous
+                {% else -%}
+                  Identified
+                {% endif -%}
+              </div>
+            </td>
+            {# End survey -#}
+
+            {# Status -#}
+            <td class="whitespace-nowrap px-3 py-4 xl:px-5">
+              {{ surveys_macros::state_badge(state = survey.state) -}}
+              {% if survey.state == EventSurveyState::Draft || survey.state == EventSurveyState::Scheduled -%}
+                <div class="mt-1 text-xs text-stone-500">{{ crate::templates::dashboard::group::surveys::opening_label(survey, *event.timezone, *now) }}</div>
+              {% endif -%}
+            </td>
+            {# End status -#}
+
+            {# Questions -#}
+            <td class="hidden whitespace-nowrap px-3 py-4 xl:table-cell xl:px-5">{{ survey.questions_count }}</td>
+            {# End questions -#}
+
+            {# Responses -#}
+            <td class="whitespace-nowrap px-3 py-4 xl:px-5">{{ crate::templates::dashboard::group::surveys::responses_label(survey) }}</td>
+            {# End responses -#}
+
+            {# Closes -#}
+            <td class="hidden whitespace-nowrap px-3 py-4 xl:table-cell xl:px-5">
+              {{ crate::templates::dashboard::group::surveys::closes_label(survey, *event.timezone) }}
+            </td>
+            {# End closes -#}
+
+            {# Actions -#}
+            <td class="px-3 py-4 xl:px-5">
+              {% let status = crate::templates::dashboard::group::surveys::status_action(survey, event, *now) -%}
+              <div class="flex items-center justify-end gap-2">
+                <button type="button"
+                        hx-get="/dashboard/group/events/{{ event.event_id }}/surveys/{{ survey_id }}/results"
+                        hx-target="#surveys-content"
+                        hx-swap="innerHTML show:#surveys-content:top"
+                        hx-indicator="#dashboard-spinner"
+                        hx-disabled-elt="this"
+                        class="btn-tertiary p-2"
+                        title="Results"
+                        aria-label="View results: {{ survey.title }}">
+                  <div class="svg-icon size-4 icon-charts" aria-hidden="true"></div>
+                </button>
+                <a href="/dashboard/group/events/{{ event.event_id }}/surveys/{{ survey_id }}/responses.csv"
+                   download
+                   hx-boost="false"
+                   class="btn-tertiary p-2"
+                   title="Download CSV"
+                   aria-label="Download responses CSV: {{ survey.title }}">
+                  <div class="svg-icon size-4 icon-csv" aria-hidden="true"></div>
+                </a>
+                <button type="button"
+                        hx-get="/dashboard/group/events/{{ event.event_id }}/surveys/{{ survey_id }}/update"
+                        hx-target="#surveys-content"
+                        hx-swap="innerHTML show:#surveys-content:top"
+                        hx-indicator="#dashboard-spinner"
+                        hx-disabled-elt="this"
+                        class="btn-tertiary p-2"
+                        title="Edit"
+                        aria-label="Edit survey: {{ survey.title }}">
+                  <div class="svg-icon size-4 icon-pencil" aria-hidden="true"></div>
+                </button>
+                <button id="event-survey-status-{{ survey_id }}"
+                        type="button"
+                        hx-put="/dashboard/group/events/{{ event.event_id }}/surveys/{{ survey_id }}/status"
+                        hx-vals="{{ status.request_values }}"
+                        hx-trigger="confirmed"
+                        hx-swap="none"
+                        hx-indicator="#dashboard-spinner"
+                        hx-disabled-elt="this"
+                        data-confirm-action
+                        data-confirm-message="{{ status.confirm_message }}"
+                        data-confirm-text="{{ status.confirm_text }}"
+                        data-success-message="{{ status.success_message }}"
+                        data-error-message="Something went wrong updating the survey status. Please try again later."
+                        data-event-survey-status-action="{{ status.action }}"
+                        class="btn-tertiary p-2
+                               {% if !can_manage_surveys || status.disabled_reason.is_some() -%}
+                                 opacity-50 cursor-not-allowed
+                               {% endif -%}"
+                        {% if !can_manage_surveys -%}
+                          disabled title="Your role cannot add, update or delete surveys."
+                        {% else if let Some(reason) = status.disabled_reason -%}
+                          disabled title="{{ reason }}"
+                        {% else -%}
+                          title="{{ status.label }}"
+                        {% endif -%}
+                        aria-label="{{ status.label }}: {{ survey.title }}">
+                  <div class="svg-icon size-4 icon-{{ status.icon }}" aria-hidden="true"></div>
+                </button>
+                <button id="delete-event-survey-{{ survey_id }}"
+                        type="button"
+                        hx-delete="/dashboard/group/events/{{ event.event_id }}/surveys/{{ survey_id }}/delete"
+                        hx-trigger="confirmed"
+                        hx-swap="none"
+                        hx-indicator="#dashboard-spinner"
+                        hx-disabled-elt="this"
+                        data-confirm-action
+                        {% if survey.responses_count > 0 -%}
+                          data-confirm-message="Delete this survey and its {{ survey.responses_count }} responses? This cannot be undone."
+                        {% else -%}
+                          data-confirm-message="Delete this survey? This cannot be undone."
+                        {% endif -%}
+                        data-confirm-text="Delete"
+                        data-success-message="You have successfully deleted the survey."
+                        data-error-message="Something went wrong deleting the survey. Please try again later."
+                        class="btn-tertiary p-2
+                               {% if !can_manage_surveys -%}
+                                 opacity-50 cursor-not-allowed
+                               {% endif -%}"
+                        {% if !can_manage_surveys -%}
+                          disabled title="Your role cannot add, update or delete surveys."
+                        {% else -%}
+                          title="Delete"
+                        {% endif -%}
+                        aria-label="Delete survey: {{ survey.title }}">
+                  <div class="svg-icon size-4 icon-trash" aria-hidden="true"></div>
+                </button>
+              </div>
+            </td>
+            {# End actions -#}
+          </tr>
+          {# End survey row -#}
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+{# End event surveys table -#}

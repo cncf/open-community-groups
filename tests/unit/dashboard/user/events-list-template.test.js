@@ -1,9 +1,7 @@
 import { expect } from "@open-wc/testing";
 
-const loadTemplate = async () => {
-  const response = await fetch(
-    "/ocg-server/templates/dashboard/user/events_list.html",
-  );
+const loadTemplate = async (path = "dashboard/user/events_list.html") => {
+  const response = await fetch(`/ocg-server/templates/${path}`);
 
   expect(response.ok).to.equal(true);
 
@@ -13,15 +11,32 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard user events list template", () => {
+  it("renders the surveys panel above the events table", async () => {
+    // Load the user events template before checking the surveys panel.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the panel only renders with surveys and precedes the events table.
+    const panelIndex = template.indexOf("{# Surveys to answer -#}");
+    const tableIndex = template.indexOf("{# Events table -#}");
+    expect(panelIndex).to.be.greaterThan(-1);
+    expect(panelIndex).to.be.lessThan(tableIndex);
+    expect(template).to.include("{% if !surveys.surveys.is_empty() -%}");
+    expect(template).to.include('aria-labelledby="user-event-surveys-title"');
+    expect(template).to.include(
+      "{{ surveys_macros::user_survey_items(surveys = surveys.surveys, next_offset = self.surveys_next_offset(), remaining = self.surveys_remaining()) -}}",
+    );
+    expect(template).to.include(
+      'description = "Upcoming participation, active checkouts, event offers, and surveys to answer."',
+    );
+  });
+
   it("renders cancel attendance as a confirmed delete action when cancellation is allowed", async () => {
     // Load the user events template before checking cancellation markup.
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify allowed cancellations get a confirmed cancel action.
     expect(template).to.include("<span>Cancel attendance</span>");
-    expect(template).to.include(
-      'id="cancel-attendance-{{ item.event.event_id }}"',
-    );
+    expect(template).to.include('id="cancel-attendance-{{ item.event.event_id }}"');
     expect(template).to.include("{% if item.can_cancel_attendance() -%}");
     expect(template).to.include(
       'hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance"',
@@ -29,12 +44,8 @@ describe("dashboard user events list template", () => {
     expect(template).to.include('hx-trigger="confirmed"');
     expect(template).to.include('hx-disabled-elt="this"');
     expect(template).to.include("data-confirm-action");
-    expect(template).to.include(
-      'data-confirm-message="Are you sure you want to cancel your attendance?"',
-    );
-    expect(template).to.include(
-      'data-success-message="You have successfully canceled your attendance."',
-    );
+    expect(template).to.include('data-confirm-message="Are you sure you want to cancel your attendance?"');
+    expect(template).to.include('data-success-message="You have successfully canceled your attendance."');
     expect(template).to.include(
       'data-error-message="Something went wrong canceling your attendance. Please try again later."',
     );
@@ -46,9 +57,7 @@ describe("dashboard user events list template", () => {
 
     // Verify unavailable cancellations stay visible and disabled.
     expect(template).to.include("disabled");
-    expect(template).to.include(
-      'title="This attendance cannot be canceled from My Events."',
-    );
+    expect(template).to.include('title="This attendance cannot be canceled from My Events."');
     expect(template).to.include('<span class="sr-only">Actions</span>');
     expect(template).to.include('aria-label="Open event actions"');
     expect(template).to.include("data-actions-menu");
@@ -68,9 +77,7 @@ describe("dashboard user events list template", () => {
     expect(template).to.include(
       "{% else if let Some(enrollment_status_label) = item.enrollment_status_label() -%}",
     );
-    expect(template).to.include(
-      "{{ badges::payment_status_badge(label = enrollment_status_label) -}}",
-    );
+    expect(template).to.include("{{ badges::payment_status_badge(label = enrollment_status_label) -}}");
     expect(template).to.include(
       '{{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}',
     );
@@ -80,18 +87,10 @@ describe("dashboard user events list template", () => {
     );
     expect(template).to.include('<span class="xl:hidden">Status / role</span>');
     expect(template).to.include('<span class="hidden xl:inline">Role</span>');
-    expect(template).to.include(
-      'class="hidden xl:table-cell px-3 xl:px-5 py-3 w-56">Status</th>',
-    );
-    expect(template).to.include(
-      'class="hidden xl:table-cell px-3 xl:px-5 py-4 w-56"',
-    );
-    expect(template).to.include(
-      'colspan="5">{% include "dashboard/placeholders/user_events_table.html"',
-    );
-    expect(template).to.include(
-      'colspan="6"> {% include "dashboard/placeholders/user_events_table.html"',
-    );
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-3 w-56">Status</th>');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 w-56"');
+    expect(template).to.include('colspan="5">{% include "dashboard/placeholders/user_events_table.html"');
+    expect(template).to.include('colspan="6"> {% include "dashboard/placeholders/user_events_table.html"');
   });
 
   it("renders every refund status and exposes a rejected reason tooltip", async () => {
@@ -102,52 +101,34 @@ describe("dashboard user events list template", () => {
     expect(template).to.include(
       "item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)",
     );
-    expect(template).to.include(
-      '{{ badges::payment_status_badge(label = "Refund requested") -}}',
-    );
+    expect(template).to.include('{{ badges::payment_status_badge(label = "Refund requested") -}}');
     expect(template).to.include(
       "item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving)",
     );
-    expect(template).to.include(
-      '{{ badges::payment_status_badge(label = "Refund processing") -}}',
-    );
+    expect(template).to.include('{{ badges::payment_status_badge(label = "Refund processing") -}}');
     expect(template).to.include(
       "item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approved)",
     );
-    expect(template).to.include(
-      '{{ badges::payment_status_badge(label = "Refund approved") -}}',
-    );
+    expect(template).to.include('{{ badges::payment_status_badge(label = "Refund approved") -}}');
     expect(template).to.include(
       "item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Rejected)",
     );
-    expect(template).to.include(
-      '{{ badges::payment_status_badge(label = "Refund rejected") -}}',
-    );
+    expect(template).to.include('{{ badges::payment_status_badge(label = "Refund rejected") -}}');
     expect(template).to.include(
       "{% if let Some(refund_rejection_reason) = &item.refund_rejection_reason -%}",
     );
     expect(template).to.include('{{ refund_status_badge(item, "mobile") -}}');
     expect(template).to.include('{{ refund_status_badge(item, "desktop") -}}');
     expect(template).not.to.include("icon-info");
-    expect(template).to.include(
-      "relative inline-flex cursor-help rounded-full",
-    );
-    expect(template).to.include(
-      "refund-rejection-reason-{{ item.event.event_id }}-{{ status_instance }}",
-    );
-    expect(template).to.include(
-      'aria-describedby="{{ refund_rejection_tooltip_id }}"',
-    );
+    expect(template).to.include("relative inline-flex cursor-help rounded-full");
+    expect(template).to.include("refund-rejection-reason-{{ item.event.event_id }}-{{ status_instance }}");
+    expect(template).to.include('aria-describedby="{{ refund_rejection_tooltip_id }}"');
     expect(template).to.include("dashboard::tooltip_panel(");
     expect(template).to.include('title = "Refund request"');
-    expect(template).to.include(
-      "-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-800",
-    );
+    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-800");
     expect(template).to.include("group-hover/refund-reason:visible");
     expect(template).to.include("group-focus-within/refund-reason:visible");
-    expect(template).to.include(
-      '<span class="block font-semibold text-stone-500">Reason</span>',
-    );
+    expect(template).to.include('<span class="block font-semibold text-stone-500">Reason</span>');
     expect(template).to.include(
       '<span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ refund_rejection_reason }}</span>',
     );
@@ -166,9 +147,7 @@ describe("dashboard user events list template", () => {
     expect(template).to.include("<span>Continue to checkout</span>");
 
     // Cancellation uses the existing event checkout endpoint and refresh marker.
-    expect(template).to.include(
-      'id="cancel-checkout-{{ item.event.event_id }}"',
-    );
+    expect(template).to.include('id="cancel-checkout-{{ item.event.event_id }}"');
     expect(template).to.include(
       'hx-delete="/{{ item.event.community_name }}/event/{{ item.event.event_id }}/checkout"',
     );
@@ -194,41 +173,23 @@ describe("dashboard user events list template", () => {
     expect(template).to.include(
       "external-payment-details-{{ external_payment.reference }}-{{ status_instance }}",
     );
-    expect(template).to.include(
-      'aria-describedby="{{ external_payment_tooltip_id }}"',
-    );
-    expect(template).to.include(
-      '{{ badges::payment_status_badge(label = "Payment pending") -}}',
-    );
-    expect(template).to.include(
-      "-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500",
-    );
+    expect(template).to.include('aria-describedby="{{ external_payment_tooltip_id }}"');
+    expect(template).to.include('{{ badges::payment_status_badge(label = "Payment pending") -}}');
+    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500");
     expect(template).to.include("dashboard::tooltip_panel(");
     expect(template).to.include('title = "Payment details"');
-    expect(template).to.include(
-      "group-hover/external-payment-details:visible",
-    );
-    expect(template).to.include(
-      "group-focus-within/external-payment-details:visible",
-    );
-    expect(template).to.include(
-      '<span class="block font-semibold text-stone-500">Deadline</span>',
-    );
+    expect(template).to.include("group-hover/external-payment-details:visible");
+    expect(template).to.include("group-focus-within/external-payment-details:visible");
+    expect(template).to.include('<span class="block font-semibold text-stone-500">Deadline</span>');
     expect(template).to.include(
       'external_payment.deadline.with_timezone(timezone).format("%b %-e, %Y at %-I:%M %p %Z")',
     );
-    expect(template).to.include(
-      '<span class="block font-semibold text-stone-500">Reference</span>',
-    );
+    expect(template).to.include('<span class="block font-semibold text-stone-500">Reference</span>');
     expect(template).to.include(
       '<span class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ external_payment.reference }}</span>',
     );
-    expect(template).to.include(
-      "{% if let Some(instructions) = &external_payment.instructions -%}",
-    );
-    expect(template).to.include(
-      '<span class="block font-semibold text-stone-500">Instructions</span>',
-    );
+    expect(template).to.include("{% if let Some(instructions) = &external_payment.instructions -%}");
+    expect(template).to.include('<span class="block font-semibold text-stone-500">Instructions</span>');
     expect(template).to.include(
       '{{ external_payment_status_badge(external_payment, item.event.timezone, "mobile") -}}',
     );
@@ -252,9 +213,7 @@ describe("dashboard user events list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Upcoming paid rows expose a direct path to the public refund control.
-    expect(template).to.include(
-      "{% if item.has_paid_purchase && !item.event.is_past() -%}",
-    );
+    expect(template).to.include("{% if item.has_paid_purchase && !item.event.is_past() -%}");
     expect(template).to.include("data-user-event-refund-action");
     expect(template).to.include(
       'data-enrollment-url="/{{ item.event.community_name }}/event/{{ item.event.event_id }}/enrollment"',
@@ -269,10 +228,51 @@ describe("dashboard user events list template", () => {
 
     // Offer rows use explicit offer actions and checkout wording.
     expect(template).to.include("{% if item.has_active_offer() -%}");
-    expect(template).to.include(
-      "/dashboard/user?tab=invitations#event-offer-{{ admission_offer_id }}",
-    );
+    expect(template).to.include("/dashboard/user?tab=invitations#event-offer-{{ admission_offer_id }}");
     expect(template).to.include("<span>View event offer</span>");
     expect(template).to.include("<span>Continue to checkout</span>");
+  });
+
+  it("loads each survey of the panel into the survey modal", async () => {
+    // Load the survey items rendered by the panel and its next pages.
+    const macros = normalizeWhitespace(await loadTemplate("macros/surveys.html"));
+
+    // Verify the row action loads the survey form instead of leaving the dashboard.
+    expect(macros).to.include('hx-get="/dashboard/user/events/surveys/{{ survey.event_survey_id }}"');
+    expect(macros).to.include('hx-target="#user-event-survey-modal-content"');
+    expect(macros).to.include('hx-sync="closest ul:replace"');
+    expect(macros).to.include("data-user-event-survey-open");
+    expect(macros).not.to.include("survey.url");
+  });
+
+  it("renders the survey modal shell and opens the requested survey on load", async () => {
+    // Load the user events template before checking the survey modal.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the closed dialog, its content target and the requested survey.
+    expect(template).to.include('<div id="user-event-survey-modal" data-user-event-survey-modal');
+    expect(template).to.include("{% if survey.is_some() -%}data-open-on-load{% endif -%}");
+    expect(template).to.include('aria-labelledby="user-event-survey-title"');
+    expect(template).to.include('<div id="user-event-survey-modal-content" class="modal-card rounded-lg">');
+    expect(template).to.include('{% include "dashboard/user/events_survey.html" -%}');
+    expect(template).to.include("{{ dashboard::permission_warning(message = warning) -}}");
+  });
+
+  it("renders the survey answers form inside the survey modal", async () => {
+    // Load the survey modal content.
+    const template = normalizeWhitespace(await loadTemplate("dashboard/user/events_survey.html"));
+
+    // Verify the form submits the answers to the revision the user saw.
+    expect(template).to.include('title_id = "user-event-survey-title"');
+    expect(template).to.include(
+      'hx-put="/dashboard/user/events/surveys/{{ survey.event_survey_id }}/response"',
+    );
+    expect(template).to.include("data-user-event-survey-form");
+    expect(template).to.include('<input type="hidden" data-question-answers-input name="answers">');
+    expect(template).to.include('<input type="hidden" name="revision" value="{{ survey.revision }}">');
+    expect(template).to.include(
+      '<button data-user-event-survey-close type="button" class="btn-primary-outline">Cancel</button>',
+    );
+    expect(template).to.include("data-survey-privacy-notice");
   });
 });

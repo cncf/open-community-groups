@@ -681,6 +681,93 @@ async fn test_download_csv_rejects_event_above_supported_export_size() {
 }
 
 #[tokio::test]
+async fn test_download_csv_with_answers_neutralizes_formula_cells() {
+    // Setup identifiers and attendee data starting with formula characters
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let question_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut attendee = sample_attendee();
+    attendee.user.name = Some("=HYPERLINK(\"https://example.com\")".to_string());
+    attendee.user.company = Some("+Corp".to_string());
+    attendee.user.title = Some("@Lead".to_string());
+    attendee.registration_answers = Some(QuestionnaireAnswers {
+        answers: vec![QuestionnaireAnswer {
+            question_id,
+            value: QuestionnaireAnswerValue::One("\tcmd".to_string()),
+        }],
+    });
+    let event = sample_event_summary(event_id, group_id);
+    let registration_questions = vec![QuestionnaireQuestion {
+        id: question_id,
+        kind: QuestionnaireQuestionKind::FreeText,
+        prompt: "-Notes".to_string(),
+        required: false,
+
+        options: vec![],
+    }];
+    let output = crate::types::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: 1,
+        attendees: vec![attendee],
+        total: 1,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    db.expect_search_event_attendees()
+        .times(1)
+        .withf(move |gid, eid, filters| {
+            *gid == group_id
+                && *eid == event_id
+                && filters.limit == Some(MAX_ATTENDEES_EXPORT_ROWS)
+                && filters.status == Some(AttendeeEnrollmentStatusFilter::Confirmed)
+        })
+        .returning(move |_, _, _| Ok(output.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(registration_questions.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees-with-answers.csv"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the question header and every formula cell are neutralized
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "Name,Company,Title,Invited,Enrollment date,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details,'-Notes\n\"'=HYPERLINK(\"\"https://example.com\"\")\",'+Corp,'@Lead,No,2024-01-01 12:00 UTC,,,,,,,'\tcmd\n",
+    );
+}
+
+#[tokio::test]
 #[allow(clippy::too_many_lines)]
 async fn test_download_csv_with_answers_success() {
     // Setup identifiers and data structures

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(93);
+select plan(95);
 
 -- ============================================================================
 -- TESTS
@@ -61,6 +61,8 @@ select has_table('event_ticket_type');
 select has_table('event_series');
 select has_table('event_speaker');
 select has_table('event_sponsor');
+select has_table('event_survey');
+select has_table('event_survey_response');
 select has_table('event_views');
 select has_table('event_views_utm');
 select has_table('event_waitlist');

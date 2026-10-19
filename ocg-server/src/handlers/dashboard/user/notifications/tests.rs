@@ -309,7 +309,10 @@ async fn test_page_renders_toggle_states() {
     let user_id = Uuid::new_v4();
     let preferences = NotificationPreferences {
         muted_groups: vec![],
-        opted_out_categories: vec![NotificationCategory::Badges],
+        opted_out_categories: vec![
+            NotificationCategory::Badges,
+            NotificationCategory::EventSurveys,
+        ],
     };
 
     // Setup database mock
@@ -323,6 +326,8 @@ async fn test_page_renders_toggle_states() {
     // Check opted-out and enabled categories render their state
     let body = body.split_whitespace().collect::<Vec<_>>().join(" ");
     assert!(body.contains("name=\"preferences[badges]\" value=\"false\""));
+    assert!(body.contains("name=\"preferences[event-reminders]\" value=\"true\""));
+    assert!(body.contains("name=\"preferences[event-surveys]\" value=\"false\""));
     assert!(body.contains("name=\"preferences[new-events]\" value=\"true\""));
 }
 

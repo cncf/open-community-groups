@@ -1,0 +1,153 @@
+{% import "macros/badges.html" as badges -%}
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Results header -#}
+{# Used by the survey Summary and Individual views to switch between them. -#}
+{% macro results_header(event_id, survey, view) -%}
+  {% let survey_url = "/dashboard/group/events/{}/surveys/{}"|format(event_id, survey.event_survey_id) -%}
+  <div class="space-y-5">
+    <button id="event-survey-results-back"
+            type="button"
+            hx-get="/dashboard/group/events/{{ event_id }}/surveys"
+            hx-target="#surveys-content"
+            hx-swap="innerHTML show:#surveys-content:top"
+            hx-indicator="#dashboard-spinner"
+            class="inline-flex items-center gap-2 text-sm font-medium text-primary-500 hover:text-primary-700">
+      <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
+      <span>Back to surveys</span>
+    </button>
+
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="min-w-0">
+        <h2 class="text-xl leading-tight font-medium text-stone-900 lg:text-2xl">{{ survey.title }}</h2>
+        <p class="m-0 mt-1 text-sm/6 text-stone-500">
+          Responses: {{ crate::templates::dashboard::group::surveys::responses_label(survey) }}
+        </p>
+      </div>
+      <div class="flex shrink-0 flex-wrap items-center gap-3">
+        <div class="inline-flex" role="group" aria-label="Results view">
+          <button id="event-survey-summary-view"
+                  type="button"
+                  hx-get="{{ survey_url }}/results"
+                  hx-target="#surveys-content"
+                  hx-swap="innerHTML show:#surveys-content:top"
+                  hx-indicator="#dashboard-spinner"
+                  aria-pressed="{% if view == "summary" %}true{% else %}false{% endif %}"
+                  class="rounded-s-full border border-primary-500 px-4 py-1.5 text-sm font-medium transition-colors
+                         {% if view == "summary" -%}
+                           bg-primary-500 text-white
+                         {% else -%}
+                           bg-white text-primary-500 hover:bg-primary-50
+                         {% endif -%}">Summary</button>
+          <button id="event-survey-individual-view"
+                  type="button"
+                  hx-get="{{ survey_url }}/responses"
+                  hx-target="#surveys-content"
+                  hx-swap="innerHTML show:#surveys-content:top"
+                  hx-indicator="#dashboard-spinner"
+                  aria-pressed="{% if view == "individual" %}true{% else %}false{% endif %}"
+                  class="-ms-px rounded-e-full border border-primary-500 px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-100 disabled:text-stone-400
+                         {% if view == "individual" -%}
+                           bg-primary-500 text-white
+                         {% else -%}
+                           bg-white text-primary-500 hover:bg-primary-50
+                         {% endif -%}"
+                  {% if survey.anonymous -%}
+                    disabled title="Anonymous surveys only show aggregated results."
+                  {% endif -%}>Individual</button>
+        </div>
+        <a href="{{ survey_url }}/responses.csv"
+           download
+           hx-boost="false"
+           class="btn-primary-outline btn-mini inline-flex items-center gap-2">
+          <div class="svg-icon size-4 icon-csv bg-current" aria-hidden="true"></div>
+          <span>Download CSV</span>
+        </a>
+      </div>
+    </div>
+
+    {% if crate::templates::dashboard::group::surveys::few_anonymous_responses(survey) -%}
+      <div data-event-survey-few-responses-notice
+           class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        This anonymous survey has few responses. Its answers may still identify the attendees who gave them.
+      </div>
+    {% endif -%}
+  </div>
+{% endmacro results_header -%}
+{# End results header -#}
+
+{# State badge -#}
+{# Used by the event surveys list and the event analytics surveys section. -#}
+{% macro state_badge(state) -%}
+  {% match state -%}
+  {% when crate::types::event_survey::EventSurveyState::Draft -%}
+  <span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">Draft</span>
+  {% when crate::types::event_survey::EventSurveyState::Scheduled -%}
+  <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Scheduled</span>
+  {% when crate::types::event_survey::EventSurveyState::Open -%}
+  <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Open</span>
+  {% when crate::types::event_survey::EventSurveyState::Closed -%}
+  <span class="custom-badge border-stone-500 bg-stone-200 px-2.5 py-0.5 text-stone-700">Closed</span>
+{% endmatch -%}
+{% endmacro state_badge -%}
+{# End state badge -#}
+
+{# User survey items -#}
+{# Used by the My Events surveys panel and its "Show more" pages. -#}
+{% macro user_survey_items(surveys, next_offset, remaining) -%}
+  {% for survey in surveys -%}
+    <li data-user-event-survey="{{ survey.event_survey_id }}"
+        class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="min-w-0">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="min-w-0 break-words text-sm font-medium text-stone-900">{{ survey.title }}</span>
+          {% if survey.answered -%}
+            {{ badges::invitation_badge(label = "Answered", tone = "success") -}}
+          {% else -%}
+            {{ badges::invitation_badge(label = "Not answered") -}}
+          {% endif -%}
+        </div>
+        <div class="mt-0.5 truncate text-xs text-stone-500">{{ survey.event_name }} · {{ survey.group_name }}</div>
+        <div class="mt-0.5 text-xs text-stone-500">
+          {% if let Some(closes_at) = survey.closes_at -%}
+            Closes {{ crate::templates::dashboard::user::events::survey_date_label(closes_at, survey.timezone) }}
+          {% else -%}
+            No closing date
+          {% endif -%}
+        </div>
+      </div>
+      <button type="button"
+              hx-get="/dashboard/user/events/surveys/{{ survey.event_survey_id }}"
+              hx-target="#user-event-survey-modal-content"
+              hx-swap="innerHTML"
+              hx-sync="closest ul:replace"
+              hx-indicator="#dashboard-spinner"
+              hx-disabled-elt="this"
+              data-user-event-survey-open
+              data-htmx-response
+              data-error-message="This survey is no longer available. Please refresh the page and try again."
+              class="btn-primary-outline btn-mini shrink-0 self-start sm:self-center">
+        {% if survey.answered -%}
+          Edit answers
+        {% else -%}
+          Answer
+        {% endif -%}
+        <span class="sr-only">: {{ survey.title }}</span>
+      </button>
+    </li>
+  {% endfor -%}
+  {% if let Some(next_offset) = next_offset -%}
+    <li class="px-4 py-3">
+      <button type="button"
+              hx-get="/dashboard/user/events/surveys?offset={{ next_offset }}"
+              hx-target="closest li"
+              hx-swap="outerHTML"
+              hx-indicator="#dashboard-spinner"
+              hx-disabled-elt="this"
+              data-htmx-response
+              data-error-message="Something went wrong loading more surveys. Please try again later."
+              class="btn-primary-outline btn-mini">Show more surveys ({{ remaining }} left)</button>
+    </li>
+  {% endif -%}
+{% endmacro user_survey_items -%}
+{# End user survey items -#}

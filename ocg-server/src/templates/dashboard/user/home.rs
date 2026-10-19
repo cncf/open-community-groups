@@ -207,7 +207,8 @@ pub(crate) enum Tab {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        dashboard::user::notifications::NotificationPreferences, pagination::NavigationLinks,
+        dashboard::user::{events::UserEventSurveysOutput, notifications::NotificationPreferences},
+        pagination::NavigationLinks,
     };
 
     use super::*;
@@ -217,9 +218,15 @@ mod tests {
         let content = Content::Events(events::ListPage {
             events: vec![],
             navigation_links: NavigationLinks::default(),
+            surveys: UserEventSurveysOutput {
+                surveys: vec![],
+                total: 0,
+            },
             total: 0,
 
             offset: None,
+            survey: None,
+            warning: None,
         });
 
         assert_eq!(content.refresh_path(), "events");

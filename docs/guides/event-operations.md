@@ -103,7 +103,25 @@ Time-bound and meeting-specific fields are intentionally not carried forward.
 
 ## Event Editor Tabs
 
-The editor is organized so you can move from identity, to schedule, to speakers, to operations.
+The editor groups its tabs by event lifecycle, so you can move from identity and schedule, to
+registration, to the program, to people, and finally to follow-up. The sidebar shows each group
+under a heading, and the compact section selector on smaller screens shows the same groups.
+
+| Group | Tabs |
+| --- | --- |
+| Event | `Details`, `Date & Venue`, `Co-hosts`, `Contributors` |
+| Registration | `Tickets`, `Questions` |
+| Program | `Labels`, `CFS`, `Submissions`, `Sessions` |
+| People | `Attendees`, `Requests`, `Waitlist` |
+| Follow-up | `Surveys`, `Analytics` |
+
+The add page shows only the authoring tabs, in the same order: `Details`, `Date & Venue`,
+`Co-hosts`, `Contributors`, `Tickets`, `Questions`, `Labels`, `CFS`, and `Sessions`. Review tabs
+such as `Submissions`, `Attendees`, `Surveys`, and `Analytics` appear once the event exists.
+`Requests` and `Waitlist` appear while their feature is enabled or rows remain. `Surveys` is
+hidden for canceled events.
+
+`Next` moves to the following tab in this order, across groups.
 
 ### Details
 
@@ -177,86 +195,6 @@ Waitlist control also lives here:
 - If capacity is full and waitlist is on, people can join that tier's waiting
   list instead of starting checkout.
 
-### Co-hosts
-
-Co-hosts credit other groups, including groups in other communities, as partners of the event.
-Co-hosting is only about visibility and credit: your group keeps managing and operating the event,
-and co-host groups get no access to its editor, attendees, tickets, payments, check-in, speakers,
-or meetings.
-
-In this tab, you pick a community, then search its active groups and add them to the event. Each
-selected group shows its current state: `Pending` until its admins respond, `Approved` once they
-accept, or `Inactive group` when the group can no longer co-host. Saving the event sends one
-invitation email to the admins of each newly selected group, and removing a group notifies its
-admins. For a recurring series created with co-hosts, every occurrence gets its own invitation,
-each co-host group receives one combined email, and each occurrence is approved separately.
-
-- Co-hosts must be set up, and must respond, before the event can be published.
-- While the event is published, the co-host selection is read-only. Changing it requires
-  unpublishing the event, which keeps existing approvals, but the event cannot be published again
-  until every newly added group responds. Try to finish co-host setup before publishing so you
-  do not have to take a live event offline.
-- You can add again a group that rejected, canceled, or was removed. It receives a new invitation
-  and must respond again.
-- If co-hosts changed since you opened the editor (for example, a co-host responded), saving your
-  co-host changes fails with a message asking you to reload. Saves that do not change co-hosts are
-  not affected.
-- Canceling or deleting the event ends every pending or approved co-hosting and notifies the
-  co-host admins. Groups that had approved stay credited on a canceled event's page.
-- Copying an event never copies its co-hosts.
-
-The editor preview shows a `Co-hosts` box with the `Pending` or `Approved` state of each selected
-group. Only approved co-hosts are shown on the public event page.
-
-### Questions
-
-Use the `Questions` tab to define registration questions for attendees. Supported question types
-are free text, single select, and multi select. Select questions use organizer-defined options,
-and each question can be marked `Required`. Only required questions must be answered; optional
-questions can be skipped.
-
-Questions appear when the answers are needed:
-
-- With a ticket request.
-- Before RSVP or checkout.
-- When an organizer or waitlist offer is claimed.
-
-Joining a waiting list does not collect answers. Mark a question `Required` when you need that
-answer at request, RSVP, checkout, or claim time. Ticket-request answers are available from the
-`Requests` tab through `View answers`. Confirmed-attendee answers are on the `Attendees` tab.
-
-Registration questions are copied when you create an event from an existing event. After attendees
-submit answers, or while active checkout holds exist, the questions become read-only so existing
-attendee answers and in-progress checkouts cannot drift away from the question definitions.
-
-Invitation review also lives here:
-
-- `Require Invitation Approval` changes public ticket actions to
-  `Request ticket`.
-- Approval cannot be combined with waitlist, but it can be combined with free
-  or paid ticketing.
-- Public ticket requests preserve the selected tier. A fully private
-  event accepts a generic request without disclosing private tiers.
-- Pending requests do not reserve seats. Accepting a ticket request creates a
-  time-limited offer when capacity and payment readiness allow it.
-- A generic private request requires the organizer to assign an active
-  invitation-only tier during acceptance.
-- Accept pending requests while the event is still active. New public requests
-  stop outside the registration window. Rejecting a request still works.
-- Use `View answers` on the `Requests` tab to review answers submitted with a
-  ticket request before accepting or rejecting it.
-- Disabling invitation review is blocked while pending requests exist.
-- Accepted requests receive a time-limited offer that must be claimed. Free
-  offers complete inside OCG; positive prices continue to hosted checkout. If
-  ticket sales end before the deadline, the stored offer price can still be
-  claimed.
-
-Brand inheritance in event details mirrors the group model: if the event logo is not provided,
-OCG falls back to the group logo, then the community logo; if the event banner or mobile banner
-is not provided, OCG falls back to the group banner, then the community banner.
-
-![Event details](../screenshots/dashboard-group-event-details.png)
-
 ### Date and Venue
 
 This tab controls delivery constraints:
@@ -317,6 +255,37 @@ whole linked series, but editing event content is intentionally one event at a t
 
 ![Event date and venue](../screenshots/dashboard-group-event-date.png)
 
+### Co-hosts
+
+Co-hosts credit other groups, including groups in other communities, as partners of the event.
+Co-hosting is only about visibility and credit: your group keeps managing and operating the event,
+and co-host groups get no access to its editor, attendees, tickets, payments, check-in, speakers,
+or meetings.
+
+In this tab, you pick a community, then search its active groups and add them to the event. Each
+selected group shows its current state: `Pending` until its admins respond, `Approved` once they
+accept, or `Inactive group` when the group can no longer co-host. Saving the event sends one
+invitation email to the admins of each newly selected group, and removing a group notifies its
+admins. For a recurring series created with co-hosts, every occurrence gets its own invitation,
+each co-host group receives one combined email, and each occurrence is approved separately.
+
+- Co-hosts must be set up, and must respond, before the event can be published.
+- While the event is published, the co-host selection is read-only. Changing it requires
+  unpublishing the event, which keeps existing approvals, but the event cannot be published again
+  until every newly added group responds. Try to finish co-host setup before publishing so you
+  do not have to take a live event offline.
+- You can add again a group that rejected, canceled, or was removed. It receives a new invitation
+  and must respond again.
+- If co-hosts changed since you opened the editor (for example, a co-host responded), saving your
+  co-host changes fails with a message asking you to reload. Saves that do not change co-hosts are
+  not affected.
+- Canceling or deleting the event ends every pending or approved co-hosting and notifies the
+  co-host admins. Groups that had approved stay credited on a canceled event's page.
+- Copying an event never copies its co-hosts.
+
+The editor preview shows a `Co-hosts` box with the `Pending` or `Approved` state of each selected
+group. Only approved co-hosts are shown on the public event page.
+
 ### Hosts, Speakers, and Organizers
 
 In this tab, you manage event-level people and sponsor attribution: adding hosts from any user
@@ -337,24 +306,54 @@ see [Group Badge Management](badges.md#group-badge-management).
 
 ![Event hosts and speakers](../screenshots/dashboard-group-event-hosts.png)
 
-### Sessions
+### Questions
 
-Sessions turns approved content into an actual agenda. Here you create agenda rows with time
-bounds, keep session times inside the event start/end, and link approved CFS submissions into the
-schedule.
+Use the `Questions` tab to define registration questions for attendees. Supported question types
+are free text, single select, and multi select. Select questions use organizer-defined options,
+and each question can be marked `Required`. Only required questions must be answered; optional
+questions can be skipped.
 
-Each session can carry up to `10` labels from the event's label set. Labels appear as chips on the
-session in the editor, in the preview, and on the public event page. When you link an approved CFS
-submission, the session starts with that submission's labels; you can change them before saving.
-After that, session and submission labels are independent: changing one does not change the
-other.
+Questions appear when the answers are needed:
 
-This tab is usually most useful once review outcomes are clearer and your schedule is taking
-final shape.
+- With a ticket request.
+- Before RSVP or checkout.
+- When an organizer or waitlist offer is claimed.
 
-![Event sessions](../screenshots/dashboard-group-event-sessions.png)
+Joining a waiting list does not collect answers. Mark a question `Required` when you need that
+answer at request, RSVP, checkout, or claim time. Ticket-request answers are available from the
+`Requests` tab through `View answers`. Confirmed-attendee answers are on the `Attendees` tab.
 
-![Event add session](../screenshots/dashboard-group-event-add-session.png)
+Registration questions are copied when you create an event from an existing event. After attendees
+submit answers, or while active checkout holds exist, the questions become read-only so existing
+attendee answers and in-progress checkouts cannot drift away from the question definitions.
+
+Invitation review also lives here:
+
+- `Require Invitation Approval` changes public ticket actions to
+  `Request ticket`.
+- Approval cannot be combined with waitlist, but it can be combined with free
+  or paid ticketing.
+- Public ticket requests preserve the selected tier. A fully private
+  event accepts a generic request without disclosing private tiers.
+- Pending requests do not reserve seats. Accepting a ticket request creates a
+  time-limited offer when capacity and payment readiness allow it.
+- A generic private request requires the organizer to assign an active
+  invitation-only tier during acceptance.
+- Accept pending requests while the event is still active. New public requests
+  stop outside the registration window. Rejecting a request still works.
+- Use `View answers` on the `Requests` tab to review answers submitted with a
+  ticket request before accepting or rejecting it.
+- Disabling invitation review is blocked while pending requests exist.
+- Accepted requests receive a time-limited offer that must be claimed. Free
+  offers complete inside OCG; positive prices continue to hosted checkout. If
+  ticket sales end before the deadline, the stored offer price can still be
+  claimed.
+
+Brand inheritance in event details mirrors the group model: if the event logo is not provided,
+OCG falls back to the group logo, then the community logo; if the event banner or mobile banner
+is not provided, OCG falls back to the group banner, then the community banner.
+
+![Event details](../screenshots/dashboard-group-event-details.png)
 
 ### Labels
 
@@ -378,6 +377,25 @@ writing the CFS description shown on the event page. Speakers and reviewers pick
 from the event's set, managed in the `Labels` tab.
 
 ![Event CFS](../screenshots/dashboard-group-event-cfs.png)
+
+### Sessions
+
+Sessions turns approved content into an actual agenda. Here you create agenda rows with time
+bounds, keep session times inside the event start/end, and link approved CFS submissions into the
+schedule.
+
+Each session can carry up to `10` labels from the event's label set. Labels appear as chips on the
+session in the editor, in the preview, and on the public event page. When you link an approved CFS
+submission, the session starts with that submission's labels; you can change them before saving.
+After that, session and submission labels are independent: changing one does not change the
+other.
+
+This tab is usually most useful once review outcomes are clearer and your schedule is taking
+final shape.
+
+![Event sessions](../screenshots/dashboard-group-event-sessions.png)
+
+![Event add session](../screenshots/dashboard-group-event-add-session.png)
 
 ## Tickets, Discounts, and Refunds
 
@@ -683,6 +701,10 @@ confirmed attendee with these columns:
 `Attendees list CSV (including answers)` adds one column per registration question. Row actions
 also include `View answers` when an attendee has submitted registration answers.
 
+CSV exports are safe to open in spreadsheets: any cell, headers included, that starts with `=`,
+`+`, `-`, `@`, or a control character such as a tab or line break gets a leading `'`, so
+spreadsheets show it as text instead of evaluating it as a formula.
+
 Pending holds appear with different statuses depending on the payment path: Stripe holds show
 `Checkout pending`, external holds show `Payment pending`. The row actions menu for a
 `Payment pending` attendee offers `Mark payment received`. The confirmation modal shows the
@@ -717,10 +739,124 @@ attendee selected. The email form includes a required `Subject`, defaults it to
 
 ![Event attendees](../screenshots/dashboard-group-event-attendees.png)
 
+### Surveys
+
+The `Surveys` tab collects feedback from attendees after the event ends. Surveys use the same
+question types as registration questions: free text, single select, and multi select, each of
+which can be `Required`. An event can have up to `10` surveys, and each survey up to `30`
+questions. The tab is hidden for canceled events.
+
+Use `Add survey` to open the survey form in place, and `Back to surveys` or `Cancel` to return to
+the list. New surveys start as drafts, and drafts never email anyone, so you can prepare them before
+the event. The form has:
+
+- `Title`, shown to attendees in the email and in their dashboard.
+- `Introduction`, optional plain text shown above the questions, up to 500 characters.
+- `Anonymous responses`, on by default.
+- `Audience`: `Confirmed attendees`, or `Checked-in attendees only`.
+- `Opens at`, an optional opening time. Leave it empty to open the survey when the event ends.
+- `Closes at`, an optional closing time. Leave it empty to keep the survey open until you close
+  it.
+- The questions.
+
+Times use the event timezone. If you leave the form, or the page, with unsaved survey changes, OCG
+asks you to confirm before discarding them. If someone changed the survey since you opened it,
+saving fails with a message asking you to review it and try again.
+
+The surveys list header shows how many surveys the event has out of the `10` allowed. The list shows
+each survey's title, audience and anonymity, state, question count, responses, and closing date.
+Draft and scheduled surveys also show when they open, for example `Opens May 10, 2099 11:00 AM
+CEST`, or `Opens once the event has a date` while the event has no date. Its row actions open the
+results, download the responses CSV, edit the survey, change its state, and delete it.
+
+#### Survey states
+
+| Status      | Meaning                                                                    | Row action      |
+| ----------- | -------------------------------------------------------------------------- | --------------- |
+| `Draft`     | Being prepared. Never visible to attendees and never sends email.          | `Mark ready`    |
+| `Scheduled` | Ready, waiting to open.                                                    | `Back to draft` |
+| `Open`      | Accepting answers.                                                         | `Close`         |
+| `Closed`    | Closed manually, or past its `Closes at` time.                             | `Reopen`        |
+
+A ready survey opens at the later of its `Opens at` time and the event end, so it never opens
+before the event ends. It stays scheduled while the event is unpublished or has no date.
+
+The row actions work as follows:
+
+- `Mark ready` (draft): the survey needs at least one question, and a `Closes at` time, when set,
+  must be in the future and after the survey opens. The confirmation shows how many attendees are
+  currently in the audience and when the opening email is sent: on a date, once the event has a
+  date and ends, or now. For test events, the confirmation says that no email is sent. If the
+  event is rescheduled after the confirmation is shown, marking ready fails and asks you to review
+  the new opening time.
+- `Back to draft` (scheduled): only available before the opening email is sent and before anyone
+  answers.
+- `Close` (open): attendees can no longer answer or edit their answers.
+- `Reopen` (closed): accepts answers again, without sending a new email. When the `Closes at` time
+  has passed, edit or clear it first.
+
+When a button is unavailable, hovering it shows why.
+
+When a survey opens, OCG sends one email, once, to the attendees in its audience who have a
+verified email address and have not turned off `Event surveys` emails or muted the group. People
+who join the audience later, for example by checking in after the survey opened, can still answer
+the survey, but get no email. Test events never send survey emails. Attendees answer surveys from
+the `Surveys to answer` panel of their [My Events](user-dashboard.md#surveys-to-answer), where they
+can edit their answers until the survey closes, and the email opens the survey there directly.
+
+#### Anonymity and locked settings
+
+Answers are always stored per attendee, so each attendee has one response that they can edit. For
+anonymous surveys, organizers only see aggregated results and answers without names. Identified
+surveys also show each respondent's name, company, and title in the results and the CSV.
+Identities never appear in the `Attendees` tab.
+
+An anonymous survey stays anonymous once it opens or its opening email is sent, because attendees
+were told their answers are anonymous. From then on, `Anonymous responses` is read-only and a note
+below it explains why. An identified survey can still be made anonymous until it has responses.
+
+Once a survey has responses, its questions, audience, and anonymity are read-only, and an amber
+notice explains why. The title, introduction, and dates can still be updated. The lock stays even
+if the respondents later delete their accounts.
+
+#### Results and CSV
+
+Results open in place, with a `Back to surveys` link. The header shows the responses as eligible
+respondents over the attendees currently in the audience, for example `12 / 40 (30%)`, plus the
+total number of stored responses when attendees who are no longer in the audience also answered.
+It shows `-` while nobody is in the audience. The `Summary` view also shows three cards: the
+responses, the audience and anonymity, and the closing date in the event timezone.
+
+- `Summary` lists the questions in order. Select questions show each option's selections and share
+  of respondents. Free-text questions show the first 10 answers, and `Show more answers` loads the
+  next ones and says how many are left.
+- `Individual` lists the responses one by one, 20 per page, with each respondent's name, company,
+  and title. It is only available for identified surveys.
+- Anonymous surveys with fewer than 5 responses show a notice that their answers may still
+  identify the attendees who gave them.
+
+`Download CSV` exports one row per response and one column per question. Anonymous survey exports
+contain the submitted and updated dates (UTC) and the answers; identified survey exports also
+include the respondent's name, company, and title. Exports support up to 10,000 responses and
+50 MB of answers; larger surveys are rejected with a message stating both sizes. Cells are
+protected against spreadsheet formulas like every other CSV export.
+
+#### Deleting surveys
+
+`Delete` removes the survey and all its responses, even when it has responses. The confirmation
+states how many responses will be deleted, and deletion cannot be undone.
+
+Every role that can read the group dashboard can view the surveys list, the survey settings and
+results, and download CSVs. Adding, editing, changing the state of, and deleting surveys require
+events write access; read-only roles see a notice, the survey form in read-only mode, and disabled
+`Add survey`, status, and `Delete` buttons.
+
+Every survey change is recorded in the group audit log; responses are not.
+
 ### Analytics
 
-The `Analytics` tab of the event editor shows how the event page attracts visitors and how they turn
-into registrations and check-ins. Every role that can read the group dashboard can view it, and only
+The `Analytics` tab of the event editor shows how the event page attracts visitors, how they turn
+into registrations and check-ins, and how attendees respond to surveys. Every role that can read the group dashboard can view it, and only
 the group that owns the event sees it. Analytics are cached for up to an hour, so recent activity
 can take that long to appear.
 
@@ -737,7 +873,8 @@ The summary cards show:
 - `Check-in rate`: checked-in registrations divided by registrations, shown once the event ends.
 
 Below the summary cards, the tab groups its figures into `Traffic`, `Registrations`, `Tickets` (paid
-events only), `Audience`, and `Check-ins` (once the event ends).
+events only), `Audience`, `Check-ins` (once the event ends), and `Surveys` (once a survey is not a
+draft).
 
 #### Daily charts
 
@@ -819,14 +956,26 @@ that still hold a seat, and the redemptions still available.
 - Single- and multi-select registration questions list their current options by selections, most
   selected first, with each option's count and share of respondents. The 10 most selected options
   are shown, and a button reveals the rest. Multi-select percentages use respondents and can add up
-  to more than 100%. Long prompts are shortened to two lines; hover to read them in full.
-  Free-text answers are not shown.
+  to more than 100%. Free-text answers are not shown.
 
 #### Check-ins
 
 After the event ends, the check-ins chart shows arrivals in 15-minute intervals, or hourly intervals
 for spans longer than three days, in the event timezone. It covers check-ins from six hours before
 the start to six hours after the end; check-ins outside that span are counted in a note.
+
+#### Survey responses
+
+The surveys summary lists every survey of the event that is not a draft, in creation order, with
+its state, the attendees in its audience who responded, and its response rate. The total number of
+stored responses is added when attendees who are no longer in the audience also answered. The rate
+shows `-` while nobody is in the audience.
+
+`Overall response rate` combines the open and closed surveys, weighting each one by its audience:
+it divides the respondents of those surveys by the attendees in their audiences. Counts are per
+survey, so an attendee who answers several surveys counts in each one, and like the rest of the
+tab they are cached for up to an hour. The summary has no links; use the `Surveys` tab to see the
+results.
 
 ## CFS Workflow (End to End)
 

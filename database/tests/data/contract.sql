@@ -4979,6 +4979,761 @@ insert into event_views_utm (
     ('2025-03-05', '00000000-0000-0000-0000-00000000f205', 4, '', 'email', 'newsletter'),
     ('2025-03-05', '00000000-0000-0000-0000-00000000f205', 2, 'spring', '', '');
 
+-- ============================================================================
+-- EVENT SURVEYS
+-- ============================================================================
+
+-- Respondent who checked in and answered both surveys
+insert into "user" (
+    auth_hash,
+    company,
+    email,
+    email_verified,
+    name,
+    title,
+    user_id,
+    username
+) values (
+    'contract_hash_survey_respondent',
+    'Contract Survey Corp',
+    'survey-respondent.contract@example.com',
+    true,
+    'Contract Survey Respondent',
+    'Platform Engineer',
+    '00000000-0000-0000-0000-00000000f302',
+    'survey-respondent'
+);
+
+-- Second respondent who checked in and answered both surveys
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_survey_second_respondent',
+    'survey-second-respondent.contract@example.com',
+    true,
+    'Contract Survey Second Respondent',
+    '00000000-0000-0000-0000-00000000f303',
+    'survey-second-respondent'
+);
+
+-- Confirmed attendee who did not check in or answer
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_survey_pending_respondent',
+    'survey-pending-respondent.contract@example.com',
+    true,
+    'Contract Survey Pending Respondent',
+    '00000000-0000-0000-0000-00000000f304',
+    'survey-pending-respondent'
+);
+
+-- Verified attendee of the survey email event who receives its opening emails
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_survey_email_recipient',
+    'survey-email-recipient.contract@example.com',
+    true,
+    'Contract Survey Email Recipient',
+    '00000000-0000-0000-0000-00000000f313',
+    'survey-email-recipient'
+);
+
+-- Unverified attendee of the survey email event who never receives emails
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_survey_unverified_attendee',
+    'survey-unverified-attendee.contract@example.com',
+    false,
+    'Contract Survey Unverified Attendee',
+    '00000000-0000-0000-0000-00000000f314',
+    'survey-unverified-attendee'
+);
+
+-- Attendee who answers the surveys used by the concurrency contracts
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_survey_racer',
+    'survey-racer.contract@example.com',
+    true,
+    'Contract Survey Racer',
+    '00000000-0000-0000-0000-00000000f316',
+    'survey-racer'
+);
+
+-- Former attendee who answered the identified survey and no longer attends
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_survey_former_attendee',
+    'survey-former-attendee.contract@example.com',
+    true,
+    'Contract Survey Former Attendee',
+    '00000000-0000-0000-0000-00000000f317',
+    'survey-former-attendee'
+);
+
+-- Attendees who answer the export growth survey, numbered 1 to 12
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+)
+select
+    'contract_hash_survey_export_respondent_' || n,
+    'survey-export-respondent-' || n || '.contract@example.com',
+    true,
+    'Contract Survey Export Respondent ' || n,
+    format('00000000-0000-0000-0000-00000000f3%s', to_hex(127 + n))::uuid,
+    'survey-export-respondent-' || n
+from generate_series(1, 12) as n;
+
+-- Past test event of the subgroup holding the surveys; a test event so public
+-- listings and statistics exclude it
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    'A past event used by the event survey contract tests',
+    '2025-04-01 19:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000f301',
+    'in-person',
+    '00000000-0000-0000-0000-00000000c022',
+    'Contract Survey Event',
+    true,
+    '2025-03-20 10:00:00+00',
+    'contract-survey-event',
+    '2025-04-01 17:00:00+00',
+    true,
+    'Europe/Madrid'
+);
+
+-- Past test event holding the surveys used by the concurrency contracts
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    'A past event used by the event survey concurrency contract tests',
+    '2025-04-01 19:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000f320',
+    'in-person',
+    '00000000-0000-0000-0000-00000000c022',
+    'Contract Survey Race Event',
+    true,
+    '2025-03-20 10:00:00+00',
+    'contract-survey-race-event',
+    '2025-04-01 17:00:00+00',
+    true,
+    'UTC'
+);
+
+-- Past test event with verified and unverified attendees, used by the survey
+-- opening email contracts; tests that check the emails make it a regular event
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    'A past event used by the event survey email contract tests',
+    '2025-04-01 19:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000f340',
+    'in-person',
+    '00000000-0000-0000-0000-00000000c022',
+    'Contract Survey Email Event',
+    true,
+    '2025-03-20 10:00:00+00',
+    'contract-survey-email-event',
+    '2025-04-01 17:00:00+00',
+    true,
+    'UTC'
+);
+
+-- Past test event rescheduled while the survey email job runs
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    'A past event rescheduled by the event survey email contract tests',
+    '2025-04-01 19:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000f350',
+    'virtual',
+    '00000000-0000-0000-0000-00000000c022',
+    'Contract Survey Reschedule Event',
+    true,
+    '2025-03-20 10:00:00+00',
+    'contract-survey-reschedule-event',
+    '2025-04-01 17:00:00+00',
+    true,
+    'UTC'
+);
+
+-- Upcoming test event rescheduled while a survey is marked ready
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    'An upcoming event used by the event survey mark ready contract tests',
+    '2099-06-01 19:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000f360',
+    'virtual',
+    '00000000-0000-0000-0000-00000000c022',
+    'Contract Survey Mark Ready Event',
+    false,
+    'contract-survey-mark-ready-event',
+    '2099-06-01 17:00:00+00',
+    true,
+    'UTC'
+);
+
+-- Confirmed attendees of the survey event
+insert into event_attendee (
+    checked_in,
+    checked_in_at,
+    created_at,
+    event_id,
+    user_id
+) values
+    (true, '2025-04-01 16:50:00+00', '2025-03-25 10:00:00+00', '00000000-0000-0000-0000-00000000f301', '00000000-0000-0000-0000-00000000f302'),
+    (true, '2025-04-01 16:55:00+00', '2025-03-26 10:00:00+00', '00000000-0000-0000-0000-00000000f301', '00000000-0000-0000-0000-00000000f303'),
+    (false, null, '2025-03-27 10:00:00+00', '00000000-0000-0000-0000-00000000f301', '00000000-0000-0000-0000-00000000f304');
+
+-- Confirmed attendees of the survey email event, one of them unverified
+insert into event_attendee (
+    created_at,
+    event_id,
+    user_id
+) values
+    ('2025-03-25 10:00:00+00', '00000000-0000-0000-0000-00000000f340', '00000000-0000-0000-0000-00000000f313'),
+    ('2025-03-26 10:00:00+00', '00000000-0000-0000-0000-00000000f340', '00000000-0000-0000-0000-00000000f314');
+
+-- Verified attendee of the event rescheduled while the opening email job runs
+insert into event_attendee (
+    created_at,
+    event_id,
+    user_id
+) values (
+    '2025-03-25 10:00:00+00',
+    '00000000-0000-0000-0000-00000000f350',
+    '00000000-0000-0000-0000-00000000f313'
+);
+
+-- Confirmed attendee of the survey concurrency event
+insert into event_attendee (
+    created_at,
+    event_id,
+    user_id
+) values (
+    '2025-03-25 10:00:00+00',
+    '00000000-0000-0000-0000-00000000f320',
+    '00000000-0000-0000-0000-00000000f316'
+);
+
+-- Confirmed attendees of the survey concurrency event who answer the export growth survey
+insert into event_attendee (
+    created_at,
+    event_id,
+    user_id
+)
+select
+    '2025-03-25 11:00:00+00',
+    '00000000-0000-0000-0000-00000000f320',
+    format('00000000-0000-0000-0000-00000000f3%s', to_hex(127 + n))::uuid
+from generate_series(1, 12) as n;
+
+-- Open identified survey with every question kind, waiting for its opening email
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    audience,
+    created_at,
+    event_id,
+    questions,
+    revision,
+    status,
+    title,
+
+    closes_at,
+    created_by,
+    description,
+    first_response_at,
+    updated_at
+) values (
+    '00000000-0000-0000-0000-00000000f305',
+    false,
+    'confirmed',
+    '2025-03-28 10:00:00+00',
+    '00000000-0000-0000-0000-00000000f301',
+    '[{"id": "00000000-0000-0000-0000-00000000f308", "kind": "free-text", "prompt": "What should we improve?", "required": false, "options": []}, {"id": "00000000-0000-0000-0000-00000000f309", "kind": "single-select", "prompt": "Overall rating", "required": true, "options": [{"id": "00000000-0000-0000-0000-00000000f30a", "label": "Good"}, {"id": "00000000-0000-0000-0000-00000000f30b", "label": "Poor"}]}, {"id": "00000000-0000-0000-0000-00000000f30c", "kind": "multi-select", "prompt": "Favorite sessions", "required": false, "options": [{"id": "00000000-0000-0000-0000-00000000f30d", "label": "Keynote"}, {"id": "00000000-0000-0000-0000-00000000f30e", "label": "Workshop"}]}]'::jsonb,
+    2,
+    'ready',
+    'Contract identified survey',
+
+    '2099-01-01 00:00:00+00',
+    '00000000-0000-0000-0000-00000000c041',
+    'Tell us how the contract event went',
+    '2025-04-02 09:00:00+00',
+    '2025-03-29 10:00:00+00'
+);
+
+-- Open anonymous survey for checked-in attendees whose opening email was handled
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    audience,
+    created_at,
+    event_id,
+    questions,
+    revision,
+    status,
+    title,
+
+    first_response_at,
+    open_notification_processed_at,
+    open_notification_recipients,
+    opens_at
+) values (
+    '00000000-0000-0000-0000-00000000f306',
+    true,
+    'checked-in',
+    '2025-03-28 11:00:00+00',
+    '00000000-0000-0000-0000-00000000f301',
+    '[{"id": "00000000-0000-0000-0000-00000000f30f", "kind": "free-text", "prompt": "Anything else?", "required": false, "options": []}, {"id": "00000000-0000-0000-0000-00000000f310", "kind": "single-select", "prompt": "Would you come again?", "required": true, "options": [{"id": "00000000-0000-0000-0000-00000000f311", "label": "Yes"}, {"id": "00000000-0000-0000-0000-00000000f312", "label": "No"}]}]'::jsonb,
+    3,
+    'ready',
+    'Contract anonymous survey',
+
+    '2025-04-02 10:00:00+00',
+    '2025-04-02 09:05:00+00',
+    2,
+    '2025-04-02 09:00:00+00'
+);
+
+-- Draft survey without questions
+insert into event_survey (
+    event_survey_id,
+    created_at,
+    event_id,
+    title
+) values (
+    '00000000-0000-0000-0000-00000000f307',
+    '2025-03-28 12:00:00+00',
+    '00000000-0000-0000-0000-00000000f301',
+    'Contract draft survey'
+);
+
+-- Open survey without responses answered while its anonymity changes
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at,
+    open_notification_processed_at,
+    open_notification_recipients
+) values (
+    '00000000-0000-0000-0000-00000000f321',
+    false,
+    '2025-03-28 10:00:00+00',
+    '00000000-0000-0000-0000-00000000f320',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract first response race survey',
+
+    '2099-01-01 00:00:00+00',
+    '2025-04-02 09:00:00+00',
+    0
+);
+
+-- Open survey reconfigured while an attendee submits answers
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at,
+    open_notification_processed_at,
+    open_notification_recipients
+) values (
+    '00000000-0000-0000-0000-00000000f322',
+    false,
+    '2025-03-28 10:01:00+00',
+    '00000000-0000-0000-0000-00000000f320',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract stale submission race survey',
+
+    '2099-01-01 00:00:00+00',
+    '2025-04-02 09:00:00+00',
+    0
+);
+
+-- Open survey closed while an attendee submits answers
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at,
+    open_notification_processed_at,
+    open_notification_recipients
+) values (
+    '00000000-0000-0000-0000-00000000f323',
+    false,
+    '2025-03-28 10:02:00+00',
+    '00000000-0000-0000-0000-00000000f320',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract close race survey',
+
+    '2099-01-01 00:00:00+00',
+    '2025-04-02 09:00:00+00',
+    0
+);
+
+-- Open survey deleted while an attendee submits answers
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at,
+    open_notification_processed_at,
+    open_notification_recipients
+) values (
+    '00000000-0000-0000-0000-00000000f324',
+    false,
+    '2025-03-28 10:03:00+00',
+    '00000000-0000-0000-0000-00000000f320',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract delete race survey',
+
+    '2099-01-01 00:00:00+00',
+    '2025-04-02 09:00:00+00',
+    0
+);
+
+-- Open survey deleted while an attendee's submission holds its lock
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at,
+    open_notification_processed_at,
+    open_notification_recipients
+) values (
+    '00000000-0000-0000-0000-00000000f327',
+    false,
+    '2025-03-28 10:03:30+00',
+    '00000000-0000-0000-0000-00000000f320',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract delete after submission race survey',
+
+    '2099-01-01 00:00:00+00',
+    '2025-04-02 09:00:00+00',
+    0
+);
+
+-- Open identified survey without responses answered while it is exported
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at,
+    open_notification_processed_at,
+    open_notification_recipients
+) values (
+    '00000000-0000-0000-0000-00000000f325',
+    false,
+    '2025-03-28 10:04:00+00',
+    '00000000-0000-0000-0000-00000000f320',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract export growth survey',
+
+    '2099-01-01 00:00:00+00',
+    '2025-04-02 09:00:00+00',
+    0
+);
+
+-- Open anonymous survey without responses whose opening email was handled
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at,
+    open_notification_processed_at,
+    open_notification_recipients
+) values (
+    '00000000-0000-0000-0000-00000000f326',
+    true,
+    '2025-03-28 10:05:00+00',
+    '00000000-0000-0000-0000-00000000f320',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract opened anonymous survey',
+
+    '2099-01-01 00:00:00+00',
+    '2025-04-02 09:00:00+00',
+    0
+);
+
+-- Open survey waiting for the opening email of its verified attendees
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at
+) values (
+    '00000000-0000-0000-0000-00000000f343',
+    false,
+    '2025-03-28 10:05:00+00',
+    '00000000-0000-0000-0000-00000000f340',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract email survey',
+
+    '2099-01-01 00:00:00+00'
+);
+
+-- Open survey closed while the opening email job runs
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at
+) values (
+    '00000000-0000-0000-0000-00000000f344',
+    false,
+    '2025-03-28 10:06:00+00',
+    '00000000-0000-0000-0000-00000000f340',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract email close race survey',
+
+    '2099-01-01 00:00:00+00'
+);
+
+-- Open survey whose event is rescheduled while the opening email job runs
+insert into event_survey (
+    event_survey_id,
+    anonymous,
+    created_at,
+    event_id,
+    questions,
+    status,
+    title,
+
+    closes_at
+) values (
+    '00000000-0000-0000-0000-00000000f351',
+    false,
+    '2025-03-28 10:07:00+00',
+    '00000000-0000-0000-0000-00000000f350',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'ready',
+    'Contract email reschedule race survey',
+
+    '2099-01-01 00:00:00+00'
+);
+
+-- Draft survey marked ready while its upcoming event is rescheduled
+insert into event_survey (
+    event_survey_id,
+    created_at,
+    event_id,
+    questions,
+    title
+) values (
+    '00000000-0000-0000-0000-00000000f361',
+    '2025-03-28 10:08:00+00',
+    '00000000-0000-0000-0000-00000000f360',
+    '[{"id": "00000000-0000-0000-0000-00000000f330", "kind": "free-text", "prompt": "Any feedback?", "required": false, "options": []}]'::jsonb,
+    'Contract mark ready race survey'
+);
+
+-- Responses to the identified and anonymous surveys, including a blank
+-- free-text answer and the answers of a former attendee
+insert into event_survey_response (
+    answers,
+    created_at,
+    event_survey_id,
+    user_id,
+
+    updated_at
+) values
+    (
+        '{"answers": [{"question_id": "00000000-0000-0000-0000-00000000f308", "value": "More hands-on time"}, {"question_id": "00000000-0000-0000-0000-00000000f309", "value": "00000000-0000-0000-0000-00000000f30a"}, {"question_id": "00000000-0000-0000-0000-00000000f30c", "value": ["00000000-0000-0000-0000-00000000f30d", "00000000-0000-0000-0000-00000000f30e"]}]}'::jsonb,
+        '2025-04-02 09:00:00+00',
+        '00000000-0000-0000-0000-00000000f305',
+        '00000000-0000-0000-0000-00000000f302',
+        '2025-04-03 09:00:00+00'
+    ),
+    (
+        '{"answers": [{"question_id": "00000000-0000-0000-0000-00000000f308", "value": "   "}, {"question_id": "00000000-0000-0000-0000-00000000f309", "value": "00000000-0000-0000-0000-00000000f30b"}, {"question_id": "00000000-0000-0000-0000-00000000f30c", "value": ["00000000-0000-0000-0000-00000000f30d"]}]}'::jsonb,
+        '2025-04-02 11:00:00+00',
+        '00000000-0000-0000-0000-00000000f305',
+        '00000000-0000-0000-0000-00000000f303',
+        null
+    ),
+    (
+        '{"answers": [{"question_id": "00000000-0000-0000-0000-00000000f30f", "value": "Great venue"}, {"question_id": "00000000-0000-0000-0000-00000000f310", "value": "00000000-0000-0000-0000-00000000f311"}]}'::jsonb,
+        '2025-04-02 10:00:00+00',
+        '00000000-0000-0000-0000-00000000f306',
+        '00000000-0000-0000-0000-00000000f302',
+        null
+    ),
+    (
+        '{"answers": [{"question_id": "00000000-0000-0000-0000-00000000f310", "value": "00000000-0000-0000-0000-00000000f312"}]}'::jsonb,
+        '2025-04-02 12:00:00+00',
+        '00000000-0000-0000-0000-00000000f306',
+        '00000000-0000-0000-0000-00000000f303',
+        null
+    ),
+    (
+        '{"answers": [{"question_id": "00000000-0000-0000-0000-00000000f308", "value": "Shorter breaks"}, {"question_id": "00000000-0000-0000-0000-00000000f309", "value": "00000000-0000-0000-0000-00000000f30a"}]}'::jsonb,
+        '2025-04-02 13:00:00+00',
+        '00000000-0000-0000-0000-00000000f305',
+        '00000000-0000-0000-0000-00000000f317',
+        null
+    );
+
 -- Every remaining event uses a default free tier in the contract fixture
 insert into event_ticket_type (
     event_id,

@@ -1,0 +1,234 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/ui.html" as ui -%}
+
+{# Event survey form -#}
+{% let anonymous_locked = self.anonymous_locked() -%}
+{% let locked = self.locked() -%}
+{% let show_anonymous_locked_notice = anonymous_locked && !locked -%}
+{% let read_only = !can_manage_surveys -%}
+<div class="space-y-8">
+  {# Back link -#}
+  <button id="event-survey-form-back"
+          type="button"
+          hx-get="/dashboard/group/events/{{ event.event_id }}/surveys"
+          hx-target="#surveys-content"
+          hx-swap="innerHTML show:#surveys-content:top"
+          hx-indicator="#dashboard-spinner"
+          class="inline-flex items-center gap-2 text-sm font-medium text-primary-500 hover:text-primary-700">
+    <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
+    <span>Back to surveys</span>
+  </button>
+  {# End back link -#}
+
+  {% if survey.is_some() -%}
+    {{ dashboard::form_title(title = "Edit survey", description = "Changes to the questions, audience, anonymity or dates apply to every attendee who has not answered yet.") -}}
+  {% else -%}
+    {{ dashboard::form_title(title = "Add survey", description = "New surveys start as drafts. Drafts never email anyone, so you can prepare them before the event.") -}}
+  {% endif -%}
+
+  {% if read_only -%}
+    {{ dashboard::permission_warning(message = "Your role cannot update surveys.", extra_classes = "") -}}
+  {% endif -%}
+  {% if locked -%}
+    <div data-event-survey-locked-notice
+         class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      Questions, audience and anonymity are read-only because attendees have answered this survey.
+      The title, introduction and dates can still be updated.
+    </div>
+  {% endif -%}
+
+  <form id="event-survey-form"
+        {% if let Some(survey) = survey -%}
+          hx-put="/dashboard/group/events/{{ event.event_id }}/surveys/{{ survey.summary.event_survey_id }}/update" data-success-message="You have successfully updated the survey." data-error-message="Something went wrong updating the survey. Please try again later."
+        {% else -%}
+          hx-post="/dashboard/group/events/{{ event.event_id }}/surveys/add" data-success-message="You have successfully added the survey." data-error-message="Something went wrong adding the survey. Please try again later."
+        {% endif -%}
+        hx-swap="none"
+        hx-indicator="#dashboard-spinner, #event-survey-form-spinner"
+        hx-disabled-elt="#event-survey-form-submit, #event-survey-form-cancel"
+        data-event-survey-form>
+    <fieldset class="space-y-8" {% if read_only %}disabled{% endif %}>
+      {% if let Some(survey) = survey -%}
+        <input type="hidden" name="revision" value="{{ survey.summary.revision }}">
+      {% endif -%}
+
+      <div class="grid max-w-4xl grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
+        {# Title -#}
+        <div class="col-span-full lg:col-span-5">
+          <label for="event-survey-title" class="form-label">
+            Title <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   id="event-survey-title"
+                   name="title"
+                   class="input-primary"
+                   maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                   autocomplete="off"
+                   required
+                   {% if let Some(survey) = survey %}value="{{ survey.summary.title }}"{% endif %}>
+          </div>
+          <p class="form-legend">Shown to attendees in the email and in their dashboard.</p>
+        </div>
+        {# End title -#}
+
+        {# Introduction -#}
+        <div class="col-span-full lg:col-span-5">
+          <label for="event-survey-description" class="form-label">Introduction</label>
+          <div class="mt-2">
+            <textarea id="event-survey-description"
+                      name="description"
+                      rows="4"
+                      class="input-primary"
+                      maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}">{% if let Some(survey) = survey %}{% if let Some(description) = survey.description %}{{ description }}{% endif %}{% endif %}</textarea>
+          </div>
+          <p class="form-legend">
+            Plain text shown above the questions. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
+          </p>
+        </div>
+        {# End introduction -#}
+
+        {# Anonymous -#}
+        <div class="col-span-full lg:col-span-5">
+          <label class="inline-flex items-center
+                        {% if anonymous_locked || locked || read_only -%}
+                          cursor-not-allowed opacity-60
+                        {% else -%}
+                          cursor-pointer
+                        {% endif -%}">
+            <input id="event-survey-anonymous-toggle"
+                   type="checkbox"
+                   class="sr-only peer"
+                   data-event-survey-toggle="event-survey-anonymous"
+                   {% if show_anonymous_locked_notice %}aria-describedby="event-survey-anonymous-locked-notice"{% endif %}
+                   {% if self.anonymous() %}checked{% endif %}
+                   {% if anonymous_locked || locked %}disabled{% endif %}>
+            <input type="hidden"
+                   id="event-survey-anonymous"
+                   name="anonymous"
+                   value="{{ self.anonymous() }}">
+            <div class="toggle-track"></div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Anonymous responses</span>
+          </label>
+          <p class="form-legend">
+            Organizers only see aggregated results of anonymous surveys. Answers are linked to accounts
+            so attendees can edit them, but identities are never shown. Identified surveys show names in
+            the results and the CSV.
+          </p>
+          {% if show_anonymous_locked_notice -%}
+            <p id="event-survey-anonymous-locked-notice"
+               class="form-legend"
+               data-event-survey-anonymous-locked-notice>
+              Anonymity cannot be turned off because the survey has opened or attendees were already told it is anonymous.
+            </p>
+          {% endif -%}
+        </div>
+        {# End anonymous -#}
+
+        {# Audience -#}
+        <fieldset class="col-span-full lg:col-span-5"
+                  {% if locked %}disabled{% endif %}>
+          <legend class="form-label">Audience</legend>
+          <div class="mt-2 space-y-2">
+            <label class="flex items-center gap-2 text-sm text-stone-700">
+              <input type="radio"
+                     name="audience"
+                     value="confirmed"
+                     class="radio-primary"
+                     {% if self.audience() == EventSurveyAudience::Confirmed %}checked{% endif %}>
+              <span>Confirmed attendees</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm text-stone-700">
+              <input type="radio"
+                     name="audience"
+                     value="checked-in"
+                     class="radio-primary"
+                     {% if self.audience() == EventSurveyAudience::CheckedIn %}checked{% endif %}>
+              <span>Checked-in attendees only</span>
+            </label>
+          </div>
+          <p class="form-legend">Attendees who can answer the survey and receive its opening email.</p>
+        </fieldset>
+        {% if locked -%}
+          <input type="hidden" name="audience" value="{{ self.audience() }}">
+        {% endif -%}
+        {# End audience -#}
+
+        {# Opens at -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="event-survey-opens-at" class="form-label">Opens at</label>
+          <div class="mt-2">
+            <input type="datetime-local"
+                   id="event-survey-opens-at"
+                   name="opens_at"
+                   class="input-primary"
+                   value="{{ self.opens_at_value() }}">
+          </div>
+          <p class="form-legend">
+            Leave empty to open when the event ends. Surveys never open before the event ends.
+            Times use the event timezone ({{ event.timezone }}).
+          </p>
+        </div>
+        {# End opens at -#}
+
+        {# Closes at -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="event-survey-closes-at" class="form-label">Closes at</label>
+          <div class="mt-2">
+            <input type="datetime-local"
+                   id="event-survey-closes-at"
+                   name="closes_at"
+                   class="input-primary"
+                   value="{{ self.closes_at_value() }}">
+          </div>
+          <p class="form-legend">
+            Leave empty to keep the survey open until you close it. Times use the event timezone ({{ event.timezone }}).
+          </p>
+        </div>
+        {# End closes at -#}
+      </div>
+
+      {# Questions -#}
+      <div class="max-w-4xl">
+        <div class="form-label">Questions</div>
+        <p class="form-legend">
+          Up to {{ crate::validation::MAX_EVENT_SURVEY_QUESTIONS }} questions. Ready surveys need at least one question.
+        </p>
+        <div class="mt-4">
+          <questions-editor id="event-survey-questions" name="questions" questions="{% if let Some(survey) = survey %}{{ survey.questions|json }}{% else %}[]{% endif %}" empty-message='No questions yet. Click "Add question" to create one.' empty-disabled-message="No questions were added to this survey." editing-warning="Questions cannot be edited after attendees have answered the survey." required-help="Required questions must be answered to submit the survey. Optional questions can be skipped." prompt-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}" option-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" max-questions="{{ crate::validation::MAX_EVENT_SURVEY_QUESTIONS }}" {% if locked || read_only %}disabled{% endif %}></questions-editor>
+        </div>
+      </div>
+      {# End questions -#}
+    </fieldset>
+
+    {# Form actions -#}
+    <div class="mt-8 flex max-w-4xl items-center justify-end gap-x-6">
+      <button id="event-survey-form-cancel"
+              type="button"
+              hx-get="/dashboard/group/events/{{ event.event_id }}/surveys"
+              hx-target="#surveys-content"
+              hx-swap="innerHTML show:#surveys-content:top"
+              hx-indicator="#dashboard-spinner"
+              data-skip-validation="true"
+              class="btn-primary-outline">Cancel</button>
+      <button id="event-survey-form-submit"
+              type="submit"
+              class="btn-primary relative
+                     {% if read_only -%}
+                       opacity-50 cursor-not-allowed
+                     {% endif -%}"
+              {% if read_only -%}
+                disabled title="Your role cannot update surveys."
+              {% endif -%}>
+        {{ ui::btn_spinner(id = "event-survey-form-spinner", spinner_type = "2") -}}
+        {% if survey.is_some() -%}
+          Save survey
+        {% else -%}
+          Add survey
+        {% endif -%}
+      </button>
+    </div>
+    {# End form actions -#}
+  </form>
+</div>
+{# End event survey form -#}

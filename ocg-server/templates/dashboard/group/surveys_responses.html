@@ -1,0 +1,56 @@
+{% import "macros/pagination.html" as pagination -%}
+{% import "macros/question_answers.html" as question_answers -%}
+{% import "macros/surveys.html" as surveys -%}
+
+{# Event survey individual responses -#}
+<div class="space-y-8" data-event-survey-responses>
+  {{ surveys::results_header(event_id = event.event_id, survey = survey.summary, view = "individual") -}}
+
+  {% if responses.responses.is_empty() -%}
+    <p class="text-sm text-stone-500">This survey does not have any responses yet.</p>
+  {% else -%}
+    {# Responses -#}
+    <div class="text-sm text-stone-600">
+      {{ pagination::range_display(offset = offset.unwrap_or(0) , count = responses.responses.len(), total = responses.total, label = "response") }}
+    </div>
+    <ol class="max-w-4xl space-y-6">
+      {% for response in responses.responses -%}
+        <li class="rounded-lg border border-stone-200 bg-white p-5"
+            data-event-survey-response="{{ response.user.user_id }}">
+          <div class="flex flex-col gap-1 border-b border-stone-100 pb-4 sm:flex-row sm:items-baseline sm:justify-between">
+            <div class="min-w-0">
+              <div class="truncate font-medium text-stone-900">
+                {{ response.user.name.as_deref().unwrap_or(response.user.username.as_str()) }}
+              </div>
+              {% if response.user.title.is_some() || response.user.company.is_some() -%}
+                <div class="truncate text-xs text-stone-500">
+                  {% if let Some(title) = response.user.title %}{{ title }}{% endif %}
+                  {% if response.user.title.is_some() && response.user.company.is_some() %}·{% endif %}
+                  {% if let Some(company) = response.user.company %}{{ company }}{% endif %}
+                </div>
+              {% endif -%}
+            </div>
+            <div class="shrink-0 text-xs text-stone-500">
+              Submitted {{ crate::templates::dashboard::group::surveys::format_date(*response.created_at, *event.timezone) }}
+              {% if let Some(updated_at) = response.updated_at -%}
+                · Edited {{ crate::templates::dashboard::group::surveys::format_date(**updated_at, *event.timezone) }}
+              {% endif -%}
+            </div>
+          </div>
+          <div class="mt-4">
+            {{ question_answers::review_list(questions = survey.questions,
+              answers = Some(response.answers)) -}}
+          </div>
+        </li>
+      {% endfor -%}
+    </ol>
+    {# End responses -#}
+
+    {# Pagination -#}
+    {% if responses.total > responses.responses.len() -%}
+      {{ pagination::navigation_links(links = navigation_links, hx_target = "#surveys-content", hx_swap = "innerHTML show:#surveys-content:top", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "event-survey-responses-") }}
+    {% endif -%}
+    {# End pagination -#}
+  {% endif -%}
+</div>
+{# End event survey individual responses -#}

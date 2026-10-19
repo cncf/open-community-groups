@@ -177,6 +177,8 @@ pub(crate) enum NotificationKind {
     EventSeriesCanceled,
     /// Notification for multiple published events in a linked series.
     EventSeriesPublished,
+    /// Notification that a post-event survey is open for answers.
+    EventSurveyOpened,
     /// Notification for an approved ticket request offer.
     EventTicketRequestApproved,
     /// Notification for an offer created from a ticket waiting list.

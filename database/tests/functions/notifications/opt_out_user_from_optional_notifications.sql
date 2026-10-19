@@ -33,7 +33,7 @@ select is(
         'suppressed.user@EXAMPLE.test',
         'smtp bounce'
     ),
-    9,
+    10,
     'Should opt out every category for a case-insensitive email match'
 );
 
@@ -53,6 +53,7 @@ select results_eq(
         ('badges'::text),
         ('cohosting-updates'::text),
         ('event-reminders'::text),
+        ('event-surveys'::text),
         ('group-announcements'::text),
         ('group-inbox'::text),
         ('new-events'::text),
@@ -72,6 +73,7 @@ select ok(
                 'badges',
                 'cohosting-updates',
                 'event-reminders',
+                'event-surveys',
                 'group-announcements',
                 'group-inbox',
                 'new-events',

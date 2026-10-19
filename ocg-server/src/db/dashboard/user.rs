@@ -14,7 +14,10 @@ use crate::{
             common::{AuditLogFilters, AuditLogsOutput},
             user::{
                 check_in::UserCheckInEvent,
-                events::{UserEventsFilters, UserEventsOutput},
+                events::{
+                    UserEventSurvey, UserEventSurveysFilters, UserEventSurveysOutput,
+                    UserEventsFilters, UserEventsOutput,
+                },
                 groups::{UserGroupsFilters, UserGroupsOutput},
                 invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
                 notifications::{
@@ -91,6 +94,16 @@ pub(crate) trait DBDashboardUser {
     /// Gets the current user's confirmed attendee credential for an event.
     async fn get_user_check_in_code(&self, event_id: Uuid, user_id: Uuid) -> Result<Option<Uuid>>;
 
+    /// Gets an open event survey the user can answer, with their response.
+    ///
+    /// Returns `None` unless the survey is reachable on the public site, open,
+    /// and the user is in its audience.
+    async fn get_user_event_survey(
+        &self,
+        event_survey_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<UserEventSurvey>>;
+
     /// Gets the user's notification category opt-outs and muted groups.
     async fn get_user_notification_preferences(
         &self,
@@ -135,6 +148,13 @@ pub(crate) trait DBDashboardUser {
 
     /// Lists active event admission offers owned by the user.
     async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>>;
+
+    /// Lists the open event surveys the user can answer.
+    async fn list_user_event_surveys(
+        &self,
+        user_id: Uuid,
+        filters: &UserEventSurveysFilters,
+    ) -> Result<UserEventSurveysOutput>;
 
     /// Lists upcoming events where the user participates.
     async fn list_user_events(
@@ -220,6 +240,18 @@ pub(crate) trait DBDashboardUser {
         community_id: Uuid,
         event_id: Uuid,
         registration_answers: &QuestionnaireAnswers,
+    ) -> Result<()>;
+
+    /// Stores or replaces the answers of a user to an open event survey.
+    ///
+    /// `expected_revision` is the survey revision the user answered; the
+    /// database rejects the answers when the survey changed since.
+    async fn submit_event_survey_response(
+        &self,
+        event_survey_id: Uuid,
+        user_id: Uuid,
+        expected_revision: i64,
+        answers: &QuestionnaireAnswers,
     ) -> Result<()>;
 
     /// Unmutes optional notifications from a group for the user.
@@ -412,6 +444,20 @@ where
         .await
     }
 
+    /// [`DBDashboardUser::get_user_event_survey`].
+    #[instrument(skip(self), err)]
+    async fn get_user_event_survey(
+        &self,
+        event_survey_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<UserEventSurvey>> {
+        self.fetch_json_opt(
+            "select get_user_event_survey($1::uuid, $2::uuid)",
+            &[&event_survey_id, &user_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardUser::get_user_notification_preferences`].
     #[instrument(skip(self), err)]
     async fn get_user_notification_preferences(
@@ -506,6 +552,20 @@ where
     async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>> {
         self.fetch_json_one("select list_user_event_invitations($1::uuid)", &[&user_id])
             .await
+    }
+
+    /// [`DBDashboardUser::list_user_event_surveys`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_user_event_surveys(
+        &self,
+        user_id: Uuid,
+        filters: &UserEventSurveysFilters,
+    ) -> Result<UserEventSurveysOutput> {
+        self.fetch_json_one(
+            "select list_user_event_surveys($1::uuid, $2::jsonb)",
+            &[&user_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardUser::list_user_events`]
@@ -695,6 +755,27 @@ where
                 &community_id,
                 &event_id,
                 &Json(registration_answers),
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::submit_event_survey_response`].
+    #[instrument(skip(self, answers), err)]
+    async fn submit_event_survey_response(
+        &self,
+        event_survey_id: Uuid,
+        user_id: Uuid,
+        expected_revision: i64,
+        answers: &QuestionnaireAnswers,
+    ) -> Result<()> {
+        self.execute(
+            "select submit_event_survey_response($1::uuid, $2::uuid, $3::bigint, $4::jsonb)",
+            &[
+                &event_survey_id,
+                &user_id,
+                &expected_revision,
+                &Json(answers),
             ],
         )
         .await

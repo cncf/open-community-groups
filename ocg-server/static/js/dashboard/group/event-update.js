@@ -11,6 +11,7 @@ import { initializeEventContributors } from "/static/js/dashboard/group/event-co
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventLabels } from "/static/js/dashboard/group/event-labels.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
+import { initializeEventSurveys } from "/static/js/dashboard/group/event-surveys.js";
 import { initializeAutomaticTaxReadiness } from "/static/js/dashboard/event/automatic-tax-readiness.js";
 import "/static/js/dashboard/group/questions-editor.js";
 import {
@@ -36,8 +37,14 @@ import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-stat
  */
 const readBooleanDataAttribute = (element, attributeName) => element?.dataset?.[attributeName] === "true";
 
-const canceledEventReviewSections = new Set(["submissions", "attendees", "invitation-requests", "waitlist"]);
 const EVENT_UPDATE_PAGE_SELECTOR = '[data-event-page="update"]';
+
+/**
+ * Review section inside `.inert-form` that stays usable on canceled or
+ * read-only pages. The people, survey and analytics sections sit outside
+ * `.inert-form`, so they never need this exception.
+ */
+const READ_ONLY_REVIEW_SECTION = "submissions";
 
 /**
  * Initializes the event update page behavior for the active form fragment.
@@ -53,6 +60,8 @@ export const initializeEventUpdatePage = (root = document) => {
   const { pageRoot, queryOne } = pageContext;
   initializeEventContributors(pageRoot);
   initializeEventLabels(pageRoot);
+  // Survey forms submit on their own and never join the event payload.
+  initializeEventSurveys(pageRoot);
 
   const controls = resolveSharedEventPageControls(pageRoot);
   const {
@@ -167,11 +176,11 @@ export const initializeEventUpdatePage = (root = document) => {
         loadEventAnalyticsTab(pageRoot);
       }
 
-      // Canceled/read-only pages still allow specific review-only sections.
+      // Canceled/read-only pages still allow the submissions review section.
       if ((isCanceledEvent || !canManageEvents) && inertForm) {
         const canUseReadOnlyReviewSection =
-          (isCanceledEvent && canManageEvents && canceledEventReviewSections.has(sectionName)) ||
-          (!isCanceledEvent && !canManageEvents && sectionName === "submissions");
+          sectionName === READ_ONLY_REVIEW_SECTION &&
+          ((isCanceledEvent && canManageEvents) || (!isCanceledEvent && !canManageEvents));
 
         if (canUseReadOnlyReviewSection) {
           inertForm.removeAttribute("inert");

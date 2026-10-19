@@ -61,6 +61,40 @@ describe("form validation helpers", () => {
     expect(reportCalls).to.equal(1);
   });
 
+  it("lets requests from controls that skip validation run with invalid fields", () => {
+    // Render a form with an empty required field and a cancel control.
+    document.body.innerHTML = `
+      <form id="survey-form">
+        <input id="survey-title" name="title" value="" required />
+        <button id="survey-cancel" type="button" data-skip-validation="true">Cancel</button>
+      </form>
+    `;
+    const form = document.getElementById("survey-form");
+    const cancel = document.getElementById("survey-cancel");
+    form.dispatchEvent(new CustomEvent("htmx:load", { bubbles: true }));
+    document.getElementById("survey-title").reportValidity = () => false;
+
+    // Dispatch the request configuration of the cancel control.
+    const cancelRequest = new CustomEvent("htmx:configRequest", {
+      bubbles: true,
+      cancelable: true,
+      detail: { elt: cancel },
+    });
+    cancel.dispatchEvent(cancelRequest);
+
+    // Dispatch the request configuration of the form itself.
+    const formRequest = new CustomEvent("htmx:configRequest", {
+      bubbles: true,
+      cancelable: true,
+      detail: { elt: form },
+    });
+    form.dispatchEvent(formRequest);
+
+    // Verify only the form request is blocked by validation.
+    expect(cancelRequest.defaultPrevented).to.equal(false);
+    expect(formRequest.defaultPrevented).to.equal(true);
+  });
+
   it("keeps custom validity on required fields that manage their own validity", () => {
     // Render required fields with and without managed validity.
     document.body.innerHTML = `

@@ -5,6 +5,41 @@ const QUESTION_TYPES = [
 ];
 
 /**
+ * Builds the element ids of one questions editor instance, so several editors
+ * can share a page without colliding ids.
+ * @param {string} prefix Instance id prefix
+ * @returns {{
+ *   kind: string,
+ *   limit: string,
+ *   modalTitle: string,
+ *   option: (optionId: string) => string,
+ *   options: string,
+ *   prompt: string,
+ *   required: string,
+ *   requiredHelp: string
+ * }} Instance element ids
+ */
+const buildQuestionsEditorIds = (prefix) => ({
+  kind: `${prefix}-kind`,
+  limit: `${prefix}-limit`,
+  modalTitle: `${prefix}-modal-title`,
+  option: (optionId) => `${prefix}-option-${sanitizeIdPart(optionId)}`,
+  options: `${prefix}-options`,
+  prompt: `${prefix}-prompt`,
+  required: `${prefix}-required`,
+  requiredHelp: `${prefix}-required-help`,
+});
+
+/**
+ * Builds the id prefix of a questions editor instance.
+ * @param {string} name Payload field name of the editor
+ * @param {number} sequence Instance sequence number
+ * @returns {string} Instance id prefix
+ */
+const buildQuestionsEditorIdPrefix = (name, sequence) =>
+  `questions-editor-${sanitizeIdPart(name) || "questions"}-${sequence}`;
+
+/**
  * Creates a stable client-side id for draft questions and options.
  * @returns {string} Unique draft identifier
  */
@@ -75,12 +110,42 @@ const createBlankQuestionOption = () => ({
  */
 const getQuestionTypeLabel = (kind) => QUESTION_TYPES.find(([value]) => value === kind)?.[1] || "Free text";
 
+/**
+ * Normalizes a positive integer read from an attribute, such as a length or
+ * count limit.
+ * @param {*} value Raw value
+ * @param {number|null} [fallback=null] Value used when the raw value is invalid
+ * @returns {number|null} Positive integer, or the fallback
+ */
+const normalizePositiveInteger = (value, fallback = null) => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
+};
+
+/**
+ * Turns a raw value into a safe element id fragment.
+ * @param {*} value Raw value
+ * @returns {string} Id fragment
+ */
+const sanitizeIdPart = (value) =>
+  String(value || "")
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
 export {
   QUESTION_TYPES,
+  buildQuestionsEditorIdPrefix,
+  buildQuestionsEditorIds,
   cloneQuestion,
   createBlankQuestion,
   createBlankQuestionOption,
   getQuestionTypeLabel,
+  normalizePositiveInteger,
   normalizeQuestionOptions,
   normalizeQuestions,
 };

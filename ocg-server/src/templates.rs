@@ -24,6 +24,8 @@ pub(crate) mod group;
 pub(crate) mod helpers;
 /// Notification templates.
 pub(crate) mod notifications;
+/// Questionnaire answer breakdown display helpers.
+pub(crate) mod questionnaire;
 /// Global site templates.
 pub(crate) mod site;
 

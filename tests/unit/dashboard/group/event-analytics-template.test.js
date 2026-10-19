@@ -53,36 +53,22 @@ describe("dashboard group event analytics template", () => {
     expect(template).to.not.include("event-question-{}-chart");
   });
 
-  it("lists registration question options with wrapped prompts and an options toggle", async () => {
+  it("lists registration question options with the shared breakdown macro", async () => {
     // Load the event analytics partial.
     const template = normalizeWhitespace(await loadTemplate("dashboard/group/event_analytics.html"));
 
-    // Assert prompts wrap in full instead of being clamped.
+    // Assert each question renders the shared breakdown with an analytics list id.
+    expect(template).to.include('{% import "macros/question_answers.html" as question_answers -%}');
     expect(template).to.include(
-      '<div class="break-words text-sm font-semibold text-stone-700">{{ question.prompt }}</div>',
+      '{% let options_id = "event-analytics-question-{}-options"|format(loop.index0) -%}',
+    );
+    expect(template).to.include(
+      '<div data-event-analytics-question> {{ question_answers::breakdown(question = question, options_id = options_id, empty_message = "No answers yet.") -}} </div>',
     );
     expect(template).not.to.include("line-clamp");
-
-    // Assert options render as decorative bars next to their counts and shares.
-    expect(template).to.include("{% for option in self.question_options(question) -%}");
-    expect(template).to.include("{% if option.hidden %}hidden data-question-option-hidden{% endif %}");
-    expect(template).to.include("{{ option.count|num_fmt }} · {{ option.share_label }}");
-    expect(template).to.include('aria-hidden="true"');
-
-    // Assert the toggle controls the options list and starts collapsed.
-    expect(template).to.include(
-      'aria-controls="{{ options_id }}" aria-expanded="false" data-question-options-toggle',
-    );
-    expect(template).to.include(
-      "<span data-question-options-label>Show {{ hidden_options_count }} more options</span>",
-    );
-    expect(template).to.include(
-      "icon-caret-down-filled bg-current transition-transform group-aria-expanded:rotate-180",
-    );
-    expect(template).to.include("percentages of respondents can add up to more than 100%");
   });
 
-  it("groups the analytics in traffic, registrations, tickets, audience and check-ins sections", async () => {
+  it("groups the analytics in traffic, registrations, tickets, audience, check-ins and surveys sections", async () => {
     // Load the event analytics partial.
     const template = normalizeWhitespace(await loadTemplate("dashboard/group/event_analytics.html"));
 
@@ -93,6 +79,7 @@ describe("dashboard group event analytics template", () => {
       "<section data-event-analytics-tickets>",
       '{{ dashboard::form_title(title = "Audience"',
       "<section data-event-analytics-check-ins>",
+      '<section data-event-analytics-surveys> {{ dashboard::form_title(title = "Surveys"',
     ].map((fragment) => template.indexOf(fragment));
     expect(sectionPositions.every((position) => position >= 0)).to.equal(true);
     expect([...sectionPositions].sort((left, right) => left - right)).to.deep.equal(sectionPositions);
@@ -178,6 +165,45 @@ describe("dashboard group event analytics template", () => {
     );
     expect(template.toLowerCase()).to.not.include("revenue");
     expect(template).to.not.include("currency");
+  });
+
+  it("summarizes the surveys that are not drafts without links to the surveys tab", async () => {
+    // Load the event analytics partial and the survey macros.
+    const template = normalizeWhitespace(await loadTemplate("dashboard/group/event_analytics.html"));
+    const macros = normalizeWhitespace(await loadTemplate("macros/surveys.html"));
+
+    // Assert the section only renders when surveys are summarized.
+    expect(template).to.include(
+      "{% if !stats.surveys.surveys.is_empty() -%} {# Surveys -#} <section data-event-analytics-surveys>",
+    );
+
+    // Assert the weighted overall rate uses the shared stat card.
+    expect(template).to.include(
+      'stats_macro::stat_card(title = "Overall response rate", value = self.surveys_response_rate_label(), description = self.surveys_response_rate_description())',
+    );
+
+    // Assert each survey row shows its state, responses, rate and a decorative bar.
+    expect(template).to.include(
+      "{% for survey in stats.surveys.surveys -%} <li data-event-analytics-survey>",
+    );
+    expect(template).to.include("{{ surveys_macros::state_badge(state = survey.state) -}}");
+    expect(template).to.include(
+      "{{ self.survey_responses_summary(survey) }} · {{ self.survey_rate_label(survey) }}",
+    );
+    expect(template).to.include(
+      '<div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-stone-200" aria-hidden="true">',
+    );
+    expect(template).to.include('style="width: {{ self.survey_response_width(survey) }}%"');
+
+    // Assert the notes explain the cache and the per survey counts.
+    expect(template).to.include("Survey counts are cached for up to an hour.");
+    expect(template).to.include("Counts are per survey");
+    expect(template).to.not.match(/\/surveys(?!\.html)/);
+
+    // Assert the shared state badge covers every survey state.
+    ["Draft", "Scheduled", "Open", "Closed"].forEach((state) =>
+      expect(macros).to.include(`{% when crate::types::event_survey::EventSurveyState::${state} -%}`),
+    );
   });
 
   it("shares the stat card and chart slot macros with the group analytics page", async () => {

@@ -1,4 +1,7 @@
 -- Validates questionnaire answers against question definitions.
+--
+-- Free-text answers are limited to 8000 characters, matching
+-- MAX_LEN_QUESTIONNAIRE_ANSWER in the server.
 create or replace function validate_questionnaire_answers_payload(
     p_questions jsonb,
     p_answers jsonb
@@ -20,8 +23,9 @@ begin
     -- Validate question definitions before matching submitted answers
     perform validate_questionnaire_questions_payload(p_questions);
 
-    -- Reject answers when no questions are configured
+    -- Accept only an empty submission when no questions are configured
     if jsonb_array_length(p_questions) = 0 then
+        -- Reject answers submitted without questions
         if p_answers is not null and coalesce(jsonb_array_length(p_answers->'answers'), 0) > 0 then
             raise exception 'questionnaire answers cannot be submitted when questions are not configured' using errcode = 'OCG01';
         end if;
@@ -29,11 +33,12 @@ begin
         return;
     end if;
 
-    -- Validate answers payload shape
+    -- Require an answers payload object
     if p_answers is null or jsonb_typeof(p_answers) <> 'object' then
         raise exception 'questionnaire answers are required' using errcode = 'OCG01';
     end if;
 
+    -- Require an answers array
     if coalesce(jsonb_typeof(p_answers->'answers'), '') <> 'array' then
         raise exception 'questionnaire answers must contain an answers array' using errcode = 'OCG01';
     end if;
@@ -41,25 +46,32 @@ begin
     -- Validate submitted answer identities
     for v_answer in select jsonb_array_elements(p_answers->'answers')
     loop
+        -- Reject answer entries that are not objects
         if jsonb_typeof(v_answer) <> 'object' then
             raise exception 'questionnaire answer must be an object' using errcode = 'OCG01';
         end if;
 
+        -- Parse the answered question identifier
         begin
             v_answer_question_id := (v_answer->>'question_id')::uuid;
-        exception when invalid_text_representation then
-            raise exception 'questionnaire answer question_id must be a uuid' using errcode = 'OCG01';
+        exception
+            -- Reject question identifiers that are not uuids
+            when invalid_text_representation then
+                raise exception 'questionnaire answer question_id must be a uuid' using errcode = 'OCG01';
         end;
 
+        -- Reject answers without a question identifier
         if v_answer_question_id is null then
             raise exception 'questionnaire answer question_id must be a uuid' using errcode = 'OCG01';
         end if;
 
+        -- Reject several answers for the same question
         if v_answer_question_id = any(v_answer_question_ids) then
             raise exception 'questionnaire answers must include each question at most once' using errcode = 'OCG01';
         end if;
         v_answer_question_ids := array_append(v_answer_question_ids, v_answer_question_id);
 
+        -- Reject answers for questions that are not configured
         if not exists (
             select 1
             from jsonb_array_elements(p_questions) question
@@ -72,15 +84,16 @@ begin
     -- Validate answers against each configured question
     for v_question in select jsonb_array_elements(p_questions)
     loop
+        -- Count the answers submitted for this question
         v_question_id := (v_question->>'id')::uuid;
-
-        -- Locate the answer (if any) submitted for this question
         select count(*)
         into v_answer_count
         from jsonb_array_elements(p_answers->'answers') answer
         where (answer->>'question_id')::uuid = v_question_id;
 
+        -- Handle unanswered questions
         if v_answer_count = 0 then
+            -- Reject unanswered required questions
             if (v_question->>'required')::boolean then
                 raise exception 'required questionnaire answer is missing' using errcode = 'OCG01';
             end if;
@@ -88,34 +101,47 @@ begin
             continue;
         end if;
 
+        -- Load the submitted answer value
         select answer->'value'
         into v_answer_value
         from jsonb_array_elements(p_answers->'answers') answer
         where (answer->>'question_id')::uuid = v_question_id
         limit 1;
 
-        -- Validate the answer value matches the question kind
+        -- Validate a free-text answer value
         if v_question->>'kind' = 'free-text' then
-            -- Validate free-text answer value
+            -- Require a string value
             if coalesce(jsonb_typeof(v_answer_value), '') <> 'string' then
                 raise exception 'free-text questionnaire answer must be a string' using errcode = 'OCG01';
             end if;
 
+            -- Reject values above the free-text length limit
+            if length(v_answer_value #>> '{}') > 8000 then
+                raise exception 'free-text questionnaire answer is too long' using errcode = 'OCG01';
+            end if;
+
+            -- Reject blank values for required questions
             if (v_question->>'required')::boolean and nullif(btrim(v_answer_value #>> '{}'), '') is null then
                 raise exception 'required questionnaire answer is empty' using errcode = 'OCG01';
             end if;
+
+        -- Validate a single-select answer value
         elsif v_question->>'kind' = 'single-select' then
-            -- Validate single-select answer value
+            -- Require a string value
             if coalesce(jsonb_typeof(v_answer_value), '') <> 'string' then
                 raise exception 'single-select questionnaire answer must be an option id' using errcode = 'OCG01';
             end if;
 
+            -- Parse the selected option identifier
             begin
                 v_selected_option_id := (v_answer_value #>> '{}')::uuid;
-            exception when invalid_text_representation then
-                raise exception 'single-select questionnaire answer must be an option id' using errcode = 'OCG01';
+            exception
+                -- Reject values that are not uuids
+                when invalid_text_representation then
+                    raise exception 'single-select questionnaire answer must be an option id' using errcode = 'OCG01';
             end;
 
+            -- Reject options that the question does not define
             if not exists (
                 select 1
                 from jsonb_array_elements(v_question->'options') option
@@ -123,16 +149,20 @@ begin
             ) then
                 raise exception 'questionnaire answer references an unknown option' using errcode = 'OCG01';
             end if;
+
+        -- Validate a multi-select answer value
         else
-            -- Validate multi-select answer value
+            -- Require an array value
             if coalesce(jsonb_typeof(v_answer_value), '') <> 'array' then
                 raise exception 'multi-select questionnaire answer must be an option id array' using errcode = 'OCG01';
             end if;
 
+            -- Reject empty selections for required questions
             if (v_question->>'required')::boolean and jsonb_array_length(v_answer_value) = 0 then
                 raise exception 'required questionnaire answer is empty' using errcode = 'OCG01';
             end if;
 
+            -- Collect the options the question defines
             v_option_ids := array(
                 select (option->>'id')::uuid
                 from jsonb_array_elements(v_question->'options') option
@@ -144,20 +174,26 @@ begin
                 select value
                 from jsonb_array_elements(v_answer_value) value
             loop
+                -- Require string option identifiers
                 if jsonb_typeof(v_selected_option) <> 'string' then
                     raise exception 'multi-select questionnaire answer must be an option id array' using errcode = 'OCG01';
                 end if;
 
+                -- Parse the selected option identifier
                 begin
                     v_selected_option_id := (v_selected_option #>> '{}')::uuid;
-                exception when invalid_text_representation then
-                    raise exception 'multi-select questionnaire answer must be an option id array' using errcode = 'OCG01';
+                exception
+                    -- Reject values that are not uuids
+                    when invalid_text_representation then
+                        raise exception 'multi-select questionnaire answer must be an option id array' using errcode = 'OCG01';
                 end;
 
+                -- Reject options that the question does not define
                 if not v_selected_option_id = any(v_option_ids) then
                     raise exception 'questionnaire answer references an unknown option' using errcode = 'OCG01';
                 end if;
 
+                -- Reject repeated options
                 if v_selected_option_id = any(v_selected_option_ids) then
                     raise exception 'multi-select questionnaire answers cannot repeat options' using errcode = 'OCG01';
                 end if;

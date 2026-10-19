@@ -32,13 +32,13 @@ test.describe("group dashboard event registration questions", () => {
       await editor.getByRole("button", { name: "Add question" }).click();
       const validationDialog = organizerGroupPage.getByRole("dialog", { name: "Add question" });
       await validationDialog.getByRole("button", { name: "Add question" }).click();
-      await expect(validationDialog.locator("#question-prompt-draft")).toBeFocused();
-      await expect(validationDialog.locator("#question-prompt-draft")).toHaveJSProperty(
+      await expect(validationDialog.getByLabel("Question", { exact: true })).toBeFocused();
+      await expect(validationDialog.getByLabel("Question", { exact: true })).toHaveJSProperty(
         "validationMessage",
         "Please fill out this field.",
       );
-      await validationDialog.locator("#question-prompt-draft").fill("Preferred learning format");
-      await validationDialog.locator("#question-kind-draft").selectOption("single-select");
+      await validationDialog.getByLabel("Question", { exact: true }).fill("Preferred learning format");
+      await validationDialog.getByLabel("Type", { exact: true }).selectOption("single-select");
       await validationDialog.getByRole("button", { name: "Add question" }).click();
       await expect(validationDialog.getByLabel("Option 1")).toBeFocused();
       await expect(validationDialog.getByLabel("Option 1")).toHaveJSProperty(
@@ -175,8 +175,8 @@ const addQuestion = async (page, question) => {
   await editor.getByRole("button", { name: "Add question" }).click();
   const dialog = page.getByRole("dialog", { name: "Add question" });
   await expect(dialog).toBeVisible();
-  await dialog.locator("#question-prompt-draft").fill(question.prompt);
-  await dialog.locator("#question-kind-draft").selectOption(question.kind);
+  await dialog.getByLabel("Question", { exact: true }).fill(question.prompt);
+  await dialog.getByLabel("Type", { exact: true }).selectOption(question.kind);
 
   if (question.required) {
     await dialog.getByLabel("Required").check({ force: true });

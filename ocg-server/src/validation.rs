@@ -11,7 +11,7 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{Datelike, NaiveDate};
+use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use garde::rules::email::parse_email;
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
@@ -54,6 +54,12 @@ pub const MAX_EVENT_COHOSTS: usize = 10;
 /// Maximum number of labels allowed per event.
 pub const MAX_EVENT_LABELS_PER_EVENT: usize = 200;
 
+/// Maximum number of surveys per event, matching the database limit.
+pub const MAX_EVENT_SURVEYS: usize = 10;
+
+/// Maximum number of questions per event survey, matching the database limit.
+pub const MAX_EVENT_SURVEY_QUESTIONS: usize = 30;
+
 /// Maximum number of elements in a collection (filters, tags, etc.).
 pub const MAX_ITEMS: usize = 25;
 
@@ -94,6 +100,10 @@ pub const MAX_LEN_LINK_LABEL: usize = 80;
 /// Maximum length for notification bodies.
 pub const MAX_LEN_NOTIFICATION_BODY: usize = 5000;
 
+/// Maximum length, in characters, for free-text questionnaire answers.
+/// Matches the limit enforced by the database questionnaire validator.
+pub const MAX_LEN_QUESTIONNAIRE_ANSWER: usize = MAX_LEN_DESCRIPTION;
+
 /// Maximum length for sort keys and directions.
 pub const MAX_LEN_SORT_KEY: usize = 32;
 
@@ -114,6 +124,10 @@ pub const MAX_RECURRING_ADDITIONAL_OCCURRENCES: i32 = 12;
 
 /// Maximum duration for session proposals (minutes).
 pub const MAX_SESSION_PROPOSAL_DURATION_MINUTES: i32 = 480;
+
+/// Maximum page size for the survey answers, survey responses and user
+/// surveys listings, matching the database caps.
+pub const MAX_SURVEY_PAGE_LIMIT: usize = 50;
 
 /// Maximum number of UTM values in each list a group defines, matching the
 /// database constraints.
@@ -483,6 +497,29 @@ fn validate_trimmed_non_empty_vec(value: &Option<Vec<String>>, max_len: usize) -
 
 // Custom deserializers.
 
+/// Deserializes an optional local date and time (`YYYY-MM-DDTHH:MM:SS`, or
+/// `YYYY-MM-DDTHH:MM` as browsers send `datetime-local` values without
+/// seconds), treating blank values as absent.
+pub fn blank_naive_datetime_as_none<'de, D>(
+    deserializer: D,
+) -> Result<Option<NaiveDateTime>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(deserializer)?;
+    value
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            value
+                .parse::<NaiveDateTime>()
+                .or_else(|_| NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M"))
+        })
+        .transpose()
+        .map_err(serde::de::Error::custom)
+}
+
 /// Deserializes an optional string, treating blank values as absent.
 pub fn blank_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
@@ -490,6 +527,29 @@ where
 {
     let value = Option::<String>::deserialize(deserializer)?;
     Ok(value.filter(|value| !value.trim().is_empty()))
+}
+
+/// Deserializes an optional Unix timestamp in seconds, treating blank values as
+/// absent.
+pub fn blank_timestamp_seconds_as_none<'de, D>(
+    deserializer: D,
+) -> Result<Option<DateTime<Utc>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(deserializer)?;
+    value
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            value
+                .parse::<i64>()
+                .ok()
+                .and_then(|seconds| DateTime::from_timestamp(seconds, 0))
+                .ok_or_else(|| serde::de::Error::custom("invalid unix timestamp"))
+        })
+        .transpose()
 }
 
 // Tests.
@@ -1045,9 +1105,66 @@ mod tests {
     // Deserializers.
 
     #[derive(Debug, Deserialize)]
+    struct OptionalDateTime {
+        #[serde(default, deserialize_with = "blank_naive_datetime_as_none")]
+        value: Option<NaiveDateTime>,
+    }
+
+    #[derive(Debug, Deserialize)]
     struct OptionalText {
         #[serde(default, deserialize_with = "blank_string_as_none")]
         value: Option<String>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct OptionalTimestamp {
+        #[serde(default, deserialize_with = "blank_timestamp_seconds_as_none")]
+        value: Option<DateTime<Utc>>,
+    }
+
+    #[test]
+    fn test_blank_naive_datetime_as_none_absent() {
+        let date: OptionalDateTime = serde_json::from_value(serde_json::json!({})).unwrap();
+
+        assert_eq!(date.value, None);
+    }
+
+    #[test]
+    fn test_blank_naive_datetime_as_none_blank() {
+        let date: OptionalDateTime =
+            serde_json::from_value(serde_json::json!({ "value": "  " })).unwrap();
+
+        assert_eq!(date.value, None);
+    }
+
+    #[test]
+    fn test_blank_naive_datetime_as_none_invalid() {
+        let result =
+            serde_json::from_value::<OptionalDateTime>(serde_json::json!({ "value": "tomorrow" }));
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_blank_naive_datetime_as_none_present() {
+        let date: OptionalDateTime =
+            serde_json::from_value(serde_json::json!({ "value": "2099-05-01T18:30:00" })).unwrap();
+
+        assert_eq!(
+            date.value,
+            NaiveDate::from_ymd_opt(2099, 5, 1).unwrap().and_hms_opt(18, 30, 0)
+        );
+    }
+
+    #[test]
+    fn test_blank_naive_datetime_as_none_present_without_seconds() {
+        let date: OptionalDateTime =
+            serde_json::from_value(serde_json::json!({ "value": "2099-05-01T18:30" })).unwrap();
+
+        assert_eq!(
+            date.value,
+            NaiveDate::from_ymd_opt(2099, 5, 1).unwrap().and_hms_opt(18, 30, 0)
+        );
     }
 
     #[test]
@@ -1071,5 +1188,33 @@ mod tests {
             serde_json::from_value(serde_json::json!({ "value": "  rust  " })).unwrap();
 
         assert_eq!(text.value.as_deref(), Some("  rust  "));
+    }
+
+    #[test]
+    fn test_blank_timestamp_seconds_as_none_absent() {
+        let timestamp: OptionalTimestamp = serde_json::from_value(serde_json::json!({})).unwrap();
+
+        assert_eq!(timestamp.value, None);
+    }
+
+    #[test]
+    fn test_blank_timestamp_seconds_as_none_blank() {
+        let timestamp: OptionalTimestamp = serde_urlencoded::from_str("value=").unwrap();
+
+        assert_eq!(timestamp.value, None);
+    }
+
+    #[test]
+    fn test_blank_timestamp_seconds_as_none_invalid() {
+        let result = serde_urlencoded::from_str::<OptionalTimestamp>("value=soon");
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_blank_timestamp_seconds_as_none_present() {
+        let timestamp: OptionalTimestamp = serde_urlencoded::from_str("value=4081420800").unwrap();
+
+        assert_eq!(timestamp.value, DateTime::from_timestamp(4_081_420_800, 0));
     }
 }

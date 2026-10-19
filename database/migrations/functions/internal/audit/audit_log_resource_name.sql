@@ -23,6 +23,11 @@ returns text as $$
             from event_category ec
             where ec.event_category_id = p_resource_id
         )
+        when 'event_survey' then (
+            select es.title
+            from event_survey es
+            where es.event_survey_id = p_resource_id
+        )
         when 'group' then (
             select g.name
             from "group" g

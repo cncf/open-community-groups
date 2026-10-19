@@ -53,6 +53,34 @@ describe("dashboard group event update template", () => {
     );
   });
 
+  it("passes registration wording and server limits to the questions editor", async () => {
+    // Load the event update template.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the editor receives the registration copy.
+    expect(template).to.include(
+      `empty-message='No registration questions yet. Click "Add question" to create one.'`,
+    );
+    expect(template).to.include(
+      'empty-disabled-message="No registration questions were added for this event."',
+    );
+    expect(template).to.include(
+      'editing-warning="Questionnaire questions cannot be edited after an attendee has submitted answers."',
+    );
+    expect(template).to.include(
+      'required-help="Required answers are collected with a ticket request, RSVP, checkout, or offer claim. Optional questions can be skipped."',
+    );
+
+    // Verify the editor limits come from the server validation constants.
+    expect(template).to.include(
+      'prompt-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"',
+    );
+    expect(template).to.include(
+      'option-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"',
+    );
+    expect(template).not.to.include("max-questions=");
+  });
+
   it("passes past-event state to online event and session details", async () => {
     // Load the event update template before checking the component contract.
     const template = normalizeWhitespace(await loadTemplate());
@@ -179,10 +207,9 @@ describe("dashboard group event update template", () => {
     expect(template).to.include("{% let pending_cohosts_count = self.pending_cohosts_count() -%}");
     expect(template).to.include('hx-include="form[data-event-form]"');
 
-    // Verify the co-hosts tab controls.
-    expect(template).to.include('event_form::tab_option(section = "cohosts", label = "Co-hosts")');
+    // Verify the tab controls, including co-hosts, come from the shared catalog.
     expect(template).to.include(
-      'event_form::tab_button(section = "cohosts", icon = "cohosts", label = "Co-hosts")',
+      'event_form::tab_nav(groups = self.form_tab_groups(), id_prefix = "update-event-section")',
     );
 
     // Verify pending co-hosts block publishing before the role check.
@@ -204,56 +231,32 @@ describe("dashboard group event update template", () => {
     expect(template.match(/<form id="[^"]+" data-event-form/gu)).to.have.length(9);
   });
 
-  it("lazy-loads event review tabs from the desktop tab buttons", async () => {
-    // Load the event update template before checking lazy tab contracts.
+  it("renders the grouped tab navigation from the shared catalog", async () => {
+    // Load the event update template before checking the tab navigation.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Assert review tabs fetch their table content only when selected.
-    expect(template).to.include('aria-label="Event form section"');
+    // Assert the catalog renders the compact select and the sidebar tab list.
     expect(template).to.not.include(
       '<label for="update-event-section-select" class="form-label mb-2 lg:hidden">Section</label>',
     );
-    expect(template).to.include('id="update-event-section-select"');
     expect(template).to.include(
-      'class="select-primary w-full sm:w-sm xl:hidden"',
+      '<aside class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8"> {{ event_form::tab_nav(groups = self.form_tab_groups(), id_prefix = "update-event-section") -}} </aside>',
     );
-    expect(template).to.include(
-      'class="hidden flex-col gap-1 font-medium xl:flex"',
-    );
-    expect(template).to.include(
-      'event_form::tab_option(section = "attendees", label = "Attendees")',
-    );
-    expect(template).to.include(
-      '{% if show_invitation_requests_tab -%} {{ event_form::tab_option(section = "invitation-requests", label = "Requests")',
-    );
-    expect(template).to.include(
-      '{% if show_waitlist_tab -%} {{ event_form::tab_option(section = "waitlist", label = "Waitlist")',
-    );
-    expect(template).to.include(
-      'hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content"',
-    );
+    expect(template).to.not.include("event_form::tab_option(");
+    expect(template).to.not.include("event_form::tab_button(");
+
+    // Assert the lazy-loaded review tabs keep their content targets.
     expect(template).to.include(
       '<div id="attendees-content" data-group-check-in-root>',
     );
-    expect(template).to.include(
-      '{% if show_invitation_requests_tab -%} {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests{% if !event.attendee_approval_required %}?status=all{% endif %}" hx-trigger="click once" hx-target="#invitation-requests-content"',
-    );
-    expect(template).to.include(
-      '{% if show_waitlist_tab -%} {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content"',
-    );
+    expect(template).to.include('id="invitation-requests-content"');
+    expect(template).to.include('id="waitlist-content"');
+    expect(template).to.include('id="submissions-content"');
   });
 
-  it("adds the analytics tab last with a loader outside the read-only form", async () => {
+  it("renders the analytics loader outside the read-only form", async () => {
     // Load the event update template before checking the analytics tab contract.
     const template = normalizeWhitespace(await loadTemplate());
-
-    // Assert the analytics tab is the last option and button, without HTMX attributes.
-    expect(template).to.include(
-      '{% if show_waitlist_tab -%} {{ event_form::tab_option(section = "waitlist", label = "Waitlist") -}} {% endif -%} {{ event_form::tab_option(section = "analytics", label = "Analytics") -}} </select>',
-    );
-    expect(template).to.include(
-      '{% endif -%} {{ event_form::tab_button(section = "analytics", icon = "charts", label = "Analytics") -}} </ul>',
-    );
 
     // Assert the loader lives after the waitlist tab, outside the inert form wrapper.
     const inertFormIndex = template.indexOf('<div class="inert-form"');
@@ -274,6 +277,28 @@ describe("dashboard group event update template", () => {
       '<div id="analytics-error" class="hidden mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert"',
     );
     expect(template).to.include("data-analytics-retry>Retry</button>");
+  });
+
+  it("renders the surveys loader outside the read-only form for active events", async () => {
+    // Load the event update template before checking the surveys tab contract.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the surveys tab sits after the waitlist tab, outside the inert form wrapper.
+    const formEndIndex = template.indexOf("{# End Hosts & Speakers Tab -#} </div> </div>");
+    const surveysIndex = template.indexOf('<div data-content="surveys"');
+    expect(surveysIndex).to.be.greaterThan(formEndIndex);
+    expect(surveysIndex).to.be.greaterThan(template.indexOf("{# End Waitlist Tab -#}"));
+    expect(surveysIndex).to.be.lessThan(template.indexOf('<div data-content="analytics"'));
+
+    // Assert the tab is hidden for canceled events and refreshed after survey mutations.
+    expect(template).to.include(
+      '{% if !event.canceled -%} {# Surveys Tab -#} <div data-content="surveys" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">',
+    );
+    expect(template).to.include(
+      '<div id="surveys-refresh" hx-get="/dashboard/group/events/{{ event.event_id }}/surveys" hx-trigger="refresh-event-surveys from:body" hx-target="#surveys-content" hx-swap="innerHTML" hx-indicator="#dashboard-spinner"></div>',
+    );
+    expect(template).to.include('<div id="surveys-content" data-event-surveys-root>');
+    expect(template).to.include('<div id="surveys-loading" class="flex items-center justify-center py-12">');
   });
 
   it("keeps review tabs and bottom actions in the main grid column", async () => {
@@ -659,19 +684,9 @@ describe("dashboard group event update template", () => {
     expect(contributorForm).not.to.include("border-stone-900/10");
   });
 
-  it("places the labels tab after sessions and moves the labels editor out of CFS", async () => {
-    // Load the event template before checking the labels tab.
+  it("keeps the labels editor in its own form outside CFS", async () => {
+    // Load the event template before checking the labels form.
     const template = normalizeWhitespace(await loadTemplate());
-
-    // Assert the tab order is Sessions, Labels, Questions, CFS.
-    const tabIndex = (section) => template.indexOf(`event_form::tab_button(section = "${section}"`);
-    const optionIndex = (section) => template.indexOf(`event_form::tab_option(section = "${section}"`);
-    expect(tabIndex("labels")).to.be.greaterThan(tabIndex("sessions"));
-    expect(tabIndex("questions")).to.be.greaterThan(tabIndex("labels"));
-    expect(tabIndex("cfs")).to.be.greaterThan(tabIndex("questions"));
-    expect(optionIndex("labels")).to.be.greaterThan(optionIndex("sessions"));
-    expect(optionIndex("questions")).to.be.greaterThan(optionIndex("labels"));
-    expect(template).to.include('icon = "tag", label = "Labels"');
 
     // Assert the labels editor lives in its own marked form, not in the CFS form.
     const labelsFormIndex = template.indexOf('<form id="labels-form" data-event-form>');

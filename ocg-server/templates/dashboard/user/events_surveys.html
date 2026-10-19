@@ -1,0 +1,4 @@
+{% import "macros/surveys.html" as surveys_macros -%}
+{# User event surveys page -#}
+{{ surveys_macros::user_survey_items(surveys = surveys.surveys, next_offset = self.surveys_next_offset(), remaining = self.surveys_remaining()) -}}
+{# End user event surveys page -#}

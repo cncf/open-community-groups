@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(129);
+select plan(131);
 
 -- ============================================================================
 -- TESTS
@@ -509,6 +509,21 @@ select indexes_are('event_sponsor', array[
     'event_sponsor_pkey',
     'event_sponsor_event_id_idx',
     'event_sponsor_group_sponsor_id_idx'
+]);
+
+-- Test: event_survey indexes should match expected
+select indexes_are('event_survey', array[
+    'event_survey_pkey',
+    'event_survey_created_by_idx',
+    'event_survey_event_id_idx',
+    'event_survey_open_notification_due_idx'
+]);
+
+-- Test: event_survey_response indexes should match expected
+select indexes_are('event_survey_response', array[
+    'event_survey_response_pkey',
+    'event_survey_response_survey_created_idx',
+    'event_survey_response_user_id_idx'
 ]);
 
 -- Test: event_views indexes should match expected

@@ -114,13 +114,9 @@ describe("dashboard group event add template", () => {
     // Verify the save action includes every marked editor form.
     expect(template).to.include('hx-include="form[data-event-form]"');
 
-    // Verify the co-hosts tab controls follow the details tab.
-    expect(template).to.include('event_form::tab_option(section = "cohosts", label = "Co-hosts")');
+    // Verify the tab controls, including co-hosts, come from the shared catalog.
     expect(template).to.include(
-      'event_form::tab_button(section = "cohosts", icon = "cohosts", label = "Co-hosts")',
-    );
-    expect(template.indexOf('section = "cohosts"')).to.be.greaterThan(
-      template.indexOf('section = "details"'),
+      'event_form::tab_nav(groups = self.form_tab_groups(), id_prefix = "add-event-section")',
     );
 
     // Verify the co-hosts form, its guidance, and the empty selector.
@@ -132,6 +128,34 @@ describe("dashboard group event add template", () => {
       '<cohosts-selector communities="{{ communities|json }}" selected-cohosts="[]" revision="0" current-group-id="{{ group_id }}"',
     );
     expect(template.match(/<form id="[^"]+" data-event-form/gu)).to.have.length(9);
+  });
+
+  it("passes registration wording and server limits to the questions editor", async () => {
+    // Load the event add template.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the editor receives the registration copy.
+    expect(template).to.include(
+      `empty-message='No registration questions yet. Click "Add question" to create one.'`,
+    );
+    expect(template).to.include(
+      'empty-disabled-message="No registration questions were added for this event."',
+    );
+    expect(template).to.include(
+      'editing-warning="Questionnaire questions cannot be edited after an attendee has submitted answers."',
+    );
+    expect(template).to.include(
+      'required-help="Required answers are collected with a ticket request, RSVP, checkout, or offer claim. Optional questions can be skipped."',
+    );
+
+    // Verify the editor limits come from the server validation constants.
+    expect(template).to.include(
+      'prompt-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"',
+    );
+    expect(template).to.include(
+      'option-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"',
+    );
+    expect(template).not.to.include("max-questions=");
   });
 
   it("initializes the General Admission ticket with 500 seats", async () => {
@@ -372,12 +396,8 @@ describe("dashboard group event add template", () => {
     expect(template).to.not.include(
       '<label for="add-event-section-select" class="form-label mb-2 lg:hidden">Section</label>',
     );
-    expect(template).to.include('id="add-event-section-select"');
     expect(template).to.include(
-      'class="select-primary w-full sm:w-sm xl:hidden"',
-    );
-    expect(template).to.include(
-      'class="hidden flex-col gap-1 font-medium xl:flex"',
+      '<aside class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8"> {{ event_form::tab_nav(groups = self.form_tab_groups(), id_prefix = "add-event-section") -}} </aside>',
     );
     expect(template).to.include(
       'class="col-span-full row-start-2 grid h-full content-start min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[12rem_minmax(0,1fr)] xl:content-stretch xl:gap-x-8 xl:gap-y-0"',
@@ -446,19 +466,13 @@ describe("dashboard group event add template", () => {
     );
   });
 
-  it("places the labels tab after sessions and moves the labels editor out of CFS", async () => {
-    // Load the event template before checking the labels tab.
+  it("renders the tab list from the catalog and keeps the labels editor out of CFS", async () => {
+    // Load the event template before checking the tab list and labels form.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Assert the tab order is Sessions, Labels, Questions, CFS.
-    const tabIndex = (section) => template.indexOf(`event_form::tab_button(section = "${section}"`);
-    const optionIndex = (section) => template.indexOf(`event_form::tab_option(section = "${section}"`);
-    expect(tabIndex("labels")).to.be.greaterThan(tabIndex("sessions"));
-    expect(tabIndex("questions")).to.be.greaterThan(tabIndex("labels"));
-    expect(tabIndex("cfs")).to.be.greaterThan(tabIndex("questions"));
-    expect(optionIndex("labels")).to.be.greaterThan(optionIndex("sessions"));
-    expect(optionIndex("questions")).to.be.greaterThan(optionIndex("labels"));
-    expect(template).to.include('icon = "tag", label = "Labels"');
+    // Assert no hand-written tab controls remain beside the catalog navigation.
+    expect(template).to.not.include("event_form::tab_option(");
+    expect(template).to.not.include("event_form::tab_button(");
 
     // Assert the labels editor lives in its own marked form, not in the CFS form.
     const labelsFormIndex = template.indexOf('<form id="labels-form" data-event-form>');

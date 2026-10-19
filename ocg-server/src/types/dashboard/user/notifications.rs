@@ -39,6 +39,8 @@ pub(crate) enum NotificationCategory {
     CohostingUpdates,
     /// Reminders before events the user attends or speaks at.
     EventReminders,
+    /// Post-event surveys opened for events the user attended.
+    EventSurveys,
     /// Messages organizers send to group members.
     GroupAnnouncements,
     /// Messages written to groups the user helps manage.

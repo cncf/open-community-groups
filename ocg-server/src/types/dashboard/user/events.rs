@@ -1,8 +1,11 @@
 //! User dashboard event types.
 
+use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use uuid::Uuid;
 
 use crate::{
     types::{
@@ -13,9 +16,12 @@ use crate::{
         },
         pagination::{Pagination, ToRawQuery},
         payments::{EventRefundRequestStatus, ExternalPaymentInfo},
-        questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
+        questionnaire::{
+            QuestionnaireAnswers, QuestionnaireQuestion,
+            deserialize_required_questionnaire_answers, validate_questionnaire_answers,
+        },
     },
-    validation::MAX_PAGINATION_LIMIT,
+    validation::{MAX_PAGINATION_LIMIT, MAX_SURVEY_PAGE_LIMIT},
 };
 
 /// Summary of one user event participation.
@@ -186,6 +192,94 @@ impl UserEventRole {
     }
 }
 
+/// Open event survey a user answers from the dashboard.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct UserEventSurvey {
+    /// Whether respondent identities are hidden from the organizers.
+    pub anonymous: bool,
+    /// Event the survey belongs to.
+    pub event: EventSummary,
+    /// Survey identifier.
+    pub event_survey_id: Uuid,
+    /// Questions in definition order.
+    pub questions: Vec<QuestionnaireQuestion>,
+    /// Revision the answers are given to.
+    pub revision: i64,
+    /// Survey title.
+    pub title: String,
+
+    /// Scheduled closing time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub closes_at: Option<DateTime<Utc>>,
+    /// Plain text introduction.
+    pub description: Option<String>,
+    /// Response the user already submitted.
+    pub response: Option<UserEventSurveyResponse>,
+}
+
+/// Open survey a user can answer, listed in the My Events surveys panel.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct UserEventSurveyItem {
+    /// Whether the user already answered the survey.
+    pub answered: bool,
+    /// Event name.
+    pub event_name: String,
+    /// Survey identifier.
+    pub event_survey_id: Uuid,
+    /// Name of the group hosting the event.
+    pub group_name: String,
+    /// Event timezone.
+    pub timezone: Tz,
+    /// Survey title.
+    pub title: String,
+
+    /// Scheduled closing time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub closes_at: Option<DateTime<Utc>>,
+}
+
+/// Response a user submitted to an event survey.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct UserEventSurveyResponse {
+    /// Submitted answers.
+    pub answers: QuestionnaireAnswers,
+    /// First submission time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
+
+    /// Latest edit time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+/// Filter parameters for the surveys panel pagination.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct UserEventSurveysFilters {
+    /// Number of results per page.
+    #[serde(default = "dashboard::default_user_event_surveys_limit")]
+    #[garde(range(min = 1, max = MAX_SURVEY_PAGE_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[serde(default = "dashboard::default_offset")]
+    #[garde(skip)]
+    pub offset: Option<usize>,
+}
+
+crate::impl_pagination_and_raw_query!(UserEventSurveysFilters, limit, offset);
+
+/// Paginated surveys panel data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct UserEventSurveysOutput {
+    /// Open surveys the user can answer, unanswered first.
+    pub surveys: Vec<UserEventSurveyItem>,
+    /// Total number of surveys before pagination.
+    pub total: usize,
+}
+
 /// Filter parameters for events pagination.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
@@ -211,20 +305,42 @@ pub(crate) struct UserEventsOutput {
     pub total: usize,
 }
 
+// Form types.
+
+/// Answers to an event survey submitted by a user.
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct EventSurveyAnswersForm {
+    /// Answers decoded from the form field JSON.
+    #[serde(deserialize_with = "deserialize_required_questionnaire_answers")]
+    #[garde(custom(validate_questionnaire_answers))]
+    pub answers: QuestionnaireAnswers,
+    /// Survey revision the answers were given to.
+    #[garde(range(min = 1))]
+    pub revision: i64,
+}
+
 #[cfg(test)]
 mod tests {
-    use chrono::{Duration, Utc};
+    use chrono::{Duration, TimeZone, Utc};
+    use garde::Validate;
+    use serde_json::json;
     use uuid::Uuid;
 
     use crate::{
         types::tests::sample_event_summary,
         types::{
+            dashboard::USER_EVENT_SURVEYS_PAGINATION_LIMIT,
             event::EventEnrollmentStatus,
-            questionnaire::{QuestionnaireQuestion, QuestionnaireQuestionKind},
+            questionnaire::{
+                QuestionnaireAnswerValue, QuestionnaireQuestion, QuestionnaireQuestionKind,
+            },
         },
+        validation::MAX_SURVEY_PAGE_LIMIT,
     };
 
-    use super::{UserEvent, UserEventRole};
+    use super::{
+        EventSurveyAnswersForm, UserEvent, UserEventRole, UserEventSurvey, UserEventSurveysFilters,
+    };
 
     #[test]
     fn can_cancel_attendance_allows_attendee_status() {
@@ -294,6 +410,65 @@ mod tests {
     }
 
     #[test]
+    fn event_survey_answers_form_deserializes_answers_and_revision() {
+        // Deserialize a form with JSON-encoded answers
+        let form: EventSurveyAnswersForm = serde_urlencoded::from_str(&format!(
+            "answers={}&revision=4",
+            encode_answers(&json!({
+                "answers": [{
+                    "question_id": "00000000-0000-0000-0000-000000000001",
+                    "value": "More hands-on time"
+                }]
+            }))
+        ))
+        .unwrap();
+
+        // Check the answers and the revision were decoded
+        assert_eq!(form.answers.answers.len(), 1);
+        assert_eq!(form.answers.answers[0].question_id, Uuid::from_u128(1));
+        assert!(matches!(
+            &form.answers.answers[0].value,
+            QuestionnaireAnswerValue::One(value) if value == "More hands-on time"
+        ));
+        assert_eq!(form.revision, 4);
+        assert!(form.validate().is_ok());
+    }
+
+    #[test]
+    fn event_survey_answers_form_rejects_blank_answers() {
+        let result = serde_urlencoded::from_str::<EventSurveyAnswersForm>("answers=&revision=1");
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn event_survey_answers_form_rejects_repeated_question() {
+        let form: EventSurveyAnswersForm = serde_urlencoded::from_str(&format!(
+            "answers={}&revision=1",
+            encode_answers(&json!({
+                "answers": [
+                    {"question_id": "00000000-0000-0000-0000-000000000001", "value": "First"},
+                    {"question_id": "00000000-0000-0000-0000-000000000001", "value": "Second"}
+                ]
+            }))
+        ))
+        .unwrap();
+
+        assert!(form.validate().is_err());
+    }
+
+    #[test]
+    fn event_survey_answers_form_rejects_zero_revision() {
+        let form: EventSurveyAnswersForm = serde_urlencoded::from_str(&format!(
+            "answers={}&revision=0",
+            encode_answers(&json!({ "answers": [] }))
+        ))
+        .unwrap();
+
+        assert!(form.validate().is_err());
+    }
+
+    #[test]
     fn has_active_offer_requires_offer_identifier_and_role() {
         let mut user_event = sample_user_event();
         user_event.admission_offer_id = Some(Uuid::from_u128(1));
@@ -305,7 +480,105 @@ mod tests {
         assert!(user_event.has_active_offer());
     }
 
+    #[test]
+    fn user_event_survey_deserializes_database_payload() {
+        // Deserialize a survey in the shape returned by get_user_event_survey
+        let event =
+            serde_json::to_value(sample_event_summary(Uuid::from_u128(2), Uuid::from_u128(3)))
+                .unwrap();
+        let survey: UserEventSurvey = serde_json::from_value(json!({
+            "anonymous": false,
+            "event": event,
+            "event_survey_id": "00000000-0000-0000-0000-000000000001",
+            "questions": [{
+                "id": "00000000-0000-0000-0000-000000000004",
+                "kind": "free-text",
+                "prompt": "What should we improve?",
+                "required": true
+            }],
+            "revision": 4,
+            "title": "Session feedback",
+
+            "closes_at": 4_102_444_800_i64,
+            "description": null,
+            "response": {
+                "answers": {"answers": [{
+                    "question_id": "00000000-0000-0000-0000-000000000004",
+                    "value": "More hands-on time"
+                }]},
+                "created_at": 4_099_770_000_i64,
+                "updated_at": null
+            }
+        }))
+        .unwrap();
+
+        // Check the survey fields
+        assert!(!survey.anonymous);
+        assert_eq!(survey.event.event_id, Uuid::from_u128(2));
+        assert_eq!(survey.event_survey_id, Uuid::from_u128(1));
+        assert_eq!(survey.questions.len(), 1);
+        assert_eq!(survey.revision, 4);
+        assert_eq!(survey.title, "Session feedback");
+        assert_eq!(
+            survey.closes_at,
+            Utc.with_ymd_and_hms(2100, 1, 1, 0, 0, 0).single()
+        );
+        assert!(survey.description.is_none());
+
+        // Check the stored response without an edit time
+        let response = survey.response.unwrap();
+        assert_eq!(response.answers.answers.len(), 1);
+        assert_eq!(
+            response.created_at,
+            Utc.with_ymd_and_hms(2099, 12, 1, 1, 0, 0).unwrap()
+        );
+        assert!(response.updated_at.is_none());
+    }
+
+    #[test]
+    fn user_event_surveys_filters_accept_page_limit() {
+        let filters = UserEventSurveysFilters {
+            limit: Some(MAX_SURVEY_PAGE_LIMIT),
+            offset: Some(10),
+        };
+
+        assert!(filters.validate().is_ok());
+    }
+
+    #[test]
+    fn user_event_surveys_filters_apply_default_bounds() {
+        let filters: UserEventSurveysFilters = serde_qs::from_str("").unwrap();
+
+        assert_eq!(filters.limit, Some(USER_EVENT_SURVEYS_PAGINATION_LIMIT));
+        assert_eq!(filters.offset, Some(0));
+    }
+
+    #[test]
+    fn user_event_surveys_filters_reject_empty_pages() {
+        let filters: UserEventSurveysFilters = serde_qs::from_str("limit=0").unwrap();
+
+        assert!(filters.validate().is_err());
+    }
+
+    #[test]
+    fn user_event_surveys_filters_reject_limit_above_page_limit() {
+        let filters = UserEventSurveysFilters {
+            limit: Some(MAX_SURVEY_PAGE_LIMIT + 1),
+            offset: None,
+        };
+
+        assert!(filters.validate().is_err());
+    }
+
     // Helpers.
+
+    /// Encodes an answers payload as a form field value.
+    fn encode_answers(answers: &serde_json::Value) -> String {
+        serde_urlencoded::to_string([("v", answers.to_string())])
+            .unwrap()
+            .trim_start_matches("v=")
+            .to_string()
+    }
 
     /// Sample free-text registration question.
     fn sample_question() -> QuestionnaireQuestion {

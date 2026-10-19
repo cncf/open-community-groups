@@ -73,7 +73,8 @@ Rows are ordered by group name.
 ## My Events: Upcoming Participation
 
 `My Events` is your personal queue of upcoming events where you have an active role, an active
-direct checkout hold, or an event offer. The top-right user menu also links directly to this
+direct checkout hold, or an event offer, plus the surveys you can answer about events you
+attended. The top-right user menu also links directly to this
 section, under `User dashboard`, on desktop layouts.
 
 Each row includes:
@@ -114,6 +115,37 @@ Expired checkout holds disappear from the list unless you have another active ro
 hold expiration is reflected when the dashboard content next loads or refreshes.
 
 ![User profile area](../screenshots/dashboard-user-my-events.png)
+
+### Surveys to Answer
+
+After an event ends, its organizers can ask attendees for feedback with a survey. When a survey
+you can answer is open, a `Surveys to answer` panel appears above the events list. It lists every
+open survey of a published event you attended, as long as you are in the survey audience
+(confirmed attendees, or only attendees who checked in). Surveys you haven't answered come first,
+then surveys that close sooner. The panel shows 10 surveys at a time, and `Show more surveys`
+loads the next ones and says how many are left.
+
+Each survey shows its title, the event and group, its closing date, and whether you already
+answered it. Use `Answer`, or `Edit answers` once you have answered, to open the survey in a
+window over My Events. The panel is hidden when no survey is waiting for you.
+
+The email OCG sends when a survey opens links to My Events and opens that survey directly; it asks
+you to log in first when needed. If the survey has closed, or you are not in its audience, My
+Events shows a warning instead.
+
+The survey window shows the survey title, the event and group, the closing date, the organizers'
+introduction, and a privacy notice:
+
+- **Anonymous surveys**: the organizers see your answers without your name, company, or title.
+  Your answers are linked to your account only so you can edit them, and anything you write in a
+  free-text answer can still reveal who you are.
+- **Identified surveys**: the organizers see your name, company, and title next to your answers.
+
+Answer the questions and select `Submit answers`. Questions marked with an asterisk are required.
+You can come back and change your answers with `Save changes` until the survey closes. Each
+person has one response per survey. Once a survey closes, it leaves the panel and no longer
+accepts answers. If the organizers changed the survey while you were answering it, saving fails
+with a message asking you to review it, and the answers you entered stay in the window.
 
 ## Check-In: Attendee Credentials
 
@@ -181,6 +213,10 @@ The categories are grouped into sections, and each section only appears when it 
     organize.
   - `Event reminders`: a reminder about 24 hours before an event you're attending or speaking
     at, when the organizers turned reminders on.
+  - `Event surveys`: the organizers of an event you attended open a feedback survey after it
+    ends. Each survey sends one email when it opens. If you had turned off `Event reminders`
+    before this category existed, it starts turned off too; after that, the two categories are
+    independent.
   - `Messages from event organizers`: updates organizers send to attendees of events you're
     registered for.
   - `Badges`: a group awards you a badge or revokes one. This only controls the email; awards and
@@ -215,9 +251,10 @@ Select `things that need your attention are always sent` in the page description
 ### Muted Groups
 
 Muting a group stops its optional emails in the `Events and groups` categories: new events, group
-announcements, event reminders, messages from event organizers, and badges. New event and event
-series announcements also leave out events co-hosted by a muted group. Event reminders and
-messages from event organizers only follow a mute of the group that organizes the event. Muting
+announcements, event reminders, event surveys, messages from event organizers, and badges. New
+event and event series announcements also leave out events co-hosted by a muted group. Event
+reminders, event surveys, and messages from event organizers only follow a mute of the group that
+organizes the event. Muting
 only changes emails; your membership, registrations, badges, and dashboard stay the same.
 Always-sent emails, and group or community organizing emails, still arrive.
 

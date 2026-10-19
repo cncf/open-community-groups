@@ -61,99 +61,25 @@ window_members as (
         on gm.created_at >= mw.starts_at
         and gm.created_at < mw.ends_at
     where gm.group_id = p_event.group_id
-),
-questions as (
-    select
-        question.position,
-        question.definition
-    from jsonb_array_elements(p_event.registration_questions)
-        with ordinality as question(definition, position)
-    where question.definition->>'kind' in ('multi-select', 'single-select')
-),
-selections as (
-    select
-        case
-            when pg_input_is_valid(selected.value, 'uuid') then selected.value::uuid
-        end as option_id,
-        (answer.value->>'question_id')::uuid as question_id,
-        a.user_id
-    from attendees a
-    cross join lateral jsonb_array_elements(
-        case
-            when jsonb_typeof(a.registration_answers->'answers') = 'array'
-                then a.registration_answers->'answers'
-            else '[]'::jsonb
-        end
-    ) as answer(value)
-    cross join lateral (
-        select answer.value->>'value' as value
-        where jsonb_typeof(answer.value->'value') = 'string'
-
-        union all
-
-        select option_value #>> '{}' as value
-        from jsonb_array_elements(
-            case
-                when jsonb_typeof(answer.value->'value') = 'array' then answer.value->'value'
-                else '[]'::jsonb
-            end
-        ) as option_value
-    ) selected
-),
-option_selections as (
-    select
-        (question_option.definition->>'id')::uuid as option_id,
-        q.position,
-        s.user_id
-    from questions q
-    cross join lateral jsonb_array_elements(q.definition->'options')
-        as question_option(definition)
-    join selections s
-        on s.question_id = (q.definition->>'id')::uuid
-        and s.option_id = (question_option.definition->>'id')::uuid
-),
-question_breakdowns as (
-    select
-        json_build_object(
-            'kind', q.definition->>'kind',
-            'options', coalesce((
-                select json_agg(
-                    json_build_object(
-                        'count', (
-                            select count(*)
-                            from option_selections os
-                            where os.position = q.position
-                            and os.option_id = (question_option.definition->>'id')::uuid
-                        ),
-                        'label', question_option.definition->>'label',
-                        'option_id', (question_option.definition->>'id')::uuid
-                    )
-                    order by question_option.position
-                )
-                from jsonb_array_elements(q.definition->'options')
-                    with ordinality as question_option(definition, position)
-            ), '[]'::json),
-            'prompt', q.definition->>'prompt',
-            'question_id', (q.definition->>'id')::uuid,
-            'respondents', (
-                select count(distinct os.user_id)
-                from option_selections os
-                where os.position = q.position
-            ),
-            'selections', (
-                select count(*)
-                from option_selections os
-                where os.position = q.position
-            )
-        ) as breakdown,
-        q.position
-    from questions q
 )
 select json_build_object(
-    'questions', coalesce((
-        select json_agg(qb.breakdown order by qb.position)
-        from question_breakdowns qb
-    ), '[]'::json),
+    'questions', questionnaire_option_breakdowns(
+        p_event.registration_questions,
+        (
+            select coalesce(
+                jsonb_agg(
+                    jsonb_build_object(
+                        'o', s.option_id,
+                        'q', s.question_id,
+                        'r', a.user_id
+                    )
+                ),
+                '[]'::jsonb
+            )
+            from attendees a
+            cross join lateral questionnaire_answer_selections(a.registration_answers) s
+        )
+    ),
     'window_end_capped', coalesce(rw.ends_at < rw.closes_at, false),
     'window_end_inferred', rw.closes_at is null,
     'window_start_inferred', p_event.registration_starts_at is null,

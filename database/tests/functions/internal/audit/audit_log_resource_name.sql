@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(14);
 \set communityID '1b010000-0000-0000-0000-000000000002'
 \set eventCategoryID '1b010000-0000-0000-0000-000000000003'
 \set eventID '1b010000-0000-0000-0000-000000000004'
+\set eventSurveyID '1b010000-0000-0000-0000-000000000014'
 \set groupCategoryID '1b010000-0000-0000-0000-000000000005'
 \set groupID '1b010000-0000-0000-0000-000000000006'
 \set groupSponsorID '1b010000-0000-0000-0000-000000000007'
@@ -82,6 +83,10 @@ values (:'inboxConversationID', :'groupID', :'namedUserID');
 -- CFS submission resolved through its session proposal title
 insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
 values (:'cfsSubmissionID', :'eventID', :'sessionProposalID', 'not-reviewed');
+
+-- Event survey whose title is resolved
+insert into event_survey (event_survey_id, event_id, title)
+values (:'eventSurveyID', :'eventID', 'Resource Name Survey');
 
 -- ============================================================================
 -- TESTS
@@ -169,6 +174,13 @@ select is(
     audit_log_resource_name('event_category', :'eventCategoryID'::uuid),
     'Resource Name Event Category',
     'Should resolve an event category to its name'
+);
+
+-- Should resolve an event survey to its title
+select is(
+    audit_log_resource_name('event_survey', :'eventSurveyID'::uuid),
+    'Resource Name Survey',
+    'Should resolve an event survey to its title'
 );
 
 -- Should return null for a missing resource row

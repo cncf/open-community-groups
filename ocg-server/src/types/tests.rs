@@ -13,25 +13,31 @@ use crate::types::{
             EventAdmissionOfferCount, EventAdmissionOfferOutcome, EventAnalytics,
             EventAnalyticsContext, EventAnalyticsMarker, EventAnalyticsMarkerKind,
             EventAnalyticsRange, EventAudienceStats, EventCheckInStats, EventDiscountCodeUsage,
-            EventEnrollmentStats, EventInvitationRequestCounts, EventQuestionBreakdown,
-            EventQuestionOptionCount, EventRegistrationPathCounts, EventRegistrationsDailySeries,
+            EventEnrollmentStats, EventInvitationRequestCounts, EventRegistrationPathCounts,
+            EventRegistrationsDailySeries, EventSurveyResponseStats, EventSurveysStats,
             EventTicketTypeUsage, EventTicketsStats, EventTrafficStats, EventUtmCombination,
             EventUtmDimension, EventUtmStats, EventUtmValue, EventViewsDailySeries,
             RegistrationSeriesKind, ViewsSeriesKind,
         },
         events::EventInput,
+        surveys::{EventSurveyFull, EventSurveySummary},
     },
+    dashboard::user::events::{UserEventSurvey, UserEventSurveyItem},
     event::{
         EventAdmissionOfferSource, EventCohostGroup, EventFull, EventKind, EventMinimal,
         EventSummary,
     },
+    event_survey::{EventSurveyAudience, EventSurveyState},
     group::{GroupCategory, GroupMinimal, GroupRegion, GroupSummary},
     inbox::{
         InboxConversation, InboxConversationStatus, InboxConversationSummary, InboxEvent,
         InboxMessage, InboxMessageKind,
     },
     payments::{GroupPaymentRecipient, PaymentProvider},
-    questionnaire::QuestionnaireQuestionKind,
+    questionnaire::{
+        QuestionnaireOption, QuestionnaireOptionCount, QuestionnaireQuestion,
+        QuestionnaireQuestionBreakdown, QuestionnaireQuestionKind,
+    },
     site::{SiteSettings, Theme},
     user::{User, UserSearchResult},
 };
@@ -64,13 +70,14 @@ pub(crate) fn sample_event_analytics() -> EventAnalytics {
 
     EventAnalytics {
         audience: EventAudienceStats {
-            questions: vec![EventQuestionBreakdown {
+            questions: vec![QuestionnaireQuestionBreakdown {
                 kind: QuestionnaireQuestionKind::SingleSelect,
-                options: vec![EventQuestionOptionCount {
+                options: vec![QuestionnaireOptionCount {
                     count: 3,
                     label: "Developer".to_string(),
                     option_id: Uuid::from_u128(11),
                 }],
+                position: 1,
                 prompt: "Role".to_string(),
                 question_id: Uuid::from_u128(10),
                 respondents: 3,
@@ -133,6 +140,18 @@ pub(crate) fn sample_event_analytics() -> EventAnalytics {
             ts: Utc.with_ymd_and_hms(2024, 3, 8, 10, 0, 0).unwrap(),
         }],
         markers_announcements_omitted: 0,
+        surveys: EventSurveysStats {
+            surveys: vec![EventSurveyResponseStats {
+                eligible_count: 4,
+                eligible_respondents_count: 3,
+                event_survey_id: Uuid::from_u128(30),
+                responses_count: 3,
+                state: EventSurveyState::Closed,
+                title: "Feedback".to_string(),
+            }],
+            total_eligible_count: 4,
+            total_eligible_respondents_count: 3,
+        },
         traffic: EventTrafficStats {
             attribution_consistent: true,
             registrations_baseline: 0,
@@ -383,6 +402,62 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
     }
 }
 
+/// Sample event survey with one free-text and one single-select question.
+pub(crate) fn sample_event_survey_full(event_survey_id: Uuid) -> EventSurveyFull {
+    EventSurveyFull {
+        created_at: Utc.with_ymd_and_hms(2099, 5, 1, 9, 0, 0).unwrap(),
+        questions: vec![
+            sample_survey_question(Uuid::from_u128(0x5d01)),
+            QuestionnaireQuestion {
+                id: Uuid::from_u128(0x5d02),
+                kind: QuestionnaireQuestionKind::SingleSelect,
+                prompt: "How would you rate the sessions?".to_string(),
+                required: true,
+
+                options: vec![QuestionnaireOption {
+                    id: Uuid::from_u128(0x5e01),
+                    label: "Excellent".to_string(),
+                }],
+            },
+        ],
+        summary: EventSurveySummary {
+            questions_count: 2,
+            ..sample_event_survey_summary(event_survey_id, EventSurveyState::Draft)
+        },
+
+        closed_at: None,
+        description: Some("Tell us how it went.".to_string()),
+        opens_at: None,
+        updated_at: None,
+    }
+}
+
+/// Sample event survey summary in the given state.
+pub(crate) fn sample_event_survey_summary(
+    event_survey_id: Uuid,
+    state: EventSurveyState,
+) -> EventSurveySummary {
+    EventSurveySummary {
+        anonymous: true,
+        anonymous_locked: false,
+        audience: EventSurveyAudience::Confirmed,
+        closed_manually: false,
+        eligible_count: 40,
+        eligible_respondents_count: 12,
+        event_survey_id,
+        locked: false,
+        questions_count: 1,
+        responses_count: 12,
+        revision: 3,
+        state,
+        title: "Session feedback".to_string(),
+
+        closes_at: None,
+        effective_opens_at: None,
+        open_notification_processed_at: None,
+    }
+}
+
 /// Sample group category reused across tests.
 pub(crate) fn sample_group_category() -> GroupCategory {
     GroupCategory {
@@ -562,6 +637,18 @@ pub(crate) fn sample_site_settings() -> SiteSettings {
     }
 }
 
+/// Sample optional free-text survey question.
+pub(crate) fn sample_survey_question(question_id: Uuid) -> QuestionnaireQuestion {
+    QuestionnaireQuestion {
+        id: question_id,
+        kind: QuestionnaireQuestionKind::FreeText,
+        prompt: "What should we improve?".to_string(),
+        required: false,
+
+        options: vec![],
+    }
+}
+
 /// Sample template user used in event fixtures.
 pub(crate) fn sample_template_user() -> User {
     User {
@@ -581,6 +668,43 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> User {
 
         name: Some("Speaker".to_string()),
         ..Default::default()
+    }
+}
+
+/// Sample open anonymous survey the user can answer, with one required
+/// free-text question.
+pub(crate) fn sample_user_event_survey(event_survey_id: Uuid, event_id: Uuid) -> UserEventSurvey {
+    UserEventSurvey {
+        anonymous: true,
+        event: sample_event_summary(event_id, Uuid::new_v4()),
+        event_survey_id,
+        questions: vec![QuestionnaireQuestion {
+            required: true,
+            ..sample_survey_question(Uuid::from_u128(0x5d01))
+        }],
+        revision: 4,
+        title: "Session feedback".to_string(),
+
+        closes_at: None,
+        description: Some("Tell us how it went.".to_string()),
+        response: None,
+    }
+}
+
+/// Sample open survey of the My Events surveys panel, without a closing date.
+pub(crate) fn sample_user_event_survey_item(
+    event_survey_id: Uuid,
+    answered: bool,
+) -> UserEventSurveyItem {
+    UserEventSurveyItem {
+        answered,
+        event_name: "Sample Event".to_string(),
+        event_survey_id,
+        group_name: "Test Group".to_string(),
+        timezone: UTC,
+        title: "Session feedback".to_string(),
+
+        closes_at: None,
     }
 }
 

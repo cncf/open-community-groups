@@ -30,6 +30,10 @@ pub(crate) trait DBNotifications {
     /// attempted, before preference filtering.
     async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize>;
 
+    /// Enqueues the opening email of every event survey that is now open and
+    /// returns the number of notifications enqueued.
+    async fn enqueue_due_event_survey_notifications(&self) -> Result<usize>;
+
     /// Enqueues a notification to be delivered.
     async fn enqueue_notification(&self, notification: &NewNotification) -> Result<()>;
 
@@ -174,6 +178,18 @@ where
             .get::<_, i32>(0);
         let count = usize::try_from(count)
             .map_err(|_| anyhow!("enqueued reminders count cannot be negative"))?;
+
+        Ok(count)
+    }
+
+    /// [`DBNotifications::enqueue_due_event_survey_notifications`].
+    #[instrument(skip(self), err)]
+    async fn enqueue_due_event_survey_notifications(&self) -> Result<usize> {
+        let count: i32 = self
+            .fetch_scalar_one("select enqueue_due_event_survey_notifications()::int", &[])
+            .await?;
+        let count = usize::try_from(count)
+            .map_err(|_| anyhow!("enqueued survey notifications count cannot be negative"))?;
 
         Ok(count)
     }

@@ -16,6 +16,7 @@ set local timezone to 'UTC';
 \ir e2e/50_membership_cfs.sql
 \ir e2e/60_enrollment.sql
 \ir e2e/65_event_analytics.sql
+\ir e2e/66_event_surveys.sql
 \ir e2e/70_payments.sql
 \ir e2e/80_meetings.sql
 \ir e2e/90_audit_sessions.sql
