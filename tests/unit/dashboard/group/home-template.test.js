@@ -99,7 +99,7 @@ describe("dashboard group home template", () => {
     );
     expect(template).to.include('id="mobile-dashboard-view" class="contents"');
     expect(template).not.to.include('id="dashboard-spinner" class="hx-spinner -mt-0.5 relative"');
-    expect(template).not.to.include("max-h-full w-full flex flex-col flex-1");
+    expect(template).not.to.include("flex flex-col flex-1 space-y-5 overflow-y-auto");
   });
 
   it("keeps dashboard content at full minimum height", async () => {

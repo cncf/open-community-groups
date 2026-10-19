@@ -23,7 +23,7 @@ describe("dashboard macros template", () => {
     expect(template).to.include('hx-target="{{ navigation_target }}"');
     expect(template).to.include('id="dashboard-spinner"');
     expect(template).to.include('{{ ui::spinner(size = "size-5") -}}');
-    expect(template).to.include("max-h-full w-full flex flex-col flex-1");
+    expect(template).to.include("flex flex-col flex-1 space-y-5 overflow-y-auto");
     expect(template).to.include("{{ caller() }}");
   });
 

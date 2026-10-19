@@ -24,6 +24,17 @@ describe("dashboard base template", () => {
     expect(template).to.include('tabindex="-1"');
   });
 
+  it("leaves logging out to the shared header menu", async () => {
+    // Load the dashboard base before checking the drawer contents.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the drawer only wraps the dashboard menu and has no log out form.
+    expect(template).to.include(
+      '<div class="flex flex-col h-full w-full py-5 pt-14 md:pt-24"> {% block menu -%} {% endblock menu -%} </div>',
+    );
+    expect(template).not.to.include('action="/log-out"');
+  });
+
   it("wires the mobile drawer controls and backdrop", async () => {
     // Load the dashboard base before checking the drawer control contract.
     const template = normalizeWhitespace(await loadTemplate());
