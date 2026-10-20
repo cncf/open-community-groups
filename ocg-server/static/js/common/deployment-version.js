@@ -30,6 +30,8 @@ export const REFRESH_HEADER = "X-OCG-Refresh";
 const COMMIT_SHA_META_SELECTOR = 'meta[name="ocg-commit-sha"]';
 // Commit SHA the last automatic deployment reload navigated away from.
 const DEPLOYMENT_RELOADED_FROM_COMMIT_SHA_STORAGE_KEY = "ocg.deploymentReloadedFromCommitSha";
+// Forms the dashboard pending-changes tracker marks while they have unsaved changes.
+const DIRTY_FORM_SELECTOR = "form[data-pending-changes-dirty]";
 const PENDING_CHANGES_ALERT_SELECTOR = "#pending-changes-alert";
 
 let deploymentReloadOfferToken = null;
@@ -68,7 +70,7 @@ export const processDeploymentRefresh = (headersSource, root = document, { backg
     : DEPLOYMENT_REFRESH_OUTCOME.NONE;
 
   // Keep unsaved edits and explain how to pick up the new version
-  if (hasVisiblePendingChanges(root)) {
+  if (hasPendingChanges(root)) {
     notifyDirtyDeployment(forcedRefresh ? DIRTY_DEPLOYMENT_BLOCKED_MESSAGE : DIRTY_DEPLOYMENT_NOTICE_MESSAGE);
     return unhandledOutcome;
   }
@@ -244,13 +246,17 @@ const getLoadedCommitSha = (root = document) =>
   root?.querySelector?.(COMMIT_SHA_META_SELECTOR)?.getAttribute("content")?.trim() || "";
 
 /**
- * Returns whether the pending-changes banner is currently visible.
- * @param {Document|Element} root Document or fragment used to find the banner.
- * @returns {boolean} Whether unsaved dashboard changes are visible.
+ * Returns whether the page has unsaved dashboard changes: the pending-changes
+ * banner is visible or a tracked form is marked dirty.
+ * @param {Document|Element} root Document or fragment used to find the changes.
+ * @returns {boolean} Whether unsaved dashboard changes exist.
  */
-const hasVisiblePendingChanges = (root = document) => {
+const hasPendingChanges = (root = document) => {
   const alert = root.querySelector?.(PENDING_CHANGES_ALERT_SELECTOR);
-  return Boolean(alert && !alert.classList.contains("hidden"));
+  if (alert && !alert.classList.contains("hidden")) {
+    return true;
+  }
+  return Boolean(root.querySelector?.(DIRTY_FORM_SELECTOR));
 };
 
 /**
@@ -331,7 +337,7 @@ const offerDeploymentReload = async (alertOptions) => {
   if (outcome !== "reload" || !isCurrentOffer()) {
     return;
   }
-  if (hasVisiblePendingChanges()) {
+  if (hasPendingChanges()) {
     showErrorAlert(DIRTY_DEPLOYMENT_RELOAD_BLOCKED_MESSAGE);
     return;
   }

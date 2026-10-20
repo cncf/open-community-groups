@@ -189,9 +189,12 @@
       </div>
 
       {# Questions -#}
-      <div class="max-w-4xl">
-        <div class="form-label">Questions</div>
-        <p class="form-legend">
+      <div class="max-w-4xl"
+           role="group"
+           aria-labelledby="event-survey-questions-label"
+           aria-describedby="event-survey-questions-help">
+        <div id="event-survey-questions-label" class="form-label">Questions</div>
+        <p id="event-survey-questions-help" class="form-legend">
           Up to {{ crate::validation::MAX_EVENT_SURVEY_QUESTIONS }} questions. Ready surveys need at least one question.
         </p>
         <div class="mt-4">

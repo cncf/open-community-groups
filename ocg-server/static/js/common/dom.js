@@ -1,3 +1,6 @@
+// Number of element id prefixes generated for components without an id.
+let generatedElementIdPrefixCount = 0;
+
 /**
  * Builds a stable element id from a prefix and suffix.
  * @param {string} prefix Element id prefix.
@@ -108,6 +111,30 @@ export const ensureElementId = (element, fallbackId) => {
 
   return element.id;
 };
+
+/**
+ * Builds a unique element id prefix for a component instance without an id,
+ * such as `multi-select-tags-1`, so several instances can share a page.
+ * @param {string} componentName Component name used as the first id part.
+ * @param {*} name Field name identifying the instance.
+ * @param {string} fallbackName Name used when the field name has no safe characters.
+ * @returns {string} Unique element id prefix.
+ */
+export const generateElementIdPrefix = (componentName, name, fallbackName) => {
+  generatedElementIdPrefixCount += 1;
+  return `${componentName}-${sanitizeIdPart(name) || fallbackName}-${generatedElementIdPrefixCount}`;
+};
+
+/**
+ * Turns a raw value into a safe element id fragment.
+ * @param {*} value Raw value.
+ * @returns {string} Id fragment.
+ */
+export const sanitizeIdPart = (value) =>
+  String(value || "")
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 
 /**
  * Focuses an optional element and supports text selection for input-like nodes.

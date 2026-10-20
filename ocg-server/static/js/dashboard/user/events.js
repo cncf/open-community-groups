@@ -15,14 +15,23 @@ import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 import { isSuccessfulXHR } from "/static/js/common/utils.js";
 
+// Dataset key marking the user events dashboard as initialized.
 const DATA_KEY = "userEventsReady";
+// Registration questions answer form.
 const QUESTIONS_FORM_SELECTOR = "[data-user-event-questions-form]";
+// Registration questions modal.
 const QUESTIONS_MODAL_SELECTOR = "[data-user-event-questions-modal]";
+// Paid event rows whose refund eligibility is loaded on demand.
 const REFUND_ACTION_SELECTOR = "[data-user-event-refund-action]";
+// Query parameter the survey email links use to open a survey.
 const REQUESTED_SURVEY_PARAM = "event_survey_id";
+// Survey answer form rendered inside the survey modal.
 const SURVEY_FORM_SELECTOR = "[data-user-event-survey-form]";
+// Container the survey modal content is loaded into.
 const SURVEY_MODAL_CONTENT_ID = "user-event-survey-modal-content";
+// Survey modal.
 const SURVEY_MODAL_ID = "user-event-survey-modal";
+// Survey modal rendered to open as soon as the page loads.
 const SURVEY_OPEN_ON_LOAD_SELECTOR = "[data-user-event-survey-modal][data-open-on-load]";
 
 /**

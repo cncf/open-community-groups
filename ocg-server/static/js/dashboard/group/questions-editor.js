@@ -1,3 +1,4 @@
+import { generateElementIdPrefix } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
@@ -10,7 +11,6 @@ import {
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import {
-  buildQuestionsEditorIdPrefix,
   buildQuestionsEditorIds,
   cloneQuestion,
   createBlankQuestion,
@@ -38,9 +38,6 @@ const DEFAULT_PROMPT_MAX_LENGTH = 500;
 
 /** Default help text of the Required toggle. */
 const DEFAULT_REQUIRED_HELP = "Required questions must be answered. Optional questions can be skipped.";
-
-/** Number of editors that generated their own id prefix. */
-let generatedIdPrefixCount = 0;
 
 /**
  * Renders a questionnaire questions editor and its form payload fields. Several
@@ -123,8 +120,7 @@ class QuestionsEditor extends LitWrapper {
    */
   get ids() {
     if (!this.id && !this._generatedIdPrefix) {
-      generatedIdPrefixCount += 1;
-      this._generatedIdPrefix = buildQuestionsEditorIdPrefix(this.name, generatedIdPrefixCount);
+      this._generatedIdPrefix = generateElementIdPrefix("questions-editor", this.name, "questions");
     }
 
     const prefix = this.id || this._generatedIdPrefix;

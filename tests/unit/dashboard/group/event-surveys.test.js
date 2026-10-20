@@ -181,6 +181,21 @@ describe("event surveys", () => {
     expect(dispatchBeforeUnload().defaultPrevented).to.equal(false);
   });
 
+  it("marks the survey form dirty until the edits are saved", async () => {
+    // Render the page and edit the survey
+    const { form, title } = await renderSurveyPage();
+    editTitle(title);
+    await waitForAnimationFrames();
+
+    // Verify the form is marked dirty for the deployment refresh guard
+    expect(form.hasAttribute("data-pending-changes-dirty")).to.equal(true);
+
+    // Save the form and verify the mark is removed
+    dispatchFormRequestEvent(form, "htmx:beforeRequest");
+    dispatchFormRequestEvent(form, "htmx:beforeOnLoad", { status: 204 });
+    expect(form.hasAttribute("data-pending-changes-dirty")).to.equal(false);
+  });
+
   it("asks before the event Save replaces the dashboard content", async () => {
     // Render the page and edit the survey
     const { form, title } = await renderSurveyPage();

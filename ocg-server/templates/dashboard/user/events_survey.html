@@ -15,6 +15,7 @@
 {# Modal form -#}
 <form data-user-event-survey-form
       hx-put="/dashboard/user/events/surveys/{{ survey.event_survey_id }}/response"
+      hx-swap="none"
       hx-indicator="#dashboard-spinner"
       hx-disabled-elt="find button[type='submit']"
       class="modal-body p-4 md:p-6 space-y-7">

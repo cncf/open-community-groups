@@ -1,6 +1,9 @@
 import { showConfirmAlert } from "/static/js/common/alerts.js";
 import { getElementById, setElementHidden } from "/static/js/common/dom.js";
 
+// Attribute marking tracked forms with unsaved changes, read by the deployment refresh guard.
+const PENDING_CHANGES_DIRTY_ATTRIBUTE = "data-pending-changes-dirty";
+
 /**
  * Serializes a form field value for deterministic snapshot comparisons.
  * @param {FormDataEntryValue} value Field value from FormData.
@@ -116,75 +119,18 @@ export const initializePendingChangesAlert = ({
   const trackedForms = (formIds || []).map((formId) => getElementById(document, formId)).filter(Boolean);
   const cancelButton = cancelButtonId ? getElementById(document, cancelButtonId) : null;
 
-  let initialFormSnapshot = "";
-  let hasPendingChanges = false;
-  let pendingChangesReady = false;
-  let pendingChangesAnimationFrame = null;
-
-  const setPendingChangesState = (dirty) => {
-    hasPendingChanges = dirty;
-    setElementHidden(pendingChangesAlert, !dirty);
-  };
-
-  const refreshPendingChangesState = () => {
-    if (!pendingChangesReady) {
-      return;
-    }
-    const currentSnapshot = buildFormsSnapshot(trackedForms);
-    setPendingChangesState(currentSnapshot !== initialFormSnapshot);
-  };
-
-  const schedulePendingChangesRefresh = () => {
-    if (pendingChangesAnimationFrame) {
-      return;
-    }
-    pendingChangesAnimationFrame = requestAnimationFrame(() => {
-      pendingChangesAnimationFrame = null;
-      refreshPendingChangesState();
-    });
-  };
-
-  if (pendingChangesAlert && trackedForms.length > 0) {
-    const handleTrackedEvent = (event) => {
-      if (event.target instanceof Node) {
-        schedulePendingChangesRefresh();
-      }
-    };
-
-    trackedForms.forEach((form) => {
-      form.addEventListener("input", handleTrackedEvent, true);
-      form.addEventListener("change", handleTrackedEvent, true);
-      form.addEventListener("click", handleTrackedEvent, true);
-    });
-
-    const observer = new MutationObserver((mutations) => {
-      const shouldRefresh = mutations.some((mutation) =>
-        trackedForms.some((form) => form.contains(mutation.target)),
-      );
-      if (shouldRefresh) {
-        schedulePendingChangesRefresh();
-      }
-    });
-
-    trackedForms.forEach((form) => {
-      observer.observe(form, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        characterData: true,
-      });
-    });
-
-    requestAnimationFrame(() => {
-      initialFormSnapshot = buildFormsSnapshot(trackedForms);
-      pendingChangesReady = true;
-      refreshPendingChangesState();
-    });
-  }
+  const tracker =
+    pendingChangesAlert && trackedForms.length > 0
+      ? trackFormChanges({
+          forms: trackedForms,
+          onCheck: (dirty) => setElementHidden(pendingChangesAlert, !dirty),
+        })
+      : null;
+  const hasPendingChanges = () => tracker?.isDirty() ?? false;
 
   if (cancelButton && confirmMessage) {
     cancelButton.addEventListener("click", (event) => {
-      if (!hasPendingChanges) {
+      if (!hasPendingChanges()) {
         return;
       }
       event.preventDefault();
@@ -199,7 +145,7 @@ export const initializePendingChangesAlert = ({
       "click",
       (event) => {
         const trigger = event.target instanceof Element ? event.target.closest(guardSelector) : null;
-        if (!trigger?.id || !guardRoot.contains(trigger) || !hasPendingChanges) {
+        if (!trigger?.id || !guardRoot.contains(trigger) || !hasPendingChanges()) {
           return;
         }
         event.preventDefault();
@@ -211,8 +157,8 @@ export const initializePendingChangesAlert = ({
   }
 
   return {
-    hasPendingChanges: () => hasPendingChanges,
-    refresh: refreshPendingChangesState,
+    hasPendingChanges,
+    refresh: () => tracker?.refresh(),
   };
 };
 
@@ -245,4 +191,131 @@ export const buildFormsSnapshot = (forms) => {
   });
 
   return entries.map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join("&");
+};
+
+/**
+ * Tracker of the unsaved changes of one or more forms.
+ * @typedef {object} FormChangesTracker
+ * @property {() => void} destroy Stops watching the forms and drops the pending check.
+ * @property {() => void} flush Runs the pending check right away.
+ * @property {() => boolean} isDirty Returns the result of the last check.
+ * @property {() => void} refresh Checks the forms right away.
+ * @property {(baseline?: string) => void} setBaseline Takes a snapshot, the
+ * current values by default, as the saved state and checks the forms.
+ * @property {() => string} snapshot Returns the snapshot of the current values.
+ */
+
+/**
+ * Tracks whether forms differ from their saved values. The baseline is taken
+ * on the next animation frame, or once `ready` resolves. Later input, change,
+ * click and field mutations schedule one check per animation frame, and dirty
+ * forms are marked with the `data-pending-changes-dirty` attribute.
+ * @param {object} config Tracker configuration.
+ * @param {HTMLFormElement[]} config.forms Tracked forms.
+ * @param {(dirty: boolean) => void} [config.onCheck] Called with the result of each check.
+ * @param {() => void} [config.onCheckScheduled] Called when a check is scheduled.
+ * @param {Promise<unknown>|null} [config.ready] Resolves once the forms render
+ * the values the baseline is taken from.
+ * @returns {FormChangesTracker} Tracker API.
+ */
+export const trackFormChanges = ({
+  forms,
+  onCheck = () => {},
+  onCheckScheduled = () => {},
+  ready = null,
+}) => {
+  let baseline = "";
+  let baselineReady = false;
+  let destroyed = false;
+  let dirty = false;
+  let frame = null;
+
+  const snapshot = () => buildFormsSnapshot(forms);
+
+  const cancel = () => {
+    if (frame === null) {
+      return;
+    }
+    cancelAnimationFrame(frame);
+    frame = null;
+  };
+
+  const refresh = () => {
+    cancel();
+    if (destroyed || !baselineReady) {
+      return;
+    }
+    dirty = snapshot() !== baseline;
+    forms.forEach((form) => form.toggleAttribute(PENDING_CHANGES_DIRTY_ATTRIBUTE, dirty));
+    onCheck(dirty);
+  };
+
+  const schedule = () => {
+    if (destroyed || !baselineReady || frame !== null) {
+      return;
+    }
+    onCheckScheduled();
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      refresh();
+    });
+  };
+
+  const setBaseline = (value = snapshot()) => {
+    if (destroyed) {
+      return;
+    }
+    baseline = value;
+    baselineReady = true;
+    refresh();
+  };
+
+  // Watch the form fields, ignoring the dirty marker set by the checks
+  const observer = new MutationObserver((mutations) => {
+    if (mutations.some((mutation) => mutation.attributeName !== PENDING_CHANGES_DIRTY_ATTRIBUTE)) {
+      schedule();
+    }
+  });
+  forms.forEach((form) => {
+    form.addEventListener("input", schedule, true);
+    form.addEventListener("change", schedule, true);
+    form.addEventListener("click", schedule, true);
+    observer.observe(form, {
+      attributes: true,
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+  });
+
+  // Take the baseline once the forms render their values
+  const takeBaseline = () => setBaseline();
+  if (ready) {
+    ready.then(takeBaseline);
+  } else {
+    requestAnimationFrame(takeBaseline);
+  }
+
+  return {
+    destroy: () => {
+      destroyed = true;
+      cancel();
+      observer.disconnect();
+      forms.forEach((form) => {
+        form.removeEventListener("input", schedule, true);
+        form.removeEventListener("change", schedule, true);
+        form.removeEventListener("click", schedule, true);
+        form.removeAttribute(PENDING_CHANGES_DIRTY_ATTRIBUTE);
+      });
+    },
+    flush: () => {
+      if (frame !== null) {
+        refresh();
+      }
+    },
+    isDirty: () => dirty,
+    refresh,
+    setBaseline,
+    snapshot,
+  };
 };

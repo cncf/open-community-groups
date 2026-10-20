@@ -1,7 +1,7 @@
 import { confirmAction, handleHtmxResponse } from "/static/js/common/alerts.js";
 import { convertDateTimeLocalToISO } from "/static/js/common/datetime.js";
 import { bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js";
-import { buildFormsSnapshot } from "/static/js/dashboard/group/pending-changes-alert.js";
+import { trackFormChanges } from "/static/js/dashboard/group/pending-changes-alert.js";
 import { bindQuestionOptionsToggles } from "/static/js/dashboard/group/question-breakdown.js";
 
 /** Id of the dashboard region replaced by dashboard navigation. */
@@ -31,11 +31,11 @@ const boundRoots = new WeakSet();
 
 /**
  * Survey form tracked for unsaved changes; only one editor is open at a time.
- * Value changes are checked once per animation frame; `frame` holds the
- * pending check, which is flushed before any decision reads `dirty`.
+ * Its tracker checks value changes once per animation frame, and the pending
+ * check is flushed before any decision reads the dirty state.
  * `submittedSnapshot` holds the values of the save in flight, so edits made
  * while it runs are not taken as saved.
- * @type {{cleanup: () => void, dirty: boolean, form: HTMLFormElement, frame: number|null, ready: boolean, snapshot: string, submittedSnapshot: string|null}|null}
+ * @type {{form: HTMLFormElement, submittedSnapshot: string|null, tracker: import("/static/js/dashboard/group/pending-changes-alert.js").FormChangesTracker}|null}
  */
 let trackedSurveyForm = null;
 
@@ -128,8 +128,8 @@ export const hasUnsavedSurveyChanges = () => {
     releaseTrackedSurveyForm();
     return false;
   }
-  flushUnsavedSurveyChanges(trackedSurveyForm);
-  return trackedSurveyForm.dirty;
+  trackedSurveyForm.tracker.flush();
+  return trackedSurveyForm?.tracker.isDirty() ?? false;
 };
 
 /**
@@ -154,8 +154,8 @@ export const normalizeEventSurveyDateParameters = (parameters) => {
 /**
  * Registers a survey form as the single form tracked for unsaved changes.
  * The baseline is taken once its custom editors have rendered their fields;
- * later input, change and field mutations mark it dirty while its values
- * differ from that baseline. Checks are batched per animation frame.
+ * later field edits mark it dirty while its values differ from that baseline.
+ * Checks are batched per animation frame.
  * @param {HTMLFormElement} form - Survey editor form.
  * @returns {void}
  */
@@ -168,42 +168,18 @@ export const trackEventSurveyForm = (form) => {
   releaseTrackedSurveyForm();
   bindEventSurveyToggles(form);
 
-  // Watch the form fields for changes
-  const state = {
-    cleanup: () => {},
-    dirty: false,
-    form,
-    frame: null,
-    ready: false,
-    snapshot: buildFormsSnapshot([form]),
-    submittedSnapshot: null,
-  };
-  const refresh = () => scheduleUnsavedSurveyChangesRefresh(state);
-  const observer = new MutationObserver(refresh);
-  observer.observe(form, { attributes: true, childList: true, subtree: true });
-  form.addEventListener("input", refresh);
-  form.addEventListener("change", refresh);
-  state.cleanup = () => {
-    observer.disconnect();
-    form.removeEventListener("input", refresh);
-    form.removeEventListener("change", refresh);
-    cancelUnsavedSurveyChangesRefresh(state);
-  };
-  trackedSurveyForm = state;
-
-  // Take the baseline once custom editors render their hidden fields
+  // Watch the form fields once custom editors render their hidden fields
   const editorUpdates = Array.from(form.querySelectorAll("questions-editor")).map(
     (editor) => editor.updateComplete || Promise.resolve(),
   );
-  Promise.all(editorUpdates).then(() => {
-    if (trackedSurveyForm !== state) {
-      return;
-    }
-    cancelUnsavedSurveyChangesRefresh(state);
-    state.snapshot = buildFormsSnapshot([form]);
-    state.ready = true;
-    refreshUnsavedSurveyChanges(state);
+  const state = { form, submittedSnapshot: null, tracker: null };
+  state.tracker = trackFormChanges({
+    forms: [form],
+    onCheck: (dirty) => updateUnsavedSurveyChanges(state, dirty),
+    onCheckScheduled: () => setBeforeUnloadBound(true),
+    ready: Promise.all(editorUpdates),
   });
+  trackedSurveyForm = state;
 };
 
 /**
@@ -222,9 +198,7 @@ const acceptSubmittedSurveyValues = (accepted) => {
   if (!accepted) {
     return;
   }
-  cancelUnsavedSurveyChangesRefresh(state);
-  state.snapshot = submittedSnapshot;
-  setUnsavedSurveyChanges(state, buildFormsSnapshot([state.form]) !== state.snapshot);
+  state.tracker.setBaseline(submittedSnapshot);
 };
 
 /**
@@ -237,33 +211,6 @@ const bindEventSurveyToggles = (form) => {
     const hiddenInput = form.querySelector(`#${CSS.escape(toggle.dataset.eventSurveyToggle || "")}`);
     bindBooleanToggle({ toggle, hiddenInput });
   });
-};
-
-/**
- * Drops the pending dirty check of a tracked form.
- * @param {object} state - Tracked form state.
- * @returns {void}
- */
-const cancelUnsavedSurveyChangesRefresh = (state) => {
-  if (state.frame === null) {
-    return;
-  }
-  cancelAnimationFrame(state.frame);
-  state.frame = null;
-};
-
-/**
- * Runs the pending dirty check of a tracked form right away, so decisions
- * include edits made in the current frame.
- * @param {object} state - Tracked form state.
- * @returns {void}
- */
-const flushUnsavedSurveyChanges = (state) => {
-  if (state.frame === null) {
-    return;
-  }
-  cancelUnsavedSurveyChangesRefresh(state);
-  refreshUnsavedSurveyChanges(state);
 };
 
 /**
@@ -345,23 +292,7 @@ const recordSubmittedSurveyValues = () => {
   if (!trackedSurveyForm) {
     return;
   }
-  trackedSurveyForm.submittedSnapshot = buildFormsSnapshot([trackedSurveyForm.form]);
-};
-
-/**
- * Updates the dirty state of a tracked form from its current values.
- * @param {object} state - Tracked form state.
- * @returns {void}
- */
-const refreshUnsavedSurveyChanges = (state) => {
-  if (trackedSurveyForm !== state || !state.ready) {
-    return;
-  }
-  if (!state.form.isConnected) {
-    releaseTrackedSurveyForm();
-    return;
-  }
-  setUnsavedSurveyChanges(state, buildFormsSnapshot([state.form]) !== state.snapshot);
+  trackedSurveyForm.submittedSnapshot = trackedSurveyForm.tracker.snapshot();
 };
 
 /**
@@ -369,27 +300,9 @@ const refreshUnsavedSurveyChanges = (state) => {
  * @returns {void}
  */
 const releaseTrackedSurveyForm = () => {
-  trackedSurveyForm?.cleanup();
+  trackedSurveyForm?.tracker.destroy();
   trackedSurveyForm = null;
   setBeforeUnloadBound(false);
-};
-
-/**
- * Schedules one dirty check of a tracked form for the next animation frame.
- * The unload guard is registered meanwhile so navigation in the same frame
- * still checks the pending edits.
- * @param {object} state - Tracked form state.
- * @returns {void}
- */
-const scheduleUnsavedSurveyChangesRefresh = (state) => {
-  if (trackedSurveyForm !== state || !state.ready || state.frame !== null) {
-    return;
-  }
-  setBeforeUnloadBound(true);
-  state.frame = requestAnimationFrame(() => {
-    state.frame = null;
-    refreshUnsavedSurveyChanges(state);
-  });
 };
 
 /**
@@ -410,18 +323,6 @@ const setBeforeUnloadBound = (bound) => {
 };
 
 /**
- * Sets the dirty state of a tracked form, warning on browser navigation only
- * while it is dirty.
- * @param {object} state - Tracked form state.
- * @param {boolean} dirty - Whether the form has unsaved changes.
- * @returns {void}
- */
-const setUnsavedSurveyChanges = (state, dirty) => {
-  state.dirty = dirty;
-  setBeforeUnloadBound(dirty);
-};
-
-/**
  * Returns whether swapping a request target would remove the survey form.
  * @param {unknown} target - Resolved HTMX swap target.
  * @param {HTMLFormElement} form - Tracked survey form.
@@ -432,4 +333,22 @@ const swapRemovesForm = (target, form) => {
     return false;
   }
   return target === form.ownerDocument.body || target.id === DASHBOARD_CONTENT_ID || target.contains(form);
+};
+
+/**
+ * Applies the result of a dirty check of a tracked form, warning on browser
+ * navigation only while it is dirty. A form removed from the page is released.
+ * @param {object} state - Tracked form state.
+ * @param {boolean} dirty - Whether the form has unsaved changes.
+ * @returns {void}
+ */
+const updateUnsavedSurveyChanges = (state, dirty) => {
+  if (trackedSurveyForm !== state) {
+    return;
+  }
+  if (!state.form.isConnected) {
+    releaseTrackedSurveyForm();
+    return;
+  }
+  setBeforeUnloadBound(dirty);
 };

@@ -1,3 +1,5 @@
+import { sanitizeIdPart } from "/static/js/common/dom.js";
+
 const QUESTION_TYPES = [
   ["free-text", "Free text"],
   ["single-select", "Single select"],
@@ -29,15 +31,6 @@ const buildQuestionsEditorIds = (prefix) => ({
   required: `${prefix}-required`,
   requiredHelp: `${prefix}-required-help`,
 });
-
-/**
- * Builds the id prefix of a questions editor instance.
- * @param {string} name Payload field name of the editor
- * @param {number} sequence Instance sequence number
- * @returns {string} Instance id prefix
- */
-const buildQuestionsEditorIdPrefix = (name, sequence) =>
-  `questions-editor-${sanitizeIdPart(name) || "questions"}-${sequence}`;
 
 /**
  * Creates a stable client-side id for draft questions and options.
@@ -126,20 +119,8 @@ const normalizePositiveInteger = (value, fallback = null) => {
   return Number.isInteger(number) && number > 0 ? number : fallback;
 };
 
-/**
- * Turns a raw value into a safe element id fragment.
- * @param {*} value Raw value
- * @returns {string} Id fragment
- */
-const sanitizeIdPart = (value) =>
-  String(value || "")
-    .replace(/[^A-Za-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
 export {
   QUESTION_TYPES,
-  buildQuestionsEditorIdPrefix,
   buildQuestionsEditorIds,
   cloneQuestion,
   createBlankQuestion,

@@ -11,47 +11,8 @@ import {
 import { TEST_USER_CREDENTIALS, TEST_USER_IDS } from "../../../seed.js";
 import { navigateToPath, waitForActionResponse } from "../../../utils.js";
 
-/** Message shown when the survey an email links to can't be answered. */
+// Message shown when the survey an email links to can't be answered.
 const UNAVAILABLE_SURVEY_WARNING = "This survey is closed or isn't available to you.";
-
-/** Returns a short unique suffix for owned survey titles. */
-const id8 = () => randomUUID().slice(0, 8);
-
-/**
- * Builds the My Events path the survey opening email links to.
- * @param {string} surveyId - Survey identifier.
- * @returns {string} Dashboard path that opens the survey.
- */
-const surveyLinkPath = (surveyId) => `/dashboard/user?tab=events&event_survey_id=${surveyId}`;
-
-/**
- * Creates an open survey with a required single-select and an optional free-text question.
- * @returns {{ id: string, optionIds: { no: string, yes: string }, questionIds: { comments: string, again: string } }}
- */
-const setupOpenSurvey = () => {
-  const questionIds = { again: randomUUID(), comments: randomUUID() };
-  const optionIds = { no: randomUUID(), yes: randomUUID() };
-  const { id } = setupOwnedEventSurvey({
-    eventId: TEST_EVENT_SURVEYS.event.id,
-    questions: [
-      {
-        id: questionIds.again,
-        kind: "single-select",
-        options: [
-          { id: optionIds.yes, label: "Yes" },
-          { id: optionIds.no, label: "No" },
-        ],
-        prompt: "Would you attend again?",
-        required: true,
-      },
-      { id: questionIds.comments, kind: "free-text", options: [], prompt: "Any comments?", required: false },
-    ],
-    status: "ready",
-    title: `E2E open survey ${id8()}`,
-  });
-
-  return { id, optionIds, questionIds };
-};
 
 test.describe("user dashboard event surveys", () => {
   test("attendees answer an open survey and edit their answers", async ({ member1Page }) => {
@@ -227,3 +188,42 @@ test.describe("user dashboard event surveys", () => {
     await expect(page.locator("#user-event-survey-modal")).toBeVisible();
   });
 });
+
+/** Returns a short unique suffix for owned survey titles. */
+const id8 = () => randomUUID().slice(0, 8);
+
+/**
+ * Creates an open survey with a required single-select and an optional free-text question.
+ * @returns {{ id: string, optionIds: { no: string, yes: string }, questionIds: { comments: string, again: string } }}
+ */
+const setupOpenSurvey = () => {
+  const questionIds = { again: randomUUID(), comments: randomUUID() };
+  const optionIds = { no: randomUUID(), yes: randomUUID() };
+  const { id } = setupOwnedEventSurvey({
+    eventId: TEST_EVENT_SURVEYS.event.id,
+    questions: [
+      {
+        id: questionIds.again,
+        kind: "single-select",
+        options: [
+          { id: optionIds.yes, label: "Yes" },
+          { id: optionIds.no, label: "No" },
+        ],
+        prompt: "Would you attend again?",
+        required: true,
+      },
+      { id: questionIds.comments, kind: "free-text", options: [], prompt: "Any comments?", required: false },
+    ],
+    status: "ready",
+    title: `E2E open survey ${id8()}`,
+  });
+
+  return { id, optionIds, questionIds };
+};
+
+/**
+ * Builds the My Events path the survey opening email links to.
+ * @param {string} surveyId - Survey identifier.
+ * @returns {string} Dashboard path that opens the survey.
+ */
+const surveyLinkPath = (surveyId) => `/dashboard/user?tab=events&event_survey_id=${surveyId}`;

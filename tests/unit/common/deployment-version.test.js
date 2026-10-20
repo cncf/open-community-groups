@@ -204,6 +204,31 @@ describe("deployment version", () => {
     }
   });
 
+  it("keeps a dirty tracked form without the pending-changes banner", () => {
+    // Mark a form dirty, as the survey editor does without the event banner.
+    setLoadedCommitSha("abc123");
+    document.body.innerHTML = "<form data-pending-changes-dirty></form>";
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    const swal = mockSwal();
+
+    try {
+      // Process a response from a newer commit while the form is dirty.
+      const changed = reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "def456" }));
+
+      // The page is not reloaded and the user is told to copy the unsaved work.
+      expect(changed).to.equal(false);
+      expect(reloads).to.equal(0);
+      expect(isDeploymentReloadRequested()).to.equal(false);
+      expect(swal.calls).to.have.length(1);
+      expect(swal.calls[0].text).to.equal(DIRTY_DEPLOYMENT_NOTICE_MESSAGE);
+    } finally {
+      swal.restore();
+    }
+  });
+
   it("warns about a blocked save after the generic notice was already shown", () => {
     // Show the one-shot generic notice for a dirty form on a newer commit first.
     setLoadedCommitSha("abc123");

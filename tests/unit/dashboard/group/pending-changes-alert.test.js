@@ -65,6 +65,36 @@ describe("pending changes alert", () => {
     ).to.equal(false);
   });
 
+  it("marks tracked forms only while they have pending changes", async () => {
+    // Render a tracked form and wait for its baseline.
+    document.body.innerHTML = `
+      <div id="pending-alert" class="hidden"></div>
+      <form id="event-form">
+        <input name="title" value="Original title" />
+      </form>
+    `;
+    initializePendingChangesAlert({
+      alertId: "pending-alert",
+      formIds: ["event-form"],
+    });
+    await waitForAnimationFrames();
+    const form = document.getElementById("event-form");
+    const titleInput = form.querySelector('input[name="title"]');
+    expect(form.hasAttribute("data-pending-changes-dirty")).to.equal(false);
+
+    // Edit the form and verify it is marked dirty.
+    titleInput.value = "Updated title";
+    titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await waitForAnimationFrames();
+    expect(form.hasAttribute("data-pending-changes-dirty")).to.equal(true);
+
+    // Restore the original value and verify the mark is removed.
+    titleInput.value = "Original title";
+    titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await waitForAnimationFrames();
+    expect(form.hasAttribute("data-pending-changes-dirty")).to.equal(false);
+  });
+
   it("tracks dirty state across multiple forms including payment-only changes", async () => {
     // Render the DOM fixture for tracking dirty state across multiple forms.
     document.body.innerHTML = `
