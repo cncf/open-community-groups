@@ -100,6 +100,56 @@ async fn db_contracts_accept_event_invitation_request_deserializes() -> Result<(
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_add_event_stores_submitted_organizers() -> Result<()> {
+    // Setup a rolled-back unit of work and an event with submitted organizers
+    let uow = contract_unit_of_work().await?;
+    let event = EventInput {
+        organizers: Some(vec![organizer_id()]),
+        organizers_present: Some(true),
+        ..organizers_event_input("Contract Organizers Event")
+    };
+
+    // Add the event through the Rust contract
+    let event_id = uow
+        .add_event(
+            organizer_id(),
+            group_id(),
+            &event.to_db_payload()?,
+            &HashMap::new(),
+            None,
+        )
+        .await?;
+
+    // Check the submitted team member is stored as the organizer
+    let event_full = uow.get_event_full(community_id(), group_id(), event_id).await?;
+    assert_eq!(organizer_user_ids(&event_full), vec![organizer_id()]);
+
+    // Check an organizer outside the group team is rejected as a user-facing error
+    let event = EventInput {
+        organizers: Some(vec![attendee_id()]),
+        organizers_present: Some(true),
+        ..organizers_event_input("Contract Outside Organizer Event")
+    };
+    let err = uow
+        .add_event(
+            organizer_id(),
+            group_id(),
+            &event.to_db_payload()?,
+            &HashMap::new(),
+            None,
+        )
+        .await
+        .expect_err("organizers outside the group team should be rejected");
+    assert_user_facing_error(&err, "organizer is not a group team member");
+
+    // Roll back the created event
+    Box::new(uow).rollback().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_approve_event_cohost_deserializes() -> Result<()> {
     // Setup a rolled-back unit of work for the approval
     let uow = contract_unit_of_work().await?;
@@ -2795,6 +2845,60 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_update_event_syncs_submitted_organizers() -> Result<()> {
+    // Setup a rolled-back unit of work and the mutation event update
+    let uow = contract_unit_of_work().await?;
+    let base_event = organizers_event_input("Contract Mutation Event");
+
+    // Submit the organizers with their marker
+    let event = EventInput {
+        organizers: Some(vec![organizer_id()]),
+        organizers_present: Some(true),
+        ..base_event.clone()
+    };
+    update_mutation_event(&uow, &event).await?;
+    let event_full = uow
+        .get_event_full(community_id(), group_id(), mutation_event_id())
+        .await?;
+    assert_eq!(organizer_user_ids(&event_full), vec![organizer_id()]);
+
+    // Omit the organizers section and check the stored list is kept
+    update_mutation_event(&uow, &base_event).await?;
+    let event_full = uow
+        .get_event_full(community_id(), group_id(), mutation_event_id())
+        .await?;
+    assert_eq!(organizer_user_ids(&event_full), vec![organizer_id()]);
+
+    // Submit the marker without users and check the list is cleared
+    let event = EventInput {
+        organizers_present: Some(true),
+        ..base_event.clone()
+    };
+    update_mutation_event(&uow, &event).await?;
+    let event_full = uow
+        .get_event_full(community_id(), group_id(), mutation_event_id())
+        .await?;
+    assert!(event_full.organizers.is_empty());
+
+    // Submit organizers without their marker and check they replace the list
+    let event = EventInput {
+        organizers: Some(vec![organizer_id()]),
+        ..base_event
+    };
+    update_mutation_event(&uow, &event).await?;
+    let event_full = uow
+        .get_event_full(community_id(), group_id(), mutation_event_id())
+        .await?;
+    assert_eq!(organizer_user_ids(&event_full), vec![organizer_id()]);
+
+    // Roll back the organizer changes
+    Box::new(uow).rollback().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_update_event_serializes_same_group_mutations() -> Result<()> {
     // Setup two event updates targeting different events in the same group
     let db = contract_tests_db()?;
@@ -2947,4 +3051,51 @@ fn dated_editor_event_input(event: &EventFull) -> EventInput {
         venue_zip_code: event.venue_zip_code.clone(),
         ..EventInput::default()
     }
+}
+
+/// Returns the organizer user IDs of an event in their stored order.
+fn organizer_user_ids(event: &EventFull) -> Vec<Uuid> {
+    event.organizers.iter().map(|user| user.user_id).collect()
+}
+
+/// Builds a minimal future virtual event input used by organizer contracts.
+fn organizers_event_input(name: &str) -> EventInput {
+    let starts_at = NaiveDate::from_ymd_opt(2099, 8, 1)
+        .expect("date should be valid")
+        .and_hms_opt(10, 0, 0)
+        .expect("time should be valid");
+    let ends_at = NaiveDate::from_ymd_opt(2099, 8, 1)
+        .expect("date should be valid")
+        .and_hms_opt(11, 0, 0)
+        .expect("time should be valid");
+
+    EventInput {
+        category_id: event_category_id(),
+        description: "An event used by organizer Rust database contract tests".to_string(),
+        kind_id: "virtual".to_string(),
+        name: name.to_string(),
+        timezone: "UTC".to_string(),
+
+        capacity: Some(100),
+        ends_at: Some(ends_at),
+        starts_at: Some(starts_at),
+        test_event: Some(true),
+
+        ..Default::default()
+    }
+}
+
+/// Updates the mutation event with the given input inside the unit of work.
+async fn update_mutation_event(uow: &PgUnitOfWork, event: &EventInput) -> Result<()> {
+    uow.update_event(
+        organizer_id(),
+        group_id(),
+        mutation_event_id(),
+        &event.to_db_payload()?,
+        &HashMap::new(),
+        None,
+    )
+    .await?;
+
+    Ok(())
 }

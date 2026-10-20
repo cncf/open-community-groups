@@ -345,6 +345,38 @@ async fn db_contracts_list_event_labels_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_group_organizers_deserializes() -> Result<()> {
+    // Setup the contract database and group fixture
+    let db = contract_tests_db()?;
+
+    // Load the accepted group team through the Rust contract
+    let organizers = db.list_group_organizers(group_id()).await?;
+
+    // Check required and optional user fields of the only team member
+    assert_eq!(organizers.len(), 1);
+    assert_eq!(organizers[0].user_id, organizer_id());
+    assert_eq!(organizers[0].username, "contract-organizer");
+    assert_eq!(
+        organizers[0].bio.as_deref(),
+        Some("Builds reliable community platforms")
+    );
+    assert_eq!(
+        organizers[0].github_url.as_deref(),
+        Some("https://github.com/contract-organizer")
+    );
+    assert_eq!(organizers[0].name.as_deref(), Some("Contract Organizer"));
+    assert_eq!(
+        organizers[0].photo_url.as_deref(),
+        Some("https://example.com/organizer.png")
+    );
+    assert_eq!(organizers[0].title.as_deref(), Some("Organizer"));
+    assert!(organizers[0].bluesky_url.is_none());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_event_ticket_types_deserializes() -> Result<()> {
     // Query the normalized ticket inventory through its SQL boundary
     let pool = contract_tests_pool()?;

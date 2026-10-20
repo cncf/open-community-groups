@@ -41,20 +41,32 @@ describe("event contact modal templates", () => {
     );
   });
 
-  it("only renders the contact opener when the event has organizers", async () => {
-    // Load the organizers section of the event page template
+  it("renders the contact opener at the end of the event description", async () => {
+    // Load the event description and organizers sections of the event page template
     const template = await loadTemplate("event/page.html");
-    const sectionStart = template.indexOf("{# Organizers section -#}");
-    const sectionEnd = template.indexOf("{# End organizers section -#}");
-    const section = template.slice(sectionStart, sectionEnd);
+    const descriptionStart = template.indexOf("{# Event description -#}");
+    const descriptionEnd = template.indexOf("{# End event description -#}");
+    const description = template.slice(descriptionStart, descriptionEnd);
+    const organizers = template.slice(
+      template.indexOf("{# Organizers section -#}"),
+      template.indexOf("{# End organizers section -#}"),
+    );
 
-    // Verify the whole section, including the opener and modal, is guarded
-    expect(sectionStart).to.be.greaterThan(-1);
-    expect(sectionEnd).to.be.greaterThan(sectionStart);
-    expect(section).to.match(/^\{# Organizers section -#\} \{% if !event\.organizers\.is_empty\(\) -%\}/);
-    expect(section).to.match(/\{% endif -%\} $/);
-    expect(section).to.include('<button id="open-contact-modal"');
-    expect(section).to.include('<div id="contact-modal"');
+    // Verify the opener and modal follow the meeting details, outside any organizers guard
+    expect(descriptionStart).to.be.greaterThan(-1);
+    expect(descriptionEnd).to.be.greaterThan(descriptionStart);
+    expect(description).not.to.include("event.organizers");
+    expect(description.indexOf("data-meeting-details")).to.be.lessThan(
+      description.indexOf('<button id="open-contact-modal"'),
+    );
+    expect(description).to.include(
+      '<span class="svg-icon size-3 icon-email bg-current" aria-hidden="true"></span> <span>Contact organizers</span> </button>',
+    );
+    expect(description).to.match(/\{# End contact organizers modal -#\} <\/div> $/);
+
+    // Verify the organizers section no longer renders the opener or modal
+    expect(organizers).not.to.include('id="open-contact-modal"');
+    expect(organizers).not.to.include('id="contact-modal"');
   });
 
   it("keeps the contact form contract", async () => {

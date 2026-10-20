@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(30);
+select plan(38);
 
 -- ============================================================================
 -- VARIABLES
@@ -26,11 +26,20 @@ select plan(30);
 \set groupCategoryID 'b1080000-0000-0000-0000-000000000013'
 \set groupID 'b1080000-0000-0000-0000-000000000014'
 \set groupMemberID 'b1080000-0000-0000-0000-000000000015'
+\set multiOrganizer1ID 'b1080000-0000-0000-0000-000000000021'
+\set multiOrganizer2ID 'b1080000-0000-0000-0000-000000000022'
+\set otherEventID 'b1080000-0000-0000-0000-000000000023'
+\set otherEventOrganizerID 'b1080000-0000-0000-0000-000000000024'
+\set outsideOrganizerID 'b1080000-0000-0000-0000-000000000025'
 \set outsiderID 'b1080000-0000-0000-0000-000000000016'
+\set removedOrganizerEventID 'b1080000-0000-0000-0000-000000000026'
+\set removedOrganizerID 'b1080000-0000-0000-0000-000000000027'
 \set sessionID 'b1080000-0000-0000-0000-000000000017'
 \set sessionSpeakerID 'b1080000-0000-0000-0000-000000000018'
-\set unverifiedID 'b1080000-0000-0000-0000-000000000019'
+\set teamMemberID 'b1080000-0000-0000-0000-000000000028'
 \set unknownBadgeID 'b1080000-0000-0000-0000-000000000020'
+\set unverifiedID 'b1080000-0000-0000-0000-000000000019'
+\set unverifiedOrganizerID 'b1080000-0000-0000-0000-000000000029'
 
 -- ============================================================================
 -- SEED DATA
@@ -39,6 +48,9 @@ select plan(30);
 
 -- Unverified checked-in attendee excluded from every award scope
 select fx_user(:'unverifiedID', jsonb_build_object('email_verified', false));
+
+-- Unverified event organizer excluded from event awards
+select fx_user(:'unverifiedOrganizerID', jsonb_build_object('email_verified', false));
 
 -- Community containing the issuing group
 select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
@@ -53,16 +65,23 @@ select fx_user(:'eventHostID');
 select fx_user(:'eventOrganizerID');
 select fx_user(:'eventSpeakerID');
 select fx_user(:'groupMemberID');
+select fx_user(:'multiOrganizer1ID');
+select fx_user(:'multiOrganizer2ID');
+select fx_user(:'otherEventOrganizerID');
+select fx_user(:'outsideOrganizerID');
 select fx_user(:'outsiderID');
+select fx_user(:'removedOrganizerID');
 select fx_user(:'sessionSpeakerID');
+select fx_user(:'teamMemberID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Badge manager, accepted team recipient, and pending recipient roles
+-- Badge manager, accepted team recipients, and pending recipient roles
 insert into group_team (accepted, group_id, role, user_id)
 values
     (true, :'groupID', 'events-manager', :'actorID'),
     (true, :'groupID', 'viewer', :'eventOrganizerID'),
-    (false, :'groupID', 'viewer', :'outsiderID');
+    (false, :'groupID', 'viewer', :'outsiderID'),
+    (true, :'groupID', 'viewer', :'teamMemberID');
 
 -- Active event providing the recipient context
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -79,6 +98,12 @@ select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_
 -- Active event with no eligible recipients
 select fx_event(:'emptyEventID', :'groupID', :'eventCategoryID', jsonb_build_object('description', 'Description'));
 
+-- Active event whose organizer is not an organizer of the award event
+select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('description', 'Description'));
+
+-- Active event whose organizer is removed before the award
+select fx_event(:'removedOrganizerEventID', :'groupID', :'eventCategoryID', jsonb_build_object('description', 'Description'));
+
 -- Confirmed attendees covering registered, checked-in, and unverified states
 insert into event_attendee (checked_in, event_id, status, user_id)
 values
@@ -90,9 +115,22 @@ values
 insert into event_host (event_id, user_id)
 values (:'eventID', :'eventHostID');
 
--- Organizer intentionally ineligible for a single award
+-- Organizers of the award event, including users outside the group team
 insert into event_organizer (event_id, "order", user_id)
-values (:'eventID', 1, :'eventOrganizerID');
+values
+    (:'eventID', 1, :'eventOrganizerID'),
+    (:'eventID', 2, :'outsideOrganizerID'),
+    (:'eventID', 3, :'multiOrganizer1ID'),
+    (:'eventID', 4, :'multiOrganizer2ID'),
+    (:'eventID', 5, :'unverifiedOrganizerID');
+
+-- Organizer of another event only
+insert into event_organizer (event_id, "order", user_id)
+values (:'otherEventID', 1, :'otherEventOrganizerID');
+
+-- Organizer removed from the event before the award
+insert into event_organizer (event_id, "order", user_id)
+values (:'removedOrganizerEventID', 1, :'removedOrganizerID');
 
 -- Event speaker eligible for a single award
 insert into event_speaker (event_id, featured, user_id)
@@ -197,15 +235,114 @@ select is(
 );
 select test_process_badge_award_jobs();
 
--- Should reject an event organizer
+-- Should award an event organizer
+select is(
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'eventOrganizerID'::uuid],
+        :'eventID'
+    )::jsonb,
+    '{"queued_count":1,"skipped_count":0}'::jsonb,
+    'Should award an event organizer'
+);
+select test_process_badge_award_jobs();
+
+-- Should award an event organizer outside the group team
+select is(
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'outsideOrganizerID'::uuid],
+        :'eventID'
+    )::jsonb,
+    '{"queued_count":1,"skipped_count":0}'::jsonb,
+    'Should award an event organizer outside the group team'
+);
+
+-- Should link the organizer award job to the event
+select is(
+    (
+        select baj.event_id
+        from badge_award_job baj
+        join badge_award_job_recipient bajr using (badge_award_job_id)
+        where bajr.user_id = :'outsideOrganizerID'::uuid
+    ),
+    :'eventID'::uuid,
+    'Should link the organizer award job to the event'
+);
+select test_process_badge_award_jobs();
+
+-- Should award multiple organizers in one request
+select is(
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'multiOrganizer1ID'::uuid, :'multiOrganizer2ID'::uuid],
+        :'eventID'
+    )::jsonb,
+    '{"queued_count":2,"skipped_count":0}'::jsonb,
+    'Should award multiple organizers in one request'
+);
+select test_process_badge_award_jobs();
+
+-- Should reject an organizer of another event
 select throws_ok(
     format(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
-        :'actorID', :'communityID', :'groupID', :'badgeID', :'eventOrganizerID', :'eventID'
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'otherEventOrganizerID', :'eventID'
     ),
     'OCG01',
     'badge recipient is not eligible',
-    'Should reject an event organizer'
+    'Should reject an organizer of another event'
+);
+
+-- Should remove the organizer before the award
+select lives_ok(
+    format(
+        $$select sync_event_organizers(%L::uuid, '[]'::jsonb)$$,
+        :'removedOrganizerEventID'
+    ),
+    'Should remove the organizer before the award'
+);
+
+-- Should reject a removed organizer without another role
+select throws_ok(
+    format(
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'removedOrganizerID', :'removedOrganizerEventID'
+    ),
+    'OCG01',
+    'badge recipient is not eligible',
+    'Should reject a removed organizer without another role'
+);
+
+-- Should reject a team member who is not an event organizer for an event award
+select throws_ok(
+    format(
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'teamMemberID', :'eventID'
+    ),
+    'OCG01',
+    'badge recipient is not eligible',
+    'Should reject a team member who is not an event organizer for an event award'
+);
+
+-- Should reject an unverified organizer
+select throws_ok(
+    format(
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'unverifiedOrganizerID', :'eventID'
+    ),
+    'OCG01',
+    'badge recipient is not eligible',
+    'Should reject an unverified organizer'
 );
 
 -- Should award an event speaker
@@ -259,7 +396,7 @@ select is(
         :'communityID',
         :'groupID',
         :'badgeID',
-        array[:'eventOrganizerID'::uuid],
+        array[:'teamMemberID'::uuid],
         null
     )::jsonb,
     '{"queued_count":1,"skipped_count":0}'::jsonb,
@@ -431,7 +568,7 @@ select is(
 -- Should write issuance audit history after insertion
 select is(
     (select count(*)::integer from audit_log where action = 'badge_awarded' and actor_user_id = :'actorID'),
-    6,
+    10,
     'Should write issuance audit history after insertion'
 );
 

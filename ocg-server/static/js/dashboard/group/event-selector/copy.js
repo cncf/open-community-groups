@@ -1,6 +1,7 @@
-import { setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
+import { normalizeUsers, setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
 import {
   appendCopySuffix,
+  getAvailableOrganizers,
   resetSessions,
   setAttendeeApprovalRequired,
   setCategoryValue,
@@ -9,6 +10,7 @@ import {
   setGalleryImages,
   setHosts,
   setLabels,
+  setOrganizers,
   setPaymentCurrencyCode,
   setRegistrationQuestions,
   setSponsors,
@@ -139,6 +141,11 @@ export const applyCopiedEventDetails = async (details) => {
   copyVenueFields(details);
   copyManualMeetingFields(details);
   setHosts(details.hosts);
+  // Copy the source organizers still on the group team, or restore the team default when none remain.
+  const teamMembers = getAvailableOrganizers();
+  const teamUserIds = new Set(teamMembers.map((user) => user.user_id));
+  const organizers = normalizeUsers(details.organizers).filter((user) => teamUserIds.has(user.user_id));
+  setOrganizers(organizers.length > 0 ? organizers : teamMembers);
   setSponsors(details.sponsors);
   setLabels(details.labels || []);
   resetSessions();

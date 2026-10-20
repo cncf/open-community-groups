@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import {
   appendCopySuffix,
+  getAvailableOrganizers,
   initializeSessionsRemovalWarning,
   resetSessions,
   setCategoryValue,
@@ -9,6 +10,7 @@ import {
   setGalleryImages,
   setHosts,
   setLabels,
+  setOrganizers,
   setSponsors,
   setTags,
   updateMarkdownContent,
@@ -163,6 +165,69 @@ describe("event form helpers", () => {
       { name: "Community", level: "" },
     ]);
     expect(sponsorsUpdated).to.equal(1);
+  });
+
+  it("sets normalized organizers on the organizers selector", () => {
+    // Render the organizers selector fixture.
+    document.body.innerHTML = '<user-search-selector field-name="organizers"></user-search-selector>';
+    const organizers = document.querySelector('user-search-selector[field-name="organizers"]');
+    let organizersUpdated = 0;
+    organizers.requestUpdate = () => {
+      organizersUpdated += 1;
+    };
+
+    // Apply organizers in submitted order, including nested and invalid entries.
+    setOrganizers([
+      { user: { user_id: "2", username: "bob" } },
+      { user_id: "1", username: "alice" },
+      { foo: "bar" },
+    ]);
+
+    // Verify the normalized organizers keep their order.
+    expect(organizers.selectedUsers).to.deep.equal([
+      { user_id: "2", username: "bob" },
+      { user_id: "1", username: "alice" },
+    ]);
+    expect(organizersUpdated).to.equal(1);
+
+    // Clear organizers with a non-array payload.
+    setOrganizers(null);
+    expect(organizers.selectedUsers).to.deep.equal([]);
+  });
+
+  it("ignores organizer updates when the selector is missing", () => {
+    // Apply organizers without a selector and verify nothing is rendered.
+    setOrganizers([{ user_id: "1", username: "alice" }]);
+    expect(document.querySelector("user-search-selector")).to.equal(null);
+  });
+
+  it("reads available organizers from the organizers selector", () => {
+    // Render the selector with a valid available users attribute.
+    document.body.innerHTML = `
+      <user-search-selector
+        field-name="organizers"
+        available-users='[{"user_id":"2","username":"bob"},{"user":{"user_id":"1","username":"alice"}},{"foo":"bar"}]'
+      ></user-search-selector>
+    `;
+    const selector = document.querySelector('user-search-selector[field-name="organizers"]');
+
+    // Verify valid team members are normalized in team order.
+    expect(getAvailableOrganizers()).to.deep.equal([
+      { user_id: "2", username: "bob" },
+      { user_id: "1", username: "alice" },
+    ]);
+
+    // Verify invalid JSON and non-array payloads fall back to an empty list.
+    selector.setAttribute("available-users", "not json");
+    expect(getAvailableOrganizers()).to.deep.equal([]);
+    selector.setAttribute("available-users", '{"user_id":"1"}');
+    expect(getAvailableOrganizers()).to.deep.equal([]);
+
+    // Verify a missing attribute or selector falls back to an empty list.
+    selector.removeAttribute("available-users");
+    expect(getAvailableOrganizers()).to.deep.equal([]);
+    selector.remove();
+    expect(getAvailableOrganizers()).to.deep.equal([]);
   });
 
   it("replaces the event labels with copied names and colors", () => {

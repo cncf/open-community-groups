@@ -368,7 +368,7 @@ Typical flow:
 
 1. Create sponsor records in [Sponsors](/dashboard/group?tab=sponsors ':ignore').
 2. Mark the sponsors you want highlighted on the public group page.
-3. Attach sponsors in event editing (`Hosts & Speakers` section).
+3. Attach sponsors in event editing (`Contributors` tab).
 4. Update sponsor details once to keep future events consistent.
 
 ![Group sponsors area](../screenshots/dashboard-group-sponsors.png)
@@ -513,8 +513,8 @@ Public pages are cached, so co-hosting changes can take a few minutes to appear 
 
 ## Inbox: Questions from Users
 
-Signed-in users can contact the organizers from `Contact` in the Organizers section of published
-event pages.
+Signed-in users can contact the organizers from `Contact organizers` in the `About this event`
+section of published event pages.
 Each message starts a conversation with the group that owns the event; for co-hosted events the
 owning group receives it, never the co-hosts. Conversations appear in
 [Inbox](/dashboard/group?tab=inbox ':ignore'), newest activity first, and you can filter them by

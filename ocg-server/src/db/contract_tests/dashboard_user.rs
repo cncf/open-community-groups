@@ -732,6 +732,38 @@ async fn db_contracts_list_user_events_external_payment_deserializes() -> Result
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_events_organizer_role_deserializes() -> Result<()> {
+    // Setup the contract database and event filters
+    let db = contract_tests_db()?;
+    let filters = UserEventsFilters {
+        limit: Some(10),
+        offset: Some(0),
+    };
+
+    // Load the stored organizer's events through the Rust contract
+    let output = db.list_user_events(organizer_id(), &filters).await?;
+
+    // Check the organizer role decodes alongside the contributor roles
+    assert_eq!(output.total, 1);
+    assert_eq!(output.events.len(), 1);
+    let event = &output.events[0];
+    assert_eq!(event.event.event_id, event_id());
+    assert_eq!(
+        event.roles,
+        vec![
+            UserEventRole::Host,
+            UserEventRole::Organizer,
+            UserEventRole::Speaker
+        ]
+    );
+    assert_eq!(event.enrollment_status, None);
+    assert!(!event.can_cancel_attendance());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_purchase_documents_deserializes() -> Result<()> {
     // Setup the contract database and attendee document filters
     let db = contract_tests_db()?;

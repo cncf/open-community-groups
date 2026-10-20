@@ -85,7 +85,7 @@ Each row includes:
 - Event location.
 - Event date and time.
 - Your participation roles in that event (`Attendee`, `Event offer`, `Host`,
-  `Speaker`, or multiple roles).
+  `Organizer`, `Speaker`, or multiple roles).
 - Your attendance status when action is still needed, such as `Payment pending` or
   `Registration pending`.
 - A `Refund rejected` badge and the organizer's full reason when a refund request was rejected. A
@@ -101,6 +101,12 @@ separate confirmed attendance role. When a row is marked `Registration pending`,
 actions menu to complete the event's registration questions. You can update submitted answers
 from the same menu before the event starts while registration is open, while an active checkout
 hold exists, or when an organizer invited you manually.
+
+An upcoming published event shows the `Organizer` role when you are listed as one of its
+organizers. New events list the group team by default and editors can change the list, so joining
+or leaving a group team does not change existing events. Attendees who are also listed as
+organizers can still cancel their attendance from the row actions menu; the row then keeps the
+`Organizer` role.
 
 An `Event offer` row links to the Invitations tab, which owns claim, decline,
 checkout resume, and checkout cancellation actions. An active offer does not
@@ -341,8 +347,8 @@ If organizer dashboards still do not appear, see
 ## Inbox: Conversations with Organizers
 
 [Inbox](/dashboard/user?tab=inbox ':ignore') lists the conversations you started with group
-organizers from `Contact` in the Organizers section of event pages, newest activity first. Each
-row shows the group, its community, the latest message, the event you wrote about, and the
+organizers from `Contact organizers` in the `About this event` section of event pages, newest
+activity first. Each row shows the group, its community, the latest message, the event you wrote about, and the
 status: `Open` while the organizers have not answered your latest message, `Answered` after they
 reply, `Closed` when they close it, and `Spam` when they mark it as spam.
 

@@ -286,23 +286,47 @@ each co-host group receives one combined email, and each occurrence is approved 
 The editor preview shows a `Co-hosts` box with the `Pending` or `Approved` state of each selected
 group. Only approved co-hosts are shown on the public event page.
 
-### Hosts, Speakers, and Organizers
+### Contributors
 
-In this tab, you manage event-level people and sponsor attribution: adding hosts from any user
-account on the site, adding visible speakers/presenters, and attaching event sponsors from
-reusable sponsor records.
+In this tab, you manage event-level people and sponsor attribution. Sections appear in the same
+order as on the public event page: `Speakers` (event-level speakers plus a read-only list of
+session-level speakers), `Hosts`, `Organizers`, and `Sponsors`. Hosts and speakers can be any user
+account on the site, organizers come from the group team, and sponsors come from reusable sponsor
+records.
 
-OCG also shows an `Organizers` section on the public event page. Organizers are snapshotted from
-the accepted group team when the event is created, so later group team changes do not rewrite
-existing event attribution. Use event hosts for people who should be explicitly highlighted as
-running the event program.
+Use event hosts for people who should be explicitly highlighted as running the event program.
 
 This is where attendees understand who is running, organizing, and presenting the program.
 
-Existing hosts and speakers can also receive badges from their row menus. Bulk actions award a
-badge to all current hosts or to the deduplicated set of event-level and session-level speakers.
-Save host, speaker, and session changes before awarding. For the complete contributor award flow,
-see [Group Badge Management](badges.md#group-badge-management).
+Organizers are listed in the public event page's `Organizers` section:
+
+- New events start with the accepted group team, in team order. You can add or remove people on
+  both the add and update pages; new people are appended to the end of the list, and the list
+  cannot be reordered.
+- Only accepted group team members can be added, and the organizer search lists only them. People
+  who leave the team stay listed on existing events until an editor removes them, but cannot be
+  added again unless they rejoin.
+- An event created without an organizers list, such as a request that omits the organizers
+  selector, lists the accepted group team.
+- Copying an event copies its organizers who are still on the group team. When none remain, the
+  new event keeps the group team default.
+- The organizer list is stored with each event, so later group team changes do not update existing
+  events.
+- An empty organizer list hides the public `Organizers` section.
+
+The public event page always shows a `Contact organizers` button at the end of its
+`About this event` section. Its messages go to the group team inbox, whoever is listed as an
+organizer.
+
+People without a full name in their profile are not listed on the public event page or in the
+editor preview, whatever their role. If no organizer has a full name, the public page hides the
+`Organizers` section.
+
+Existing hosts, organizers, and speakers can also receive badges from their row menus. The
+`Award badge` buttons next to the `Hosts` and `Organizers` headings award every current host or
+organizer, and the speakers bulk action awards the deduplicated set of event-level and
+session-level speakers. Save contributor and session changes before awarding. For the complete
+contributor award flow, see [Group Badge Management](badges.md#group-badge-management).
 
 ![Event hosts and speakers](../screenshots/dashboard-group-event-hosts.png)
 

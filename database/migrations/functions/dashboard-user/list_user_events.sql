@@ -1,4 +1,4 @@
--- Returns paginated upcoming events where the user participates or has actionable admission state.
+-- Returns paginated upcoming events where the user attends, hosts, organizes, speaks, or has actionable admission state.
 create or replace function list_user_events(p_user_id uuid, p_filters jsonb)
 returns json as $$
     with
@@ -239,6 +239,27 @@ returns json as $$
                 null::text as ticket_title
             from event_host eh
             where eh.user_id = p_user_id
+
+            union all
+
+            -- Event organizer
+            select
+                null::uuid as admission_offer_id,
+                null::text as admission_offer_source,
+                null::text as admission_offer_status,
+                null::bigint as amount_minor,
+                null::text as currency_code,
+                null::text as enrollment_status,
+                eo.event_id,
+                null::uuid as event_ticket_type_id,
+                false as manually_invited,
+                null::timestamptz as offer_expires_at,
+                null::jsonb as registration_answers,
+                null::text as resume_checkout_url,
+                'organizer'::text as role,
+                null::text as ticket_title
+            from event_organizer eo
+            where eo.user_id = p_user_id
 
             union all
 

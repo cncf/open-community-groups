@@ -97,6 +97,22 @@ sessions[0][label_ids][0]={new_label_id}&sessions[0][label_ids_present]=true"
 }
 
 #[test]
+fn event_deserialization_parses_organizers_in_submitted_order() {
+    // Setup the submitted organizers selection
+    let first_id = Uuid::new_v4();
+    let second_id = Uuid::new_v4();
+    let event: EventInput = serde_qs::from_str(&format!(
+        "category_id=00000000-0000-0000-0000-000000000001&description=d&kind_id=virtual&\
+name=n&timezone=UTC&organizers[0]={second_id}&organizers[1]={first_id}&organizers_present=true"
+    ))
+    .unwrap();
+
+    // Check the organizers keep their submitted order
+    assert_eq!(event.organizers, Some(vec![second_id, first_id]));
+    assert_eq!(event.organizers_present, Some(true));
+}
+
+#[test]
 fn event_deserialization_rejects_labels_without_id() {
     let result: Result<EventInput, _> = serde_qs::from_str(
         "category_id=00000000-0000-0000-0000-000000000001&description=d&kind_id=virtual&\
@@ -266,6 +282,22 @@ fn to_db_payload_includes_empty_labels_when_markers_are_present() {
 }
 
 #[test]
+fn to_db_payload_includes_empty_organizers_when_marker_is_present() {
+    // Setup an event whose organizers were all removed
+    let event = EventInput {
+        organizers_present: Some(true),
+        ..sample_event()
+    };
+
+    // Build the database payload
+    let payload = event.to_db_payload().unwrap();
+
+    // Check an empty selection is submitted and the marker removed
+    assert_eq!(payload["organizers"], serde_json::json!([]));
+    assert!(payload.get("organizers_present").is_none());
+}
+
+#[test]
 fn to_db_payload_includes_labels_and_session_label_ids_when_markers_are_present() {
     // Setup an event with labels and a session using one of them
     let label = sample_label("Cloud");
@@ -305,6 +337,45 @@ fn to_db_payload_includes_labels_and_session_label_ids_when_markers_are_present(
 }
 
 #[test]
+fn to_db_payload_includes_organizers_in_submitted_order_when_marker_is_present() {
+    // Setup an event with organizers submitted alongside their marker
+    let first_id = Uuid::new_v4();
+    let second_id = Uuid::new_v4();
+    let event = EventInput {
+        organizers: Some(vec![second_id, first_id]),
+        organizers_present: Some(true),
+        ..sample_event()
+    };
+
+    // Build the database payload
+    let payload = event.to_db_payload().unwrap();
+
+    // Check organizers keep their submitted order and the marker is removed
+    assert_eq!(
+        payload["organizers"],
+        serde_json::json!([second_id, first_id])
+    );
+    assert!(payload.get("organizers_present").is_none());
+}
+
+#[test]
+fn to_db_payload_includes_organizers_without_marker() {
+    // Setup an event with organizers submitted without their marker
+    let organizer_id = Uuid::new_v4();
+    let event = EventInput {
+        organizers: Some(vec![organizer_id]),
+        ..sample_event()
+    };
+
+    // Build the database payload
+    let payload = event.to_db_payload().unwrap();
+
+    // Check the submitted organizers are sent
+    assert_eq!(payload["organizers"], serde_json::json!([organizer_id]));
+    assert!(payload.get("organizers_present").is_none());
+}
+
+#[test]
 fn to_db_payload_keeps_optional_section_keys_omitted_when_form_omits_inputs() {
     let payload = sample_event().to_db_payload().unwrap();
 
@@ -317,6 +388,8 @@ fn to_db_payload_keeps_optional_section_keys_omitted_when_form_omits_inputs() {
     assert!(payload.get("external_payment_url").is_none());
     assert!(payload.get("external_payment_window_hours").is_none());
     assert!(payload.get("labels").is_none());
+    assert!(payload.get("organizers").is_none());
+    assert!(payload.get("organizers_present").is_none());
     assert!(payload.get("registration_questions").is_none());
     assert!(payload.get("ticket_types").is_none());
 }

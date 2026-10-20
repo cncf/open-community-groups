@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(58);
+select plan(62);
 
 -- ============================================================================
 -- VARIABLES
@@ -24,6 +24,7 @@ select plan(58);
 \set labelFailedID '3a020000-0000-0000-0000-000000000704'
 \set labelMissingID '3a020000-0000-0000-0000-000000000705'
 \set labelWebID '3a020000-0000-0000-0000-000000000706'
+\set outsiderUserID '3a020000-0000-0000-0000-000000000023'
 \set sponsor1ID '3a020000-0000-0000-0000-000000000061'
 \set sponsor2ID '3a020000-0000-0000-0000-000000000062'
 \set user1ID '3a020000-0000-0000-0000-000000000020'
@@ -67,6 +68,9 @@ select fx_user(:'user3ID', jsonb_build_object(
     'name', 'Speaker One',
     'username', 'speaker1'
 ));
+
+-- User outside the group team rejected as an organizer
+select fx_user(:'outsiderUserID', jsonb_build_object('username', 'outsider-add-event'));
 
 -- Event Category
 select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'Conference'));
@@ -293,6 +297,82 @@ select results_eq(
             ('3a020000-0000-0000-0000-000000000022'::uuid, null::integer)
     $$,
     'Should snapshot accepted group team organizers and their order only'
+);
+
+-- Should store submitted organizers in submitted order
+select add_event(
+    null::uuid,
+    :'groupID'::uuid,
+    jsonb_build_object(
+        'category_id', :'eventCategoryID',
+        'description', 'Event with submitted organizers',
+        'kind_id', 'virtual',
+        'name', 'Submitted Organizers Event',
+        'organizers', jsonb_build_array(:'user3ID', :'user1ID'),
+        'timezone', 'UTC'
+    )
+) as "submittedOrganizersEventID" \gset
+
+select results_eq(
+    format(
+        $$
+            select user_id, "order"
+            from event_organizer
+            where event_id = %L::uuid
+            order by "order"
+        $$,
+        :'submittedOrganizersEventID'
+    ),
+    format(
+        $$values (%L::uuid, 1), (%L::uuid, 2)$$,
+        :'user3ID',
+        :'user1ID'
+    ),
+    'Should store submitted organizers in submitted order'
+);
+
+-- Should store no organizers when an empty list is submitted
+select add_event(
+    null::uuid,
+    :'groupID'::uuid,
+    jsonb_build_object(
+        'category_id', :'eventCategoryID',
+        'description', 'Event without organizers',
+        'kind_id', 'virtual',
+        'name', 'Empty Organizers Event',
+        'organizers', '[]'::jsonb,
+        'timezone', 'UTC'
+    )
+) as "emptyOrganizersEventID" \gset
+
+select is(
+    (select count(*)::int from event_organizer where event_id = :'emptyOrganizersEventID'::uuid),
+    0,
+    'Should store no organizers when an empty list is submitted'
+);
+
+-- Should reject an organizer outside the group team
+select throws_ok(
+    format(
+        $$select add_event(null::uuid, %L::uuid, %L::jsonb)$$,
+        :'groupID',
+        jsonb_build_object(
+            'category_id', :'eventCategoryID',
+            'description', 'Event with an organizer outside the group team',
+            'kind_id', 'virtual',
+            'name', 'Outsider Organizer Event',
+            'organizers', jsonb_build_array(:'user1ID', :'outsiderUserID'),
+            'timezone', 'UTC'
+        )
+    ),
+    'OCG01',
+    'organizer is not a group team member',
+    'Should reject an organizer outside the group team'
+);
+select is(
+    (select count(*)::int from event where name = 'Outsider Organizer Event'),
+    0,
+    'Should not create an event when an organizer is outside the group team'
 );
 
 -- Should create event with all fields including hosts, sponsors, and sessions

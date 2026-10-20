@@ -306,6 +306,108 @@ export const setupNotificationEvent = ({
 };
 
 /**
+ * Creates a published future event whose only participants are the supplied organizers and
+ * confirmed attendees, so organizer badge awards and My Events roles stay isolated.
+ * @param {{
+ *   attendeeUserIds?: string[],
+ *   groupId: string,
+ *   organizerUserIds: string[]
+ * }} options - Event participants in organizer display order.
+ * @returns {{ eventId: string, name: string, slug: string }}
+ */
+export const setupOrganizerEvent = ({ attendeeUserIds = [], groupId, organizerUserIds }) => {
+  const eventId = randomUUID();
+  const priceWindowId = randomUUID();
+  const suffix = eventId.replace(/-/g, "").slice(0, 8);
+  const ticketTypeId = randomUUID();
+  const name = `E2E organizer event ${suffix}`;
+  const slug = `e2e-organizer-event-${suffix}`;
+
+  queryE2eDatabase(`
+    insert into event (
+      event_id,
+      name,
+      slug,
+      description,
+      description_short,
+      timezone,
+      event_category_id,
+      event_kind_id,
+      group_id,
+      meeting_join_url,
+      published,
+      published_at,
+      published_by,
+      starts_at,
+      ends_at,
+      capacity
+    ) values (
+      '${eventId}',
+      '${name}',
+      '${slug}',
+      'Owned organizer event used by E2E contributor coverage.',
+      'Owned organizer event used by E2E contributor coverage.',
+      'UTC',
+      '${EVENT_CATEGORY_ID}',
+      'virtual',
+      '${groupId}',
+      'https://meet.example.com/${slug}',
+      true,
+      current_timestamp,
+      '${TEST_USER_IDS.organizer1}',
+      current_timestamp + interval '20 days',
+      current_timestamp + interval '20 days 2 hours',
+      10
+    );
+
+    insert into event_ticket_type (
+      event_ticket_type_id,
+      active,
+      event_id,
+      "order",
+      seats_total,
+      title,
+      description
+    ) values (
+      '${ticketTypeId}',
+      true,
+      '${eventId}',
+      1,
+      10,
+      'General admission',
+      'Disposable admission used by E2E contributor coverage.'
+    );
+
+    insert into event_ticket_price_window (
+      event_ticket_price_window_id,
+      amount_minor,
+      event_ticket_type_id,
+      starts_at,
+      ends_at
+    ) values (
+      '${priceWindowId}',
+      0,
+      '${ticketTypeId}',
+      null,
+      null
+    );
+
+    insert into event_organizer (event_id, user_id, "order")
+    select '${eventId}', organizer.user_id, organizer.position::int
+    from unnest(${sqlArray(organizerUserIds)}) with ordinality as organizer(user_id, position);
+  `);
+
+  if (attendeeUserIds.length > 0) {
+    queryE2eDatabase(`
+      insert into event_attendee (event_id, user_id, status)
+      select '${eventId}', unnest(${sqlArray(attendeeUserIds)}), 'confirmed';
+    `);
+  }
+
+  return { eventId, name, slug };
+};
+
+/**
  * Creates a published future event with free ticket tiers for allocation conflict checks.
  * @param {{
  *   approvalRequired?: boolean,

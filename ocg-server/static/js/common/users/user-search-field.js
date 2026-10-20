@@ -43,6 +43,7 @@ export class UserSearchField extends LitWrapper {
    * @property {boolean} persistQueryOnOutside - Keep the query when focus leaves
    * @property {number} searchDelay - Debounce delay for search (milliseconds)
    * @property {Array} excludeUsernames - Usernames to filter out from results
+   * @property {Array|null} localUsers - Users searched locally instead of the dashboard API (null searches the API)
    * @property {boolean} _isSearching - Internal loading indicator state
    * @property {Array} _searchResults - Internal search results collection
    * @property {string} _searchQuery - Internal current search query string
@@ -63,6 +64,7 @@ export class UserSearchField extends LitWrapper {
     searchDelay: { type: Number, attribute: "search-delay" },
     disabledUserIds: { type: Array, attribute: false },
     excludeUsernames: { type: Array, attribute: false },
+    localUsers: { type: Array, attribute: false },
     wrapperClass: { type: String, attribute: "wrapper-class" },
     disabled: { type: Boolean },
     persistQueryOnOutside: { type: Boolean, attribute: "persist-query-on-outside" },
@@ -85,6 +87,7 @@ export class UserSearchField extends LitWrapper {
     this.searchDelay = 400;
     this.disabledUserIds = [];
     this.excludeUsernames = [];
+    this.localUsers = null;
     this.disabled = false;
     this.persistQueryOnOutside = false;
 
@@ -233,6 +236,13 @@ export class UserSearchField extends LitWrapper {
       return;
     }
 
+    // Filter the provided users instead of searching the dashboard API
+    if (Array.isArray(this.localUsers)) {
+      this._searchResults = filterLocalUsers(this.localUsers, query, this.excludeUsernames);
+      this._isSearching = false;
+      return;
+    }
+
     this._isSearching = true;
     const requestId = this._searchRequestId;
     this._searchTimeoutId = replaceTimeout(
@@ -258,12 +268,13 @@ export class UserSearchField extends LitWrapper {
 
   /**
    * Checks whether a query is shorter than the minimum search length.
+   * Local searches accept any non-empty query.
    * @param {string} query - Trimmed search query
    * @returns {boolean} True when the query is too short to search
    * @private
    */
   _isQueryTooShort(query) {
-    return Array.from(query).length < MIN_SEARCH_QUERY_LENGTH;
+    return !Array.isArray(this.localUsers) && Array.from(query).length < MIN_SEARCH_QUERY_LENGTH;
   }
 
   /**
@@ -523,6 +534,26 @@ export const focusUserSearchField = (root) => {
     field.focusInput();
   }
   return field;
+};
+
+/**
+ * Filters local users whose name or username contains the query, ignoring case.
+ * @param {Object[]} users - Users available for selection, in display order
+ * @param {string} query - Trimmed search query
+ * @param {string[]} excludeUsernames - Usernames to leave out of the results
+ * @returns {Object[]} Matching users in their original order
+ */
+const filterLocalUsers = (users, query, excludeUsernames) => {
+  const needle = query.toLowerCase();
+  const excluded = new Set(excludeUsernames || []);
+  return users.filter(
+    (user) =>
+      user?.username &&
+      !excluded.has(user.username) &&
+      [user.name, user.username].some(
+        (value) => typeof value === "string" && value.toLowerCase().includes(needle),
+      ),
+  );
 };
 
 customElements.define("user-search-field", UserSearchField);

@@ -34,14 +34,70 @@ describe("user-search-selector", () => {
   it("keeps the host table visible with an empty-state row", async () => {
     const element = await mountLitComponent("user-search-selector", {
       displayMode: "table",
+      selectedUsers: [{ user_id: "7", username: "ada", name: "Ada Lovelace" }],
     });
     const table = element.querySelector('table[aria-label="Event hosts"]');
-    const emptyState = table.querySelector("tbody td");
 
+    // Verify the host defaults apply without a label.
     expect(table.querySelector("th").textContent.trim()).to.equal("Host");
+    expect(table.querySelector("summary").getAttribute("aria-label")).to.equal(
+      "Open host actions for Ada Lovelace",
+    );
+
+    // Remove the user and verify the host empty state.
+    element._removeUser("ada");
+    await element.updateComplete;
+    const emptyState = table.querySelector("tbody td");
     expect(emptyState.textContent.trim()).to.equal("No hosts added yet.");
     expect(emptyState.getAttribute("colspan")).to.equal("2");
     expect(emptyState.classList.contains("text-center")).to.equal(true);
+  });
+
+  it("uses the label for organizer table copy", async () => {
+    // Render an organizer table with one selected user.
+    const element = await mountLitComponent("user-search-selector", {
+      canAwardBadges: true,
+      displayMode: "table",
+      eventId: "event-1",
+      label: "organizer",
+      selectedUsers: [{ user_id: "7", username: "ada", name: "Ada Lovelace" }],
+    });
+
+    // Verify the header, accessible name, and row action copy.
+    const table = element.querySelector('table[aria-label="Event organizers"]');
+    expect(table).to.not.equal(null);
+    expect(element.querySelector('table[aria-label="Event hosts"]')).to.equal(null);
+    expect(table.querySelector("th").textContent.trim()).to.equal("Organizer");
+    expect(table.querySelector("summary").getAttribute("aria-label")).to.equal(
+      "Open organizer actions for Ada Lovelace",
+    );
+
+    // Remove the user and verify the organizer empty state.
+    element._removeUser("ada");
+    await element.updateComplete;
+    expect(table.querySelector("tbody td").textContent.trim()).to.equal("No organizers added yet.");
+  });
+
+  it("limits the nested search to the available users", async () => {
+    // Render one selector searching every user and one limited to the team.
+    const openSelector = await mountLitComponent("user-search-selector");
+    const teamSelector = await mountLitComponent("user-search-selector", {
+      availableUsers: [
+        { user_id: "7", username: "ada", name: "Ada Lovelace" },
+        { user_id: "8", username: "grace", name: "Grace Hopper" },
+      ],
+      selectedUsers: [{ user_id: "7", username: "ada", name: "Ada Lovelace" }],
+    });
+
+    // Verify only the team selector searches a local list.
+    expect(openSelector.querySelector("user-search-field").localUsers).to.equal(null);
+    const teamField = teamSelector.querySelector("user-search-field");
+    expect(teamField.localUsers.map((user) => user.username)).to.deep.equal(["ada", "grace"]);
+
+    // Search the team and verify selected users are left out of the results.
+    teamField._handleSearchInput({ target: { value: "a" } });
+    await teamField.updateComplete;
+    expect(teamField._searchResults.map((user) => user.username)).to.deep.equal(["grace"]);
   });
 
   it("adds and removes selected users while honoring maxUsers", async () => {
@@ -127,5 +183,51 @@ describe("user-search-selector", () => {
 
     expect(awardButton.disabled).to.equal(true);
     expect(awardButton.title).to.equal("Save contributor changes before awarding badges.");
+  });
+
+  it("synchronizes organizer recipients on an external bulk award button", async () => {
+    // Create the external organizer award button.
+    const awardButton = document.createElement("button");
+    awardButton.id = "external-organizer-award";
+    awardButton.dataset.testExternalHostAward = "";
+    awardButton.dataset.badgeAwardOpen = "";
+    awardButton.disabled = true;
+    document.body.append(awardButton);
+
+    // Render organizers in their submitted order.
+    const element = await mountLitComponent("user-search-selector", {
+      awardButtonId: awardButton.id,
+      canAwardBadges: true,
+      displayMode: "table",
+      eventId: "event-1",
+      fieldName: "organizers",
+      label: "organizer",
+      selectedUsers: [
+        { user_id: "9", username: "grace", name: "Grace Hopper" },
+        { user_id: "7", username: "ada", name: "Ada Lovelace" },
+      ],
+    });
+
+    // Verify recipients keep the selector order and include the event.
+    expect(awardButton.disabled).to.equal(false);
+    expect(awardButton.dataset.eventId).to.equal("event-1");
+    expect(awardButton.dataset.userIds).to.equal("9,7");
+    expect(
+      [...element.querySelectorAll('input[name="organizers[]"]')].map((input) => input.value),
+    ).to.deep.equal(["9", "7"]);
+
+    // Disable awards while contributor changes are pending.
+    element.awardsDisabled = true;
+    await element.updateComplete;
+    expect(awardButton.disabled).to.equal(true);
+
+    // Re-enable awards after saving, then empty the list.
+    element.awardsDisabled = false;
+    await element.updateComplete;
+    expect(awardButton.disabled).to.equal(false);
+    element.selectedUsers = [];
+    await element.updateComplete;
+    expect(awardButton.disabled).to.equal(true);
+    expect(awardButton.dataset.userIds).to.equal("");
   });
 });

@@ -401,7 +401,7 @@ test.describe("event management workflows", () => {
       await setRegistrationQuestions(organizerGroupPage, values.registrationQuestions);
 
       // Fill hosts and speakers for this values set.
-      await organizerGroupPage.locator('button[data-section="hosts-sponsors"]').click({ force: true });
+      await organizerGroupPage.locator('button[data-section="contributors"]').click({ force: true });
       await setEventPeople(organizerGroupPage, values);
 
       // Fill date, venue, and meeting details for this values set.
@@ -535,7 +535,7 @@ test.describe("event management workflows", () => {
           'questions-editor input[name="registration_questions[0][options][0][label]"]',
         ),
       ).toHaveValue(updatedValues.registrationQuestions[0].options[0].label);
-      await organizerGroupPage.locator('button[data-section="hosts-sponsors"]').click();
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
       await expect(
         organizerGroupPage.locator('user-search-selector[field-name="hosts"] input[name="hosts[]"]'),
       ).toHaveValue(updatedValues.hosts[0].user_id);

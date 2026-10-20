@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(595);
+select plan(597);
 
 -- ============================================================================
 -- VARIABLES
@@ -479,6 +479,7 @@ select has_function('list_group_events', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_inbox_conversations', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_members', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_members_ids', array['uuid']::name[]);
+select has_function('list_group_organizers', array['uuid']::name[]);
 select has_function('list_group_parent_options', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('list_group_refunds', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_roles', '{}'::name[]);
@@ -730,6 +731,7 @@ select has_function('sync_event_cohosts', array['uuid', 'uuid', 'uuid', 'uuid[]'
 select has_function('sync_event_discount_codes', array['uuid', 'jsonb']::name[]);
 select has_function('sync_event_hosts_speakers_sponsors', array['uuid', 'jsonb']::name[]);
 select has_function('sync_event_labels', array['uuid', 'jsonb']::name[]);
+select has_function('sync_event_organizers', array['uuid', 'jsonb']::name[]);
 select has_function('sync_event_sessions', array['uuid', 'jsonb', 'event']::name[]);
 select has_function('sync_event_ticket_types', array['uuid', 'jsonb']::name[]);
 select has_function(

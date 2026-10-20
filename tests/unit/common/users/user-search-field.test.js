@@ -251,6 +251,52 @@ describe("user-search-field", () => {
     );
   });
 
+  it("searches local users by name or username without calling the API", async () => {
+    // Render the user-search-field fixture with local team members.
+    const element = await mountLitComponent("user-search-field", {
+      excludeUsernames: ["grace"],
+      localUsers: [
+        { user_id: "1", username: "ada", name: "Ada Lovelace" },
+        { user_id: "2", username: "grace", name: "Grace Hopper" },
+        { user_id: "3", username: "hedy", name: "Hedy Lamarr" },
+        { user_id: "4", username: "linus" },
+      ],
+      searchDelay: 0,
+    });
+
+    // Type a one-character query matching names and usernames in any case.
+    element._handleSearchInput({ target: { value: "L" } });
+    await element.updateComplete;
+
+    // Matching users keep their local order and excluded users are left out.
+    expect(fetchMock.calls).to.have.length(0);
+    expect(element._isSearching).to.equal(false);
+    expect(element._searchResults.map((user) => user.username)).to.deep.equal(["ada", "hedy", "linus"]);
+    expect(element.textContent).not.to.contain("Type at least 2 characters");
+
+    // A username match selects the user.
+    element._handleSearchInput({ target: { value: "edy" } });
+    await element.updateComplete;
+    expect(element._searchResults).to.deep.equal([{ user_id: "3", username: "hedy", name: "Hedy Lamarr" }]);
+  });
+
+  it("shows the no-results message when no local user matches", async () => {
+    // Render the user-search-field fixture with an empty local list.
+    const element = await mountLitComponent("user-search-field", {
+      label: "organizer",
+      localUsers: [],
+      searchDelay: 0,
+    });
+
+    // Search the empty local list.
+    element._handleSearchInput({ target: { value: "ada" } });
+    await element.updateComplete;
+
+    // The empty state is shown without calling the API.
+    expect(fetchMock.calls).to.have.length(0);
+    expect(element.textContent).to.contain('No organizer found for "ada"');
+  });
+
   it("shows a minimum length hint without searching one-character queries", async () => {
     // Render the user-search-field fixture.
     const element = await mountLitComponent("user-search-field", {

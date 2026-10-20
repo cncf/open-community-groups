@@ -20,14 +20,16 @@ export class UserSearchSelector extends LitWrapper {
    * @property {Array} selectedUsers - Array of selected user objects
    * @property {string} fieldName - Name attribute for the hidden form inputs and button label
    * @property {string} dashboardType - Dashboard context type ("group" or "community")
-   * @property {string} label - Label text for the placeholder in search input
+   * @property {string} label - Singular role label for the search placeholder and table copy (table default: "host")
    * @property {number} maxUsers - Maximum number of users allowed (0 = unlimited)
    * @property {number} searchDelay - Debounce delay for search in milliseconds
    * @property {string} awardButtonId - Optional external bulk award button id
+   * @property {Array|null} availableUsers - Users that can be selected, searched locally (null searches every user)
    * @property {boolean} _isModalOpen - Internal state for inline search visibility
    */
   static properties = {
     awardButtonId: { type: String, attribute: "award-button-id" },
+    availableUsers: { type: Array, attribute: "available-users" },
     selectedUsers: { type: Array, attribute: "selected-users" },
     fieldName: { type: String, attribute: "field-name" },
     dashboardType: { type: String, attribute: "dashboard-type" },
@@ -47,6 +49,7 @@ export class UserSearchSelector extends LitWrapper {
   constructor() {
     super();
     this.awardButtonId = "";
+    this.availableUsers = null;
     this.selectedUsers = [];
     this.fieldName = "";
     this.dashboardType = "group";
@@ -127,7 +130,7 @@ export class UserSearchSelector extends LitWrapper {
     this._emitUsersChanged();
   }
 
-  /** Emits the current host selection for contributor coordination. */
+  /** Emits the current user selection for contributor coordination. */
   _emitUsersChanged() {
     this.dispatchEvent(
       new CustomEvent("users-changed", {
@@ -166,12 +169,13 @@ export class UserSearchSelector extends LitWrapper {
 
   /** Renders the selected users as a simple editable table. */
   _renderUserTable() {
+    const copy = buildTableCopy(this.label);
     return html`
       <div class="mt-4 overflow-visible">
-        <table class="w-full text-left text-sm text-stone-600" aria-label="Event hosts">
+        <table class="w-full text-left text-sm text-stone-600" aria-label=${copy.ariaLabel}>
           <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
             <tr>
-              <th scope="col" class="px-4 py-3">Host</th>
+              <th scope="col" class="px-4 py-3">${copy.header}</th>
               <th scope="col" class="w-[72px] px-4 py-3"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
@@ -179,7 +183,7 @@ export class UserSearchSelector extends LitWrapper {
             ${
               this.selectedUsers.length === 0
                 ? html`<tr class="border-b border-stone-200 bg-white">
-                    <td class="px-8 py-12 text-center text-stone-500" colspan="2">No hosts added yet.</td>
+                    <td class="px-8 py-12 text-center text-stone-500" colspan="2">${copy.emptyState}</td>
                   </tr>`
                 : repeat(
                     this.selectedUsers,
@@ -190,7 +194,7 @@ export class UserSearchSelector extends LitWrapper {
                           <td class="px-4 py-3">${renderContributorIdentity(user)}</td>
                           <td class="px-4 py-3 text-right">
                             ${renderContributorActions({
-                              actionLabel: "host",
+                              actionLabel: copy.actionLabel,
                               awardsDisabled: this.awardsDisabled,
                               canAwardBadges: this.canAwardBadges,
                               contributor: user,
@@ -244,6 +248,7 @@ export class UserSearchSelector extends LitWrapper {
       <div class="mb-3">
         <user-search-field
           .excludeUsernames=${this.selectedUsers.map((u) => u.username)}
+          .localUsers=${this.availableUsers}
           dashboard-type=${this.dashboardType}
           label=${this.label || "user"}
           legend=${this.legend || ""}
@@ -313,5 +318,20 @@ export class UserSearchSelector extends LitWrapper {
     `;
   }
 }
+
+/**
+ * Builds table-mode copy from the singular role label, defaulting to hosts.
+ * @param {string} label Singular role label, such as "host" or "organizer"
+ * @returns {{actionLabel: string, ariaLabel: string, emptyState: string, header: string}} Table copy
+ */
+const buildTableCopy = (label) => {
+  const role = (typeof label === "string" ? label.trim() : "") || "host";
+  return {
+    actionLabel: role,
+    ariaLabel: `Event ${role}s`,
+    emptyState: `No ${role}s added yet.`,
+    header: `${role.charAt(0).toUpperCase()}${role.slice(1)}`,
+  };
+};
 
 customElements.define("user-search-selector", UserSearchSelector);

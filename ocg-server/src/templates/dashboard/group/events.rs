@@ -17,6 +17,7 @@ use crate::{
         meetings::MeetingProvider,
         pagination,
         payments::{GroupExternalPaymentsContext, TicketTaxBehavior, TicketTaxCalculationMode},
+        user::User,
     },
 };
 
@@ -56,6 +57,8 @@ pub(crate) struct AddPage {
     pub session_kinds: Vec<SessionKindSummary>,
     /// List of sponsors available for this group.
     pub sponsors: Vec<GroupSponsor>,
+    /// Accepted group team members, in team order, who can be event organizers.
+    pub team_members: Vec<User>,
     /// List of available timezones.
     pub timezones: Vec<String>,
 }
@@ -153,6 +156,8 @@ pub(crate) struct UpdatePage {
     pub show_waitlist_tab: bool,
     /// List of sponsors available for this group.
     pub sponsors: Vec<GroupSponsor>,
+    /// Accepted group team members, in team order, who can be event organizers.
+    pub team_members: Vec<User>,
     /// List of available timezones.
     pub timezones: Vec<String>,
 }

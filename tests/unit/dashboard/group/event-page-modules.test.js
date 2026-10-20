@@ -33,7 +33,7 @@ const sharedEventFormsMarkup = () => `
   </form>
   <form id="cohosts-form" data-event-form></form>
   <form id="date-venue-form" data-event-form></form>
-  <form id="hosts-sponsors-form" data-event-form></form>
+  <form id="contributors-form" data-event-form></form>
   <form id="sessions-form" data-event-form></form>
   <form id="cfs-form" data-event-form></form>
   <input id="starts_at" />
@@ -228,7 +228,7 @@ describe("event page modules", () => {
       "details-form",
       "cohosts-form",
       "date-venue-form",
-      "hosts-sponsors-form",
+      "contributors-form",
       "sessions-form",
       "cfs-form",
     ]);

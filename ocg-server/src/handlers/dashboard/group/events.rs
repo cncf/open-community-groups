@@ -85,6 +85,7 @@ pub(crate) async fn add_page(
         sponsors,
         timezones,
         external_payments,
+        team_members,
     ) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -100,7 +101,8 @@ pub(crate) async fn add_page(
         db.list_session_kinds(),
         db.list_group_sponsors(group_id, &sponsor_filters, true),
         db.list_timezones(),
-        db.get_group_external_payments_context(community_id, group_id)
+        db.get_group_external_payments_context(community_id, group_id),
+        db.list_group_organizers(group_id)
     )?;
 
     // Prepare template
@@ -117,6 +119,7 @@ pub(crate) async fn add_page(
         payments_ready: payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()),
         session_kinds,
         sponsors: sponsors.sponsors,
+        team_members,
         timezones,
     };
 
@@ -199,6 +202,7 @@ pub(crate) async fn update_page(
         sponsors,
         timezones,
         external_payments,
+        team_members,
     ) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -219,6 +223,7 @@ pub(crate) async fn update_page(
         db.list_group_sponsors(group_id, &sponsor_filters, true),
         db.list_timezones(),
         db.get_group_external_payments_context(community_id, group_id),
+        db.list_group_organizers(group_id),
     )?;
 
     // Keep enrollment tabs visible while their feature is enabled or rows remain
@@ -247,6 +252,7 @@ pub(crate) async fn update_page(
         show_invitation_requests_tab,
         show_waitlist_tab,
         sponsors: sponsors.sponsors,
+        team_members,
         timezones,
     };
 

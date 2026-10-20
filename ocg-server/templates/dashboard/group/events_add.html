@@ -938,19 +938,13 @@
     </div>
     {# End Tickets Tab -#}
 
-    {# Hosts & Speakers Tab -#}
-    <div data-content="hosts-sponsors" class="hidden">
-      <form id="hosts-sponsors-form" data-event-form>
+    {# Contributors Tab -#}
+    <div data-content="contributors" class="hidden">
+      <form id="contributors-form" data-event-form>
+        <p class="mb-8 text-sm text-stone-500">
+          People without a full name in their profile aren't listed on the public event page.
+        </p>
         <div class="space-y-12">
-          {# Hosts Section -#}
-          <div>
-            <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
-            <div class="mt-5">
-              <user-search-selector id="event-hosts-selector" field-name="hosts" dashboard-type="group" display-mode="table" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
-            </div>
-          </div>
-          {# End Hosts Section -#}
-
           {# Speakers Section -#}
           <div>
             <speakers-selector id="event-speakers-selector" dashboard-type="group" display-mode="table" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
@@ -965,6 +959,30 @@
           </div>
           {# End Speakers Section -#}
 
+          {# Hosts Section -#}
+          <div>
+            <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
+            <div class="mt-5">
+              <user-search-selector id="event-hosts-selector" field-name="hosts" dashboard-type="group" display-mode="table" label="host" legend="Search for event hosts by their username"></user-search-selector>
+            </div>
+          </div>
+          {# End Hosts Section -#}
+
+          {# Organizers Section -#}
+          <div>
+            <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Organizers</div>
+            <p class="mt-1 text-sm text-stone-500">
+              Organizers are listed on the public event page. Only accepted group team members can be added, and
+              new events start with the whole team. People who leave the team stay listed until removed. Contact
+              messages still go to the group team.
+            </p>
+            <div class="mt-5">
+              <user-search-selector id="event-organizers-selector" selected-users="{{ team_members|json }}" available-users="{{ team_members|json }}" field-name="organizers" dashboard-type="group" display-mode="table" label="organizer" legend="Search group team members by name or username"></user-search-selector>
+              <input type="hidden" name="organizers_present" value="true">
+            </div>
+          </div>
+          {# End Organizers Section -#}
+
           {# Sponsors Section -#}
           <div class="pb-12">
             <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Sponsors</div>
@@ -976,7 +994,7 @@
         </div>
       </form>
     </div>
-    {# End Hosts & Speakers Tab -#}
+    {# End Contributors Tab -#}
 
   </div>
 

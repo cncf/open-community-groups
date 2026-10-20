@@ -31,6 +31,7 @@ use crate::{
             EventTicketType, EventTicketTypeAvailability, PreparedEventCheckout,
         },
         questionnaire::{QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers},
+        user::User,
         utm::{EventUtmAllowlist, UtmParams},
     },
 };
@@ -231,6 +232,118 @@ async fn test_page_not_found() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
     assert!(body.contains("Go to home page"));
+}
+
+#[tokio::test]
+async fn test_page_renders_only_named_organizers() {
+    // Setup an event with one named and one unnamed organizer
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, group_id);
+    event.community.name = "test-community".to_string();
+    event.organizers = vec![
+        User {
+            user_id: Uuid::new_v4(),
+            username: "ada-organizer".to_string(),
+
+            name: Some("Ada Organizer".to_string()),
+            ..Default::default()
+        },
+        User {
+            user_id: Uuid::new_v4(),
+            username: "bob-organizer".to_string(),
+            ..Default::default()
+        },
+    ];
+    event.group.slug = "test-group".to_string();
+    event.slug = "test-event".to_string();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_get_event_full_by_slug()
+        .times(1)
+        .withf(move |id, group_slug, event_slug| {
+            *id == community_id && group_slug == "test-group" && event_slug == "test-event"
+        })
+        .returning(move |_, _, _| Ok(Some(event.clone())));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/group/test-group/event/test-event")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the organizers section lists only the named organizer
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("ada-organizer"));
+    assert!(!body.contains("bob-organizer"));
+}
+
+#[tokio::test]
+async fn test_page_renders_contact_opener_without_organizers() {
+    // Setup an event without organizers
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, group_id);
+    event.community.name = "test-community".to_string();
+    event.organizers = vec![];
+    event.group.slug = "test-group".to_string();
+    event.slug = "test-event".to_string();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_get_event_full_by_slug()
+        .times(1)
+        .withf(move |id, group_slug, event_slug| {
+            *id == community_id && group_slug == "test-group" && event_slug == "test-event"
+        })
+        .returning(move |_, _, _| Ok(Some(event.clone())));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/group/test-group/event/test-event")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the contact opener and modal render without organizers
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains(&format!(
+        "hx-get=\"/test-community/event/{event_id}/contact-modal\""
+    )));
+    assert!(body.contains("<span>Contact organizers</span>"));
+    assert!(body.contains("<div id=\"contact-modal-root\""));
 }
 
 #[tokio::test]

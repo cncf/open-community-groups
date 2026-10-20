@@ -56,7 +56,8 @@ snapshotted name, description, criteria, image, and issuer.
 Badges can be awarded from three places:
 
 - **Attendees**: the event's attendee page awards badges to confirmed attendees.
-- **Contributors**: the event's Hosts & Speakers tab awards badges to hosts and speakers.
+- **Contributors**: the event's Contributors tab awards badges to speakers, hosts, and event
+  organizers.
 - **Organizers**: the Group Team page awards badges to accepted team members. These awards are
   not linked to any event.
 
@@ -77,17 +78,18 @@ An attendee row's three-dot menu awards a badge to that single attendee.
 
 #### Contributors
 
-The event's Hosts & Speakers tab offers equivalent actions for contributors:
+The event's Contributors tab offers equivalent actions for contributors:
 
-- A host or event-level speaker row can award a badge to that contributor.
-- A session-level speaker row can award a badge to that speaker. Session assignments are still
-  edited from the Sessions tab.
-- `Award badge to all hosts` awards every current host.
+- A host, organizer, or event-level speaker row can award a badge to that contributor.
+- A session-level speaker row can award a badge to that speaker. Session assignments are edited
+  from the Sessions tab.
+- The `Award badge` button next to the `Hosts` heading awards every current host.
+- The `Award badge` button next to the `Organizers` heading awards every current event organizer.
 - `Award badge to all speakers` combines and deduplicates event-level and session-level speakers.
 
-Contributor award actions are disabled after an unsaved host, speaker, or session change. Save the
-event before awarding so eligibility matches the stored event. New-event forms do not offer award
-actions until the event exists.
+Contributor award actions are disabled after an unsaved host, organizer, speaker, or session
+change. Save the event before awarding so eligibility matches the stored event. New-event forms do
+not offer award actions until the event exists.
 
 ![Contributor badge actions](../screenshots/dashboard-group-event-badge-actions.png)
 
@@ -101,10 +103,13 @@ Pending team invitations are not eligible.
 
 #### Eligibility and Processing
 
-For an event award, every recipient must currently be a confirmed attendee, event host,
-event-level speaker, or session-level speaker. An event organizer qualifies only when they also
-hold one of those roles. For an award without an event, every recipient must be an accepted member
-of that group's team. Canceled events cannot issue awards.
+For an event award, every recipient must currently be a confirmed attendee, event host, event
+organizer, event-level speaker, or session-level speaker. Event organizers are the people listed in
+the event's Contributors tab. They are added from the group team, but stay listed, and eligible,
+after leaving it. For an award without an event, every recipient must be an accepted member of that
+group's team. Canceled events cannot issue awards. Eligibility is checked when the award is
+requested: removing someone from the event afterwards neither revokes a badge they already hold nor
+cancels an award that is still queued.
 
 OCG validates the complete recipient list before awarding the badge. If any recipient is
 ineligible, nobody in that request receives it. Each user can hold one active award of a badge:

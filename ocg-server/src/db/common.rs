@@ -17,6 +17,7 @@ use crate::{
         search::{
             SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters, SearchGroupsOutput,
         },
+        user::User,
         workers::WorkerQueueHealth,
     },
 };
@@ -66,6 +67,9 @@ pub(crate) trait DBCommon {
 
     /// Lists labels configured for an event.
     async fn list_event_labels(&self, event_id: Uuid) -> Result<Vec<EventLabel>>;
+
+    /// Lists the accepted group team members in team order.
+    async fn list_group_organizers(&self, group_id: Uuid) -> Result<Vec<User>>;
 
     /// Lists all available timezones.
     ///
@@ -191,6 +195,13 @@ where
     #[instrument(skip(self), err)]
     async fn list_event_labels(&self, event_id: Uuid) -> Result<Vec<EventLabel>> {
         self.fetch_json_one("select list_event_labels($1::uuid)", &[&event_id])
+            .await
+    }
+
+    /// [`DBCommon::list_group_organizers`]
+    #[instrument(skip(self), err)]
+    async fn list_group_organizers(&self, group_id: Uuid) -> Result<Vec<User>> {
+        self.fetch_json_one("select list_group_organizers($1::uuid)", &[&group_id])
             .await
     }
 

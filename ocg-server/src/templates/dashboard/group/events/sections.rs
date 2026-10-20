@@ -45,7 +45,7 @@ pub(crate) const EVENT_FORM_TABS: &[EventFormTab] = &[
         group: EventFormTabGroupKind::Event,
         icon: "user-plus",
         label: "Contributors",
-        section: EventFormSection::HostsSponsors,
+        section: EventFormSection::Contributors,
 
         visibility: None,
     },
@@ -176,12 +176,12 @@ pub(crate) enum EventFormSection {
     Cfs,
     /// Event co-hosts.
     Cohosts,
+    /// Event speakers, hosts, organizers and sponsors.
+    Contributors,
     /// Event schedule and venue.
     DateVenue,
     /// Event details.
     Details,
-    /// Event hosts, speakers and sponsors.
-    HostsSponsors,
     /// Attendance invitation requests.
     InvitationRequests,
     /// Event labels.
@@ -410,9 +410,9 @@ fn lazy_load(section: EventFormSection, mode: &EventFormMode) -> Option<EventFor
         EventFormSection::Analytics
         | EventFormSection::Cfs
         | EventFormSection::Cohosts
+        | EventFormSection::Contributors
         | EventFormSection::DateVenue
         | EventFormSection::Details
-        | EventFormSection::HostsSponsors
         | EventFormSection::Labels
         | EventFormSection::Payments
         | EventFormSection::Questions
