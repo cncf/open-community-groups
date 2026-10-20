@@ -7,10 +7,17 @@
 {% endblock subject -%}
 
 {% block preheader -%}
-  {{ group_name }} sent you an offer to attend {{ event_name }}.
+  {{ group_name }} sent you an offer to attend {{ event_name }}. Confirm your place by
+  {{ expires_at.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }} to attend.
 {% endblock preheader -%}
 
 {% block content -%}
+  {% call email::action_required() -%}
+  Confirm your place by <strong>{{ expires_at.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>, or the offer expires.
+  {% if registration_questions_required -%}
+    Complete the required registration questions when claiming the offer.
+  {% endif -%}
+  {% endcall -%}
   <p class="default mb-30" style="margin-bottom: 30px">
     <strong>{{ group_name }}</strong> sent you an offer to attend
     <strong>{{ event_name }}</strong>.
@@ -25,13 +32,7 @@
       This invitation is <strong>{{ self.price_label() }}</strong>.
       No charge or registration has occurred.
     {% endif -%}
-    {% if registration_questions_required -%}
-      Complete the required registration questions when claiming the offer.
-    {% endif -%}
-    Confirm or decline the offer by
-    <strong>{{ expires_at.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>.
   </p>
-
   {{ email::button(link = dashboard_url, text = "Confirm or decline", color = theme.primary_color) }}
 {% endblock content -%}
 

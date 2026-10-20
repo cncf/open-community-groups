@@ -7,10 +7,14 @@
 {% endblock subject -%}
 
 {% block preheader -%}
-  Your request for {{ event_name }} was approved.
+  Your request for {{ event_name }} was approved. Confirm your place by
+  {{ expires_at.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }} to attend.
 {% endblock preheader -%}
 
 {% block content -%}
+  {% call email::action_required() -%}
+  Confirm your place by <strong>{{ expires_at.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>, or the offer expires.
+  {% endcall -%}
   <p class="default mb-30" style="margin-bottom: 30px">
     <strong>{{ group_name }}</strong> approved your request for
     <strong>{{ event_name }}</strong>{% if !is_simple_rsvp %} and assigned
@@ -20,8 +24,6 @@
   {% if !is_simple_rsvp -%}
     The price is finalized when you first claim the offer and may change before then.
   {% endif -%}
-  Confirm or decline the offer by
-  <strong>{{ expires_at.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>.
 </p>
 
 {{ email::button(link = dashboard_url, text = "Confirm or decline", color = theme.primary_color) }}
