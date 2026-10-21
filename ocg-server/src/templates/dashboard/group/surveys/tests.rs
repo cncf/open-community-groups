@@ -262,10 +262,10 @@ fn test_list_page_renders_mark_ready_blocker_instead_of_opening_label() {
     // Render the list
     let html = normalize_whitespace(&page.render().unwrap());
 
-    // Check the visible hint replaces the opening label
-    assert!(
-        html.contains(r#"<div class="mt-1 text-xs text-amber-800">Closing date has passed</div>"#)
-    );
+    // Check the hint is shown in the state badge tooltip instead of the opening label
+    assert!(html.contains(r#"aria-describedby="event-survey-state-details-"#));
+    assert!(html.contains("Cannot mark ready"));
+    assert!(html.contains(r#"<span class="block text-stone-900">Closing date has passed</span>"#));
     assert!(!html.contains("Opens when marked ready"));
 
     // Check Mark ready is disabled with the reason

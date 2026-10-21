@@ -10,19 +10,18 @@
             type="button"
             hx-get="/dashboard/group/events/{{ event_id }}/surveys"
             hx-target="#surveys-content"
-            hx-swap="innerHTML show:#surveys-content:top"
+            hx-swap="innerHTML show:window:top"
             hx-indicator="#dashboard-spinner"
             class="inline-flex items-center gap-2 text-sm font-medium text-primary-500 hover:text-primary-700">
       <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
       <span>Back to surveys</span>
     </button>
 
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-      <div class="min-w-0">
-        <h2 class="text-xl leading-tight font-medium text-stone-900 lg:text-2xl">{{ survey.title }}</h2>
-        <p class="m-0 mt-1 text-sm/6 text-stone-500">
-          Responses: {{ crate::templates::dashboard::group::surveys::responses_label(survey) }}
-        </p>
+    <div class="flex flex-col gap-4 min-[1920px]:flex-row min-[1920px]:items-start min-[1920px]:justify-between">
+      <div class="flex min-w-0 items-center gap-3">
+        <h2 class="min-w-0 truncate text-lg leading-tight font-medium text-stone-900 lg:text-2xl"
+            title="{{ survey.title }}">{{ survey.title }}</h2>
+        <span class="shrink-0">{{ state_badge(state = survey.state) -}}</span>
       </div>
       <div class="flex shrink-0 flex-wrap items-center gap-3">
         <div class="inline-flex" role="group" aria-label="Results view">
@@ -30,28 +29,18 @@
                   type="button"
                   hx-get="{{ survey_url }}/results"
                   hx-target="#surveys-content"
-                  hx-swap="innerHTML show:#surveys-content:top"
+                  hx-swap="innerHTML show:window:top"
                   hx-indicator="#dashboard-spinner"
                   aria-pressed="{% if view == "summary" %}true{% else %}false{% endif %}"
-                  class="rounded-s-full border border-primary-500 px-4 py-1.5 text-sm font-medium transition-colors
-                         {% if view == "summary" -%}
-                           bg-primary-500 text-white
-                         {% else -%}
-                           bg-white text-primary-500 hover:bg-primary-50
-                         {% endif -%}">Summary</button>
+                  class="relative inline-flex w-[90px] items-center justify-center rounded-s-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 xl:w-[115px]">Summary</button>
           <button id="event-survey-individual-view"
                   type="button"
                   hx-get="{{ survey_url }}/responses"
                   hx-target="#surveys-content"
-                  hx-swap="innerHTML show:#surveys-content:top"
+                  hx-swap="innerHTML show:window:top"
                   hx-indicator="#dashboard-spinner"
                   aria-pressed="{% if view == "individual" %}true{% else %}false{% endif %}"
-                  class="-ms-px rounded-e-full border border-primary-500 px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-100 disabled:text-stone-400
-                         {% if view == "individual" -%}
-                           bg-primary-500 text-white
-                         {% else -%}
-                           bg-white text-primary-500 hover:bg-primary-50
-                         {% endif -%}"
+                  class="relative -ms-px inline-flex w-[90px] items-center justify-center rounded-e-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white xl:w-[115px]"
                   {% if survey.anonymous -%}
                     disabled title="Anonymous surveys only show aggregated results."
                   {% endif -%}>Individual</button>
@@ -81,16 +70,39 @@
 {% macro state_badge(state) -%}
   {% match state -%}
   {% when crate::types::event_survey::EventSurveyState::Draft -%}
-  <span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">Draft</span>
+  <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Draft</span>
   {% when crate::types::event_survey::EventSurveyState::Scheduled -%}
-  <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Scheduled</span>
+  <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Scheduled</span>
   {% when crate::types::event_survey::EventSurveyState::Open -%}
   <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Open</span>
   {% when crate::types::event_survey::EventSurveyState::Closed -%}
-  <span class="custom-badge border-stone-500 bg-stone-200 px-2.5 py-0.5 text-stone-700">Closed</span>
+  <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">Closed</span>
 {% endmatch -%}
 {% endmacro state_badge -%}
 {# End state badge -#}
+
+{# State badge with details -#}
+{# Used by the event surveys list to show state details in a hover tooltip. -#}
+{% macro state_badge_details(state, tooltip_id, title, details) -%}
+  <span class="group/survey-state relative inline-flex shrink-0">
+    <button type="button"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            aria-describedby="{{ tooltip_id }}">
+      {{ state_badge(state = state) -}}
+      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
+                   {% if *state == crate::types::event_survey::EventSurveyState::Draft %}bg-amber-800{% else if *state == crate::types::event_survey::EventSurveyState::Closed %}bg-red-800{% else %}bg-green-800{% endif %}"
+            aria-hidden="true"></span>
+    </button>
+    {% call dashboard::tooltip_panel(
+      id = tooltip_id,
+      title = title,
+      visibility_classes = "group-hover/survey-state:visible group-hover/survey-state:opacity-100 group-focus-within/survey-state:visible group-focus-within/survey-state:opacity-100"
+    ) -%}
+    <span class="block text-stone-900">{{ details }}</span>
+    {% endcall -%}
+  </span>
+{% endmacro state_badge_details -%}
+{# End state badge with details -#}
 
 {# User survey items -#}
 {# Used by the My Events surveys panel and its "Show more" pages. -#}
@@ -102,9 +114,7 @@
         <div class="flex flex-wrap items-center gap-2">
           <span class="min-w-0 break-words text-sm font-medium text-stone-900">{{ survey.title }}</span>
           {% if survey.answered -%}
-            {{ badges::invitation_badge(label = "Answered", tone = "success") -}}
-          {% else -%}
-            {{ badges::invitation_badge(label = "Not answered") -}}
+            {{ badges::invitation_badge(label = "Answered", tone = "success", with_border = true) -}}
           {% endif -%}
         </div>
         <div class="mt-0.5 truncate text-xs text-stone-500">{{ survey.event_name }} · {{ survey.group_name }}</div>
@@ -142,6 +152,7 @@
               hx-get="/dashboard/user/events/surveys?offset={{ next_offset }}"
               hx-target="closest li"
               hx-swap="outerHTML"
+              data-show-more
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="this"
               data-htmx-response

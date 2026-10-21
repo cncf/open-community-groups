@@ -289,13 +289,13 @@ async fn test_add_page_success() {
     assert!(appear_in_order(
         &body,
         &[
-            "<optgroup label=\"Event\">",
-            "<optgroup label=\"Registration\">",
-            "<optgroup label=\"Program\">",
+            "<optgroup label=\"EVENT\">",
+            "<optgroup label=\"REGISTRATION\">",
+            "<optgroup label=\"PROGRAM\">",
         ],
     ));
-    assert!(!body.contains("<optgroup label=\"People\">"));
-    assert!(!body.contains("<optgroup label=\"Follow-up\">"));
+    assert!(!body.contains("<optgroup label=\"PEOPLE\">"));
+    assert!(!body.contains("<optgroup label=\"FOLLOW-UP\">"));
     assert!(!body.contains("data-section=\"attendees\""));
 }
 
@@ -702,11 +702,11 @@ async fn test_update_page_success() {
     assert!(appear_in_order(
         &body,
         &[
-            "<optgroup label=\"Event\">",
-            "<optgroup label=\"Registration\">",
-            "<optgroup label=\"Program\">",
-            "<optgroup label=\"People\">",
-            "<optgroup label=\"Follow-up\">",
+            "<optgroup label=\"EVENT\">",
+            "<optgroup label=\"REGISTRATION\">",
+            "<optgroup label=\"PROGRAM\">",
+            "<optgroup label=\"PEOPLE\">",
+            "<optgroup label=\"FOLLOW-UP\">",
         ],
     ));
     assert!(appear_in_order(

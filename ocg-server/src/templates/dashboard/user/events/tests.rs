@@ -92,7 +92,6 @@ fn test_list_page_renders_surveys_panel_above_events() {
         r#"hx-get="/dashboard/user/events/surveys/00000000-0000-0000-0000-000000000001""#
     ));
     assert!(html.contains(r##"hx-target="#user-event-survey-modal-content""##));
-    assert!(html.contains("Not answered"));
     assert!(html.contains("Answered"));
     assert!(html.contains("Edit answers"));
     assert!(html.contains("Closes January 10, 2099 at 10:00 AM UTC"));

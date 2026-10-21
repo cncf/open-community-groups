@@ -1,6 +1,6 @@
 {# Event survey free-text answers page -#}
 {% for answer in answers.answers -%}
-  <li class="whitespace-pre-line break-words rounded-lg bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-700">{{ answer }}</li>
+  <li class="whitespace-pre-line break-words rounded-lg bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-700 lg:text-sm lg:leading-6">{{ answer }}</li>
 {% endfor -%}
 {% if let Some(next_offset) = self.next_offset() -%}
   <li>
@@ -8,6 +8,7 @@
             hx-get="/dashboard/group/events/{{ event_id }}/surveys/{{ event_survey_id }}/results/questions/{{ question_id }}/answers?offset={{ next_offset }}&limit={{ limit }}"
             hx-target="closest li"
             hx-swap="outerHTML"
+            data-show-more
             hx-indicator="#dashboard-spinner"
             hx-disabled-elt="this"
             data-htmx-response

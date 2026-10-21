@@ -1,5 +1,7 @@
 import { confirmAction, handleHtmxResponse } from "/static/js/common/alerts.js";
-import { convertDateTimeLocalToISO } from "/static/js/common/datetime.js";
+import { convertDateTimeLocalToISO, toDateTimeLocalInTimezone } from "/static/js/common/datetime.js";
+import { isForcedDeploymentRefresh } from "/static/js/common/deployment-version.js";
+import { bindShowMoreFocus } from "/static/js/common/show-more.js";
 import { bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js";
 import { trackFormChanges } from "/static/js/dashboard/group/pending-changes-alert.js";
 import { bindQuestionOptionsToggles } from "/static/js/dashboard/group/question-breakdown.js";
@@ -7,8 +9,20 @@ import { bindQuestionOptionsToggles } from "/static/js/dashboard/group/question-
 /** Id of the dashboard region replaced by dashboard navigation. */
 const DASHBOARD_CONTENT_ID = "dashboard-content";
 
+/** Selector of an element only the surveys list renders. */
+const EVENT_SURVEYS_LIST_SELECTOR = "[data-event-surveys-count]";
+
+/** Selector of the loading state shown until the surveys list first loads. */
+const EVENT_SURVEYS_LOADING_SELECTOR = "#surveys-loading";
+
+/** Body event that reloads the surveys list into the tab. */
+const EVENT_SURVEYS_REFRESH_EVENT = "refresh-event-surveys";
+
 /** Selector of the surveys tab content root. */
 const EVENT_SURVEYS_ROOT_SELECTOR = "[data-event-surveys-root]";
+
+/** Selector of the surveys section tab. */
+const EVENT_SURVEYS_TAB_SELECTOR = "[data-section='surveys']";
 
 /** Names of the survey date fields sent in the database date format. */
 const EVENT_SURVEY_DATE_FIELDS = ["closes_at", "opens_at"];
@@ -61,6 +75,20 @@ export const initializeEventSurveys = (pageRoot) => {
   // Guard requests that would discard unsaved survey edits
   installUnsavedSurveyChangesGuard();
   bindQuestionOptionsToggles(root);
+  bindShowMoreFocus(root);
+
+  // Go back to the list when the active surveys tab is clicked again. It
+  // runs before the section tabs mark the clicked tab active
+  pageRoot.addEventListener(
+    "click",
+    (event) => {
+      const tab = event.target instanceof Element ? event.target.closest(EVENT_SURVEYS_TAB_SELECTOR) : null;
+      if (tab?.getAttribute("data-active") === "true" && isSurveyViewShown(root)) {
+        document.body.dispatchEvent(new CustomEvent(EVENT_SURVEYS_REFRESH_EVENT));
+      }
+    },
+    true,
+  );
 
   // Track survey forms swapped into the tab
   root.addEventListener("htmx:load", (event) => {
@@ -77,6 +105,20 @@ export const initializeEventSurveys = (pageRoot) => {
     trackEventSurveyForm(initialForm);
   }
 
+  // Flag survey dates the server would reject, so Save reports them inline
+  ["change", "input"].forEach((type) => {
+    root.addEventListener(type, (event) => {
+      const input = event.target;
+      if (
+        input instanceof HTMLInputElement &&
+        EVENT_SURVEY_DATE_FIELDS.includes(input.name) &&
+        input.form?.matches(EVENT_SURVEY_FORM_SELECTOR)
+      ) {
+        validateEventSurveyDates(input.form);
+      }
+    });
+  });
+
   // Send survey dates in the format the server expects
   root.addEventListener("htmx:configRequest", (event) => {
     if (isEventSurveyFormRequest(event)) {
@@ -91,13 +133,15 @@ export const initializeEventSurveys = (pageRoot) => {
     }
   });
 
-  // Keep the saved values once accepted, before the response refreshes the tab
+  // Keep the saved values once accepted, before the response refreshes the tab.
+  // A new-version intercept never ran the save, so the edits stay unsaved
   root.addEventListener("htmx:beforeOnLoad", (event) => {
     if (!isEventSurveyFormRequest(event)) {
       return;
     }
-    const status = event.detail?.xhr?.status ?? 0;
-    acceptSubmittedSurveyValues(status >= 200 && status < 300);
+    const xhr = event.detail?.xhr;
+    const status = xhr?.status ?? 0;
+    acceptSubmittedSurveyValues(status >= 200 && status < 300 && !isForcedDeploymentRefresh(xhr));
   });
 
   // Report the outcome of survey form submissions
@@ -285,6 +329,15 @@ const isEventSurveyFormRequest = (event) => {
 };
 
 /**
+ * Returns whether the tab shows a survey form, results or responses instead
+ * of the list or its first load.
+ * @param {HTMLElement} root - Surveys tab content root.
+ * @returns {boolean}
+ */
+const isSurveyViewShown = (root) =>
+  !root.querySelector(EVENT_SURVEYS_LIST_SELECTOR) && !root.querySelector(EVENT_SURVEYS_LOADING_SELECTOR);
+
+/**
  * Records the values of the tracked form sent by the save starting now.
  * @returns {void}
  */
@@ -351,4 +404,31 @@ const updateUnsavedSurveyChanges = (state, dirty) => {
     return;
   }
   setBeforeUnloadBound(dirty);
+};
+
+/**
+ * Validates the survey closing date against the current time in the event
+ * timezone and the opening date. A stored closing date that was not changed
+ * is accepted, so closed surveys stay editable.
+ * @param {HTMLFormElement} form - Survey editor form.
+ * @returns {void}
+ */
+const validateEventSurveyDates = (form) => {
+  const opensInput = form.elements.namedItem("opens_at");
+  const closesInput = form.elements.namedItem("closes_at");
+  if (!(opensInput instanceof HTMLInputElement) || !(closesInput instanceof HTMLInputElement)) {
+    return;
+  }
+
+  // Compare local event times at minute precision
+  const closesAt = closesInput.value.slice(0, 16);
+  const opensAt = opensInput.value.slice(0, 16);
+  const now = toDateTimeLocalInTimezone(new Date().toISOString(), form.dataset.eventTimezone || "");
+  let message = "";
+  if (closesAt && closesInput.value !== closesInput.defaultValue && closesAt <= now) {
+    message = "Closing date must be in the future.";
+  } else if (closesAt && opensAt && closesAt <= opensAt) {
+    message = "Closing date must be after the opening date.";
+  }
+  closesInput.setCustomValidity(message);
 };

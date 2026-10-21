@@ -26,7 +26,7 @@ describe("event form macros", () => {
       '<select id="{{ id_prefix }}-select" data-section-select aria-label="Event form section" class="select-primary w-full sm:w-sm xl:hidden">',
     );
     expect(tabNav).to.include(
-      '{% for group in groups.iter() -%} <optgroup label="{{ group.label }}"> {% for tab in group.tabs -%} {{ tab_option(section = tab.section, label = tab.label, active = tab.active) -}} {% endfor -%} </optgroup> {% endfor -%} </select>',
+      '{% for group in groups.iter() -%} <optgroup label="{{ group.label|upper }}"> {% for tab in group.tabs -%} {{ tab_option(section = tab.section, label = tab.label, active = tab.active) -}} {% endfor -%} </optgroup> {% endfor -%} </select>',
     );
   });
 

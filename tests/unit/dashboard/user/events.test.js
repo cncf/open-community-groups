@@ -28,6 +28,7 @@ const renderSurveyModal = ({ openOnLoad = false } = {}) => {
       <div data-user-event-survey-close class="modal-overlay"></div>
       <div id="user-event-survey-modal-content">
         <form data-user-event-survey-form>
+          <textarea id="survey-answer" data-question-answer>Great talks</textarea>
           <input type="hidden" data-question-answers-input name="answers">
           <button type="button" data-user-event-survey-close>Cancel</button>
           <button type="submit">Submit answers</button>
@@ -214,6 +215,66 @@ describe("dashboard user events", () => {
 
     // Verify the modal closes.
     expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("asks before Cancel discards changed survey answers", async () => {
+    // Render an open survey modal and change an answer.
+    const { modal } = renderSurveyModal({ openOnLoad: true });
+    initializeUserEventSurveyModal(document);
+    modal.querySelector("#survey-answer").value = "Longer breaks";
+
+    // Cancel the survey and keep answering.
+    env.current.swal.setNextResult({ isConfirmed: false });
+    modal.querySelector("button[data-user-event-survey-close]").click();
+    await waitForMicrotask();
+
+    // Verify the confirmation and the answers stay open.
+    expect(env.current.swal.calls.at(-1)?.text).to.equal(
+      "You have unsaved answers. If you close the survey, they will be lost.",
+    );
+    expect(modal.classList.contains("hidden")).to.equal(false);
+
+    // Close from the overlay and discard the answers.
+    env.current.swal.setNextResult({ isConfirmed: true });
+    modal.querySelector(".modal-overlay").click();
+    await waitForMicrotask();
+
+    // Verify the modal closes.
+    expect(env.current.swal.calls.length).to.equal(2);
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("asks before Escape discards changed survey answers", async () => {
+    // Render an open survey modal and change an answer.
+    const { modal } = renderSurveyModal({ openOnLoad: true });
+    initializeUserEventSurveyModal(document);
+    modal.querySelector("#survey-answer").value = "Longer breaks";
+
+    // Press Escape twice while the confirmation shows and keep answering.
+    env.current.swal.setNextResult({ isConfirmed: false });
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await waitForMicrotask();
+
+    // Verify a single confirmation and the modal stays open.
+    expect(env.current.swal.calls.length).to.equal(1);
+    expect(modal.classList.contains("hidden")).to.equal(false);
+  });
+
+  it("keeps Tab navigation inside the survey modal", () => {
+    // Render an open survey modal and focus its last control.
+    const { modal } = renderSurveyModal({ openOnLoad: true });
+    initializeUserEventSurveyModal(document);
+    const submit = modal.querySelector("button[type='submit']");
+    submit.focus();
+
+    // Press Tab on the last control.
+    const event = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+
+    // Verify the focus wraps to the first control.
+    expect(event.defaultPrevented).to.equal(true);
+    expect(document.activeElement).to.equal(modal.querySelector("#survey-answer"));
   });
 
   it("closes the survey modal after saving the answers", () => {

@@ -3,11 +3,11 @@
 
 {# Event survey results -#}
 {% let survey = results.survey -%}
-<div class="space-y-8" data-event-survey-results>
+<div class="max-w-5xl space-y-8 2xl:max-w-6xl" data-event-survey-results>
   {{ surveys::results_header(event_id = event.event_id, survey = survey, view = "summary") -}}
 
   {# Overview -#}
-  <div class="grid max-w-4xl grid-cols-1 gap-4 md:grid-cols-3"
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-3"
        data-event-survey-overview>
     <div class="rounded-lg border border-stone-200 bg-white p-5">
       <div class="text-xs font-medium uppercase text-stone-500">Responses</div>
@@ -36,8 +36,13 @@
     </div>
     <div class="rounded-lg border border-stone-200 bg-white p-5">
       <div class="text-xs font-medium uppercase text-stone-500">Closes</div>
-      <div class="mt-2 text-lg font-semibold text-stone-900">
-        {{ crate::templates::dashboard::group::surveys::closes_label(survey, *event.timezone) }}
+      <div class="mt-2 text-balance text-lg font-semibold text-stone-900">
+        {% if let Some(closes_at) = survey.closes_at -%}
+          <span class="min-[1920px]:hidden">{{ closes_at.with_timezone(event.timezone).format("%b %-e, %Y %-I:%M %p %Z") }}</span>
+          <span class="hidden min-[1920px]:inline">{{ crate::templates::dashboard::group::surveys::closes_label(survey, *event.timezone) }}</span>
+        {% else -%}
+          No closing date
+        {% endif -%}
       </div>
       <div class="mt-1 text-xs text-stone-500">Shown in the event timezone</div>
     </div>
@@ -48,7 +53,7 @@
     <p class="text-sm text-stone-500">This survey does not have any questions yet.</p>
   {% else -%}
     {# Questions -#}
-    <div class="max-w-4xl space-y-8">
+    <div class="space-y-8">
       {% for question in results.questions -%}
         {% if let Some(breakdown) = question.breakdown -%}
           {% let options_id = "event-survey-question-{}-options"|format(question.question_id) -%}
@@ -75,7 +80,7 @@
               {% else -%}
                 <ul id="{{ answers_id }}" class="space-y-3">
                   {% for answer in text.answers -%}
-                    <li class="whitespace-pre-line break-words rounded-lg bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-700">{{ answer }}</li>
+                    <li class="whitespace-pre-line break-words rounded-lg bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-700 lg:text-sm lg:leading-6">{{ answer }}</li>
                   {% endfor -%}
                   {% if text.total > text.answers.len() -%}
                     <li>
@@ -83,6 +88,7 @@
                               hx-get="/dashboard/group/events/{{ event.event_id }}/surveys/{{ survey.event_survey_id }}/results/questions/{{ question.question_id }}/answers?offset={{ text.answers.len() }}"
                               hx-target="closest li"
                               hx-swap="outerHTML"
+                              data-show-more
                               hx-indicator="#dashboard-spinner"
                               hx-disabled-elt="this"
                               data-htmx-response

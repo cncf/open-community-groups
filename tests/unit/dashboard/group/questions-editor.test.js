@@ -718,12 +718,15 @@ describe("questions-editor", () => {
     const limitNote = element.querySelector("[data-questions-limit]");
     expect(element.questions.length).to.equal(2);
     expect(addButton.disabled).to.equal(true);
+    expect(addButton.title).to.equal("You can add up to 2 questions.");
     expect(limitNote.textContent.trim()).to.equal("You can add up to 2 questions.");
+    expect(limitNote.classList.contains("sr-only")).to.equal(true);
     expect(addButton.getAttribute("aria-describedby")).to.equal(limitNote.id);
 
     // Verify removing a question enables adding again.
     await clickButtonByLabel(element, "Delete question");
     expect(getAddQuestionButton(element).disabled).to.equal(false);
+    expect(getAddQuestionButton(element).hasAttribute("title")).to.equal(false);
     expect(element.querySelector("[data-questions-limit]")).to.equal(null);
   });
 

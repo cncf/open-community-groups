@@ -32,14 +32,23 @@ test.describe("group dashboard event surveys tab", () => {
     );
     await expect(getSurveyRow(content, surveys.closed.title).locator(".custom-badge")).toHaveText("Closed");
 
-    // Verify each row offers the status action of its state.
+    // Verify draft and scheduled states explain when they open in a tooltip.
+    const scheduledRow = getSurveyRow(content, surveys.scheduled.title);
+    await scheduledRow.getByRole("button", { name: "Scheduled" }).hover();
+    await expect(scheduledRow.getByRole("tooltip")).toContainText("Opens");
+
+    // Verify each row offers the status action of its state in its actions menu.
+    await openSurveyActions(content, surveys.draft.title);
     await expect(content.getByRole("button", { name: `Mark ready: ${surveys.draft.title}` })).toBeVisible();
+    await openSurveyActions(content, surveys.scheduled.title);
     await expect(
       content.getByRole("button", { name: `Back to draft: ${surveys.scheduled.title}` }),
     ).toBeVisible();
+    await openSurveyActions(content, surveys.openIdentified.title);
     await expect(
       content.getByRole("button", { name: `Close: ${surveys.openIdentified.title}` }),
     ).toBeVisible();
+    await openSurveyActions(content, surveys.closed.title);
     await expect(content.getByRole("button", { name: `Reopen: ${surveys.closed.title}` })).toBeEnabled();
   });
 
@@ -113,12 +122,14 @@ test.describe("group dashboard event surveys tab", () => {
       expect(updateParams.get("closes_at")).toBe("2099-05-20T18:30:00");
       expect(updateParams.get("revision")).toBe("1");
       await dismissAlert(page, "You have successfully updated the survey.");
-      await expect(row).toContainText("May 20, 2099 6:30 PM CEST");
+      await expect(row).toContainText("May 20, 2099");
+      await expect(row).toContainText("06:30 PM CEST");
 
       // Mark the survey ready, confirming it opens now for the ended event.
       const statusRequest = page.waitForRequest(
         (request) => request.method() === "PUT" && request.url().endsWith("/status"),
       );
+      await openSurveyActions(content, title);
       await row.getByRole("button", { name: `Mark ready: ${title}` }).click();
       await confirmAlert(page, "Mark this survey ready? Test events do not email attendees.", "Mark ready");
       await dismissAlert(page, "You have successfully marked the survey ready.");
@@ -129,16 +140,19 @@ test.describe("group dashboard event surveys tab", () => {
       await expect(row.locator(".custom-badge")).toHaveText("Open");
 
       // Close and reopen the survey.
+      await openSurveyActions(content, title);
       await row.getByRole("button", { name: `Close: ${title}` }).click();
       await confirmAlert(page, "Close this survey?", "Close");
       await dismissAlert(page, "You have successfully closed the survey.");
       await expect(row.locator(".custom-badge")).toHaveText("Closed");
+      await openSurveyActions(content, title);
       await row.getByRole("button", { name: `Reopen: ${title}` }).click();
       await confirmAlert(page, "Reopen this survey?", "Reopen");
       await dismissAlert(page, "You have successfully reopened the survey.");
       await expect(row.locator(".custom-badge")).toHaveText("Open");
 
       // Delete the survey behind its confirmation.
+      await openSurveyActions(content, title);
       await row.getByRole("button", { name: `Delete survey: ${title}` }).click();
       await confirmAlert(page, "Delete this survey? This cannot be undone.", "Delete");
       await dismissAlert(page, "You have successfully deleted the survey.");
@@ -162,7 +176,7 @@ test.describe("group dashboard event surveys tab", () => {
     );
 
     // Verify the breakdown and free-text answers.
-    await expect(content.getByText("Responses: 2 / 4 (50%)")).toBeVisible();
+    await expect(content.locator("[data-survey-responses-label]")).toHaveText("2 / 4 (50%)");
     const rating = content.locator(
       `[data-event-survey-question="${surveys.openIdentified.questionIds.rating}"]`,
     );
@@ -240,11 +254,11 @@ test.describe("group dashboard event surveys tab", () => {
         userId: attendeeIds.checkedIn1,
       });
 
-      // Open the edit form of the locked survey.
+      // Open the edit form of the locked survey from its title.
       const content = await openSurveysTab(page);
       await waitForActionResponse(
         page,
-        () => content.getByRole("button", { name: `Edit survey: ${owned.title}` }).click(),
+        () => content.getByRole("button", { name: `Open survey: ${owned.title}` }).click(),
         { method: "GET", urlIncludes: `/surveys/${owned.id}/update` },
       );
       const form = page.locator("#event-survey-form");
@@ -327,6 +341,7 @@ test.describe("group dashboard event surveys tab", () => {
     await expect(content.getByText("Your role cannot manage surveys.")).toBeVisible();
     await expect(content.getByRole("button", { name: "Add survey" })).toBeDisabled();
     const row = getSurveyRow(content, surveys.openIdentified.title);
+    await openSurveyActions(content, surveys.openIdentified.title);
     await expect(
       row.getByRole("button", { name: `Delete survey: ${surveys.openIdentified.title}` }),
     ).toBeDisabled();
@@ -342,8 +357,11 @@ test.describe("group dashboard event surveys tab", () => {
     );
     const form = page.locator("#event-survey-form");
     await expect(content.getByText("Your role cannot update surveys.")).toBeVisible();
+    await expect(content.locator("[data-event-survey-locked-notice]")).toHaveCount(0);
     await expect(form.getByLabel("Title")).toBeDisabled();
-    await expect(form.getByRole("button", { name: "Save survey" })).toBeDisabled();
+    const saveButton = form.getByRole("button", { name: "Save survey" });
+    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toHaveAttribute("title", "Your role cannot update surveys.");
 
     // Go back and open the results of the identified survey.
     await waitForActionResponse(
@@ -359,7 +377,7 @@ test.describe("group dashboard event surveys tab", () => {
       () => content.getByRole("button", { name: `View results: ${surveys.openIdentified.title}` }).click(),
       { method: "GET", urlIncludes: `/surveys/${surveys.openIdentified.id}/results` },
     );
-    await expect(content.getByText("Responses: 2 / 4 (50%)")).toBeVisible();
+    await expect(content.locator("[data-survey-responses-label]")).toHaveText("2 / 4 (50%)");
   });
 });
 
@@ -401,6 +419,13 @@ const dismissAlert = async (page, message) => {
 /** Returns the row of a survey in the surveys list. */
 const getSurveyRow = (content, title) =>
   content.getByRole("table", { name: "Event surveys list" }).locator("tr", { hasText: title });
+
+/** Opens the actions menu of a survey row. */
+const openSurveyActions = async (content, title) => {
+  const trigger = getSurveyRow(content, title).getByLabel(`Open survey actions for ${title}`);
+  await trigger.click();
+  await expect(trigger.locator("..")).toHaveAttribute("open", "");
+};
 
 /** Opens the surveys tab of the seeded survey event. */
 const openSurveysTab = async (page) => {

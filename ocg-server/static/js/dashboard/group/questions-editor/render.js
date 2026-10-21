@@ -17,11 +17,12 @@ const renderQuestionsEditor = (editor) => html`
           <span class="mx-2 text-stone-400">•</span>
           ${editor.questions.filter((question) => question.required).length} required
         </div>
-        <div class="flex flex-col gap-2 md:items-end">
+        <div>
           <button
             type="button"
             class="btn-secondary inline-flex items-center justify-center gap-2"
             ?disabled=${editor.disabled || editor.questionsLimitReached}
+            title=${showQuestionsLimit(editor) ? getQuestionsLimitText(editor) : nothing}
             aria-describedby=${showQuestionsLimit(editor) ? editor.ids.limit : nothing}
             @click=${(event) => editor._addQuestion(event.currentTarget)}
           >
@@ -426,15 +427,21 @@ const renderDraftOptions = (editor) => html`
 `;
 
 /**
- * Renders the note shown when the question limit has been reached.
+ * Renders the screen reader note describing the reached question limit.
  * @param {QuestionsEditor} editor Questions editor element
  * @returns {unknown} Lit template
  */
 const renderQuestionsLimit = (editor) => html`
-  <p id=${editor.ids.limit} data-questions-limit class="text-xs text-stone-500">
-    You can add up to ${editor.limits.questions} ${editor.limits.questions === 1 ? "question" : "questions"}.
-  </p>
+  <p id=${editor.ids.limit} data-questions-limit class="sr-only">${getQuestionsLimitText(editor)}</p>
 `;
+
+/**
+ * Builds the text explaining the question limit.
+ * @param {QuestionsEditor} editor Questions editor element
+ * @returns {string}
+ */
+const getQuestionsLimitText = (editor) =>
+  `You can add up to ${editor.limits.questions} ${editor.limits.questions === 1 ? "question" : "questions"}.`;
 
 /**
  * Checks whether the question limit note should be shown.

@@ -1,5 +1,5 @@
 import "/static/js/common/actions-menu.js";
-import { handleHtmxResponse } from "/static/js/common/alerts.js";
+import { confirmAction, handleHtmxResponse } from "/static/js/common/alerts.js";
 import {
   closestElement,
   getElementById,
@@ -11,8 +11,9 @@ import {
 } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
-import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
+import { toggleModalVisibility, trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
+import { bindShowMoreFocus } from "/static/js/common/show-more.js";
 import { isSuccessfulXHR } from "/static/js/common/utils.js";
 
 // Dataset key marking the user events dashboard as initialized.
@@ -33,6 +34,12 @@ const SURVEY_MODAL_CONTENT_ID = "user-event-survey-modal-content";
 const SURVEY_MODAL_ID = "user-event-survey-modal";
 // Survey modal rendered to open as soon as the page loads.
 const SURVEY_OPEN_ON_LOAD_SELECTOR = "[data-user-event-survey-modal][data-open-on-load]";
+// Confirmation shown before closing the survey modal discards answers.
+const UNSAVED_SURVEY_ANSWERS_MESSAGE =
+  "You have unsaved answers. If you close the survey, they will be lost.";
+
+// Whether the confirmation to discard survey answers is showing.
+let surveyCloseConfirmationOpen = false;
 
 /**
  * Loads exact refund eligibility for paid rows in the current dashboard fragment.
@@ -190,16 +197,30 @@ const handleClick = (event) => {
   }
 
   if (closestElement(event.target, "[data-user-event-survey-close]")) {
-    closeSurveyModal();
+    void requestSurveyModalClose();
   }
 };
 
 /**
- * Closes the open modals on Escape.
+ * Keeps Tab navigation inside the open survey modal and closes the open
+ * modals on Escape. Keys are left to the discard confirmation while it shows.
  * @param {KeyboardEvent} event Keydown event.
  * @returns {void}
  */
 const handleKeydown = (event) => {
+  if (surveyCloseConfirmationOpen) {
+    return;
+  }
+
+  const surveyModal = getElementById(document, SURVEY_MODAL_ID);
+  const surveyModalOpen = surveyModal instanceof HTMLElement && !isElementHidden(surveyModal);
+  if (event.key === "Tab") {
+    if (surveyModalOpen) {
+      trapModalFocus(event, surveyModal);
+    }
+    return;
+  }
+
   if (!isEscapeEvent(event)) {
     return;
   }
@@ -208,9 +229,8 @@ const handleKeydown = (event) => {
     closeModal(modal);
   });
 
-  const surveyModal = getElementById(document, SURVEY_MODAL_ID);
-  if (surveyModal instanceof HTMLElement && !isElementHidden(surveyModal)) {
-    closeSurveyModal();
+  if (surveyModalOpen) {
+    void requestSurveyModalClose();
   }
 };
 
@@ -247,6 +267,27 @@ const handleSubmit = (event) => {
 };
 
 /**
+ * Checks whether the survey answer form differs from the answers it loaded with.
+ * @param {Element|null} form Survey answer form.
+ * @returns {boolean} True when an answer was changed.
+ */
+const hasUnsavedSurveyAnswers = (form) => {
+  if (!(form instanceof HTMLFormElement)) {
+    return false;
+  }
+
+  return Array.from(form.querySelectorAll("[data-question-answer]")).some((field) => {
+    if (field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio")) {
+      return field.checked !== field.defaultChecked;
+    }
+    if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+      return field.value !== field.defaultValue;
+    }
+    return false;
+  });
+};
+
+/**
  * Registers the document listeners once.
  * @returns {void}
  */
@@ -260,6 +301,7 @@ const initializeUserEvents = () => {
   document.addEventListener("htmx:afterRequest", handleAfterRequest);
   document.addEventListener("htmx:afterSwap", handleAfterSwap);
   document.addEventListener("keydown", handleKeydown);
+  bindShowMoreFocus(document);
 };
 
 /**
@@ -294,6 +336,37 @@ const loadRefundActionEligibility = async (action) => {
   } catch (_) {
     setElementHidden(action, true);
   }
+};
+
+/**
+ * Closes the survey modal, asking first when answers would be discarded.
+ * @returns {Promise<void>}
+ */
+const requestSurveyModalClose = async () => {
+  if (surveyCloseConfirmationOpen) {
+    return;
+  }
+
+  // Ask before discarding changed answers
+  const modal = getElementById(document, SURVEY_MODAL_ID);
+  if (hasUnsavedSurveyAnswers(modal?.querySelector(SURVEY_FORM_SELECTOR) ?? null)) {
+    surveyCloseConfirmationOpen = true;
+    let confirmed = false;
+    try {
+      confirmed = await confirmAction({
+        message: UNSAVED_SURVEY_ANSWERS_MESSAGE,
+        confirmText: "Discard answers",
+        cancelText: "Keep answering",
+      });
+    } finally {
+      surveyCloseConfirmationOpen = false;
+    }
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  closeSurveyModal();
 };
 
 initializeUserEvents();

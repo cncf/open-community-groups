@@ -80,7 +80,7 @@ test.describe("user dashboard my events view", () => {
         "data-user-event-survey",
         TEST_EVENT_SURVEYS.surveys.openIdentified.id,
       );
-      await expect(sessionSurvey).toContainText("Not answered");
+      await expect(sessionSurvey).not.toContainText("Answered");
       await expect(sessionSurvey.getByRole("button", { name: /Answer/ })).toHaveAttribute(
         "hx-get",
         `/dashboard/user/events/surveys/${TEST_EVENT_SURVEYS.surveys.openIdentified.id}`,

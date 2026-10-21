@@ -34,7 +34,7 @@
           aria-label="Event form section"
           class="select-primary w-full sm:w-sm xl:hidden">
     {% for group in groups.iter() -%}
-      <optgroup label="{{ group.label }}">
+      <optgroup label="{{ group.label|upper }}">
         {% for tab in group.tabs -%}
           {{ tab_option(section = tab.section, label = tab.label, active = tab.active) -}}
         {% endfor -%}

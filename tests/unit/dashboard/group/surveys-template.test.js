@@ -14,13 +14,20 @@ describe("dashboard group event survey templates", () => {
     // Load the survey list template.
     const template = await loadTemplate("dashboard/group/surveys_list.html");
 
-    // Verify the row follows the sponsors table style with icon buttons.
+    // Verify the row keeps two icon buttons and moves the other actions into a menu.
     expect(template).to.include('aria-label="Event surveys list"');
-    expect(template).to.include('<th scope="col" class="px-3 py-3 xl:px-5">Responses</th>');
+    expect(template).to.include('<th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Responses</th>');
     expect(template).to.include('class="btn-tertiary p-2"');
     expect(template).to.include('<div class="svg-icon size-4 icon-charts" aria-hidden="true"></div>');
-    expect(template).to.include('<div class="svg-icon size-4 icon-csv" aria-hidden="true"></div>');
-    expect(template).to.include('<div class="svg-icon size-4 icon-{{ status.icon }}" aria-hidden="true"></div>');
+    expect(template).to.include('<div class="svg-icon size-4 icon-pencil" aria-hidden="true"></div>');
+    expect(template).to.include('<details data-actions-menu class="group relative inline-flex justify-end">');
+    expect(template).to.include('aria-label="Open survey actions for {{ survey.title }}"');
+    expect(template).to.include(
+      '<span class="svg-icon size-4 icon-csv shrink-0 bg-stone-600" aria-hidden="true"></span>',
+    );
+    expect(template).to.include(
+      '<span class="svg-icon size-4 icon-{{ status.icon }} shrink-0 bg-stone-600" aria-hidden="true"></span>',
+    );
 
     // Verify the header links the docs and shows the survey count.
     expect(template).to.include('docs_href = "/docs#/guides/event-operations?id=surveys"');
@@ -28,11 +35,17 @@ describe("dashboard group event survey templates", () => {
       "{{ surveys.len() }} of {{ crate::validation::MAX_EVENT_SURVEYS }} surveys",
     );
 
-    // Verify tab swaps scroll the surveys tab to its top.
-    expect(template.match(/hx-swap="innerHTML show:#surveys-content:top"/g)).to.have.length(3);
+    // Verify tab swaps scroll the page to its top.
+    expect(template.match(/hx-swap="innerHTML show:window:top"/g)).to.have.length(4);
 
-    // Verify the status column reuses the shared state badge.
+    // Verify the survey title opens the survey form.
+    expect(template).to.include('aria-label="Open survey: {{ survey.title }}">{{ survey.title }}</button>');
+
+    // Verify the status column reuses the shared state badge and explains it in a tooltip.
     expect(template).to.include("{{ surveys_macros::state_badge(state = survey.state) -}}");
+    expect(template).to.include("{{ surveys_macros::state_badge_details(state = survey.state,");
+    expect(template).to.include('title = "Cannot mark ready"');
+    expect(template).to.include('title = "Opening"');
 
     // Verify status and delete actions use unique ids and the confirmation contract.
     expect(template).to.include('id="event-survey-status-{{ survey_id }}"');
@@ -43,7 +56,7 @@ describe("dashboard group event survey templates", () => {
     expect(template.match(/hx-trigger="confirmed"/g)).to.have.length(2);
     expect(template).to.include('hx-disabled-elt="this"');
     expect(template).to.include(
-      'data-confirm-message="Delete this survey and its {{ survey.responses_count }} responses? This cannot be undone."',
+      'data-confirm-message="Delete this survey and its {{ survey.responses_count }} response{{ survey.responses_count|pluralize }}? This cannot be undone."',
     );
   });
 
@@ -84,7 +97,7 @@ describe("dashboard group event survey templates", () => {
     // Verify the Back link and Cancel button swap the surveys tab in place.
     expect(template).to.include('id="event-survey-form-back"');
     expect(template.match(/hx-target="#surveys-content"/g)).to.have.length(2);
-    expect(template.match(/hx-swap="innerHTML show:#surveys-content:top"/g)).to.have.length(2);
+    expect(template.match(/hx-swap="innerHTML show:window:top"/g)).to.have.length(2);
 
     // Verify Cancel skips form validation and the submit label follows the mode.
     expect(template).to.include('data-skip-validation="true" class="btn-primary-outline">Cancel</button>');
@@ -159,9 +172,9 @@ describe("dashboard group event survey templates", () => {
     expect(macros).to.include('id="event-survey-results-back"');
     expect(macros).to.include("few_anonymous_responses(survey)");
     expect(macros).to.include('<h2 class="text-xl leading-tight font-medium text-stone-900 lg:text-2xl">{{ survey.title }}</h2>');
-    expect(macros.match(/hx-swap="innerHTML show:#surveys-content:top"/g)).to.have.length(3);
+    expect(macros.match(/hx-swap="innerHTML show:window:top"/g)).to.have.length(3);
     expect(responses).to.include('view = "individual"');
     expect(responses).to.include('hx_target = "#surveys-content"');
-    expect(responses).to.include('hx_swap = "innerHTML show:#surveys-content:top"');
+    expect(responses).to.include('hx_swap = "innerHTML show:window:top"');
   });
 });

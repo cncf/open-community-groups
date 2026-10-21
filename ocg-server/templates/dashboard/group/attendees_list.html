@@ -67,7 +67,7 @@
       <select id="attendees-enrollment-status"
               name="status"
               class="block h-10 w-52 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500">
-        <optgroup label="Views">
+        <optgroup label="VIEWS">
           <option value="current"
                   {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::Current -%}
                     selected
@@ -81,7 +81,7 @@
                     selected
                   {% endif -%}>All enrollments</option>
         </optgroup>
-        <optgroup label="Current status">
+        <optgroup label="CURRENT STATUS">
           <option value="confirmed"
                   {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::Confirmed -%}
                     selected
@@ -103,7 +103,7 @@
                     selected
                   {% endif -%}>Registration pending</option>
         </optgroup>
-        <optgroup label="Historical status">
+        <optgroup label="HISTORICAL STATUS">
           <option value="attendance-canceled"
                   {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::AttendanceCanceled -%}
                     selected

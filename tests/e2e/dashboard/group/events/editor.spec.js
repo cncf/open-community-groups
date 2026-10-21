@@ -86,7 +86,7 @@ test.describe("group dashboard event editor", () => {
       .poll(() =>
         addSectionSelect.locator("optgroup").evaluateAll((groups) => groups.map((group) => group.label)),
       )
-      .toEqual(["Event", "Registration", "Program"]);
+      .toEqual(["EVENT", "REGISTRATION", "PROGRAM"]);
     await expect(
       organizerGroupPage
         .getByRole("navigation", { name: "Event form sections" })
@@ -133,11 +133,11 @@ test.describe("group dashboard event editor", () => {
       .poll(() =>
         editSectionSelect.locator("optgroup").evaluateAll((groups) => groups.map((group) => group.label)),
       )
-      .toEqual(["Event", "Registration", "Program", "People", "Follow-up"]);
-    await expect(editSectionSelect.locator('optgroup[label="People"] option[value="waitlist"]')).toHaveCount(
+      .toEqual(["EVENT", "REGISTRATION", "PROGRAM", "PEOPLE", "FOLLOW-UP"]);
+    await expect(editSectionSelect.locator('optgroup[label="PEOPLE"] option[value="waitlist"]')).toHaveCount(
       1,
     );
-    await expect(editSectionSelect.locator('optgroup[label="Follow-up"] option')).toHaveText([
+    await expect(editSectionSelect.locator('optgroup[label="FOLLOW-UP"] option')).toHaveText([
       "Surveys",
       "Analytics",
     ]);

@@ -21,6 +21,7 @@ const renderSurveyPage = async ({ anonymousLocked = false } = {}) => {
     <div id="dashboard-content">
       <div id="event-update-page" data-event-page="update">
         <button id="update-event-button" type="button">Save</button>
+        <button id="surveys-tab" type="button" data-section="surveys" data-active="true">Surveys</button>
         <form id="details-form" data-event-form>
           <input name="name" value="Event" />
         </form>
@@ -29,12 +30,13 @@ const renderSurveyPage = async ({ anonymousLocked = false } = {}) => {
         </div>
         <div data-content="surveys">
           <div id="surveys-content" data-event-surveys-root>
-            <form id="event-survey-form" data-event-survey-form data-success-message="Saved." data-error-message="Failed.">
+            <form id="event-survey-form" data-event-survey-form data-event-timezone="UTC" data-success-message="Saved." data-error-message="Failed.">
               <button id="event-survey-form-back" type="button">Back to surveys</button>
               <input id="event-survey-title" name="title" value="Session feedback" />
               <input id="event-survey-anonymous-toggle" type="checkbox" data-event-survey-toggle="event-survey-anonymous" checked ${anonymousLocked ? "disabled" : ""} />
               <input type="hidden" id="event-survey-anonymous" name="anonymous" value="true" />
               <input id="event-survey-opens-at" type="datetime-local" name="opens_at" value="" />
+              <input id="event-survey-closes-at" type="datetime-local" name="closes_at" value="2020-01-01T10:00" />
               <div data-pending-changes-ignore>
                 <input id="event-survey-question-draft" name="question_draft" value="" />
               </div>
@@ -139,6 +141,44 @@ describe("event surveys", () => {
       closes_at: "2099-05-20T18:30:00",
       opens_at: "2099-05-10T09:00:00",
     });
+  });
+
+  it("rejects a closing date before the opening date", async () => {
+    // Render the page and set dates that close before they open
+    await renderSurveyPage();
+    const opensAt = document.getElementById("event-survey-opens-at");
+    const closesAt = document.getElementById("event-survey-closes-at");
+    opensAt.value = "2099-05-10T09:00";
+    closesAt.value = "2099-05-10T08:00";
+    closesAt.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // Verify the closing date is flagged
+    expect(closesAt.validationMessage).to.equal("Closing date must be after the opening date.");
+
+    // Move the opening date earlier
+    opensAt.value = "2099-05-09T09:00";
+    opensAt.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // Verify the closing date is accepted
+    expect(closesAt.validity.valid).to.equal(true);
+  });
+
+  it("rejects a changed closing date in the past", async () => {
+    // Render the page and change the stored past closing date
+    await renderSurveyPage();
+    const closesAt = document.getElementById("event-survey-closes-at");
+    closesAt.value = "2021-01-01T10:00";
+    closesAt.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // Verify the past closing date is flagged
+    expect(closesAt.validationMessage).to.equal("Closing date must be in the future.");
+
+    // Restore the stored closing date
+    closesAt.value = "2020-01-01T10:00";
+    closesAt.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // Verify the unchanged closing date is accepted
+    expect(closesAt.validity.valid).to.equal(true);
   });
 
   it("binds the anonymous toggle to its hidden input", async () => {
@@ -434,6 +474,21 @@ describe("event surveys", () => {
     expect(hasUnsavedSurveyChanges()).to.equal(false);
   });
 
+  it("keeps unsaved changes when a new version intercepts the save", async () => {
+    // Render the page and edit the survey
+    const { form, title } = await renderSurveyPage();
+    editTitle(title);
+    await waitForAnimationFrames();
+
+    // Submit the form and dispatch the new-version intercept
+    dispatchFormRequestEvent(form, "htmx:beforeRequest");
+    dispatchFormRequestEvent(form, "htmx:beforeOnLoad", { status: 204, "HX-Refresh": "true" });
+
+    // Verify the edits stay guarded for the deployment refresh check
+    expect(hasUnsavedSurveyChanges()).to.equal(true);
+    expect(form.hasAttribute("data-pending-changes-dirty")).to.equal(true);
+  });
+
   it("keeps unsaved changes after a rejected save", async () => {
     // Render the page and edit the survey
     const { form, title } = await renderSurveyPage();
@@ -468,6 +523,39 @@ describe("event surveys", () => {
 
     // Verify the parameters were left as sent
     expect(parameters).to.deep.equal({ opens_at: "2099-05-10T09:00" });
+  });
+
+  it("returns to the list when the active surveys tab is clicked", async () => {
+    // Render the page with a survey form open and listen for list refreshes
+    await renderSurveyPage();
+    const refreshes = [];
+    document.body.addEventListener("refresh-event-surveys", (event) => refreshes.push(event));
+
+    // Click the active surveys tab
+    document.getElementById("surveys-tab").click();
+
+    // Verify the list is requested
+    expect(refreshes).to.have.length(1);
+  });
+
+  it("keeps the surveys tab content when the tab is not active or shows the list", async () => {
+    // Render the page and listen for list refreshes
+    await renderSurveyPage();
+    const refreshes = [];
+    document.body.addEventListener("refresh-event-surveys", (event) => refreshes.push(event));
+    const tab = document.getElementById("surveys-tab");
+
+    // Click the surveys tab while another section is active
+    tab.setAttribute("data-active", "false");
+    tab.click();
+
+    // Click the active surveys tab while the list is shown
+    tab.setAttribute("data-active", "true");
+    document.getElementById("surveys-content").innerHTML = "<p data-event-surveys-count>1 of 10 surveys</p>";
+    tab.click();
+
+    // Verify no list refresh was requested
+    expect(refreshes).to.have.length(0);
   });
 
   it("registers each surveys tab once", async () => {

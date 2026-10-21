@@ -440,16 +440,17 @@
       <ul class="mt-8 space-y-5">
         {% for survey in stats.surveys.surveys -%}
           <li data-event-analytics-survey>
-            <div class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-              <span class="flex min-w-0 flex-wrap items-center gap-2">
-                <span class="min-w-0 break-words font-medium text-stone-900">{{ survey.title }}</span>
-                {{ surveys_macros::state_badge(state = survey.state) -}}
-              </span>
-              <span class="text-stone-600">
-                <span class="lg:hidden">{{ self.survey_responses_short_summary(survey) }}</span>
-                <span class="hidden lg:inline">{{ self.survey_responses_summary(survey) }}</span>
-                · {{ self.survey_rate_label(survey) }}
-              </span>
+            <div class="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div class="flex min-w-0 items-center gap-2">
+                <span class="min-w-0 truncate font-medium text-stone-900"
+                      title="{{ survey.title }}">{{ survey.title }}</span>
+                <span class="shrink-0">{{ surveys_macros::state_badge(state = survey.state) -}}</span>
+              </div>
+              <div class="shrink-0 text-stone-600">
+                <span class="xl:hidden">{{ self.survey_responses_short_summary(survey) }}</span>
+                <span class="hidden xl:inline">{{ self.survey_responses_summary(survey) }}</span>
+                · <span class="font-semibold text-stone-900">{{ self.survey_rate_label(survey) }}</span>
+              </div>
             </div>
             <div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-stone-200"
                  aria-hidden="true">

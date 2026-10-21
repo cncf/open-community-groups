@@ -4,15 +4,15 @@
 {# Event survey form -#}
 {% let anonymous_locked = self.anonymous_locked() -%}
 {% let locked = self.locked() -%}
-{% let show_anonymous_locked_notice = anonymous_locked && !locked -%}
 {% let read_only = !can_manage_surveys -%}
-<div class="space-y-8">
+{% let show_anonymous_locked_notice = anonymous_locked && !locked && !read_only -%}
+<div class="max-w-5xl space-y-8">
   {# Back link -#}
   <button id="event-survey-form-back"
           type="button"
           hx-get="/dashboard/group/events/{{ event.event_id }}/surveys"
           hx-target="#surveys-content"
-          hx-swap="innerHTML show:#surveys-content:top"
+          hx-swap="innerHTML show:window:top"
           hx-indicator="#dashboard-spinner"
           class="inline-flex items-center gap-2 text-sm font-medium text-primary-500 hover:text-primary-700">
     <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
@@ -29,7 +29,7 @@
   {% if read_only -%}
     {{ dashboard::permission_warning(message = "Your role cannot update surveys.", extra_classes = "") -}}
   {% endif -%}
-  {% if locked -%}
+  {% if locked && !read_only -%}
     <div data-event-survey-locked-notice
          class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
       Questions, audience and anonymity are read-only because attendees have answered this survey.
@@ -46,13 +46,14 @@
         hx-swap="none"
         hx-indicator="#dashboard-spinner, #event-survey-form-spinner"
         hx-disabled-elt="#event-survey-form-submit, #event-survey-form-cancel"
+        data-event-timezone="{{ event.timezone }}"
         data-event-survey-form>
     <fieldset class="space-y-8" {% if read_only %}disabled{% endif %}>
       {% if let Some(survey) = survey -%}
         <input type="hidden" name="revision" value="{{ survey.summary.revision }}">
       {% endif -%}
 
-      <div class="grid max-w-4xl grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
+      <div class="grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
         {# Title -#}
         <div class="col-span-full lg:col-span-5">
           <label for="event-survey-title" class="form-label">
@@ -189,8 +190,7 @@
       </div>
 
       {# Questions -#}
-      <div class="max-w-4xl"
-           role="group"
+      <div role="group"
            aria-labelledby="event-survey-questions-label"
            aria-describedby="event-survey-questions-help">
         <div id="event-survey-questions-label" class="form-label">Questions</div>
@@ -205,12 +205,12 @@
     </fieldset>
 
     {# Form actions -#}
-    <div class="mt-8 flex max-w-4xl items-center justify-end gap-x-6">
+    <div class="mt-8 flex items-center justify-end gap-x-6">
       <button id="event-survey-form-cancel"
               type="button"
               hx-get="/dashboard/group/events/{{ event.event_id }}/surveys"
               hx-target="#surveys-content"
-              hx-swap="innerHTML show:#surveys-content:top"
+              hx-swap="innerHTML show:window:top"
               hx-indicator="#dashboard-spinner"
               data-skip-validation="true"
               class="btn-primary-outline">Cancel</button>
