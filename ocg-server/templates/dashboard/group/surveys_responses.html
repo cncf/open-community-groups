@@ -7,10 +7,10 @@
   {{ surveys::results_header(event_id = event.event_id, survey = survey.summary, timezone = event.timezone, view = "individual") -}}
 
   {% if responses.responses.is_empty() -%}
-    <p class="text-sm text-stone-500">This survey does not have any responses yet.</p>
+    <p class="mt-10 text-sm text-stone-500">This survey does not have any responses yet.</p>
   {% else -%}
     {# Responses -#}
-    <div class="text-sm text-stone-600">
+    <div class="mt-10 text-sm text-stone-600">
       {{ pagination::range_display(offset = offset.unwrap_or(0) , count = responses.responses.len(), total = responses.total, label = "response") }}
     </div>
     <ol class="space-y-6">

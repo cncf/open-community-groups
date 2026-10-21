@@ -292,7 +292,7 @@ describe("dashboard group event update template", () => {
 
     // Assert the tab is hidden for canceled events and refreshed after survey mutations.
     expect(template).to.include(
-      '{% if !event.canceled -%} {# Surveys Tab -#} <div data-content="surveys" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">',
+      '{% if !event.canceled -%} {# Surveys Tab -#} <div data-content="surveys" class="hidden min-w-0">',
     );
     expect(template).to.include(
       '<div id="surveys-refresh" hx-get="/dashboard/group/events/{{ event.event_id }}/surveys" hx-trigger="refresh-event-surveys from:body" hx-target="#surveys-content" hx-swap="innerHTML" hx-indicator="#dashboard-spinner"></div>',
@@ -307,16 +307,16 @@ describe("dashboard group event update template", () => {
 
     // Assert root-level content after the form wrapper stays in the form column.
     expect(template).to.include(
-      'data-content="attendees" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
+      'data-content="attendees" class="hidden min-w-0"',
     );
     expect(template).to.include(
-      '{% if show_invitation_requests_tab -%} {# Invitation Requests Tab -#} <div data-content="invitation-requests" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
+      '{% if show_invitation_requests_tab -%} {# Invitation Requests Tab -#} <div data-content="invitation-requests" class="hidden min-w-0"',
     );
     expect(template).to.include(
-      '{% if show_waitlist_tab -%} {# Waitlist Tab -#} <div data-content="waitlist" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
+      '{% if show_waitlist_tab -%} {# Waitlist Tab -#} <div data-content="waitlist" class="hidden min-w-0"',
     );
     expect(template).to.include(
-      'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0 group-has-[[data-content=surveys]:not(.hidden)_:is([data-event-survey-form],[data-event-survey-results],[data-event-survey-responses])]/event-page:hidden"',
+      'class="flex flex-wrap items-center justify-end gap-3 mt-6 group-has-[[data-content=analytics]:not(.hidden)]/event-page:mt-10 group-has-[[data-content=surveys]:not(.hidden)_:is([data-event-survey-form],[data-event-survey-results],[data-event-survey-responses])]/event-page:hidden"',
     );
   });
 

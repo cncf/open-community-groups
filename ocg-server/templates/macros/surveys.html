@@ -55,7 +55,7 @@
     {# End survey summary -#}
 
     {# Results view -#}
-    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div class="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 lg:gap-x-8">
       <div class="inline-flex" role="group" aria-label="Results view">
         <button id="event-survey-summary-view"
                 type="button"
@@ -87,7 +87,7 @@
 
     {% if crate::templates::dashboard::group::surveys::few_anonymous_responses(survey) -%}
       <div data-event-survey-few-responses-notice
-           class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+           class="mt-8 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         This anonymous survey has few responses. Its answers may still identify the attendees who gave them.
       </div>
     {% endif -%}

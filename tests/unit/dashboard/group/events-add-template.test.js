@@ -103,7 +103,7 @@ describe("dashboard group event add template", () => {
 
     // Assert root-level actions after the form wrapper stay in the form column.
     expect(template).to.include(
-      'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0"',
+      'class="flex flex-wrap items-center justify-end gap-3 mt-6"',
     );
   });
 
