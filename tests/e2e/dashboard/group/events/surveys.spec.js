@@ -178,6 +178,10 @@ test.describe("group dashboard event surveys tab", () => {
       { method: "GET", urlIncludes: `/surveys/${surveys.openIdentified.id}/results` },
     );
 
+    // Verify the event form buttons give way to the results actions.
+    const eventCancelButton = page.locator("#cancel-button");
+    await expect(eventCancelButton).toBeHidden();
+
     // Verify the breakdown and free-text answers.
     await expect(content.locator("[data-survey-responses-label]")).toHaveText("2 / 4 (50%)");
     const rating = content.locator(
@@ -199,6 +203,7 @@ test.describe("group dashboard event surveys tab", () => {
     await expect(content.getByRole("button", { name: "Individual" })).toHaveAttribute("aria-pressed", "true");
     await expect(content.getByText("E2E Survey Attendee One")).toBeVisible();
     await expect(content.getByText("E2E Survey Attendee Two")).toBeVisible();
+    await expect(eventCancelButton).toBeHidden();
 
     // Download the CSV and verify its identified columns.
     const [download] = await Promise.all([
@@ -222,6 +227,7 @@ test.describe("group dashboard event surveys tab", () => {
       },
     );
     await expect(content.getByRole("table", { name: "Event surveys list" })).toBeVisible();
+    await expect(eventCancelButton).toBeVisible();
   });
 
   test("organizer only sees aggregated results of an anonymous survey", async ({ organizerGroupPage }) => {
@@ -310,6 +316,10 @@ test.describe("group dashboard event surveys tab", () => {
     const titleInput = page.locator("#event-survey-title");
     await titleInput.fill(title);
 
+    // Verify the event form buttons give way to the survey form actions.
+    const eventCancelButton = page.locator("#cancel-button");
+    await expect(eventCancelButton).toBeHidden();
+
     // Keep editing when the Back link would discard the edits.
     await content.getByRole("button", { name: "Back to surveys" }).click();
     await confirmAlert(page, "You have unsaved survey changes.", "Keep editing");
@@ -318,8 +328,10 @@ test.describe("group dashboard event surveys tab", () => {
     // Switch sections and verify the edits survive.
     await page.locator('button[data-section="analytics"]').click();
     await expect(titleInput).toBeHidden();
+    await expect(eventCancelButton).toBeVisible();
     await page.locator('button[data-section="surveys"]').click();
     await expect(titleInput).toHaveValue(title);
+    await expect(eventCancelButton).toBeHidden();
 
     // Discard the edits through the Back link.
     await waitForActionResponse(
@@ -332,6 +344,7 @@ test.describe("group dashboard event surveys tab", () => {
     );
     await expect(content.getByRole("table", { name: "Event surveys list" })).toBeVisible();
     await expect(getSurveyRow(content, title)).toHaveCount(0);
+    await expect(eventCancelButton).toBeVisible();
   });
 
   test("group viewer reviews survey results with mutation controls disabled", async ({ groupViewerPage }) => {
