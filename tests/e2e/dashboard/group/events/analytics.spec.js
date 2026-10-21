@@ -131,6 +131,19 @@ test.describe("group dashboard event analytics tab", () => {
     await expect(rows.nth(2)).toContainText("0 of 2 eligible attendees responded · 0%");
     await expect(section.getByText(draft.title)).toHaveCount(0);
 
+    // Verify wide screens show the full responses of a survey.
+    const fullResponses = rows
+      .nth(0)
+      .getByText("1 of 2 eligible attendees responded · 2 responses in total", { exact: true });
+    const shortResponses = rows.nth(0).getByText("1 / 2 · 2 total", { exact: true });
+    await expect(fullResponses).toBeVisible();
+    await expect(shortResponses).toBeHidden();
+
+    // Verify small screens show the compact responses instead.
+    await organizerGroupPage.setViewportSize({ width: 768, height: 900 });
+    await expect(shortResponses).toBeVisible();
+    await expect(fullResponses).toBeHidden();
+
     // Verify the section explains its counts and offers no links to the surveys tab.
     await expect(section).toContainText("Survey counts are cached for up to an hour.");
     await expect(section).toContainText("Counts are per survey");

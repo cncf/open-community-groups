@@ -445,7 +445,11 @@
                 <span class="min-w-0 break-words font-medium text-stone-900">{{ survey.title }}</span>
                 {{ surveys_macros::state_badge(state = survey.state) -}}
               </span>
-              <span class="text-stone-600">{{ self.survey_responses_summary(survey) }} · {{ self.survey_rate_label(survey) }}</span>
+              <span class="text-stone-600">
+                <span class="lg:hidden">{{ self.survey_responses_short_summary(survey) }}</span>
+                <span class="hidden lg:inline">{{ self.survey_responses_summary(survey) }}</span>
+                · {{ self.survey_rate_label(survey) }}
+              </span>
             </div>
             <div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-stone-200"
                  aria-hidden="true">

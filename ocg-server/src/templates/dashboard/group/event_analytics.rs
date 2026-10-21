@@ -297,6 +297,27 @@ impl Page {
         bar_width(survey.eligible_respondents_count, survey.eligible_count)
     }
 
+    /// Returns the compact eligible respondents of a survey for small screens,
+    /// for example `12 / 40`, adding the stored total when it differs.
+    #[allow(clippy::unused_self)]
+    pub(crate) fn survey_responses_short_summary(
+        &self,
+        survey: &EventSurveyResponseStats,
+    ) -> String {
+        // Describe the eligible respondents
+        let mut summary = format!(
+            "{} / {}",
+            count_label(survey.eligible_respondents_count),
+            count_label(survey.eligible_count)
+        );
+
+        // Add the stored total when it differs from the eligible respondents
+        if survey.responses_count != survey.eligible_respondents_count {
+            let _ = write!(summary, " · {} total", count_label(survey.responses_count));
+        }
+        summary
+    }
+
     /// Returns the eligible respondents of a survey for display, adding the
     /// stored total when respondents who are no longer eligible also answered.
     #[allow(clippy::unused_self)]

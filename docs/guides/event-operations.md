@@ -784,9 +784,11 @@ before the event ends. It stays scheduled while the event is unpublished or has 
 The row actions work as follows:
 
 - `Mark ready` (draft): the survey needs at least one question, and a `Closes at` time, when set,
-  must be in the future and after the survey opens. The confirmation shows how many attendees are
-  currently in the audience and when the opening email is sent: on a date, once the event has a
-  date and ends, or now. For test events, the confirmation says that no email is sent. If the
+  must be in the future and after the survey opens. While any of these is missing, the button is
+  disabled and the row shows why under the `Draft` badge. The confirmation shows how many
+  attendees are currently in the audience and when the opening email is sent: on a date, once the
+  event has a date and ends, once the event is published, or now. For test events, the
+  confirmation says that no email is sent. If the
   event is rescheduled after the confirmation is shown, marking ready fails and asks you to review
   the new opening time.
 - `Back to draft` (scheduled): only available before the opening email is sent and before anyone

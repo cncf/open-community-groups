@@ -312,7 +312,13 @@ async fn test_page_success() {
     assert!(body.contains("data-event-analytics-survey>"));
     assert!(body.contains("Feedback"));
     assert!(body.contains(">Closed</span>"));
-    assert!(body.contains("3 of 4 eligible attendees responded · 75%"));
+    assert!(body.contains(r#"<span class="lg:hidden">3 / 4</span>"#));
+    assert!(
+        body.contains(
+            r#"<span class="hidden lg:inline">3 of 4 eligible attendees responded</span>"#
+        )
+    );
+    assert!(body.contains("· 75%"));
     assert!(body.contains("Survey counts are cached for up to an hour."));
     assert!(!body.contains("/surveys"));
 

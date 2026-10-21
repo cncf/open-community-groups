@@ -198,6 +198,7 @@ fn test_survey_helpers_describe_survey_responses() {
 
     assert_eq!(page.survey_rate_label(survey), "75%");
     assert_eq!(page.survey_response_width(survey), "75.0");
+    assert_eq!(page.survey_responses_short_summary(survey), "3 / 4");
     assert_eq!(
         page.survey_responses_summary(survey),
         "3 of 4 eligible attendees responded"
@@ -217,8 +218,26 @@ fn test_survey_helpers_handle_surveys_without_eligible_attendees() {
     assert_eq!(page.survey_rate_label(&survey), "-");
     assert_eq!(page.survey_response_width(&survey), "0");
     assert_eq!(
+        page.survey_responses_short_summary(&survey),
+        "0 / 0 · 2 total"
+    );
+    assert_eq!(
         page.survey_responses_summary(&survey),
         "No eligible attendees · 2 responses in total"
+    );
+}
+
+#[test]
+fn test_survey_responses_short_summary_adds_the_stored_total_when_it_differs() {
+    let page = sample_page();
+    let mut survey = page.stats.surveys.surveys[0].clone();
+    survey.eligible_count = 1_200;
+    survey.eligible_respondents_count = 1_000;
+    survey.responses_count = 1_005;
+
+    assert_eq!(
+        page.survey_responses_short_summary(&survey),
+        "1,000 / 1,200 · 1,005 total"
     );
 }
 

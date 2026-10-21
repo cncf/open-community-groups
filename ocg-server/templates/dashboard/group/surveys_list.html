@@ -99,8 +99,10 @@
             {# Status -#}
             <td class="whitespace-nowrap px-3 py-4 xl:px-5">
               {{ surveys_macros::state_badge(state = survey.state) -}}
-              {% if survey.state == EventSurveyState::Draft || survey.state == EventSurveyState::Scheduled -%}
-                <div class="mt-1 text-xs text-stone-500">{{ crate::templates::dashboard::group::surveys::opening_label(survey, *event.timezone, *now) }}</div>
+              {% if let Some(blocker) = crate::templates::dashboard::group::surveys::mark_ready_blocker(survey, *now) -%}
+                <div class="mt-1 text-xs text-amber-800">{{ blocker.hint() }}</div>
+              {% else if survey.state == EventSurveyState::Draft || survey.state == EventSurveyState::Scheduled -%}
+                <div class="mt-1 text-xs text-stone-500">{{ crate::templates::dashboard::group::surveys::opening_label(survey, event, *now) }}</div>
               {% endif -%}
             </td>
             {# End status -#}

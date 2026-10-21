@@ -177,6 +177,38 @@ impl TextAnswersPage {
 
 // Types.
 
+/// Reason a draft survey cannot be marked ready yet, mirroring the checks the
+/// database applies to the schedule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MarkReadyBlocker {
+    /// The closing date is not after the effective opening.
+    ClosesBeforeOpening,
+    /// The closing date is not in the future.
+    ClosingDatePassed,
+    /// The survey has no questions.
+    NoQuestions,
+}
+
+impl MarkReadyBlocker {
+    /// Returns the short hint shown under the survey state in the list.
+    pub(crate) fn hint(self) -> &'static str {
+        match self {
+            Self::ClosesBeforeOpening => "Closes before it opens",
+            Self::ClosingDatePassed => "Closing date has passed",
+            Self::NoQuestions => "No questions yet",
+        }
+    }
+
+    /// Returns why the Mark ready button is disabled.
+    pub(crate) fn reason(self) -> &'static str {
+        match self {
+            Self::ClosesBeforeOpening => "Edit the closing date so it is after the survey opens.",
+            Self::ClosingDatePassed => "Edit the closing date to mark the survey ready.",
+            Self::NoQuestions => "Add a question before marking the survey ready.",
+        }
+    }
+}
+
 /// Status button shown in a survey row.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SurveyStatusAction {
@@ -222,18 +254,55 @@ pub(crate) fn format_date(date: DateTime<Utc>, timezone: Tz) -> String {
     date.with_timezone(&timezone).format(DISPLAY_DATE_FORMAT).to_string()
 }
 
-/// Returns when a survey opens, in the event timezone.
+/// Returns what keeps a draft survey from being marked ready, if anything.
 ///
-/// The effective opening is missing only while the event has no dates.
+/// Surveys in other states are never blocked.
+pub(crate) fn mark_ready_blocker(
+    survey: &EventSurveySummary,
+    now: DateTime<Utc>,
+) -> Option<MarkReadyBlocker> {
+    // Only drafts can be marked ready
+    if survey.state != EventSurveyState::Draft {
+        return None;
+    }
+
+    // Require at least one question
+    if survey.questions_count == 0 {
+        return Some(MarkReadyBlocker::NoQuestions);
+    }
+
+    // Require a configured closing date in the future and after the opening
+    let closes_at = survey.closes_at?;
+    if closes_at <= now {
+        Some(MarkReadyBlocker::ClosingDatePassed)
+    } else if survey
+        .effective_opens_at
+        .is_some_and(|opens_at| closes_at <= opens_at)
+    {
+        Some(MarkReadyBlocker::ClosesBeforeOpening)
+    } else {
+        None
+    }
+}
+
+/// Returns when a draft or scheduled survey opens, in the event timezone.
+///
+/// The effective opening is missing only while the event has no dates. Once
+/// it has passed, the survey still waits for the event to be published and,
+/// for drafts, to be marked ready.
 pub(crate) fn opening_label(
     survey: &EventSurveySummary,
-    timezone: Tz,
+    event: &EventSummary,
     now: DateTime<Utc>,
 ) -> String {
     match survey.effective_opens_at {
         None => "Opens once the event has a date".to_string(),
-        Some(opens_at) if opens_at <= now => format!("Opened {}", format_date(opens_at, timezone)),
-        Some(opens_at) => format!("Opens {}", format_date(opens_at, timezone)),
+        Some(opens_at) if opens_at > now => {
+            format!("Opens {}", format_date(opens_at, event.timezone))
+        }
+        Some(_) if !event.published => "Opens once the event is published".to_string(),
+        Some(_) if survey.state == EventSurveyState::Draft => "Opens when marked ready".to_string(),
+        Some(_) => "Opens now".to_string(),
     }
 }
 
@@ -291,8 +360,7 @@ pub(crate) fn status_action(
                 .to_string(),
                 success_message: "You have successfully marked the survey ready.",
 
-                disabled_reason: (survey.questions_count == 0)
-                    .then_some("Add a question before marking the survey ready."),
+                disabled_reason: mark_ready_blocker(survey, now).map(MarkReadyBlocker::reason),
             }
         }
         // Scheduled surveys go back to draft only before anyone was emailed
@@ -370,8 +438,9 @@ fn mark_ready_message(
     // Describe when the opening email is sent
     let when = match survey.effective_opens_at {
         None => "once the event has a date and ends".to_string(),
-        Some(opens_at) if opens_at <= now => "now".to_string(),
-        Some(opens_at) => format!("on {}", format_date(opens_at, event.timezone)),
+        Some(opens_at) if opens_at > now => format!("on {}", format_date(opens_at, event.timezone)),
+        Some(_) if !event.published => "once the event is published".to_string(),
+        Some(_) => "now".to_string(),
     };
     format!(
         "This will email eligible attendees (currently {}) {when}.",

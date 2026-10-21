@@ -188,7 +188,7 @@ describe("dashboard group event analytics template", () => {
     );
     expect(template).to.include("{{ surveys_macros::state_badge(state = survey.state) -}}");
     expect(template).to.include(
-      "{{ self.survey_responses_summary(survey) }} · {{ self.survey_rate_label(survey) }}",
+      '<span class="lg:hidden">{{ self.survey_responses_short_summary(survey) }}</span> <span class="hidden lg:inline">{{ self.survey_responses_summary(survey) }}</span> · {{ self.survey_rate_label(survey) }}',
     );
     expect(template).to.include(
       '<div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-stone-200" aria-hidden="true">',
