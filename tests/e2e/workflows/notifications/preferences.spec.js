@@ -368,7 +368,7 @@ test.describe("notification preferences workflow", () => {
             templateDataContains: {
               anonymous: true,
               event: { event_id: scenario.eventId },
-              link: `/dashboard/user?tab=events&event_survey_id=${survey.id}`,
+              link: `/dashboard/user?tab=surveys&event_survey_id=${survey.id}`,
               survey_title: survey.title,
             },
             userIds: [TEST_USER_IDS.pending1],

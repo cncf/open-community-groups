@@ -1,4 +1,3 @@
-{% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 
 {# Results header -#}
@@ -95,6 +94,69 @@
 {% endmacro results_header -%}
 {# End results header -#}
 
+{# Results modal footer -#}
+{# Used by the survey response and free-text answers modals to move between their pages. -#}
+{# The caller renders the position shown before the navigation buttons. -#}
+{% macro results_modal_footer(modal_id, nav_attribute, close_attribute, error_message, previous_url, next_url) -%}
+  <div class="flex flex-col gap-3 border-t border-stone-200 p-4 sm:flex-row sm:items-center sm:justify-between md:p-5">
+    {{ caller() }}
+    <div class="flex items-center gap-2">
+      {% if let Some(previous_url) = previous_url -%}
+        <button type="button"
+                hx-get="{{ previous_url }}"
+                hx-target="#{{ modal_id }}-content"
+                hx-swap="innerHTML"
+                hx-sync="#{{ modal_id }}:replace"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="this"
+                {{ nav_attribute }}="previous"
+                data-htmx-response
+                data-error-message="{{ error_message }}"
+                class="btn-primary-outline inline-flex items-center gap-2">
+          <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
+          <span>Previous</span>
+        </button>
+      {% else -%}
+        <button type="button"
+                disabled
+                {{ nav_attribute }}="previous"
+                class="btn-primary-outline inline-flex cursor-not-allowed items-center gap-2 opacity-50">
+          <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
+          <span>Previous</span>
+        </button>
+      {% endif -%}
+      {% if let Some(next_url) = next_url -%}
+        <button type="button"
+                hx-get="{{ next_url }}"
+                hx-target="#{{ modal_id }}-content"
+                hx-swap="innerHTML"
+                hx-sync="#{{ modal_id }}:replace"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="this"
+                {{ nav_attribute }}="next"
+                data-htmx-response
+                data-error-message="{{ error_message }}"
+                class="btn-primary-outline inline-flex items-center gap-2">
+          <span>Next</span>
+          <div class="svg-icon size-4 icon-arrow-right bg-current"
+               aria-hidden="true"></div>
+        </button>
+      {% else -%}
+        <button type="button"
+                disabled
+                {{ nav_attribute }}="next"
+                class="btn-primary-outline inline-flex cursor-not-allowed items-center gap-2 opacity-50">
+          <span>Next</span>
+          <div class="svg-icon size-4 icon-arrow-right bg-current"
+               aria-hidden="true"></div>
+        </button>
+      {% endif -%}
+      <button type="button" {{ close_attribute }} class="btn-primary">Close</button>
+    </div>
+  </div>
+{% endmacro results_modal_footer -%}
+{# End results modal footer -#}
+
 {# State badge -#}
 {# Used by the event surveys list and the event analytics surveys section. -#}
 {% macro state_badge(state) -%}
@@ -133,62 +195,3 @@
   </span>
 {% endmacro state_badge_details -%}
 {# End state badge with details -#}
-
-{# User survey items -#}
-{# Used by the My Events surveys panel and its "Show more" pages. -#}
-{% macro user_survey_items(surveys, next_offset, remaining) -%}
-  {% for survey in surveys -%}
-    <li data-user-event-survey="{{ survey.event_survey_id }}"
-        class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="min-w-0 break-words text-sm font-medium text-stone-900">{{ survey.title }}</span>
-          {% if survey.answered -%}
-            {{ badges::invitation_badge(label = "Answered", tone = "success", with_border = true) -}}
-          {% endif -%}
-        </div>
-        <div class="mt-0.5 truncate text-xs text-stone-500">{{ survey.event_name }} · {{ survey.group_name }}</div>
-        <div class="mt-0.5 text-xs text-stone-500">
-          {% if let Some(closes_at) = survey.closes_at -%}
-            Closes {{ crate::templates::dashboard::user::events::survey_date_label(closes_at, survey.timezone) }}
-          {% else -%}
-            No closing date
-          {% endif -%}
-        </div>
-      </div>
-      <button type="button"
-              hx-get="/dashboard/user/events/surveys/{{ survey.event_survey_id }}"
-              hx-target="#user-event-survey-modal-content"
-              hx-swap="innerHTML"
-              hx-sync="closest ul:replace"
-              hx-indicator="#dashboard-spinner"
-              hx-disabled-elt="this"
-              data-user-event-survey-open
-              data-htmx-response
-              data-error-message="This survey is no longer available. Please refresh the page and try again."
-              class="btn-primary-outline btn-mini shrink-0 self-start sm:self-center">
-        {% if survey.answered -%}
-          Edit answers
-        {% else -%}
-          Answer
-        {% endif -%}
-        <span class="sr-only">: {{ survey.title }}</span>
-      </button>
-    </li>
-  {% endfor -%}
-  {% if let Some(next_offset) = next_offset -%}
-    <li class="px-4 py-3">
-      <button type="button"
-              hx-get="/dashboard/user/events/surveys?offset={{ next_offset }}"
-              hx-target="closest li"
-              hx-swap="outerHTML"
-              data-show-more
-              hx-indicator="#dashboard-spinner"
-              hx-disabled-elt="this"
-              data-htmx-response
-              data-error-message="Something went wrong loading more surveys. Please try again later."
-              class="btn-primary-outline btn-mini">Show more surveys ({{ remaining }} left)</button>
-    </li>
-  {% endif -%}
-{% endmacro user_survey_items -%}
-{# End user survey items -#}

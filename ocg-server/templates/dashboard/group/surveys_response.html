@@ -1,0 +1,57 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/question_answers.html" as question_answers -%}
+{% import "macros/surveys.html" as surveys -%}
+{# Event survey response modal content -#}
+{# Rendered inside the #event-survey-response-modal-content wrapper owned by the Individual view. -#}
+{% let user = response.summary.user -%}
+{% let submitted_at = crate::templates::dashboard::group::surveys::format_date(*response.summary.created_at, *event.timezone) -%}
+{# Modal header -#}
+{% let response_subtitle -%}
+<div class="mt-1 space-y-1" data-event-survey-response-details>
+  {% if let Some(details) = crate::templates::dashboard::group::surveys::respondent_details(user) -%}
+    <p class="text-sm text-stone-600">{{ details }}</p>
+  {% endif -%}
+  <p class="flex flex-wrap gap-x-2 gap-y-1 text-xs text-stone-500">
+    <span>{{ response.summary.ticket_title|assigned_or("No ticket") }}</span>
+    <span aria-hidden="true">·</span>
+    <span>Submitted {{ submitted_at }}</span>
+    {% if let Some(updated_at) = response.summary.updated_at -%}
+      <span aria-hidden="true">·</span>
+      <span>Edited {{ crate::templates::dashboard::group::surveys::format_date(**updated_at, *event.timezone) }}</span>
+    {% endif -%}
+  </p>
+</div>
+{%- endlet %}
+{{ dashboard::modal_header(title_id = "event-survey-response-modal-title",
+  title = crate::templates::dashboard::group::surveys::respondent_name(user),
+  close_attrs = "data-event-survey-response-close",
+  subtitle = response_subtitle,
+  align_items = "items-start") -}}
+{# End modal header -#}
+
+{# Modal body -#}
+<div class="modal-body space-y-4 p-4 md:p-6"
+     data-event-survey-response="{{ user.user_id }}">
+  <p class="text-sm text-stone-600">
+    Answered {{ crate::templates::dashboard::group::surveys::answered_label(*response.summary.answered_questions_count, survey.questions.len()) }} questions
+  </p>
+  {{ question_answers::review_list(questions = survey.questions,
+    answers = Some(response.answers)) -}}
+</div>
+{# End modal body -#}
+
+{# Modal footer -#}
+{% call surveys::results_modal_footer(
+  modal_id = "event-survey-response-modal",
+  nav_attribute = "data-event-survey-response-nav",
+  close_attribute = "data-event-survey-response-close",
+  error_message = "Something went wrong loading these responses. Please try again later.",
+  previous_url = self.previous_url()?,
+  next_url = self.next_url()?
+) -%}
+<p class="text-sm text-stone-600" data-event-survey-response-position>
+  Respondent {{ response.position }} of {{ response.total }}
+</p>
+{% endcall -%}
+{# End modal footer -#}
+{# End event survey response modal content -#}

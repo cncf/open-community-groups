@@ -5,8 +5,8 @@
 -- locks. Recipients are the eligible users with verified emails; test events
 -- never email. Each handled survey is marked processed, even without
 -- recipients, so it never emails again. The survey link opens the survey in
--- the user dashboard; it is stored relative to the site root and completed by
--- the server.
+-- the Surveys tab of the user dashboard; it is stored relative to the site
+-- root and completed by the server.
 create or replace function enqueue_due_event_survey_notifications()
 returns int as $$
 declare
@@ -108,7 +108,7 @@ begin
                     v_group.group_id,
                     v_event.event_id
                 )::jsonb,
-                'link', '/dashboard/user?tab=events&event_survey_id=' || v_event_survey.event_survey_id,
+                'link', '/dashboard/user?tab=surveys&event_survey_id=' || v_event_survey.event_survey_id,
                 'survey_title', v_event_survey.title,
                 'theme', v_theme,
 

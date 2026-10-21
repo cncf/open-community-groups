@@ -1,8 +1,10 @@
--- Returns one page of the responses to an identified survey of a group event,
--- in creation order, with the respondent details the attendee list shows,
--- plus the total. The page size defaults to 20 and is capped at 50. Anonymous
--- surveys never expose respondents. Null when the survey does not belong to
--- the group event.
+-- Returns one page of the respondents of an identified survey of a group event,
+-- in response creation order, plus the total. Each respondent carries the
+-- details the respondents table shows: the respondent summary, the ticket
+-- title, how many questions the response answers and its dates. The filters
+-- search respondents by name, username, company or title; the page size
+-- defaults to 20 and is capped at 50. Anonymous surveys never expose
+-- respondents. Null when the survey does not belong to the group event.
 create or replace function list_event_survey_responses(
     p_group_id uuid,
     p_event_id uuid,
@@ -42,16 +44,19 @@ begin
     into v_limit, v_offset
     from parse_search_filters(p_filters) f;
 
-    -- Return the requested page with its respondents
+    -- Return the requested page of matching respondents with their details
     return (
-        with page as (
+        with respondents as (
             select
-                r.answers,
                 r.created_at,
-                r.updated_at,
                 r.user_id
-            from event_survey_response r
-            where r.event_survey_id = p_event_survey_id
+            from event_survey_matching_respondents(p_event_survey_id, p_filters) r
+        ),
+        page as (
+            select
+                r.created_at,
+                r.user_id
+            from respondents r
             order by r.created_at, r.user_id
             offset v_offset
             limit v_limit
@@ -60,22 +65,19 @@ begin
             'responses', coalesce((
                 select json_agg(
                     json_build_object(
-                        'answers', p.answers,
+                        'answered_questions_count', d.answered_questions_count,
                         'created_at', epoch_seconds(p.created_at),
-                        'user', public_user_summary(u),
+                        'user', d.user_summary,
 
-                        'updated_at', epoch_seconds(p.updated_at)
+                        'ticket_title', d.ticket_title,
+                        'updated_at', epoch_seconds(d.updated_at)
                     )
                     order by p.created_at, p.user_id
                 )
                 from page p
-                join "user" u on u.user_id = p.user_id
+                cross join lateral event_survey_response_details(p_event_survey_id, p.user_id) d
             ), '[]'::json),
-            'total', (
-                select count(*)
-                from event_survey_response r
-                where r.event_survey_id = p_event_survey_id
-            )
+            'total', (select count(*) from respondents)
         )
     );
 end;

@@ -42,10 +42,11 @@ use crate::{
                     CfsSubmissionsOutput,
                 },
                 surveys::{
-                    EventSurveyExport, EventSurveyFull, EventSurveyInput,
-                    EventSurveyResponsesFilters, EventSurveyResponsesOutput, EventSurveyResults,
-                    EventSurveyStatusForm, EventSurveySummary, EventSurveyTextAnswers,
-                    EventSurveyTextAnswersFilters,
+                    EventSurveyExport, EventSurveyFull, EventSurveyInput, EventSurveyResponseFull,
+                    EventSurveyResponseNavigationFilters, EventSurveyResponsesFilters,
+                    EventSurveyResponsesOutput, EventSurveyResults, EventSurveyStatusForm,
+                    EventSurveySummary, EventSurveyTextAnswersFilters,
+                    EventSurveyTextAnswersOutput,
                 },
                 team::{GroupTeamFilters, GroupTeamOutput},
                 waitlist::{WaitlistFilters, WaitlistOutput},
@@ -355,6 +356,22 @@ pub(crate) trait DBDashboardGroup {
         max_bytes: usize,
     ) -> Result<Option<EventSurveyExport>>;
 
+    /// Retrieves the response of one respondent to an identified event
+    /// survey, with its previous and next respondents among those matching
+    /// the search.
+    ///
+    /// The database rejects anonymous surveys with `OCG01`. Returns `None`
+    /// when the survey does not belong to the group event or the user has no
+    /// response matching the search.
+    async fn get_event_survey_response(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        user_id: Uuid,
+        filters: &EventSurveyResponseNavigationFilters,
+    ) -> Result<Option<EventSurveyResponseFull>>;
+
     /// Retrieves the aggregated results of an event survey.
     ///
     /// Results never carry respondent identities. Returns `None` when the
@@ -522,8 +539,8 @@ pub(crate) trait DBDashboardGroup {
         event_id: Uuid,
     ) -> Result<Vec<Uuid>>;
 
-    /// Lists a page of the responses to an identified event survey, oldest
-    /// first.
+    /// Lists a page of the respondents of an identified event survey matching
+    /// the search, oldest response first.
     ///
     /// The database rejects anonymous surveys with `OCG01`. Returns `None`
     /// when the survey does not belong to the group event.
@@ -535,8 +552,8 @@ pub(crate) trait DBDashboardGroup {
         filters: &EventSurveyResponsesFilters,
     ) -> Result<Option<EventSurveyResponsesOutput>>;
 
-    /// Lists a page of the answers to a free-text event survey question,
-    /// oldest first.
+    /// Lists a page of the answers to a free-text event survey question
+    /// matching the search, oldest first, with the question they answer.
     ///
     /// Returns `None` when the survey does not belong to the group event or
     /// the question is not one of its free-text questions.
@@ -547,7 +564,7 @@ pub(crate) trait DBDashboardGroup {
         event_survey_id: Uuid,
         question_id: Uuid,
         filters: &EventSurveyTextAnswersFilters,
-    ) -> Result<Option<EventSurveyTextAnswers>>;
+    ) -> Result<Option<EventSurveyTextAnswersOutput>>;
 
     /// Lists the surveys of an event, oldest first.
     async fn list_event_surveys(
@@ -1456,6 +1473,37 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::get_event_survey_response`].
+    #[instrument(skip(self, filters), err)]
+    async fn get_event_survey_response(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        user_id: Uuid,
+        filters: &EventSurveyResponseNavigationFilters,
+    ) -> Result<Option<EventSurveyResponseFull>> {
+        self.fetch_json_opt(
+            "
+            select get_event_survey_response(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::uuid,
+                $5::jsonb
+            )
+            ",
+            &[
+                &group_id,
+                &event_id,
+                &event_survey_id,
+                &user_id,
+                &Json(filters),
+            ],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::get_event_survey_results`].
     #[instrument(skip(self), err)]
     async fn get_event_survey_results(
@@ -1865,7 +1913,7 @@ where
         event_survey_id: Uuid,
         question_id: Uuid,
         filters: &EventSurveyTextAnswersFilters,
-    ) -> Result<Option<EventSurveyTextAnswers>> {
+    ) -> Result<Option<EventSurveyTextAnswersOutput>> {
         self.fetch_json_opt(
             "
             select list_event_survey_text_answers(

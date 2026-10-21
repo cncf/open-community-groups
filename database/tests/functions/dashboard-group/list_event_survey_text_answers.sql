@@ -1,11 +1,11 @@
--- Tests paging the free-text answers of surveys of group events.
+-- Tests paging and searching the free-text answers of surveys of group events.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -75,10 +75,11 @@ values (
     'Deleted event survey'
 );
 
--- Ready survey with a single-select and a free-text question
-insert into event_survey (event_survey_id, event_id, questions, status, title, first_response_at)
+-- Ready anonymous survey with a single-select and a free-text question
+insert into event_survey (event_survey_id, anonymous, event_id, questions, status, title, first_response_at)
 values (
     :'surveyID',
+    true,
     :'eventID',
     jsonb_build_array(
         jsonb_build_object(
@@ -166,9 +167,24 @@ select is(
             'Answer 009',
             'Answer 010'
         ),
+        'position', 2,
+        'prompt', 'Feedback',
         'total', 55
     ),
     'Should default to pages of 10 plain answers'
+);
+
+-- Should match search wildcards literally
+select is(
+    list_event_survey_text_answers(
+        :'groupID'::uuid,
+        :'eventID'::uuid,
+        :'surveyID'::uuid,
+        :'feedbackQuestionID'::uuid,
+        '{"ts_query": "Answer 0%5"}'::jsonb
+    )::jsonb,
+    '{"answers": [], "position": 2, "prompt": "Feedback", "total": 0}'::jsonb,
+    'Should match search wildcards literally'
 );
 
 -- Should page answers by offset in response creation order
@@ -180,8 +196,26 @@ select is(
         :'feedbackQuestionID'::uuid,
         '{"limit": 2, "offset": 10}'::jsonb
     )::jsonb,
-    '{"answers": ["Answer 011", "Answer 012"], "total": 55}'::jsonb,
+    '{"answers": ["Answer 011", "Answer 012"], "position": 2, "prompt": "Feedback", "total": 55}'::jsonb,
     'Should page answers by offset in response creation order'
+);
+
+-- Should page the answers matching the search case-insensitively
+select is(
+    list_event_survey_text_answers(
+        :'groupID'::uuid,
+        :'eventID'::uuid,
+        :'surveyID'::uuid,
+        :'feedbackQuestionID'::uuid,
+        '{"limit": 3, "offset": 1, "ts_query": "  aNSWER 01 "}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'answers', jsonb_build_array('Answer 011', 'Answer 012', 'Answer 013'),
+        'position', 2,
+        'prompt', 'Feedback',
+        'total', 10
+    ),
+    'Should page the answers matching the search case-insensitively'
 );
 
 -- Should return null for deleted events

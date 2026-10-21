@@ -18,14 +18,9 @@ returns table (
         r.user_id,
         answer.value->>'value'
     from event_survey_response r
-    cross join lateral jsonb_array_elements(
-        case
-            when jsonb_typeof(r.answers->'answers') = 'array' then r.answers->'answers'
-            else '[]'::jsonb
-        end
-    ) as answer(value)
+    cross join lateral questionnaire_answer_entries(r.answers) as answer(value)
     where r.event_survey_id = p_event_survey_id
     and jsonb_typeof(answer.value->'value') = 'string'
-    and btrim(answer.value->>'value') <> ''
+    and questionnaire_answer_has_value(answer.value->'value')
     and pg_input_is_valid(answer.value->>'question_id', 'uuid');
 $$ language sql stable;

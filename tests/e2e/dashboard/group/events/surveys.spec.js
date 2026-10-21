@@ -6,8 +6,9 @@ import {
   cleanupEventSurveysByTitle,
   setupOwnedEventSurvey,
   setupOwnedSurveyResponse,
+  setupOwnedSurveyTextAnswers,
 } from "../../../data-graphs/surveys.js";
-import { uniqueName, waitForActionResponse } from "../../../utils.js";
+import { expectTableHeaders, uniqueName, waitForActionResponse } from "../../../utils.js";
 import { openCurrentEventEditorSection, openEventUpdateFormByName } from "./helpers.js";
 
 const { attendeeIds, event, surveys } = TEST_EVENT_SURVEYS;
@@ -230,6 +231,103 @@ test.describe("group dashboard event surveys tab", () => {
     await expect(eventCancelButton).toBeVisible();
   });
 
+  test("organizer searches respondents and reviews their responses in a modal", async ({
+    organizerGroupPage,
+  }) => {
+    const page = organizerGroupPage;
+
+    // Open the Individual view of the identified survey.
+    const content = await openSurveysTab(page);
+    await waitForActionResponse(
+      page,
+      () => content.getByRole("button", { name: `View results: ${surveys.openIdentified.title}` }).click(),
+      { method: "GET", urlIncludes: `/surveys/${surveys.openIdentified.id}/results` },
+    );
+    await waitForActionResponse(page, () => content.getByRole("button", { name: "Individual" }).click(), {
+      method: "GET",
+      urlIncludes: `/surveys/${surveys.openIdentified.id}/responses`,
+    });
+
+    // Verify the respondents table shows tickets, answered questions and edits.
+    const table = content.getByRole("table", { name: "Survey respondents" });
+    await expectTableHeaders(table, ["Respondent", "Ticket type", "Answered", "Submitted"]);
+    const firstRow = table.locator("tbody tr", { hasText: "E2E Survey Attendee One" });
+    const secondRow = table.locator("tbody tr", { hasText: "E2E Survey Attendee Two" });
+    await expect(firstRow).toContainText("Platform Engineer · Survey Labs");
+    await expect(firstRow).toContainText("General admission");
+    await expect(firstRow).toContainText("3 of 3");
+    await expect(firstRow).toContainText("Edited");
+    await expect(secondRow).toContainText("3 of 3");
+    await expect(secondRow).not.toContainText("Edited");
+    await expect(content.locator("[data-event-survey-respondents-range]")).toContainText(
+      "1 - 2 of 2 respondents",
+    );
+
+    // Search respondents by company.
+    const search = content.getByLabel("Search respondents");
+    await waitForActionResponse(
+      page,
+      async () => {
+        await search.fill("survey labs");
+        await search.press("Enter");
+      },
+      { method: "GET", urlIncludes: "ts_query=survey" },
+    );
+    await expect(table.locator("tbody tr")).toHaveCount(1);
+    await expect(firstRow).toBeVisible();
+    await expect(content.getByLabel("Search respondents")).toHaveValue("survey labs");
+
+    // Clear the search.
+    await waitForActionResponse(
+      page,
+      () => content.getByRole("button", { name: "Clear respondent search" }).click(),
+      { method: "GET", urlEndsWith: `/surveys/${surveys.openIdentified.id}/responses` },
+    );
+    await expect(table.locator("tbody tr")).toHaveCount(2);
+
+    // Open the first respondent from the keyboard.
+    await firstRow.focus();
+    await waitForActionResponse(page, () => firstRow.press("Enter"), {
+      method: "GET",
+      urlIncludes: `/responses/${attendeeIds.checkedIn1}`,
+    });
+    const firstDialog = page.getByRole("dialog", { name: "E2E Survey Attendee One" });
+    await expect(firstDialog).toBeVisible();
+    await expect(firstDialog).toContainText("General admission");
+    await expect(firstDialog).toContainText("Answered 3 of 3 questions");
+    await expect(firstDialog).toContainText("More time for questions after each talk.");
+    await expect(firstDialog).toContainText("Excellent");
+    await expect(firstDialog).toContainText("Respondent 1 of 2");
+    await expect(firstDialog.getByRole("button", { name: "Previous" })).toBeDisabled();
+
+    // Move to the next respondent.
+    await waitForActionResponse(page, () => firstDialog.getByRole("button", { name: "Next" }).click(), {
+      method: "GET",
+      urlIncludes: `/responses/${attendeeIds.checkedIn2}`,
+    });
+    const secondDialog = page.getByRole("dialog", { name: "E2E Survey Attendee Two" });
+    await expect(secondDialog).toContainText("A longer networking break.");
+    await expect(secondDialog).toContainText("Respondent 2 of 2");
+    await expect(secondDialog.getByRole("button", { name: "Next" })).toBeDisabled();
+    await expect(secondDialog.getByRole("button", { name: "Close", exact: true })).toBeFocused();
+
+    // Close the modal on Escape and verify focus returns to the row that opened it.
+    await page.keyboard.press("Escape");
+    await expect(secondDialog).toBeHidden();
+    await expect(firstRow).toBeFocused();
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+
+    // Open the second respondent with a click and close it from the footer.
+    await waitForActionResponse(page, () => secondRow.click(), {
+      method: "GET",
+      urlIncludes: `/responses/${attendeeIds.checkedIn2}`,
+    });
+    await expect(secondDialog).toBeVisible();
+    await expect(secondDialog.getByRole("button", { name: "Previous" })).toBeEnabled();
+    await secondDialog.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(secondDialog).toBeHidden();
+  });
+
   test("organizer only sees aggregated results of an anonymous survey", async ({ organizerGroupPage }) => {
     const page = organizerGroupPage;
 
@@ -246,6 +344,101 @@ test.describe("group dashboard event surveys tab", () => {
     await expect(content.locator("[data-event-survey-few-responses-notice]")).toBeVisible();
     await expect(content.getByText("Great venue, thanks!")).toBeVisible();
     await expect(content.getByText("E2E Survey Attendee One")).toHaveCount(0);
+  });
+
+  test("organizer searches and pages every free-text answer of an anonymous survey in a modal", async ({
+    organizerGroupPage,
+  }) => {
+    const page = organizerGroupPage;
+    const owned = setupOwnedEventSurvey({ eventId: event.id, status: "ready" });
+    const answers = Array.from({ length: 12 }, (_, index) => {
+      const number = String(index + 1).padStart(2, "0");
+      return index % 4 === 2 ? `Owned answer ${number} about coffee` : `Owned answer ${number}`;
+    });
+
+    try {
+      // Answer the free-text question of the anonymous survey twelve times.
+      setupOwnedSurveyTextAnswers({ answers, questionId: owned.questionId, surveyId: owned.id });
+
+      // Open the Summary view of the survey.
+      const content = await openSurveysTab(page);
+      await waitForActionResponse(
+        page,
+        () => content.getByRole("button", { name: `View results: ${owned.title}` }).click(),
+        { method: "GET", urlIncludes: `/surveys/${owned.id}/results` },
+      );
+
+      // Verify the compact preview shows the first 10 answers only.
+      const question = content.locator(`[data-event-survey-question="${owned.questionId}"]`);
+      const preview = question.locator("[data-event-survey-text-answers-preview] li");
+      await expect(preview).toHaveCount(10);
+      await expect(preview.first()).toHaveText("Owned answer 01");
+      await expect(question).not.toContainText("Owned answer 11");
+      await expect(question).toContainText("Showing 10 of 12 answers");
+
+      // Open every answer in the modal.
+      const viewAll = question.getByRole("button", { name: "View all 12 answers" });
+      await waitForActionResponse(page, () => viewAll.click(), {
+        method: "GET",
+        urlIncludes: `/results/questions/${owned.questionId}/answers`,
+      });
+      const dialog = page.getByRole("dialog", { name: "Any feedback?" });
+      const range = dialog.locator("[data-event-survey-text-answers-range]");
+      const search = dialog.getByLabel("Search answers");
+      await expect(dialog).toBeVisible();
+      await expect(search).toBeFocused();
+      await expect(range).toHaveText("1 - 10 of 12 answers");
+      await expect(dialog.getByRole("button", { name: "Previous" })).toBeDisabled();
+
+      // Move to the second page.
+      await waitForActionResponse(page, () => dialog.getByRole("button", { name: "Next" }).click(), {
+        method: "GET",
+        urlIncludes: "offset=10",
+      });
+      await expect(range).toHaveText("11 - 12 of 12 answers");
+      await expect(dialog.getByRole("list", { name: "Answers" }).getByRole("listitem")).toHaveText([
+        "Owned answer 11 about coffee",
+        "Owned answer 12",
+      ]);
+      await expect(dialog.getByRole("button", { name: "Next" })).toBeDisabled();
+      await expect(dialog.getByRole("button", { name: "Close", exact: true })).toBeFocused();
+
+      // Search the answers from the first page.
+      await waitForActionResponse(
+        page,
+        async () => {
+          await search.fill("COFFEE");
+          await search.press("Enter");
+        },
+        { method: "GET", urlIncludes: "ts_query=COFFEE" },
+      );
+      await expect(range).toHaveText("1 - 3 of 3 answers");
+      await expect(dialog.getByRole("list", { name: "Answers" }).getByRole("listitem")).toHaveText([
+        "Owned answer 03 about coffee",
+        "Owned answer 07 about coffee",
+        "Owned answer 11 about coffee",
+      ]);
+      await expect(search).toHaveValue("COFFEE");
+      await expect(search).toBeFocused();
+
+      // Clear the search and verify focus stays in the modal on its search box.
+      await waitForActionResponse(
+        page,
+        () => dialog.getByRole("button", { name: "Clear answer search" }).click(),
+        { method: "GET", urlIncludes: `/results/questions/${owned.questionId}/answers` },
+      );
+      await expect(range).toHaveText("1 - 10 of 12 answers");
+      await expect(search).toHaveValue("");
+      await expect(search).toBeFocused();
+
+      // Close the modal on Escape and verify focus returns to its opener.
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+      await expect(viewAll).toBeFocused();
+      await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    } finally {
+      cleanupEventSurveys([owned.id]);
+    }
   });
 
   test("organizer edits a locked survey without changing its locked fields", async ({

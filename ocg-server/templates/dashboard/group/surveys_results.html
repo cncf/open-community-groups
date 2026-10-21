@@ -73,30 +73,41 @@
               <span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">{{ loop.index }}</span>
               <span class="min-w-0">{{ question.prompt }}</span>
             </h3>
-            <div class="mb-3 mt-1 text-xs text-stone-500">{{ (text.total as i64)|num_fmt }} answers</div>
-            <div class="rounded-lg border border-stone-200 bg-white p-5">
+            <div class="mb-3 mt-1 text-xs text-stone-500">{{ (text.total as i64)|num_fmt }} answer{{ text.total|pluralize }}</div>
+            <div class="rounded-lg border border-stone-200 bg-white">
               {% if text.answers.is_empty() -%}
-                <p class="text-sm text-stone-500">No answers yet.</p>
+                <p class="p-5 text-sm text-stone-500">No answers yet.</p>
               {% else -%}
-                <ul id="{{ answers_id }}" class="space-y-3">
+                {# Answers preview -#}
+                <ul id="{{ answers_id }}"
+                    class="grid grid-cols-1 gap-2 p-3 md:grid-cols-2"
+                    data-event-survey-text-answers-preview>
                   {% for answer in text.answers -%}
-                    <li class="whitespace-pre-line break-words rounded-lg bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-700 lg:text-sm lg:leading-6">{{ answer }}</li>
+                    <li class="line-clamp-3 whitespace-pre-line break-words rounded-md bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-700">{{ answer }}</li>
                   {% endfor -%}
-                  {% if text.total > text.answers.len() -%}
-                    <li>
-                      <button type="button"
-                              hx-get="/dashboard/group/events/{{ event.event_id }}/surveys/{{ survey.event_survey_id }}/results/questions/{{ question.question_id }}/answers?offset={{ text.answers.len() }}"
-                              hx-target="closest li"
-                              hx-swap="outerHTML"
-                              data-show-more
-                              hx-indicator="#dashboard-spinner"
-                              hx-disabled-elt="this"
-                              data-htmx-response
-                              data-error-message="Something went wrong loading more answers. Please try again later."
-                              class="btn-primary-outline btn-mini">Show more answers ({{ text.total - text.answers.len() }} left)</button>
-                    </li>
-                  {% endif -%}
                 </ul>
+                {# End answers preview -#}
+
+                {# View all answers -#}
+                <div class="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 px-4 py-2.5">
+                  <p class="text-xs text-stone-500">
+                    Showing {{ text.answers.len() }} of {{ (text.total as i64)|num_fmt }} answer{{ text.total|pluralize }}
+                  </p>
+                  <button type="button"
+                          hx-get="{{ crate::templates::dashboard::group::surveys::text_answers_url(*event.event_id, *survey.event_survey_id, *question.question_id) }}"
+                          hx-target="#event-survey-text-answers-modal-content"
+                          hx-swap="innerHTML"
+                          hx-sync="#event-survey-text-answers-modal:replace"
+                          hx-indicator="#dashboard-spinner"
+                          hx-disabled-elt="this"
+                          data-event-survey-text-answers-open
+                          data-htmx-response
+                          data-error-message="Something went wrong loading these answers. Please try again later."
+                          class="btn-primary-outline btn-mini">
+                    {{ crate::templates::dashboard::group::surveys::view_all_answers_label(*text.total) }}<span class="sr-only">: {{ question.prompt }}</span>
+                  </button>
+                </div>
+                {# End view all answers -#}
               {% endif -%}
             </div>
           </section>
@@ -104,6 +115,23 @@
       {% endfor -%}
     </div>
     {# End questions -#}
+
+    {# Free-text answers modal -#}
+    <div id="event-survey-text-answers-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="event-survey-text-answers-modal-title"
+         aria-hidden="true"
+         class="fixed left-0 right-0 top-0 z-[1000] flex hidden h-full max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden md:inset-0"
+         data-event-survey-text-answers-modal>
+      <div data-event-survey-text-answers-close
+           class="modal-overlay absolute h-full w-full bg-stone-950 opacity-[0.35]"></div>
+      <div class="modal-panel max-w-3xl p-4">
+        <div id="event-survey-text-answers-modal-content"
+             class="modal-card rounded-lg"></div>
+      </div>
+    </div>
+    {# End free-text answers modal -#}
   {% endif -%}
 </div>
 {# End event survey results -#}

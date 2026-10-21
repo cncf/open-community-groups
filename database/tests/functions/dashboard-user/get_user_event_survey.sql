@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(16);
 
 \set canceledEventID 'a5e00032-0000-0000-0000-000000000001'
 \set canceledEventSurveyID 'a5e00032-0000-0000-0000-000000000002'
+\set closedAnsweredSurveyID 'a5e00032-0000-0000-0000-000000000024'
 \set closedSurveyID 'a5e00032-0000-0000-0000-000000000003'
 \set communityID 'a5e00032-0000-0000-0000-000000000004'
 \set datelessEventID 'a5e00032-0000-0000-0000-00000000001f'
@@ -176,6 +177,36 @@ values (:'eventID', :'unansweredAttendeeID', 'confirmed');
 insert into event_survey (event_survey_id, event_id, status, title)
 values (:'canceledEventSurveyID', :'canceledEventID', 'ready', 'Canceled event survey');
 
+-- Anonymous survey the respondent answered, closed manually on the public event
+insert into event_survey (
+    event_survey_id,
+    event_id,
+    questions,
+    revision,
+    status,
+    title,
+
+    closed_at,
+    closes_at,
+    first_response_at
+) values (
+    :'closedAnsweredSurveyID',
+    :'eventID',
+    jsonb_build_array(jsonb_build_object(
+        'id', :'questionID'::uuid,
+        'kind', 'free-text',
+        'prompt', 'Feedback',
+        'required', false
+    )),
+    2,
+    'ready',
+    'Closed answered survey',
+
+    current_timestamp - interval '1 hour',
+    current_timestamp + interval '5 days',
+    current_timestamp - interval '1 day'
+);
+
 -- Ready survey closed manually on the public event
 insert into event_survey (event_survey_id, event_id, status, title, closed_at)
 values (:'closedSurveyID', :'eventID', 'ready', 'Closed survey', current_timestamp - interval '1 hour');
@@ -250,6 +281,18 @@ values (:'scheduledSurveyID', :'eventID', 'ready', 'Scheduled survey', current_t
 insert into event_survey (event_survey_id, event_id, status, title)
 values (:'unpublishedEventSurveyID', :'unpublishedEventID', 'ready', 'Unpublished event survey');
 
+-- Response of the confirmed attendee to the closed survey
+insert into event_survey_response (answers, created_at, event_survey_id, user_id)
+values (
+    jsonb_build_object('answers', jsonb_build_array(jsonb_build_object(
+        'question_id', :'questionID'::uuid,
+        'value', 'Well organized'
+    ))),
+    current_timestamp - interval '1 day',
+    :'closedAnsweredSurveyID',
+    :'respondentID'
+);
+
 -- Edited response of the confirmed attendee
 insert into event_survey_response (answers, created_at, event_survey_id, user_id, updated_at)
 values (
@@ -274,11 +317,44 @@ select is(
     'Should return a null response for eligible users who have not answered'
 );
 
--- Should return null for closed surveys
+-- Should return closed surveys the user answered with their answers
+select is(
+    get_user_event_survey(:'closedAnsweredSurveyID'::uuid, :'respondentID'::uuid)::jsonb,
+    jsonb_build_object(
+        'anonymous', true,
+        'event', get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+        'event_survey_id', :'closedAnsweredSurveyID'::uuid,
+        'questions', jsonb_build_array(jsonb_build_object(
+            'id', :'questionID'::uuid,
+            'kind', 'free-text',
+            'prompt', 'Feedback',
+            'required', false
+        )),
+        'revision', 2,
+        'state', 'closed',
+        'title', 'Closed answered survey',
+
+        'closed_at', epoch_seconds(current_timestamp - interval '1 hour'),
+        'closes_at', epoch_seconds(current_timestamp + interval '5 days'),
+        'description', null,
+        'response', jsonb_build_object(
+            'answers', jsonb_build_object('answers', jsonb_build_array(jsonb_build_object(
+                'question_id', :'questionID'::uuid,
+                'value', 'Well organized'
+            ))),
+            'created_at', epoch_seconds(current_timestamp - interval '1 day'),
+
+            'updated_at', null
+        )
+    ),
+    'Should return closed surveys the user answered with their answers'
+);
+
+-- Should return null for closed surveys the user did not answer
 select is(
     get_user_event_survey(:'closedSurveyID'::uuid, :'respondentID'::uuid)::jsonb,
     null,
-    'Should return null for closed surveys'
+    'Should return null for closed surveys the user did not answer'
 );
 
 -- Should return null for draft surveys
@@ -386,8 +462,10 @@ select is(
             'required', false
         )),
         'revision', 3,
+        'state', 'open',
         'title', 'Open survey',
 
+        'closed_at', null,
         'closes_at', epoch_seconds(current_timestamp + interval '5 days'),
         'description', 'Tell us how it went',
         'response', jsonb_build_object(

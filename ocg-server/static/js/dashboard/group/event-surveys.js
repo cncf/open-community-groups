@@ -1,7 +1,9 @@
 import { confirmAction, handleHtmxResponse } from "/static/js/common/alerts.js";
 import { convertDateTimeLocalToISO, toDateTimeLocalInTimezone } from "/static/js/common/datetime.js";
 import { isForcedDeploymentRefresh } from "/static/js/common/deployment-version.js";
-import { bindShowMoreFocus } from "/static/js/common/show-more.js";
+import { closestElementWithinRoot, getElementById, isElementHidden } from "/static/js/common/dom.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { toggleModalVisibility, trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
 import { bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js";
 import { trackFormChanges } from "/static/js/dashboard/group/pending-changes-alert.js";
 import { bindQuestionOptionsToggles } from "/static/js/dashboard/group/question-breakdown.js";
@@ -30,6 +32,28 @@ const EVENT_SURVEY_DATE_FIELDS = ["closes_at", "opens_at"];
 /** Selector of the survey editor form. */
 const EVENT_SURVEY_FORM_SELECTOR = "form[data-event-survey-form]";
 
+/**
+ * Modals of the survey results views, each loaded by HTMX into its content
+ * container: the respondent responses of the Individual view and the
+ * free-text answers of the Summary view.
+ * @type {ReadonlyArray<{closeSelector: string, contentId: string, initialFocusSelector?: string, modalId: string, navAttribute: string}>}
+ */
+const EVENT_SURVEY_MODALS = [
+  {
+    closeSelector: "[data-event-survey-response-close]",
+    contentId: "event-survey-response-modal-content",
+    modalId: "event-survey-response-modal",
+    navAttribute: "data-event-survey-response-nav",
+  },
+  {
+    closeSelector: "[data-event-survey-text-answers-close]",
+    contentId: "event-survey-text-answers-modal-content",
+    initialFocusSelector: "#event-survey-text-answers-search",
+    modalId: "event-survey-text-answers-modal",
+    navAttribute: "data-event-survey-text-answers-nav",
+  },
+];
+
 /** Selector of survey toggles bound to the hidden input their data attribute names. */
 const EVENT_SURVEY_TOGGLE_SELECTOR = "input[type='checkbox'][data-event-survey-toggle]";
 
@@ -42,6 +66,9 @@ let beforeUnloadBound = false;
 
 /** Surveys tab roots whose delegated listeners are bound. */
 const boundRoots = new WeakSet();
+
+/** Whether the document-level guard closing removed survey modals is installed. */
+let modalRemovalGuardInstalled = false;
 
 /**
  * Survey form tracked for unsaved changes; only one editor is open at a time.
@@ -59,9 +86,10 @@ let unsavedChangesGuardInstalled = false;
 /**
  * Initializes the surveys tab of the event update page: survey forms loaded
  * into the tab are tracked for unsaved changes, their toggles and dates are
- * prepared for submission, results get their breakdown toggles, and form
- * responses are reported through alerts. The survey form is never part of
- * the event payload or its pending-changes tracking.
+ * prepared for submission, results get their breakdown toggles, respondent
+ * responses and free-text answers open in modals that close before a swap
+ * removes them, and form responses are reported through alerts. The survey form is never part of the event
+ * payload or its pending-changes tracking.
  * @param {Document|Element} pageRoot - Event update page root.
  * @returns {void}
  */
@@ -72,10 +100,11 @@ export const initializeEventSurveys = (pageRoot) => {
   }
   boundRoots.add(root);
 
-  // Guard requests that would discard unsaved survey edits
+  // Guard requests that would discard unsaved survey edits or open modals
   installUnsavedSurveyChangesGuard();
+  installEventSurveyModalRemovalGuard();
   bindQuestionOptionsToggles(root);
-  bindShowMoreFocus(root);
+  EVENT_SURVEY_MODALS.forEach((config) => bindEventSurveyModal(root, config));
 
   // Go back to the list when the active surveys tab is clicked again. It
   // runs before the section tabs mark the clicked tab active
@@ -246,6 +275,76 @@ const acceptSubmittedSurveyValues = (accepted) => {
 };
 
 /**
+ * Opens a survey results modal once its content loads, keeps focus on the
+ * navigation control after moving between pages of content, brings focus
+ * back into it when the swap removed the focused control, keeps Tab
+ * navigation inside the open modal, and closes it from its close controls,
+ * its overlay and Escape. Closing restores focus to the control that opened
+ * it, and content requested from inside the modal is dropped once the modal
+ * was closed while the request ran, so it never opens again unasked.
+ * @param {HTMLElement} root - Surveys tab content root.
+ * @param {(typeof EVENT_SURVEY_MODALS)[number]} config - Modal contract.
+ * @returns {void}
+ */
+const bindEventSurveyModal = (root, config) => {
+  // Drop content requested from inside a modal closed while it loaded
+  root.addEventListener("htmx:beforeSwap", (event) => {
+    if (event.detail?.target?.id !== config.contentId) {
+      return;
+    }
+    const modal = getElementById(document, config.modalId);
+    const trigger = event.detail?.requestConfig?.elt;
+    if (
+      modal instanceof HTMLElement &&
+      isElementHidden(modal) &&
+      trigger instanceof Node &&
+      modal.contains(trigger)
+    ) {
+      event.detail.shouldSwap = false;
+    }
+  });
+
+  // Open the modal, or keep focus in it, once its content is loaded
+  root.addEventListener("htmx:afterSwap", (event) => {
+    if (event.detail?.target?.id !== config.contentId) {
+      return;
+    }
+    const modal = getElementById(document, config.modalId);
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const trigger = event.detail?.requestConfig?.elt;
+    if (isElementHidden(modal)) {
+      toggleModalVisibility(modal, trigger instanceof HTMLElement ? trigger : null);
+      focusEventSurveyModalEntry(modal, config);
+      return;
+    }
+    focusEventSurveyModalNavigation(modal, trigger, config);
+    recoverEventSurveyModalFocus(modal, config);
+  });
+
+  // Close the modal from its close controls and overlay
+  root.addEventListener("click", (event) => {
+    if (closestElementWithinRoot(event.target, config.closeSelector, root)) {
+      closeEventSurveyModal(config.modalId);
+    }
+  });
+
+  // Trap Tab inside the open modal and close it on Escape
+  root.addEventListener("keydown", (event) => {
+    const modal = getElementById(document, config.modalId);
+    if (!(modal instanceof HTMLElement) || isElementHidden(modal)) {
+      return;
+    }
+    if (event.key === "Tab") {
+      trapModalFocus(event, modal);
+    } else if (isEscapeEvent(event)) {
+      closeEventSurveyModal(config.modalId);
+    }
+  });
+};
+
+/**
  * Binds the survey toggles of a form to their hidden boolean inputs.
  * @param {HTMLFormElement} form - Survey editor form.
  * @returns {void}
@@ -255,6 +354,79 @@ const bindEventSurveyToggles = (form) => {
     const hiddenInput = form.querySelector(`#${CSS.escape(toggle.dataset.eventSurveyToggle || "")}`);
     bindBooleanToggle({ toggle, hiddenInput });
   });
+};
+
+/**
+ * Closes a survey results modal when it is open.
+ * @param {string} modalId - Id of the modal.
+ * @returns {void}
+ */
+const closeEventSurveyModal = (modalId) => {
+  const modal = getElementById(document, modalId);
+  if (modal instanceof HTMLElement && !isElementHidden(modal)) {
+    toggleModalVisibility(modal);
+  }
+};
+
+/**
+ * Closes the open survey results modals a swap is about to remove, such as
+ * when a respondents search lands after a respondent's responses opened, so
+ * the body scroll lock and the focus origin are released with them.
+ * @param {CustomEvent} event - HTMX `htmx:beforeSwap` event.
+ * @returns {void}
+ */
+const closeEventSurveyModalsRemovedBySwap = (event) => {
+  const target = event.detail?.target;
+  if (!(target instanceof Element) || event.detail?.shouldSwap === false) {
+    return;
+  }
+  EVENT_SURVEY_MODALS.forEach(({ modalId }) => {
+    const modal = getElementById(document, modalId);
+    if (modal instanceof HTMLElement && target.contains(modal)) {
+      closeEventSurveyModal(modalId);
+    }
+  });
+};
+
+/**
+ * Moves focus to the entry point of a survey results modal just opened, when
+ * its contract names one, such as the search box of the free-text answers.
+ * @param {HTMLElement} modal - Open survey results modal.
+ * @param {(typeof EVENT_SURVEY_MODALS)[number]} config - Modal contract.
+ * @returns {void}
+ */
+const focusEventSurveyModalEntry = (modal, config) => {
+  if (!config.initialFocusSelector) {
+    return;
+  }
+  const entry = modal.querySelector(config.initialFocusSelector);
+  if (entry instanceof HTMLElement) {
+    entry.focus();
+  }
+};
+
+/**
+ * Moves focus to the navigation button of the content just loaded, in the
+ * direction the user navigated, or to the footer close button when nothing
+ * remains in that direction.
+ * @param {HTMLElement} modal - Open survey results modal.
+ * @param {unknown} trigger - Element that requested the content.
+ * @param {(typeof EVENT_SURVEY_MODALS)[number]} config - Modal contract.
+ * @returns {void}
+ */
+const focusEventSurveyModalNavigation = (modal, trigger, config) => {
+  const direction = trigger instanceof Element ? trigger.getAttribute(config.navAttribute) : null;
+  if (!direction) {
+    return;
+  }
+  const button = modal.querySelector(`[${config.navAttribute}="${direction}"]`);
+  const target =
+    button instanceof HTMLButtonElement && !button.disabled
+      ? button
+      : Array.from(modal.querySelectorAll(`button${config.closeSelector}`)).at(-1);
+  if (target instanceof HTMLElement) {
+    target.focus();
+  }
 };
 
 /**
@@ -306,6 +478,20 @@ const handleHtmxConfirm = (event) => {
 };
 
 /**
+ * Installs the document-level guard closing survey results modals removed by
+ * a swap once. It covers swaps requested from anywhere on the page and does
+ * nothing while no survey modal is open.
+ * @returns {void}
+ */
+const installEventSurveyModalRemovalGuard = () => {
+  if (modalRemovalGuardInstalled) {
+    return;
+  }
+  modalRemovalGuardInstalled = true;
+  document.addEventListener("htmx:beforeSwap", closeEventSurveyModalsRemovedBySwap);
+};
+
+/**
  * Installs the document-level guard once. It stays installed and does nothing
  * unless a connected dirty survey form exists.
  * @returns {void}
@@ -346,6 +532,29 @@ const recordSubmittedSurveyValues = () => {
     return;
   }
   trackedSurveyForm.submittedSnapshot = trackedSurveyForm.tracker.snapshot();
+};
+
+/**
+ * Moves focus back into an open survey results modal when the swap removed
+ * the focused control, such as the clear button of the answers search, so Tab
+ * stays trapped and Escape keeps closing it. Focus goes to the modal entry
+ * point when its contract names one, or to the footer close button.
+ * @param {HTMLElement} modal - Open survey results modal.
+ * @param {(typeof EVENT_SURVEY_MODALS)[number]} config - Modal contract.
+ * @returns {void}
+ */
+const recoverEventSurveyModalFocus = (modal, config) => {
+  if (modal.contains(document.activeElement)) {
+    return;
+  }
+  const entry = config.initialFocusSelector ? modal.querySelector(config.initialFocusSelector) : null;
+  const target =
+    entry instanceof HTMLElement
+      ? entry
+      : Array.from(modal.querySelectorAll(`button${config.closeSelector}`)).at(-1);
+  if (target instanceof HTMLElement) {
+    target.focus();
+  }
 };
 
 /**

@@ -8,3 +8,4 @@ pub mod notifications;
 pub mod purchases;
 pub mod session_proposals;
 pub mod submissions;
+pub mod surveys;

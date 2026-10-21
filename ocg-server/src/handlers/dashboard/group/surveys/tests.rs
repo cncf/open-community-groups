@@ -22,15 +22,17 @@ use crate::{
             EVENT_SURVEY_RESPONSES_PAGINATION_LIMIT, EVENT_SURVEY_TEXT_ANSWERS_PAGINATION_LIMIT,
             group::surveys::{
                 EventSurveyExport, EventSurveyExportRespondent, EventSurveyExportResponse,
-                EventSurveyFull, EventSurveyResponse, EventSurveyResponsesOutput,
-                EventSurveyResults, EventSurveyResultsQuestion, EventSurveyStatusAction,
-                EventSurveySummary, EventSurveyTextAnswers,
+                EventSurveyFull, EventSurveyResponseFull, EventSurveyResponseSummary,
+                EventSurveyResponsesOutput, EventSurveyResults, EventSurveyResultsQuestion,
+                EventSurveyStatusAction, EventSurveySummary, EventSurveyTextAnswers,
+                EventSurveyTextAnswersOutput,
             },
         },
         event_survey::{EventSurveyAudience, EventSurveyState},
         permissions::GroupPermission,
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestionKind},
     },
+    validation::MAX_LEN_M,
 };
 
 use super::{
@@ -487,6 +489,228 @@ async fn test_list_page_success() {
 }
 
 #[tokio::test]
+async fn test_response_modal_rejects_anonymous_survey() {
+    // Setup identifiers and an anonymous survey
+    let ids = TestIds::new();
+    let event_survey_id = Uuid::new_v4();
+    let survey = sample_event_survey_full(event_survey_id);
+
+    // Setup database expectations
+    let mut db = setup_db(&ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids);
+    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    db.expect_get_event_survey_response().never();
+
+    // Run the request
+    let (parts, bytes) = send(
+        db,
+        ids.session_id,
+        "GET",
+        &format!(
+            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{}",
+            ids.event_id,
+            Uuid::new_v4()
+        ),
+        None,
+    )
+    .await;
+
+    // Check the rejection
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8_lossy(&bytes),
+        "individual responses are not available for anonymous surveys"
+    );
+}
+
+#[tokio::test]
+async fn test_response_modal_success() {
+    // Setup identifiers and an identified survey with three matching respondents
+    let ids = TestIds::new();
+    let event_survey_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let next_user_id = Uuid::new_v4();
+    let previous_user_id = Uuid::new_v4();
+    let mut survey = sample_event_survey_full(event_survey_id);
+    survey.summary.anonymous = false;
+    let mut user = sample_user_summary(user_id, "jane");
+    user.company = Some("Example <Corp>".to_string());
+    user.name = Some("Jane Doe".to_string());
+    user.title = Some("Engineer".to_string());
+    let response = EventSurveyResponseFull {
+        answers: serde_json::from_value(json!({
+            "answers": [
+                {"question_id": "00000000-0000-0000-0000-000000005d01", "value": "The <b>talks</b>"}
+            ]
+        }))
+        .unwrap(),
+        position: 2,
+        summary: EventSurveyResponseSummary {
+            answered_questions_count: 1,
+            created_at: Utc.with_ymd_and_hms(2099, 5, 10, 9, 0, 0).unwrap(),
+            user,
+
+            ticket_title: Some("VIP".to_string()),
+            updated_at: Some(Utc.with_ymd_and_hms(2099, 5, 11, 9, 0, 0).unwrap()),
+        },
+        total: 3,
+
+        next_user_id: Some(next_user_id),
+        previous_user_id: Some(previous_user_id),
+    };
+
+    // Setup database expectations
+    let mut db = setup_db(&ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids);
+    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    db.expect_get_event_survey_response()
+        .times(1)
+        .withf(
+            move |group_id, event_id, survey_id, respondent_id, filters| {
+                *group_id == ids.group_id
+                    && *event_id == ids.event_id
+                    && *survey_id == event_survey_id
+                    && *respondent_id == user_id
+                    && filters.ts_query.as_deref() == Some("jane doe")
+            },
+        )
+        .returning(move |_, _, _, _, _| Ok(Some(response.clone())));
+
+    // Run the request with the respondents search
+    let (parts, bytes) = send(
+        db,
+        ids.session_id,
+        "GET",
+        &format!(
+            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{user_id}?ts_query=jane+doe",
+            ids.event_id
+        ),
+        None,
+    )
+    .await;
+
+    // Check the respondent details and escaped answers
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let html = String::from_utf8_lossy(&bytes);
+    assert!(html.contains(r#"id="event-survey-response-modal-title""#));
+    assert!(html.contains("Jane Doe"));
+    assert!(html.contains("Engineer · Example &#60;Corp&#62;"));
+    assert!(html.contains("VIP"));
+    assert!(html.contains("Edited"));
+    assert!(html.contains("Answered 1 of 2 questions"));
+    assert!(html.contains("The &#60;b&#62;talks&#60;/b&#62;"));
+    assert!(!html.contains("<b>talks</b>"));
+
+    // Check the navigation keeps the search
+    assert!(html.contains("Respondent 2 of 3"));
+    let base_url = format!(
+        "/dashboard/group/events/{}/surveys/{event_survey_id}/responses",
+        ids.event_id
+    );
+    assert!(html.contains(&format!(
+        r#"hx-get="{base_url}/{previous_user_id}?ts_query=jane+doe""#
+    )));
+    assert!(html.contains(&format!(
+        r#"hx-get="{base_url}/{next_user_id}?ts_query=jane+doe""#
+    )));
+}
+
+#[tokio::test]
+async fn test_response_modal_unknown_response_returns_not_found() {
+    // Setup identifiers and an identified survey
+    let ids = TestIds::new();
+    let event_survey_id = Uuid::new_v4();
+    let mut survey = sample_event_survey_full(event_survey_id);
+    survey.summary.anonymous = false;
+
+    // Setup database expectations
+    let mut db = setup_db(&ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids);
+    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    db.expect_get_event_survey_response()
+        .times(1)
+        .withf(move |_, _, survey_id, _, filters| {
+            *survey_id == event_survey_id && filters.ts_query.is_none()
+        })
+        .returning(|_, _, _, _, _| Ok(None));
+
+    // Run the request
+    let (parts, bytes) = send(
+        db,
+        ids.session_id,
+        "GET",
+        &format!(
+            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{}",
+            ids.event_id,
+            Uuid::new_v4()
+        ),
+        None,
+    )
+    .await;
+
+    // Check the response is not found
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert_eq!(bytes, Vec::<u8>::new());
+}
+
+#[tokio::test]
+async fn test_response_modal_without_neighbors_disables_navigation() {
+    // Setup identifiers and the only respondent of an identified survey
+    let ids = TestIds::new();
+    let event_survey_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let mut survey = sample_event_survey_full(event_survey_id);
+    survey.summary.anonymous = false;
+    let response = EventSurveyResponseFull {
+        answers: sample_answers(),
+        position: 1,
+        summary: EventSurveyResponseSummary {
+            answered_questions_count: 2,
+            created_at: Utc.with_ymd_and_hms(2099, 5, 10, 9, 0, 0).unwrap(),
+            user: sample_user_summary(user_id, "jane"),
+
+            ticket_title: None,
+            updated_at: None,
+        },
+        total: 1,
+
+        next_user_id: None,
+        previous_user_id: None,
+    };
+
+    // Setup database expectations
+    let mut db = setup_db(&ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids);
+    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    db.expect_get_event_survey_response()
+        .times(1)
+        .returning(move |_, _, _, _, _| Ok(Some(response.clone())));
+
+    // Run the request
+    let (parts, bytes) = send(
+        db,
+        ids.session_id,
+        "GET",
+        &format!(
+            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{user_id}",
+            ids.event_id
+        ),
+        None,
+    )
+    .await;
+
+    // Check both navigation buttons are disabled and the details fall back
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let html = normalize_whitespace(&String::from_utf8_lossy(&bytes));
+    assert!(html.contains("Respondent 1 of 1"));
+    assert!(html.contains("No ticket"));
+    assert!(!html.contains("Edited"));
+    assert!(html.contains(r#"disabled data-event-survey-response-nav="previous""#));
+    assert!(html.contains(r#"disabled data-event-survey-response-nav="next""#));
+    assert!(!html.contains("/responses/"));
+}
+
+#[tokio::test]
 async fn test_responses_page_applies_default_bounds() {
     // Setup identifiers and an identified survey without responses
     let ids = TestIds::new();
@@ -563,35 +787,79 @@ async fn test_responses_page_rejects_anonymous_survey() {
 }
 
 #[tokio::test]
-async fn test_responses_page_success() {
-    // Setup identifiers and an identified survey with one response
+async fn test_responses_page_renders_no_results_for_unmatched_search() {
+    // Setup identifiers and an identified survey without matching respondents
     let ids = TestIds::new();
     let event_survey_id = Uuid::new_v4();
     let mut survey = sample_event_survey_full(event_survey_id);
     survey.summary.anonymous = false;
     let responses = EventSurveyResponsesOutput {
-        responses: vec![
-            EventSurveyResponse {
-                answers: sample_answers(),
-                created_at: Utc.with_ymd_and_hms(2099, 5, 10, 9, 0, 0).unwrap(),
-                user: sample_user_summary(Uuid::new_v4(), "jane"),
+        responses: vec![],
+        total: 0,
+    };
 
-                updated_at: None,
+    // Setup database expectations
+    let mut db = setup_db(&ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids);
+    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    db.expect_list_event_survey_responses()
+        .times(1)
+        .withf(|_, _, _, filters| filters.ts_query.as_deref() == Some("nobody"))
+        .returning(move |_, _, _, _| Ok(Some(responses.clone())));
+
+    // Run the request with a search
+    let (parts, bytes) = send(
+        db,
+        ids.session_id,
+        "GET",
+        &format!(
+            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses?ts_query=nobody",
+            ids.event_id
+        ),
+        None,
+    )
+    .await;
+
+    // Check the search stays editable above the no results state
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let html = String::from_utf8_lossy(&bytes);
+    assert!(html.contains(r#"value="nobody""#));
+    assert!(html.contains("No respondents found matching your search."));
+    assert!(!html.contains("This survey does not have any responses yet."));
+}
+
+#[tokio::test]
+async fn test_responses_page_success() {
+    // Setup identifiers and an identified survey with two respondents
+    let ids = TestIds::new();
+    let event_survey_id = Uuid::new_v4();
+    let jane_id = Uuid::new_v4();
+    let mut survey = sample_event_survey_full(event_survey_id);
+    survey.summary.anonymous = false;
+    let mut jane = sample_user_summary(jane_id, "jane");
+    jane.company = Some("Example <Corp>".to_string());
+    jane.name = Some("Jane Doe".to_string());
+    jane.title = Some("Engineer".to_string());
+    let responses = EventSurveyResponsesOutput {
+        responses: vec![
+            EventSurveyResponseSummary {
+                answered_questions_count: 2,
+                created_at: Utc.with_ymd_and_hms(2099, 5, 10, 9, 0, 0).unwrap(),
+                user: jane,
+
+                ticket_title: Some("VIP <pass>".to_string()),
+                updated_at: Some(Utc.with_ymd_and_hms(2099, 5, 12, 9, 0, 0).unwrap()),
             },
-            EventSurveyResponse {
-                answers: serde_json::from_value(json!({
-                    "answers": [
-                        {"question_id": "00000000-0000-0000-0000-000000005d01", "value": "The <b>talks</b>"}
-                    ]
-                }))
-                .unwrap(),
+            EventSurveyResponseSummary {
+                answered_questions_count: 1,
                 created_at: Utc.with_ymd_and_hms(2099, 5, 10, 10, 0, 0).unwrap(),
                 user: sample_user_summary(Uuid::new_v4(), "john"),
 
+                ticket_title: None,
                 updated_at: None,
             },
         ],
-        total: 2,
+        total: 22,
     };
 
     // Setup database expectations
@@ -606,6 +874,7 @@ async fn test_responses_page_success() {
                 && *survey_id == event_survey_id
                 && filters.limit == Some(EVENT_SURVEY_RESPONSES_PAGINATION_LIMIT)
                 && filters.offset == Some(20)
+                && filters.ts_query.as_deref() == Some("j")
         })
         .returning(move |_, _, _, _| Ok(Some(responses.clone())));
 
@@ -615,21 +884,40 @@ async fn test_responses_page_success() {
         ids.session_id,
         "GET",
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses?offset=20",
+            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses?offset=20&ts_query=j",
             ids.event_id
         ),
         None,
     )
     .await;
 
-    // Check the Individual view renders the escaped responses
+    // Check the Individual view renders the searchable respondents table
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8_lossy(&bytes);
     assert!(html.contains("data-event-survey-responses"));
-    assert!(html.contains("=SUM(A1)"));
-    assert!(html.contains("The &#60;b&#62;talks&#60;/b&#62;"));
-    assert!(!html.contains("<b>talks</b>"));
     assert!(html.contains(r#"id="event-survey-individual-view""#));
+    assert!(html.contains(r#"aria-label="Survey respondents""#));
+    assert!(html.contains(r#"name="ts_query""#));
+    assert!(html.contains(r#"value="j""#));
+    assert!(html.contains(r#"id="event-survey-response-modal""#));
+
+    // Check the escaped respondent details, tickets, answered questions and dates
+    assert!(html.contains("Jane Doe"));
+    assert!(html.contains("Engineer · Example &#60;Corp&#62;"));
+    assert!(html.contains("VIP &#60;pass&#62;"));
+    assert!(!html.contains("<pass>"));
+    assert!(html.contains("2 of 2"));
+    assert!(html.contains("1 of 2"));
+    assert!(html.contains("Edited May 12, 2099"));
+    assert!(html.contains("john"));
+
+    // Check rows open the responses keeping the search, and pages keep it too
+    assert!(html.contains(&format!(
+        r#"hx-get="/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{jane_id}?ts_query=j""#,
+        ids.event_id
+    )));
+    assert!(html.contains("ts_query=j"));
+    assert!(html.contains("offset=0"));
 }
 
 #[tokio::test]
@@ -682,15 +970,17 @@ async fn test_results_page_success() {
     )
     .await;
 
-    // Check the escaped results, the "Show more" link and the anonymity notice
+    // Check the escaped preview, the modal opener and the anonymity notice
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8_lossy(&bytes);
     assert!(html.contains("The &#60;b&#62;talks&#60;/b&#62;"));
     assert!(!html.contains("<b>talks</b>"));
-    assert!(html.contains("Show more answers (10 left)"));
+    assert!(html.contains("View all 11 answers"));
     assert!(html.contains(&format!(
-        "/surveys/{event_survey_id}/results/questions/{question_id}/answers?offset=1"
+        r#"hx-get="/dashboard/group/events/{}/surveys/{event_survey_id}/results/questions/{question_id}/answers""#,
+        ids.event_id
     )));
+    assert!(html.contains(r#"id="event-survey-text-answers-modal""#));
     assert!(html.contains("data-event-survey-few-responses-notice"));
     assert!(html.contains("Anonymous surveys only show aggregated results."));
 
@@ -728,14 +1018,43 @@ async fn test_results_page_unknown_survey_returns_not_found() {
 }
 
 #[tokio::test]
-async fn test_text_answers_page_success() {
-    // Setup identifiers and a page of answers with more remaining
+async fn test_text_answers_modal_rejects_long_search() {
+    // Setup identifiers and a search above the length limit
+    let ids = TestIds::new();
+    let mut db = setup_db(&ids, GroupPermission::Read);
+    db.expect_list_event_survey_text_answers().never();
+
+    // Run the request
+    let (parts, bytes) = send(
+        db,
+        ids.session_id,
+        "GET",
+        &format!(
+            "/dashboard/group/events/{}/surveys/{}/results/questions/{}/answers?ts_query={}",
+            ids.event_id,
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            "a".repeat(MAX_LEN_M + 1)
+        ),
+        None,
+    )
+    .await;
+
+    // Check the search is rejected before loading answers
+    assert_non_empty_response(&parts, &bytes, StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn test_text_answers_modal_success() {
+    // Setup identifiers and the second page of answers matching a search
     let ids = TestIds::new();
     let event_survey_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
-    let answers = EventSurveyTextAnswers {
+    let answers = EventSurveyTextAnswersOutput {
         answers: vec!["More <b>breaks</b>".to_string()],
-        total: 15,
+        position: 2,
+        prompt: "What should we <i>improve</i>?".to_string(),
+        total: 25,
     };
 
     // Setup database expectations
@@ -749,6 +1068,7 @@ async fn test_text_answers_page_success() {
                 && *qid == question_id
                 && filters.limit == Some(EVENT_SURVEY_TEXT_ANSWERS_PAGINATION_LIMIT)
                 && filters.offset == Some(10)
+                && filters.ts_query.as_deref() == Some("breaks")
         })
         .returning(move |_, _, _, _, _| Ok(Some(answers.clone())));
 
@@ -758,63 +1078,28 @@ async fn test_text_answers_page_success() {
         ids.session_id,
         "GET",
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/results/questions/{question_id}/answers?offset=10",
+            "/dashboard/group/events/{}/surveys/{event_survey_id}/results/questions/{question_id}/answers?offset=10&ts_query=breaks",
             ids.event_id
         ),
         None,
     )
     .await;
 
-    // Check the escaped answers and the next "Show more" page
+    // Check the escaped prompt, answers and search
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8_lossy(&bytes);
+    assert!(html.contains("What should we &#60;i&#62;improve&#60;/i&#62;?"));
     assert!(html.contains("More &#60;b&#62;breaks&#60;/b&#62;"));
     assert!(!html.contains("<b>breaks</b>"));
-    assert!(html.contains("answers?offset=11&limit=10"));
+    assert!(html.contains(r#"value="breaks""#));
+
+    // Check the previous and next pages keep the search
+    assert!(html.contains("answers?limit=10&#38;offset=0&#38;ts_query=breaks"));
+    assert!(html.contains("answers?limit=10&#38;offset=20&#38;ts_query=breaks"));
 }
 
 #[tokio::test]
-async fn test_text_answers_page_last_page_omits_show_more() {
-    // Setup identifiers and the last page of answers
-    let ids = TestIds::new();
-    let event_survey_id = Uuid::new_v4();
-    let question_id = Uuid::new_v4();
-    let answers = EventSurveyTextAnswers {
-        answers: vec!["Last answer".to_string()],
-        total: 11,
-    };
-
-    // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    db.expect_list_event_survey_text_answers()
-        .times(1)
-        .withf(move |_, _, survey_id, qid, filters| {
-            *survey_id == event_survey_id && *qid == question_id && filters.offset == Some(10)
-        })
-        .returning(move |_, _, _, _, _| Ok(Some(answers.clone())));
-
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/results/questions/{question_id}/answers?offset=10",
-            ids.event_id
-        ),
-        None,
-    )
-    .await;
-
-    // Check the last answer renders without another "Show more" button
-    assert_html_response(&parts, &bytes, StatusCode::OK);
-    let html = String::from_utf8_lossy(&bytes);
-    assert!(html.contains("Last answer"));
-    assert!(!html.contains("Show more"));
-}
-
-#[tokio::test]
-async fn test_text_answers_page_unknown_question_returns_not_found() {
+async fn test_text_answers_modal_unknown_question_returns_not_found() {
     // Setup identifiers and database expectations
     let ids = TestIds::new();
     let event_survey_id = Uuid::new_v4();

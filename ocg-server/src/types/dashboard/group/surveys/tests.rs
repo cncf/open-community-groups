@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDate};
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use garde::Validate;
 use serde_json::json;
 use uuid::Uuid;
@@ -13,14 +13,15 @@ use crate::{
     },
     validation::{
         MAX_EVENT_SURVEY_QUESTIONS, MAX_EVENT_SURVEYS, MAX_LEN_DESCRIPTION_SHORT,
-        MAX_LEN_ENTITY_NAME, MAX_SURVEY_PAGE_LIMIT,
+        MAX_LEN_ENTITY_NAME, MAX_LEN_M, MAX_SURVEY_PAGE_LIMIT,
     },
 };
 
 use super::{
-    EventSurveyInput, EventSurveyResponsesFilters, EventSurveyResultsQuestion,
-    EventSurveyStatusAction, EventSurveyStatusForm, EventSurveySummary,
-    EventSurveyTextAnswersFilters,
+    EventSurveyInput, EventSurveyResponseFull, EventSurveyResponseNavigationFilters,
+    EventSurveyResponsesFilters, EventSurveyResultsQuestion, EventSurveyStatusAction,
+    EventSurveyStatusForm, EventSurveySummary, EventSurveyTextAnswersFilters,
+    EventSurveyTextAnswersOutput,
 };
 
 #[test]
@@ -202,10 +203,68 @@ fn test_event_survey_input_serializes_database_payload() {
 }
 
 #[test]
+fn test_event_survey_response_full_deserializes_database_payload() {
+    // Deserialize the response of a respondent without a ticket or edits
+    let response: EventSurveyResponseFull = serde_json::from_value(json!({
+        "answered_questions_count": 1,
+        "answers": {"answers": [
+            {"question_id": "00000000-0000-0000-0000-000000000001", "value": "More time"}
+        ]},
+        "created_at": 1_735_808_400,
+        "user": {"user_id": "00000000-0000-0000-0000-000000000002", "username": "jane"},
+
+        "ticket_title": null,
+        "updated_at": null,
+
+        "next_user_id": "00000000-0000-0000-0000-000000000003",
+        "position": 1,
+        "previous_user_id": null,
+        "total": 2
+    }))
+    .unwrap();
+
+    // Check the answers and the navigation
+    assert_eq!(response.answers.answers.len(), 1);
+    assert_eq!(response.position, 1);
+    assert_eq!(response.total, 2);
+    assert_eq!(response.next_user_id, Some(Uuid::from_u128(3)));
+    assert!(response.previous_user_id.is_none());
+
+    // Check the flattened respondent details
+    assert_eq!(response.summary.answered_questions_count, 1);
+    assert_eq!(
+        response.summary.created_at,
+        Utc.with_ymd_and_hms(2025, 1, 2, 9, 0, 0).unwrap()
+    );
+    assert_eq!(response.summary.user.username, "jane");
+    assert!(response.summary.ticket_title.is_none());
+    assert!(response.summary.updated_at.is_none());
+}
+
+#[test]
+fn test_event_survey_response_navigation_filters_deserialize_blank_search_as_none() {
+    let filters: EventSurveyResponseNavigationFilters =
+        serde_qs::from_str("ts_query=%20%20").unwrap();
+
+    assert!(filters.ts_query.is_none());
+    assert!(filters.validate().is_ok());
+}
+
+#[test]
+fn test_event_survey_response_navigation_filters_reject_long_search() {
+    let filters = EventSurveyResponseNavigationFilters {
+        ts_query: Some("a".repeat(MAX_LEN_M + 1)),
+    };
+
+    assert!(filters.validate().is_err());
+}
+
+#[test]
 fn test_event_survey_responses_filters_accept_page_limit() {
     let filters = EventSurveyResponsesFilters {
         limit: Some(MAX_SURVEY_PAGE_LIMIT),
         offset: Some(10),
+        ts_query: Some("jane".to_string()),
     };
 
     assert!(filters.validate().is_ok());
@@ -217,6 +276,25 @@ fn test_event_survey_responses_filters_apply_default_bounds() {
 
     assert_eq!(filters.limit, Some(EVENT_SURVEY_RESPONSES_PAGINATION_LIMIT));
     assert_eq!(filters.offset, Some(0));
+    assert!(filters.ts_query.is_none());
+}
+
+#[test]
+fn test_event_survey_responses_filters_deserialize_blank_search_as_none() {
+    let filters: EventSurveyResponsesFilters = serde_qs::from_str("ts_query=%20").unwrap();
+
+    assert!(filters.ts_query.is_none());
+}
+
+#[test]
+fn test_event_survey_responses_filters_navigation_filters_keep_search_only() {
+    let filters: EventSurveyResponsesFilters =
+        serde_qs::from_str("limit=5&offset=10&ts_query=jane").unwrap();
+
+    assert_eq!(
+        filters.navigation_filters().ts_query.as_deref(),
+        Some("jane")
+    );
 }
 
 #[test]
@@ -231,6 +309,18 @@ fn test_event_survey_responses_filters_reject_limit_above_page_limit() {
     let filters = EventSurveyResponsesFilters {
         limit: Some(MAX_SURVEY_PAGE_LIMIT + 1),
         offset: None,
+        ts_query: None,
+    };
+
+    assert!(filters.validate().is_err());
+}
+
+#[test]
+fn test_event_survey_responses_filters_reject_long_search() {
+    let filters = EventSurveyResponsesFilters {
+        limit: None,
+        offset: None,
+        ts_query: Some("a".repeat(MAX_LEN_M + 1)),
     };
 
     assert!(filters.validate().is_err());
@@ -361,6 +451,13 @@ fn test_event_survey_text_answers_filters_apply_default_bounds() {
 }
 
 #[test]
+fn test_event_survey_text_answers_filters_deserialize_blank_search_as_none() {
+    let filters: EventSurveyTextAnswersFilters = serde_qs::from_str("ts_query=%20").unwrap();
+
+    assert!(filters.ts_query.is_none());
+}
+
+#[test]
 fn test_event_survey_text_answers_filters_reject_empty_pages() {
     let filters: EventSurveyTextAnswersFilters = serde_qs::from_str("limit=0").unwrap();
 
@@ -372,9 +469,42 @@ fn test_event_survey_text_answers_filters_reject_limit_above_page_limit() {
     let filters = EventSurveyTextAnswersFilters {
         limit: Some(MAX_SURVEY_PAGE_LIMIT + 1),
         offset: None,
+        ts_query: None,
     };
 
     assert!(filters.validate().is_err());
+}
+
+#[test]
+fn test_event_survey_text_answers_filters_reject_long_search() {
+    let filters = EventSurveyTextAnswersFilters {
+        limit: None,
+        offset: None,
+        ts_query: Some("a".repeat(MAX_LEN_M + 1)),
+    };
+
+    assert!(filters.validate().is_err());
+}
+
+#[test]
+fn test_event_survey_text_answers_output_deserializes_database_payload() {
+    // Deserialize a page of answers matching a search
+    let output: EventSurveyTextAnswersOutput = serde_json::from_value(json!({
+        "answers": ["More breaks", "Longer breaks"],
+        "position": 2,
+        "prompt": "What should we improve?",
+        "total": 12
+    }))
+    .unwrap();
+
+    // Check the answers and the question they answer
+    assert_eq!(
+        output.answers,
+        vec!["More breaks".to_string(), "Longer breaks".to_string()]
+    );
+    assert_eq!(output.position, 2);
+    assert_eq!(output.prompt, "What should we improve?");
+    assert_eq!(output.total, 12);
 }
 
 // Helpers.

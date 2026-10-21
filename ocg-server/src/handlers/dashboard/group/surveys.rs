@@ -26,12 +26,9 @@ use crate::{
     },
     templates::dashboard::group::surveys,
     types::{
-        dashboard::{
-            EVENT_SURVEY_TEXT_ANSWERS_PAGINATION_LIMIT,
-            group::surveys::{
-                EventSurveyExport, EventSurveyInput, EventSurveyResponsesFilters,
-                EventSurveyStatusForm, EventSurveyTextAnswersFilters,
-            },
+        dashboard::group::surveys::{
+            EventSurveyExport, EventSurveyInput, EventSurveyResponseNavigationFilters,
+            EventSurveyResponsesFilters, EventSurveyStatusForm, EventSurveyTextAnswersFilters,
         },
         pagination::NavigationLinks,
         permissions::GroupPermission,
@@ -127,7 +124,44 @@ pub(crate) async fn list_page(
     Ok(Html(template.render()?))
 }
 
-/// Displays the individual responses to an identified survey.
+/// Displays the responses of one respondent to an identified survey, with
+/// links to the previous and next respondents matching the search.
+#[instrument(skip_all)]
+pub(crate) async fn response_modal(
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path((event_id, event_survey_id, user_id)): Path<(Uuid, Uuid, Uuid)>,
+    ValidatedQuery(filters): ValidatedQuery<EventSurveyResponseNavigationFilters>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Load the event and the survey concurrently
+    let (event, survey) = tokio::try_join!(
+        db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.get_event_survey(group_id, event_id, event_survey_id),
+    )?;
+    let survey = survey.ok_or(HandlerError::NotFound)?;
+
+    // Keep respondent identities of anonymous surveys hidden
+    reject_anonymous_survey_responses(survey.summary.anonymous)?;
+
+    // Load the response with its neighbors among the matching respondents
+    let response = db
+        .get_event_survey_response(group_id, event_id, event_survey_id, user_id, &filters)
+        .await?
+        .ok_or(HandlerError::NotFound)?;
+
+    // Prepare template
+    let template = surveys::ResponseModal {
+        event,
+        navigation_filters: filters,
+        response,
+        survey,
+    };
+
+    Ok(Html(template.render()?))
+}
+
+/// Displays the respondents of an identified survey, searchable and paginated.
 #[instrument(skip_all)]
 pub(crate) async fn responses_page(
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -144,13 +178,9 @@ pub(crate) async fn responses_page(
     let survey = survey.ok_or(HandlerError::NotFound)?;
 
     // Keep respondent identities of anonymous surveys hidden
-    if survey.summary.anonymous {
-        return Err(HandlerError::Rejected(
-            "individual responses are not available for anonymous surveys".to_string(),
-        ));
-    }
+    reject_anonymous_survey_responses(survey.summary.anonymous)?;
 
-    // Load the requested page of responses
+    // Load the requested page of matching respondents
     let responses = db
         .list_event_survey_responses(group_id, event_id, event_survey_id, &filters)
         .await?
@@ -162,10 +192,12 @@ pub(crate) async fn responses_page(
     let template = surveys::ResponsesPage {
         event,
         navigation_links,
+        navigation_filters: filters.navigation_filters(),
         responses,
         survey,
 
         offset: filters.offset,
+        ts_query: filters.ts_query,
     };
 
     Ok(Html(template.render()?))
@@ -192,29 +224,36 @@ pub(crate) async fn results_page(
     Ok(Html(template.render()?))
 }
 
-/// Displays a page of the answers to a free-text survey question.
+/// Displays a page of the answers to a free-text survey question matching
+/// the search, rendered inside the answers modal of the Summary view.
+///
+/// Answers carry no respondent identities, so anonymous surveys can be
+/// searched too.
 #[instrument(skip_all)]
-pub(crate) async fn text_answers_page(
+pub(crate) async fn text_answers_modal(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path((event_id, event_survey_id, question_id)): Path<(Uuid, Uuid, Uuid)>,
     ValidatedQuery(filters): ValidatedQuery<EventSurveyTextAnswersFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Load the requested page of answers
+    // Load the requested page of matching answers
     let answers = db
         .list_event_survey_text_answers(group_id, event_id, event_survey_id, question_id, &filters)
         .await?
         .ok_or(HandlerError::NotFound)?;
 
     // Prepare template
-    let template = surveys::TextAnswersPage {
+    let url = surveys::text_answers_url(event_id, event_survey_id, question_id);
+    let navigation_links = NavigationLinks::from_filters(&filters, answers.total, &url, &url)?;
+    let template = surveys::TextAnswersModal {
         answers,
         event_id,
         event_survey_id,
-        limit: filters.limit.unwrap_or(EVENT_SURVEY_TEXT_ANSWERS_PAGINATION_LIMIT),
+        navigation_links,
         question_id,
 
         offset: filters.offset,
+        ts_query: filters.ts_query,
     };
 
     Ok(Html(template.render()?))
@@ -417,4 +456,16 @@ fn build_survey_csv(export: &EventSurveyExport) -> Result<Vec<u8>, HandlerError>
     }
 
     finish_csv(writer)
+}
+
+/// Rejects requests for the respondents of anonymous surveys, whose
+/// identities stay hidden from the organizers.
+fn reject_anonymous_survey_responses(anonymous: bool) -> Result<(), HandlerError> {
+    if anonymous {
+        return Err(HandlerError::Rejected(
+            "individual responses are not available for anonymous surveys".to_string(),
+        ));
+    }
+
+    Ok(())
 }

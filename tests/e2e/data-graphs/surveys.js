@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 
 import { queryE2eDatabase } from "../database.js";
+import { TEST_GROUP_IDS } from "../seed.js";
+
+// Event category of the alpha group community used by owned survey events.
+const EVENT_CATEGORY_ID = "33333333-3333-3333-3333-333333333331";
 
 /**
  * Seeded surveys of the past analytics event from database/tests/data/e2e/66_event_surveys.sql.
@@ -30,7 +34,9 @@ export const TEST_EVENT_ANALYTICS_SURVEYS = {
  * Seeded survey event, attendees and surveys from database/tests/data/e2e/66_event_surveys.sql.
  * The event is a past test event of the alpha group, so it never sends survey emails. The first
  * member is a checked-in attendee who has not answered the open identified survey and has
- * answered the open anonymous one. Never mutate these rows.
+ * answered the open anonymous one. The first checked-in respondent holds a free `General
+ * admission` ticket and edited their answers to the open identified survey. Never mutate these
+ * rows.
  */
 export const TEST_EVENT_SURVEYS = {
   attendeeIds: {
@@ -252,6 +258,65 @@ export const setupOwnedEventSurvey = ({
 };
 
 /**
+ * Creates a past published test event of the alpha group owned by an E2E scenario, with the given
+ * users as confirmed attendees, so ready surveys added to it open immediately and reach only those
+ * users. It has one free ticket type, as every event needs one. Test events never send survey
+ * emails. Remove it with `cleanupEventsByIds`, which also removes its surveys and responses.
+ * @param {{ attendeeUserIds: string[] }} input - Confirmed attendees of the event.
+ * @returns {{ id: string, name: string }} Event identifier and name.
+ */
+export const setupOwnedSurveyEvent = ({ attendeeUserIds }) => {
+  const id = randomUUID();
+  const suffix = id.slice(0, 8);
+  const name = `E2E survey event ${suffix}`;
+  const ticketTypeId = randomUUID();
+
+  queryE2eDatabase(`
+    insert into event (
+      event_id,
+      name,
+      slug,
+      description,
+      timezone,
+      event_category_id,
+      event_kind_id,
+      group_id,
+      published,
+      published_at,
+      test_event,
+      starts_at,
+      ends_at
+    ) values (
+      ${sqlString(id)}::uuid,
+      ${sqlString(name)},
+      ${sqlString(`e2e-survey-event-${suffix}`)},
+      'Owned past event used by E2E survey coverage.',
+      'UTC',
+      ${sqlString(EVENT_CATEGORY_ID)}::uuid,
+      'virtual',
+      ${sqlString(TEST_GROUP_IDS.community1.alpha)}::uuid,
+      true,
+      current_timestamp - interval '10 days',
+      true,
+      current_timestamp - interval '2 days',
+      current_timestamp - interval '2 days' + interval '2 hours'
+    );
+
+    insert into event_ticket_type (event_ticket_type_id, active, event_id, "order", seats_total, title)
+    values (${sqlString(ticketTypeId)}::uuid, true, ${sqlString(id)}::uuid, 1, 50, 'General admission');
+
+    insert into event_ticket_price_window (event_ticket_price_window_id, amount_minor, event_ticket_type_id)
+    values (${sqlString(randomUUID())}::uuid, 0, ${sqlString(ticketTypeId)}::uuid);
+
+    insert into event_attendee (event_id, user_id, status)
+    select ${sqlString(id)}::uuid, user_id, 'confirmed'
+    from unnest(${sqlUuidArray(attendeeUserIds)}) as user_id;
+  `);
+
+  return { id, name };
+};
+
+/**
  * Stores one response to a ready survey owned by an E2E scenario and locks the survey, as the
  * first response submitted from the user dashboard does.
  * @param {{ answers: object, surveyId: string, userId: string }} input - Response fields.
@@ -272,8 +337,41 @@ export const setupOwnedSurveyResponse = ({ answers, surveyId, userId }) => {
   `);
 };
 
+/**
+ * Stores one response per answer to the free-text question of a ready survey owned by an E2E
+ * scenario, from distinct existing users and one minute apart in answer order, and locks the
+ * survey, as the first response submitted from the user dashboard does.
+ * @param {{ answers: string[], questionId: string, surveyId: string }} input - Free-text
+ * question, its answers in response order and the survey.
+ * @returns {void}
+ */
+export const setupOwnedSurveyTextAnswers = ({ answers, questionId, surveyId }) => {
+  queryE2eDatabase(`
+    insert into event_survey_response (event_survey_id, user_id, answers, created_at)
+    select
+      ${sqlString(surveyId)}::uuid,
+      u.user_id,
+      jsonb_build_object('answers', jsonb_build_array(
+        jsonb_build_object('question_id', ${sqlString(questionId)}::uuid, 'value', a.value)
+      )),
+      current_timestamp - interval '1 day' + make_interval(mins => a.position::int)
+    from unnest(${sqlTextArray(answers)}) with ordinality as a(value, position)
+    join (
+      select user_id, row_number() over (order by user_id) as position
+      from "user"
+    ) u on u.position = a.position;
+
+    update event_survey
+    set first_response_at = current_timestamp
+    where event_survey_id = ${sqlString(surveyId)}::uuid;
+  `);
+};
+
 /** Escapes a value for embedding in E2E SQL. */
 const sqlString = (value) => `'${String(value).replaceAll("'", "''")}'`;
+
+/** Builds a text array literal for E2E SQL queries. */
+const sqlTextArray = (values) => `array[${values.map((value) => sqlString(value)).join(", ")}]::text[]`;
 
 /** Builds a UUID array literal for E2E SQL queries. */
 const sqlUuidArray = (values) => `array[${values.map((value) => `${sqlString(value)}::uuid`).join(", ")}]`;

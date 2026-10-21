@@ -1,17 +1,20 @@
 import { randomUUID } from "node:crypto";
 
 import { expect, test } from "../../../fixtures.js";
+import { cleanupEventsByIds } from "../../../data-graphs/events.js";
 import {
   bumpOwnedSurveyRevision,
   cleanupEventSurveys,
   readSurveyResponseAnswers,
   setupOwnedEventSurvey,
+  setupOwnedSurveyEvent,
+  setupOwnedSurveyResponse,
   TEST_EVENT_SURVEYS,
 } from "../../../data-graphs/surveys.js";
 import { TEST_USER_CREDENTIALS, TEST_USER_IDS } from "../../../seed.js";
-import { navigateToPath, waitForActionResponse } from "../../../utils.js";
+import { expectCurrentPaginationNavigation, navigateToPath, waitForActionResponse } from "../../../utils.js";
 
-// Message shown when the survey an email links to can't be answered.
+// Message shown when the survey an email links to isn't available.
 const UNAVAILABLE_SURVEY_WARNING = "This survey is closed or isn't available to you.";
 
 test.describe("user dashboard event surveys", () => {
@@ -53,7 +56,7 @@ test.describe("user dashboard event surveys", () => {
         {
           method: "PUT",
           status: 204,
-          urlIncludes: `/dashboard/user/events/surveys/${survey.id}/response`,
+          urlIncludes: `/dashboard/user/surveys/${survey.id}/response`,
         },
       );
       await expect(member1Page.locator(".swal2-popup")).toContainText("Survey answers saved.");
@@ -61,9 +64,10 @@ test.describe("user dashboard event surveys", () => {
       await expect(member1Page).toHaveURL(
         (url) =>
           url.pathname === "/dashboard/user" &&
-          url.searchParams.get("tab") === "events" &&
+          url.searchParams.get("tab") === "surveys" &&
           !url.searchParams.has("event_survey_id"),
       );
+      await expect(member1Page.locator(`[data-user-event-survey="${survey.id}"]`)).toContainText("Answered");
       expect(readSurveyResponseAnswers({ surveyId: survey.id, userId: TEST_USER_IDS.member1 })).toEqual({
         answers: [
           { question_id: survey.questionIds.again, value: survey.optionIds.yes },
@@ -81,7 +85,7 @@ test.describe("user dashboard event surveys", () => {
       await waitForActionResponse(
         member1Page,
         () => editedForm.getByRole("button", { name: "Save changes" }).click(),
-        { method: "PUT", status: 204, urlIncludes: `/dashboard/user/events/surveys/${survey.id}/response` },
+        { method: "PUT", status: 204, urlIncludes: `/dashboard/user/surveys/${survey.id}/response` },
       );
       expect(readSurveyResponseAnswers({ surveyId: survey.id, userId: TEST_USER_IDS.member1 })).toEqual({
         answers: [{ question_id: survey.questionIds.again, value: survey.optionIds.no }],
@@ -111,7 +115,7 @@ test.describe("user dashboard event surveys", () => {
         {
           method: "PUT",
           status: 422,
-          urlIncludes: `/dashboard/user/events/surveys/${survey.id}/response`,
+          urlIncludes: `/dashboard/user/surveys/${survey.id}/response`,
         },
       );
 
@@ -128,35 +132,11 @@ test.describe("user dashboard event surveys", () => {
     }
   });
 
-  test("the surveys panel opens a survey in the modal", async ({ member1Page }) => {
-    // Load My Events and open the seeded survey from its panel row.
-    await navigateToPath(member1Page, "/dashboard/user?tab=events");
-    const row = member1Page.locator(
-      `[data-user-event-survey="${TEST_EVENT_SURVEYS.surveys.openIdentified.id}"]`,
-    );
-    await waitForActionResponse(member1Page, () => row.getByRole("button", { name: /Answer/ }).click(), {
-      method: "GET",
-      urlIncludes: `/dashboard/user/events/surveys/${TEST_EVENT_SURVEYS.surveys.openIdentified.id}`,
-    });
-
-    // Verify the modal shows the survey without leaving the dashboard.
-    const modal = member1Page.locator("#user-event-survey-modal");
-    await expect(modal).toBeVisible();
-    await expect(
-      modal.getByRole("heading", { name: TEST_EVENT_SURVEYS.surveys.openIdentified.title }),
-    ).toBeVisible();
-    await expect(member1Page).toHaveURL(/\/dashboard\/user\?tab=events$/);
-
-    // Close the modal with Escape.
-    await member1Page.keyboard.press("Escape");
-    await expect(modal).toBeHidden();
-  });
-
   test("email links to surveys that can't be answered show a warning", async ({
     member1Page,
     member2Page,
   }) => {
-    // Verify closed, scheduled and draft surveys do not open.
+    // Verify closed surveys the user did not answer, drafts and scheduled surveys do not open.
     for (const surveyId of [
       TEST_EVENT_SURVEYS.surveys.closed.id,
       TEST_EVENT_SURVEYS.surveys.draft.id,
@@ -179,18 +159,164 @@ test.describe("user dashboard event surveys", () => {
     await navigateToPath(page, surveyLinkPath(surveyId));
     await expect(page).toHaveURL(/\/log-in\?next_url=/);
 
-    // Log in and verify the survey opens in My Events.
+    // Log in and verify the survey opens in the Surveys tab.
     await page.getByLabel("Username").fill(TEST_USER_CREDENTIALS.member1.username);
     await page
       .getByRole("textbox", { name: "Password required" })
       .fill(TEST_USER_CREDENTIALS.member1.password);
     await Promise.all([
       page.waitForURL(
-        (url) => url.pathname === "/dashboard/user" && url.searchParams.get("event_survey_id") === surveyId,
+        (url) =>
+          url.pathname === "/dashboard/user" &&
+          url.searchParams.get("tab") === "surveys" &&
+          url.searchParams.get("event_survey_id") === surveyId,
       ),
       page.getByRole("button", { name: "Sign In" }).click(),
     ]);
     await expect(page.locator("#user-event-survey-modal")).toBeVisible();
+  });
+
+  test("the surveys tab lists open surveys first and answered closed surveys read-only", async ({
+    pending2Page,
+  }) => {
+    // Give the second pending user an open survey to answer, an answered one and closed ones.
+    const event = setupOwnedSurveyEvent({ attendeeUserIds: [TEST_USER_IDS.pending2] });
+    const toAnswer = setupOwnedEventSurvey({
+      eventId: event.id,
+      status: "ready",
+      title: `To answer ${id8()}`,
+    });
+    const answered = setupOwnedEventSurvey({
+      eventId: event.id,
+      status: "ready",
+      title: `Answered ${id8()}`,
+    });
+    const closedAnswered = setupOwnedEventSurvey({
+      closedAtSql: "current_timestamp - interval '1 hour'",
+      eventId: event.id,
+      status: "ready",
+      title: `Closed answered ${id8()}`,
+    });
+    const closedUnanswered = setupOwnedEventSurvey({
+      closedAtSql: "current_timestamp - interval '1 hour'",
+      eventId: event.id,
+      status: "ready",
+      title: `Closed unanswered ${id8()}`,
+    });
+    for (const [survey, value] of [
+      [answered, "Good pace."],
+      [closedAnswered, "Loved the venue."],
+    ]) {
+      setupOwnedSurveyResponse({
+        answers: { answers: [{ question_id: survey.questionId, value }] },
+        surveyId: survey.id,
+        userId: TEST_USER_IDS.pending2,
+      });
+    }
+
+    try {
+      // Load the Surveys tab and verify the menu badge counts the survey left to answer.
+      await navigateToPath(pending2Page, "/dashboard/user?tab=surveys");
+      const surveysMenuItem = pending2Page.locator('#dashboard-menu a[href="/dashboard/user?tab=surveys"]');
+      await expect(surveysMenuItem).toHaveText(/^\s*Surveys\s*1\s*$/);
+
+      // Verify open surveys come first, then the answered closed survey.
+      const rows = pending2Page.locator("#dashboard-content tbody tr[data-user-event-survey]");
+      await expect(rows).toHaveCount(3);
+      await expect(rows.nth(0)).toHaveAttribute("data-user-event-survey", toAnswer.id);
+      await expect(rows.nth(0)).toContainText("To answer");
+      await expect(rows.nth(1)).toHaveAttribute("data-user-event-survey", answered.id);
+      await expect(rows.nth(1).getByRole("button", { name: /Edit answers/ })).toBeVisible();
+      await expect(rows.nth(2)).toHaveAttribute("data-user-event-survey", closedAnswered.id);
+      await expect(rows.nth(2)).toContainText("Closed");
+      await expect(pending2Page.locator(`[data-user-event-survey="${closedUnanswered.id}"]`)).toHaveCount(0);
+
+      // Review the answers of the closed survey without being able to change them.
+      await waitForActionResponse(
+        pending2Page,
+        () =>
+          rows
+            .nth(2)
+            .getByRole("button", { name: /View answers/ })
+            .click(),
+        { method: "GET", urlIncludes: `/dashboard/user/surveys/${closedAnswered.id}` },
+      );
+      const modal = pending2Page.locator("#user-event-survey-modal");
+      await expect(modal).toBeVisible();
+      await expect(modal.locator("[data-survey-closed-notice]")).toContainText(
+        "This survey is closed, so your answers can no longer be changed.",
+      );
+      await expect(modal).toContainText("Loved the venue.");
+      await expect(modal.locator("[data-user-event-survey-form]")).toHaveCount(0);
+      await modal.getByRole("button", { name: "Close", exact: true }).click();
+      await expect(modal).toBeHidden();
+
+      // Answer the open survey and verify the list and the menu badge refresh.
+      await waitForActionResponse(
+        pending2Page,
+        () =>
+          rows
+            .nth(0)
+            .getByRole("button", { name: /Answer/ })
+            .click(),
+        { method: "GET", urlIncludes: `/dashboard/user/surveys/${toAnswer.id}` },
+      );
+      await modal.getByLabel("Any feedback?").fill("More breaks.");
+      await waitForActionResponse(
+        pending2Page,
+        () => modal.getByRole("button", { name: "Submit answers" }).click(),
+        { method: "PUT", status: 204, urlIncludes: `/dashboard/user/surveys/${toAnswer.id}/response` },
+      );
+      await expect(pending2Page.locator(".swal2-popup")).toContainText("Survey answers saved.");
+      await expect(pending2Page.locator(`[data-user-event-survey="${toAnswer.id}"]`)).toContainText(
+        "Answered",
+      );
+      await expect(surveysMenuItem).toHaveText(/^\s*Surveys\s*$/);
+
+      // Move between result pages one survey at a time.
+      await navigateToPath(pending2Page, "/dashboard/user?tab=surveys&limit=1&offset=0");
+      await expectCurrentPaginationNavigation(
+        pending2Page,
+        "#dashboard-content tbody tr[data-user-event-survey]",
+      );
+    } finally {
+      cleanupEventsByIds([event.id]);
+    }
+  });
+
+  test("the surveys tab opens a survey in the modal", async ({ member1Page }) => {
+    // Load the Surveys tab and open the seeded survey from its row.
+    await navigateToPath(member1Page, "/dashboard/user?tab=surveys");
+    const row = member1Page.locator(
+      `[data-user-event-survey="${TEST_EVENT_SURVEYS.surveys.openIdentified.id}"]`,
+    );
+    await waitForActionResponse(member1Page, () => row.getByRole("button", { name: /Answer/ }).click(), {
+      method: "GET",
+      urlIncludes: `/dashboard/user/surveys/${TEST_EVENT_SURVEYS.surveys.openIdentified.id}`,
+    });
+
+    // Verify the modal shows the survey without leaving the dashboard.
+    const modal = member1Page.locator("#user-event-survey-modal");
+    await expect(modal).toBeVisible();
+    await expect(
+      modal.getByRole("heading", { name: TEST_EVENT_SURVEYS.surveys.openIdentified.title }),
+    ).toBeVisible();
+    await expect(member1Page).toHaveURL(/\/dashboard\/user\?tab=surveys$/);
+
+    // Close the modal with Escape.
+    await member1Page.keyboard.press("Escape");
+    await expect(modal).toBeHidden();
+  });
+
+  test("users without surveys see the empty state", async ({ emptyUserPage }) => {
+    // Load the Surveys tab for the user without event participation.
+    await navigateToPath(emptyUserPage, "/dashboard/user?tab=surveys");
+
+    // Verify the empty state and the menu item without a badge.
+    await expect(emptyUserPage.locator("#dashboard-content")).toContainText("No surveys yet");
+    await expect(emptyUserPage.locator('#dashboard-menu a[href="/dashboard/user?tab=surveys"]')).toHaveText(
+      /^\s*Surveys\s*$/,
+    );
   });
 });
 
@@ -227,8 +353,8 @@ const setupOpenSurvey = () => {
 };
 
 /**
- * Builds the My Events path the survey opening email links to.
+ * Builds the Surveys tab path the survey opening email links to.
  * @param {string} surveyId - Survey identifier.
  * @returns {string} Dashboard path that opens the survey.
  */
-const surveyLinkPath = (surveyId) => `/dashboard/user?tab=events&event_survey_id=${surveyId}`;
+const surveyLinkPath = (surveyId) => `/dashboard/user?tab=surveys&event_survey_id=${surveyId}`;

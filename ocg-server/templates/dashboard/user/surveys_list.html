@@ -1,0 +1,153 @@
+{% import "macros/badges.html" as badges -%}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+{% import "macros/surveys.html" as surveys_macros -%}
+
+{# Survey date label. #}
+{% macro survey_date(survey) -%}
+  {% if let Some(closed_at) = survey.closed_at -%}
+    Closed {{ crate::templates::dashboard::user::surveys::survey_date_label(closed_at, survey.timezone) }}
+  {% else if let Some(closes_at) = survey.closes_at -%}
+    Closes {{ crate::templates::dashboard::user::surveys::survey_date_label(closes_at, survey.timezone) }}
+  {% else -%}
+    No closing date
+  {% endif -%}
+{% endmacro survey_date -%}
+{# End survey date label. #}
+
+{# Survey status badge. #}
+{% macro survey_status_badge(survey) -%}
+  {% if survey.is_closed() -%}
+    {{ surveys_macros::state_badge(state = survey.state) -}}
+  {% else if survey.answered -%}
+    {{ badges::invitation_badge(label = "Answered", tone = "success", with_border = true) -}}
+  {% else -%}
+    {{ badges::invitation_badge(label = "To answer", with_border = true) -}}
+  {% endif -%}
+{% endmacro survey_status_badge -%}
+{# End survey status badge. #}
+
+{# Dashboard User Surveys List -#}
+{% if let Some(warning) = warning -%}
+  {{ dashboard::permission_warning(message = warning) -}}
+{% endif -%}
+
+{# Header -#}
+{{ dashboard::page_title(title = "Surveys", docs_href = "/docs#/guides/user-dashboard?id=surveys-event-feedback",
+  description = "Feedback surveys about events you attended. Answer open surveys and review the answers you gave to closed ones.") -}}
+
+<div class="my-5 flex items-end justify-between">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0), count = surveys.len(), total = total, label = "survey") }}
+  </div>
+</div>
+{# End header -#}
+
+{# Reloads the dashboard layout after answers are saved, so the list and the menu badge refresh -#}
+<div hidden
+     data-user-surveys-refresh
+     hx-get="{{ refresh_url }}"
+     hx-trigger="refresh-user-surveys from:body"
+     hx-target="#dashboard-layout"
+     hx-select="#dashboard-layout"
+     hx-swap="outerHTML"
+     hx-indicator="#dashboard-spinner"></div>
+
+{# Surveys table -#}
+<div class="relative overflow-x-auto lg:overflow-x-visible">
+  <table class="w-full table-auto text-left text-xs text-stone-500 lg:text-sm">
+    <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+      <tr>
+        <th scope="col" class="px-3 py-3 xl:px-5">Survey</th>
+        <th scope="col" class="hidden px-3 py-3 lg:table-cell xl:px-5">Status</th>
+        <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Closing</th>
+        <th scope="col" class="w-36 px-3 py-3 text-right xl:px-5">
+          <span class="sr-only">Actions</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if surveys.is_empty() -%}
+        {# Empty state -#}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-20 text-center lg:hidden" colspan="2">
+            {% include "dashboard/placeholders/user_surveys_table.html" -%}
+          </td>
+          <td class="hidden px-8 py-20 text-center lg:table-cell xl:hidden"
+              colspan="3">{% include "dashboard/placeholders/user_surveys_table.html" -%}</td>
+          <td class="hidden px-8 py-20 text-center xl:table-cell" colspan="4">
+            {% include "dashboard/placeholders/user_surveys_table.html" -%}
+          </td>
+        </tr>
+        {# End empty state -#}
+      {% else -%}
+        {% for survey in surveys -%}
+          <tr data-user-event-survey="{{ survey.event_survey_id }}"
+              class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
+            <th scope="row"
+                class="min-w-[180px] px-3 py-4 font-medium text-stone-900 xl:px-5">
+              <div class="max-w-md break-words">{{ survey.title }}</div>
+              <div class="mt-0.5 max-w-md truncate text-xs font-normal text-stone-400">
+                {{ survey.event_name }} · {{ survey.group_name }}
+              </div>
+              <div class="mt-0.5 text-xs font-normal text-stone-500 xl:hidden">{{ survey_date(survey = survey) -}}</div>
+              <div class="mt-1 lg:hidden">{{ survey_status_badge(survey = survey) -}}</div>
+            </th>
+            <td class="hidden px-3 py-4 lg:table-cell xl:px-5">{{ survey_status_badge(survey = survey) -}}</td>
+            <td class="hidden px-3 py-4 xl:table-cell xl:px-5">{{ survey_date(survey = survey) -}}</td>
+            <td class="w-36 px-3 py-4 text-right xl:px-5">
+              <button type="button"
+                      hx-get="/dashboard/user/surveys/{{ survey.event_survey_id }}"
+                      hx-target="#user-event-survey-modal-content"
+                      hx-swap="innerHTML"
+                      hx-sync="closest tbody:replace"
+                      hx-indicator="#dashboard-spinner"
+                      hx-disabled-elt="this"
+                      data-user-event-survey-open
+                      data-htmx-response
+                      data-error-message="This survey is no longer available. Please refresh the page and try again."
+                      class="btn-primary-outline btn-mini whitespace-nowrap">
+                {% if survey.is_closed() -%}
+                  View answers
+                {% else if survey.answered -%}
+                  Edit answers
+                {% else -%}
+                  Answer
+                {% endif -%}
+                <span class="sr-only">: {{ survey.title }}</span>
+              </button>
+            </td>
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+{# End surveys table -#}
+
+{# Survey modal -#}
+<div id="user-event-survey-modal"
+     data-user-event-survey-modal
+     {% if survey.is_some() %}data-open-on-load{% endif %}
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="user-event-survey-title"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+  <div data-user-event-survey-close
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="modal-panel p-4 max-w-4xl">
+    <div id="user-event-survey-modal-content" class="modal-card rounded-lg">
+      {% if let Some(survey) = survey -%}
+        {% include "dashboard/user/surveys_modal.html" -%}
+      {% endif -%}
+    </div>
+  </div>
+</div>
+{# End survey modal -#}
+
+{# Pagination -#}
+{% if total > surveys.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+{# End pagination -#}
+{# End dashboard user surveys list -#}

@@ -11,16 +11,18 @@ use crate::{
         dashboard::{
             common::AuditLogFilters,
             user::{
-                events::{UserEventRole, UserEventSurveysFilters, UserEventsFilters},
+                events::{UserEventRole, UserEventsFilters},
                 groups::UserGroupsFilters,
                 purchases::PurchaseDocumentsFilters,
                 session_proposals::SessionProposalsFilters,
                 submissions::CfsSubmissionsFilters as UserCfsSubmissionsFilters,
+                surveys::UserEventSurveysFilters,
             },
         },
         event::{
             EventAdmissionOfferSource, EventAdmissionOfferStatus, EventEnrollmentStatus, EventKind,
         },
+        event_survey::EventSurveyState,
         group::GroupRole,
         payments::{EventRefundRequestStatus, ExternalPaymentInfo},
         questionnaire::{QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers},
@@ -29,6 +31,25 @@ use crate::{
 };
 
 use super::helpers::*;
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_count_user_unanswered_event_surveys_counts_open_unanswered() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Check respondents who answered every open survey have none left
+    let respondent_count = db.count_user_unanswered_event_surveys(survey_respondent_id()).await?;
+    assert_eq!(respondent_count, 0);
+
+    // Check attendees count the open survey of their audience left to answer
+    let pending_count = db
+        .count_user_unanswered_event_surveys(survey_pending_respondent_id())
+        .await?;
+    assert_eq!(pending_count, 1);
+
+    Ok(())
+}
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
@@ -130,7 +151,9 @@ async fn db_contracts_get_user_event_survey_deserializes() -> Result<()> {
     assert_eq!(survey.event_survey_id, survey_identified_id());
     assert_eq!(survey.questions.len(), 3);
     assert_eq!(survey.revision, 2);
+    assert_eq!(survey.state, EventSurveyState::Open);
     assert_eq!(survey.title, "Contract identified survey");
+    assert!(survey.closed_at.is_none());
     assert_eq!(
         survey.closes_at,
         Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).single()
@@ -187,15 +210,15 @@ async fn db_contracts_get_user_event_survey_hides_unavailable_surveys() -> Resul
         .await?;
     assert!(not_eligible.is_none());
 
-    // Check closed surveys are not returned
+    // Check closed surveys are not returned to attendees who did not answer them
     uow.execute("savepoint survey_scope", &[]).await?;
     uow.execute(
-        "update event_survey set closed_at = current_timestamp where event_survey_id = '00000000-0000-0000-0000-00000000f305'",
-        &[],
+        "update event_survey set closed_at = current_timestamp where event_survey_id = $1::uuid",
+        &[&survey_identified_id()],
     )
     .await?;
     let closed = uow
-        .get_user_event_survey(survey_identified_id(), survey_respondent_id())
+        .get_user_event_survey(survey_identified_id(), survey_pending_respondent_id())
         .await?;
     assert!(closed.is_none());
     uow.execute("rollback to savepoint survey_scope", &[]).await?;
@@ -212,6 +235,40 @@ async fn db_contracts_get_user_event_survey_hides_unavailable_surveys() -> Resul
         assert!(survey.is_none(), "{scenario}");
         uow.execute("rollback to savepoint survey_scope", &[]).await?;
     }
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_user_event_survey_returns_answered_closed_surveys() -> Result<()> {
+    // Setup a rolled-back unit of work with the identified survey closed
+    let uow = contract_unit_of_work().await?;
+    uow.execute(
+        "update event_survey set closed_at = '2025-05-01T00:00:00Z' where event_survey_id = $1::uuid",
+        &[&survey_identified_id()],
+    )
+    .await?;
+
+    // Load the closed survey the respondent answered
+    let survey = uow
+        .get_user_event_survey(survey_identified_id(), survey_respondent_id())
+        .await?
+        .context("answered closed survey should be returned")?;
+
+    // Check the closed state, closing time and the response to review
+    assert_eq!(survey.event_survey_id, survey_identified_id());
+    assert_eq!(survey.state, EventSurveyState::Closed);
+    assert_eq!(
+        survey.closed_at,
+        Utc.with_ymd_and_hms(2025, 5, 1, 0, 0, 0).single()
+    );
+    assert_eq!(
+        survey.closes_at,
+        Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).single()
+    );
+    let response = survey.response.context("response should be returned")?;
+    assert_eq!(response.answers.answers.len(), 3);
 
     Ok(())
 }
@@ -408,8 +465,10 @@ async fn db_contracts_list_user_event_surveys_deserializes() -> Result<()> {
     assert_eq!(survey.event_name, "Contract Survey Event");
     assert_eq!(survey.event_survey_id, survey_identified_id());
     assert_eq!(survey.group_name, "Contract Subgroup");
+    assert_eq!(survey.state, EventSurveyState::Open);
     assert_eq!(survey.timezone, chrono_tz::Europe::Madrid);
     assert_eq!(survey.title, "Contract identified survey");
+    assert!(survey.closed_at.is_none());
     assert_eq!(
         survey.closes_at,
         Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).single()
@@ -477,6 +536,38 @@ async fn db_contracts_list_user_event_surveys_hides_unreachable_surveys() -> Res
         )
         .await?;
     assert_eq!(output.total, 0);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_event_surveys_lists_answered_closed_surveys_last() -> Result<()> {
+    // Setup a rolled-back unit of work with the identified survey closed
+    let uow = contract_unit_of_work().await?;
+    uow.execute(
+        "update event_survey set closed_at = '2025-05-01T00:00:00Z' where event_survey_id = $1::uuid",
+        &[&survey_identified_id()],
+    )
+    .await?;
+
+    // List the surveys of the respondent who answered both surveys
+    let output = uow
+        .list_user_event_surveys(survey_respondent_id(), &UserEventSurveysFilters::default())
+        .await?;
+
+    // Check the open survey comes first and the closed one keeps its closing time
+    assert_eq!(output.total, 2);
+    assert_eq!(output.surveys[0].event_survey_id, survey_anonymous_id());
+    assert_eq!(output.surveys[0].state, EventSurveyState::Open);
+    let closed = &output.surveys[1];
+    assert!(closed.answered);
+    assert_eq!(closed.event_survey_id, survey_identified_id());
+    assert_eq!(closed.state, EventSurveyState::Closed);
+    assert_eq!(
+        closed.closed_at,
+        Utc.with_ymd_and_hms(2025, 5, 1, 0, 0, 0).single()
+    );
 
     Ok(())
 }

@@ -22,7 +22,7 @@ use crate::types::{
         events::EventInput,
         surveys::{EventSurveyFull, EventSurveySummary},
     },
-    dashboard::user::events::{UserEventSurvey, UserEventSurveyItem},
+    dashboard::user::surveys::{UserEventSurvey, UserEventSurveyItem},
     event::{
         EventAdmissionOfferSource, EventCohostGroup, EventFull, EventKind, EventMinimal,
         EventSummary,
@@ -683,15 +683,17 @@ pub(crate) fn sample_user_event_survey(event_survey_id: Uuid, event_id: Uuid) ->
             ..sample_survey_question(Uuid::from_u128(0x5d01))
         }],
         revision: 4,
+        state: EventSurveyState::Open,
         title: "Session feedback".to_string(),
 
+        closed_at: None,
         closes_at: None,
         description: Some("Tell us how it went.".to_string()),
         response: None,
     }
 }
 
-/// Sample open survey of the My Events surveys panel, without a closing date.
+/// Sample open survey of the Surveys tab, without a closing date.
 pub(crate) fn sample_user_event_survey_item(
     event_survey_id: Uuid,
     answered: bool,
@@ -701,9 +703,11 @@ pub(crate) fn sample_user_event_survey_item(
         event_name: "Sample Event".to_string(),
         event_survey_id,
         group_name: "Test Group".to_string(),
+        state: EventSurveyState::Open,
         timezone: UTC,
         title: "Session feedback".to_string(),
 
+        closed_at: None,
         closes_at: None,
     }
 }

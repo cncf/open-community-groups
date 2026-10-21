@@ -1559,7 +1559,7 @@ fn test_delivery_worker_prepare_content_event_survey_opened() {
     assert!(body.contains("until <strong>Sep 11, 2030 at 06:00 CEST</strong>"));
     assert!(body.contains("Answer survey"));
     assert!(body.contains(
-        "https://example.test/dashboard/user?tab=events&#38;event_survey_id=55555555-5555-5555-5555-555555555555"
+        "https://example.test/dashboard/user?tab=surveys&#38;event_survey_id=55555555-5555-5555-5555-555555555555"
     ));
     assert!(body.contains(
         "You received this email notification because you registered for Survey Event, an \
@@ -2861,7 +2861,7 @@ fn sample_event_survey_opened_template_data() -> serde_json::Value {
             "waitlist_count": 0,
             "waitlist_enabled": false
         },
-        "link": "/dashboard/user?tab=events&event_survey_id=55555555-5555-5555-5555-555555555555",
+        "link": "/dashboard/user?tab=surveys&event_survey_id=55555555-5555-5555-5555-555555555555",
         "survey_title": "Session feedback",
         "theme": {
             "primary_color": "#000000"

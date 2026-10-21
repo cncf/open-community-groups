@@ -14,7 +14,7 @@ pub(crate) const EVENT_SURVEY_RESPONSES_PAGINATION_LIMIT: usize = 20;
 /// Default page size of the answers to a free-text survey question.
 pub(crate) const EVENT_SURVEY_TEXT_ANSWERS_PAGINATION_LIMIT: usize = 10;
 
-/// Default page size of the surveys panel in the user dashboard.
+/// Default page size of the Surveys tab in the user dashboard.
 pub(crate) const USER_EVENT_SURVEYS_PAGINATION_LIMIT: usize = 10;
 
 /// Default survey responses pagination limit for serde.
@@ -41,7 +41,7 @@ pub(crate) fn default_offset() -> Option<usize> {
     Some(0)
 }
 
-/// Default user surveys panel pagination limit for serde.
+/// Default user Surveys tab pagination limit for serde.
 #[allow(clippy::unnecessary_wraps)]
 pub(crate) fn default_user_event_surveys_limit() -> Option<usize> {
     Some(USER_EVENT_SURVEYS_PAGINATION_LIMIT)

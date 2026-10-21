@@ -1,11 +1,11 @@
--- Tests paging the responses of identified surveys of group events.
+-- Tests paging and searching the respondents of identified surveys of group events.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -24,6 +24,7 @@ select plan(9);
 \set otherEventID 'a5e00019-0000-0000-0000-00000000000d'
 \set plainUserID 'a5e00019-0000-0000-0000-00000000000b'
 \set surveyID 'a5e00019-0000-0000-0000-00000000000c'
+\set ticketTypeID 'a5e00019-0000-0000-0000-00000000000e'
 
 -- ============================================================================
 -- SEED DATA
@@ -80,13 +81,54 @@ values (:'anonymousSurveyID', true, :'eventID', 'Anonymous survey');
 insert into event_survey (event_survey_id, anonymous, event_id, title)
 values (:'deletedEventSurveyID', false, :'deletedEventID', 'Deleted event survey');
 
--- Identified survey with responses
-insert into event_survey (event_survey_id, anonymous, event_id, title)
-values (:'surveyID', false, :'eventID', 'Identified survey');
+-- Identified survey with a free-text, a single-select and a multi-select question
+insert into event_survey (event_survey_id, anonymous, event_id, questions, title)
+values (
+    :'surveyID',
+    false,
+    :'eventID',
+    '[
+        {"id": "a5e00019-0000-0000-0000-0000000000f1", "kind": "free-text", "prompt": "Comments", "required": false, "options": []},
+        {"id": "a5e00019-0000-0000-0000-0000000000f2", "kind": "single-select", "prompt": "Rating", "required": false, "options": [{"id": "a5e00019-0000-0000-0000-0000000000f4", "label": "Good"}]},
+        {"id": "a5e00019-0000-0000-0000-0000000000f3", "kind": "multi-select", "prompt": "Topics", "required": false, "options": [{"id": "a5e00019-0000-0000-0000-0000000000f5", "label": "Rust"}]}
+    ]'::jsonb,
+    'Identified survey'
+);
 
--- Edited response from the detailed respondent, created first
+-- Ticket type of the event owning the surveys
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('title', 'VIP'));
+
+-- Completed VIP purchase of the detailed respondent
+insert into event_purchase (
+    amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    :'eventID',
+    :'ticketTypeID',
+    'completed',
+    'VIP',
+    :'detailedUserID'
+);
+
+-- Edited response from the detailed respondent answering two of the three
+-- questions, created first
 insert into event_survey_response (answers, created_at, event_survey_id, user_id, updated_at)
-values ('{"answers": []}', '2025-01-02 09:00:00+00', :'surveyID', :'detailedUserID', '2025-01-02 09:30:00+00');
+values (
+    '{"answers": [
+        {"question_id": "a5e00019-0000-0000-0000-0000000000f1", "value": "Great talks"},
+        {"question_id": "a5e00019-0000-0000-0000-0000000000f2", "value": "a5e00019-0000-0000-0000-0000000000f4"},
+        {"question_id": "a5e00019-0000-0000-0000-0000000000f3", "value": []}
+    ]}',
+    '2025-01-02 09:00:00+00',
+    :'surveyID',
+    :'detailedUserID',
+    '2025-01-02 09:30:00+00'
+);
 
 -- Response from the plain respondent, created second
 insert into event_survey_response (answers, created_at, event_survey_id, user_id)
@@ -134,7 +176,7 @@ select is(
     'Should default to pages of 20'
 );
 
--- Should list responses in creation order with respondent details
+-- Should list respondents in creation order with their details
 select is(
     list_event_survey_responses(
         :'groupID'::uuid,
@@ -144,7 +186,7 @@ select is(
     )::jsonb->'responses',
     jsonb_build_array(
         jsonb_build_object(
-            'answers', '{"answers": []}'::jsonb,
+            'answered_questions_count', 2,
             'created_at', 1735808400,
             'user', jsonb_build_object(
                 'user_id', :'detailedUserID'::uuid,
@@ -156,20 +198,22 @@ select is(
                 'title', 'Engineer'
             ),
 
+            'ticket_title', 'VIP',
             'updated_at', 1735810200
         ),
         jsonb_build_object(
-            'answers', '{"answers": []}'::jsonb,
+            'answered_questions_count', 0,
             'created_at', 1735808460,
             'user', jsonb_build_object(
                 'user_id', :'plainUserID'::uuid,
                 'username', 'plain-respondent'
             ),
 
+            'ticket_title', null,
             'updated_at', null
         )
     ),
-    'Should list responses in creation order with respondent details'
+    'Should list respondents in creation order with their details'
 );
 
 -- Should page responses by offset
@@ -182,6 +226,29 @@ select is(
     )::jsonb#>>'{responses,0,user,user_id}',
     'a5e00019-0000-0000-0000-000000000101',
     'Should page responses by offset'
+);
+
+-- Should page the respondents matching the search
+select is(
+    (
+        select jsonb_build_object(
+            'total', page->'total',
+            'user_ids', jsonb_path_query_array(page, '$.responses[*].user.user_id')
+        )
+        from (
+            select list_event_survey_responses(
+                :'groupID'::uuid,
+                :'eventID'::uuid,
+                :'surveyID'::uuid,
+                '{"limit": 1, "ts_query": "respondent"}'::jsonb
+            )::jsonb as page
+        ) result
+    ),
+    jsonb_build_object(
+        'total', 2,
+        'user_ids', jsonb_build_array(:'detailedUserID'::uuid)
+    ),
+    'Should page the respondents matching the search'
 );
 
 -- Should reject anonymous surveys

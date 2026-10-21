@@ -1,4 +1,4 @@
--- Tests listing the open surveys a user can answer.
+-- Tests listing the surveys a user reaches from the dashboard.
 
 -- ============================================================================
 -- SETUP
@@ -26,6 +26,7 @@ select plan(10);
 \set deletedGroupID 'a5e00035-0000-0000-0000-00000000000a'
 \set deletedGroupSurveyID 'a5e00035-0000-0000-0000-00000000000b'
 \set draftSurveyID 'a5e00035-0000-0000-0000-00000000000c'
+\set earlierClosedSurveyID 'a5e00035-0000-0000-0000-000000000030'
 \set earlierEventID 'a5e00035-0000-0000-0000-00000000000d'
 \set eventCategoryID 'a5e00035-0000-0000-0000-00000000000e'
 \set eventID 'a5e00035-0000-0000-0000-00000000000f'
@@ -53,6 +54,7 @@ select plan(10);
 \set outsiderID 'a5e00035-0000-0000-0000-00000000001d'
 \set pagerID 'a5e00035-0000-0000-0000-00000000001e'
 \set pendingAttendeeID 'a5e00035-0000-0000-0000-00000000002e'
+\set recentlyClosedSurveyID 'a5e00035-0000-0000-0000-00000000002f'
 \set respondentID 'a5e00035-0000-0000-0000-00000000001f'
 \set scheduledSurveyID 'a5e00035-0000-0000-0000-000000000020'
 \set unpublishedEventID 'a5e00035-0000-0000-0000-000000000021'
@@ -314,6 +316,10 @@ values (:'deletedGroupSurveyID', :'deletedGroupEventID', 'ready', 'Deleted group
 insert into event_survey (event_survey_id, event_id, status, title)
 values (:'draftSurveyID', :'eventID', 'draft', 'Draft survey');
 
+-- Survey the respondent answered, closed a day ago
+insert into event_survey (event_survey_id, event_id, status, title, closed_at)
+values (:'earlierClosedSurveyID', :'eventID', 'ready', 'Earlier closed', current_timestamp - interval '1 day');
+
 -- Ready survey of the inactive community event
 insert into event_survey (event_survey_id, event_id, status, title)
 values (:'inactiveCommunitySurveyID', :'inactiveCommunityEventID', 'ready', 'Inactive community survey');
@@ -334,6 +340,10 @@ values (:'openedLaterSurveyID', :'eventID', 'ready', 'Opened later');
 insert into event_survey (event_survey_id, event_id, status, title)
 values (:'otherCommunitySurveyID', :'otherCommunityEventID', 'ready', 'Other community survey');
 
+-- Survey the respondent answered, closed an hour ago
+insert into event_survey (event_survey_id, event_id, status, title, closed_at)
+values (:'recentlyClosedSurveyID', :'eventID', 'ready', 'Recently closed', current_timestamp - interval '1 hour');
+
 -- Ready survey whose custom opening is in the future
 insert into event_survey (event_survey_id, event_id, status, title, opens_at)
 values (:'scheduledSurveyID', :'eventID', 'ready', 'Scheduled survey', current_timestamp + interval '1 day');
@@ -342,9 +352,14 @@ values (:'scheduledSurveyID', :'eventID', 'ready', 'Scheduled survey', current_t
 insert into event_survey (event_survey_id, event_id, status, title)
 values (:'unpublishedEventSurveyID', :'unpublishedEventID', 'ready', 'Unpublished event survey');
 
--- Response of the respondent to the answered survey
+-- Responses of the respondent to the answered open and closed surveys
 insert into event_survey_response (answers, event_survey_id, user_id)
-values ('{"answers": []}'::jsonb, :'answeredSurveyID', :'respondentID');
+select '{"answers": []}'::jsonb, event_survey_id, :'respondentID'
+from unnest(array[
+    :'answeredSurveyID',
+    :'earlierClosedSurveyID',
+    :'recentlyClosedSurveyID'
+]::uuid[]) as event_survey_id;
 
 -- ============================================================================
 -- TESTS
@@ -380,7 +395,7 @@ select is(
     'Should ignore surveys of deleted events'
 );
 
--- Should list open eligible surveys of public events with unanswered surveys first
+-- Should list open eligible surveys unanswered first, then answered closed surveys most recent first
 select is(
     list_user_event_surveys(:'respondentID'::uuid, '{}'::jsonb)::jsonb,
     jsonb_build_object(
@@ -390,9 +405,11 @@ select is(
                 'event_name', 'Survey Panel Event',
                 'event_survey_id', :'closingSoonSurveyID'::uuid,
                 'group_name', 'Survey Panel Group',
+                'state', 'open',
                 'timezone', 'Europe/Madrid',
                 'title', 'Closing soon',
 
+                'closed_at', null,
                 'closes_at', epoch_seconds(current_timestamp + interval '1 day')
             ),
             jsonb_build_object(
@@ -400,9 +417,11 @@ select is(
                 'event_name', 'Earlier Survey Event',
                 'event_survey_id', :'openedEarlierSurveyID'::uuid,
                 'group_name', 'Survey Panel Group',
+                'state', 'open',
                 'timezone', 'America/New_York',
                 'title', 'Opened earlier',
 
+                'closed_at', null,
                 'closes_at', null
             ),
             jsonb_build_object(
@@ -410,9 +429,11 @@ select is(
                 'event_name', 'Survey Panel Event',
                 'event_survey_id', :'openedLaterSurveyID'::uuid,
                 'group_name', 'Survey Panel Group',
+                'state', 'open',
                 'timezone', 'Europe/Madrid',
                 'title', 'Opened later',
 
+                'closed_at', null,
                 'closes_at', null
             ),
             jsonb_build_object(
@@ -420,15 +441,41 @@ select is(
                 'event_name', 'Survey Panel Event',
                 'event_survey_id', :'answeredSurveyID'::uuid,
                 'group_name', 'Survey Panel Group',
+                'state', 'open',
                 'timezone', 'Europe/Madrid',
                 'title', 'Answered survey',
 
+                'closed_at', null,
                 'closes_at', epoch_seconds(current_timestamp + interval '1 day')
+            ),
+            jsonb_build_object(
+                'answered', true,
+                'event_name', 'Survey Panel Event',
+                'event_survey_id', :'recentlyClosedSurveyID'::uuid,
+                'group_name', 'Survey Panel Group',
+                'state', 'closed',
+                'timezone', 'Europe/Madrid',
+                'title', 'Recently closed',
+
+                'closed_at', epoch_seconds(current_timestamp - interval '1 hour'),
+                'closes_at', null
+            ),
+            jsonb_build_object(
+                'answered', true,
+                'event_name', 'Survey Panel Event',
+                'event_survey_id', :'earlierClosedSurveyID'::uuid,
+                'group_name', 'Survey Panel Group',
+                'state', 'closed',
+                'timezone', 'Europe/Madrid',
+                'title', 'Earlier closed',
+
+                'closed_at', epoch_seconds(current_timestamp - interval '1 day'),
+                'closes_at', null
             )
         ),
-        'total', 4
+        'total', 6
     ),
-    'Should list open eligible surveys of public events with unanswered surveys first'
+    'Should list open eligible surveys unanswered first, then answered closed surveys most recent first'
 );
 
 -- Should list open surveys across communities

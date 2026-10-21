@@ -594,3 +594,395 @@ describe("event surveys", () => {
     expect(hasUnsavedSurveyChanges()).to.equal(true);
   });
 });
+
+/**
+ * Renders the Individual view of a survey with two respondent rows and the
+ * empty response modal, and initializes the surveys tab.
+ */
+const renderResponsesPage = () => {
+  document.body.innerHTML = `
+    <div id="event-update-page">
+      <div id="surveys-content" data-event-surveys-root>
+        <table aria-label="Survey respondents">
+          <tbody>
+            <tr id="respondent-row-1" tabindex="0" data-event-survey-respondent="1"><th>Jane</th></tr>
+            <tr id="respondent-row-2" tabindex="0" data-event-survey-respondent="2"><th>John</th></tr>
+          </tbody>
+        </table>
+        <div id="event-survey-response-modal" role="dialog" aria-modal="true" aria-hidden="true" class="hidden">
+          <div id="response-overlay" data-event-survey-response-close class="modal-overlay"></div>
+          <div id="event-survey-response-modal-content"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  initializeEventSurveys(document.getElementById("event-update-page"));
+
+  return {
+    content: document.getElementById("event-survey-response-modal-content"),
+    modal: document.getElementById("event-survey-response-modal"),
+    row: document.getElementById("respondent-row-1"),
+  };
+};
+
+/**
+ * Swaps the responses of a respondent into the modal content, as HTMX does
+ * once a respondent row or a navigation button loads them.
+ * @param {HTMLElement} content Modal content container.
+ * @param {HTMLElement} trigger Element that requested the responses.
+ * @param {{hasNext?: boolean, hasPrevious?: boolean}} [options] Available neighbors.
+ */
+const swapResponse = (content, trigger, { hasNext = true, hasPrevious = true } = {}) => {
+  content.innerHTML = `
+    <button id="response-close-icon" type="button" data-event-survey-response-close>Close icon</button>
+    <button id="response-previous" type="button" data-event-survey-response-nav="previous" ${hasPrevious ? "" : "disabled"}>Previous</button>
+    <button id="response-next" type="button" data-event-survey-response-nav="next" ${hasNext ? "" : "disabled"}>Next</button>
+    <button id="response-close" type="button" data-event-survey-response-close>Close</button>
+  `;
+  content.dispatchEvent(
+    new CustomEvent("htmx:afterSwap", {
+      bubbles: true,
+      detail: { requestConfig: { elt: trigger }, target: content },
+    }),
+  );
+};
+
+/**
+ * Dispatches the `htmx:beforeSwap` event HTMX sends before swapping a response
+ * into a target.
+ * @param {Element} elt Element that issued the request.
+ * @param {Element} target Swap target.
+ * @param {{shouldSwap?: boolean}} [options] Whether the response is swapped.
+ */
+const dispatchBeforeSwap = (elt, target, { shouldSwap = true } = {}) => {
+  elt.dispatchEvent(
+    new CustomEvent("htmx:beforeSwap", {
+      bubbles: true,
+      detail: { requestConfig: { elt }, shouldSwap, target },
+    }),
+  );
+};
+
+describe("event survey response modal", () => {
+  beforeEach(() => {
+    resetDom();
+  });
+
+  afterEach(() => {
+    resetDom();
+  });
+
+  it("opens once a respondent's responses load and restores focus on close", () => {
+    // Render the Individual view and load the first respondent
+    const { content, modal, row } = renderResponsesPage();
+    row.focus();
+    swapResponse(content, row);
+
+    // Verify the modal opens with focus inside it and the page scroll locked
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(modal.getAttribute("aria-hidden")).to.equal("false");
+    expect(modal.contains(document.activeElement)).to.equal(true);
+    expect(document.body.style.overflow).to.equal("hidden");
+
+    // Close the modal from its close button
+    document.getElementById("response-close").click();
+
+    // Verify the modal closes and focus returns to the respondent row
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
+    expect(document.activeElement).to.equal(row);
+    expect(document.body.style.overflow).to.equal("");
+  });
+
+  it("closes from its overlay and on Escape", () => {
+    // Render the Individual view and open the modal
+    const { content, modal, row } = renderResponsesPage();
+    swapResponse(content, row);
+
+    // Close the modal from its overlay
+    document.getElementById("response-overlay").click();
+    expect(modal.classList.contains("hidden")).to.equal(true);
+
+    // Open the modal again and press Escape inside it
+    swapResponse(content, row);
+    document
+      .getElementById("response-next")
+      .dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+
+    // Verify the modal closes
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("keeps focus on the navigation direction while moving between respondents", () => {
+    // Render the Individual view and open the modal
+    const { content, modal, row } = renderResponsesPage();
+    swapResponse(content, row);
+
+    // Load the next respondent from the Next button
+    swapResponse(content, document.getElementById("response-next"));
+
+    // Verify the modal stays open with focus on the new Next button
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(document.activeElement?.id).to.equal("response-next");
+
+    // Load the last respondent, which has no next one
+    swapResponse(content, document.getElementById("response-next"), { hasNext: false });
+
+    // Verify focus falls back to the Close button
+    expect(document.activeElement?.id).to.equal("response-close");
+
+    // Close the modal
+    document.getElementById("response-close").click();
+  });
+
+  it("keeps Tab navigation inside the open modal", () => {
+    // Render the Individual view and open the modal
+    const { content, row } = renderResponsesPage();
+    swapResponse(content, row);
+    const close = document.getElementById("response-close");
+    close.focus();
+
+    // Press Tab on the last control of the modal
+    const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Tab" });
+    close.dispatchEvent(event);
+
+    // Verify focus wraps to the first control of the modal
+    expect(event.defaultPrevented).to.equal(true);
+    expect(document.activeElement?.id).to.equal("response-close-icon");
+
+    // Close the modal
+    close.click();
+  });
+
+  it("closes before a respondents search swap removes it", () => {
+    // Render the Individual view and open the modal
+    const { content, modal, row } = renderResponsesPage();
+    const root = document.getElementById("surveys-content");
+    swapResponse(content, row);
+    expect(document.body.dataset.modalOpenCount).to.equal("1");
+
+    // Land a respondents search that replaces the whole view
+    dispatchBeforeSwap(root, root);
+
+    // Verify the modal closes and releases the page scroll lock
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
+    expect(document.body.dataset.modalOpenCount).to.equal("0");
+    expect(document.body.style.overflow).to.equal("");
+  });
+
+  it("closes before a swap requested outside the surveys tab removes it", () => {
+    // Render the Individual view and open the modal
+    const { content, modal, row } = renderResponsesPage();
+    swapResponse(content, row);
+
+    // Land a request from outside the tab that replaces the whole body
+    dispatchBeforeSwap(document.body, document.body);
+
+    // Verify the modal closes and releases the page scroll lock
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(document.body.dataset.modalOpenCount).to.equal("0");
+    expect(document.body.style.overflow).to.equal("");
+  });
+
+  it("stays open for swaps that do not remove it", () => {
+    // Render the Individual view and open the modal
+    const { content, modal, row } = renderResponsesPage();
+    const root = document.getElementById("surveys-content");
+    swapResponse(content, row);
+
+    // Land a failed search, a swap into the modal and a swap elsewhere
+    dispatchBeforeSwap(root, root, { shouldSwap: false });
+    dispatchBeforeSwap(document.getElementById("response-next"), content);
+    dispatchBeforeSwap(row, document.getElementById("respondent-row-2"));
+
+    // Verify the modal stays open with the page scroll locked
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(document.body.dataset.modalOpenCount).to.equal("1");
+    expect(document.body.style.overflow).to.equal("hidden");
+
+    // Close the modal
+    document.getElementById("response-close").click();
+  });
+
+  it("ignores swaps into other targets", () => {
+    // Render the Individual view
+    const { modal } = renderResponsesPage();
+    const root = document.getElementById("surveys-content");
+
+    // Swap content into the surveys tab instead of the modal
+    root.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true, detail: { target: root } }));
+
+    // Verify the modal stays closed
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+});
+
+/**
+ * Renders the Summary view of a survey with one free-text question preview
+ * and the empty answers modal, and initializes the surveys tab.
+ */
+const renderResultsPage = () => {
+  document.body.innerHTML = `
+    <div id="event-update-page">
+      <div id="surveys-content" data-event-surveys-root>
+        <section>
+          <button id="text-answers-open" type="button" data-event-survey-text-answers-open>View all 12 answers</button>
+        </section>
+        <div id="event-survey-text-answers-modal" role="dialog" aria-modal="true" aria-hidden="true" class="hidden">
+          <div id="text-answers-overlay" data-event-survey-text-answers-close class="modal-overlay"></div>
+          <div id="event-survey-text-answers-modal-content"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  initializeEventSurveys(document.getElementById("event-update-page"));
+
+  return {
+    content: document.getElementById("event-survey-text-answers-modal-content"),
+    modal: document.getElementById("event-survey-text-answers-modal"),
+    opener: document.getElementById("text-answers-open"),
+  };
+};
+
+/**
+ * Swaps a page of free-text answers into the modal content, as HTMX does once
+ * the opener, the search or a navigation button loads them.
+ * @param {HTMLElement} content Modal content container.
+ * @param {HTMLElement} trigger Element that requested the answers.
+ * @param {{hasNext?: boolean}} [options] Whether a next page exists.
+ * @returns {CustomEvent} Dispatched `htmx:beforeSwap` event.
+ */
+const swapTextAnswers = (content, trigger, { hasNext = true } = {}) => {
+  // Let the modal decide whether the response is still wanted
+  const beforeSwap = new CustomEvent("htmx:beforeSwap", {
+    bubbles: true,
+    detail: { requestConfig: { elt: trigger }, shouldSwap: true, target: content },
+  });
+  content.dispatchEvent(beforeSwap);
+  if (!beforeSwap.detail.shouldSwap) {
+    return beforeSwap;
+  }
+
+  // Swap the answers and report it
+  content.innerHTML = `
+    <button id="text-answers-close-icon" type="button" data-event-survey-text-answers-close>Close icon</button>
+    <form id="text-answers-search-form">
+      <input id="event-survey-text-answers-search" name="ts_query" />
+      <button id="text-answers-clear" type="button">Clear answer search</button>
+    </form>
+    <button id="text-answers-previous" type="button" data-event-survey-text-answers-nav="previous">Previous</button>
+    <button id="text-answers-next" type="button" data-event-survey-text-answers-nav="next" ${hasNext ? "" : "disabled"}>Next</button>
+    <button id="text-answers-close" type="button" data-event-survey-text-answers-close>Close</button>
+  `;
+  content.dispatchEvent(
+    new CustomEvent("htmx:afterSwap", {
+      bubbles: true,
+      detail: { requestConfig: { elt: trigger }, target: content },
+    }),
+  );
+  return beforeSwap;
+};
+
+describe("event survey text answers modal", () => {
+  beforeEach(() => {
+    resetDom();
+  });
+
+  afterEach(() => {
+    resetDom();
+  });
+
+  it("opens on the search box once the answers load and restores focus on close", () => {
+    // Render the Summary view and load the answers from the opener
+    const { content, modal, opener } = renderResultsPage();
+    opener.focus();
+    swapTextAnswers(content, opener);
+
+    // Verify the modal opens on its search box with the page scroll locked
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(modal.getAttribute("aria-hidden")).to.equal("false");
+    expect(document.activeElement?.id).to.equal("event-survey-text-answers-search");
+    expect(document.body.style.overflow).to.equal("hidden");
+
+    // Close the modal from its overlay
+    document.getElementById("text-answers-overlay").click();
+
+    // Verify the modal closes and focus returns to the opener
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
+    expect(document.activeElement).to.equal(opener);
+    expect(document.body.style.overflow).to.equal("");
+  });
+
+  it("keeps focus on the navigation direction while moving between pages", () => {
+    // Render the Summary view and open the modal
+    const { content, modal, opener } = renderResultsPage();
+    swapTextAnswers(content, opener);
+
+    // Load the next page from the Next button
+    swapTextAnswers(content, document.getElementById("text-answers-next"));
+
+    // Verify the modal stays open with focus on the new Next button
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(document.activeElement?.id).to.equal("text-answers-next");
+
+    // Load the last page, which has no next one
+    swapTextAnswers(content, document.getElementById("text-answers-next"), { hasNext: false });
+
+    // Verify focus falls back to the Close button and Escape closes the modal
+    expect(document.activeElement?.id).to.equal("text-answers-close");
+    document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("moves focus to the search box when clearing the search removes the focused control", () => {
+    // Render the Summary view and open the modal
+    const { content, modal, opener } = renderResultsPage();
+    swapTextAnswers(content, opener);
+
+    // Clear the search from its clear button, which the new answers replace
+    const clear = document.getElementById("text-answers-clear");
+    clear.focus();
+    swapTextAnswers(content, clear);
+
+    // Verify focus lands on the search box instead of the page body
+    expect(content.contains(clear)).to.equal(false);
+    expect(document.activeElement?.id).to.equal("event-survey-text-answers-search");
+
+    // Verify Tab stays trapped inside the modal
+    const close = document.getElementById("text-answers-close");
+    close.focus();
+    const tab = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Tab" });
+    close.dispatchEvent(tab);
+    expect(tab.defaultPrevented).to.equal(true);
+    expect(modal.contains(document.activeElement)).to.equal(true);
+
+    // Verify Escape still closes the modal
+    document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("drops answers requested from inside the modal after it was closed", () => {
+    // Render the Summary view, open the modal and close it while a search runs
+    const { content, modal, opener } = renderResultsPage();
+    swapTextAnswers(content, opener);
+    const searchForm = document.getElementById("text-answers-search-form");
+    document.getElementById("text-answers-close").click();
+
+    // Deliver the search results after the modal was closed
+    const beforeSwap = swapTextAnswers(content, searchForm);
+
+    // Verify the stale results are dropped and the modal stays closed
+    expect(beforeSwap.detail.shouldSwap).to.equal(false);
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(content.contains(searchForm)).to.equal(true);
+
+    // Verify the opener still loads the answers into the closed modal
+    expect(swapTextAnswers(content, opener).detail.shouldSwap).to.equal(true);
+    expect(modal.classList.contains("hidden")).to.equal(false);
+
+    // Close the modal
+    document.getElementById("text-answers-close").click();
+  });
+});

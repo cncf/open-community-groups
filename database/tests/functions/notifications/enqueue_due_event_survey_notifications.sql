@@ -352,7 +352,7 @@ select is(
     jsonb_build_object(
         'anonymous', false,
         'event', get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
-        'link', '/dashboard/user?tab=events&event_survey_id=' || :'dueSurveyID',
+        'link', '/dashboard/user?tab=surveys&event_survey_id=' || :'dueSurveyID',
         'survey_title', 'Due survey',
         'theme', '{"primary_color": "#2563eb"}'::jsonb,
 

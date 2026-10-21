@@ -11,23 +11,17 @@ const loadTemplate = async (path = "dashboard/user/events_list.html") => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard user events list template", () => {
-  it("renders the surveys panel above the events table", async () => {
-    // Load the user events template before checking the surveys panel.
+  it("leaves surveys to the Surveys tab", async () => {
+    // Load the user events template before checking its scope.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the panel only renders with surveys and precedes the events table.
-    const panelIndex = template.indexOf("{# Surveys to answer -#}");
-    const tableIndex = template.indexOf("{# Events table -#}");
-    expect(panelIndex).to.be.greaterThan(-1);
-    expect(panelIndex).to.be.lessThan(tableIndex);
-    expect(template).to.include("{% if !surveys.surveys.is_empty() -%}");
-    expect(template).to.include('aria-labelledby="user-event-surveys-title"');
+    // Verify My Events no longer renders the surveys panel or the survey modal.
     expect(template).to.include(
-      "{{ surveys_macros::user_survey_items(surveys = surveys.surveys, next_offset = self.surveys_next_offset(), remaining = self.surveys_remaining()) -}}",
+      'description = "Upcoming participation, active checkouts, and event offers."',
     );
-    expect(template).to.include(
-      'description = "Upcoming participation, active checkouts, event offers, and surveys to answer."',
-    );
+    expect(template).not.to.include("surveys_macros");
+    expect(template).not.to.include("user-event-survey-modal");
+    expect(template).not.to.include("Surveys to answer");
   });
 
   it("renders cancel attendance as a confirmed delete action when cancellation is allowed", async () => {
@@ -231,48 +225,5 @@ describe("dashboard user events list template", () => {
     expect(template).to.include("/dashboard/user?tab=invitations#event-offer-{{ admission_offer_id }}");
     expect(template).to.include("<span>View event offer</span>");
     expect(template).to.include("<span>Continue to checkout</span>");
-  });
-
-  it("loads each survey of the panel into the survey modal", async () => {
-    // Load the survey items rendered by the panel and its next pages.
-    const macros = normalizeWhitespace(await loadTemplate("macros/surveys.html"));
-
-    // Verify the row action loads the survey form instead of leaving the dashboard.
-    expect(macros).to.include('hx-get="/dashboard/user/events/surveys/{{ survey.event_survey_id }}"');
-    expect(macros).to.include('hx-target="#user-event-survey-modal-content"');
-    expect(macros).to.include('hx-sync="closest ul:replace"');
-    expect(macros).to.include("data-user-event-survey-open");
-    expect(macros).not.to.include("survey.url");
-  });
-
-  it("renders the survey modal shell and opens the requested survey on load", async () => {
-    // Load the user events template before checking the survey modal.
-    const template = normalizeWhitespace(await loadTemplate());
-
-    // Verify the closed dialog, its content target and the requested survey.
-    expect(template).to.include('<div id="user-event-survey-modal" data-user-event-survey-modal');
-    expect(template).to.include("{% if survey.is_some() %}data-open-on-load{% endif %}");
-    expect(template).to.include('aria-labelledby="user-event-survey-title"');
-    expect(template).to.include('<div id="user-event-survey-modal-content" class="modal-card rounded-lg">');
-    expect(template).to.include('{% include "dashboard/user/events_survey.html" -%}');
-    expect(template).to.include("{{ dashboard::permission_warning(message = warning) -}}");
-  });
-
-  it("renders the survey answers form inside the survey modal", async () => {
-    // Load the survey modal content.
-    const template = normalizeWhitespace(await loadTemplate("dashboard/user/events_survey.html"));
-
-    // Verify the form submits the answers to the revision the user saw.
-    expect(template).to.include('title_id = "user-event-survey-title"');
-    expect(template).to.include(
-      'hx-put="/dashboard/user/events/surveys/{{ survey.event_survey_id }}/response"',
-    );
-    expect(template).to.include("data-user-event-survey-form");
-    expect(template).to.include('<input type="hidden" data-question-answers-input name="answers">');
-    expect(template).to.include('<input type="hidden" name="revision" value="{{ survey.revision }}">');
-    expect(template).to.include(
-      '<button data-user-event-survey-close type="button" class="btn-primary-outline">Cancel</button>',
-    );
-    expect(template).to.include("data-survey-privacy-notice");
   });
 });

@@ -16,6 +16,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 - [User Dashboard Structure](#user-dashboard-structure)
 - [My Groups](#my-groups)
 - [My Events: Upcoming Participation](#my-events-upcoming-participation)
+- [Surveys: Event Feedback](#surveys-event-feedback)
 - [Check-In: Attendee Credentials](#check-in-attendee-credentials)
 - [Purchases and Financial Documents](#purchases-and-financial-documents)
 - [Profile: Public Identity](#profile-public-identity)
@@ -30,10 +31,11 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The dashboard is organized into twelve areas:
+The dashboard is organized into thirteen areas:
 
 - [My Groups](/dashboard/user?tab=groups ':ignore')
 - [My Events](/dashboard/user?tab=events ':ignore')
+- [Surveys](/dashboard/user?tab=surveys ':ignore')
 - [Check-In](/dashboard/user?tab=check-in ':ignore')
 - [Purchases & documents](/dashboard/user?tab=purchases ':ignore')
 - [Profile](/dashboard/user?tab=account ':ignore')
@@ -45,8 +47,8 @@ The dashboard is organized into twelve areas:
 - [Submissions](/dashboard/user?tab=submissions ':ignore')
 - [Logs](/dashboard/user?tab=logs ':ignore')
 
-Each area supports a different part of your participation in OCG: groups, events, attendee
-check-in, profile, email preferences, portable credentials, access, conversations with organizers, proposals,
+Each area supports a different part of your participation in OCG: groups, events, event
+feedback, attendee check-in, profile, email preferences, portable credentials, access, conversations with organizers, proposals,
 submissions, and audit visibility.
 
 ## My Groups
@@ -73,9 +75,9 @@ Rows are ordered by group name.
 ## My Events: Upcoming Participation
 
 `My Events` is your personal queue of upcoming events where you have an active role, an active
-direct checkout hold, or an event offer, plus the surveys you can answer about events you
-attended. The top-right user menu also links directly to this
-section, under `User dashboard`, on desktop layouts.
+direct checkout hold, or an event offer. The top-right user menu also links directly to this
+section, under `User dashboard`, on desktop layouts. Feedback surveys about events you attended
+have their own [Surveys](#surveys-event-feedback) section.
 
 Each row includes:
 
@@ -116,25 +118,28 @@ hold expiration is reflected when the dashboard content next loads or refreshes.
 
 ![User profile area](../screenshots/dashboard-user-my-events.png)
 
-### Surveys to Answer
+## Surveys: Event Feedback
 
-After an event ends, its organizers can ask attendees for feedback with a survey. When a survey
-you can answer is open, a `Surveys to answer` panel appears above the events list. It lists every
-open survey of a published event you attended, as long as you are in the survey audience
-(confirmed attendees, or only attendees who checked in). Surveys you haven't answered come first,
-then surveys that close sooner. The panel shows 10 surveys at a time, and `Show more surveys`
-loads the next ones and says how many are left.
+After an event ends, its organizers can ask attendees for feedback with a survey. `Surveys` lists
+the surveys you can answer and the ones you already answered:
 
-Each survey shows its title, the event and group, its closing date, and whether you already
-answered it. Use `Answer`, or `Edit answers` once you have answered, to open the survey in a
-window over My Events. The panel is hidden when no survey is waiting for you.
+- Every open survey of a published event you attended, as long as you are in the survey audience
+  (confirmed attendees, or only attendees who checked in). Surveys you haven't answered come
+  first, then surveys that close sooner.
+- Every closed survey you answered, most recently closed first, so you can review your answers.
 
-The email OCG sends when a survey opens links to My Events and opens that survey directly; it asks
-you to log in first when needed. If the survey has closed, or you are not in its audience, My
-Events shows a warning instead.
+The `Surveys` menu item shows how many open surveys you haven't answered yet. The list shows 10
+surveys per page with page navigation. Each row shows the survey title, the event and group, its
+status (`To answer`, `Answered`, or `Closed`), and its closing date. Use `Answer`, `Edit answers`
+once you have answered, or `View answers` for a closed survey, to open the survey in a window over
+the list. When you have no surveys yet, the section says so.
 
-The survey window shows the survey title, the event and group, the closing date, the organizers'
-introduction, and a privacy notice:
+The email OCG sends when a survey opens links to `Surveys` and opens that survey directly; it asks
+you to log in first when needed. If the survey has closed without an answer from you, or you are
+not in its audience, `Surveys` shows a warning instead.
+
+The window of an open survey shows the survey title, the event and group, the closing date, the
+organizers' introduction, and a privacy notice:
 
 - **Anonymous surveys**: the organizers see your answers without your name, company, or title.
   Your answers are linked to your account only so you can edit them, and anything you write in a
@@ -143,9 +148,12 @@ introduction, and a privacy notice:
 
 Answer the questions and select `Submit answers`. Questions marked with an asterisk are required.
 You can come back and change your answers with `Save changes` until the survey closes. Each
-person has one response per survey. Once a survey closes, it leaves the panel and no longer
-accepts answers. If the organizers changed the survey while you were answering it, saving fails
-with a message asking you to review it, and the answers you entered stay in the window.
+person has one response per survey. Saving your answers refreshes the list and the count in the
+menu. If the organizers changed the survey while you were answering it, saving fails with a
+message asking you to review it, and the answers you entered stay in the window.
+
+Once a survey closes, it no longer accepts answers. The window of a closed survey shows when it
+closed, when you answered it, and your answers, without a way to change them.
 
 ## Check-In: Attendee Credentials
 

@@ -5768,4 +5768,23 @@ where not exists (
     where etpw.event_ticket_type_id = ett.event_ticket_type_id
 );
 
+-- Free ticket of the first survey respondent, shown in the survey respondents
+insert into event_purchase (
+    amount_minor,
+    completed_at,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    '2025-03-25 10:00:00+00',
+    '00000000-0000-0000-0000-00000000f301',
+    md5('00000000-0000-0000-0000-00000000f301:ticket-type')::uuid,
+    'completed',
+    'General Admission',
+    '00000000-0000-0000-0000-00000000f302'
+);
+
 commit;

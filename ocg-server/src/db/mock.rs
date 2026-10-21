@@ -605,6 +605,14 @@ mock! {
             max_rows: usize,
             max_bytes: usize,
         ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyExport>>;
+        async fn get_event_survey_response(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
+            user_id: Uuid,
+            filters: &crate::types::dashboard::group::surveys::EventSurveyResponseNavigationFilters,
+        ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyResponseFull>>;
         async fn get_event_survey_results(
             &self,
             group_id: Uuid,
@@ -738,7 +746,7 @@ mock! {
             event_survey_id: Uuid,
             question_id: Uuid,
             filters: &crate::types::dashboard::group::surveys::EventSurveyTextAnswersFilters,
-        ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyTextAnswers>>;
+        ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyTextAnswersOutput>>;
         async fn list_event_surveys(
             &self,
             group_id: Uuid,
@@ -982,6 +990,7 @@ mock! {
             actor_user_id: Uuid,
             session_proposal: &crate::types::dashboard::user::session_proposals::SessionProposalInput,
         ) -> Result<Uuid>;
+        async fn count_user_unanswered_event_surveys(&self, user_id: Uuid) -> Result<usize>;
         async fn decline_event_admission_offer(
             &self,
             actor_user_id: Uuid,
@@ -1012,7 +1021,7 @@ mock! {
             &self,
             event_survey_id: Uuid,
             user_id: Uuid,
-        ) -> Result<Option<crate::types::dashboard::user::events::UserEventSurvey>>;
+        ) -> Result<Option<crate::types::dashboard::user::surveys::UserEventSurvey>>;
         async fn get_user_notification_preferences(
             &self,
             user_id: Uuid,
@@ -1058,8 +1067,8 @@ mock! {
         async fn list_user_event_surveys(
             &self,
             user_id: Uuid,
-            filters: &crate::types::dashboard::user::events::UserEventSurveysFilters,
-        ) -> Result<crate::types::dashboard::user::events::UserEventSurveysOutput>;
+            filters: &crate::types::dashboard::user::surveys::UserEventSurveysFilters,
+        ) -> Result<crate::types::dashboard::user::surveys::UserEventSurveysOutput>;
         async fn list_user_events(
             &self,
             user_id: Uuid,

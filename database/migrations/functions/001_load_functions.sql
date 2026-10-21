@@ -123,6 +123,8 @@
 {{ template "internal/payments/validate_payment_amount.sql" }}
 {{ template "internal/payments/validate_payment_currency_code.sql" }}
 
+{{ template "internal/questionnaire/questionnaire_answer_entries.sql" }}
+{{ template "internal/questionnaire/questionnaire_answer_has_value.sql" }}
 {{ template "internal/questionnaire/questionnaire_answer_selections.sql" }}
 {{ template "internal/questionnaire/questionnaire_option_breakdowns.sql" }}
 {{ template "internal/questionnaire/validate_questionnaire_answers_payload.sql" }}
@@ -149,6 +151,7 @@
 
 {{ template "internal/surveys/event_survey_effective_opens_at.sql" }}
 {{ template "internal/surveys/event_survey_eligible_users.sql" }}
+{{ template "internal/surveys/event_survey_matching_respondents.sql" }}
 {{ template "internal/surveys/event_survey_state.sql" }}
 {{ template "internal/surveys/event_survey_summary_json.sql" }}
 {{ template "internal/stats/stats_event_surveys.sql" }} -- Depends on event_survey_summary_json
@@ -156,6 +159,7 @@
 {{ template "internal/surveys/is_event_survey_public.sql" }}
 {{ template "internal/surveys/lock_event_for_surveys.sql" }}
 {{ template "internal/surveys/lock_event_survey.sql" }}
+{{ template "internal/surveys/user_dashboard_event_surveys.sql" }}
 {{ template "internal/surveys/validate_event_survey_payload.sql" }}
 {{ template "internal/surveys/validate_event_survey_revision.sql" }}
 {{ template "internal/surveys/validate_event_survey_schedule.sql" }}
@@ -189,6 +193,7 @@
 {{ template "internal/users/get_public_user_provider.sql" }}
 {{ template "internal/users/public_user_summary.sql" }}
 {{ template "internal/inbox/inbox_conversation_json.sql" }} -- Depends on public_user_summary
+{{ template "internal/surveys/event_survey_response_details.sql" }} -- Depends on public_user_summary
 {{ template "internal/users/resolve_unique_username.sql" }}
 
 {{ template "auth/get_user_by_id.sql" }} -- Dependency for get_user_by_email and get_user_by_email_for_external_auth
@@ -299,6 +304,7 @@
 {{ template "dashboard-group/get_event_summary_dashboard.sql" }}
 {{ template "dashboard-group/get_event_survey.sql" }}
 {{ template "dashboard-group/get_event_survey_export.sql" }}
+{{ template "dashboard-group/get_event_survey_response.sql" }}
 {{ template "dashboard-group/get_event_survey_results.sql" }}
 {{ template "dashboard-group/get_group_external_payments_context.sql" }}
 {{ template "dashboard-group/get_group_external_payments_eligibility.sql" }}
@@ -375,6 +381,7 @@
 {{ template "dashboard-user/accept_group_team_invitation.sql" }}
 {{ template "dashboard-user/accept_session_proposal_co_speaker_invitation.sql" }}
 {{ template "dashboard-user/add_session_proposal.sql" }}
+{{ template "dashboard-user/count_user_unanswered_event_surveys.sql" }}
 {{ template "dashboard-user/decline_event_admission_offer.sql" }}
 {{ template "dashboard-user/delete_session_proposal.sql" }}
 {{ template "dashboard-user/get_user_badge.sql" }}

@@ -1251,8 +1251,7 @@
 </div>
 
 {# Attendees Tab -#}
-<div data-content="attendees"
-     class="hidden min-w-0">
+<div data-content="attendees" class="hidden min-w-0">
   <div id="attendees-content" data-group-check-in-root>
     {{ dashboard::form_title(title = "Attendees", description = "Review registrations and manage attendee check-in.") -}}
     {# Loading placeholder -#}
@@ -1268,8 +1267,7 @@
 
 {% if show_invitation_requests_tab -%}
   {# Invitation Requests Tab -#}
-  <div data-content="invitation-requests"
-       class="hidden min-w-0">
+  <div data-content="invitation-requests" class="hidden min-w-0">
     <div id="invitation-requests-content">
       {{ dashboard::form_title(title = "Requests", description = "Review and manage attendee approval requests.") -}}
       <div id="invitation-requests-loading"
@@ -1286,8 +1284,7 @@
 
 {% if show_waitlist_tab -%}
   {# Waitlist Tab -#}
-  <div data-content="waitlist"
-       class="hidden min-w-0">
+  <div data-content="waitlist" class="hidden min-w-0">
     <div id="waitlist-content">
       {{ dashboard::form_title(title = "Waitlist", description = "Review and manage people waiting for a seat.") -}}
       <div id="waitlist-loading" class="flex items-center justify-center py-12">
@@ -1303,8 +1300,7 @@
 
 {% if !event.canceled -%}
   {# Surveys Tab -#}
-  <div data-content="surveys"
-       class="hidden min-w-0">
+  <div data-content="surveys" class="hidden min-w-0">
     <div id="surveys-refresh"
          hx-get="/dashboard/group/events/{{ event.event_id }}/surveys"
          hx-trigger="refresh-event-surveys from:body"
@@ -1325,8 +1321,7 @@
 {% endif -%}
 
 {# Analytics Tab -#}
-<div data-content="analytics"
-     class="hidden min-w-0">
+<div data-content="analytics" class="hidden min-w-0">
   <p id="analytics-status" class="sr-only" role="status"></p>
   <div id="analytics-content"
        data-analytics-url="/dashboard/group/events/{{ event.event_id }}/analytics"

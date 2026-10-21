@@ -279,12 +279,16 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::group::surveys::download_csv),
         )
         .route(
+            "/events/{event_id}/surveys/{event_survey_id}/responses/{user_id}",
+            get(dashboard::group::surveys::response_modal),
+        )
+        .route(
             "/events/{event_id}/surveys/{event_survey_id}/results",
             get(dashboard::group::surveys::results_page),
         )
         .route(
             "/events/{event_id}/surveys/{event_survey_id}/results/questions/{question_id}/answers",
-            get(dashboard::group::surveys::text_answers_page),
+            get(dashboard::group::surveys::text_answers_modal),
         )
         .route(
             "/events/{event_id}/surveys/{event_survey_id}/update",
@@ -625,18 +629,6 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/events/{community_name}/{event_id}/registration-answers",
             put(dashboard::user::events::submit_registration_answers),
         )
-        .route(
-            "/events/surveys",
-            get(dashboard::user::events::surveys_page),
-        )
-        .route(
-            "/events/surveys/{event_survey_id}",
-            get(dashboard::user::events::survey_modal),
-        )
-        .route(
-            "/events/surveys/{event_survey_id}/response",
-            put(dashboard::user::events::submit_survey_response),
-        )
         // Groups endpoints
         .route("/groups", get(dashboard::user::groups::list_page))
         .route(
@@ -734,6 +726,16 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         .route(
             "/submissions/{cfs_submission_id}/withdraw",
             put(dashboard::user::submissions::withdraw),
+        )
+        // Surveys endpoints
+        .route("/surveys", get(dashboard::user::surveys::list_page))
+        .route(
+            "/surveys/{event_survey_id}",
+            get(dashboard::user::surveys::survey_modal),
+        )
+        .route(
+            "/surveys/{event_survey_id}/response",
+            put(dashboard::user::surveys::submit_response),
         )
         // Users search endpoints
         .route("/users/search", get(common::search_user))

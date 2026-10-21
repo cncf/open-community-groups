@@ -803,8 +803,8 @@ When a survey opens, OCG sends one email, once, to the attendees in its audience
 verified email address and have not turned off `Event surveys` emails or muted the group. People
 who join the audience later, for example by checking in after the survey opened, can still answer
 the survey, but get no email. Test events never send survey emails. Attendees answer surveys from
-the `Surveys to answer` panel of their [My Events](user-dashboard.md#surveys-to-answer), where they
-can edit their answers until the survey closes, and the email opens the survey there directly.
+the [Surveys](user-dashboard.md#surveys-event-feedback) section of their dashboard, where they can
+edit their answers until the survey closes, and the email opens the survey there directly.
 
 #### Anonymity and locked settings
 
@@ -830,10 +830,18 @@ It shows `-` while nobody is in the audience. The `Summary` view also shows thre
 responses, the audience and anonymity, and the closing date in the event timezone.
 
 - `Summary` lists the questions in order. Select questions show each option's selections and share
-  of respondents. Free-text questions show the first 10 answers, and `Show more answers` loads the
-  next ones and says how many are left.
-- `Individual` lists the responses one by one, 20 per page, with each respondent's name, company,
-  and title. It is only available for identified surveys.
+  of respondents. Free-text questions show a compact preview of the first 10 answers, oldest first,
+  with long answers shortened to a few lines. The button below the preview, for example
+  `View all 42 answers`, opens every answer to the question in full in a dialog, 10 per page, with
+  `Previous` and `Next` buttons and a search box that matches the answer text. The search also
+  works on anonymous surveys, because answers never show who gave them.
+- `Individual` lists the respondents in a table, 20 per page and oldest response first, with each
+  respondent's name, title, and company, their ticket type, how many questions they answered (for
+  example `7 of 10`), and when they submitted, plus when they last edited their answers. The search
+  box matches respondent names, usernames, companies, and titles. Selecting a row, by clicking it or
+  pressing Enter, opens that respondent's answers in a dialog, with `Previous` and `Next` buttons
+  that move through the respondents matching the search. It is only available for identified
+  surveys.
 - Anonymous surveys with fewer than 5 responses show a notice that their answers may still
   identify the attendees who gave them.
 

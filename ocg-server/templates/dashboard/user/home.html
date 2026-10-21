@@ -23,6 +23,7 @@
   <script type="module"
           src="/static/js/dashboard/user/session-proposals/actions.js"></script>
   <script type="module" src="/static/js/dashboard/user/submissions.js"></script>
+  <script type="module" src="/static/js/dashboard/user/surveys.js"></script>
 {% endblock scripts -%}
 
 {% block mobile_dashboard_view -%}
@@ -44,6 +45,7 @@
     {{ dashboard::menu_title(text = "User", extra_styles = "py-1.5") -}}
     {{ dashboard::menu_item(name = "My Groups", icon = "groups", is_active = content.is_groups() , href = "/dashboard/user?tab=groups") -}}
     {{ dashboard::menu_item(name = "My Events", icon = "events", is_active = content.is_events() , href = "/dashboard/user?tab=events") -}}
+    {{ dashboard::menu_item(name = "Surveys", icon = "survey", is_active = content.is_surveys() , href = "/dashboard/user?tab=surveys", items_count = surveys_unanswered_count) -}}
     {{ dashboard::menu_item(name = "Purchases & documents", compact_name = "Purchases", icon = "invoice", is_active = content.is_purchases() , href = "/dashboard/user?tab=purchases") -}}
     {{ dashboard::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account") -}}
     {{ dashboard::menu_item(name = "Notifications", icon = "bell", is_active = content.is_notifications() , href = "/dashboard/user?tab=notifications") -}}

@@ -111,6 +111,22 @@ insert into event_attendee (
     now() - interval '7 days'
 );
 
+-- Free ticket of the first survey respondent, shown in the survey respondents
+insert into event_purchase (
+    event_purchase_id, amount_minor, completed_at, discount_amount_minor,
+    event_id, event_ticket_type_id, status, ticket_title, user_id
+) values (
+    '58555555-5555-5555-5555-555555555971',
+    0,
+    now() - interval '9 days',
+    0,
+    '55555555-5555-5555-5555-555555555971',
+    '56555555-5555-5555-5555-555555555971',
+    'completed',
+    'General admission',
+    '77777777-7777-7777-7777-777777777971'
+);
+
 -- Open identified survey the first member has not answered yet
 insert into event_survey (
     event_survey_id, anonymous, audience, created_at, event_id, questions,

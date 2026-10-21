@@ -1,24 +1,28 @@
 //! Templates for the event surveys tab in the group dashboard.
 
+use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
+use num_format::{Locale, ToFormattedString};
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
     templates::{
         filters,
-        helpers::{DATE_FORMAT, NOT_APPLICABLE_LABEL, count_label, percent_label},
+        helpers::{DATE_FORMAT, NOT_APPLICABLE_LABEL, count_label, percent_label, user_initials},
     },
     types::{
         dashboard::group::surveys::{
-            EventSurveyFull, EventSurveyResponsesOutput, EventSurveyResults,
-            EventSurveyStatusAction, EventSurveySummary, EventSurveyTextAnswers,
+            EventSurveyFull, EventSurveyResponseFull, EventSurveyResponseNavigationFilters,
+            EventSurveyResponsesOutput, EventSurveyResults, EventSurveyStatusAction,
+            EventSurveySummary, EventSurveyTextAnswersOutput,
         },
         event::EventSummary,
         event_survey::{EventSurveyAudience, EventSurveyState},
         pagination,
+        user::UserSummary,
     },
 };
 
@@ -113,7 +117,50 @@ impl ListPage {
     }
 }
 
-/// Individual responses page template of an identified survey.
+/// Responses of one respondent to an identified survey, rendered inside the
+/// response modal of the Individual view.
+#[derive(Debug, Clone, Template)]
+#[template(path = "dashboard/group/surveys_response.html")]
+pub(crate) struct ResponseModal {
+    /// Event the survey belongs to.
+    pub event: EventSummary,
+    /// Respondents search kept while navigating between respondents.
+    pub navigation_filters: EventSurveyResponseNavigationFilters,
+    /// Response with its place among the respondents matching the search.
+    pub response: EventSurveyResponseFull,
+    /// Survey the response was submitted to.
+    pub survey: EventSurveyFull,
+}
+
+impl ResponseModal {
+    /// Returns the URL of the next respondent's responses, if any.
+    pub(crate) fn next_url(&self) -> Result<Option<String>> {
+        self.response
+            .next_user_id
+            .map(|user_id| self.response_url(user_id))
+            .transpose()
+    }
+
+    /// Returns the URL of the previous respondent's responses, if any.
+    pub(crate) fn previous_url(&self) -> Result<Option<String>> {
+        self.response
+            .previous_user_id
+            .map(|user_id| self.response_url(user_id))
+            .transpose()
+    }
+
+    /// Returns the URL of a respondent's responses, keeping the search.
+    fn response_url(&self, user_id: Uuid) -> Result<String> {
+        response_url(
+            self.event.event_id,
+            self.survey.summary.event_survey_id,
+            user_id,
+            &self.navigation_filters,
+        )
+    }
+}
+
+/// Respondents page template of an identified survey, the Individual view.
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/group/surveys_responses.html")]
 pub(crate) struct ResponsesPage {
@@ -121,13 +168,30 @@ pub(crate) struct ResponsesPage {
     pub event: EventSummary,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
-    /// Page of responses.
+    /// Respondents search kept by the response modal.
+    pub navigation_filters: EventSurveyResponseNavigationFilters,
+    /// Page of respondents matching the search.
     pub responses: EventSurveyResponsesOutput,
     /// Survey the responses were submitted to.
     pub survey: EventSurveyFull,
 
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Text search query matching respondent names, usernames, companies and
+    /// titles.
+    pub ts_query: Option<String>,
+}
+
+impl ResponsesPage {
+    /// Returns the URL of a respondent's responses, keeping the search.
+    pub(crate) fn response_url(&self, user_id: &Uuid) -> Result<String> {
+        response_url(
+            self.event.event_id,
+            self.survey.summary.event_survey_id,
+            *user_id,
+            &self.navigation_filters,
+        )
+    }
 }
 
 /// Aggregated results page template of a survey.
@@ -140,38 +204,42 @@ pub(crate) struct ResultsPage {
     pub results: EventSurveyResults,
 }
 
-/// Page of answers to a free-text question, appended by "Show more".
+/// Answers to a free-text question matching the search, rendered inside the
+/// answers modal of the Summary view.
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/group/surveys_text_answers.html")]
-pub(crate) struct TextAnswersPage {
-    /// Page of answers.
-    pub answers: EventSurveyTextAnswers,
+pub(crate) struct TextAnswersModal {
+    /// Page of answers matching the search, with the question they answer.
+    pub answers: EventSurveyTextAnswersOutput,
     /// Event the survey belongs to.
     pub event_id: Uuid,
     /// Survey the question belongs to.
     pub event_survey_id: Uuid,
-    /// Number of answers per page.
-    pub limit: usize,
+    /// Previous and next page links, keeping the search.
+    pub navigation_links: pagination::NavigationLinks,
     /// Free-text question identifier.
     pub question_id: Uuid,
 
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Text search query matching the answer text.
+    pub ts_query: Option<String>,
 }
 
-impl TextAnswersPage {
-    /// Returns the offset of the next page, when more answers remain.
-    pub(crate) fn next_offset(&self) -> Option<usize> {
-        let next_offset = self.offset.unwrap_or_default() + self.answers.answers.len();
-        (next_offset < self.answers.total && !self.answers.answers.is_empty())
-            .then_some(next_offset)
+impl TextAnswersModal {
+    /// Returns the URL of the answers to the question.
+    pub(crate) fn answers_url(&self) -> String {
+        text_answers_url(self.event_id, self.event_survey_id, self.question_id)
     }
 
-    /// Returns the number of answers after this page.
-    pub(crate) fn remaining(&self) -> usize {
-        self.answers
-            .total
-            .saturating_sub(self.offset.unwrap_or_default() + self.answers.answers.len())
+    /// Returns the URL of the next page of answers, if any.
+    pub(crate) fn next_url(&self) -> Option<&str> {
+        self.navigation_links.next.as_ref().map(|link| link.hx_url.as_str())
+    }
+
+    /// Returns the URL of the previous page of answers, if any.
+    pub(crate) fn previous_url(&self) -> Option<&str> {
+        self.navigation_links.prev.as_ref().map(|link| link.hx_url.as_str())
     }
 }
 
@@ -232,6 +300,12 @@ pub(crate) struct SurveyStatusAction {
 }
 
 // Helpers.
+
+/// Returns how many survey questions a response answers, for example
+/// `7 of 10`.
+pub(crate) fn answered_label(answered_questions_count: usize, questions_count: usize) -> String {
+    format!("{answered_questions_count} of {questions_count}")
+}
 
 /// Returns the closing date of a survey for the list, in the event timezone.
 pub(crate) fn closes_label(survey: &EventSurveySummary, timezone: Tz) -> String {
@@ -304,6 +378,21 @@ pub(crate) fn opening_label(
         Some(_) if survey.state == EventSurveyState::Draft => "Opens when marked ready".to_string(),
         Some(_) => "Opens now".to_string(),
     }
+}
+
+/// Returns the title and company of a respondent, for example
+/// `Engineer · Example Corp`, or none when both are missing.
+pub(crate) fn respondent_details(user: &UserSummary) -> Option<String> {
+    let details = [user.title.as_deref(), user.company.as_deref()]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    (!details.is_empty()).then(|| details.join(" · "))
+}
+
+/// Returns the display name of a respondent, falling back to the username.
+pub(crate) fn respondent_name(user: &UserSummary) -> &str {
+    user.name.as_deref().unwrap_or(user.username.as_str())
 }
 
 /// Returns the responses of a survey, for example `12 / 40 (30%)`.
@@ -417,6 +506,26 @@ pub(crate) fn status_action(
     }
 }
 
+/// Returns the URL of the answers to a free-text survey question.
+pub(crate) fn text_answers_url(event_id: Uuid, event_survey_id: Uuid, question_id: Uuid) -> String {
+    format!(
+        "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/results/questions/{question_id}/answers"
+    )
+}
+
+/// Returns the label of the button opening every answer to a free-text
+/// question, for example `View all 1,234 answers`.
+pub(crate) fn view_all_answers_label(total: usize) -> String {
+    if total == 1 {
+        "View 1 answer".to_string()
+    } else {
+        format!(
+            "View all {} answers",
+            total.to_formatted_string(&Locale::en)
+        )
+    }
+}
+
 /// Formats an optional time as a datetime-local value in the event timezone.
 fn datetime_local_value(date: Option<DateTime<Utc>>, timezone: Tz) -> String {
     date.map(|date| date.with_timezone(&timezone).format(DATE_FORMAT).to_string())
@@ -445,6 +554,22 @@ fn mark_ready_message(
     format!(
         "This will email eligible attendees (currently {}) {when}.",
         count_label(survey.eligible_count)
+    )
+}
+
+/// Returns the URL of a respondent's responses to a survey, keeping the
+/// respondents search.
+fn response_url(
+    event_id: Uuid,
+    event_survey_id: Uuid,
+    user_id: Uuid,
+    navigation_filters: &EventSurveyResponseNavigationFilters,
+) -> Result<String> {
+    pagination::build_url(
+        &format!(
+            "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses/{user_id}"
+        ),
+        navigation_filters,
     )
 }
 

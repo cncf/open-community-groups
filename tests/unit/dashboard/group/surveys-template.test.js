@@ -125,10 +125,9 @@ describe("dashboard group event survey templates", () => {
     expect(template).to.include('max-questions="{{ crate::validation::MAX_EVENT_SURVEY_QUESTIONS }}"');
   });
 
-  it("renders results in place with paginated free-text answers", async () => {
-    // Load the results and text answers templates.
+  it("renders results in place with compact free-text previews", async () => {
+    // Load the results template.
     const results = await loadTemplate("dashboard/group/surveys_results.html");
-    const textAnswers = await loadTemplate("dashboard/group/surveys_text_answers.html");
 
     // Verify the overview cards follow the results header.
     expect(results).to.include("data-event-survey-overview");
@@ -144,19 +143,58 @@ describe("dashboard group event survey templates", () => {
     expect(results).to.include("question_answers::breakdown(question = breakdown,");
     expect(results).to.include('<h3 id="{{ answers_id }}-prompt"');
 
-    // Verify free-text answers load more answers in place and report failures.
+    // Verify free-text previews are dense and clamp long answers.
     expect(results).to.include(
-      "/results/questions/{{ question.question_id }}/answers?offset={{ text.answers.len() }}",
+      'class="grid grid-cols-1 gap-2 p-3 md:grid-cols-2" data-event-survey-text-answers-preview',
     );
-    expect(results).to.include('hx-target="closest li" hx-swap="outerHTML"');
+    expect(results).to.include('<li class="line-clamp-3 whitespace-pre-line break-words');
+    expect(results).not.to.include("Show more");
+
+    // Verify every answer opens in a modal and failures are reported.
     expect(results).to.include(
-      'data-htmx-response data-error-message="Something went wrong loading more answers. Please try again later."',
+      'hx-get="{{ crate::templates::dashboard::group::surveys::text_answers_url(*event.event_id, *survey.event_survey_id, *question.question_id) }}"',
     );
-    expect(results).to.include("Show more answers ({{ text.total - text.answers.len() }} left)");
-    expect(textAnswers).to.include("answers?offset={{ next_offset }}&limit={{ limit }}");
-    expect(textAnswers).to.include('hx-target="closest li" hx-swap="outerHTML"');
-    expect(textAnswers).to.include("data-htmx-response");
-    expect(textAnswers).to.include("Show more answers ({{ self.remaining() }} left)");
+    expect(results).to.include('hx-target="#event-survey-text-answers-modal-content"');
+    expect(results).to.include('hx-sync="#event-survey-text-answers-modal:replace"');
+    expect(results).to.include(
+      'data-htmx-response data-error-message="Something went wrong loading these answers. Please try again later."',
+    );
+    expect(results).to.include(
+      "{{ crate::templates::dashboard::group::surveys::view_all_answers_label(*text.total) }}",
+    );
+    expect(results).to.include(
+      '<div id="event-survey-text-answers-modal" role="dialog" aria-modal="true" aria-labelledby="event-survey-text-answers-modal-title" aria-hidden="true"',
+    );
+  });
+
+  it("searches and pages free-text answers inside their modal", async () => {
+    // Load the free-text answers modal content.
+    const textAnswers = await loadTemplate("dashboard/group/surveys_text_answers.html");
+
+    // Verify the header names the question and closes the modal.
+    expect(textAnswers).to.include('title_id = "event-survey-text-answers-modal-title"');
+    expect(textAnswers).to.include("title = answers.prompt");
+    expect(textAnswers).to.include('close_attrs = "data-event-survey-text-answers-close"');
+
+    // Verify the search replaces the modal content and keeps a stable input id.
+    expect(textAnswers).to.include(
+      '<form id="event-survey-text-answers-search-form" hx-get="{{ answers_url }}"',
+    );
+    expect(textAnswers).to.include(
+      'hx-trigger="change, submit" hx-target="#event-survey-text-answers-modal-content"',
+    );
+    expect(textAnswers).to.include('<input id="event-survey-text-answers-search" name="ts_query"');
+    expect(textAnswers).to.include('aria-label="Clear answer search"');
+    expect(textAnswers).to.include("No answers found matching your search.");
+
+    // Verify the footer shows the range and pages through the answers.
+    expect(textAnswers).to.include('label = "answer"');
+    expect(textAnswers).to.include(
+      '{% call surveys::results_modal_footer( modal_id = "event-survey-text-answers-modal", nav_attribute = "data-event-survey-text-answers-nav", close_attribute = "data-event-survey-text-answers-close",',
+    );
+    expect(textAnswers).to.include("previous_url = self.previous_url(), next_url = self.next_url() ) -%}");
+    expect(textAnswers.match(/hx-target="#event-survey-text-answers-modal-content"/g)).to.have.length(2);
+    expect(textAnswers.match(/hx-sync="#event-survey-text-answers-modal:replace"/g)).to.have.length(2);
   });
 
   it("switches between the Summary and Individual views", async () => {
@@ -181,5 +219,63 @@ describe("dashboard group event survey templates", () => {
     expect(responses).to.include('view = "individual"');
     expect(responses).to.include('hx_target = "#surveys-content"');
     expect(responses).to.include('hx_swap = "innerHTML show:window:top"');
+  });
+
+  it("lists searchable respondents that open their responses in a modal", async () => {
+    // Load the Individual view and the response modal content.
+    const responses = await loadTemplate("dashboard/group/surveys_responses.html");
+    const response = await loadTemplate("dashboard/group/surveys_response.html");
+
+    // Verify the search swaps the whole view and keeps its query.
+    expect(responses).to.include(
+      '<form id="event-survey-respondents-search-form" hx-get="{{ responses_url }}"',
+    );
+    expect(responses).to.include('hx-trigger="change, submit" hx-target="#surveys-content"');
+    expect(responses).to.include('name="ts_query"');
+    expect(responses).to.include('aria-label="Clear respondent search"');
+    expect(responses).to.include('label = "respondent"');
+
+    // Verify keyboard accessible rows load their responses into the modal.
+    expect(responses).to.include('aria-label="Survey respondents"');
+    expect(responses).to.include('tabindex="0" hx-get="{{ self.response_url(response.user.user_id)? }}"');
+    expect(responses).to.include(`hx-trigger="click, keydown[key=='Enter']"`);
+    expect(responses).to.include('hx-target="#event-survey-response-modal-content"');
+    expect(responses).to.include('hx-sync="#event-survey-response-modal:replace"');
+    expect(responses).to.include("data-htmx-response");
+    expect(responses).to.include(
+      '<div id="event-survey-response-modal" role="dialog" aria-modal="true" aria-labelledby="event-survey-response-modal-title" aria-hidden="true"',
+    );
+
+    // Verify the modal reviews the answers and navigates between respondents.
+    expect(response).to.include('title_id = "event-survey-response-modal-title"');
+    expect(response).to.include('close_attrs = "data-event-survey-response-close"');
+    expect(response).to.include("question_answers::review_list(questions = survey.questions,");
+    expect(response).to.include(
+      '{% call surveys::results_modal_footer( modal_id = "event-survey-response-modal", nav_attribute = "data-event-survey-response-nav", close_attribute = "data-event-survey-response-close",',
+    );
+    expect(response).to.include("previous_url = self.previous_url()?, next_url = self.next_url()? ) -%}");
+    expect(response).to.include("Respondent {{ response.position }} of {{ response.total }}");
+  });
+
+  it("pages survey results modals through a shared footer", async () => {
+    // Load the survey macros.
+    const macros = await loadTemplate("macros/surveys.html");
+
+    // Verify the footer loads each neighbor page into its modal once at a time.
+    expect(macros).to.include(
+      "{% macro results_modal_footer(modal_id, nav_attribute, close_attribute, error_message, previous_url, next_url) -%}",
+    );
+    expect(macros).to.include('hx-get="{{ previous_url }}"');
+    expect(macros).to.include('hx-get="{{ next_url }}"');
+    expect(macros.match(/hx-target="#{{ modal_id }}-content"/g)).to.have.length(2);
+    expect(macros.match(/hx-sync="#{{ modal_id }}:replace"/g)).to.have.length(2);
+    expect(macros.match(/data-error-message="{{ error_message }}"/g)).to.have.length(2);
+
+    // Verify missing neighbors render disabled buttons and the footer closes the modal.
+    expect(macros).to.include('disabled {{ nav_attribute }}="previous"');
+    expect(macros).to.include('disabled {{ nav_attribute }}="next"');
+    expect(macros).to.include(
+      '<button type="button" {{ close_attribute }} class="btn-primary">Close</button>',
+    );
   });
 });

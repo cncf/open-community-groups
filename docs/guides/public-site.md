@@ -219,10 +219,10 @@ identifies your attendance and is intended to be scanned by event staff.
 
 After an event ends, its organizers can ask attendees for feedback with a
 survey. Each survey is for confirmed attendees, or only for those who checked
-in. You answer surveys from your dashboard: open surveys appear in the
-`Surveys to answer` panel of `My Events`, and the email OCG sends when a survey
-opens links straight to it. For the full flow, see
-[Surveys to Answer](user-dashboard.md#surveys-to-answer).
+in. You answer surveys from the `Surveys` section of your dashboard, which also
+keeps the answers you gave to closed surveys, and the email OCG sends when a
+survey opens links straight to it. For the full flow, see
+[Surveys: Event Feedback](user-dashboard.md#surveys-event-feedback).
 
 ## Submit to Call for Speakers (CFS)
 
@@ -278,7 +278,7 @@ momentum at a glance: groups, members, events, and attendees over time.
 2. Join one or more groups.
 3. RSVP to events.
 4. Present your personal dashboard QR code on event day.
-5. Share your feedback from `My Events` when the organizers open a survey.
+5. Share your feedback from `Surveys` when the organizers open a survey.
 6. Use CFS features when you are ready to submit talks.
 
 When you transition into organizer responsibilities, use

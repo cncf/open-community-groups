@@ -137,7 +137,7 @@ async fn db_contracts_enqueue_due_event_survey_notifications_enqueues_opening_em
     assert_eq!(
         data["link"],
         format!(
-            "/dashboard/user?tab=events&event_survey_id={}",
+            "/dashboard/user?tab=surveys&event_survey_id={}",
             survey_email_id()
         )
     );

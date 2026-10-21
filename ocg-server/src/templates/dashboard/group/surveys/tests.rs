@@ -6,22 +6,33 @@ use uuid::Uuid;
 use crate::{
     types::{
         dashboard::group::surveys::{
-            EventSurveyFull, EventSurveyResults, EventSurveyResultsQuestion,
-            EventSurveyStatusAction, EventSurveySummary, EventSurveyTextAnswers,
+            EventSurveyFull, EventSurveyResponseFull, EventSurveyResponseNavigationFilters,
+            EventSurveyResponseSummary, EventSurveyResponsesOutput, EventSurveyResults,
+            EventSurveyResultsQuestion, EventSurveyStatusAction, EventSurveySummary,
+            EventSurveyTextAnswers, EventSurveyTextAnswersFilters, EventSurveyTextAnswersOutput,
         },
         event::EventSummary,
         event_survey::{EventSurveyAudience, EventSurveyState},
-        questionnaire::QuestionnaireQuestionKind,
+        pagination::NavigationLinks,
+        questionnaire::{QuestionnaireAnswers, QuestionnaireQuestionKind},
         tests::{sample_event_summary, sample_event_survey_full, sample_event_survey_summary},
+        user::UserSummary,
     },
     validation::MAX_EVENT_SURVEYS,
 };
 
 use super::{
-    FEW_RESPONSES_THRESHOLD, FormPage, ListPage, MarkReadyBlocker, ResultsPage, TextAnswersPage,
-    closes_label, few_anonymous_responses, format_date, mark_ready_blocker, opening_label,
-    responses_label, status_action,
+    FEW_RESPONSES_THRESHOLD, FormPage, ListPage, MarkReadyBlocker, ResponseModal, ResponsesPage,
+    ResultsPage, TextAnswersModal, answered_label, closes_label, few_anonymous_responses,
+    format_date, mark_ready_blocker, opening_label, respondent_details, respondent_name,
+    responses_label, status_action, text_answers_url, view_all_answers_label,
 };
+
+#[test]
+fn test_answered_label_describes_answered_questions() {
+    assert_eq!(answered_label(7, 10), "7 of 10");
+    assert_eq!(answered_label(0, 1), "0 of 1");
+}
 
 #[test]
 fn test_closes_label_formats_closing_date_in_event_timezone() {
@@ -442,6 +453,99 @@ fn test_opening_label_waits_for_publication_on_past_openings() {
 }
 
 #[test]
+fn test_respondent_details_joins_title_and_company() {
+    let mut user = sample_user();
+    user.company = Some("Example Corp".to_string());
+    user.title = Some("Engineer".to_string());
+
+    assert_eq!(
+        respondent_details(&user).as_deref(),
+        Some("Engineer · Example Corp")
+    );
+}
+
+#[test]
+fn test_respondent_details_keeps_the_available_detail() {
+    let mut with_company = sample_user();
+    with_company.company = Some("Example Corp".to_string());
+    let mut with_title = sample_user();
+    with_title.title = Some("Engineer".to_string());
+
+    assert_eq!(
+        respondent_details(&with_company).as_deref(),
+        Some("Example Corp")
+    );
+    assert_eq!(respondent_details(&with_title).as_deref(), Some("Engineer"));
+    assert!(respondent_details(&sample_user()).is_none());
+}
+
+#[test]
+fn test_respondent_name_falls_back_to_username() {
+    let mut named = sample_user();
+    named.name = Some("Jane Doe".to_string());
+
+    assert_eq!(respondent_name(&named), "Jane Doe");
+    assert_eq!(respondent_name(&sample_user()), "jane");
+}
+
+#[test]
+fn test_response_modal_links_neighbors_keeping_search() {
+    // Setup a response between two respondents matching a search
+    let modal = ResponseModal {
+        event: sample_event(),
+        navigation_filters: EventSurveyResponseNavigationFilters {
+            ts_query: Some("jane".to_string()),
+        },
+        response: EventSurveyResponseFull {
+            answers: QuestionnaireAnswers::default(),
+            position: 2,
+            summary: sample_respondent(),
+            total: 3,
+
+            next_user_id: Some(Uuid::from_u128(7)),
+            previous_user_id: Some(Uuid::from_u128(6)),
+        },
+        survey: sample_event_survey_full(Uuid::from_u128(2)),
+    };
+
+    // Check the neighbors link to their responses keeping the search
+    let base_url = "/dashboard/group/events/00000000-0000-0000-0000-000000000001/surveys/00000000-0000-0000-0000-000000000002/responses";
+    assert_eq!(
+        modal.next_url().unwrap(),
+        Some(format!(
+            "{base_url}/00000000-0000-0000-0000-000000000007?ts_query=jane"
+        ))
+    );
+    assert_eq!(
+        modal.previous_url().unwrap(),
+        Some(format!(
+            "{base_url}/00000000-0000-0000-0000-000000000006?ts_query=jane"
+        ))
+    );
+}
+
+#[test]
+fn test_response_modal_without_neighbors_has_no_links() {
+    let modal = ResponseModal {
+        event: sample_event(),
+        navigation_filters: EventSurveyResponseNavigationFilters::default(),
+        response: EventSurveyResponseFull {
+            answers: QuestionnaireAnswers::default(),
+            position: 1,
+            summary: sample_respondent(),
+            total: 1,
+
+            next_user_id: None,
+            previous_user_id: None,
+        },
+        survey: sample_event_survey_full(Uuid::from_u128(2)),
+    };
+
+    assert!(modal.next_url().unwrap().is_none());
+    assert!(modal.previous_url().unwrap().is_none());
+}
+
+#[test]
 fn test_responses_label_adds_stored_total_when_it_differs() {
     let survey = EventSurveySummary {
         responses_count: 14,
@@ -473,6 +577,26 @@ fn test_responses_label_shows_eligible_respondents_and_rate() {
     let survey = sample_survey(EventSurveyState::Open);
 
     assert_eq!(responses_label(&survey), "12 / 40 (30%)");
+}
+
+#[test]
+fn test_responses_page_response_url_keeps_search() {
+    let page = sample_responses_page(Some("jane doe"));
+
+    assert_eq!(
+        page.response_url(&Uuid::from_u128(5)).unwrap(),
+        "/dashboard/group/events/00000000-0000-0000-0000-000000000001/surveys/00000000-0000-0000-0000-000000000002/responses/00000000-0000-0000-0000-000000000005?ts_query=jane+doe"
+    );
+}
+
+#[test]
+fn test_responses_page_response_url_without_search() {
+    let page = sample_responses_page(None);
+
+    assert_eq!(
+        page.response_url(&Uuid::from_u128(5)).unwrap(),
+        "/dashboard/group/events/00000000-0000-0000-0000-000000000001/surveys/00000000-0000-0000-0000-000000000002/responses/00000000-0000-0000-0000-000000000005"
+    );
 }
 
 #[test]
@@ -519,8 +643,23 @@ fn test_results_page_renders_overview_cards_and_question_sections() {
     let answers_id = format!("event-survey-question-{question_id}-answers");
     assert!(html.contains(&format!(r#"aria-labelledby="{answers_id}-prompt""#)));
     assert!(html.contains(&format!(r#"<h3 id="{answers_id}-prompt""#)));
-    assert!(html.contains("Show more answers (2 left)"));
-    assert!(html.contains("Something went wrong loading more answers."));
+
+    // Check the compact preview and the button opening every answer in the modal
+    assert!(html.contains("data-event-survey-text-answers-preview"));
+    assert!(html.contains("line-clamp-3"));
+    assert!(html.contains("Showing 1 of 3 answers"));
+    assert!(html.contains(&format!(
+        r#"hx-get="{}""#,
+        text_answers_url(Uuid::from_u128(1), Uuid::from_u128(1), question_id)
+    )));
+    assert!(html.contains(r##"hx-target="#event-survey-text-answers-modal-content""##));
+    assert!(html.contains("View all 3 answers"));
+    assert!(html.contains(r#"<span class="sr-only">: What should we improve?</span>"#));
+    assert!(!html.contains("Show more"));
+
+    // Check the answers modal shell
+    assert!(html.contains(r#"id="event-survey-text-answers-modal""#));
+    assert!(html.contains(r#"aria-labelledby="event-survey-text-answers-modal-title""#));
 }
 
 #[test]
@@ -757,38 +896,73 @@ fn test_status_action_reopen_unavailable_after_closing_date() {
 }
 
 #[test]
-fn test_text_answers_page_next_offset_when_answers_remain() {
-    let page = sample_text_answers_page(Some(10), 2, 13);
+fn test_text_answers_modal_links_pages_keeping_search() {
+    // Setup the second page of answers matching a search
+    let modal = sample_text_answers_modal(Some(10), 10, 25, Some("breaks"));
 
-    assert_eq!(page.next_offset(), Some(12));
+    // Render the modal content
+    let html = normalize_whitespace(&modal.render().unwrap());
+
+    // Check the header, the search and the range
+    assert!(html.contains(r#"<h3 id="event-survey-text-answers-modal-title""#));
+    assert!(html.contains("What should we improve?"));
+    assert!(html.contains("Question 3 · Free-text answers"));
+    assert!(html.contains(r#"id="event-survey-text-answers-search" name="ts_query""#));
+    assert!(html.contains(r#"value="breaks""#));
+    assert!(html.contains("11 - 20 of <span class=\"font-semibold\">25</span> answers"));
+    assert!(html.contains("Answer 0"));
+    assert!(html.contains("Answer 9"));
+
+    // Check both neighbors load into the modal keeping the search
+    let url = modal.answers_url();
+    assert!(html.contains(&format!(
+        r#"hx-get="{url}?limit=10&#38;offset=0&#38;ts_query=breaks""#
+    )));
+    assert!(html.contains(&format!(
+        r#"hx-get="{url}?limit=10&#38;offset=20&#38;ts_query=breaks""#
+    )));
+    assert!(html.contains(r#"data-event-survey-text-answers-nav="previous" data-htmx-response"#));
+    assert!(html.contains(r#"data-event-survey-text-answers-nav="next" data-htmx-response"#));
 }
 
 #[test]
-fn test_text_answers_page_remaining_counts_answers_after_the_page() {
-    let page = sample_text_answers_page(Some(10), 2, 13);
-    let past_end_page = sample_text_answers_page(Some(20), 0, 13);
+fn test_text_answers_modal_renders_search_without_matches() {
+    // Setup a search without matching answers
+    let modal = sample_text_answers_modal(None, 0, 0, Some("missing"));
 
-    assert_eq!(page.remaining(), 1);
-    assert_eq!(past_end_page.remaining(), 0);
+    // Render the modal content
+    let html = normalize_whitespace(&modal.render().unwrap());
+
+    // Check the empty search state and the disabled navigation
+    assert!(html.contains("No answers found matching your search."));
+    assert!(html.contains("0 answers"));
+    assert!(html.contains(r#"disabled data-event-survey-text-answers-nav="previous""#));
+    assert!(html.contains(r#"disabled data-event-survey-text-answers-nav="next""#));
 }
 
 #[test]
-fn test_text_answers_page_renders_remaining_answers_on_show_more() {
-    let page = sample_text_answers_page(Some(10), 2, 15);
+fn test_text_answers_modal_without_search_or_answers() {
+    let modal = sample_text_answers_modal(None, 0, 0, None);
 
-    let html = page.render().unwrap();
+    let html = modal.render().unwrap();
 
-    assert!(html.contains("Show more answers (3 left)"));
-    assert!(html.contains("answers?offset=12&limit=10"));
+    assert!(html.contains("No answers yet."));
+    assert!(!html.contains("No answers found matching your search."));
 }
 
 #[test]
-fn test_text_answers_page_without_more_answers() {
-    let page = sample_text_answers_page(Some(10), 3, 13);
-    let empty_page = sample_text_answers_page(Some(20), 0, 13);
+fn test_text_answers_url_points_to_question_answers() {
+    assert_eq!(
+        text_answers_url(Uuid::from_u128(1), Uuid::from_u128(2), Uuid::from_u128(3)),
+        "/dashboard/group/events/00000000-0000-0000-0000-000000000001/surveys/00000000-0000-0000-0000-000000000002/results/questions/00000000-0000-0000-0000-000000000003/answers"
+    );
+}
 
-    assert_eq!(page.next_offset(), None);
-    assert_eq!(empty_page.next_offset(), None);
+#[test]
+fn test_view_all_answers_label_counts_answers() {
+    assert_eq!(view_all_answers_label(1), "View 1 answer");
+    assert_eq!(view_all_answers_label(12), "View all 12 answers");
+    assert_eq!(view_all_answers_label(1234), "View all 1,234 answers");
 }
 
 // Helpers.
@@ -831,6 +1005,39 @@ fn sample_list_page(surveys: Vec<EventSurveySummary>) -> ListPage {
     }
 }
 
+/// Returns a respondent without a ticket or edits.
+fn sample_respondent() -> EventSurveyResponseSummary {
+    EventSurveyResponseSummary {
+        answered_questions_count: 1,
+        created_at: sample_date(),
+        user: sample_user(),
+
+        ticket_title: None,
+        updated_at: None,
+    }
+}
+
+/// Returns a respondents page of an identified survey with one respondent.
+fn sample_responses_page(ts_query: Option<&str>) -> ResponsesPage {
+    let mut survey = sample_event_survey_full(Uuid::from_u128(2));
+    survey.summary.anonymous = false;
+    ResponsesPage {
+        event: sample_event(),
+        navigation_links: NavigationLinks::default(),
+        navigation_filters: EventSurveyResponseNavigationFilters {
+            ts_query: ts_query.map(str::to_string),
+        },
+        responses: EventSurveyResponsesOutput {
+            responses: vec![sample_respondent()],
+            total: 1,
+        },
+        survey,
+
+        offset: None,
+        ts_query: None,
+    }
+}
+
 /// Returns the fixed time the pages are rendered at.
 fn sample_now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2099, 5, 1, 12, 0, 0).unwrap()
@@ -841,22 +1048,50 @@ fn sample_survey(state: EventSurveyState) -> EventSurveySummary {
     sample_event_survey_summary(Uuid::from_u128(1), state)
 }
 
-/// Returns a page of free-text answers.
-fn sample_text_answers_page(
+/// Returns the answers modal of the third question showing a page of
+/// free-text answers.
+fn sample_text_answers_modal(
     offset: Option<usize>,
     answers: usize,
     total: usize,
-) -> TextAnswersPage {
-    TextAnswersPage {
-        answers: EventSurveyTextAnswers {
+    ts_query: Option<&str>,
+) -> TextAnswersModal {
+    // Setup the filters of the requested page
+    let filters = EventSurveyTextAnswersFilters {
+        limit: Some(10),
+        offset,
+        ts_query: ts_query.map(str::to_string),
+    };
+    let url = text_answers_url(Uuid::from_u128(1), Uuid::from_u128(2), Uuid::from_u128(3));
+
+    // Build the modal with its page links
+    TextAnswersModal {
+        answers: EventSurveyTextAnswersOutput {
             answers: (0..answers).map(|index| format!("Answer {index}")).collect(),
+            position: 3,
+            prompt: "What should we improve?".to_string(),
             total,
         },
         event_id: Uuid::from_u128(1),
         event_survey_id: Uuid::from_u128(2),
-        limit: 10,
+        navigation_links: NavigationLinks::from_filters(&filters, total, &url, &url).unwrap(),
         question_id: Uuid::from_u128(3),
 
         offset,
+        ts_query: filters.ts_query,
+    }
+}
+
+/// Returns a respondent with only a username.
+fn sample_user() -> UserSummary {
+    UserSummary {
+        user_id: Uuid::from_u128(4),
+        username: "jane".to_string(),
+
+        company: None,
+        name: None,
+        photo_url: None,
+        provider: None,
+        title: None,
     }
 }

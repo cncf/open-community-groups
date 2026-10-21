@@ -19,8 +19,9 @@ use crate::{
     },
     validation::{
         MAX_EVENT_SURVEY_QUESTIONS, MAX_EVENT_SURVEYS, MAX_LEN_DESCRIPTION_SHORT,
-        MAX_LEN_ENTITY_NAME, MAX_SURVEY_PAGE_LIMIT, blank_naive_datetime_as_none,
+        MAX_LEN_ENTITY_NAME, MAX_LEN_M, MAX_SURVEY_PAGE_LIMIT, blank_naive_datetime_as_none,
         blank_string_as_none, blank_timestamp_seconds_as_none, trimmed_non_empty,
+        trimmed_non_empty_opt,
     },
 };
 
@@ -137,24 +138,63 @@ pub(crate) struct EventSurveyInput {
     pub revision: Option<i64>,
 }
 
-/// One response to an identified survey with its respondent.
+/// Response of one respondent to an identified survey, with its place among
+/// the respondents matching the search.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct EventSurveyResponse {
+pub(crate) struct EventSurveyResponseFull {
     /// Submitted answers.
     pub answers: QuestionnaireAnswers,
+    /// One-based position among the respondents matching the search.
+    pub position: usize,
+    /// Respondent details shown in the respondents table.
+    #[serde(flatten)]
+    pub summary: EventSurveyResponseSummary,
+    /// Number of respondents matching the search.
+    pub total: usize,
+
+    /// Next respondent matching the search, in response creation order.
+    #[serde(default)]
+    pub next_user_id: Option<Uuid>,
+    /// Previous respondent matching the search, in response creation order.
+    #[serde(default)]
+    pub previous_user_id: Option<Uuid>,
+}
+
+/// Search filters of the respondent navigation of a survey response.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct EventSurveyResponseNavigationFilters {
+    /// Text search query matching respondent names, usernames, companies and
+    /// titles.
+    #[serde(default, deserialize_with = "blank_string_as_none")]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
+}
+
+crate::impl_to_raw_query!(EventSurveyResponseNavigationFilters);
+
+/// Respondent row of the responses to an identified survey.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventSurveyResponseSummary {
+    /// Survey questions the response answers.
+    pub answered_questions_count: usize,
     /// First submission time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     /// Respondent.
     pub user: UserSummary,
 
+    /// Ticket title of the respondent's latest seat-holding purchase.
+    #[serde(default)]
+    pub ticket_title: Option<String>,
     /// Latest edit time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub updated_at: Option<DateTime<Utc>>,
 }
 
-/// Pagination filters of the responses to an identified survey.
+/// Search and pagination filters of the respondents of an identified survey.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct EventSurveyResponsesFilters {
@@ -166,16 +206,31 @@ pub(crate) struct EventSurveyResponsesFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Text search query matching respondent names, usernames, companies and
+    /// titles.
+    #[serde(default, deserialize_with = "blank_string_as_none")]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
 crate::impl_pagination_and_raw_query!(EventSurveyResponsesFilters, limit, offset);
 
-/// Page of the responses to an identified survey.
+impl EventSurveyResponsesFilters {
+    /// Returns the search the response modal keeps while navigating between
+    /// respondents.
+    pub(crate) fn navigation_filters(&self) -> EventSurveyResponseNavigationFilters {
+        EventSurveyResponseNavigationFilters {
+            ts_query: self.ts_query.clone(),
+        }
+    }
+}
+
+/// Page of the respondents of an identified survey.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventSurveyResponsesOutput {
-    /// Responses in creation order.
-    pub responses: Vec<EventSurveyResponse>,
-    /// Total number of responses.
+    /// Respondents matching the search, in response creation order.
+    pub responses: Vec<EventSurveyResponseSummary>,
+    /// Number of respondents matching the search.
     pub total: usize,
 }
 
@@ -313,7 +368,8 @@ pub(crate) struct EventSurveyTextAnswers {
     pub total: usize,
 }
 
-/// Pagination filters of the answers to a free-text survey question.
+/// Search and pagination filters of the answers to a free-text survey
+/// question.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct EventSurveyTextAnswersFilters {
@@ -325,6 +381,24 @@ pub(crate) struct EventSurveyTextAnswersFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Text search query matching the answer text.
+    #[serde(default, deserialize_with = "blank_string_as_none")]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
 crate::impl_pagination_and_raw_query!(EventSurveyTextAnswersFilters, limit, offset);
+
+/// Page of the answers to a free-text survey question matching the search,
+/// with the question they answer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventSurveyTextAnswersOutput {
+    /// Non-blank answers matching the search, in response creation order.
+    pub answers: Vec<String>,
+    /// One-based position of the question among all questions.
+    pub position: i64,
+    /// Question prompt.
+    pub prompt: String,
+    /// Number of non-blank answers matching the search.
+    pub total: usize,
+}

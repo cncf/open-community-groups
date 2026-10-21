@@ -14,8 +14,8 @@ use crate::{
     },
     types::{
         dashboard::group::surveys::{
-            EventSurveyInput, EventSurveyResponsesFilters, EventSurveyStatusAction,
-            EventSurveyStatusForm, EventSurveyTextAnswersFilters,
+            EventSurveyInput, EventSurveyResponseNavigationFilters, EventSurveyResponsesFilters,
+            EventSurveyStatusAction, EventSurveyStatusForm, EventSurveyTextAnswersFilters,
         },
         event_survey::{EventSurveyAudience, EventSurveyState},
         questionnaire::{
@@ -916,6 +916,90 @@ async fn db_contracts_get_event_survey_export_stays_consistent_while_responses_g
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_survey_response_deserializes() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+    let second_respondent_id = parse_uuid("00000000-0000-0000-0000-00000000f303");
+
+    // Load the second response among all respondents
+    let response = db
+        .get_event_survey_response(
+            subgroup_id(),
+            survey_event_id(),
+            survey_identified_id(),
+            second_respondent_id,
+            &EventSurveyResponseNavigationFilters::default(),
+        )
+        .await?
+        .context("the response should be returned")?;
+
+    // Check the answers, respondent details and navigation
+    assert_eq!(response.answers.answers.len(), 3);
+    assert_eq!(response.position, 2);
+    assert_eq!(response.summary.answered_questions_count, 2);
+    assert_eq!(
+        response.summary.created_at,
+        Utc.with_ymd_and_hms(2025, 4, 2, 11, 0, 0).unwrap()
+    );
+    assert_eq!(response.summary.user.user_id, second_respondent_id);
+    assert!(response.summary.ticket_title.is_none());
+    assert!(response.summary.updated_at.is_none());
+    assert_eq!(response.total, 3);
+    assert_eq!(response.next_user_id, Some(survey_former_attendee_id()));
+    assert_eq!(response.previous_user_id, Some(survey_respondent_id()));
+
+    // Load the same response among the respondents matching a search
+    let searched = db
+        .get_event_survey_response(
+            subgroup_id(),
+            survey_event_id(),
+            survey_identified_id(),
+            second_respondent_id,
+            &EventSurveyResponseNavigationFilters {
+                ts_query: Some("respondent".to_string()),
+            },
+        )
+        .await?
+        .context("the response should be returned")?;
+
+    // Check the navigation stays within the matching respondents
+    assert_eq!(searched.position, 2);
+    assert_eq!(searched.total, 2);
+    assert!(searched.next_user_id.is_none());
+    assert_eq!(searched.previous_user_id, Some(survey_respondent_id()));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_survey_response_rejects_anonymous_survey() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load a response of the anonymous survey
+    let err = db
+        .get_event_survey_response(
+            subgroup_id(),
+            survey_event_id(),
+            survey_anonymous_id(),
+            survey_respondent_id(),
+            &EventSurveyResponseNavigationFilters::default(),
+        )
+        .await
+        .expect_err("anonymous respondents should not be viewed");
+
+    // Check the respondents stay hidden
+    assert_eq!(
+        ocg01_message(&err).as_deref(),
+        Some("responses of anonymous surveys cannot be viewed")
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_survey_results_deserializes() -> Result<()> {
     // Setup the contract database
     let db = contract_tests_db()?;
@@ -989,60 +1073,89 @@ async fn db_contracts_get_event_survey_results_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_event_survey_responses_deserializes() -> Result<()> {
-    // Setup the contract database and the second page filters
+    // Setup the contract database
     let db = contract_tests_db()?;
-    let filters = EventSurveyResponsesFilters {
-        limit: Some(1),
-        offset: Some(1),
-    };
 
-    // List the second response of the identified survey
-    let page = db
-        .list_event_survey_responses(
-            subgroup_id(),
-            survey_event_id(),
-            survey_identified_id(),
-            &filters,
-        )
-        .await?
-        .context("responses should be returned")?;
-
-    // Check the page and its respondent
-    assert_eq!(page.responses.len(), 1);
-    assert_eq!(page.total, 3);
-    let response = &page.responses[0];
-    assert_eq!(response.answers.answers.len(), 3);
-    assert_eq!(
-        response.created_at,
-        Utc.with_ymd_and_hms(2025, 4, 2, 11, 0, 0).unwrap()
-    );
-    assert_eq!(
-        response.user.user_id,
-        parse_uuid("00000000-0000-0000-0000-00000000f303")
-    );
-    assert_eq!(response.user.username, "survey-second-respondent");
-    assert_eq!(
-        response.user.name.as_deref(),
-        Some("Contract Survey Second Respondent")
-    );
-    assert!(response.updated_at.is_none());
-
-    // Check the response of the former attendee stays listed last
-    let last_page = db
+    // List the first respondent of the identified survey
+    let first_page = db
         .list_event_survey_responses(
             subgroup_id(),
             survey_event_id(),
             survey_identified_id(),
             &EventSurveyResponsesFilters {
                 limit: Some(1),
-                offset: Some(2),
+                offset: Some(0),
+                ts_query: None,
             },
         )
         .await?
         .context("responses should be returned")?;
-    assert_eq!(last_page.responses.len(), 1);
+
+    // Check the respondent with a ticket and an edited response
+    assert_eq!(first_page.responses.len(), 1);
+    assert_eq!(first_page.total, 3);
+    let first = &first_page.responses[0];
+    assert_eq!(first.answered_questions_count, 3);
     assert_eq!(
-        last_page.responses[0].user.user_id,
+        first.created_at,
+        Utc.with_ymd_and_hms(2025, 4, 2, 9, 0, 0).unwrap()
+    );
+    assert_eq!(first.user.user_id, survey_respondent_id());
+    assert_eq!(first.user.company.as_deref(), Some("Contract Survey Corp"));
+    assert_eq!(first.user.title.as_deref(), Some("Platform Engineer"));
+    assert_eq!(first.ticket_title.as_deref(), Some("General Admission"));
+    assert_eq!(
+        first.updated_at,
+        Some(Utc.with_ymd_and_hms(2025, 4, 3, 9, 0, 0).unwrap())
+    );
+
+    // List the second respondent of the identified survey
+    let second_page = db
+        .list_event_survey_responses(
+            subgroup_id(),
+            survey_event_id(),
+            survey_identified_id(),
+            &EventSurveyResponsesFilters {
+                limit: Some(1),
+                offset: Some(1),
+                ts_query: None,
+            },
+        )
+        .await?
+        .context("responses should be returned")?;
+
+    // Check the respondent without a ticket whose blank text is unanswered
+    let second = &second_page.responses[0];
+    assert_eq!(second.answered_questions_count, 2);
+    assert_eq!(
+        second.user.user_id,
+        parse_uuid("00000000-0000-0000-0000-00000000f303")
+    );
+    assert_eq!(second.user.username, "survey-second-respondent");
+    assert_eq!(
+        second.user.name.as_deref(),
+        Some("Contract Survey Second Respondent")
+    );
+    assert!(second.ticket_title.is_none());
+    assert!(second.updated_at.is_none());
+
+    // Check the search narrows the respondents and their total
+    let search_page = db
+        .list_event_survey_responses(
+            subgroup_id(),
+            survey_event_id(),
+            survey_identified_id(),
+            &EventSurveyResponsesFilters {
+                limit: Some(10),
+                offset: Some(0),
+                ts_query: Some("former".to_string()),
+            },
+        )
+        .await?
+        .context("responses should be returned")?;
+    assert_eq!(search_page.total, 1);
+    assert_eq!(
+        search_page.responses[0].user.user_id,
         survey_former_attendee_id()
     );
 
@@ -1101,7 +1214,26 @@ async fn db_contracts_list_event_survey_text_answers_deserializes() -> Result<()
             "Shorter breaks".to_string()
         ]
     );
+    assert_eq!(page.position, 1);
+    assert_eq!(page.prompt, "What should we improve?");
     assert_eq!(page.total, 2);
+
+    // Check the search keeps the matching answers only
+    let search = db
+        .list_event_survey_text_answers(
+            subgroup_id(),
+            survey_event_id(),
+            survey_identified_id(),
+            survey_free_text_question_id(),
+            &EventSurveyTextAnswersFilters {
+                ts_query: Some("BREAKS".to_string()),
+                ..EventSurveyTextAnswersFilters::default()
+            },
+        )
+        .await?
+        .context("matching answers should be returned")?;
+    assert_eq!(search.answers, vec!["Shorter breaks".to_string()]);
+    assert_eq!(search.total, 1);
 
     // Check select questions have no text answers page
     let select = db

@@ -14,10 +14,7 @@ use crate::{
             common::{AuditLogFilters, AuditLogsOutput},
             user::{
                 check_in::UserCheckInEvent,
-                events::{
-                    UserEventSurvey, UserEventSurveysFilters, UserEventSurveysOutput,
-                    UserEventsFilters, UserEventsOutput,
-                },
+                events::{UserEventsFilters, UserEventsOutput},
                 groups::{UserGroupsFilters, UserGroupsOutput},
                 invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
                 notifications::{
@@ -29,6 +26,7 @@ use crate::{
                     SessionProposalsFilters, SessionProposalsOutput,
                 },
                 submissions::{CfsSubmissionsFilters, CfsSubmissionsOutput},
+                surveys::{UserEventSurvey, UserEventSurveysFilters, UserEventSurveysOutput},
             },
         },
         event::EventEnrollmentReconciliationOutcome,
@@ -65,6 +63,10 @@ pub(crate) trait DBDashboardUser {
         session_proposal: &SessionProposalInput,
     ) -> Result<Uuid>;
 
+    /// Counts the open event surveys the user can answer and has not answered
+    /// yet.
+    async fn count_user_unanswered_event_surveys(&self, user_id: Uuid) -> Result<usize>;
+
     /// Declines an active admission offer owned by the user.
     async fn decline_event_admission_offer(
         &self,
@@ -94,10 +96,12 @@ pub(crate) trait DBDashboardUser {
     /// Gets the current user's confirmed attendee credential for an event.
     async fn get_user_check_in_code(&self, event_id: Uuid, user_id: Uuid) -> Result<Option<Uuid>>;
 
-    /// Gets an open event survey the user can answer, with their response.
+    /// Gets an event survey the user reaches from the dashboard, with their
+    /// response.
     ///
-    /// Returns `None` unless the survey is reachable on the public site, open,
-    /// and the user is in its audience.
+    /// Returns open surveys to the users in their audience and closed surveys
+    /// to the users who answered them, and `None` for any other survey or for
+    /// surveys that are not reachable on the public site.
     async fn get_user_event_survey(
         &self,
         event_survey_id: Uuid,
@@ -149,7 +153,8 @@ pub(crate) trait DBDashboardUser {
     /// Lists active event admission offers owned by the user.
     async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>>;
 
-    /// Lists the open event surveys the user can answer.
+    /// Lists the open event surveys the user can answer, followed by the
+    /// closed surveys the user answered.
     async fn list_user_event_surveys(
         &self,
         user_id: Uuid,
@@ -354,6 +359,19 @@ where
             &[&actor_user_id, &Json(session_proposal)],
         )
         .await
+    }
+
+    /// [`DBDashboardUser::count_user_unanswered_event_surveys`].
+    #[instrument(skip(self), err)]
+    async fn count_user_unanswered_event_surveys(&self, user_id: Uuid) -> Result<usize> {
+        let count: i32 = self
+            .fetch_scalar_one(
+                "select count_user_unanswered_event_surveys($1::uuid)",
+                &[&user_id],
+            )
+            .await?;
+
+        Ok(usize::try_from(count)?)
     }
 
     /// [`DBDashboardUser::decline_event_admission_offer`].

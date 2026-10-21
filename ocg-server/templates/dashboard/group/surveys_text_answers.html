@@ -1,19 +1,97 @@
-{# Event survey free-text answers page -#}
-{% for answer in answers.answers -%}
-  <li class="whitespace-pre-line break-words rounded-lg bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-700 lg:text-sm lg:leading-6">{{ answer }}</li>
-{% endfor -%}
-{% if let Some(next_offset) = self.next_offset() -%}
-  <li>
-    <button type="button"
-            hx-get="/dashboard/group/events/{{ event_id }}/surveys/{{ event_survey_id }}/results/questions/{{ question_id }}/answers?offset={{ next_offset }}&limit={{ limit }}"
-            hx-target="closest li"
-            hx-swap="outerHTML"
-            data-show-more
-            hx-indicator="#dashboard-spinner"
-            hx-disabled-elt="this"
-            data-htmx-response
-            data-error-message="Something went wrong loading more answers. Please try again later."
-            class="btn-primary-outline btn-mini">Show more answers ({{ self.remaining() }} left)</button>
-  </li>
-{% endif -%}
-{# End event survey free-text answers page -#}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+{% import "macros/surveys.html" as surveys -%}
+{# Event survey free-text answers modal content -#}
+{# Rendered inside the #event-survey-text-answers-modal-content wrapper owned by the Summary view. -#}
+{% let answers_url = self.answers_url() -%}
+{# Modal header -#}
+{% let answers_subtitle -%}
+<p class="mt-1 text-xs text-stone-500">Question {{ answers.position }} · Free-text answers</p>
+{%- endlet %}
+{{ dashboard::modal_header(title_id = "event-survey-text-answers-modal-title",
+  title = answers.prompt,
+  close_attrs = "data-event-survey-text-answers-close",
+  subtitle = answers_subtitle,
+  align_items = "items-start") -}}
+{# End modal header -#}
+
+{# Answers search -#}
+<div class="border-b border-stone-200 p-4 md:px-6">
+  <div class="relative w-full sm:w-80">
+    <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+      <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+    </div>
+    <form id="event-survey-text-answers-search-form"
+          hx-get="{{ answers_url }}"
+          hx-trigger="change, submit"
+          hx-target="#event-survey-text-answers-modal-content"
+          hx-swap="innerHTML"
+          hx-sync="#event-survey-text-answers-modal:replace"
+          hx-indicator="#dashboard-spinner">
+      <label for="event-survey-text-answers-search" class="sr-only">Search answers</label>
+      <input id="event-survey-text-answers-search"
+             name="ts_query"
+             type="text"
+             value="{{ ts_query|assigned_or("") }}"
+             class="input-primary peer w-full ps-9"
+             placeholder="Search answers"
+             autocomplete="off"
+             autocorrect="off"
+             autocapitalize="off"
+             spellcheck="false">
+      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+        <button type="button"
+                hx-get="{{ answers_url }}"
+                hx-trigger="click"
+                hx-target="#event-survey-text-answers-modal-content"
+                hx-swap="innerHTML"
+                hx-sync="#event-survey-text-answers-modal:replace"
+                hx-indicator="#dashboard-spinner"
+                data-htmx-response
+                data-error-message="Something went wrong loading these answers. Please try again later."
+                class="mt-0.5 cursor-pointer"
+                aria-label="Clear answer search">
+          <div class="svg-icon size-5 bg-stone-400 icon-close hover:bg-stone-700"></div>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{# End answers search -#}
+
+{# Modal body -#}
+<div class="modal-body p-4 md:px-6"
+     data-event-survey-text-answers="{{ question_id }}">
+  {% if answers.answers.is_empty() -%}
+    <p class="py-8 text-center text-sm text-stone-500">
+      {% if ts_query.is_some() -%}
+        No answers found matching your search.
+      {% else -%}
+        No answers yet.
+      {% endif -%}
+    </p>
+  {% else -%}
+    <ul class="divide-y divide-stone-100" aria-label="Answers">
+      {% for answer in answers.answers -%}
+        <li class="whitespace-pre-line break-words py-3 text-sm leading-6 text-stone-700">{{ answer }}</li>
+      {% endfor -%}
+    </ul>
+  {% endif -%}
+</div>
+{# End modal body -#}
+
+{# Modal footer -#}
+{% call surveys::results_modal_footer(
+  modal_id = "event-survey-text-answers-modal",
+  nav_attribute = "data-event-survey-text-answers-nav",
+  close_attribute = "data-event-survey-text-answers-close",
+  error_message = "Something went wrong loading these answers. Please try again later.",
+  previous_url = self.previous_url(),
+  next_url = self.next_url()
+) -%}
+<p class="text-sm text-stone-600" data-event-survey-text-answers-range>
+  {{ pagination::range_display(offset = offset.unwrap_or(0) , count = answers.answers.len(), total = answers.total, label = "answer") }}
+</p>
+{% endcall -%}
+{# End modal footer -#}
+{# End event survey free-text answers modal content -#}

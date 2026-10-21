@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(588);
+select plan(595);
 
 -- ============================================================================
 -- VARIABLES
@@ -217,6 +217,7 @@ select has_function(
     array['uuid', 'uuid', 'uuid', 'text', 'text', 'text']::name[]
 );
 select has_function('count_group_open_inbox_conversations', array['uuid']::name[]);
+select has_function('count_user_unanswered_event_surveys', array['uuid']::name[]);
 select has_function('deactivate_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function(
     'decline_event_admission_offer',
@@ -275,6 +276,8 @@ select has_function(
 );
 select has_function('event_survey_effective_opens_at', array['event_survey', 'event']::name[]);
 select has_function('event_survey_eligible_users', array['uuid', 'text']::name[]);
+select has_function('event_survey_matching_respondents', array['uuid', 'jsonb']::name[]);
+select has_function('event_survey_response_details', array['uuid', 'uuid']::name[]);
 select has_function('event_survey_state', array['event_survey', 'event']::name[]);
 select has_function('event_survey_summary_json', array['event_survey', 'event']::name[]);
 select has_function('event_survey_text_answers', array['uuid']::name[]);
@@ -328,6 +331,10 @@ select has_function('get_event_survey', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function(
     'get_event_survey_export',
     array['uuid', 'uuid', 'uuid', 'integer', 'bigint']::name[]
+);
+select has_function(
+    'get_event_survey_response',
+    array['uuid', 'uuid', 'uuid', 'uuid', 'jsonb']::name[]
 );
 select has_function('get_event_survey_results', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_event_ticket_capacity', array['jsonb']::name[]);
@@ -575,6 +582,8 @@ select hasnt_function(
     'publish_event_series_events',
     array['uuid', 'uuid', 'uuid[]', 'text']::name[]
 );
+select has_function('questionnaire_answer_entries', array['jsonb']::name[]);
+select has_function('questionnaire_answer_has_value', array['jsonb']::name[]);
 select has_function('questionnaire_answer_selections', array['jsonb']::name[]);
 select has_function('questionnaire_answers_exist_for_event', array['uuid']::name[]);
 select has_function('questionnaire_option_breakdowns', array['jsonb', 'jsonb']::name[]);
@@ -780,6 +789,7 @@ select has_function('update_user_password', array['uuid', 'text']::name[]);
 select has_function('update_user_provider', array['uuid', 'jsonb']::name[]);
 select has_function('upsert_payment_provider_tax_location', array['text', 'text', 'text', 'text', 'jsonb']::name[]);
 select has_function('upsert_pending_registration_answers', array['uuid', 'uuid', 'jsonb', 'jsonb']::name[]);
+select has_function('user_dashboard_event_surveys', array['uuid']::name[]);
 select has_function('user_has_community_permission', array['uuid', 'uuid', 'text']::name[]);
 select has_function('user_has_group_permission', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('user_is_group_team_member', array['uuid', 'uuid']::name[]);
