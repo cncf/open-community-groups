@@ -251,7 +251,7 @@ describe("dashboard user events list template", () => {
 
     // Verify the closed dialog, its content target and the requested survey.
     expect(template).to.include('<div id="user-event-survey-modal" data-user-event-survey-modal');
-    expect(template).to.include("{% if survey.is_some() -%}data-open-on-load{% endif -%}");
+    expect(template).to.include("{% if survey.is_some() %}data-open-on-load{% endif %}");
     expect(template).to.include('aria-labelledby="user-event-survey-title"');
     expect(template).to.include('<div id="user-event-survey-modal-content" class="modal-card rounded-lg">');
     expect(template).to.include('{% include "dashboard/user/events_survey.html" -%}');

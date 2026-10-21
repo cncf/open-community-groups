@@ -58,7 +58,12 @@ test.describe("user dashboard event surveys", () => {
       );
       await expect(member1Page.locator(".swal2-popup")).toContainText("Survey answers saved.");
       await expect(modal).toBeHidden();
-      await expect(member1Page).toHaveURL(/\/dashboard\/user\?tab=events$/);
+      await expect(member1Page).toHaveURL(
+        (url) =>
+          url.pathname === "/dashboard/user" &&
+          url.searchParams.get("tab") === "events" &&
+          !url.searchParams.has("event_survey_id"),
+      );
       expect(readSurveyResponseAnswers({ surveyId: survey.id, userId: TEST_USER_IDS.member1 })).toEqual({
         answers: [
           { question_id: survey.questionIds.again, value: survey.optionIds.yes },
