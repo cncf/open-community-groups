@@ -17,29 +17,28 @@
       {% for response in responses.responses -%}
         <li class="rounded-lg border border-stone-200 bg-white p-5"
             data-event-survey-response="{{ response.user.user_id }}">
-          <div class="flex flex-col gap-1 border-b border-stone-100 pb-4 md:flex-row md:items-start md:justify-between md:gap-4">
-            <div class="min-w-0">
-              <div class="truncate font-medium text-stone-900">
-                {{ response.user.name.as_deref().unwrap_or(response.user.username.as_str()) }}
+          <div class="border-b border-stone-100 pb-4">
+            <div class="truncate font-medium text-stone-900">
+              {{ response.user.name.as_deref().unwrap_or(response.user.username.as_str()) }}
+            </div>
+            {% if response.user.title.is_some() || response.user.company.is_some() -%}
+              <div class="break-words text-xs text-stone-500">
+                {% if let Some(title) = response.user.title %}{{ title }}{% endif %}
+                {% if response.user.title.is_some() && response.user.company.is_some() %}·{% endif %}
+                {% if let Some(company) = response.user.company %}{{ company }}{% endif %}
               </div>
-              {% if response.user.title.is_some() || response.user.company.is_some() -%}
-                <div class="break-words text-xs text-stone-500">
-                  {% if let Some(title) = response.user.title %}{{ title }}{% endif %}
-                  {% if response.user.title.is_some() && response.user.company.is_some() %}·{% endif %}
-                  {% if let Some(company) = response.user.company %}{{ company }}{% endif %}
-                </div>
-              {% endif -%}
-            </div>
-            <div class="flex flex-col text-xs text-stone-500 md:shrink-0 md:items-end">
-              <span>Submitted {{ crate::templates::dashboard::group::surveys::format_date(*response.created_at, *event.timezone) }}</span>
-              {% if let Some(updated_at) = response.updated_at -%}
-                <span>Edited {{ crate::templates::dashboard::group::surveys::format_date(**updated_at, *event.timezone) }}</span>
-              {% endif -%}
-            </div>
+            {% endif -%}
           </div>
           <div class="mt-4">
             {{ question_answers::review_list(questions = survey.questions,
               answers = Some(response.answers)) -}}
+          </div>
+          <div class="mt-4 flex flex-wrap gap-x-2 gap-y-1 border-t border-stone-100 pt-4 text-xs text-stone-500">
+            <span>Submitted {{ crate::templates::dashboard::group::surveys::format_date(*response.created_at, *event.timezone) }}</span>
+            {% if let Some(updated_at) = response.updated_at -%}
+              <span aria-hidden="true">·</span>
+              <span>Edited {{ crate::templates::dashboard::group::surveys::format_date(**updated_at, *event.timezone) }}</span>
+            {% endif -%}
           </div>
         </li>
       {% endfor -%}

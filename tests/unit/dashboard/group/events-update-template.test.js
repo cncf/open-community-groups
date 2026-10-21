@@ -316,7 +316,7 @@ describe("dashboard group event update template", () => {
       '{% if show_waitlist_tab -%} {# Waitlist Tab -#} <div data-content="waitlist" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
     );
     expect(template).to.include(
-      'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0"',
+      'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0 group-has-[[data-content=surveys]:not(.hidden)_:is([data-event-survey-form],[data-event-survey-results],[data-event-survey-responses])]/event-page:hidden"',
     );
   });
 
