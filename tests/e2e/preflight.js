@@ -1,6 +1,7 @@
 import { queryE2eDatabase } from "./database.js";
+import { getE2eStacks } from "./stacks.js";
 
-// Global setup that aborts the run unless the application server and the psql target are the
+// Global setup that aborts the run unless each application server and its psql target are the
 // same database. `/health-check` only proves readiness; the identity check compares a
 // per-reset marker written by `just e2e-db-mark` through an uncached public group page.
 
@@ -14,22 +15,36 @@ const MARKER_PATTERN = /E2E seed run [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 
 /**
  * Verifies server readiness and cross-boundary database identity before any test runs.
- * @returns {Promise<void>} Resolves when both checks pass; throws with diagnostics otherwise.
+ * @returns {Promise<void>} Resolves when every stack passes; throws with diagnostics otherwise.
  */
 const preflight = async () => {
-  await waitForServerReadiness();
+  const stacks = getE2eStacks();
+  const targets = stacks.length > 0 ? stacks : [{ baseUrl: BASE_URL, dbName: process.env.OCG_E2E_DB_NAME }];
+
+  for (const target of targets) {
+    await checkStack(target);
+  }
+};
+
+/**
+ * Verifies that one server is ready and renders the marker of the database psql reads.
+ * @param {{baseUrl: string, dbName: string}} target - Server base URL and its database name.
+ * @returns {Promise<void>} Resolves when both checks pass; throws with diagnostics otherwise.
+ */
+const checkStack = async ({ baseUrl, dbName }) => {
+  await waitForServerReadiness(baseUrl);
 
   // Compare the marker as rendered by the application with the marker psql sees.
-  const renderedMarker = await readRenderedMarker();
-  const databaseMarker = readDatabaseMarker();
+  const renderedMarker = await readRenderedMarker(baseUrl);
+  const databaseMarker = readDatabaseMarker(dbName);
 
   if (!renderedMarker || !databaseMarker || renderedMarker !== databaseMarker) {
     throw new Error(
       [
         "E2E preflight failed: the server and psql do not target the same seeded database.",
-        `  server (${BASE_URL}${MARKER_GROUP_PATH}): ${renderedMarker ?? "<marker missing>"}`,
-        `  psql (${process.env.OCG_E2E_DB_NAME}): ${databaseMarker ?? "<marker missing>"}`,
-        "Run `just e2e-db-reset` and start the server with `just e2e-server`.",
+        `  server (${baseUrl}${MARKER_GROUP_PATH}): ${renderedMarker ?? "<marker missing>"}`,
+        `  psql (${dbName}): ${databaseMarker ?? "<marker missing>"}`,
+        "Run `just e2e-db-reset` and start the server with `just e2e-server`, or rerun `just e2e-tests-parallel`.",
       ].join("\n"),
     );
   }
@@ -37,11 +52,13 @@ const preflight = async () => {
 
 /**
  * Reads the marker stored in the External Payments Lab group description via psql.
+ * @param {string} dbName - E2E database to read.
  * @returns {string|null} Marker text or null when the description is not a marker.
  */
-const readDatabaseMarker = () => {
+const readDatabaseMarker = (dbName) => {
   const description = queryE2eDatabase(
     `select description from "group" where group_id = '${MARKER_GROUP_ID}'`,
+    dbName,
   );
 
   return description.match(MARKER_PATTERN)?.[0] ?? null;
@@ -49,10 +66,11 @@ const readDatabaseMarker = () => {
 
 /**
  * Reads the marker from the public group page rendered by the application server.
+ * @param {string} baseUrl - Server base URL.
  * @returns {Promise<string|null>} Marker text or null when the page does not render one.
  */
-const readRenderedMarker = async () => {
-  const response = await fetch(new URL(MARKER_GROUP_PATH, BASE_URL));
+const readRenderedMarker = async (baseUrl) => {
+  const response = await fetch(new URL(MARKER_GROUP_PATH, baseUrl));
 
   if (!response.ok) {
     throw new Error(`E2E preflight failed: GET ${MARKER_GROUP_PATH} returned ${response.status}`);
@@ -65,14 +83,15 @@ const readRenderedMarker = async () => {
 
 /**
  * Polls the readiness endpoint until the server answers, tolerating startup delays.
+ * @param {string} baseUrl - Server base URL.
  * @returns {Promise<void>} Resolves once `/health-check` returns 200.
  */
-const waitForServerReadiness = async () => {
+const waitForServerReadiness = async (baseUrl) => {
   let lastError;
 
   for (let attempt = 1; attempt <= HEALTH_CHECK_ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch(new URL("/health-check", BASE_URL));
+      const response = await fetch(new URL("/health-check", baseUrl));
 
       if (response.ok) {
         return;
@@ -88,7 +107,7 @@ const waitForServerReadiness = async () => {
     });
   }
 
-  throw new Error(`E2E preflight failed: server at ${BASE_URL} is not ready`, { cause: lastError });
+  throw new Error(`E2E preflight failed: server at ${baseUrl} is not ready`, { cause: lastError });
 };
 
 export default preflight;

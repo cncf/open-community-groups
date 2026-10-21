@@ -22,6 +22,9 @@
 #     OCG_E2E_DB_USER             - E2E database user (default: OCG_DB_USER)
 #     OCG_E2E_BASE_URL            - E2E server base URL (default: http://127.0.0.1:9001)
 #
+#   E2E parallel runs (`just e2e-tests-parallel`):
+#     OCG_E2E_PARALLEL_WORKERS    - Number of workers, each with its own database and server (default: 4)
+#
 # Please don't forget to set up the tern config files (tern.conf, tern-tests.conf, and
 # tern-tests-contract.conf) in the config directory (OCG_CONFIG). Make sure the database
 # connection settings match the environment variables set here. The e2e suite uses the
@@ -323,6 +326,11 @@ e2e-server-env command *args:
 # Run the Playwright e2e test suite (extra arguments are forwarded to Playwright).
 e2e-tests *args:
     cd tests/e2e && PATH="{{ pg_bin }}:$PATH" npx playwright test --config playwright.config.js {{ args }}
+
+# Run the chromium e2e projects with OCG_E2E_PARALLEL_WORKERS isolated workers (extra arguments are forwarded to Playwright).
+[positional-arguments]
+e2e-tests-parallel *args: e2e-db-guard
+    PATH="{{ pg_bin }}:$PATH" "{{ source_dir }}/tests/e2e/scripts/parallel.sh" "$@"
 
 # Run a single Playwright spec file (path relative to tests/e2e).
 e2e-tests-file spec *args:

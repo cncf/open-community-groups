@@ -28,6 +28,26 @@ just e2e-tests
 
 Seeded `e2e-*` users log in with the password `Password123!`.
 
+### Parallel Runs
+
+`just e2e-tests` uses one worker because tests share the seeded database. To
+run the chromium projects faster, give each worker a stack of its own:
+
+```sh
+just e2e-tests-parallel
+OCG_E2E_PARALLEL_WORKERS=6 just e2e-tests-parallel --grep-invert @visual
+```
+
+The recipe runs `scripts/parallel.sh`, which builds the server, then migrates
+and seeds a template database (`ocg_tests_parallel_e2e` by default) once and
+clones it per worker (`ocg_tests_parallel_N_e2e`). It starts one server per
+worker on ports `9101` and up and runs Playwright with one worker per stack.
+It does not touch the `just e2e-server` database or port. `stacks.js` binds
+each worker to its stack through `OCG_E2E_STACKS`, and the preflight checks
+every stack. Reports and artifacts go to the usual folders, and server logs to
+`$TMPDIR/ocg-e2e-parallel/`. Firefox and WebKit smoke projects run in CI
+only.
+
 Other useful commands:
 
 ```sh
