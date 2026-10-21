@@ -4,7 +4,7 @@
 
 {# Event survey individual responses -#}
 <div class="max-w-5xl space-y-8 2xl:max-w-6xl" data-event-survey-responses>
-  {{ surveys::results_header(event_id = event.event_id, survey = survey.summary, view = "individual") -}}
+  {{ surveys::results_header(event_id = event.event_id, survey = survey.summary, timezone = event.timezone, view = "individual") -}}
 
   {% if responses.responses.is_empty() -%}
     <p class="text-sm text-stone-500">This survey does not have any responses yet.</p>

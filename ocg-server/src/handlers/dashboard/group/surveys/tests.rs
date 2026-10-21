@@ -640,6 +640,7 @@ async fn test_results_page_success() {
     let question_id = Uuid::new_v4();
     let mut survey = sample_event_survey_summary(event_survey_id, EventSurveyState::Open);
     survey.eligible_respondents_count = 2;
+    survey.effective_opens_at = Some(Utc.with_ymd_and_hms(2099, 5, 10, 12, 0, 0).unwrap());
     survey.responses_count = 2;
     let results = EventSurveyResults {
         questions: vec![EventSurveyResultsQuestion {
@@ -692,6 +693,10 @@ async fn test_results_page_success() {
     )));
     assert!(html.contains("data-event-survey-few-responses-notice"));
     assert!(html.contains("Anonymous surveys only show aggregated results."));
+
+    // Check the header facts of the open survey
+    assert!(html.contains("May 10, 2099</time>"));
+    assert!(html.contains("1 question</span>"));
 }
 
 #[tokio::test]

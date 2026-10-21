@@ -40,14 +40,17 @@ test.describe("group dashboard event surveys tab", () => {
     // Verify each row offers the status action of its state in its actions menu.
     await openSurveyActions(content, surveys.draft.title);
     await expect(content.getByRole("button", { name: `Mark ready: ${surveys.draft.title}` })).toBeVisible();
+    await closeSurveyActions(content, surveys.draft.title);
     await openSurveyActions(content, surveys.scheduled.title);
     await expect(
       content.getByRole("button", { name: `Back to draft: ${surveys.scheduled.title}` }),
     ).toBeVisible();
+    await closeSurveyActions(content, surveys.scheduled.title);
     await openSurveyActions(content, surveys.openIdentified.title);
     await expect(
       content.getByRole("button", { name: `Close: ${surveys.openIdentified.title}` }),
     ).toBeVisible();
+    await closeSurveyActions(content, surveys.openIdentified.title);
     await openSurveyActions(content, surveys.closed.title);
     await expect(content.getByRole("button", { name: `Reopen: ${surveys.closed.title}` })).toBeEnabled();
   });
@@ -399,6 +402,13 @@ const addSurveyQuestion = async (page, question) => {
   await dialog.getByRole("button", { name: "Add question" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(editor.getByText(question.prompt, { exact: true })).toBeVisible();
+};
+
+/** Closes the open actions menu of a survey row. */
+const closeSurveyActions = async (content, title) => {
+  const trigger = getSurveyRow(content, title).getByLabel(`Open survey actions for ${title}`);
+  await content.page().keyboard.press("Escape");
+  await expect(trigger.locator("..")).not.toHaveAttribute("open", "");
 };
 
 /** Confirms or declines the open confirmation dialog after checking its message. */

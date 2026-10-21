@@ -3,7 +3,7 @@
 
 {# Results header -#}
 {# Used by the survey Summary and Individual views to switch between them. -#}
-{% macro results_header(event_id, survey, view) -%}
+{% macro results_header(event_id, survey, timezone, view) -%}
   {% let survey_url = "/dashboard/group/events/{}/surveys/{}"|format(event_id, survey.event_survey_id) -%}
   <div class="space-y-5">
     <button id="event-survey-results-back"
@@ -17,43 +17,73 @@
       <span>Back to surveys</span>
     </button>
 
-    <div class="flex flex-col gap-4 min-[1920px]:flex-row min-[1920px]:items-start min-[1920px]:justify-between">
-      <div class="flex min-w-0 items-center gap-3">
-        <h2 class="min-w-0 truncate text-lg leading-tight font-medium text-stone-900 lg:text-2xl"
-            title="{{ survey.title }}">{{ survey.title }}</h2>
-        <span class="shrink-0">{{ state_badge(state = survey.state) -}}</span>
+    {# Survey summary, styled like the inbox conversation header -#}
+    <header class="rounded-lg border border-stone-200 bg-white">
+      <div class="px-4 py-4 sm:px-6 sm:py-5">
+        <div class="text-sm font-semibold uppercase tracking-wide text-stone-500">Survey results</div>
+        <h2 class="mt-1 break-words text-xl font-semibold leading-tight text-stone-900 lg:text-2xl">
+          {{ survey.title }}
+        </h2>
       </div>
-      <div class="flex shrink-0 flex-wrap items-center gap-3">
-        <div class="inline-flex" role="group" aria-label="Results view">
-          <button id="event-survey-summary-view"
-                  type="button"
-                  hx-get="{{ survey_url }}/results"
-                  hx-target="#surveys-content"
-                  hx-swap="innerHTML show:window:top"
-                  hx-indicator="#dashboard-spinner"
-                  aria-pressed="{% if view == "summary" %}true{% else %}false{% endif %}"
-                  class="relative inline-flex w-[90px] items-center justify-center rounded-s-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 xl:w-[115px]">Summary</button>
-          <button id="event-survey-individual-view"
-                  type="button"
-                  hx-get="{{ survey_url }}/responses"
-                  hx-target="#surveys-content"
-                  hx-swap="innerHTML show:window:top"
-                  hx-indicator="#dashboard-spinner"
-                  aria-pressed="{% if view == "individual" %}true{% else %}false{% endif %}"
-                  class="relative -ms-px inline-flex w-[90px] items-center justify-center rounded-e-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white xl:w-[115px]"
-                  {% if survey.anonymous -%}
-                    disabled title="Anonymous surveys only show aggregated results."
-                  {% endif -%}>Individual</button>
-        </div>
+      <div class="flex min-h-12.5 flex-wrap items-center gap-x-6 gap-y-2 border-t border-stone-200 px-4 py-3 text-xs text-stone-600 sm:px-6"
+           data-event-survey-facts>
+        {{ state_badge(state = survey.state) -}}
+        {% if survey.state == crate::types::event_survey::EventSurveyState::Open || survey.state == crate::types::event_survey::EventSurveyState::Closed -%}
+          {% if let Some(opens_at) = survey.effective_opens_at -%}
+            {% let survey_timezone = timezone.clone() -%}
+            <span class="flex items-center gap-1.5">
+              <span class="svg-icon size-3.5 shrink-0 icon-calendar bg-stone-500"
+                    aria-hidden="true"></span>
+              <span>Opened <time datetime="{{ opens_at.to_rfc3339() }}">{{ opens_at.with_timezone(survey_timezone).format("%b %-e, %Y") }}</time></span>
+            </span>
+          {% endif -%}
+        {% endif -%}
+        <span class="flex items-center gap-1.5">
+          <span class="svg-icon size-3.5 shrink-0 icon-list bg-stone-500"
+                aria-hidden="true"></span>
+          <span>{{ survey.questions_count }} question{{ survey.questions_count|pluralize }}</span>
+        </span>
         <a href="{{ survey_url }}/responses.csv"
            download
            hx-boost="false"
-           class="btn-primary-outline btn-mini inline-flex items-center gap-2">
+           class="btn-primary-outline btn-mini ms-auto inline-flex items-center gap-2">
           <div class="svg-icon size-4 icon-csv bg-current" aria-hidden="true"></div>
           <span>Download CSV</span>
         </a>
       </div>
+    </header>
+    {# End survey summary -#}
+
+    {# Results view -#}
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div class="inline-flex" role="group" aria-label="Results view">
+        <button id="event-survey-summary-view"
+                type="button"
+                hx-get="{{ survey_url }}/results"
+                hx-target="#surveys-content"
+                hx-swap="innerHTML show:window:top"
+                hx-indicator="#dashboard-spinner"
+                aria-pressed="{% if view == "summary" %}true{% else %}false{% endif %}"
+                class="relative inline-flex w-[90px] items-center justify-center rounded-s-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 xl:w-[115px]">Summary</button>
+        <button id="event-survey-individual-view"
+                type="button"
+                hx-get="{{ survey_url }}/responses"
+                hx-target="#surveys-content"
+                hx-swap="innerHTML show:window:top"
+                hx-indicator="#dashboard-spinner"
+                aria-pressed="{% if view == "individual" %}true{% else %}false{% endif %}"
+                class="relative -ms-px inline-flex w-[90px] items-center justify-center rounded-e-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white xl:w-[115px]"
+                {% if survey.anonymous -%}
+                  disabled aria-describedby="event-survey-individual-view-note"
+                {% endif -%}>Individual</button>
+      </div>
+      {% if survey.anonymous -%}
+        <p id="event-survey-individual-view-note" class="text-xs text-stone-500">
+          Anonymous surveys only show aggregated results.
+        </p>
+      {% endif -%}
     </div>
+    {# End results view -#}
 
     {% if crate::templates::dashboard::group::surveys::few_anonymous_responses(survey) -%}
       <div data-event-survey-few-responses-notice

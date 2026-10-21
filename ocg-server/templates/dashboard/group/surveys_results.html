@@ -4,7 +4,7 @@
 {# Event survey results -#}
 {% let survey = results.survey -%}
 <div class="max-w-5xl space-y-8 2xl:max-w-6xl" data-event-survey-results>
-  {{ surveys::results_header(event_id = event.event_id, survey = survey, view = "summary") -}}
+  {{ surveys::results_header(event_id = event.event_id, survey = survey, timezone = event.timezone, view = "summary") -}}
 
   {# Overview -#}
   <div class="grid grid-cols-1 gap-4 md:grid-cols-3"

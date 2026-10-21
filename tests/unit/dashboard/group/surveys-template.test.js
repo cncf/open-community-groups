@@ -16,7 +16,9 @@ describe("dashboard group event survey templates", () => {
 
     // Verify the row keeps two icon buttons and moves the other actions into a menu.
     expect(template).to.include('aria-label="Event surveys list"');
-    expect(template).to.include('<th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Responses</th>');
+    expect(template).to.include(
+      '<th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Responses</th>',
+    );
     expect(template).to.include('class="btn-tertiary p-2"');
     expect(template).to.include('<div class="svg-icon size-4 icon-charts" aria-hidden="true"></div>');
     expect(template).to.include('<div class="svg-icon size-4 icon-pencil" aria-hidden="true"></div>');
@@ -31,9 +33,7 @@ describe("dashboard group event survey templates", () => {
 
     // Verify the header links the docs and shows the survey count.
     expect(template).to.include('docs_href = "/docs#/guides/event-operations?id=surveys"');
-    expect(template).to.include(
-      "{{ surveys.len() }} of {{ crate::validation::MAX_EVENT_SURVEYS }} surveys",
-    );
+    expect(template).to.include("{{ surveys.len() }} of {{ crate::validation::MAX_EVENT_SURVEYS }} surveys");
 
     // Verify tab swaps scroll the page to its top.
     expect(template.match(/hx-swap="innerHTML show:window:top"/g)).to.have.length(4);
@@ -137,7 +137,7 @@ describe("dashboard group event survey templates", () => {
 
     // Verify select questions use the shared breakdown in labelled sections.
     expect(results).to.include(
-      'surveys::results_header(event_id = event.event_id, survey = survey, view = "summary")',
+      'surveys::results_header(event_id = event.event_id, survey = survey, timezone = event.timezone, view = "summary")',
     );
     expect(results).to.include('"event-survey-question-{}-options"|format(question.question_id)');
     expect(results).to.include('<section aria-labelledby="{{ options_id }}-prompt"');
@@ -168,11 +168,16 @@ describe("dashboard group event survey templates", () => {
     expect(macros).to.include('<div class="inline-flex" role="group" aria-label="Results view">');
     expect(macros).to.include('hx-get="{{ survey_url }}/results"');
     expect(macros).to.include('hx-get="{{ survey_url }}/responses"');
-    expect(macros).to.include('disabled title="Anonymous surveys only show aggregated results."');
+    expect(macros).to.include('disabled aria-describedby="event-survey-individual-view-note"');
+    expect(macros).to.include(
+      '<p id="event-survey-individual-view-note" class="text-xs text-stone-500"> Anonymous surveys only show aggregated results. </p>',
+    );
     expect(macros).to.include('id="event-survey-results-back"');
     expect(macros).to.include("few_anonymous_responses(survey)");
-    expect(macros).to.include('<h2 class="text-xl leading-tight font-medium text-stone-900 lg:text-2xl">{{ survey.title }}</h2>');
     expect(macros.match(/hx-swap="innerHTML show:window:top"/g)).to.have.length(3);
+    expect(responses).to.include(
+      'surveys::results_header(event_id = event.event_id, survey = survey.summary, timezone = event.timezone, view = "individual")',
+    );
     expect(responses).to.include('view = "individual"');
     expect(responses).to.include('hx_target = "#surveys-content"');
     expect(responses).to.include('hx_swap = "innerHTML show:window:top"');
