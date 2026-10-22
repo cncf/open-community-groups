@@ -15,6 +15,10 @@ import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js
 const DATA_KEY = "userSurveysReady";
 // Query parameter the survey email links use to open a survey.
 const REQUESTED_SURVEY_PARAM = "event_survey_id";
+// Button that opens a survey from its row in the surveys list.
+const SURVEY_OPEN_SELECTOR = "[data-user-event-survey-open]";
+// Hidden element that reloads the dashboard layout after answers are saved.
+const SURVEYS_REFRESH_SELECTOR = "[data-user-surveys-refresh]";
 // Survey answer form rendered inside the survey modal.
 const SURVEY_FORM_SELECTOR = "[data-user-event-survey-form]";
 // Container the survey modal content is loaded into.
@@ -27,6 +31,9 @@ const SURVEY_OPEN_ON_LOAD_SELECTOR = "[data-user-event-survey-modal][data-open-o
 const UNSAVED_SURVEY_ANSWERS_MESSAGE =
   "You have unsaved answers. If you close the survey, they will be lost.";
 
+// Id of the survey whose open button takes focus once the saved answers
+// reload the dashboard layout.
+let pendingFocusSurveyId = null;
 // Whether the confirmation to discard survey answers is showing.
 let surveyCloseConfirmationOpen = false;
 
@@ -66,19 +73,50 @@ const clearRequestedSurvey = () => {
 const closeSurveyModal = () => {
   const modal = getElementById(document, SURVEY_MODAL_ID);
   if (modal instanceof HTMLElement && !isElementHidden(modal)) {
-    toggleModalVisibility(modal.id);
+    toggleModalVisibility(modal);
   }
   clearRequestedSurvey();
 };
 
 /**
+ * Moves focus to the open button of the survey just answered once the saved
+ * answers reload the dashboard layout, as the reload replaces the button the
+ * closed modal returned focus to.
+ * @param {CustomEvent} event HTMX load event.
+ * @returns {void}
+ */
+const focusAnsweredSurvey = (event) => {
+  const loaded = event.target;
+  if (pendingFocusSurveyId === null || !(loaded instanceof Element)) {
+    return;
+  }
+  if (!loaded.matches(SURVEYS_REFRESH_SELECTOR) && !loaded.querySelector(SURVEYS_REFRESH_SELECTOR)) {
+    return;
+  }
+
+  const row = loaded.querySelector(`[data-user-event-survey="${CSS.escape(pendingFocusSurveyId)}"]`);
+  pendingFocusSurveyId = null;
+  const button = row?.querySelector(SURVEY_OPEN_SELECTOR);
+  if (button instanceof HTMLElement) {
+    button.focus();
+  }
+};
+
+/**
  * Reports the survey answers request, closing the modal once they are saved
- * and keeping it open to retry after errors.
+ * and keeping it open to retry after errors. A failed layout reload drops
+ * the focus pending for it.
  * @param {CustomEvent} event HTMX after-request event.
  * @returns {void}
  */
 const handleAfterRequest = (event) => {
   const target = event.target;
+  if (target instanceof Element && target.matches(SURVEYS_REFRESH_SELECTOR)) {
+    if (!event.detail?.successful) {
+      pendingFocusSurveyId = null;
+    }
+    return;
+  }
   if (!(target instanceof HTMLFormElement) || !target.matches(SURVEY_FORM_SELECTOR)) {
     return;
   }
@@ -89,6 +127,7 @@ const handleAfterRequest = (event) => {
     errorMessage: "Something went wrong saving your answers. Please try again later.",
   });
   if (ok) {
+    pendingFocusSurveyId = target.dataset.userEventSurveyForm || null;
     closeSurveyModal();
   }
 };
@@ -208,6 +247,7 @@ const initializeUserSurveys = () => {
   document.addEventListener("submit", handleSubmit, true);
   document.addEventListener("htmx:afterRequest", handleAfterRequest);
   document.addEventListener("htmx:afterSwap", handleAfterSwap);
+  document.addEventListener("htmx:load", focusAnsweredSurvey);
   document.addEventListener("keydown", handleKeydown);
 };
 

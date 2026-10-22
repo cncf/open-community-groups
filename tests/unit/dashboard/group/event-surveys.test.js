@@ -713,6 +713,29 @@ describe("event survey response modal", () => {
     expect(modal.classList.contains("hidden")).to.equal(true);
   });
 
+  it("keeps Tab and Escape working after a click on plain text moves focus to the body", () => {
+    // Render the Individual view, open the modal and move focus to the body
+    const { content, modal, row } = renderResponsesPage();
+    swapResponse(content, row);
+    document.activeElement?.blur();
+    expect(document.activeElement).to.equal(document.body);
+
+    // Press Tab on the body
+    const tab = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Tab" });
+    document.body.dispatchEvent(tab);
+
+    // Verify focus moves back into the modal
+    expect(tab.defaultPrevented).to.equal(true);
+    expect(modal.contains(document.activeElement)).to.equal(true);
+
+    // Move focus to the body again and press Escape
+    document.activeElement?.blur();
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+
+    // Verify the modal closes
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
   it("keeps focus on the navigation direction while moving between respondents", () => {
     // Render the Individual view and open the modal
     const { content, modal, row } = renderResponsesPage();

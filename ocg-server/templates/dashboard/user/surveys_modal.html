@@ -52,7 +52,7 @@
   {# End closed survey answers -#}
 {% else -%}
   {# Modal form -#}
-  <form data-user-event-survey-form
+  <form data-user-event-survey-form="{{ survey.event_survey_id }}"
         hx-put="/dashboard/user/surveys/{{ survey.event_survey_id }}/response"
         hx-swap="none"
         hx-indicator="#dashboard-spinner"

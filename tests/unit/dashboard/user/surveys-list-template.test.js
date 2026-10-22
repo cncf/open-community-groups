@@ -43,7 +43,7 @@ describe("dashboard user surveys list template", () => {
     // Verify the closed dialog, its content target and the requested survey.
     expect(template).to.include('<div id="user-event-survey-modal" data-user-event-survey-modal');
     expect(template).to.include("{% if survey.is_some() %}data-open-on-load{% endif %}");
-    expect(template).to.include('aria-labelledby="user-event-survey-title"');
+    expect(template).to.include('aria-labelledby="user-event-survey-title" aria-hidden="true"');
     expect(template).to.include('<div id="user-event-survey-modal-content" class="modal-card rounded-lg">');
     expect(template).to.include('{% include "dashboard/user/surveys_modal.html" -%}');
     expect(template).to.include("{{ dashboard::permission_warning(message = warning) -}}");
@@ -56,7 +56,7 @@ describe("dashboard user surveys list template", () => {
     // Verify the form submits the answers to the revision the user saw.
     expect(template).to.include('title_id = "user-event-survey-title"');
     expect(template).to.include('hx-put="/dashboard/user/surveys/{{ survey.event_survey_id }}/response"');
-    expect(template).to.include("data-user-event-survey-form");
+    expect(template).to.include('<form data-user-event-survey-form="{{ survey.event_survey_id }}"');
     expect(template).to.include('<input type="hidden" data-question-answers-input name="answers">');
     expect(template).to.include('<input type="hidden" name="revision" value="{{ survey.revision }}">');
     expect(template).to.include(

@@ -17,6 +17,9 @@ import { expectCurrentPaginationNavigation, navigateToPath, waitForActionRespons
 // Message shown when the survey an email links to isn't available.
 const UNAVAILABLE_SURVEY_WARNING = "This survey is closed or isn't available to you.";
 
+// Message shown before a survey with unsaved answers is closed.
+const UNSAVED_ANSWERS_MESSAGE = "You have unsaved answers. If you close the survey, they will be lost.";
+
 test.describe("user dashboard event surveys", () => {
   test("attendees answer an open survey and edit their answers", async ({ member1Page }) => {
     const survey = setupOpenSurvey();
@@ -132,15 +135,140 @@ test.describe("user dashboard event surveys", () => {
     }
   });
 
+  test("attendees select several options of a multi-select question", async ({ member1Page }) => {
+    const questionId = randomUUID();
+    const optionIds = { kubernetes: randomUUID(), observability: randomUUID(), security: randomUUID() };
+    const survey = setupOwnedEventSurvey({
+      eventId: TEST_EVENT_SURVEYS.event.id,
+      questions: [
+        {
+          id: questionId,
+          kind: "multi-select",
+          options: [
+            { id: optionIds.kubernetes, label: "Kubernetes" },
+            { id: optionIds.observability, label: "Observability" },
+            { id: optionIds.security, label: "Security" },
+          ],
+          prompt: "Which topics should we cover?",
+          required: true,
+        },
+      ],
+      status: "ready",
+      title: `E2E multi-select survey ${id8()}`,
+    });
+
+    try {
+      // Open the survey and select two topics.
+      await navigateToPath(member1Page, surveyLinkPath(survey.id));
+      const modal = member1Page.locator("#user-event-survey-modal");
+      const form = modal.locator("[data-user-event-survey-form]");
+      await expect(form).toBeVisible();
+      await form.getByLabel("Kubernetes").check();
+      await form.getByLabel("Security").check();
+
+      // Submit the answers and verify every selected option is stored.
+      await waitForActionResponse(
+        member1Page,
+        () => form.getByRole("button", { name: "Submit answers" }).click(),
+        { method: "PUT", status: 204, urlIncludes: `/dashboard/user/surveys/${survey.id}/response` },
+      );
+      await expect(member1Page.locator(".swal2-popup")).toContainText("Survey answers saved.");
+      expect(readSurveyResponseAnswers({ surveyId: survey.id, userId: TEST_USER_IDS.member1 })).toEqual({
+        answers: [{ question_id: questionId, value: [optionIds.kubernetes, optionIds.security] }],
+      });
+
+      // Reopen the survey and verify the saved selection is restored.
+      await navigateToPath(member1Page, surveyLinkPath(survey.id));
+      await expect(form.getByLabel("Kubernetes")).toBeChecked();
+      await expect(form.getByLabel("Observability")).not.toBeChecked();
+      await expect(form.getByLabel("Security")).toBeChecked();
+    } finally {
+      cleanupEventSurveys([survey.id]);
+    }
+  });
+
+  test("attendees confirm before closing a survey with unsaved answers", async ({ member1Page }) => {
+    const survey = setupOpenSurvey();
+
+    try {
+      // Open the survey and close it untouched from the overlay.
+      await navigateToPath(member1Page, surveyLinkPath(survey.id));
+      const modal = member1Page.locator("#user-event-survey-modal");
+      const overlay = modal.locator(".modal-overlay[data-user-event-survey-close]");
+      await expect(modal).toBeVisible();
+      await overlay.click({ position: { x: 10, y: 10 } });
+      await expect(modal).toBeHidden();
+      await expect(member1Page.locator(".swal2-popup")).toHaveCount(0);
+
+      // Reopen the survey, answer it and keep answering when Escape would discard the answers.
+      await navigateToPath(member1Page, surveyLinkPath(survey.id));
+      const form = modal.locator("[data-user-event-survey-form]");
+      await form.getByLabel("Yes").check();
+      await form.getByLabel("Any comments?").fill("Draft comment.");
+      await member1Page.keyboard.press("Escape");
+      const popup = member1Page.locator(".swal2-popup");
+      await expect(popup).toContainText(UNSAVED_ANSWERS_MESSAGE);
+      await popup.getByRole("button", { name: "Keep answering" }).click();
+      await expect(popup).toBeHidden();
+      await expect(modal).toBeVisible();
+      await expect(form.getByLabel("Yes")).toBeChecked();
+      await expect(form.getByLabel("Any comments?")).toHaveValue("Draft comment.");
+
+      // Discard the answers from the overlay and verify the survey closes unanswered.
+      await overlay.click({ position: { x: 10, y: 10 } });
+      await expect(popup).toContainText(UNSAVED_ANSWERS_MESSAGE);
+      await popup.getByRole("button", { name: "Discard answers" }).click();
+      await expect(modal).toBeHidden();
+      await expect(member1Page).toHaveURL(
+        (url) => url.searchParams.get("tab") === "surveys" && !url.searchParams.has("event_survey_id"),
+      );
+      expect(readSurveyResponseAnswers({ surveyId: survey.id, userId: TEST_USER_IDS.member1 })).toBeNull();
+    } finally {
+      cleanupEventSurveys([survey.id]);
+    }
+  });
+
+  test("email links to an answered closed survey show the answers read-only", async ({ member1Page }) => {
+    const survey = setupOwnedEventSurvey({
+      closedAtSql: "current_timestamp - interval '1 hour'",
+      eventId: TEST_EVENT_SURVEYS.event.id,
+      status: "ready",
+      title: `E2E closed answered survey ${id8()}`,
+    });
+    setupOwnedSurveyResponse({
+      answers: { answers: [{ question_id: survey.questionId, value: "Friendly hosts." }] },
+      surveyId: survey.id,
+      userId: TEST_USER_IDS.member1,
+    });
+
+    try {
+      // Follow the email link to the closed survey.
+      await navigateToPath(member1Page, surveyLinkPath(survey.id));
+
+      // Verify the saved answers are shown without a form to change them.
+      const modal = member1Page.locator("#user-event-survey-modal");
+      await expect(modal).toBeVisible();
+      await expect(modal.locator("[data-survey-closed-notice]")).toContainText(
+        "This survey is closed, so your answers can no longer be changed.",
+      );
+      await expect(modal).toContainText("Friendly hosts.");
+      await expect(modal.locator("[data-user-event-survey-form]")).toHaveCount(0);
+      await expect(member1Page.locator("#dashboard-content")).not.toContainText(UNAVAILABLE_SURVEY_WARNING);
+    } finally {
+      cleanupEventSurveys([survey.id]);
+    }
+  });
+
   test("email links to surveys that can't be answered show a warning", async ({
     member1Page,
     member2Page,
   }) => {
-    // Verify closed surveys the user did not answer, drafts and scheduled surveys do not open.
+    // Verify closed surveys the user did not answer, drafts, scheduled and missing surveys do not open.
     for (const surveyId of [
       TEST_EVENT_SURVEYS.surveys.closed.id,
       TEST_EVENT_SURVEYS.surveys.draft.id,
       TEST_EVENT_SURVEYS.surveys.scheduled.id,
+      randomUUID(),
     ]) {
       await navigateToPath(member1Page, surveyLinkPath(surveyId));
       await expect(member1Page.locator("#dashboard-content")).toContainText(UNAVAILABLE_SURVEY_WARNING);

@@ -4,7 +4,11 @@ import { initializeUserSurveyModal } from "/static/js/dashboard/user/surveys.js"
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { setLocationPath } from "/tests/unit/test-utils/dom.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { dispatchHtmxAfterRequest, dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
+import {
+  dispatchHtmxAfterRequest,
+  dispatchHtmxAfterSwap,
+  dispatchHtmxLoad,
+} from "/tests/unit/test-utils/htmx.js";
 
 /**
  * Renders the survey modal shell of the surveys list with an open survey form.
@@ -23,7 +27,7 @@ const renderSurveyModal = ({ openOnLoad = false } = {}) => {
          class="hidden">
       <div data-user-event-survey-close class="modal-overlay"></div>
       <div id="user-event-survey-modal-content">
-        <form data-user-event-survey-form>
+        <form data-user-event-survey-form="survey-1">
           <textarea id="survey-answer" data-question-answer>Great talks</textarea>
           <input type="hidden" data-question-answers-input name="answers">
           <button type="button" data-user-event-survey-close>Cancel</button>
@@ -62,6 +66,31 @@ const renderClosedSurveyModal = () => {
   `;
 
   return document.getElementById("user-event-survey-modal");
+};
+
+/**
+ * Appends the dashboard layout the surveys list reloads into after answers
+ * are saved, with the rows of two surveys.
+ * @returns {HTMLElement} Reloaded dashboard layout.
+ */
+const renderReloadedLayout = () => {
+  const layout = document.createElement("div");
+  layout.id = "dashboard-layout";
+  layout.innerHTML = `
+    <div hidden data-user-surveys-refresh></div>
+    <table>
+      <tbody>
+        <tr data-user-event-survey="survey-0">
+          <td><button id="survey-0-open" type="button" data-user-event-survey-open>Answer</button></td>
+        </tr>
+        <tr data-user-event-survey="survey-1">
+          <td><button id="survey-1-open" type="button" data-user-event-survey-open>Edit answers</button></td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+  document.body.append(layout);
+  return layout;
 };
 
 describe("dashboard user surveys", () => {
@@ -142,6 +171,38 @@ describe("dashboard user surveys", () => {
     // Verify the success alert and the closed modal.
     expect(env.current.swal.calls.at(-1)?.text).to.equal("Survey answers saved.");
     expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("returns focus to the answered survey once the saved answers reload the list", () => {
+    // Render an open survey modal and save the answers.
+    const { modal } = renderSurveyModal({ openOnLoad: true });
+    initializeUserSurveyModal(document);
+    dispatchHtmxAfterRequest(modal.querySelector("[data-user-event-survey-form]"), { status: 204 });
+
+    // Reload the dashboard layout with the surveys list.
+    const layout = renderReloadedLayout();
+    dispatchHtmxLoad(layout);
+
+    // Verify focus moves to the open button of the answered survey.
+    expect(document.activeElement?.id).to.equal("survey-1-open");
+  });
+
+  it("leaves focus alone when the list reload after saving fails", () => {
+    // Render an open survey modal, save the answers and fail the reload.
+    const { modal } = renderSurveyModal({ openOnLoad: true });
+    initializeUserSurveyModal(document);
+    dispatchHtmxAfterRequest(modal.querySelector("[data-user-event-survey-form]"), { status: 204 });
+    const refresh = document.createElement("div");
+    refresh.setAttribute("data-user-surveys-refresh", "");
+    document.body.append(refresh);
+    dispatchHtmxAfterRequest(refresh, { status: 500, successful: false });
+
+    // Load the surveys list later, as pagination does.
+    const layout = renderReloadedLayout();
+    dispatchHtmxLoad(layout);
+
+    // Verify focus does not jump to the survey.
+    expect(document.activeElement?.id).not.to.equal("survey-1-open");
   });
 
   it("closes the survey modal and forgets the requested survey", () => {
