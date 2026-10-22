@@ -278,6 +278,16 @@ export class UserSearchField extends LitWrapper {
   }
 
   /**
+   * Builds the default placeholder, mentioning names only for local searches.
+   * @returns {string} Placeholder text
+   * @private
+   */
+  _defaultPlaceholder() {
+    const fields = Array.isArray(this.localUsers) ? "name or username" : "username";
+    return this.label ? `Search ${this.label} by ${fields}` : `Search by ${fields}`;
+  }
+
+  /**
    * Performs the search request to the dashboard API and updates results.
    * Results of superseded or aborted requests are ignored.
    * @param {string} query - The search query to send to the backend
@@ -479,9 +489,7 @@ export class UserSearchField extends LitWrapper {
           class="input-primary peer ps-9 ${this.inputClass || ""} ${
             this.disabled ? "bg-stone-100 cursor-not-allowed" : ""
           }"
-          placeholder=${
-            this.placeholderText || (this.label ? `Search ${this.label} by username` : "Search by username")
-          }
+          placeholder=${this.placeholderText || this._defaultPlaceholder()}
           .value=${this._searchQuery}
           @input=${this._handleSearchInput}
           autocomplete="off"

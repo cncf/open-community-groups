@@ -1,7 +1,9 @@
 import { html } from "lit";
 import { repeat } from "lit/directives/repeat.js";
+import { confirmAction } from "/static/js/common/alerts.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
+  contributorDisplayName,
   renderContributorActions,
   renderContributorIdentity,
 } from "/static/js/common/users/contributor-row.js";
@@ -24,7 +26,7 @@ export class UserSearchSelector extends LitWrapper {
    * @property {number} maxUsers - Maximum number of users allowed (0 = unlimited)
    * @property {number} searchDelay - Debounce delay for search in milliseconds
    * @property {string} awardButtonId - Optional external bulk award button id
-   * @property {Array|null} availableUsers - Users that can be selected, searched locally (null searches every user)
+   * @property {Array|null} availableUsers - Group team members that can be selected, searched locally (null searches every user)
    * @property {boolean} _isModalOpen - Internal state for inline search visibility
    */
   static properties = {
@@ -130,6 +132,39 @@ export class UserSearchSelector extends LitWrapper {
     this._emitUsersChanged();
   }
 
+  /**
+   * Removes a selected user, confirming first when they could not be added back.
+   * @param {Object} user - The selected user to remove
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _requestRemoveUser(user) {
+    if (this.disabled) return;
+    if (this._isUnavailable(user)) {
+      const confirmed = await confirmAction({
+        message: `${contributorDisplayName(user)} is no longer on the group team, so they can't be added back once removed. Remove them anyway?`,
+        confirmText: "Remove",
+        cancelText: "Cancel",
+      });
+      if (!confirmed) return;
+    }
+    this._removeUser(user.username);
+  }
+
+  /**
+   * Checks whether a selected user is missing from the available users, such as
+   * a former group team member who stays listed until removed.
+   * @param {Object} user - Selected user
+   * @returns {boolean} True when the user cannot be selected again
+   * @private
+   */
+  _isUnavailable(user) {
+    return (
+      Array.isArray(this.availableUsers) &&
+      !this.availableUsers.some((availableUser) => availableUser?.username === user.username)
+    );
+  }
+
   /** Emits the current user selection for contributor coordination. */
   _emitUsersChanged() {
     this.dispatchEvent(
@@ -161,7 +196,7 @@ export class UserSearchSelector extends LitWrapper {
       <selected-user-pill
         .user=${user}
         remove-label="Remove user"
-        @remove=${() => this._removeUser(user.username)}
+        @remove=${() => this._requestRemoveUser(user)}
         ?disabled=${this.disabled}
       ></selected-user-pill>
     `;
@@ -170,20 +205,29 @@ export class UserSearchSelector extends LitWrapper {
   /** Renders the selected users as a simple editable table. */
   _renderUserTable() {
     const copy = buildTableCopy(this.label);
+    const hasActions = !this.disabled || Boolean(this.canAwardBadges && this.eventId);
     return html`
       <div class="mt-4 overflow-visible">
         <table class="w-full text-left text-sm text-stone-600" aria-label=${copy.ariaLabel}>
           <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
             <tr>
               <th scope="col" class="px-4 py-3">${copy.header}</th>
-              <th scope="col" class="w-[72px] px-4 py-3"><span class="sr-only">Actions</span></th>
+              ${
+                hasActions
+                  ? html`<th scope="col" class="w-[72px] px-4 py-3">
+                      <span class="sr-only">Actions</span>
+                    </th>`
+                  : ""
+              }
             </tr>
           </thead>
           <tbody>
             ${
               this.selectedUsers.length === 0
                 ? html`<tr class="border-b border-stone-200 bg-white">
-                    <td class="px-8 py-12 text-center text-stone-500" colspan="2">${copy.emptyState}</td>
+                    <td class="px-8 py-12 text-center text-stone-500" colspan=${hasActions ? 2 : 1}>
+                      ${copy.emptyState}
+                    </td>
                   </tr>`
                 : repeat(
                     this.selectedUsers,
@@ -192,17 +236,21 @@ export class UserSearchSelector extends LitWrapper {
                       return html`
                         <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
                           <td class="px-4 py-3">${renderContributorIdentity(user)}</td>
-                          <td class="px-4 py-3 text-right">
-                            ${renderContributorActions({
-                              actionLabel: copy.actionLabel,
-                              awardsDisabled: this.awardsDisabled,
-                              canAwardBadges: this.canAwardBadges,
-                              contributor: user,
-                              deleteDisabled: this.disabled,
-                              eventId: this.eventId,
-                              onDelete: () => this._removeUser(user.username),
-                            })}
-                          </td>
+                          ${
+                            hasActions
+                              ? html`<td class="px-4 py-3 text-right">
+                                  ${renderContributorActions({
+                                    actionLabel: copy.actionLabel,
+                                    awardsDisabled: this.awardsDisabled,
+                                    canAwardBadges: this.canAwardBadges,
+                                    contributor: user,
+                                    deleteDisabled: this.disabled,
+                                    eventId: this.eventId,
+                                    onDelete: () => this._requestRemoveUser(user),
+                                  })}
+                                </td>`
+                              : ""
+                          }
                         </tr>
                       `;
                     },
@@ -247,7 +295,7 @@ export class UserSearchSelector extends LitWrapper {
     return html`
       <div class="mb-3">
         <user-search-field
-          .excludeUsernames=${this.selectedUsers.map((u) => u.username)}
+          .disabledUserIds=${this.selectedUsers.map((u) => u.user_id).filter(Boolean)}
           .localUsers=${this.availableUsers}
           dashboard-type=${this.dashboardType}
           label=${this.label || "user"}
@@ -321,8 +369,8 @@ export class UserSearchSelector extends LitWrapper {
 
 /**
  * Builds table-mode copy from the singular role label, defaulting to hosts.
- * @param {string} label Singular role label, such as "host" or "organizer"
- * @returns {{actionLabel: string, ariaLabel: string, emptyState: string, header: string}} Table copy
+ * @param {string} label - Singular role label, such as "host" or "organizer"
+ * @returns {{ actionLabel: string, ariaLabel: string, emptyState: string, header: string }} Table copy
  */
 const buildTableCopy = (label) => {
   const role = (typeof label === "string" ? label.trim() : "") || "host";

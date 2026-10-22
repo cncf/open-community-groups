@@ -297,6 +297,19 @@ describe("user-search-field", () => {
     expect(element.textContent).to.contain('No organizer found for "ada"');
   });
 
+  it("mentions names in the default placeholder only for local searches", async () => {
+    // Render one API search field and one local search field.
+    const apiElement = await mountLitComponent("user-search-field", { label: "host" });
+    const localElement = await mountLitComponent("user-search-field", {
+      label: "organizer",
+      localUsers: [],
+    });
+
+    // Only the local search can match names.
+    expect(apiElement.querySelector("input").placeholder).to.equal("Search host by username");
+    expect(localElement.querySelector("input").placeholder).to.equal("Search organizer by name or username");
+  });
+
   it("shows a minimum length hint without searching one-character queries", async () => {
     // Render the user-search-field fixture.
     const element = await mountLitComponent("user-search-field", {

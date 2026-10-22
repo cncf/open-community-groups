@@ -10,6 +10,7 @@ import { cleanupGroupMute, setupGroupMute } from "../../data-graphs/notification
 import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
 import { TEST_EVENT_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../../seed.js";
 import { buildE2eUrl, navigateToPath, waitForActionResponse } from "../../utils.js";
+import { submitBadgeAward } from "./helpers.js";
 
 const BADGE_ISSUANCE_TIMEOUT_MS = 45_000;
 
@@ -206,34 +207,7 @@ const awardBadgeToMemberOne = async (page, badgeId) => {
   await expect(selectionBar).toBeVisible();
   await attendeeCheckbox.check();
   await expect(selectionBar).toContainText("1 attendee selected");
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.url().includes("/dashboard/group/badges/options") &&
-        response.ok(),
-    ),
-    selectionBar.getByRole("button", { name: "Continue" }).click(),
-  ]);
-
-  const awardDialog = page.getByRole("dialog", {
-    name: "Award badge",
-  });
-  await expect(awardDialog.getByRole("radiogroup", { name: "Badge" })).toBeVisible();
-  await awardDialog.locator(`input[value="${badgeId}"]`).check({
-    force: true,
-  });
-  await waitForActionResponse(
-    page,
-    () => awardDialog.getByRole("button", { name: "Award", exact: true }).click(),
-    {
-      method: "POST",
-      urlEndsWith: "/dashboard/group/badges/award",
-      status: 201,
-    },
-  );
-  await expect(awardDialog.getByRole("status")).toContainText("Award accepted");
-  await awardDialog.getByRole("button", { name: "Close", exact: true }).click();
+  await submitBadgeAward(page, () => selectionBar.getByRole("button", { name: "Continue" }).click(), badgeId);
 };
 
 /** Counts active user_badge rows for the supplied badge and user. */

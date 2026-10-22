@@ -281,7 +281,7 @@ test.describe("user dashboard my events view", () => {
       await expect(eventRow).toContainText("Organizer");
       await expect(eventRow.getByText("Attendee", { exact: true })).toHaveCount(0);
 
-      // Remove Member Two from the event organizers and save the event.
+      // Remove Member Two, who is not on the group team, and save the event.
       await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
       await organizerGroupPage.locator('button[data-section="contributors"]').click();
       const organizerRow = organizerGroupPage.locator("#event-organizers-selector tr", {
@@ -289,6 +289,10 @@ test.describe("user dashboard my events view", () => {
       });
       await organizerRow.locator('summary[aria-label="Open organizer actions for E2E Member Two"]').click();
       await organizerRow.getByRole("menuitem", { name: "Delete" }).click();
+      const confirmAlert = organizerGroupPage.locator(".swal2-popup");
+      await expect(confirmAlert).toContainText("E2E Member Two is no longer on the group team");
+      await confirmAlert.getByRole("button", { name: "Remove" }).click();
+      await expect(organizerRow).toHaveCount(0);
       const visibleSaveButton = organizerGroupPage.locator(
         "#pending-changes-alert:not(.hidden) #update-event-button",
       );

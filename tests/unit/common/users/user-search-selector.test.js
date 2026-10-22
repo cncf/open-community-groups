@@ -1,6 +1,8 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/users/user-search-selector.js";
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("user-search-selector", () => {
@@ -94,10 +96,63 @@ describe("user-search-selector", () => {
     const teamField = teamSelector.querySelector("user-search-field");
     expect(teamField.localUsers.map((user) => user.username)).to.deep.equal(["ada", "grace"]);
 
-    // Search the team and verify selected users are left out of the results.
+    // Search the team and verify selected users are listed but disabled.
     teamField._handleSearchInput({ target: { value: "a" } });
     await teamField.updateComplete;
-    expect(teamField._searchResults.map((user) => user.username)).to.deep.equal(["grace"]);
+    expect(teamField._searchResults.map((user) => user.username)).to.deep.equal(["ada", "grace"]);
+    const resultRows = [...teamField.querySelectorAll("[aria-disabled]")];
+    expect(resultRows.map((row) => row.getAttribute("aria-disabled"))).to.deep.equal(["true", "false"]);
+
+    // Clicking the disabled row does not add the user again.
+    resultRows[0].click();
+    await teamSelector.updateComplete;
+    expect(teamSelector.selectedUsers.map((user) => user.username)).to.deep.equal(["ada"]);
+  });
+
+  it("confirms before removing former team members", async () => {
+    // Render an organizer table with one current and one former team member.
+    const swal = mockSwal();
+    const element = await mountLitComponent("user-search-selector", {
+      availableUsers: [{ user_id: "7", username: "ada", name: "Ada Lovelace" }],
+      displayMode: "table",
+      label: "organizer",
+      selectedUsers: [
+        { user_id: "7", username: "ada", name: "Ada Lovelace" },
+        { user_id: "8", username: "grace", name: "Grace Hopper" },
+      ],
+    });
+    const deleteButton = (username) =>
+      [...element.querySelectorAll("tbody tr")]
+        .find((row) => row.textContent.includes(`@${username}`))
+        .querySelector(".icon-trash")
+        .closest("button");
+
+    try {
+      // Cancelling the confirmation keeps the former team member.
+      swal.setNextResult({ isConfirmed: false });
+      deleteButton("grace").click();
+      await waitForMicrotask();
+      expect(swal.calls).to.have.length(1);
+      expect(swal.calls[0].text).to.equal(
+        "Grace Hopper is no longer on the group team, so they can't be added back once removed. Remove them anyway?",
+      );
+      expect(element.selectedUsers.map((user) => user.username)).to.deep.equal(["ada", "grace"]);
+
+      // Confirming removes the former team member.
+      swal.setNextResult({ isConfirmed: true });
+      deleteButton("grace").click();
+      await waitForMicrotask();
+      expect(element.selectedUsers.map((user) => user.username)).to.deep.equal(["ada"]);
+
+      // Current team members are removed without confirmation.
+      await element.updateComplete;
+      deleteButton("ada").click();
+      await waitForMicrotask();
+      expect(swal.calls).to.have.length(2);
+      expect(element.selectedUsers).to.deep.equal([]);
+    } finally {
+      swal.restore();
+    }
   });
 
   it("adds and removes selected users while honoring maxUsers", async () => {

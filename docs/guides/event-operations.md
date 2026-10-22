@@ -305,7 +305,7 @@ Organizers are listed in the public event page's `Organizers` section:
   cannot be reordered.
 - Only accepted group team members can be added, and the organizer search lists only them. People
   who leave the team stay listed on existing events until an editor removes them, but cannot be
-  added again unless they rejoin.
+  added again unless they rejoin. The editor asks for confirmation before removing them.
 - An event created without an organizers list, such as a request that omits the organizers
   selector, lists the accepted group team.
 - Copying an event copies its organizers who are still on the group team. When none remain, the
