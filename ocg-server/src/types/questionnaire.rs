@@ -10,7 +10,9 @@ use serde::{Deserialize, Deserializer, Serialize, de::Error as DeError};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::validation::{MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME, trimmed_non_empty};
+use crate::validation::{
+    MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME, MAX_LEN_QUESTIONNAIRE_ANSWER, trimmed_non_empty,
+};
 
 /// One attendee answer keyed by question identifier.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,18 +85,30 @@ impl QuestionnaireAnswers {
     pub fn validate_payload(&self) -> garde::Result {
         let mut question_ids = HashSet::new();
         for answer in &self.answers {
+            // Reject several answers for the same question
             if !question_ids.insert(answer.question_id) {
                 return Err(garde::Error::new(
                     "questionnaire answers must include each question at most once",
                 ));
             }
 
-            if let QuestionnaireAnswerValue::Many(option_ids) = &answer.value {
-                let mut selected_option_ids = HashSet::new();
-                for option_id in option_ids {
-                    if !selected_option_ids.insert(option_id) {
+            match &answer.value {
+                // Reject repeated options in multi-select answers
+                QuestionnaireAnswerValue::Many(option_ids) => {
+                    let mut selected_option_ids = HashSet::new();
+                    for option_id in option_ids {
+                        if !selected_option_ids.insert(option_id) {
+                            return Err(garde::Error::new(
+                                "multi-select questionnaire answers cannot repeat options",
+                            ));
+                        }
+                    }
+                }
+                // Reject text values above the free-text answer limit
+                QuestionnaireAnswerValue::One(value) => {
+                    if value.chars().count() > MAX_LEN_QUESTIONNAIRE_ANSWER {
                         return Err(garde::Error::new(
-                            "multi-select questionnaire answers cannot repeat options",
+                            "free-text questionnaire answer is too long",
                         ));
                     }
                 }
@@ -114,6 +128,17 @@ pub struct QuestionnaireOption {
     /// Option label.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub label: String,
+}
+
+/// Selections of one questionnaire question option.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct QuestionnaireOptionCount {
+    /// Selections.
+    pub count: i64,
+    /// Option label.
+    pub label: String,
+    /// Option identifier.
+    pub option_id: Uuid,
 }
 
 /// One reusable questionnaire question definition.
@@ -255,6 +280,25 @@ impl QuestionnaireQuestion {
     }
 }
 
+/// Answers to one questionnaire select question.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct QuestionnaireQuestionBreakdown {
+    /// Question kind.
+    pub kind: QuestionnaireQuestionKind,
+    /// Selections per current option, in definition order.
+    pub options: Vec<QuestionnaireOptionCount>,
+    /// One-based position of the question among all questions.
+    pub position: i64,
+    /// Question prompt.
+    pub prompt: String,
+    /// Question identifier.
+    pub question_id: Uuid,
+    /// Respondents selecting at least one current option.
+    pub respondents: i64,
+    /// Selections of current options.
+    pub selections: i64,
+}
+
 /// Supported questionnaire question types.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, strum::Display)]
 #[serde(rename_all = "kebab-case")]
@@ -301,7 +345,7 @@ pub(crate) struct RequiredQuestionnaireAnswersForm {
 // Form helpers.
 
 /// Deserializes an optional JSON-encoded questionnaire answers form field.
-fn deserialize_optional_questionnaire_answers<'de, D>(
+pub(crate) fn deserialize_optional_questionnaire_answers<'de, D>(
     deserializer: D,
 ) -> Result<Option<QuestionnaireAnswers>, D::Error>
 where
@@ -317,7 +361,7 @@ where
 }
 
 /// Deserializes a required JSON-encoded questionnaire answers form field.
-fn deserialize_required_questionnaire_answers<'de, D>(
+pub(crate) fn deserialize_required_questionnaire_answers<'de, D>(
     deserializer: D,
 ) -> Result<QuestionnaireAnswers, D::Error>
 where
@@ -331,18 +375,8 @@ where
     parse_questionnaire_answers(&value).map_err(D::Error::custom)
 }
 
-/// Parses questionnaire answers and requires the top-level answers array.
-fn parse_questionnaire_answers(value: &str) -> Result<QuestionnaireAnswers, String> {
-    let payload: QuestionnaireAnswersFormPayload =
-        serde_json::from_str(value).map_err(|err| err.to_string())?;
-
-    Ok(QuestionnaireAnswers {
-        answers: payload.answers,
-    })
-}
-
 /// Validates an optional decoded questionnaire answers payload.
-fn validate_optional_questionnaire_answers(
+pub(crate) fn validate_optional_questionnaire_answers(
     value: &Option<QuestionnaireAnswers>,
     _ctx: &(),
 ) -> garde::Result {
@@ -354,13 +388,27 @@ fn validate_optional_questionnaire_answers(
 }
 
 /// Validates a decoded questionnaire answers payload.
-fn validate_questionnaire_answers(value: &QuestionnaireAnswers, _ctx: &()) -> garde::Result {
+pub(crate) fn validate_questionnaire_answers(
+    value: &QuestionnaireAnswers,
+    _ctx: &(),
+) -> garde::Result {
     value.validate_payload()
+}
+
+/// Parses questionnaire answers and requires the top-level answers array.
+fn parse_questionnaire_answers(value: &str) -> Result<QuestionnaireAnswers, String> {
+    let payload: QuestionnaireAnswersFormPayload =
+        serde_json::from_str(value).map_err(|err| err.to_string())?;
+
+    Ok(QuestionnaireAnswers {
+        answers: payload.answers,
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use garde::Validate;
+    use serde_json::{Value, json};
 
     use super::*;
 
@@ -390,6 +438,13 @@ mod tests {
     }
 
     #[test]
+    fn test_questionnaire_answers_payload_accepts_text_at_length_limit() {
+        let answers = sample_text_answers("é".repeat(MAX_LEN_QUESTIONNAIRE_ANSWER));
+
+        assert!(answers.validate_payload().is_ok());
+    }
+
+    #[test]
     fn test_questionnaire_answers_payload_rejects_duplicate_question_ids() {
         let question_id = Uuid::new_v4();
         let answers = QuestionnaireAnswers {
@@ -409,6 +464,16 @@ mod tests {
         };
 
         assert!(form.validate().is_err());
+    }
+
+    #[test]
+    fn test_questionnaire_answers_payload_rejects_text_above_length_limit() {
+        let answers = sample_text_answers("a".repeat(MAX_LEN_QUESTIONNAIRE_ANSWER + 1));
+
+        assert_eq!(
+            answers.validate_payload().unwrap_err().to_string(),
+            "free-text questionnaire answer is too long"
+        );
     }
 
     #[test]
@@ -460,6 +525,55 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_questionnaire_question_deserializes_valid_definition() {
+        let question: QuestionnaireQuestion =
+            serde_json::from_value(sample_question_json()).unwrap();
+
+        assert_eq!(question.kind, QuestionnaireQuestionKind::SingleSelect);
+        assert_eq!(question.options[0].label, "Option");
+    }
+
+    #[test]
+    fn test_questionnaire_question_rejects_missing_kind() {
+        let mut question = sample_question_json();
+        question.as_object_mut().unwrap().remove("kind");
+
+        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
+    }
+
+    #[test]
+    fn test_questionnaire_question_rejects_non_string_kind() {
+        let mut question = sample_question_json();
+        question["kind"] = json!(1);
+
+        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
+    }
+
+    #[test]
+    fn test_questionnaire_question_rejects_non_string_option_label() {
+        let mut question = sample_question_json();
+        question["options"][0]["label"] = json!(1);
+
+        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
+    }
+
+    #[test]
+    fn test_questionnaire_question_rejects_non_string_prompt() {
+        let mut question = sample_question_json();
+        question["prompt"] = json!(1);
+
+        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
+    }
+
+    #[test]
+    fn test_questionnaire_question_rejects_null_kind() {
+        let mut question = sample_question_json();
+        question["kind"] = Value::Null;
+
+        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
+    }
+
     // Helpers.
 
     fn sample_question(
@@ -480,6 +594,27 @@ mod tests {
                     label: "Option".to_string(),
                 })
                 .collect(),
+        }
+    }
+
+    /// Returns a valid single-select question definition as JSON.
+    fn sample_question_json() -> Value {
+        json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "kind": "single-select",
+            "options": [{"id": "00000000-0000-0000-0000-000000000002", "label": "Option"}],
+            "prompt": "Question?",
+            "required": true
+        })
+    }
+
+    /// Returns an answers payload with one text value.
+    fn sample_text_answers(value: String) -> QuestionnaireAnswers {
+        QuestionnaireAnswers {
+            answers: vec![QuestionnaireAnswer {
+                question_id: Uuid::new_v4(),
+                value: QuestionnaireAnswerValue::One(value),
+            }],
         }
     }
 }

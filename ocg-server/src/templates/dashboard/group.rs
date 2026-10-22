@@ -16,5 +16,6 @@ pub(crate) mod refunds;
 pub(crate) mod settings;
 pub(crate) mod sponsors;
 pub(crate) mod submissions;
+pub(crate) mod surveys;
 pub(crate) mod team;
 pub(crate) mod waitlist;

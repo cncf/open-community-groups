@@ -1,0 +1,45 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event Survey Opened Notification -#}
+{% block subject -%}
+  Share your feedback on {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ survey_title }} is open. Tell the organizers how {{ event.name }} went.
+{% endblock preheader -%}
+
+{% block content -%}
+  <div class="default mb-30" style="margin-bottom: 30px">
+    Thanks for joining <strong>{{ event.name }}</strong> from
+    <strong>{{ event.group_name }}</strong>. The organizers would like your
+    feedback in the <strong>{{ survey_title }}</strong> survey.
+    <br />
+    <br />
+    {% if anonymous -%}
+      This survey is anonymous: organizers see the answers without your name.
+    {% else -%}
+      Organizers will see your name next to your answers.
+    {% endif -%}
+    {% if let Some(closes_at) = closes_at -%}
+      <br />
+      <br />
+      You can answer, and edit your answers, until
+      <strong>{{ closes_at.with_timezone(event.timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>.
+    {% else -%}
+      <br />
+      <br />
+      You can edit your answers until the survey closes.
+    {% endif -%}
+  </div>
+
+  {{ email::button(link = link, text = "Answer survey", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email notification because you registered for
+  {{ event.name }}, an event from {{ event.group_name }} in the
+  {{ event.community_display_name }} community.
+{% endblock footer -%}
+{# End event survey opened notification -#}

@@ -60,42 +60,83 @@ async fn test_enqueue_worker_enqueue_due_notifications() {
     let mut db = MockDB::new();
     db.expect_enqueue_due_event_reminders()
         .times(1)
-        .withf(|base_url| base_url == "https://example.test")
+        .withf(|base_url| base_url == TEST_BASE_URL)
         .returning(|_| Ok(2));
-    let db: DynDB = Arc::new(db);
+    db.expect_enqueue_due_event_survey_notifications()
+        .times(1)
+        .returning(|| Ok(3));
 
-    // Setup worker and enqueue due notifications
-    let worker = EnqueueWorker {
-        base_url: "https://example.test".to_string(),
-        cancellation_token: CancellationToken::new(),
-        db,
-    };
-    let enqueued = worker.enqueue_due_notifications().await.unwrap();
+    // Enqueue due notifications
+    let enqueued = sample_enqueue_worker(db).enqueue_due_notifications().await.unwrap();
 
-    // Check result matches expectations
-    assert_eq!(enqueued, 2);
+    // Check both jobs are counted
+    assert_eq!(enqueued, 5);
 }
 
 #[tokio::test]
-async fn test_enqueue_worker_enqueue_due_notifications_error() {
+async fn test_enqueue_worker_enqueue_due_notifications_returns_first_error_when_both_jobs_fail() {
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_enqueue_due_event_reminders()
         .times(1)
-        .withf(|base_url| base_url == "https://example.test")
-        .returning(|_| Err(anyhow!("enqueue error")));
-    let db: DynDB = Arc::new(db);
+        .withf(|base_url| base_url == TEST_BASE_URL)
+        .returning(|_| Err(anyhow!("reminders error")));
+    db.expect_enqueue_due_event_survey_notifications()
+        .times(1)
+        .returning(|| Err(anyhow!("surveys error")));
 
-    // Setup worker and enqueue due notifications
-    let worker = EnqueueWorker {
-        base_url: "https://example.test".to_string(),
-        cancellation_token: CancellationToken::new(),
-        db,
-    };
-    let err = worker.enqueue_due_notifications().await.unwrap_err();
+    // Enqueue due notifications
+    let err = sample_enqueue_worker(db)
+        .enqueue_due_notifications()
+        .await
+        .unwrap_err();
 
-    // Check error matches expectations
-    assert!(err.to_string().contains("enqueue error"));
+    // Check the reminders error is returned
+    assert_eq!(err.to_string(), "reminders error");
+}
+
+#[tokio::test]
+async fn test_enqueue_worker_enqueue_due_notifications_runs_reminders_when_surveys_fail() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_enqueue_due_event_reminders()
+        .times(1)
+        .withf(|base_url| base_url == TEST_BASE_URL)
+        .returning(|_| Ok(2));
+    db.expect_enqueue_due_event_survey_notifications()
+        .times(1)
+        .returning(|| Err(anyhow!("surveys error")));
+
+    // Enqueue due notifications
+    let err = sample_enqueue_worker(db)
+        .enqueue_due_notifications()
+        .await
+        .unwrap_err();
+
+    // Check the surveys error is returned after the reminders job ran
+    assert_eq!(err.to_string(), "surveys error");
+}
+
+#[tokio::test]
+async fn test_enqueue_worker_enqueue_due_notifications_runs_surveys_when_reminders_fail() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_enqueue_due_event_reminders()
+        .times(1)
+        .withf(|base_url| base_url == TEST_BASE_URL)
+        .returning(|_| Err(anyhow!("reminders error")));
+    db.expect_enqueue_due_event_survey_notifications()
+        .times(1)
+        .returning(|| Ok(3));
+
+    // Enqueue due notifications
+    let err = sample_enqueue_worker(db)
+        .enqueue_due_notifications()
+        .await
+        .unwrap_err();
+
+    // Check the reminders error is returned after the surveys job ran
+    assert_eq!(err.to_string(), "reminders error");
 }
 
 #[tokio::test]
@@ -1492,6 +1533,74 @@ fn test_delivery_worker_prepare_content_event_series_published_for_cohost_audien
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_survey_opened() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventSurveyOpened,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_survey_opened_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    let body = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert_eq!(
+        subject,
+        "[Notification Group] Share your feedback on Survey Event"
+    );
+    assert!(body.contains("feedback in the <strong>Session feedback</strong> survey"));
+    assert!(body.contains("This survey is anonymous"));
+    assert!(!body.contains("Organizers will see your name"));
+    assert!(body.contains("until <strong>Sep 11, 2030 at 06:00 CEST</strong>"));
+    assert!(body.contains("Answer survey"));
+    assert!(body.contains(
+        "https://example.test/dashboard/user?tab=surveys&#38;event_survey_id=55555555-5555-5555-5555-555555555555"
+    ));
+    assert!(body.contains(
+        "You received this email notification because you registered for Survey Event, an \
+         event from Notification Group in the Test Community community."
+    ));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_survey_opened_identified_without_optional_fields() {
+    // Setup an identified survey payload without a closing date
+    let mut template_data = sample_event_survey_opened_template_data();
+    template_data["anonymous"] = json!(false);
+    let fields = template_data
+        .as_object_mut()
+        .expect("event survey payload is an object");
+    fields.remove("closes_at");
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventSurveyOpened,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    let body = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert_eq!(
+        subject,
+        "[Notification Group] Share your feedback on Survey Event"
+    );
+    assert!(body.contains("Organizers will see your name next to your answers."));
+    assert!(!body.contains("This survey is anonymous"));
+    assert!(body.contains("You can edit your answers until the survey closes."));
+    assert!(!body.contains("CEST"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_event_ticket_request_approved() {
     // Setup notification
     let notification = Notification {
@@ -2424,6 +2533,15 @@ fn sample_email_verification_template_data() -> serde_json::Value {
     })
 }
 
+/// Create a sample enqueue worker with a mock database.
+fn sample_enqueue_worker(db: MockDB) -> EnqueueWorker {
+    EnqueueWorker {
+        base_url: TEST_BASE_URL.to_string(),
+        cancellation_token: CancellationToken::new(),
+        db: Arc::new(db),
+    }
+}
+
 /// Sample template payload for canceled event admission offer notifications.
 fn sample_event_admission_offer_canceled_template_data() -> serde_json::Value {
     json!({
@@ -2716,6 +2834,40 @@ fn sample_event_series_template_data() -> serde_json::Value {
         "theme": {
             "primary_color": "#000000"
         }
+    })
+}
+
+/// Sample template payload for opened event survey notifications, as stored
+/// literally by `enqueue_due_event_survey_notifications`.
+fn sample_event_survey_opened_template_data() -> serde_json::Value {
+    json!({
+        "anonymous": true,
+        "event": {
+            "canceled": false,
+            "community_display_name": "Test Community",
+            "community_name": "test-community",
+            "event_id": "11111111-1111-1111-1111-111111111111",
+            "group_category_name": "Community",
+            "group_name": "Notification Group",
+            "group_slug": "notification-group",
+            "kind": "in-person",
+            "logo_url": "https://example.com/logo.png",
+            "name": "Survey Event",
+            "published": true,
+            "slug": "survey-event",
+            "starts_at": 1_914_724_800,
+            "timezone": "Europe/Madrid",
+            "venue_name": "Conference Hall",
+            "waitlist_count": 0,
+            "waitlist_enabled": false
+        },
+        "link": "/dashboard/user?tab=surveys&event_survey_id=55555555-5555-5555-5555-555555555555",
+        "survey_title": "Session feedback",
+        "theme": {
+            "primary_color": "#000000"
+        },
+
+        "closes_at": 1_915_329_600
     })
 }
 

@@ -72,6 +72,23 @@ async fn test_page_hides_check_ins_before_the_event_ends() {
 }
 
 #[tokio::test]
+async fn test_page_hides_surveys_without_ready_surveys() {
+    // Setup statistics of an event whose surveys are all drafts
+    let mut stats = sample_event_analytics();
+    stats.surveys.surveys = vec![];
+    stats.surveys.total_eligible_count = 0;
+    stats.surveys.total_eligible_respondents_count = 0;
+
+    // Run the request
+    let (response_status, body) = request_page(stats).await;
+
+    // Check the surveys section is omitted
+    assert_eq!(response_status, StatusCode::OK);
+    assert!(!body.contains("data-event-analytics-surveys"));
+    assert!(!body.contains("Overall response rate"));
+}
+
+#[tokio::test]
 async fn test_page_hides_tickets_for_free_events() {
     // Setup statistics of a free event
     let mut stats = sample_event_analytics();
@@ -268,7 +285,7 @@ async fn test_page_success() {
 
     // Check registration question answers render as option bars
     assert!(body.contains("data-event-analytics-question"));
-    assert!(body.contains("id=\"event-question-0-options\""));
+    assert!(body.contains("id=\"event-analytics-question-0-options\""));
     assert!(body.contains("3 · 100%"));
 
     // Check the traffic totals and enrollment state
@@ -287,6 +304,23 @@ async fn test_page_success() {
     assert!(body.contains("aria-valuemax=\"10\""));
     assert!(body.contains("SAVE10"));
     assert!(body.contains("Registration window: Mar 8, 2024 11:00 (publication)"));
+
+    // Check the surveys summary renders without links to the surveys tab
+    assert!(body.contains("data-event-analytics-surveys"));
+    assert!(body.contains("Overall response rate"));
+    assert!(body.contains("3 of 4 eligible attendees, across open and closed surveys"));
+    assert!(body.contains("data-event-analytics-survey>"));
+    assert!(body.contains("Feedback"));
+    assert!(body.contains(">Closed</span>"));
+    assert!(body.contains(r#"<span class="xl:hidden">3 / 4</span>"#));
+    assert!(
+        body.contains(
+            r#"<span class="hidden xl:inline">3 of 4 eligible attendees responded</span>"#
+        )
+    );
+    assert!(body.contains(r#"· <span class="font-semibold text-stone-900">75%</span>"#));
+    assert!(body.contains("Survey counts are cached for up to an hour."));
+    assert!(!body.contains("/surveys"));
 
     // Check no revenue information is rendered
     for revenue_text in ["Revenue", "revenue", "amount_minor", "currency"] {

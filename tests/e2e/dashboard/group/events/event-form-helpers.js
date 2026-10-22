@@ -143,7 +143,7 @@ export const expectSessionCardLabels = async (page, sessionName, labelNames) => 
 export const openDetailsSection = async (page) => {
   const detailsSectionButton = page.locator('button[data-section="details"]');
 
-  await detailsSectionButton.scrollIntoViewIfNeeded();
+  await scrollSectionButtonIntoView(detailsSectionButton);
   await detailsSectionButton.click({ force: true });
   await expect(detailsSectionButton).toHaveAttribute("data-active", "true");
 };
@@ -152,7 +152,7 @@ export const openDetailsSection = async (page) => {
 export const openLabelsSection = async (page) => {
   const labelsSectionButton = page.locator('button[data-section="labels"]');
 
-  await labelsSectionButton.scrollIntoViewIfNeeded();
+  await scrollSectionButtonIntoView(labelsSectionButton);
   await labelsSectionButton.click({ force: true });
   await expect(labelsSectionButton).toHaveAttribute("data-active", "true");
 };
@@ -161,7 +161,7 @@ export const openLabelsSection = async (page) => {
 export const openSessionsSection = async (page) => {
   const sessionsSectionButton = page.locator('button[data-section="sessions"]');
 
-  await sessionsSectionButton.scrollIntoViewIfNeeded();
+  await scrollSectionButtonIntoView(sessionsSectionButton);
   await sessionsSectionButton.click({ force: true });
   await expect(sessionsSectionButton).toHaveAttribute("data-active", "true");
 };
@@ -263,4 +263,12 @@ export const setRegistrationQuestions = async (page, questions) => {
   await expect(editor.locator('input[name^="registration_questions"][name$="[prompt]"]')).toHaveCount(
     questions.length,
   );
+};
+
+/**
+ * Centers an editor section tab so the sticky site header cannot cover it.
+ * @param {import("@playwright/test").Locator} sectionButton - Section tab button.
+ */
+const scrollSectionButtonIntoView = async (sectionButton) => {
+  await sectionButton.evaluate((button) => button.scrollIntoView({ block: "center" }));
 };

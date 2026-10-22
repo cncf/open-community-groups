@@ -74,20 +74,33 @@ test.describe("group dashboard event editor", () => {
     ).toHaveText(["Tickets", "Sessions"]);
     await expect(
       organizerGroupPage.locator(
-        'button[data-section="sessions"], button[data-section="labels"], button[data-section="questions"], button[data-section="cfs"]',
+        'button[data-section="payments"], button[data-section="questions"], button[data-section="labels"], button[data-section="cfs"], button[data-section="sessions"]',
       ),
-    ).toHaveText(["Sessions", "Labels", "Questions", "CFS"]);
+    ).toHaveText(["Tickets", "Questions", "Labels", "CFS", "Sessions"]);
     await expect(addSectionSelect.locator('option[value="attendees"]')).toHaveCount(0);
+    await expect(addSectionSelect.locator('option[value="surveys"]')).toHaveCount(0);
     await expect(addSectionSelect.locator('option[value="waitlist"]')).toHaveCount(0);
 
-    // Advance the add form through co-hosts to the date and venue section.
+    // Verify the add form groups only the authoring tabs by lifecycle.
+    await expect
+      .poll(() =>
+        addSectionSelect.locator("optgroup").evaluateAll((groups) => groups.map((group) => group.label)),
+      )
+      .toEqual(["EVENT", "REGISTRATION", "PROGRAM"]);
+    await expect(
+      organizerGroupPage
+        .getByRole("navigation", { name: "Event form sections" })
+        .locator('[id^="add-event-section-"][id$="-heading"]'),
+    ).toHaveText(["Event", "Registration", "Program"]);
+
+    // Advance the add form through the date and venue section to co-hosts.
     await organizerGroupPage.locator("button[data-section-next]").click();
-    await expect(organizerGroupPage.locator('button[data-section="cohosts"]')).toHaveAttribute(
+    await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
       "data-active",
       "true",
     );
     await organizerGroupPage.locator("button[data-section-next]").click();
-    await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
+    await expect(organizerGroupPage.locator('button[data-section="cohosts"]')).toHaveAttribute(
       "data-active",
       "true",
     );
@@ -116,6 +129,30 @@ test.describe("group dashboard event editor", () => {
     ).toHaveText(["Tickets", "Sessions"]);
     await expect(editSectionSelect.locator('option[value="attendees"]')).toHaveText("Attendees");
     await expect(editSectionSelect.locator('option[value="waitlist"]')).toHaveText("Waitlist");
+    await expect
+      .poll(() =>
+        editSectionSelect.locator("optgroup").evaluateAll((groups) => groups.map((group) => group.label)),
+      )
+      .toEqual(["EVENT", "REGISTRATION", "PROGRAM", "PEOPLE", "FOLLOW-UP"]);
+    await expect(editSectionSelect.locator('optgroup[label="PEOPLE"] option[value="waitlist"]')).toHaveCount(
+      1,
+    );
+    await expect(editSectionSelect.locator('optgroup[label="FOLLOW-UP"] option')).toHaveText([
+      "Surveys",
+      "Analytics",
+    ]);
+    await expect
+      .poll(() =>
+        organizerGroupPage
+          .getByRole("navigation", { name: "Event form sections" })
+          .locator("button[data-section]")
+          .evaluateAll((buttons) => buttons.map((button) => button.dataset.section)),
+      )
+      .toEqual(
+        await editSectionSelect
+          .locator("option")
+          .evaluateAll((options) => options.map((option) => option.value)),
+      );
     await expect(organizerGroupPage.locator("#waitlist-loading")).toHaveCount(1);
 
     // Open the waitlist tab and wait for its lazy-loaded content.

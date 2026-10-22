@@ -20,7 +20,10 @@ use crate::{
     },
 };
 
+use self::sections::{EventFormMode, EventFormTabFlags, EventFormTabGroup};
+
 pub(crate) mod preview;
+pub(crate) mod sections;
 
 // Pages templates.
 
@@ -58,6 +61,12 @@ pub(crate) struct AddPage {
 }
 
 impl AddPage {
+    /// Returns the event editor tab groups shown on the add page.
+    #[allow(clippy::unused_self)]
+    pub(crate) fn form_tab_groups(&self) -> Vec<EventFormTabGroup> {
+        sections::form_tab_groups(&EventFormMode::Add, EventFormTabFlags::default())
+    }
+
     /// Returns true when paid tickets can be configured through Stripe or external payments.
     pub(crate) fn is_paid_ticketing_available(&self) -> bool {
         is_paid_ticketing_available(self.payments_ready, &self.external_payments)
@@ -149,6 +158,20 @@ pub(crate) struct UpdatePage {
 }
 
 impl UpdatePage {
+    /// Returns the event editor tab groups shown on the update page.
+    pub(crate) fn form_tab_groups(&self) -> Vec<EventFormTabGroup> {
+        let mode = EventFormMode::Update {
+            attendee_approval_required: self.event.attendee_approval_required,
+            event_id: self.event.event_id,
+        };
+        let flags = EventFormTabFlags {
+            invitation_requests: self.show_invitation_requests_tab,
+            surveys: !self.event.canceled,
+            waitlist: self.show_waitlist_tab,
+        };
+        sections::form_tab_groups(&mode, flags)
+    }
+
     /// Returns true when paid tickets can be configured through Stripe or external payments.
     pub(crate) fn is_paid_ticketing_available(&self) -> bool {
         is_paid_ticketing_available(self.payments_ready, &self.external_payments)

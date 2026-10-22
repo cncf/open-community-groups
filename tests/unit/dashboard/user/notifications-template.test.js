@@ -20,6 +20,17 @@ describe("dashboard user notifications template", () => {
     expect(template).to.include('id="preference-{{ category }}"');
     expect(template).to.include('data-preference-input="preference-{{ category }}"');
 
+    // Verify the events and groups section lists event surveys after event reminders.
+    const eventsSection = template.slice(
+      template.indexOf("{# Events and groups section -#}"),
+      template.indexOf("{# End events and groups section -#}"),
+    );
+    const remindersIndex = eventsSection.indexOf('preference_toggle("event-reminders"');
+    const surveysIndex = eventsSection.indexOf('preference_toggle("event-surveys", "Event surveys"');
+    expect(remindersIndex).to.be.greaterThan(-1);
+    expect(surveysIndex).to.be.greaterThan(remindersIndex);
+    expect(eventsSection).to.include("preferences.receives(NotificationCategory::EventSurveys)");
+
     // Verify organizer-only sections remain guarded.
     expect(template).to.include("{% if show_group_team_section -%}");
     expect(template).to.include("{% if show_community_team_section -%}");

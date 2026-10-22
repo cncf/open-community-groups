@@ -89,10 +89,11 @@ use crate::{
 
 pub(crate) use crate::types::tests::{
     sample_community_summary, sample_event_analytics, sample_event_cohost_group, sample_event_form,
-    sample_event_full, sample_event_minimal, sample_event_summary, sample_group_category,
-    sample_group_minimal, sample_group_payment_recipient, sample_group_region,
-    sample_group_summary, sample_inbox_conversation, sample_inbox_conversation_summary,
-    sample_site_settings, sample_user_search_result,
+    sample_event_full, sample_event_minimal, sample_event_summary, sample_event_survey_full,
+    sample_event_survey_summary, sample_group_category, sample_group_minimal,
+    sample_group_payment_recipient, sample_group_region, sample_group_summary,
+    sample_inbox_conversation, sample_inbox_conversation_summary, sample_site_settings,
+    sample_user_event_survey, sample_user_event_survey_item, sample_user_search_result,
 };
 
 // Helpers.

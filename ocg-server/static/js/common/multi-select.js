@@ -1,15 +1,13 @@
 import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
+import { generateElementIdPrefix } from "/static/js/common/dom.js";
 import { DropdownPlacementController } from "/static/js/common/dropdown-placement.js";
 import { labelColorStyle } from "/static/js/common/labels.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 const DEFAULT_EMPTY_MESSAGE = "No results found";
 const DEFAULT_PLACEHOLDER = "Type to search";
-
-// Counter used to build unique ID prefixes for elements without an id.
-let generatedIdPrefixCount = 0;
 
 /**
  * MultiSelect renders a searchable multi-select combobox that submits the
@@ -155,9 +153,7 @@ export class MultiSelect extends LitWrapper {
       return this.id;
     }
     if (!this._generatedIdPrefix) {
-      generatedIdPrefixCount += 1;
-      const base = sanitizeIdPart(this.name) || "options";
-      this._generatedIdPrefix = `multi-select-${base}-${generatedIdPrefixCount}`;
+      this._generatedIdPrefix = generateElementIdPrefix("multi-select", this.name, "options");
     }
     return this._generatedIdPrefix;
   }
@@ -683,17 +679,6 @@ const normalizeSelected = (selected) => {
     .filter((value) => value.length > 0);
   return [...new Set(normalized)];
 };
-
-/**
- * Turns a form field name into a safe ID fragment.
- * @param {string} value Raw value
- * @returns {string}
- */
-const sanitizeIdPart = (value) =>
-  String(value || "")
-    .replace(/[^A-Za-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
 
 if (!customElements.get("multi-select")) {
   customElements.define("multi-select", MultiSelect);

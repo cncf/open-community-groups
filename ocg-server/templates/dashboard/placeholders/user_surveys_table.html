@@ -1,0 +1,9 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# User Surveys Table Placeholder -#}
+{% call dashboard::empty_state("No surveys yet", title_margin = "mb-4", wrapper_class = "mx-auto max-w-md") -%}
+<p class="text-sm text-stone-700 lg:text-md">
+  Surveys appear here when the organizers of an event you attended ask for your feedback.
+</p>
+{% endcall -%}
+{# End user surveys table placeholder -#}

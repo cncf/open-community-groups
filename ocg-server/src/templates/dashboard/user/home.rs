@@ -12,7 +12,7 @@ use crate::{
             audit, inbox,
             user::{
                 badges, check_in, events, groups, invitations, notifications, purchases,
-                session_proposals, submissions,
+                session_proposals, submissions, surveys,
             },
         },
         filters,
@@ -35,6 +35,8 @@ pub(crate) struct Page {
     pub path: String,
     /// Global site settings.
     pub site_settings: SiteSettings,
+    /// Number of open surveys the user has not answered yet, shown in the menu.
+    pub surveys_unanswered_count: usize,
     /// Authenticated user information.
     pub user: UserMenuState,
 }
@@ -68,6 +70,8 @@ pub(crate) enum Content {
     SessionProposals(session_proposals::ListPage),
     /// Submissions page.
     Submissions(submissions::ListPage),
+    /// Event surveys page.
+    Surveys(surveys::ListPage),
 }
 
 impl Content {
@@ -131,6 +135,11 @@ impl Content {
         matches!(self, Content::Submissions(_))
     }
 
+    /// Check if the content is the surveys page.
+    fn is_surveys(&self) -> bool {
+        matches!(self, Content::Surveys(_))
+    }
+
     /// Returns the partial path used to refresh the dashboard content.
     fn refresh_path(&self) -> &'static str {
         match self {
@@ -146,6 +155,7 @@ impl Content {
             Content::Notifications(_) => "notifications",
             Content::Purchases(_) => "purchases",
             Content::SessionProposals(_) => "session-proposals",
+            Content::Surveys(_) => "surveys",
         }
     }
 }
@@ -166,6 +176,7 @@ impl std::fmt::Display for Content {
             Content::Purchases(template) => write!(f, "{}", template.render()?),
             Content::SessionProposals(template) => write!(f, "{}", template.render()?),
             Content::Submissions(template) => write!(f, "{}", template.render()?),
+            Content::Surveys(template) => write!(f, "{}", template.render()?),
         }
     }
 }
@@ -202,6 +213,8 @@ pub(crate) enum Tab {
     SessionProposals,
     /// Submissions tab.
     Submissions,
+    /// Event surveys tab.
+    Surveys,
 }
 
 #[cfg(test)]
@@ -245,5 +258,21 @@ mod tests {
         }));
 
         assert_eq!(content.refresh_path(), "notifications");
+    }
+
+    #[test]
+    fn test_refresh_path_uses_surveys_route_for_surveys_content() {
+        let content = Content::Surveys(surveys::ListPage {
+            navigation_links: NavigationLinks::default(),
+            refresh_url: "/dashboard/user?tab=surveys".to_string(),
+            surveys: vec![],
+            total: 0,
+
+            offset: None,
+            survey: None,
+            warning: None,
+        });
+
+        assert_eq!(content.refresh_path(), "surveys");
     }
 }

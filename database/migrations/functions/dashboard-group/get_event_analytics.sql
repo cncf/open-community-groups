@@ -4,7 +4,8 @@
 -- earlier of today and the effective event end; it is null when the event is
 -- unpublished or was published after it ended. Markers are limited to the
 -- range and announcements to the 50 most recent ones. Ticket statistics are
--- only reported for paid events.
+-- only reported for paid events. The survey summary covers surveys that are
+-- not drafts.
 create or replace function get_event_analytics(
     p_group_id uuid,
     p_event_id uuid
@@ -108,6 +109,7 @@ begin
                 from announcements a
                 where a.rank > 50
             ),
+            'surveys', stats_event_surveys(v_event),
             'traffic', stats_event_traffic(v_event, v_start_day, v_end_day),
             'utm', stats_event_utm(v_event),
 

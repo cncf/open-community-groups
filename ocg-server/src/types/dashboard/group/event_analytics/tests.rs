@@ -1,7 +1,7 @@
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 
-use crate::types::tests::sample_event_analytics;
+use crate::types::{event_survey::EventSurveyState, tests::sample_event_analytics};
 
 use super::*;
 
@@ -108,6 +108,13 @@ fn test_deserializes_database_payload() {
         },
         "markers": [{"kind": "event-start", "ts": 1_710_090_000}],
         "markers_announcements_omitted": 0,
+        "surveys": {
+            "surveys": [
+                {"eligible_count": 4, "eligible_respondents_count": 1, "event_survey_id": "00000000-0000-0000-0000-000000000030", "responses_count": 2, "state": "scheduled", "title": "Feedback"}
+            ],
+            "total_eligible_count": 0,
+            "total_eligible_respondents_count": 0
+        },
         "traffic": {
             "attribution_consistent": true,
             "registrations_baseline": 0,
@@ -156,6 +163,8 @@ fn test_deserializes_database_payload() {
         stats.traffic.views_by_source_per_day[0].kind,
         ViewsSeriesKind::OtherSources
     );
+    assert_eq!(stats.surveys.surveys[0].state, EventSurveyState::Scheduled);
+    assert_eq!(stats.surveys.total_eligible_count, 0);
     assert!(stats.range.is_none());
     assert!(stats.tickets.is_none());
 }
@@ -212,6 +221,24 @@ fn test_reserved_counts_allocated_seats_without_purchase() {
 }
 
 #[test]
+fn test_response_rate_is_none_without_eligible_attendees() {
+    let mut surveys = sample_event_analytics().surveys;
+    surveys.total_eligible_count = 0;
+    surveys.total_eligible_respondents_count = 0;
+
+    assert_eq!(surveys.response_rate(), None);
+}
+
+#[test]
+fn test_response_rate_weights_surveys_by_their_audience() {
+    let mut surveys = sample_event_analytics().surveys;
+    surveys.total_eligible_count = 4 + 40;
+    surveys.total_eligible_respondents_count = 4 + 7;
+
+    assert_eq!(surveys.response_rate(), Some(0.25));
+}
+
+#[test]
 fn test_share_of_views_divides_views_by_all_page_views() {
     let stats = sample_event_analytics();
 
@@ -232,6 +259,22 @@ fn test_share_of_views_is_none_without_views() {
     stats.traffic.views_total = 0;
 
     assert_eq!(stats.share_of_views(4), None);
+}
+
+#[test]
+fn test_survey_response_rate_divides_eligible_respondents_by_eligible_attendees() {
+    let survey = &sample_event_analytics().surveys.surveys[0];
+
+    assert_eq!(survey.response_rate(), Some(0.75));
+}
+
+#[test]
+fn test_survey_response_rate_is_none_without_eligible_attendees() {
+    let mut survey = sample_event_analytics().surveys.surveys[0].clone();
+    survey.eligible_count = 0;
+    survey.eligible_respondents_count = 0;
+
+    assert_eq!(survey.response_rate(), None);
 }
 
 #[test]

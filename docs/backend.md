@@ -433,8 +433,11 @@ shared by everything that hashes or verifies passwords.
 ### Bounded exports
 
 An export that loads its rows and builds the file in memory states its
-supported size explicitly and rejects larger requests with
-`HandlerError::Rejected` rather than streaming. The bound is chosen from a
+supported size explicitly and rejects larger requests rather than streaming.
+The handler rejects them with `HandlerError::Rejected`, unless the size can
+only be measured in the database without loading the rows (for example the
+bytes of stored JSON); then the export function checks the bound before
+building its payload and raises `OCG01`. The bound is chosen from a
 measurement at that size, recorded on the constant that defines it; streaming
 is adopted only when the measured cost is unacceptable.
 

@@ -11,7 +11,10 @@ use crate::{
         dashboard::{self, group::PresenceFilter},
         event::{EventAdmissionOfferSource, EventAdmissionOfferStatus},
         pagination::{Pagination, ToRawQuery},
-        payments::{EventPurchaseChargeModel, EventRefundProgress, EventRefundRequestStatus},
+        payments::{
+            EventPurchaseChargeModel, EventRefundProgress, EventRefundRequestStatus,
+            format_amount_minor,
+        },
         questionnaire::QuestionnaireAnswers,
         user::User,
     },
@@ -207,4 +210,57 @@ pub(crate) enum AttendeesSort {
     NameAsc,
     /// Sort by attendee display name descending.
     NameDesc,
+}
+
+// Helpers.
+
+/// Formats an attendee payment amount for dashboard display and CSV export.
+///
+/// Free purchases are labeled `Free`; paid amounts need a currency code.
+#[allow(clippy::ref_option)]
+pub(crate) fn format_payment_amount(
+    amount_minor: &Option<i64>,
+    currency_code: Option<&str>,
+) -> Option<String> {
+    let amount_minor = (*amount_minor)?;
+
+    // Label free purchases without requiring a currency
+    if amount_minor == 0 {
+        return Some("Free".to_string());
+    }
+
+    // Format paid amounts in their purchase currency
+    let currency_code = currency_code?;
+    Some(format_amount_minor(amount_minor, currency_code))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_payment_amount;
+
+    #[test]
+    fn test_format_payment_amount_formats_free_without_currency() {
+        assert_eq!(
+            format_payment_amount(&Some(0), None),
+            Some("Free".to_string())
+        );
+    }
+
+    #[test]
+    fn test_format_payment_amount_formats_paid_amount_with_currency() {
+        assert_eq!(
+            format_payment_amount(&Some(2500), Some("usd")),
+            Some("USD 25.00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_format_payment_amount_requires_currency_for_paid_amounts() {
+        assert_eq!(format_payment_amount(&Some(2500), None), None);
+    }
+
+    #[test]
+    fn test_format_payment_amount_skips_missing_amounts() {
+        assert_eq!(format_payment_amount(&None, Some("usd")), None);
+    }
 }

@@ -263,6 +263,38 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::group::submissions::list_page),
         )
         .route(
+            "/events/{event_id}/surveys",
+            get(dashboard::group::surveys::list_page),
+        )
+        .route(
+            "/events/{event_id}/surveys/add",
+            get(dashboard::group::surveys::add_page),
+        )
+        .route(
+            "/events/{event_id}/surveys/{event_survey_id}/responses",
+            get(dashboard::group::surveys::responses_page),
+        )
+        .route(
+            "/events/{event_id}/surveys/{event_survey_id}/responses.csv",
+            get(dashboard::group::surveys::download_csv),
+        )
+        .route(
+            "/events/{event_id}/surveys/{event_survey_id}/responses/{user_id}",
+            get(dashboard::group::surveys::response_modal),
+        )
+        .route(
+            "/events/{event_id}/surveys/{event_survey_id}/results",
+            get(dashboard::group::surveys::results_page),
+        )
+        .route(
+            "/events/{event_id}/surveys/{event_survey_id}/results/questions/{question_id}/answers",
+            get(dashboard::group::surveys::text_answers_modal),
+        )
+        .route(
+            "/events/{event_id}/surveys/{event_survey_id}/update",
+            get(dashboard::group::surveys::update_page),
+        )
+        .route(
             "/events/{event_id}/update",
             get(dashboard::group::events::update_page),
         )
@@ -408,6 +440,22 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/events/{event_id}/submissions/{cfs_submission_id}",
             put(dashboard::group::submissions::update),
+        )
+        .route(
+            "/events/{event_id}/surveys/add",
+            post(dashboard::group::surveys::add),
+        )
+        .route(
+            "/events/{event_id}/surveys/{event_survey_id}/delete",
+            delete(dashboard::group::surveys::delete),
+        )
+        .route(
+            "/events/{event_id}/surveys/{event_survey_id}/status",
+            put(dashboard::group::surveys::change_status),
+        )
+        .route(
+            "/events/{event_id}/surveys/{event_survey_id}/update",
+            put(dashboard::group::surveys::update),
         )
         .route(
             "/events/{event_id}/unpublish",
@@ -678,6 +726,16 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         .route(
             "/submissions/{cfs_submission_id}/withdraw",
             put(dashboard::user::submissions::withdraw),
+        )
+        // Surveys endpoints
+        .route("/surveys", get(dashboard::user::surveys::list_page))
+        .route(
+            "/surveys/{event_survey_id}",
+            get(dashboard::user::surveys::survey_modal),
+        )
+        .route(
+            "/surveys/{event_survey_id}/response",
+            put(dashboard::user::surveys::submit_response),
         )
         // Users search endpoints
         .route("/users/search", get(common::search_user))

@@ -1,0 +1,178 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+{% import "macros/surveys.html" as surveys -%}
+
+{# Event survey individual responses -#}
+{% let responses_url = "/dashboard/group/events/{}/surveys/{}/responses"|format(event.event_id, survey.summary.event_survey_id) -%}
+{% let questions_count = survey.questions.len() -%}
+<div class="max-w-5xl space-y-8 2xl:max-w-6xl" data-event-survey-responses>
+  {{ surveys::results_header(event_id = event.event_id, survey = survey.summary, timezone = event.timezone, view = "individual") -}}
+
+  {% if responses.total == 0 && ts_query.is_none() -%}
+    <p class="mt-10 text-sm text-stone-500">This survey does not have any responses yet.</p>
+  {% else -%}
+    <div class="mt-10 space-y-5">
+      {# Respondents search -#}
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="relative w-80 max-w-full md:w-64 lg:w-80 2xl:w-[30rem]">
+          <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+            <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+          </div>
+          <form id="event-survey-respondents-search-form"
+                hx-get="{{ responses_url }}"
+                hx-trigger="change, submit"
+                hx-target="#surveys-content"
+                hx-swap="innerHTML"
+                hx-indicator="#dashboard-spinner">
+            <label for="search_event_survey_respondents" class="sr-only">Search respondents</label>
+            <input id="search_event_survey_respondents"
+                   name="ts_query"
+                   type="text"
+                   value="{{ ts_query|assigned_or("") }}"
+                   class="input-primary peer w-full ps-9"
+                   placeholder="Search respondents"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+            <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+              <button type="button"
+                      hx-get="{{ responses_url }}"
+                      hx-trigger="click"
+                      hx-target="#surveys-content"
+                      hx-swap="innerHTML"
+                      hx-indicator="#dashboard-spinner"
+                      class="mt-0.5 cursor-pointer"
+                      aria-label="Clear respondent search">
+                <div class="svg-icon size-5 bg-stone-400 icon-close hover:bg-stone-700"></div>
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="shrink-0 whitespace-nowrap text-sm text-stone-600"
+             data-event-survey-respondents-range>
+          {{ pagination::range_display(offset = offset.unwrap_or(0) , count = responses.responses.len(), total = responses.total, label = "respondent") }}
+        </div>
+      </div>
+      {# End respondents search -#}
+
+      {# Respondents table -#}
+      <table class="w-full table-auto text-left text-xs text-stone-500 lg:text-sm"
+             aria-label="Survey respondents">
+        <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+          <tr>
+            <th scope="col" class="px-3 py-1.5 xl:px-5">Respondent</th>
+            <th scope="col" class="hidden px-3 py-1.5 lg:table-cell xl:px-5">Ticket type</th>
+            <th scope="col" class="w-28 px-3 py-1.5 xl:px-5">Answered</th>
+            <th scope="col"
+                class="hidden w-36 px-3 py-1.5 md:table-cell xl:w-44 xl:px-5">Submitted</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if responses.responses.is_empty() -%}
+            {# No results state -#}
+            <tr class="border-b border-stone-200 bg-white">
+              <td class="px-8 py-12 text-center" colspan="4">
+                {% call dashboard::empty_state("No respondents found matching your search.", title_margin = "mb-4") -%}
+                <p class="text-sm text-stone-700 lg:text-md">Try a different name, username, company or title.</p>
+                {% endcall -%}
+              </td>
+            </tr>
+            {# End no results state -#}
+          {% else -%}
+            {% for response in responses.responses -%}
+              {% let name = crate::templates::dashboard::group::surveys::respondent_name(response.user) -%}
+              {% let submitted_at = crate::templates::dashboard::group::surveys::format_date(*response.created_at, *event.timezone) -%}
+              {# Respondent row -#}
+              <tr class="cursor-pointer border-b border-stone-200 transition-colors odd:bg-white even:bg-stone-50/50 hover:bg-stone-100 focus:outline-none focus-visible:bg-stone-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400 motion-reduce:transition-none"
+                  tabindex="0"
+                  hx-get="{{ self.response_url(response.user.user_id)? }}"
+                  hx-trigger="click, keydown[key=='Enter']"
+                  hx-target="#event-survey-response-modal-content"
+                  hx-swap="innerHTML"
+                  hx-sync="#event-survey-response-modal:replace"
+                  hx-indicator="#dashboard-spinner"
+                  title="View responses from {{ name }}"
+                  data-event-survey-respondent="{{ response.user.user_id }}"
+                  data-htmx-response
+                  data-error-message="Something went wrong loading these responses. Please try again later.">
+                {# Respondent -#}
+                <th scope="row" class="max-w-0 px-3 py-4 font-normal xl:px-5">
+                  <div class="flex min-w-0 items-center gap-3">
+                    <logo-image class="shrink-0" {% if let Some(photo_url) = &response.user.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-9" placeholder="{{ self::user_initials(response.user.name.as_deref() , response.user.username.as_str()) }}">
+                    </logo-image>
+                    <div class="min-w-0">
+                      <div class="truncate font-medium text-stone-900">{{ name }}</div>
+                      {% if let Some(details) = crate::templates::dashboard::group::surveys::respondent_details(response.user) -%}
+                        <div class="truncate text-xs text-stone-600">{{ details }}</div>
+                      {% endif -%}
+                      <div class="truncate text-xs text-stone-500 md:hidden">Submitted {{ submitted_at }}</div>
+                    </div>
+                  </div>
+                </th>
+                {# End respondent -#}
+
+                {# Ticket type -#}
+                <td class="hidden max-w-0 px-3 py-4 lg:table-cell xl:px-5">
+                  {% if let Some(ticket_title) = response.ticket_title -%}
+                    <div class="truncate font-medium text-stone-900"
+                         title="{{ ticket_title }}">{{ ticket_title }}</div>
+                  {% else -%}
+                    <div class="text-stone-500">-</div>
+                  {% endif -%}
+                </td>
+                {# End ticket type -#}
+
+                {# Answered questions -#}
+                <td class="w-28 whitespace-nowrap px-3 py-4 xl:px-5"
+                    data-event-survey-respondent-answered>
+                  {{ crate::templates::dashboard::group::surveys::answered_label(*response.answered_questions_count, *questions_count) }}
+                </td>
+                {# End answered questions -#}
+
+                {# Submitted -#}
+                <td class="hidden w-36 whitespace-nowrap px-3 py-4 md:table-cell xl:w-44 xl:px-5">
+                  <time datetime="{{ response.created_at.to_rfc3339() }}"
+                        class="block"
+                        title="{{ submitted_at }}">{{ response.created_at.with_timezone(event.timezone).format("%b %-e, %Y") }}</time>
+                  {% if let Some(updated_at) = response.updated_at -%}
+                    <time datetime="{{ updated_at.to_rfc3339() }}"
+                          class="block text-xs text-stone-500"
+                          title="Edited {{ crate::templates::dashboard::group::surveys::format_date(**updated_at, *event.timezone) }}">Edited {{ updated_at.with_timezone(event.timezone).format("%b %-e, %Y") }}</time>
+                  {% endif -%}
+                </td>
+                {# End submitted -#}
+              </tr>
+              {# End respondent row -#}
+            {% endfor -%}
+          {% endif -%}
+        </tbody>
+      </table>
+      {# End respondents table -#}
+
+      {# Pagination -#}
+      {% if responses.total > responses.responses.len() -%}
+        {{ pagination::navigation_links(links = navigation_links, hx_target = "#surveys-content", hx_swap = "innerHTML show:window:top", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "event-survey-responses-") }}
+      {% endif -%}
+      {# End pagination -#}
+    </div>
+
+    {# Response modal -#}
+    <div id="event-survey-response-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="event-survey-response-modal-title"
+         aria-hidden="true"
+         class="fixed left-0 right-0 top-0 z-[1000] flex hidden h-full max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden md:inset-0"
+         data-event-survey-response-modal>
+      <div data-event-survey-response-close
+           class="modal-overlay absolute h-full w-full bg-stone-950 opacity-[0.35]"></div>
+      <div class="modal-panel max-w-4xl p-4">
+        <div id="event-survey-response-modal-content"
+             class="modal-card rounded-lg"></div>
+      </div>
+    </div>
+    {# End response modal -#}
+  {% endif -%}
+</div>
+{# End event survey individual responses -#}

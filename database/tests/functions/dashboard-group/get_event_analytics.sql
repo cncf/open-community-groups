@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(19);
 \set eventOngoingID 'ea0a0000-0000-0000-0000-000000000006'
 \set eventPastID 'ea0a0000-0000-0000-0000-000000000007'
 \set eventPublishedLateID 'ea0a0000-0000-0000-0000-000000000008'
+\set eventSurveyID 'ea0a0000-0000-0000-0000-000000000011'
 \set eventUnpublishedID 'ea0a0000-0000-0000-0000-000000000009'
 \set groupCategoryID 'ea0a0000-0000-0000-0000-00000000000a'
 \set groupForeignID 'ea0a0000-0000-0000-0000-00000000000b'
@@ -126,6 +127,10 @@ select
 insert into event_attendee (event_id, user_id, checked_in, checked_in_at, created_at) values
     (:'eventPastID', :'userAttendeeID', true, current_timestamp - interval '3 days', current_timestamp - interval '6 days');
 
+-- Ready survey of the past event
+insert into event_survey (event_survey_id, event_id, status, title)
+values (:'eventSurveyID', :'eventPastID', 'ready', 'Past event survey');
+
 -- Views of the past event before and after its publication
 insert into event_views (event_id, day, total) values
     (:'eventPastID', ((current_timestamp - interval '12 days') at time zone 'UTC')::date, 5),
@@ -196,6 +201,17 @@ select is(
         where e.event_id = :'eventPastID'
     ),
     'Should compose the enrollment section from its helper'
+);
+
+-- Should compose the survey section from its helper
+select is(
+    get_event_analytics(:'groupID', :'eventPastID')::jsonb->'surveys',
+    (
+        select stats_event_surveys(e)::jsonb
+        from event e
+        where e.event_id = :'eventPastID'
+    ),
+    'Should compose the survey section from its helper'
 );
 
 -- Should compose the ticket section from its helper

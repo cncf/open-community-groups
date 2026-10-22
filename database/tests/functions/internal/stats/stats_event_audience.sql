@@ -222,6 +222,7 @@ select is(
                 jsonb_build_object('count', 1, 'label', 'Dev', 'option_id', :'option1ID'),
                 jsonb_build_object('count', 1, 'label', 'Ops', 'option_id', :'option2ID')
             ),
+            'position', 1,
             'prompt', 'Role',
             'question_id', :'question1ID',
             'respondents', 2,
@@ -234,6 +235,7 @@ select is(
                 jsonb_build_object('count', 1, 'label', 'Cloud', 'option_id', :'option5ID'),
                 jsonb_build_object('count', 0, 'label', 'Data', 'option_id', :'option6ID')
             ),
+            'position', 3,
             'prompt', 'Interests',
             'question_id', :'question3ID',
             'respondents', 2,
@@ -244,6 +246,7 @@ select is(
             'options', jsonb_build_array(
                 jsonb_build_object('count', 0, 'label', 'Yes', 'option_id', :'option7ID')
             ),
+            'position', 4,
             'prompt', 'Unanswered',
             'question_id', :'question4ID',
             'respondents', 0,

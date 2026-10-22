@@ -11,6 +11,7 @@ declare
     v_reminders_enqueued int := 0;
     v_speaker_only_recipients uuid[];
     v_template_data jsonb;
+    v_theme jsonb;
 begin
     -- Ensure only one worker enqueues due reminders per transaction window
     if not pg_try_advisory_xact_lock(hashtextextended('ocg:event-reminder-enqueue', 0)) then
@@ -19,6 +20,9 @@ begin
 
     -- Normalize base URL used to build event links
     v_base_url := regexp_replace(coalesce(p_base_url, ''), '/+$', '');
+
+    -- Read the site theme shared by every reminder of this run
+    v_theme := site_theme();
 
     -- Fetch and lock due events that still require reminder evaluation
     for v_event in
@@ -30,17 +34,10 @@ begin
             e.starts_at,
             g.group_id,
             g.slug as group_slug,
-            g.slug_pretty as group_slug_pretty,
-            s.theme
+            g.slug_pretty as group_slug_pretty
         from event e
         join "group" g using (group_id)
         join community c on c.community_id = g.community_id
-        left join lateral (
-            select site.theme
-            from site
-            order by site.created_at desc
-            limit 1
-        ) s on true
         where c.active = true
         and e.deleted = false
         and e.canceled = false
@@ -94,15 +91,14 @@ begin
                             v_event.group_id,
                             v_event.event_id
                         )::jsonb,
-                    'link', format(
-                        '%s/%s/group/%s/event/%s',
-                        v_base_url,
+                    'link', v_base_url || event_public_path(
                         v_event.community_name,
-                        coalesce(v_event.group_slug_pretty, v_event.group_slug),
+                        v_event.group_slug,
+                        v_event.group_slug_pretty,
                         v_event.event_slug
                     ),
                     'dashboard_link', format('%s/dashboard/user?tab=events', v_base_url),
-                    'theme', v_event.theme
+                    'theme', v_theme
                 )
             );
 

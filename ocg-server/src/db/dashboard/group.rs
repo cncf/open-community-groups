@@ -41,6 +41,13 @@ use crate::{
                     CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters,
                     CfsSubmissionsOutput,
                 },
+                surveys::{
+                    EventSurveyExport, EventSurveyFull, EventSurveyInput, EventSurveyResponseFull,
+                    EventSurveyResponseNavigationFilters, EventSurveyResponsesFilters,
+                    EventSurveyResponsesOutput, EventSurveyResults, EventSurveyStatusForm,
+                    EventSurveySummary, EventSurveyTextAnswersFilters,
+                    EventSurveyTextAnswersOutput,
+                },
                 team::{GroupTeamFilters, GroupTeamOutput},
                 waitlist::{WaitlistFilters, WaitlistOutput},
             },
@@ -112,6 +119,15 @@ pub(crate) trait DBDashboardGroup {
         cfg_meeting_limits: &HashMap<MeetingProvider, MeetingProviderLimits>,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<Vec<Uuid>>;
+
+    /// Adds a draft survey to an event and returns its identifier.
+    async fn add_event_survey(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        survey: &EventSurveyInput,
+    ) -> Result<Uuid>;
 
     /// Adds a new sponsor to the database.
     async fn add_group_sponsor(
@@ -186,6 +202,20 @@ pub(crate) trait DBDashboardGroup {
         event_ids: &[Uuid],
     ) -> Result<()>;
 
+    /// Changes the status of an event survey.
+    ///
+    /// The status form carries the revision and the opening time the
+    /// organizer confirmed; the database rejects the change when either no
+    /// longer matches.
+    async fn change_event_survey_status(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        status: &EventSurveyStatusForm,
+    ) -> Result<()>;
+
     /// Resolves and checks in an attendee by their event credential.
     async fn check_in_attendee_by_code(
         &self,
@@ -233,6 +263,15 @@ pub(crate) trait DBDashboardGroup {
         actor_user_id: Uuid,
         group_id: Uuid,
         event_ids: &[Uuid],
+    ) -> Result<()>;
+
+    /// Deletes an event survey together with its responses.
+    async fn delete_event_survey(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
     ) -> Result<()>;
 
     /// Deletes a sponsor from the database.
@@ -293,6 +332,56 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_id: Uuid,
     ) -> Result<EventSummary>;
+
+    /// Retrieves an event survey with the settings the editor needs.
+    ///
+    /// Returns `None` when the survey does not belong to the group event.
+    async fn get_event_survey(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+    ) -> Result<Option<EventSurveyFull>>;
+
+    /// Retrieves the responses of an event survey for the CSV export.
+    ///
+    /// The database rejects exports above `max_rows` responses or `max_bytes`
+    /// bytes of answers, checking the bounds on the same snapshot it exports.
+    async fn get_event_survey_export(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        max_rows: usize,
+        max_bytes: usize,
+    ) -> Result<Option<EventSurveyExport>>;
+
+    /// Retrieves the response of one respondent to an identified event
+    /// survey, with its previous and next respondents among those matching
+    /// the search.
+    ///
+    /// The database rejects anonymous surveys with `OCG01`. Returns `None`
+    /// when the survey does not belong to the group event or the user has no
+    /// response matching the search.
+    async fn get_event_survey_response(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        user_id: Uuid,
+        filters: &EventSurveyResponseNavigationFilters,
+    ) -> Result<Option<EventSurveyResponseFull>>;
+
+    /// Retrieves the aggregated results of an event survey.
+    ///
+    /// Results never carry respondent identities. Returns `None` when the
+    /// survey does not belong to the group event.
+    async fn get_event_survey_results(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+    ) -> Result<Option<EventSurveyResults>>;
 
     /// Loads group-level external-payments eligibility and window limits.
     async fn get_group_external_payments_context(
@@ -449,6 +538,40 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_id: Uuid,
     ) -> Result<Vec<Uuid>>;
+
+    /// Lists a page of the respondents of an identified event survey matching
+    /// the search, oldest response first.
+    ///
+    /// The database rejects anonymous surveys with `OCG01`. Returns `None`
+    /// when the survey does not belong to the group event.
+    async fn list_event_survey_responses(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        filters: &EventSurveyResponsesFilters,
+    ) -> Result<Option<EventSurveyResponsesOutput>>;
+
+    /// Lists a page of the answers to a free-text event survey question
+    /// matching the search, oldest first, with the question they answer.
+    ///
+    /// Returns `None` when the survey does not belong to the group event or
+    /// the question is not one of its free-text questions.
+    async fn list_event_survey_text_answers(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        question_id: Uuid,
+        filters: &EventSurveyTextAnswersFilters,
+    ) -> Result<Option<EventSurveyTextAnswersOutput>>;
+
+    /// Lists the surveys of an event, oldest first.
+    async fn list_event_surveys(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<EventSurveySummary>>;
 
     /// Lists all verified waitlisted user ids for an event.
     async fn list_event_waitlist_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
@@ -691,6 +814,20 @@ pub(crate) trait DBDashboardGroup {
         payment_provider: Option<PaymentProvider>,
     ) -> Result<bool>;
 
+    /// Updates the settings of an event survey.
+    ///
+    /// `expected_revision` is the revision the editor loaded; the database
+    /// rejects the update when the survey changed since.
+    async fn update_event_survey(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        expected_revision: i64,
+        survey: &EventSurveyInput,
+    ) -> Result<()>;
+
     /// Updates an existing sponsor.
     async fn update_group_sponsor(
         &self,
@@ -837,6 +974,22 @@ where
                 &Json(cfg_meeting_limits),
                 &payment_provider.map(|provider| provider.to_string()),
             ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::add_event_survey`].
+    #[instrument(skip(self, survey), err)]
+    async fn add_event_survey(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        survey: &EventSurveyInput,
+    ) -> Result<Uuid> {
+        self.fetch_scalar_one(
+            "select add_event_survey($1::uuid, $2::uuid, $3::uuid, $4::jsonb)::uuid",
+            &[&actor_user_id, &group_id, &event_id, &Json(survey)],
         )
         .await
     }
@@ -1006,6 +1159,41 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::change_event_survey_status`].
+    #[instrument(skip(self, status), fields(action = %status.action), err)]
+    async fn change_event_survey_status(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        status: &EventSurveyStatusForm,
+    ) -> Result<()> {
+        self.execute(
+            "
+            select change_event_survey_status(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::uuid,
+                $5::bigint,
+                $6::timestamptz,
+                $7::text
+            )
+            ",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_id,
+                &event_survey_id,
+                &status.revision,
+                &status.expected_effective_opens_at,
+                &status.action.to_string(),
+            ],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::check_in_attendee_by_code`].
     #[instrument(skip(self, check_in_code), err)]
     async fn check_in_attendee_by_code(
@@ -1103,6 +1291,22 @@ where
         self.execute(
             "select delete_event_series_events($1::uuid, $2::uuid, $3::uuid[])",
             &[&actor_user_id, &group_id, &event_ids],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::delete_event_survey`].
+    #[instrument(skip(self), err)]
+    async fn delete_event_survey(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select delete_event_survey($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &[&actor_user_id, &group_id, &event_id, &event_survey_id],
         )
         .await
     }
@@ -1227,6 +1431,90 @@ where
         self.fetch_json_one(
             "select get_event_summary_dashboard($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &group_id, &event_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_event_survey`].
+    #[instrument(skip(self), err)]
+    async fn get_event_survey(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+    ) -> Result<Option<EventSurveyFull>> {
+        self.fetch_json_opt(
+            "select get_event_survey($1::uuid, $2::uuid, $3::uuid)",
+            &[&group_id, &event_id, &event_survey_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_event_survey_export`].
+    #[instrument(skip(self), err)]
+    async fn get_event_survey_export(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        max_rows: usize,
+        max_bytes: usize,
+    ) -> Result<Option<EventSurveyExport>> {
+        self.fetch_json_opt(
+            "select get_event_survey_export($1::uuid, $2::uuid, $3::uuid, $4::int, $5::bigint)",
+            &[
+                &group_id,
+                &event_id,
+                &event_survey_id,
+                &i32::try_from(max_rows)?,
+                &i64::try_from(max_bytes)?,
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_event_survey_response`].
+    #[instrument(skip(self, filters), err)]
+    async fn get_event_survey_response(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        user_id: Uuid,
+        filters: &EventSurveyResponseNavigationFilters,
+    ) -> Result<Option<EventSurveyResponseFull>> {
+        self.fetch_json_opt(
+            "
+            select get_event_survey_response(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::uuid,
+                $5::jsonb
+            )
+            ",
+            &[
+                &group_id,
+                &event_id,
+                &event_survey_id,
+                &user_id,
+                &Json(filters),
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_event_survey_results`].
+    #[instrument(skip(self), err)]
+    async fn get_event_survey_results(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+    ) -> Result<Option<EventSurveyResults>> {
+        self.fetch_json_opt(
+            "select get_event_survey_results($1::uuid, $2::uuid, $3::uuid)",
+            &[&group_id, &event_id, &event_survey_id],
         )
         .await
     }
@@ -1595,6 +1883,67 @@ where
     ) -> Result<Vec<Uuid>> {
         self.fetch_scalar_one(
             "select list_event_series_publishable_event_ids($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_event_survey_responses`].
+    #[instrument(skip(self, filters), err)]
+    async fn list_event_survey_responses(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        filters: &EventSurveyResponsesFilters,
+    ) -> Result<Option<EventSurveyResponsesOutput>> {
+        self.fetch_json_opt(
+            "select list_event_survey_responses($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[&group_id, &event_id, &event_survey_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_event_survey_text_answers`].
+    #[instrument(skip(self, filters), err)]
+    async fn list_event_survey_text_answers(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        question_id: Uuid,
+        filters: &EventSurveyTextAnswersFilters,
+    ) -> Result<Option<EventSurveyTextAnswersOutput>> {
+        self.fetch_json_opt(
+            "
+            select list_event_survey_text_answers(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::uuid,
+                $5::jsonb
+            )
+            ",
+            &[
+                &group_id,
+                &event_id,
+                &event_survey_id,
+                &question_id,
+                &Json(filters),
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_event_surveys`].
+    #[instrument(skip(self), err)]
+    async fn list_event_surveys(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<EventSurveySummary>> {
+        self.fetch_json_one(
+            "select list_event_surveys($1::uuid, $2::uuid)",
             &[&group_id, &event_id],
         )
         .await
@@ -2142,6 +2491,40 @@ where
                 &Json(event),
                 &Json(cfg_meeting_limits),
                 &payment_provider.map(|provider| provider.to_string()),
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::update_event_survey`].
+    #[instrument(skip(self, survey), err)]
+    async fn update_event_survey(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        event_survey_id: Uuid,
+        expected_revision: i64,
+        survey: &EventSurveyInput,
+    ) -> Result<()> {
+        self.execute(
+            "
+            select update_event_survey(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::uuid,
+                $5::bigint,
+                $6::jsonb
+            )
+            ",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_id,
+                &event_survey_id,
+                &expected_revision,
+                &Json(survey),
             ],
         )
         .await

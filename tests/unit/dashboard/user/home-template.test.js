@@ -68,4 +68,20 @@ describe("dashboard user home template", () => {
       'menu_item(name = "Notifications", icon = "bell", is_active = content.is_notifications() , href = "/dashboard/user?tab=notifications")',
     );
   });
+
+  it("links the Surveys menu item with its unanswered surveys badge", async () => {
+    // Load the user dashboard shell before checking the surveys contracts.
+    const template = await loadTemplate();
+
+    // Verify the Surveys tab follows My Events and counts the surveys left to answer.
+    const eventsIndex = template.indexOf('menu_item(name = "My Events"');
+    const surveysIndex = template.indexOf(
+      'menu_item(name = "Surveys", icon = "survey", is_active = content.is_surveys() , href = "/dashboard/user?tab=surveys", items_count = surveys_unanswered_count)',
+    );
+    expect(surveysIndex).to.be.greaterThan(eventsIndex);
+    expect(eventsIndex).to.be.greaterThan(-1);
+
+    // Verify the survey modal script loads with the dashboard.
+    expect(template).to.include('src="/static/js/dashboard/user/surveys.js"');
+  });
 });

@@ -336,8 +336,8 @@ page type with daily charts for the last month.
 
 Analytics are cached for up to an hour, so recent activity can take that long to appear.
 
-For the traffic, registrations, ticket usage, audience, and check-ins of a single event, open the
-event's `Analytics` tab (see [Event Operations](event-operations.md#analytics)).
+For the traffic, registrations, ticket usage, audience, check-ins, and survey responses of a single
+event, open the event's `Analytics` tab (see [Event Operations](event-operations.md#analytics)).
 
 When the group has active subgroups, the analytics page shows an `Include subgroups` switch. Turning
 it on recalculates every metric on the page across the group and its active subgroups. Member metrics
@@ -376,7 +376,8 @@ Typical flow:
 ## Events: Operations Hub
 
 Most organizer time is spent in [Events](/dashboard/group?tab=events ':ignore'): creating drafts,
-publishing, managing CFS, reviewing submissions, and running attendance/check-in flows.
+publishing, managing CFS, reviewing submissions, running attendance/check-in flows, and collecting
+attendee feedback with surveys.
 Group team members can also open it from `Events`, listed under `Group dashboard` in the top-right
 user menu on desktop layouts.
 
@@ -649,6 +650,8 @@ Coverage in this view includes:
 - Group team changes.
 - Sponsor changes.
 - Event lifecycle actions such as add, update, publish, unpublish, cancel, and delete.
+- Event survey changes: add, update, mark ready, move to draft, close, reopen, and delete. Survey
+  responses are never logged.
 - Check-ins, CFS submission reviews, and custom notification sends.
 - Payment actions such as refund requests, approvals, rejections, recoveries, and external
   payments marked as received.

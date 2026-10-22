@@ -2,8 +2,7 @@
 
 use askama::Template;
 
-use crate::types::dashboard::user::events::UserEvent;
-use crate::types::pagination;
+use crate::types::{dashboard::user::events::UserEvent, pagination};
 
 // Pages templates.
 

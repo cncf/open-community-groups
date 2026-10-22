@@ -15,6 +15,7 @@ pub mod members;
 pub mod refunds;
 pub mod sponsors;
 pub mod submissions;
+pub mod surveys;
 pub mod team;
 pub mod waitlist;
 

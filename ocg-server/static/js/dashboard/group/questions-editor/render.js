@@ -1,4 +1,4 @@
-import { html } from "lit";
+import { html, nothing } from "lit";
 import { QUESTION_TYPES, getQuestionTypeLabel } from "/static/js/dashboard/group/questions-editor/model.js";
 
 /**
@@ -9,7 +9,7 @@ import { QUESTION_TYPES, getQuestionTypeLabel } from "/static/js/dashboard/group
 const renderQuestionsEditor = (editor) => html`
   ${renderHiddenFields(editor)}
   <div class="w-full space-y-8">
-    ${editor.questions.length > 0 && !editor.disabled ? renderQuestionEditingWarning() : ""}
+    ${editor.questions.length > 0 && !editor.disabled && editor.editingWarning ? renderQuestionEditingWarning(editor) : ""}
     <div class="space-y-5">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div class="text-sm font-semibold text-stone-700">
@@ -17,15 +17,20 @@ const renderQuestionsEditor = (editor) => html`
           <span class="mx-2 text-stone-400">•</span>
           ${editor.questions.filter((question) => question.required).length} required
         </div>
-        <button
-          type="button"
-          class="btn-secondary inline-flex items-center justify-center gap-2"
-          ?disabled=${editor.disabled}
-          @click=${() => editor._addQuestion()}
-        >
-          <div class="svg-icon size-4 bg-current icon-add-circle"></div>
-          Add question
-        </button>
+        <div>
+          <button
+            type="button"
+            class="btn-secondary inline-flex items-center justify-center gap-2"
+            ?disabled=${editor.disabled || editor.questionsLimitReached}
+            title=${showQuestionsLimit(editor) ? getQuestionsLimitText(editor) : nothing}
+            aria-describedby=${showQuestionsLimit(editor) ? editor.ids.limit : nothing}
+            @click=${(event) => editor._addQuestion(event.currentTarget)}
+          >
+            <div class="svg-icon size-4 bg-current icon-add-circle"></div>
+            Add question
+          </button>
+          ${showQuestionsLimit(editor) ? renderQuestionsLimit(editor) : ""}
+        </div>
       </div>
 
       <div class="mt-5 space-y-3">
@@ -43,15 +48,16 @@ const renderQuestionsEditor = (editor) => html`
 `;
 
 /**
- * Renders the warning shown while registration questions can still be edited.
+ * Renders the warning shown while questions can still be edited.
+ * @param {QuestionsEditor} editor Questions editor element
  * @returns {unknown} Lit template
  */
-const renderQuestionEditingWarning = () => html`
+const renderQuestionEditingWarning = (editor) => html`
   <div
     data-question-editing-warning
     class="w-full rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
   >
-    Questionnaire questions cannot be edited after an attendee has submitted answers.
+    ${editor.editingWarning}
   </div>
 `;
 
@@ -90,9 +96,7 @@ const renderHiddenFields = (editor) => html`
  * @returns {unknown} Lit template
  */
 const renderEmptyState = (editor) => {
-  const message = editor.disabled
-    ? "No registration questions were added for this event."
-    : 'No registration questions yet. Click "Add question" to create one.';
+  const message = editor.disabled ? editor.emptyDisabledMessage : editor.emptyMessage;
 
   return html`<div class="py-8 text-center text-sm italic text-stone-400">${message}</div>`;
 };
@@ -150,7 +154,9 @@ const renderQuestionCard = (editor, question, questionIndex) => html`
         <div class="min-w-0 flex-1">
           <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div class="min-w-0">
-              <div class="font-semibold text-stone-900">${question.prompt || "Untitled question"}</div>
+              <div class="font-semibold text-stone-900 md:text-sm lg:text-base">
+                ${question.prompt || "Untitled question"}
+              </div>
               <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-600">
                 <span class="text-stone-500">${getQuestionTypeLabel(question.kind)}</span>
                 ${
@@ -171,7 +177,7 @@ const renderQuestionCard = (editor, question, questionIndex) => html`
                   editor.disabled ? "cursor-not-allowed opacity-60" : ""
                 }"
                 ?disabled=${editor.disabled}
-                @click=${() => editor._openQuestionModal(questionIndex)}
+                @click=${(event) => editor._openQuestionModal(questionIndex, event.currentTarget)}
                 aria-label="Edit question"
                 title="Edit"
               >
@@ -230,14 +236,15 @@ const renderQuestionModal = (editor) => html`
     } items-center justify-center overflow-y-auto overflow-x-hidden"
     role="dialog"
     aria-modal="true"
-    aria-labelledby="question-modal-title"
+    aria-labelledby=${editor.ids.modalTitle}
+    data-question-modal
     data-pending-changes-ignore
   >
     <div class="absolute inset-0 bg-stone-950 opacity-35" @click=${() => editor._closeQuestionModal()}></div>
     <div class="modal-panel max-w-6xl p-4">
       <div class="modal-card rounded-lg">
         <div class="flex shrink-0 items-center justify-between border-b border-stone-200 p-5">
-          <h3 id="question-modal-title" class="text-xl font-semibold text-stone-900">
+          <h3 id=${editor.ids.modalTitle} class="text-xl font-semibold text-stone-900">
             ${editor._isNewQuestion ? "Add question" : "Edit question"}
           </h3>
           <button
@@ -255,14 +262,15 @@ const renderQuestionModal = (editor) => html`
 
         <div class="modal-body flex-1 space-y-6 p-5">
           <div>
-            <label class="form-label" for="question-prompt-draft">Question</label>
+            <label class="form-label" for=${editor.ids.prompt}>Question</label>
             <div class="mt-2">
               <input
-                id="question-prompt-draft"
+                id=${editor.ids.prompt}
                 data-question-modal-field
                 class="input-primary"
                 type="text"
-                maxlength="500"
+                maxlength=${editor.limits.promptMaxLength}
+                autofocus
                 placeholder="e.g. Company name"
                 required
                 .value=${editor._draftQuestion?.prompt || ""}
@@ -273,10 +281,10 @@ const renderQuestionModal = (editor) => html`
           </div>
 
           <div class="max-w-xs">
-            <label class="form-label" for="question-kind-draft">Type</label>
+            <label class="form-label" for=${editor.ids.kind}>Type</label>
             <div class="mt-2">
               <select
-                id="question-kind-draft"
+                id=${editor.ids.kind}
                 class="select-primary"
                 .value=${editor._draftQuestion?.kind || "free-text"}
                 ?disabled=${!editor._isModalOpen}
@@ -295,8 +303,10 @@ const renderQuestionModal = (editor) => html`
           <div>
             <label class="inline-flex cursor-pointer items-center">
               <input
+                id=${editor.ids.required}
                 type="checkbox"
                 class="peer sr-only"
+                aria-describedby=${editor.requiredHelp ? editor.ids.requiredHelp : nothing}
                 .checked=${editor._draftQuestion?.required || false}
                 ?disabled=${!editor._isModalOpen}
                 @change=${(event) => editor._updateDraftQuestion({ required: event.target.checked })}
@@ -304,10 +314,11 @@ const renderQuestionModal = (editor) => html`
               <div class="toggle-track"></div>
               <span class="ms-3 text-sm font-medium text-stone-900">Required</span>
             </label>
-            <p class="form-legend mt-2">
-              Required answers are collected with a ticket request, RSVP, checkout, or offer claim. Optional
-              questions can be skipped.
-            </p>
+            ${
+              editor.requiredHelp
+                ? html`<p id=${editor.ids.requiredHelp} class="form-legend mt-2">${editor.requiredHelp}</p>`
+                : ""
+            }
           </div>
 
           ${editor._draftQuestion && editor._draftQuestion.kind !== "free-text" ? renderDraftOptions(editor) : ""}
@@ -342,9 +353,9 @@ const renderQuestionModal = (editor) => html`
  * @returns {unknown} Lit template
  */
 const renderDraftOptions = (editor) => html`
-  <div class="space-y-3">
+  <div class="space-y-3" role="group" aria-labelledby=${editor.ids.options}>
     <div class="flex items-center justify-between gap-3">
-      <div class="form-label">Options</div>
+      <div id=${editor.ids.options} class="form-label">Options</div>
       <button
         type="button"
         class="btn-primary-outline btn-mini inline-flex items-center justify-center gap-2"
@@ -389,10 +400,11 @@ const renderDraftOptions = (editor) => html`
             <div class="svg-icon size-4 icon-drag bg-stone-600"></div>
           </button>
           <input
+            id=${editor.ids.option(option.id)}
             class="input-primary"
             data-question-modal-field
             type="text"
-            maxlength="120"
+            maxlength=${editor.limits.optionMaxLength}
             placeholder="Option"
             aria-label=${`Option ${optionIndex + 1}`}
             required
@@ -415,5 +427,29 @@ const renderDraftOptions = (editor) => html`
     )}
   </div>
 `;
+
+/**
+ * Renders the screen reader note describing the reached question limit.
+ * @param {QuestionsEditor} editor Questions editor element
+ * @returns {unknown} Lit template
+ */
+const renderQuestionsLimit = (editor) => html`
+  <p id=${editor.ids.limit} data-questions-limit class="sr-only">${getQuestionsLimitText(editor)}</p>
+`;
+
+/**
+ * Builds the text explaining the question limit.
+ * @param {QuestionsEditor} editor Questions editor element
+ * @returns {string}
+ */
+const getQuestionsLimitText = (editor) =>
+  `You can add up to ${editor.limits.questions} ${editor.limits.questions === 1 ? "question" : "questions"}.`;
+
+/**
+ * Checks whether the question limit note should be shown.
+ * @param {QuestionsEditor} editor Questions editor element
+ * @returns {boolean}
+ */
+const showQuestionsLimit = (editor) => !editor.disabled && editor.questionsLimitReached;
 
 export { renderQuestionsEditor };

@@ -216,12 +216,10 @@ mod tests {
     use chrono::{Duration, Utc};
     use uuid::Uuid;
 
-    use crate::{
-        types::tests::sample_event_summary,
-        types::{
-            event::EventEnrollmentStatus,
-            questionnaire::{QuestionnaireQuestion, QuestionnaireQuestionKind},
-        },
+    use crate::types::{
+        event::EventEnrollmentStatus,
+        questionnaire::{QuestionnaireQuestion, QuestionnaireQuestionKind},
+        tests::sample_event_summary,
     };
 
     use super::{UserEvent, UserEventRole};

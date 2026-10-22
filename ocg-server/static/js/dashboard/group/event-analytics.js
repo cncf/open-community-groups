@@ -21,6 +21,7 @@ import {
   renderChart,
 } from "/static/js/common/charts/stats.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import { bindQuestionOptionsToggles } from "/static/js/dashboard/group/question-breakdown.js";
 
 /** Selector of the event analytics JSON marker. */
 const EVENT_ANALYTICS_DATA_SELECTOR = "[data-event-analytics]";
@@ -265,33 +266,13 @@ export const sortUtmCombinationRows = (tbody, key, direction) => {
 };
 
 /**
- * Shows or hides the options of a registration question beyond the visible
- * ones, keeping the toggle label and expanded state in sync.
- * @param {HTMLButtonElement} button - Question options toggle button.
- * @returns {void}
- */
-export const toggleQuestionOptions = (button) => {
-  const list = document.getElementById(button.getAttribute("aria-controls") || "");
-  if (!list) {
-    return;
-  }
-
-  const expanded = button.getAttribute("aria-expanded") !== "true";
-  list.querySelectorAll("[data-question-option-hidden]").forEach((option) => {
-    option.hidden = !expanded;
-  });
-  button.setAttribute("aria-expanded", String(expanded));
-  const label = button.querySelector("[data-question-options-label]") || button;
-  label.textContent = expanded ? button.dataset.labelExpanded : button.dataset.labelCollapsed;
-};
-
-/**
  * Binds the delegated UTM dimension switch, table sorting and question
  * options toggles once per root.
  * @param {Element} root - Analytics root element.
  * @returns {void}
  */
 const bindAnalyticsControls = (root) => {
+  bindQuestionOptionsToggles(root);
   if (boundRoots.has(root)) {
     return;
   }
@@ -319,13 +300,6 @@ const bindAnalyticsControls = (root) => {
     const sortButton = target.closest("[data-utm-sort]");
     if (sortButton && root.contains(sortButton)) {
       handleCombinationsSort(sortButton);
-      return;
-    }
-
-    // Expand or collapse the options of a registration question
-    const optionsToggle = target.closest("[data-question-options-toggle]");
-    if (optionsToggle && root.contains(optionsToggle)) {
-      toggleQuestionOptions(optionsToggle);
     }
   });
 };

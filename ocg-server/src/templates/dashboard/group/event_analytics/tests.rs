@@ -1,9 +1,7 @@
 use chrono::{Duration, Utc};
 
 use crate::types::{
-    dashboard::group::event_analytics::{
-        EventAdmissionOfferCount, EventAdmissionOfferOutcome, EventQuestionOptionCount,
-    },
+    dashboard::group::event_analytics::{EventAdmissionOfferCount, EventAdmissionOfferOutcome},
     event::EventAdmissionOfferSource,
     tests::sample_event_analytics,
 };
@@ -154,105 +152,6 @@ fn test_offer_labels_describe_outcomes_and_sources() {
 }
 
 #[test]
-fn test_percent_label_formats_ratios() {
-    assert_eq!(percent_label(None), "-");
-    assert_eq!(percent_label(Some(0.004)), "0.4%");
-    assert_eq!(percent_label(Some(0.05)), "5%");
-    assert_eq!(percent_label(Some(0.123)), "12%");
-    assert_eq!(percent_label(Some(2.0)), "200%");
-}
-
-#[test]
-fn test_question_options_hide_options_beyond_the_visible_ones() {
-    let mut page = sample_page();
-    page.stats.audience.questions[0].options = (0..12)
-        .map(|index| EventQuestionOptionCount {
-            count: 1,
-            label: format!("Option {index}"),
-            option_id: Uuid::from_u128(100 + index),
-        })
-        .collect();
-    let question = &page.stats.audience.questions[0];
-    let options = page.question_options(question);
-
-    assert_eq!(page.question_hidden_options_count(question), 2);
-    assert!(
-        options[..QUESTION_VISIBLE_OPTIONS]
-            .iter()
-            .all(|option| !option.hidden)
-    );
-    assert!(options[QUESTION_VISIBLE_OPTIONS..].iter().all(|option| option.hidden));
-    assert_eq!(options[11].label, "Option 11");
-}
-
-#[test]
-fn test_question_options_sort_by_selections_with_shares_of_respondents() {
-    let mut page = sample_page();
-    page.stats.audience.questions[0].kind = QuestionnaireQuestionKind::MultiSelect;
-    page.stats.audience.questions[0].respondents = 4;
-    page.stats.audience.questions[0].options = vec![
-        EventQuestionOptionCount {
-            count: 1,
-            label: "Cloud".to_string(),
-            option_id: Uuid::from_u128(21),
-        },
-        EventQuestionOptionCount {
-            count: 3,
-            label: "AI".to_string(),
-            option_id: Uuid::from_u128(22),
-        },
-        EventQuestionOptionCount {
-            count: 1,
-            label: "Edge".to_string(),
-            option_id: Uuid::from_u128(23),
-        },
-    ];
-    let question = &page.stats.audience.questions[0];
-
-    assert!(page.is_multi_select(question));
-    assert_eq!(page.question_hidden_options_count(question), 0);
-    assert_eq!(
-        page.question_options(question),
-        vec![
-            QuestionOptionShare {
-                count: 3,
-                hidden: false,
-                label: "AI".to_string(),
-                share_label: "75%".to_string(),
-                width: "75.0".to_string(),
-            },
-            QuestionOptionShare {
-                count: 1,
-                hidden: false,
-                label: "Cloud".to_string(),
-                share_label: "25%".to_string(),
-                width: "25.0".to_string(),
-            },
-            QuestionOptionShare {
-                count: 1,
-                hidden: false,
-                label: "Edge".to_string(),
-                share_label: "25%".to_string(),
-                width: "25.0".to_string(),
-            },
-        ]
-    );
-}
-
-#[test]
-fn test_question_options_use_zero_shares_without_respondents() {
-    let mut page = sample_page();
-    page.stats.audience.questions[0].options[0].count = 0;
-    page.stats.audience.questions[0].respondents = 0;
-    let question = &page.stats.audience.questions[0];
-    let options = page.question_options(question);
-
-    assert!(!page.is_multi_select(question));
-    assert_eq!(options[0].share_label, "0%");
-    assert_eq!(options[0].width, "0");
-}
-
-#[test]
 fn test_rate_labels_use_not_applicable_without_denominator() {
     let mut page = sample_page();
     page.stats.event.capacity = None;
@@ -290,6 +189,94 @@ fn test_share_label_is_unavailable_when_attribution_is_inconsistent() {
     page.stats.traffic.attribution_consistent = false;
 
     assert_eq!(page.share_label(&4), "Unavailable");
+}
+
+#[test]
+fn test_survey_helpers_describe_survey_responses() {
+    let page = sample_page();
+    let survey = &page.stats.surveys.surveys[0];
+
+    assert_eq!(page.survey_rate_label(survey), "75%");
+    assert_eq!(page.survey_response_width(survey), "75.0");
+    assert_eq!(page.survey_responses_short_summary(survey), "3 / 4");
+    assert_eq!(
+        page.survey_responses_summary(survey),
+        "3 of 4 eligible attendees responded"
+    );
+}
+
+#[test]
+fn test_survey_helpers_handle_surveys_without_eligible_attendees() {
+    // Setup a survey answered only by attendees no longer eligible
+    let page = sample_page();
+    let mut survey = page.stats.surveys.surveys[0].clone();
+    survey.eligible_count = 0;
+    survey.eligible_respondents_count = 0;
+    survey.responses_count = 2;
+
+    // Check the rate is not applicable and the stored total is reported
+    assert_eq!(page.survey_rate_label(&survey), "-");
+    assert_eq!(page.survey_response_width(&survey), "0");
+    assert_eq!(
+        page.survey_responses_short_summary(&survey),
+        "0 / 0 · 2 total"
+    );
+    assert_eq!(
+        page.survey_responses_summary(&survey),
+        "No eligible attendees · 2 responses in total"
+    );
+}
+
+#[test]
+fn test_survey_responses_short_summary_adds_the_stored_total_when_it_differs() {
+    let page = sample_page();
+    let mut survey = page.stats.surveys.surveys[0].clone();
+    survey.eligible_count = 1_200;
+    survey.eligible_respondents_count = 1_000;
+    survey.responses_count = 1_005;
+
+    assert_eq!(
+        page.survey_responses_short_summary(&survey),
+        "1,000 / 1,200 · 1,005 total"
+    );
+}
+
+#[test]
+fn test_survey_responses_summary_adds_the_stored_total_when_it_differs() {
+    let page = sample_page();
+    let mut survey = page.stats.surveys.surveys[0].clone();
+    survey.eligible_count = 1_200;
+    survey.eligible_respondents_count = 1_000;
+    survey.responses_count = 1_005;
+
+    assert_eq!(
+        page.survey_responses_summary(&survey),
+        "1,000 of 1,200 eligible attendees responded · 1,005 responses in total"
+    );
+}
+
+#[test]
+fn test_surveys_response_rate_helpers_describe_opened_surveys() {
+    let page = sample_page();
+
+    assert_eq!(page.surveys_response_rate_label(), "75%");
+    assert_eq!(
+        page.surveys_response_rate_description(),
+        "3 of 4 eligible attendees, across open and closed surveys"
+    );
+}
+
+#[test]
+fn test_surveys_response_rate_helpers_without_opened_surveys() {
+    let mut page = sample_page();
+    page.stats.surveys.total_eligible_count = 0;
+    page.stats.surveys.total_eligible_respondents_count = 0;
+
+    assert_eq!(page.surveys_response_rate_label(), "-");
+    assert_eq!(
+        page.surveys_response_rate_description(),
+        "No eligible attendees in open or closed surveys yet"
+    );
 }
 
 #[test]

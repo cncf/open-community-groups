@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(251);
+select plan(257);
 
 -- ============================================================================
 -- TESTS
@@ -56,6 +56,8 @@ select has_pk('event_ticket_type');
 select has_pk('event_series');
 select has_pk('event_speaker');
 select has_pk('event_sponsor');
+select has_pk('event_survey');
+select has_pk('event_survey_response');
 select hasnt_pk('event_views');
 select hasnt_pk('event_views_utm');
 select has_pk('event_waitlist');
@@ -199,6 +201,10 @@ select col_is_fk('event_speaker', 'event_id', 'event');
 select col_is_fk('event_speaker', 'user_id', 'user');
 select col_is_fk('event_sponsor', 'event_id', 'event');
 select col_is_fk('event_sponsor', 'group_sponsor_id', 'group_sponsor');
+select col_is_fk('event_survey', 'created_by', 'user');
+select col_is_fk('event_survey', 'event_id', 'event');
+select col_is_fk('event_survey_response', 'event_survey_id', 'event_survey');
+select col_is_fk('event_survey_response', 'user_id', 'user');
 select col_is_fk('event_views', 'event_id', 'event');
 select col_is_fk('event_views_utm', 'event_id', 'event');
 select col_is_fk('event_waitlist', 'event_id', 'event');

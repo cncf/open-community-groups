@@ -27,7 +27,7 @@ use crate::{
 
 use super::{
     badges, check_in, events, groups, inbox, invitations, logs, notifications, purchases,
-    session_proposals, submissions,
+    session_proposals, submissions, surveys,
 };
 
 #[cfg(test)]
@@ -55,8 +55,11 @@ pub(crate) async fn page(
         .get("tab")
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
-    // Get site settings
-    let site_settings = db.get_site_settings().await?;
+    // Get site settings and the number of surveys left to answer
+    let (site_settings, surveys_unanswered_count) = tokio::try_join!(
+        db.get_site_settings(),
+        db.count_user_unanswered_event_surveys(user.user_id),
+    )?;
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -121,6 +124,13 @@ pub(crate) async fn page(
                 submissions::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::Submissions(template)
         }
+        Tab::Surveys => {
+            // Load the list, opening the survey an email links to
+            let event_survey_id = surveys::requested_event_survey_id(&query);
+            let (_, template) =
+                surveys::prepare_list_page(&db, user.user_id, raw_query, event_survey_id).await?;
+            Content::Surveys(template)
+        }
     };
 
     // Render the page
@@ -130,6 +140,7 @@ pub(crate) async fn page(
         page_id: PageId::UserDashboard,
         path: "/dashboard/user".to_string(),
         site_settings,
+        surveys_unanswered_count,
         user: UserMenuState::from_session(auth_session).await?,
     };
 

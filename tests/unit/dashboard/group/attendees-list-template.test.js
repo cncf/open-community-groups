@@ -76,9 +76,9 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('id="attendees-enrollment-status"');
     expect(template).to.include('name="status"');
     expect(template).not.to.include('name="attendance"');
-    expect(template).to.include('<optgroup label="Views">');
-    expect(template).to.include('<optgroup label="Current status">');
-    expect(template).to.include('<optgroup label="Historical status">');
+    expect(template).to.include('<optgroup label="VIEWS">');
+    expect(template).to.include('<optgroup label="CURRENT STATUS">');
+    expect(template).to.include('<optgroup label="HISTORICAL STATUS">');
 
     for (const [value, label] of [
       ["current", "Current enrollments"],

@@ -1,0 +1,199 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Results header -#}
+{# Used by the survey Summary and Individual views to switch between them. -#}
+{% macro results_header(event_id, survey, timezone, view) -%}
+  {% let survey_url = "/dashboard/group/events/{}/surveys/{}"|format(event_id, survey.event_survey_id) -%}
+  <div class="space-y-5">
+    <button id="event-survey-results-back"
+            type="button"
+            hx-get="/dashboard/group/events/{{ event_id }}/surveys"
+            hx-target="#surveys-content"
+            hx-swap="innerHTML show:window:top"
+            hx-indicator="#dashboard-spinner"
+            class="inline-flex items-center gap-2 text-sm font-medium text-primary-500 hover:text-primary-700">
+      <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
+      <span>Back to surveys</span>
+    </button>
+
+    {# Survey summary, styled like the inbox conversation header -#}
+    <header class="rounded-lg border border-stone-200 bg-white">
+      <div class="px-4 py-4 sm:px-6 sm:py-5">
+        <div class="text-sm font-semibold uppercase tracking-wide text-stone-500">Survey results</div>
+        <h2 class="mt-1 break-words text-xl font-semibold leading-tight text-stone-900 lg:text-2xl">
+          {{ survey.title }}
+        </h2>
+      </div>
+      <div class="flex min-h-12.5 flex-wrap items-center gap-x-6 gap-y-2 border-t border-stone-200 px-4 py-3 text-xs text-stone-600 sm:px-6"
+           data-event-survey-facts>
+        {{ state_badge(state = survey.state) -}}
+        {% if survey.state == crate::types::event_survey::EventSurveyState::Open || survey.state == crate::types::event_survey::EventSurveyState::Closed -%}
+          {% if let Some(opens_at) = survey.effective_opens_at -%}
+            {% let survey_timezone = timezone.clone() -%}
+            <span class="flex items-center gap-1.5">
+              <span class="svg-icon size-3.5 shrink-0 icon-calendar bg-stone-500"
+                    aria-hidden="true"></span>
+              <span>Opened <time datetime="{{ opens_at.to_rfc3339() }}">{{ opens_at.with_timezone(survey_timezone).format("%b %-e, %Y") }}</time></span>
+            </span>
+          {% endif -%}
+        {% endif -%}
+        <span class="hidden items-center gap-1.5 lg:flex">
+          <span class="svg-icon size-3.5 shrink-0 icon-list bg-stone-500"
+                aria-hidden="true"></span>
+          <span>{{ survey.questions_count }} question{{ survey.questions_count|pluralize }}</span>
+        </span>
+        <a href="{{ survey_url }}/responses.csv"
+           download
+           hx-boost="false"
+           class="btn-primary-outline btn-mini ms-auto inline-flex items-center gap-2">
+          <div class="svg-icon size-4 icon-csv bg-current" aria-hidden="true"></div>
+          <span>Download CSV</span>
+        </a>
+      </div>
+    </header>
+    {# End survey summary -#}
+
+    {# Results view -#}
+    <div class="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 lg:gap-x-8">
+      <div class="inline-flex" role="group" aria-label="Results view">
+        <button id="event-survey-summary-view"
+                type="button"
+                hx-get="{{ survey_url }}/results"
+                hx-target="#surveys-content"
+                hx-swap="innerHTML show:window:top"
+                hx-indicator="#dashboard-spinner"
+                aria-pressed="{% if view == "summary" %}true{% else %}false{% endif %}"
+                class="relative inline-flex w-[90px] items-center justify-center rounded-s-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 xl:w-[115px]">Summary</button>
+        <button id="event-survey-individual-view"
+                type="button"
+                hx-get="{{ survey_url }}/responses"
+                hx-target="#surveys-content"
+                hx-swap="innerHTML show:window:top"
+                hx-indicator="#dashboard-spinner"
+                aria-pressed="{% if view == "individual" %}true{% else %}false{% endif %}"
+                class="relative -ms-px inline-flex w-[90px] items-center justify-center rounded-e-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white xl:w-[115px]"
+                {% if survey.anonymous -%}
+                  disabled aria-describedby="event-survey-individual-view-note"
+                {% endif -%}>Individual</button>
+      </div>
+      {% if survey.anonymous -%}
+        <p id="event-survey-individual-view-note" class="text-xs text-stone-500">
+          Anonymous surveys only show aggregated results.
+        </p>
+      {% endif -%}
+    </div>
+    {# End results view -#}
+
+    {% if crate::templates::dashboard::group::surveys::few_anonymous_responses(survey) -%}
+      <div data-event-survey-few-responses-notice
+           class="mt-8 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        This anonymous survey has few responses. Its answers may still identify the attendees who gave them.
+      </div>
+    {% endif -%}
+  </div>
+{% endmacro results_header -%}
+{# End results header -#}
+
+{# Results modal footer -#}
+{# Used by the survey response and free-text answers modals to move between their pages. -#}
+{# The caller renders the position shown before the centered navigation buttons. -#}
+{% macro results_modal_footer(modal_id, nav_attribute, close_attribute, error_message, previous_url, next_url) -%}
+  <div class="grid grid-cols-[1fr_auto] items-center gap-3 border-t border-stone-200 p-4 sm:grid-cols-[1fr_auto_1fr] md:p-5">
+    <div class="col-span-2 min-w-0 sm:col-span-1">{{ caller() }}</div>
+    <div class="flex items-center gap-2">
+      {% if let Some(previous_url) = previous_url -%}
+        <button type="button"
+                hx-get="{{ previous_url }}"
+                hx-target="#{{ modal_id }}-content"
+                hx-swap="innerHTML"
+                hx-sync="#{{ modal_id }}:replace"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="this"
+                {{ nav_attribute }}="previous"
+                data-htmx-response
+                data-error-message="{{ error_message }}"
+                class="btn-primary-outline inline-flex w-24 items-center justify-center gap-2 px-3">
+          <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
+          <span>Prev</span>
+        </button>
+      {% else -%}
+        <button type="button"
+                disabled
+                {{ nav_attribute }}="previous"
+                class="btn-primary-outline inline-flex w-24 cursor-not-allowed items-center justify-center gap-2 px-3 opacity-50">
+          <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
+          <span>Prev</span>
+        </button>
+      {% endif -%}
+      {% if let Some(next_url) = next_url -%}
+        <button type="button"
+                hx-get="{{ next_url }}"
+                hx-target="#{{ modal_id }}-content"
+                hx-swap="innerHTML"
+                hx-sync="#{{ modal_id }}:replace"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="this"
+                {{ nav_attribute }}="next"
+                data-htmx-response
+                data-error-message="{{ error_message }}"
+                class="btn-primary-outline inline-flex w-24 items-center justify-center gap-2 px-3">
+          <span>Next</span>
+          <div class="svg-icon size-4 icon-arrow-right bg-current"
+               aria-hidden="true"></div>
+        </button>
+      {% else -%}
+        <button type="button"
+                disabled
+                {{ nav_attribute }}="next"
+                class="btn-primary-outline inline-flex w-24 cursor-not-allowed items-center justify-center gap-2 px-3 opacity-50">
+          <span>Next</span>
+          <div class="svg-icon size-4 icon-arrow-right bg-current"
+               aria-hidden="true"></div>
+        </button>
+      {% endif -%}
+    </div>
+    <button type="button"
+            {{ close_attribute }}
+            class="btn-primary justify-self-end">Close</button>
+  </div>
+{% endmacro results_modal_footer -%}
+{# End results modal footer -#}
+
+{# State badge -#}
+{# Used by the event surveys list and the event analytics surveys section. -#}
+{% macro state_badge(state) -%}
+  {% match state -%}
+  {% when crate::types::event_survey::EventSurveyState::Draft -%}
+  <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Draft</span>
+  {% when crate::types::event_survey::EventSurveyState::Scheduled -%}
+  <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Scheduled</span>
+  {% when crate::types::event_survey::EventSurveyState::Open -%}
+  <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Open</span>
+  {% when crate::types::event_survey::EventSurveyState::Closed -%}
+  <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">Closed</span>
+{% endmatch -%}
+{% endmacro state_badge -%}
+{# End state badge -#}
+
+{# State badge with details -#}
+{# Used by the event surveys list to show state details in a hover tooltip. -#}
+{% macro state_badge_details(state, tooltip_id, title, details) -%}
+  <span class="group/survey-state relative inline-flex shrink-0">
+    <button type="button"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            aria-describedby="{{ tooltip_id }}">
+      {{ state_badge(state = state) -}}
+      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
+                   {% if *state == crate::types::event_survey::EventSurveyState::Draft %}bg-amber-800{% else if *state == crate::types::event_survey::EventSurveyState::Closed %}bg-red-800{% else %}bg-green-800{% endif %}"
+            aria-hidden="true"></span>
+    </button>
+    {% call dashboard::tooltip_panel(
+      id = tooltip_id,
+      title = title,
+      visibility_classes = "group-hover/survey-state:visible group-hover/survey-state:opacity-100 group-focus-within/survey-state:visible group-focus-within/survey-state:opacity-100"
+    ) -%}
+    <span class="block text-stone-900">{{ details }}</span>
+    {% endcall -%}
+  </span>
+{% endmacro state_badge_details -%}
+{# End state badge with details -#}

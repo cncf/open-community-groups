@@ -51,6 +51,19 @@ test.describe("user dashboard my events view", () => {
     await expect(dashboardContent.getByText(TEST_EVENT_NAMES.beta[0])).toHaveCount(0);
   });
 
+  test("my events leaves surveys to the Surveys tab", async ({ member1Page }) => {
+    // Load My Events for the member with seeded surveys to answer.
+    await navigateToPath(member1Page, "/dashboard/user?tab=events");
+    const dashboardContent = member1Page.locator("#dashboard-content");
+
+    // Verify the events list renders without the surveys panel or the survey modal.
+    await expect(dashboardContent).toContainText(
+      "Upcoming participation, active checkouts, and event offers.",
+    );
+    await expect(member1Page.getByRole("heading", { name: "Surveys to answer" })).toHaveCount(0);
+    await expect(member1Page.locator("#user-event-survey-modal")).toHaveCount(0);
+  });
+
   test("my events shows rejected refund status and reason", async ({ pending1Page }) => {
     // Load My Events for the attendee with a seeded rejected refund request.
     await navigateToPath(pending1Page, "/dashboard/user?tab=events");

@@ -16,6 +16,7 @@ If you prefer a faster task-oriented run-through first, use
 - [Join Groups](#join-groups)
 - [Get Tickets, RSVP, and Attend Events](#get-tickets-rsvp-and-attend-events)
 - [Check In on Event Day](#check-in-on-event-day)
+- [Answer Event Surveys](#answer-event-surveys)
 - [Submit to Call for Speakers (CFS)](#submit-to-call-for-speakers-cfs)
 - [Contact Organizers](#contact-organizers)
 - [Use Stats for Platform Context](#use-stats-for-platform-context)
@@ -214,6 +215,15 @@ record your arrival.
 Only confirmed, current or upcoming events appear. Keep the code private: it
 identifies your attendance and is intended to be scanned by event staff.
 
+## Answer Event Surveys
+
+After an event ends, its organizers can ask attendees for feedback with a
+survey. Each survey is for confirmed attendees, or only for those who checked
+in. You answer surveys from the `Surveys` section of your dashboard, which also
+keeps the answers you gave to closed surveys, and the email OCG sends when a
+survey opens links straight to it. For the full flow, see
+[Surveys: Event Feedback](user-dashboard.md#surveys-event-feedback).
+
 ## Submit to Call for Speakers (CFS)
 
 The CFS flow happens in two places:
@@ -268,7 +278,8 @@ momentum at a glance: groups, members, events, and attendees over time.
 2. Join one or more groups.
 3. RSVP to events.
 4. Present your personal dashboard QR code on event day.
-5. Use CFS features when you are ready to submit talks.
+5. Share your feedback from `Surveys` when the organizers open a survey.
+6. Use CFS features when you are ready to submit talks.
 
 When you transition into organizer responsibilities, use
 [Choose Your Dashboard](../getting-started/choose-dashboard.md).

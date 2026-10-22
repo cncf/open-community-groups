@@ -38,6 +38,7 @@ select results_eq(
     ),
     $$ values
         ('event-reminders'::text),
+        ('event-surveys'::text),
         ('group-announcements'::text),
         ('new-events'::text),
         ('organizer-messages'::text)
@@ -82,6 +83,7 @@ select results_eq(
         ('event-published', 'new-events'::text),
         ('event-reminder', 'event-reminders'::text),
         ('event-series-published', 'new-events'::text),
+        ('event-survey-opened', 'event-surveys'::text),
         ('group-custom', 'group-announcements'::text),
         ('inbox-message-received', 'group-inbox'::text)
     $$,

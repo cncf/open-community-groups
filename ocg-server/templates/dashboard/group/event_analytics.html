@@ -1,10 +1,12 @@
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/question_answers.html" as question_answers -%}
 {% import "macros/stats.html" as stats_macro -%}
+{% import "macros/surveys.html" as surveys_macros -%}
 {% let has_ended = self.has_ended() -%}
 
 {# Page title -#}
 {{ dashboard::page_title(title = "Analytics", docs_href = "/docs#/guides/event-operations?id=analytics",
-  description = "Traffic, registrations and attendance for this event. Analytics are cached for up to an hour and may not display up to date information.") }}
+  description = "Traffic, registrations, attendance and survey responses for this event. Analytics are cached for up to an hour and may not display up to date information.") }}
 {# End page title -#}
 
 {# Summary stat cards -#}
@@ -401,51 +403,11 @@
       {# Registration questions -#}
       <div class="mt-8 space-y-8">
         {% for question in stats.audience.questions -%}
-          {% let options_id = "event-question-{}-options"|format(loop.index0) -%}
-          {% let hidden_options_count = self.question_hidden_options_count(question) -%}
+          {% let options_id = "event-analytics-question-{}-options"|format(loop.index0) -%}
           <div data-event-analytics-question>
-            <div class="break-words text-sm font-semibold text-stone-700">{{ question.prompt }}</div>
-            <div class="mb-3 mt-1 text-xs text-stone-500">
-              {{ question.respondents|num_fmt }} respondents · {{ question.selections|num_fmt }} selections
-            </div>
-            <div class="rounded-lg border border-stone-200 bg-white p-5">
-              {% if question.respondents > 0 -%}
-                <ul id="{{ options_id }}" class="space-y-4">
-                  {% for option in self.question_options(question) -%}
-                    <li {% if option.hidden %}hidden data-question-option-hidden{% endif %}>
-                      <div class="flex items-baseline justify-between gap-3 text-sm">
-                        <span class="min-w-0 break-words text-stone-900">{{ option.label }}</span>
-                        <span class="shrink-0 text-stone-600">{{ option.count|num_fmt }} · {{ option.share_label }}</span>
-                      </div>
-                      <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-stone-200"
-                           aria-hidden="true">
-                        <div class="h-full bg-primary-500" style="width: {{ option.width }}%"></div>
-                      </div>
-                    </li>
-                  {% endfor -%}
-                </ul>
-                {% if hidden_options_count > 0 -%}
-                  <button type="button"
-                          class="group mt-3 inline-flex cursor-pointer items-center gap-1 rounded-sm text-xs/6 font-medium text-stone-500 transition-colors hover:text-stone-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                          aria-controls="{{ options_id }}"
-                          aria-expanded="false"
-                          data-question-options-toggle
-                          data-label-collapsed="Show {{ hidden_options_count }} more options"
-                          data-label-expanded="Show fewer options">
-                    <span data-question-options-label>Show {{ hidden_options_count }} more options</span>
-                    <span class="svg-icon block size-3 icon-caret-down-filled bg-current transition-transform group-aria-expanded:rotate-180"
-                          aria-hidden="true"></span>
-                  </button>
-                {% endif -%}
-                {% if self.is_multi_select(question) -%}
-                  <p class="mt-4 text-xs text-stone-500">
-                    Several options can be selected, so percentages of respondents can add up to more than 100%.
-                  </p>
-                {% endif -%}
-              {% else -%}
-                <p class="text-sm text-stone-500">No answers yet.</p>
-              {% endif -%}
-            </div>
+            {{ question_answers::breakdown(question = question,
+              options_id = options_id,
+              empty_message = "No answers yet.") -}}
           </div>
         {% endfor -%}
       </div>
@@ -466,6 +428,43 @@
       {% endif -%}
     </section>
     {# End check-ins -#}
+  {% endif -%}
+
+  {% if !stats.surveys.surveys.is_empty() -%}
+    {# Surveys -#}
+    <section data-event-analytics-surveys>
+      {{ dashboard::form_title(title = "Surveys", description = "Responses to the surveys of this event that are not drafts, based on the current attendees.") -}}
+      <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {{ stats_macro::stat_card(title = "Overall response rate", value = self.surveys_response_rate_label(), description = self.surveys_response_rate_description()) -}}
+      </div>
+      <ul class="mt-8 space-y-5">
+        {% for survey in stats.surveys.surveys -%}
+          <li data-event-analytics-survey>
+            <div class="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div class="flex min-w-0 items-center gap-2">
+                <span class="min-w-0 truncate font-medium text-stone-900"
+                      title="{{ survey.title }}">{{ survey.title }}</span>
+                <span class="shrink-0">{{ surveys_macros::state_badge(state = survey.state) -}}</span>
+              </div>
+              <div class="shrink-0 text-stone-600">
+                <span class="xl:hidden">{{ self.survey_responses_short_summary(survey) }}</span>
+                <span class="hidden xl:inline">{{ self.survey_responses_summary(survey) }}</span>
+                · <span class="font-semibold text-stone-900">{{ self.survey_rate_label(survey) }}</span>
+              </div>
+            </div>
+            <div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-stone-200"
+                 aria-hidden="true">
+              <div class="h-full bg-primary-500"
+                   style="width: {{ self.survey_response_width(survey) }}%"></div>
+            </div>
+          </li>
+        {% endfor -%}
+      </ul>
+      <p class="mt-4 text-xs text-stone-500">
+        Survey counts are cached for up to an hour. Counts are per survey, so attendees who answer several surveys count in each one. The overall rate covers open and closed surveys and weights each one by its eligible attendees.
+      </p>
+    </section>
+    {# End surveys -#}
   {% endif -%}
 </div>
 

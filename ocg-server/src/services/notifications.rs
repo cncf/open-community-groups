@@ -40,11 +40,11 @@ use crate::{
         EventExternalPaymentPending, EventExternalPaymentReminder, EventInvitation,
         EventPaidConfigured, EventPublished, EventRefundApproved, EventRefundRejected,
         EventRefundRequested, EventReminder, EventRescheduled, EventSeriesCanceled,
-        EventSeriesPublished, EventTicketRequestApproved, EventTicketWaitlistOffer,
-        EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome, GroupCustom,
-        GroupTeamInvitation, GroupWelcome, InboxMessageReceived, InboxReplyReceived,
-        NotificationTemplate, SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome,
-        SpeakerWelcome,
+        EventSeriesPublished, EventSurveyOpened, EventTicketRequestApproved,
+        EventTicketWaitlistOffer, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted,
+        EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome, InboxMessageReceived,
+        InboxReplyReceived, NotificationTemplate, SessionProposalCoSpeakerInvitation,
+        SpeakerSeriesWelcome, SpeakerWelcome,
     },
     types::{
         event::EventSummary,
@@ -198,23 +198,55 @@ impl EnqueueWorker {
     /// Main worker loop: enqueues due notifications until cancelled.
     async fn run(&self) {
         run_worker(&self.cancellation_token, || async {
-            // Enqueue due notifications and select the next maintenance cadence
+            // Enqueue due notifications and select the next maintenance cadence;
+            // each failing job was already logged with its name
             let pause = match self.enqueue_due_notifications().await {
                 Ok(_) => PAUSE_ON_ENQUEUE_NONE,
-                Err(err) => {
-                    error!(error = %format_args!("{err:#}"), "error enqueueing due notifications");
-                    PAUSE_ON_ENQUEUE_ERROR
-                }
+                Err(_) => PAUSE_ON_ENQUEUE_ERROR,
             };
             WorkerIteration::Pause(pause)
         })
         .await;
     }
 
-    /// Enqueue due notifications and return the number enqueued.
-    #[instrument(skip(self), err)]
+    /// Runs every due notifications job and returns the number of
+    /// notifications enqueued.
+    ///
+    /// The jobs are independent: a failing job never prevents the others from
+    /// running. Each failure is logged with its job name, and the first one is
+    /// returned once every job has run.
+    #[instrument(skip(self))]
     async fn enqueue_due_notifications(&self) -> Result<usize> {
-        self.db.enqueue_due_event_reminders(&self.base_url).await
+        // Run every job, even when an earlier one fails
+        let results = [
+            (
+                "event-reminders",
+                self.db.enqueue_due_event_reminders(&self.base_url).await,
+            ),
+            (
+                "event-survey-notifications",
+                self.db.enqueue_due_event_survey_notifications().await,
+            ),
+        ];
+
+        // Sum the enqueued notifications, logging each failure with its job
+        let mut enqueued = 0;
+        let mut first_err = None;
+        for (job, result) in results {
+            match result {
+                Ok(count) => enqueued += count,
+                Err(err) => {
+                    error!(error = %format_args!("{err:#}"), job, "error enqueueing due notifications");
+                    first_err.get_or_insert(err);
+                }
+            }
+        }
+
+        // Report the first failure only after every job has run
+        match first_err {
+            Some(err) => Err(err),
+            None => Ok(enqueued),
+        }
     }
 }
 
@@ -426,6 +458,9 @@ impl DeliveryWorker {
             }
             NotificationKind::EventSeriesPublished => {
                 Self::render_template::<EventSeriesPublished>(template_data, base_url)
+            }
+            NotificationKind::EventSurveyOpened => {
+                Self::render_template::<EventSurveyOpened>(template_data, base_url)
             }
             NotificationKind::EventTicketRequestApproved => {
                 Self::render_template::<EventTicketRequestApproved>(template_data, base_url)

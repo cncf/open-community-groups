@@ -18,6 +18,8 @@ pub(crate) mod auth;
 pub(crate) mod badges;
 /// Community site handlers.
 pub(crate) mod community;
+/// CSV download helpers shared by handlers.
+pub(crate) mod csv;
 /// Dashboards handlers.
 pub(crate) mod dashboard;
 /// Error handling utilities for HTTP handlers.

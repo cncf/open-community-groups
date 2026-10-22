@@ -1087,6 +1087,7 @@ async fn db_contracts_get_event_analytics_deserializes() -> Result<()> {
     assert_eq!(question.kind, QuestionnaireQuestionKind::SingleSelect);
     assert_eq!(question.options[0].count, 1);
     assert_eq!(question.options[0].label, "Developer");
+    assert_eq!(question.position, 1);
     assert_eq!(question.question_id, analytics_question_id());
     assert_eq!(question.respondents, 1);
     assert!(!stats.audience.window_end_capped);
@@ -1116,6 +1117,11 @@ async fn db_contracts_get_event_analytics_deserializes() -> Result<()> {
         ]
     );
     assert_eq!(stats.check_ins.outside_range, 0);
+
+    // Check the event without surveys has an empty survey summary
+    assert!(stats.surveys.surveys.is_empty());
+    assert_eq!(stats.surveys.total_eligible_count, 0);
+    assert_eq!(stats.surveys.total_eligible_respondents_count, 0);
 
     Ok(())
 }

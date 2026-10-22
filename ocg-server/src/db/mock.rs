@@ -440,6 +440,13 @@ mock! {
             >,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<Vec<Uuid>>;
+        async fn add_event_survey(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            survey: &crate::types::dashboard::group::surveys::EventSurveyInput,
+        ) -> Result<Uuid>;
         async fn add_group_sponsor(
             &self,
             actor_user_id: Uuid,
@@ -494,6 +501,14 @@ mock! {
             group_id: Uuid,
             event_ids: &[Uuid],
         ) -> Result<()>;
+        async fn change_event_survey_status(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
+            status: &crate::types::dashboard::group::surveys::EventSurveyStatusForm,
+        ) -> Result<()>;
         async fn check_in_attendee_by_code(
             &self,
             actor_user_id: Uuid,
@@ -529,6 +544,13 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             event_ids: &[Uuid],
+        ) -> Result<()>;
+        async fn delete_event_survey(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
         ) -> Result<()>;
         async fn delete_group_sponsor(
             &self,
@@ -569,6 +591,34 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<crate::types::event::EventSummary>;
+        async fn get_event_survey(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
+        ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyFull>>;
+        async fn get_event_survey_export(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
+            max_rows: usize,
+            max_bytes: usize,
+        ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyExport>>;
+        async fn get_event_survey_response(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
+            user_id: Uuid,
+            filters: &crate::types::dashboard::group::surveys::EventSurveyResponseNavigationFilters,
+        ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyResponseFull>>;
+        async fn get_event_survey_results(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
+        ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyResults>>;
         async fn get_group_external_payments_context(
             &self,
             community_id: Uuid,
@@ -682,6 +732,26 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<Vec<Uuid>>;
+        async fn list_event_survey_responses(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
+            filters: &crate::types::dashboard::group::surveys::EventSurveyResponsesFilters,
+        ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyResponsesOutput>>;
+        async fn list_event_survey_text_answers(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
+            question_id: Uuid,
+            filters: &crate::types::dashboard::group::surveys::EventSurveyTextAnswersFilters,
+        ) -> Result<Option<crate::types::dashboard::group::surveys::EventSurveyTextAnswersOutput>>;
+        async fn list_event_surveys(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Vec<crate::types::dashboard::group::surveys::EventSurveySummary>>;
         async fn list_event_waitlist_ids(
             &self,
             group_id: Uuid,
@@ -866,6 +936,15 @@ mock! {
             >,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<bool>;
+        async fn update_event_survey(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            event_survey_id: Uuid,
+            expected_revision: i64,
+            survey: &crate::types::dashboard::group::surveys::EventSurveyInput,
+        ) -> Result<()>;
         async fn update_group_sponsor(
             &self,
             actor_user_id: Uuid,
@@ -911,6 +990,7 @@ mock! {
             actor_user_id: Uuid,
             session_proposal: &crate::types::dashboard::user::session_proposals::SessionProposalInput,
         ) -> Result<Uuid>;
+        async fn count_user_unanswered_event_surveys(&self, user_id: Uuid) -> Result<usize>;
         async fn decline_event_admission_offer(
             &self,
             actor_user_id: Uuid,
@@ -937,6 +1017,11 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<Option<Uuid>>;
+        async fn get_user_event_survey(
+            &self,
+            event_survey_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<Option<crate::types::dashboard::user::surveys::UserEventSurvey>>;
         async fn get_user_notification_preferences(
             &self,
             user_id: Uuid,
@@ -979,6 +1064,11 @@ mock! {
         ) -> Result<Vec<
             crate::types::dashboard::user::invitations::EventInvitation,
         >>;
+        async fn list_user_event_surveys(
+            &self,
+            user_id: Uuid,
+            filters: &crate::types::dashboard::user::surveys::UserEventSurveysFilters,
+        ) -> Result<crate::types::dashboard::user::surveys::UserEventSurveysOutput>;
         async fn list_user_events(
             &self,
             user_id: Uuid,
@@ -1051,6 +1141,13 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             registration_answers: &crate::types::questionnaire::QuestionnaireAnswers,
+        ) -> Result<()>;
+        async fn submit_event_survey_response(
+            &self,
+            event_survey_id: Uuid,
+            user_id: Uuid,
+            expected_revision: i64,
+            answers: &crate::types::questionnaire::QuestionnaireAnswers,
         ) -> Result<()>;
         async fn unmute_user_group_notifications(
             &self,
@@ -1365,6 +1462,7 @@ mock! {
             &self,
             base_url: &str,
         ) -> Result<usize>;
+        async fn enqueue_due_event_survey_notifications(&self) -> Result<usize>;
         async fn enqueue_notification(
             &self,
             notification: &crate::types::notifications::NewNotification,

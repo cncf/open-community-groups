@@ -5,7 +5,10 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::types::{event::EventAdmissionOfferSource, questionnaire::QuestionnaireQuestionKind};
+use crate::types::{
+    event::EventAdmissionOfferSource, event_survey::EventSurveyState,
+    questionnaire::QuestionnaireQuestionBreakdown,
+};
 
 #[cfg(test)]
 mod tests;
@@ -25,6 +28,8 @@ pub(crate) struct EventAnalytics {
     pub markers: Vec<EventAnalyticsMarker>,
     /// Announcements inside the range left out of the markers.
     pub markers_announcements_omitted: i64,
+    /// Survey responses of the surveys that are not drafts.
+    pub surveys: EventSurveysStats,
     /// Lifecycle traffic and registrations.
     pub traffic: EventTrafficStats,
     /// All-time UTM attribution.
@@ -188,7 +193,7 @@ pub(crate) struct EventAnalyticsRange {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventAudienceStats {
     /// Select question breakdowns in configured order.
-    pub questions: Vec<EventQuestionBreakdown>,
+    pub questions: Vec<QuestionnaireQuestionBreakdown>,
     /// Whether the window close was cut short by the event end or by now.
     pub window_end_capped: bool,
     /// Whether the window has no configured close.
@@ -280,34 +285,6 @@ pub(crate) struct EventInvitationRequestCounts {
     pub rejected: i64,
 }
 
-/// Answers to one select question.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct EventQuestionBreakdown {
-    /// Question kind.
-    pub kind: QuestionnaireQuestionKind,
-    /// Selections per current option.
-    pub options: Vec<EventQuestionOptionCount>,
-    /// Question prompt.
-    pub prompt: String,
-    /// Question identifier.
-    pub question_id: Uuid,
-    /// Attendees selecting at least one current option.
-    pub respondents: i64,
-    /// Selections of current options.
-    pub selections: i64,
-}
-
-/// Selections of one question option.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct EventQuestionOptionCount {
-    /// Selections.
-    pub count: i64,
-    /// Option label.
-    pub label: String,
-    /// Option identifier.
-    pub option_id: Uuid,
-}
-
 /// Confirmed attendees by the path that admitted them.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventRegistrationPathCounts {
@@ -337,6 +314,52 @@ pub(crate) struct EventRegistrationsDailySeries {
     pub order: Option<i32>,
     /// Ticket type title.
     pub title: Option<String>,
+}
+
+/// Responses of one survey that is not a draft.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventSurveyResponseStats {
+    /// Attendees currently in the survey audience.
+    pub eligible_count: i64,
+    /// Attendees currently in the survey audience who responded.
+    pub eligible_respondents_count: i64,
+    /// Survey identifier.
+    pub event_survey_id: Uuid,
+    /// Stored responses, including those of users no longer eligible.
+    pub responses_count: i64,
+    /// Live survey state.
+    pub state: EventSurveyState,
+    /// Survey title.
+    pub title: String,
+}
+
+impl EventSurveyResponseStats {
+    /// Returns the share of the current survey audience who responded.
+    pub(crate) fn response_rate(&self) -> Option<f64> {
+        ratio(self.eligible_respondents_count, self.eligible_count)
+    }
+}
+
+/// Survey responses of an event.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventSurveysStats {
+    /// Surveys that are not drafts, in creation order.
+    pub surveys: Vec<EventSurveyResponseStats>,
+    /// Audience of the surveys that already opened.
+    pub total_eligible_count: i64,
+    /// Respondents in the audience of the surveys that already opened.
+    pub total_eligible_respondents_count: i64,
+}
+
+impl EventSurveysStats {
+    /// Returns the overall response rate of the surveys that already opened,
+    /// weighting each survey by its audience.
+    pub(crate) fn response_rate(&self) -> Option<f64> {
+        ratio(
+            self.total_eligible_respondents_count,
+            self.total_eligible_count,
+        )
+    }
 }
 
 /// Seat usage of one ticket type.

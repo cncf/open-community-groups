@@ -288,6 +288,41 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "event_refunded",
     },
     AuditActionDefinition {
+        label: "Event survey added",
+        scopes: GROUP_SCOPES,
+        value: "event_survey_added",
+    },
+    AuditActionDefinition {
+        label: "Event survey closed",
+        scopes: GROUP_SCOPES,
+        value: "event_survey_closed",
+    },
+    AuditActionDefinition {
+        label: "Event survey deleted",
+        scopes: GROUP_SCOPES,
+        value: "event_survey_deleted",
+    },
+    AuditActionDefinition {
+        label: "Event survey marked ready",
+        scopes: GROUP_SCOPES,
+        value: "event_survey_marked_ready",
+    },
+    AuditActionDefinition {
+        label: "Event survey moved to draft",
+        scopes: GROUP_SCOPES,
+        value: "event_survey_moved_to_draft",
+    },
+    AuditActionDefinition {
+        label: "Event survey reopened",
+        scopes: GROUP_SCOPES,
+        value: "event_survey_reopened",
+    },
+    AuditActionDefinition {
+        label: "Event survey updated",
+        scopes: GROUP_SCOPES,
+        value: "event_survey_updated",
+    },
+    AuditActionDefinition {
         label: "Event unpublished",
         scopes: GROUP_SCOPES,
         value: "event_unpublished",
@@ -711,6 +746,7 @@ fn resource_type_label(resource_type: &str) -> &'static str {
         "community" => "Community",
         "event" => "Event",
         "event_category" => "Event category",
+        "event_survey" => "Event survey",
         "group" => "Group",
         "group_category" => "Group category",
         "group_sponsor" => "Group sponsor",
@@ -737,6 +773,43 @@ mod tests {
     }
 
     #[test]
+    fn test_action_label_event_survey_actions() {
+        assert_eq!(action_label("event_survey_added"), "Event survey added");
+        assert_eq!(action_label("event_survey_closed"), "Event survey closed");
+        assert_eq!(action_label("event_survey_deleted"), "Event survey deleted");
+        assert_eq!(
+            action_label("event_survey_marked_ready"),
+            "Event survey marked ready"
+        );
+        assert_eq!(
+            action_label("event_survey_moved_to_draft"),
+            "Event survey moved to draft"
+        );
+        assert_eq!(
+            action_label("event_survey_reopened"),
+            "Event survey reopened"
+        );
+        assert_eq!(action_label("event_survey_updated"), "Event survey updated");
+    }
+
+    #[test]
+    fn test_event_survey_actions_are_group_scoped() {
+        let group_actions: Vec<String> = AuditScope::Group
+            .action_options()
+            .into_iter()
+            .map(|option| option.value)
+            .collect();
+        let community_actions: Vec<String> = AuditScope::Community
+            .action_options()
+            .into_iter()
+            .map(|option| option.value)
+            .collect();
+
+        assert!(group_actions.contains(&"event_survey_marked_ready".to_string()));
+        assert!(!community_actions.contains(&"event_survey_marked_ready".to_string()));
+    }
+
+    #[test]
     fn test_render_detail_value_joins_scalar_arrays() {
         assert_eq!(
             render_detail_value(&json!(["Platform", "No region", 3])),
@@ -757,5 +830,10 @@ mod tests {
         assert_eq!(render_detail_value(&json!("All")), "All");
         assert_eq!(render_detail_value(&json!(null)), "-");
         assert_eq!(render_detail_value(&json!(2)), "2");
+    }
+
+    #[test]
+    fn test_resource_type_label_event_survey() {
+        assert_eq!(resource_type_label("event_survey"), "Event survey");
     }
 }

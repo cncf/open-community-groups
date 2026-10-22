@@ -284,6 +284,19 @@ async fn test_add_page_success() {
     assert!(body.contains(">Tickets</"));
     assert!(body.contains("free-only"));
     assert!(body.contains("Ticket prices are fixed at 0 until payments are configured"));
+
+    // Check the authoring tabs are grouped without review groups
+    assert!(appear_in_order(
+        &body,
+        &[
+            "<optgroup label=\"EVENT\">",
+            "<optgroup label=\"REGISTRATION\">",
+            "<optgroup label=\"PROGRAM\">",
+        ],
+    ));
+    assert!(!body.contains("<optgroup label=\"PEOPLE\">"));
+    assert!(!body.contains("<optgroup label=\"FOLLOW-UP\">"));
+    assert!(!body.contains("data-section=\"attendees\""));
 }
 
 #[tokio::test]
@@ -423,6 +436,47 @@ async fn test_list_page_waits_for_pending_cohosts_before_publishing() {
         .expect("publish action to be rendered");
     assert!(publish_button.contains("disabled title=\"Waiting for 2 co-host(s) to respond.\""));
     assert!(publish_button.contains("cursor-not-allowed"));
+}
+
+#[tokio::test]
+async fn test_update_page_hides_surveys_tab_for_canceled_events() {
+    // Setup identifiers and a canceled event
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event_full = EventFull {
+        canceled: true,
+        ..sample_event_full(community_id, event_id, group_id)
+    };
+
+    // Setup database expectations without enrollment rows
+    let mut db = MockDB::new();
+    expect_update_page_context(
+        &mut db,
+        session_id,
+        community_id,
+        group_id,
+        user_id,
+        event_full,
+        EventCohostsEditor::default(),
+    );
+    expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
+    expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
+
+    // Run the request
+    let response = send_update_page_request(db, session_id, event_id).await;
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the surveys tab and its content are not rendered
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(!body.contains("<option value=\"surveys\""));
+    assert!(!body.contains("data-section=\"surveys\""));
+    assert!(!body.contains("data-content=\"surveys\""));
+    assert!(body.contains("data-section=\"analytics\""));
 }
 
 #[tokio::test]
@@ -643,6 +697,43 @@ async fn test_update_page_success() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains(">Tickets</"));
     assert!(body.contains("free-only"));
+
+    // Check the tabs are grouped by lifecycle in the Next button order
+    assert!(appear_in_order(
+        &body,
+        &[
+            "<optgroup label=\"EVENT\">",
+            "<optgroup label=\"REGISTRATION\">",
+            "<optgroup label=\"PROGRAM\">",
+            "<optgroup label=\"PEOPLE\">",
+            "<optgroup label=\"FOLLOW-UP\">",
+        ],
+    ));
+    assert!(appear_in_order(
+        &body,
+        &[
+            "data-section=\"details\"",
+            "data-section=\"date-venue\"",
+            "data-section=\"cohosts\"",
+            "data-section=\"hosts-sponsors\"",
+            "data-section=\"payments\"",
+            "data-section=\"questions\"",
+            "data-section=\"labels\"",
+            "data-section=\"cfs\"",
+            "data-section=\"submissions\"",
+            "data-section=\"sessions\"",
+            "data-section=\"attendees\"",
+            "data-section=\"surveys\"",
+            "data-section=\"analytics\"",
+        ],
+    ));
+
+    // Check the surveys tab lazy-loads its content outside the event forms
+    assert!(body.contains("<option value=\"surveys\""));
+    assert!(body.contains("data-content=\"surveys\""));
+    assert!(body.contains(&format!(
+        "hx-get=\"/dashboard/group/events/{event_id}/surveys\" hx-trigger=\"click once\""
+    )));
 
     // Check disabled enrollment tabs without rows are hidden
     assert!(!body.contains("<option value=\"invitation-requests\""));
@@ -2139,6 +2230,18 @@ async fn test_update_returns_no_content_with_editor_location() {
 }
 
 // Helpers.
+
+/// Returns true when every needle appears in the body after the previous one.
+fn appear_in_order(body: &str, needles: &[&str]) -> bool {
+    let mut offset = 0;
+    for needle in needles {
+        let Some(index) = body[offset..].find(needle) else {
+            return false;
+        };
+        offset += index + needle.len();
+    }
+    true
+}
 
 /// Asserts an empty event-editor HTMX location response without a table refresh.
 fn assert_event_editor_location_response(

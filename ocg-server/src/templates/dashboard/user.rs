@@ -10,3 +10,4 @@ pub(crate) mod notifications;
 pub(crate) mod purchases;
 pub(crate) mod session_proposals;
 pub(crate) mod submissions;
+pub(crate) mod surveys;

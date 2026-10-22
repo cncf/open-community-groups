@@ -43,6 +43,8 @@ organizations.
   social sharing
 - Host in-person, virtual, or hybrid events
 - Multi-session agendas with per-session timing and speakers
+- Post-event surveys with anonymous or identified responses, result summaries,
+  and CSV exports
 - Free and paid ticketing with public or invitation-only tiers, discount codes,
   Stripe Checkout for paid claims, and refund review
 - Recurring event creation with series-aware publish, unpublish, cancel, and
@@ -60,7 +62,7 @@ organizations.
 ### Notifications
 
 - Automated notifications for registrations, reminders, event changes,
-  cancellations, waitlists, speaker submissions, and refunds
+  cancellations, waitlists, speaker submissions, refunds, and event surveys
 - Calendar attachments for event confirmations and updates
 - Custom emails to event attendees and group members, with per-category
   notification preferences and per-group muting

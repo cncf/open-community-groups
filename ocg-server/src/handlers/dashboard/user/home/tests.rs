@@ -17,7 +17,7 @@ use crate::{
             user::{
                 events::UserEventsOutput, groups::UserGroupsOutput,
                 notifications::NotificationPreferences, purchases::PurchaseDocumentsOutput,
-                session_proposals::SessionProposalsOutput,
+                session_proposals::SessionProposalsOutput, surveys::UserEventSurveysOutput,
             },
         },
         inbox::InboxConversationsOutput,
@@ -39,6 +39,7 @@ async fn test_page_account_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -86,6 +87,7 @@ async fn test_page_events_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -130,6 +132,7 @@ async fn test_page_groups_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -169,6 +172,7 @@ async fn test_page_inbox_tab_opens_owned_conversation() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Request the conversation through the full dashboard route
     let (parts, bytes) = send_home_request(
@@ -212,6 +216,7 @@ async fn test_page_inbox_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Request the inbox through the full dashboard route
     let (parts, bytes) = send_home_request(db, session_id, "/dashboard/user?tab=inbox").await;
@@ -247,6 +252,7 @@ async fn test_page_inbox_tab_warns_about_conversation_of_another_user() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Request the conversation through the full dashboard route
     let (parts, bytes) = send_home_request(
@@ -292,6 +298,7 @@ async fn test_page_invitations_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -334,6 +341,7 @@ async fn test_page_logs_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -370,6 +378,7 @@ async fn test_page_notifications_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Request the notifications tab through the full dashboard route
     let (parts, bytes) =
@@ -400,6 +409,7 @@ async fn test_page_purchases_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
     db.expect_list_user_purchase_documents()
         .times(1)
         .withf(move |uid, filters| {
@@ -460,6 +470,7 @@ async fn test_page_session_proposals_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -504,6 +515,7 @@ async fn test_page_submissions_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -524,7 +536,167 @@ async fn test_page_submissions_tab_success() {
     assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
+#[tokio::test]
+async fn test_page_surveys_tab_ignores_malformed_survey_id() {
+    // Setup identifiers
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_empty_surveys_tab(&mut db, user_id);
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
+    db.expect_get_user_event_survey().never();
+
+    // Send the request with a survey id that is not a UUID
+    let (parts, bytes) = send_home_request(
+        db,
+        session_id,
+        "/dashboard/user?tab=surveys&event_survey_id=not-a-uuid",
+    )
+    .await;
+
+    // Check the list renders without opening a survey or warning about it
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains(r#"hx-get="/dashboard/user/surveys""#));
+    assert!(!body.contains("data-open-on-load"));
+    assert!(!body.contains("This survey is closed or isn&#39;t available to you."));
+}
+
+#[tokio::test]
+async fn test_page_surveys_tab_opens_requested_survey() {
+    // Setup identifiers and data structures
+    let event_survey_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let survey = sample_user_event_survey(event_survey_id, Uuid::new_v4());
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_empty_surveys_tab(&mut db, user_id);
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
+    db.expect_get_user_event_survey()
+        .times(1)
+        .withf(move |sid, uid| *sid == event_survey_id && *uid == user_id)
+        .returning(move |_, _| Ok(Some(survey.clone())));
+
+    // Send the request the survey opening email links to
+    let (parts, bytes) = send_home_request(
+        db,
+        session_id,
+        &format!("/dashboard/user?tab=surveys&event_survey_id={event_survey_id}"),
+    )
+    .await;
+
+    // Check the survey modal opens on load without a warning
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("data-open-on-load"));
+    assert!(body.contains(&format!(
+        r#"hx-put="/dashboard/user/surveys/{event_survey_id}/response""#
+    )));
+    assert!(!body.contains("This survey is closed or isn&#39;t available to you."));
+}
+
+#[tokio::test]
+async fn test_page_surveys_tab_renders_unanswered_surveys_badge() {
+    // Setup identifiers
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_empty_surveys_tab(&mut db, user_id);
+    expect_unanswered_surveys_count(&mut db, user_id, 3);
+    db.expect_get_user_event_survey().never();
+
+    // Send the request
+    let (parts, bytes) = send_home_request(db, session_id, "/dashboard/user?tab=surveys").await;
+
+    // Check the active Surveys menu item counts the surveys left to answer
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert_eq!(
+        menu_item_count(body, "/dashboard/user?tab=surveys"),
+        Some("3")
+    );
+    assert!(body.contains(r#"hx-get="/dashboard/user/surveys""#));
+}
+
+#[tokio::test]
+async fn test_page_surveys_tab_warns_about_unavailable_survey() {
+    // Setup identifiers
+    let event_survey_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_empty_surveys_tab(&mut db, user_id);
+    expect_unanswered_surveys_count(&mut db, user_id, 0);
+    db.expect_get_user_event_survey()
+        .times(1)
+        .withf(move |sid, uid| *sid == event_survey_id && *uid == user_id)
+        .returning(|_, _| Ok(None));
+
+    // Send the request of a survey the user can't reach
+    let (parts, bytes) = send_home_request(
+        db,
+        session_id,
+        &format!("/dashboard/user?tab=surveys&event_survey_id={event_survey_id}"),
+    )
+    .await;
+
+    // Check the list warns about the survey without opening it
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("This survey is closed or isn&#39;t available to you."));
+    assert!(!body.contains("data-open-on-load"));
+    assert_eq!(menu_item_count(body, "/dashboard/user?tab=surveys"), None);
+}
+
 // Helpers.
+
+/// Expects the reads of a Surveys tab without surveys.
+fn expect_empty_surveys_tab(db: &mut MockDB, user_id: Uuid) {
+    db.expect_list_user_event_surveys()
+        .times(1)
+        .withf(move |uid, _| *uid == user_id)
+        .returning(|_, _| {
+            Ok(UserEventSurveysOutput {
+                surveys: vec![],
+                total: 0,
+            })
+        });
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+}
+
+/// Expects the count of surveys left to answer shown in the menu.
+fn expect_unanswered_surveys_count(db: &mut MockDB, user_id: Uuid, count: usize) {
+    db.expect_count_user_unanswered_event_surveys()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(move |_| Ok(count));
+}
+
+/// Returns the count badge of the menu item linking to the given URL.
+fn menu_item_count<'a>(body: &'a str, href: &str) -> Option<&'a str> {
+    let start = body.find(&format!(r#"href="{href}""#))?;
+    let item = &body[start..start + body[start..].find("</a>")?];
+    let badge_start = item.find("rounded-full px-2 pt-px ms-3")?;
+    let badge = &item[badge_start..];
+    let text_start = badge.find('>')? + 1;
+    let text_end = badge.find("</div>")?;
+
+    Some(badge[text_start..text_end].trim())
+}
 
 /// Sends a user dashboard home request through the router.
 async fn send_home_request(

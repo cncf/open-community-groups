@@ -15,7 +15,13 @@ import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 import { isSuccessfulXHR } from "/static/js/common/utils.js";
 
+// Dataset key marking the user events dashboard as initialized.
 const DATA_KEY = "userEventsReady";
+// Registration questions answer form.
+const QUESTIONS_FORM_SELECTOR = "[data-user-event-questions-form]";
+// Registration questions modal.
+const QUESTIONS_MODAL_SELECTOR = "[data-user-event-questions-modal]";
+// Paid event rows whose refund eligibility is loaded on demand.
 const REFUND_ACTION_SELECTOR = "[data-user-event-refund-action]";
 
 /**
@@ -30,55 +36,32 @@ export const initializeUserEventRefundActions = (root = document) => {
 };
 
 /**
- * Finds the question modal targeted by an open trigger.
- * @param {HTMLElement|null} trigger Modal open trigger
- * @returns {HTMLElement|null} Target modal
+ * Closes an open dashboard modal.
+ * @param {Element|null} modal Modal element.
+ * @returns {void}
  */
-const getModal = (trigger) => {
-  const modalId = trigger?.dataset?.userEventQuestionsModal;
-  return modalId ? getElementById(document, modalId) : null;
-};
-
 const closeModal = (modal) => {
   if (modal instanceof HTMLElement && !isElementHidden(modal)) {
     toggleModalVisibility(modal.id);
   }
 };
 
-const handleClick = (event) => {
-  const trigger = closestElement(event.target, "[data-user-event-questions-open]");
-  if (trigger instanceof HTMLElement) {
-    const modal = getModal(trigger);
-    if (modal instanceof HTMLElement && isElementHidden(modal)) {
-      toggleModalVisibility(modal.id);
-    }
-    return;
-  }
-
-  const closeTrigger = closestElement(event.target, "[data-user-event-questions-close]");
-  if (closeTrigger instanceof HTMLElement) {
-    closeModal(closeTrigger.closest("[data-user-event-questions-modal]"));
-  }
+/**
+ * Finds the question modal targeted by an open trigger.
+ * @param {HTMLElement|null} trigger Modal open trigger
+ * @returns {HTMLElement|null} Target modal
+ */
+const getQuestionsModal = (trigger) => {
+  const modalId = trigger?.dataset?.userEventQuestionsModal;
+  return modalId ? getElementById(document, modalId) : null;
 };
 
-const handleSubmit = (event) => {
-  const form = event.target;
-  if (!(form instanceof HTMLFormElement) || !form.matches("[data-user-event-questions-form]")) {
-    return;
-  }
-
-  const answersPayload = collectQuestionAnswers(form, {
-    answerSelector: "[data-question-answer]",
-  });
-  if (!answersPayload) {
-    event.preventDefault();
-    event.stopPropagation();
-    return;
-  }
-
-  setQuestionAnswersInputValue(form, "[data-question-answers-input]", answersPayload);
-};
-
+/**
+ * Handles HTMX request results of the checkout and registration answers
+ * actions.
+ * @param {CustomEvent} event HTMX after-request event.
+ * @returns {void}
+ */
 const handleAfterRequest = (event) => {
   const target = event.target;
   if (closestElement(target, "[data-user-event-checkout-cancel]")) {
@@ -89,8 +72,12 @@ const handleAfterRequest = (event) => {
     return;
   }
 
-  const form = target;
-  if (!(form instanceof HTMLFormElement) || !form.matches("[data-user-event-questions-form]")) {
+  if (!(target instanceof HTMLFormElement)) {
+    return;
+  }
+
+  // Report registration answers
+  if (!target.matches(QUESTIONS_FORM_SELECTOR)) {
     return;
   }
 
@@ -100,18 +87,88 @@ const handleAfterRequest = (event) => {
     errorMessage: "Something went wrong saving your answers. Please try again later.",
   });
   if (ok || isSuccessfulXHR(event.detail?.xhr)) {
-    closeModal(form.closest("[data-user-event-questions-modal]"));
+    closeModal(target.closest(QUESTIONS_MODAL_SELECTOR));
   }
 };
 
+/**
+ * Opens and closes the registration questions modals.
+ * @param {MouseEvent} event Click event.
+ * @returns {void}
+ */
+const handleClick = (event) => {
+  const trigger = closestElement(event.target, "[data-user-event-questions-open]");
+  if (trigger instanceof HTMLElement) {
+    const modal = getQuestionsModal(trigger);
+    if (modal instanceof HTMLElement && isElementHidden(modal)) {
+      toggleModalVisibility(modal.id);
+    }
+    return;
+  }
+
+  const closeTrigger = closestElement(event.target, "[data-user-event-questions-close]");
+  if (closeTrigger instanceof HTMLElement) {
+    closeModal(closeTrigger.closest(QUESTIONS_MODAL_SELECTOR));
+  }
+};
+
+/**
+ * Closes the open registration questions modals on Escape.
+ * @param {KeyboardEvent} event Keydown event.
+ * @returns {void}
+ */
 const handleKeydown = (event) => {
   if (!isEscapeEvent(event)) {
     return;
   }
 
-  document.querySelectorAll("[data-user-event-questions-modal]").forEach((modal) => {
+  document.querySelectorAll(QUESTIONS_MODAL_SELECTOR).forEach((modal) => {
     closeModal(modal);
   });
+};
+
+/**
+ * Validates and serializes registration answers before HTMX serializes the
+ * form.
+ *
+ * Runs in the capture phase on the document, so invalid answers stop the
+ * submission before it reaches the HTMX submit handler of the form.
+ * @param {SubmitEvent} event Submit event.
+ * @returns {void}
+ */
+const handleSubmit = (event) => {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement) || !form.matches(QUESTIONS_FORM_SELECTOR)) {
+    return;
+  }
+
+  // Block submissions with incomplete required answers
+  const answersPayload = collectQuestionAnswers(form, {
+    answerSelector: "[data-question-answer]",
+  });
+  if (!answersPayload) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
+  // Send the answers as the JSON payload the server expects
+  setQuestionAnswersInputValue(form, "[data-question-answers-input]", answersPayload);
+};
+
+/**
+ * Registers the document listeners once.
+ * @returns {void}
+ */
+const initializeUserEvents = () => {
+  if (!markDatasetReady(document.documentElement, DATA_KEY)) {
+    return;
+  }
+
+  document.addEventListener("click", handleClick);
+  document.addEventListener("submit", handleSubmit, true);
+  document.addEventListener("htmx:afterRequest", handleAfterRequest);
+  document.addEventListener("keydown", handleKeydown);
 };
 
 /**
@@ -146,17 +203,6 @@ const loadRefundActionEligibility = async (action) => {
   } catch (_) {
     setElementHidden(action, true);
   }
-};
-
-const initializeUserEvents = () => {
-  if (!markDatasetReady(document.documentElement, DATA_KEY)) {
-    return;
-  }
-
-  document.addEventListener("click", handleClick);
-  document.addEventListener("submit", handleSubmit, true);
-  document.addEventListener("htmx:afterRequest", handleAfterRequest);
-  document.addEventListener("keydown", handleKeydown);
 };
 
 initializeUserEvents();

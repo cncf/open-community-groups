@@ -2,6 +2,8 @@
 //!
 //! This module provides utility functions used by templates for common tasks.
 
+use num_format::{Locale, ToFormattedString};
+
 use crate::util::base_url_without_trailing_slash;
 
 /// Format for date-time inputs used by templates (YYYY-MM-DDTHH:MM).
@@ -9,6 +11,9 @@ pub(crate) const DATE_FORMAT: &str = "%Y-%m-%dT%H:%M";
 
 /// The date format used in templates (YYYY-MM-DD).
 pub(crate) const DATE_FORMAT_2: &str = "%Y-%m-%d";
+
+/// Placeholder displayed when a metric does not apply.
+pub(crate) const NOT_APPLICABLE_LABEL: &str = "-";
 
 /// Builds an absolute URL from a configured base URL and path.
 pub(crate) fn absolute_url(base_url: &str, path: &str) -> String {
@@ -18,6 +23,21 @@ pub(crate) fn absolute_url(base_url: &str, path: &str) -> String {
     } else {
         format!("{base_url}/{path}")
     }
+}
+
+/// Returns a bar width as a percentage of a total, clamped to 0 and 100.
+#[allow(clippy::cast_precision_loss)]
+pub(crate) fn bar_width(value: i64, total: i64) -> String {
+    if total <= 0 {
+        return "0".to_string();
+    }
+    let width = (value as f64 / total as f64 * 100.0).clamp(0.0, 100.0);
+    format!("{width:.1}")
+}
+
+/// Formats a count with thousands separators.
+pub(crate) fn count_label(count: i64) -> String {
+    count.to_formatted_string(&Locale::en)
 }
 
 /// Builds the public URL for a configured Open Graph image.
@@ -34,6 +54,19 @@ pub(crate) fn open_graph_image_url(base_url: &str, image_url: &str) -> String {
 
     // Keep already-absolute external URLs unchanged
     image_url.to_string()
+}
+
+/// Formats a ratio as a percentage, or as a dash when missing.
+pub(crate) fn percent_label(value: Option<f64>) -> String {
+    let Some(value) = value else {
+        return NOT_APPLICABLE_LABEL.to_string();
+    };
+    let percent = value * 100.0;
+    if percent >= 10.0 || (percent - percent.round()).abs() < f64::EPSILON {
+        format!("{percent:.0}%")
+    } else {
+        format!("{percent:.1}%")
+    }
 }
 
 /// Generates initials from a name and username.
@@ -93,6 +126,34 @@ pub(crate) fn user_initials(name: Option<&str>, username: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_bar_width_clamps_to_the_total() {
+        assert_eq!(bar_width(1, 4), "25.0");
+        assert_eq!(bar_width(5, 4), "100.0");
+        assert_eq!(bar_width(-1, 4), "0.0");
+    }
+
+    #[test]
+    fn test_bar_width_is_zero_without_total() {
+        assert_eq!(bar_width(3, 0), "0");
+        assert_eq!(bar_width(3, -1), "0");
+    }
+
+    #[test]
+    fn test_count_label_uses_thousands_separators() {
+        assert_eq!(count_label(999), "999");
+        assert_eq!(count_label(1_234_567), "1,234,567");
+    }
+
+    #[test]
+    fn test_percent_label_formats_ratios() {
+        assert_eq!(percent_label(None), NOT_APPLICABLE_LABEL);
+        assert_eq!(percent_label(Some(0.004)), "0.4%");
+        assert_eq!(percent_label(Some(0.05)), "5%");
+        assert_eq!(percent_label(Some(0.123)), "12%");
+        assert_eq!(percent_label(Some(2.0)), "200%");
+    }
 
     #[test]
     fn test_user_initials() {

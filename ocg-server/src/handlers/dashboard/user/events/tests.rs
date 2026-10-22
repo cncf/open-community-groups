@@ -21,7 +21,9 @@ use crate::{
     types::{
         dashboard::{DASHBOARD_PAGINATION_LIMIT, user::events::UserEventRole},
         event::{EventEnrollmentState, EventEnrollmentStatus, EventLeaveOutcome},
+        questionnaire::{QuestionnaireQuestion, QuestionnaireQuestionKind},
     },
+    validation::MAX_LEN_QUESTIONNAIRE_ANSWER,
 };
 
 #[tokio::test]
@@ -232,6 +234,79 @@ async fn test_cancel_attendance_returns_not_found_when_community_is_unknown() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
     assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_list_page_renders_labelled_free_text_answer_fields() {
+    // Setup identifiers and data structures
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let question_id = Uuid::new_v4();
+    let output = crate::types::dashboard::user::events::UserEventsOutput {
+        events: vec![crate::types::dashboard::user::events::UserEvent {
+            event: sample_event_summary(event_id, group_id),
+            has_paid_purchase: false,
+            manually_invited: true,
+            registration_questions: vec![QuestionnaireQuestion {
+                id: question_id,
+                kind: QuestionnaireQuestionKind::FreeText,
+                prompt: "What do you want to learn?".to_string(),
+                required: false,
+
+                options: vec![],
+            }],
+            roles: vec![UserEventRole::Attendee],
+
+            admission_offer_id: None,
+            admission_offer_source: None,
+            admission_offer_status: None,
+            amount_minor: None,
+            currency_code: None,
+            enrollment_status: Some(EventEnrollmentStatus::Attendee),
+            event_ticket_type_id: None,
+            external_payment: None,
+            offer_expires_at: None,
+            registration_answers: None,
+            refund_rejection_reason: None,
+            refund_request_status: None,
+            resume_checkout_url: None,
+            ticket_title: None,
+        }],
+        total: 1,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_list_user_events()
+        .times(1)
+        .withf(move |uid, _| *uid == user_id)
+        .returning(move |_, _| Ok(output.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/user/events")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the free-text field is labelled by its prompt and bounded
+    let prompt_id = format!("question-{event_id}-{question_id}-prompt");
+    assert_eq!(parts.status, StatusCode::OK);
+    assert!(body.contains(&format!("<legend id=\"{prompt_id}\"")));
+    assert!(body.contains(&format!("aria-labelledby=\"{prompt_id}\"")));
+    assert!(body.contains(&format!("maxlength=\"{MAX_LEN_QUESTIONNAIRE_ANSWER}\"")));
 }
 
 #[tokio::test]

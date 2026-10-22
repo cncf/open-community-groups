@@ -57,6 +57,7 @@ Choose which optional emails you receive. Emails about your account, your regist
         {% call preference_toggle("new-events", "New events", "When a group you belong to or help organize publishes a new event or event series, including events it co-hosts with other groups.", preferences.receives(NotificationCategory::NewEvents)) %}{% endcall -%}
         {% call preference_toggle("group-announcements", "Group announcements", "Messages organizers send to members of a group you belong to or help organize.", preferences.receives(NotificationCategory::GroupAnnouncements)) %}{% endcall -%}
         {% call preference_toggle("event-reminders", "Event reminders", "A reminder about 24 hours before an event you're attending or speaking at, if the organizers turned reminders on.", preferences.receives(NotificationCategory::EventReminders)) %}{% endcall -%}
+        {% call preference_toggle("event-surveys", "Event surveys", "When the organizers of an event you're registered for open a feedback survey after it ends.", preferences.receives(NotificationCategory::EventSurveys)) %}{% endcall -%}
         {% call preference_toggle("organizer-messages", "Messages from event organizers", "Updates organizers send to attendees of events you're registered for.", preferences.receives(NotificationCategory::OrganizerMessages)) %}{% endcall -%}
         {% call preference_toggle("badges", "Badges", "When a group awards you a badge or revokes one. This only controls the email; awards and revocations still take effect in your dashboard.", preferences.receives(NotificationCategory::Badges)) %}{% endcall -%}
       </div>
@@ -105,7 +106,7 @@ Choose which optional emails you receive. Emails about your account, your regist
       class="text-lg font-medium text-stone-900"
       tabindex="-1">Muted groups</h2>
   <p class="form-legend mt-3">
-    Stop optional emails from specific groups: new events, group announcements, event reminders, messages from event organizers, and badges. Muting a group also covers events it co-hosts. Muting only changes emails; your membership, registrations, badges, and dashboard stay the same. Emails that are always sent, and group or community organizing emails, still arrive. Mute and Unmute save immediately. Unmuting a group doesn't turn back on categories you've turned off.
+    Stop optional emails from specific groups: new events, group announcements, event reminders, event surveys, messages from event organizers, and badges. Muting a group also covers events it co-hosts. Muting only changes emails; your membership, registrations, badges, and dashboard stay the same. Emails that are always sent, and group or community organizing emails, still arrive. Mute and Unmute save immediately. Unmuting a group doesn't turn back on categories you've turned off.
   </p>
 
   {# Mute picker -#}

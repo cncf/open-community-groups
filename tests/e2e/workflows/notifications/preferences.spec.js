@@ -4,6 +4,11 @@ import { cleanupCohostEvents, setupCohostEvent } from "../../data-graphs/cohosts
 import { cleanupEventsByIds, setupNotificationEvent } from "../../data-graphs/events.js";
 import { cleanupGroupTeamInvitation } from "../../data-graphs/invitations.js";
 import {
+  cleanupEventSurveys,
+  readSurveyOpenNotification,
+  setupOwnedEventSurvey,
+} from "../../data-graphs/surveys.js";
+import {
   cleanupGroupMute,
   restoreNotificationPreference,
   setupGroupMute,
@@ -40,6 +45,7 @@ const COHOST_AUDIENCE_RECIPIENT_IDS_WITH_MEMBER2_SUPPRESSED = [
 const COHOST_GROUP_ID = TEST_GROUP_IDS.community2.delta;
 const COHOST_GROUP_NAME = "E2E Second Group Delta";
 const EVENT_REMINDERS_CATEGORY = "event-reminders";
+const EVENT_SURVEYS_CATEGORY = "event-surveys";
 const GROUP_ANNOUNCEMENTS_CATEGORY = "group-announcements";
 const GROUP_NOTIFICATION_BODY = "Preference suppression check from the e2e suite.";
 const GROUP_NOTIFICATION_SUBJECT = "E2E preference suppression";
@@ -320,6 +326,72 @@ test.describe("notification preferences workflow", () => {
       });
       cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
       cleanupGroupMute({ groupId: COHOST_GROUP_ID, userId: TEST_USER_IDS.pending1 });
+      if (scenario) {
+        cleanupCohostEvents([scenario.eventId]);
+      }
+    }
+  });
+
+  test("event survey opening emails respect category opt-outs and owner group mutes", async () => {
+    let notificationIds = [];
+    let scenario;
+    let survey;
+
+    try {
+      // Opt Member One out of survey emails and mute the owner group for Member Two.
+      restoreNotificationPreference({
+        category: EVENT_SURVEYS_CATEGORY,
+        enabled: false,
+        userId: TEST_USER_IDS.member1,
+      });
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      setupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+
+      // Snapshot before opening the survey because the server worker may enqueue it first.
+      const surveySnapshot = snapshotNotifications();
+      scenario = setupCohostEvent({
+        attendeeUserIds: [TEST_USER_IDS.member1, TEST_USER_IDS.member2, TEST_USER_IDS.pending1],
+        days: -2,
+        ownerGroupId: OWNER_GROUP_ID,
+        published: true,
+      });
+      survey = setupOwnedEventSurvey({ eventId: scenario.eventId, status: "ready" });
+
+      // Run the survey email enqueue step the server worker runs on its schedule.
+      queryE2eDatabase("select enqueue_due_event_survey_notifications();");
+
+      // Assert only Pending One receives the opening email with a site-relative dashboard survey link.
+      notificationIds = notificationIds.concat(
+        expectNewNotifications(surveySnapshot, [
+          {
+            kind: "event-survey-opened",
+            templateDataContains: {
+              anonymous: true,
+              event: { event_id: scenario.eventId },
+              link: `/dashboard/user?tab=surveys&event_survey_id=${survey.id}`,
+              survey_title: survey.title,
+            },
+            userIds: [TEST_USER_IDS.pending1],
+          },
+        ]),
+      );
+
+      // Assert the survey is marked handled so it never emails again.
+      expect(readSurveyOpenNotification(survey.id)).toEqual({ processed: true, recipients: 1 });
+      queryE2eDatabase("select enqueue_due_event_survey_notifications();");
+      expect(readSurveyOpenNotification(survey.id)).toEqual({ processed: true, recipients: 1 });
+    } finally {
+      // Remove generated notifications, preferences, mutes, the survey, and the temporary event.
+      deleteNotifications(notificationIds);
+      restoreNotificationPreference({
+        category: EVENT_SURVEYS_CATEGORY,
+        enabled: true,
+        userId: TEST_USER_IDS.member1,
+      });
+      cleanupGroupMute({ groupId: OWNER_GROUP_ID, userId: TEST_USER_IDS.member2 });
+      if (survey) {
+        cleanupEventSurveys([survey.id]);
+      }
       if (scenario) {
         cleanupCohostEvents([scenario.eventId]);
       }

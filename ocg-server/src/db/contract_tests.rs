@@ -8,6 +8,7 @@ mod community;
 mod dashboard_common;
 mod dashboard_community;
 mod dashboard_group;
+mod dashboard_group_surveys;
 mod dashboard_user;
 mod dashboard_user_notifications;
 mod event;

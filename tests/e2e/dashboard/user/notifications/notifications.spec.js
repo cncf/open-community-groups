@@ -77,6 +77,36 @@ test.describe("user dashboard notifications view", () => {
     }
   });
 
+  test("event surveys toggle saves independently of event reminders", async ({ member1Page }) => {
+    let originalReminders;
+    let originalSurveys;
+
+    try {
+      // Load the preferences and verify the surveys toggle is listed under events and groups.
+      await navigateToPath(member1Page, NOTIFICATIONS_PATH);
+      const eventsSection = member1Page.getByRole("group", { name: "Events and groups" });
+      await expect(eventsSection.getByText("Event surveys", { exact: true })).toBeVisible();
+      originalReminders = await getPreferenceToggle(member1Page, "event-reminders").isChecked();
+      originalSurveys = await getPreferenceToggle(member1Page, "event-surveys").isChecked();
+
+      // Save the opposite surveys preference.
+      await saveNotificationPreference(member1Page, "event-surveys", !originalSurveys);
+
+      // Reload and verify only the surveys preference changed.
+      await navigateToPath(member1Page, NOTIFICATIONS_PATH);
+      await expectPreferenceState(member1Page, "event-surveys", !originalSurveys);
+      await expectPreferenceState(member1Page, "event-reminders", originalReminders);
+    } finally {
+      if (typeof originalSurveys === "boolean") {
+        restoreNotificationPreference({
+          category: "event-surveys",
+          enabled: originalSurveys,
+          userId: TEST_USER_IDS.member1,
+        });
+      }
+    }
+  });
+
   test("user can mute and unmute a group from the combobox", async ({ member1Page }) => {
     const groupId = TEST_GROUP_IDS.community1.alpha;
     const groupName = TEST_GROUP_NAMES.alpha;

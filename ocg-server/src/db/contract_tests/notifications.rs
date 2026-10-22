@@ -1,15 +1,29 @@
 //! Contract tests for the `DBNotifications` functions.
 
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::{NaiveDate, Utc};
+use uuid::Uuid;
 
 use crate::{
-    db::notifications::{
-        CommunityCustomNotificationEnqueue, CustomNotificationScope, CustomNotificationTracking,
-        DBNotifications,
+    db::{
+        DBUnitOfWork, PgExecutor, PgUnitOfWork,
+        dashboard::group::DBDashboardGroup,
+        notifications::{
+            CommunityCustomNotificationEnqueue, CustomNotificationScope,
+            CustomNotificationTracking, DBNotifications,
+        },
     },
     types::{
-        dashboard::community::contact::CommunityContactFilters,
+        dashboard::{
+            community::contact::CommunityContactFilters,
+            group::{
+                events::EventInput,
+                surveys::{EventSurveyStatusAction, EventSurveyStatusForm},
+            },
+        },
+        event::EventSummary,
         group::GroupRole,
         notifications::{NewNotification, NotificationKind},
     },
@@ -43,6 +57,270 @@ async fn db_contracts_claim_pending_notification_deserializes() -> Result<()> {
 
     // Finalize through the production wrapper to verify the claim identity round trip
     db.update_notification(&notification, None).await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_enqueue_due_event_survey_notifications_enqueues_opening_emails() -> Result<()>
+{
+    // Setup a rolled-back unit of work where the survey email event is not a
+    // test event and one of its surveys has no closing date
+    let uow = contract_unit_of_work().await?;
+    uow.execute(
+        "update event set test_event = false where event_id = $1::uuid",
+        &[&survey_email_event_id()],
+    )
+    .await?;
+    uow.execute(
+        "update event_survey set closes_at = null where event_survey_id = $1::uuid",
+        &[&survey_email_close_race_id()],
+    )
+    .await?;
+
+    // Run the survey opening email job
+    let count = uow.enqueue_due_event_survey_notifications().await?;
+
+    // Check the count matches the enqueued notifications and the recipients
+    // recorded by the surveys it handled
+    let enqueued: i64 = uow
+        .fetch_scalar_one(
+            "select count(*) from notification
+            where kind = 'event-survey-opened'
+            and created_at = current_timestamp",
+            &[],
+        )
+        .await?;
+    assert_eq!(count, usize::try_from(enqueued)?);
+    let recorded: i64 = uow
+        .fetch_scalar_one(
+            "select coalesce(sum(open_notification_recipients), 0)::bigint
+            from event_survey
+            where open_notification_processed_at = current_timestamp",
+            &[],
+        )
+        .await?;
+    assert_eq!(count, usize::try_from(recorded)?);
+    assert_eq!(
+        survey_open_notification_recipients(&uow, survey_email_id()).await?,
+        Some(1)
+    );
+    assert_eq!(
+        survey_open_notification_recipients(&uow, survey_identified_id()).await?,
+        Some(0)
+    );
+
+    // Check only the verified attendee was emailed, with the template data
+    let notifications = uow
+        .client()
+        .await?
+        .query(
+            "select n.user_id, ntd.data
+            from notification n
+            join notification_template_data ntd using (notification_template_data_id)
+            where n.kind = 'event-survey-opened'
+            and ntd.data->>'survey_title' = 'Contract email survey'",
+            &[],
+        )
+        .await?;
+    assert_eq!(notifications.len(), 1);
+    assert_eq!(
+        notifications[0].get::<_, Uuid>(0),
+        survey_email_recipient_id()
+    );
+    let data = notifications[0].get::<_, serde_json::Value>(1);
+    assert_eq!(data["anonymous"], serde_json::json!(false));
+    assert_eq!(data["closes_at"], serde_json::json!(4_070_908_800_i64));
+    let event: EventSummary = serde_json::from_value(data["event"].clone())?;
+    assert_eq!(event.event_id, survey_email_event_id());
+    assert_eq!(
+        data["link"],
+        format!(
+            "/dashboard/user?tab=surveys&event_survey_id={}",
+            survey_email_id()
+        )
+    );
+    assert!(data["theme"]["primary_color"].is_string());
+
+    // Check the closing date is omitted for the survey without one
+    let open_ended: serde_json::Value = uow
+        .fetch_scalar_one(
+            "select ntd.data
+            from notification n
+            join notification_template_data ntd using (notification_template_data_id)
+            where n.kind = 'event-survey-opened'
+            and ntd.data->>'survey_title' = 'Contract email close race survey'",
+            &[],
+        )
+        .await?;
+    assert!(open_ended.get("closes_at").is_none());
+
+    // Check unverified attendees are never emailed
+    let unverified_notifications: i64 = uow
+        .fetch_scalar_one(
+            "select count(*) from notification where kind = 'event-survey-opened' and user_id = $1::uuid",
+            &[&survey_unverified_attendee_id()],
+        )
+        .await?;
+    assert_eq!(unverified_notifications, 0);
+
+    // Check a second run never emails the handled surveys again
+    let second_count = uow.enqueue_due_event_survey_notifications().await?;
+    assert_eq!(second_count, 0);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_enqueue_due_event_survey_notifications_rechecks_event_rescheduled_concurrently()
+-> Result<()> {
+    // Setup reschedule and job connections, and an earlier past schedule
+    let reschedule_uow = contract_unit_of_work().await?;
+    let job_uow = contract_unit_of_work().await?;
+    let payload = EventInput {
+        ends_at: NaiveDate::from_ymd_opt(2025, 3, 31).and_then(|day| day.and_hms_opt(19, 0, 0)),
+        starts_at: NaiveDate::from_ymd_opt(2025, 3, 31).and_then(|day| day.and_hms_opt(17, 0, 0)),
+        ..group_lock_event_update("Contract Survey Reschedule Event", 1)
+    }
+    .to_db_payload()?;
+
+    // Reschedule the event while retaining its lock
+    reschedule_uow
+        .update_event(
+            organizer_id(),
+            subgroup_id(),
+            survey_reschedule_event_id(),
+            &payload,
+            &HashMap::new(),
+            None,
+        )
+        .await?;
+
+    // Check the job skips the survey of the locked event without waiting
+    job_uow.enqueue_due_event_survey_notifications().await?;
+    assert_eq!(
+        survey_open_notification_recipients(&job_uow, survey_email_reschedule_race_id()).await?,
+        None
+    );
+    Box::new(job_uow).rollback().await?;
+
+    // Commit the reschedule and run the job again on a non-test event
+    Box::new(reschedule_uow).commit().await?;
+    let rerun_uow = contract_unit_of_work().await?;
+    rerun_uow
+        .execute(
+            "update event set test_event = false where event_id = $1::uuid",
+            &[&survey_reschedule_event_id()],
+        )
+        .await?;
+    rerun_uow.enqueue_due_event_survey_notifications().await?;
+
+    // Check the survey is handled once the rescheduled event is released
+    assert_eq!(
+        survey_open_notification_recipients(&rerun_uow, survey_email_reschedule_race_id()).await?,
+        Some(1)
+    );
+
+    // Check the email carries the rescheduled start
+    let email_starts_at: i64 = rerun_uow
+        .fetch_scalar_one(
+            "select (ntd.data->'event'->>'starts_at')::bigint
+            from notification n
+            join notification_template_data ntd using (notification_template_data_id)
+            where n.kind = 'event-survey-opened'
+            and ntd.data->>'survey_title' = 'Contract email reschedule race survey'",
+            &[],
+        )
+        .await?;
+    let stored_starts_at: i64 = rerun_uow
+        .fetch_scalar_one(
+            "select extract(epoch from starts_at)::bigint from event where event_id = $1::uuid",
+            &[&survey_reschedule_event_id()],
+        )
+        .await?;
+    assert_eq!(email_starts_at, stored_starts_at);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_enqueue_due_event_survey_notifications_skips_concurrent_run() -> Result<()> {
+    // Setup two job connections
+    let first_uow = contract_unit_of_work().await?;
+    let second_uow = contract_unit_of_work().await?;
+
+    // Run the job while retaining its advisory lock
+    first_uow.enqueue_due_event_survey_notifications().await?;
+    assert_eq!(
+        survey_open_notification_recipients(&first_uow, survey_identified_id()).await?,
+        Some(0)
+    );
+
+    // Check a concurrent run leaves every survey to the first one
+    let second_count = second_uow.enqueue_due_event_survey_notifications().await?;
+    assert_eq!(second_count, 0);
+    assert_eq!(
+        survey_open_notification_recipients(&second_uow, survey_identified_id()).await?,
+        None
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_enqueue_due_event_survey_notifications_skips_survey_closed_concurrently()
+-> Result<()> {
+    // Setup close and job connections
+    let close_uow = contract_unit_of_work().await?;
+    let job_uow = contract_unit_of_work().await?;
+
+    // Close the survey while retaining the event and survey locks
+    close_uow
+        .change_event_survey_status(
+            organizer_id(),
+            subgroup_id(),
+            survey_email_event_id(),
+            survey_email_close_race_id(),
+            &EventSurveyStatusForm {
+                action: EventSurveyStatusAction::Close,
+                revision: 1,
+
+                expected_effective_opens_at: None,
+            },
+        )
+        .await?;
+
+    // Check the job skips the surveys of the locked event without waiting
+    job_uow.enqueue_due_event_survey_notifications().await?;
+    assert_eq!(
+        survey_open_notification_recipients(&job_uow, survey_email_close_race_id()).await?,
+        None
+    );
+    assert_eq!(
+        survey_open_notification_recipients(&job_uow, survey_email_id()).await?,
+        None
+    );
+    Box::new(job_uow).rollback().await?;
+
+    // Commit the close and run the job again
+    Box::new(close_uow).commit().await?;
+    let rerun_uow = contract_unit_of_work().await?;
+    rerun_uow.enqueue_due_event_survey_notifications().await?;
+
+    // Check the closed survey is never handled while its open sibling is
+    assert_eq!(
+        survey_open_notification_recipients(&rerun_uow, survey_email_close_race_id()).await?,
+        None
+    );
+    assert!(
+        survey_open_notification_recipients(&rerun_uow, survey_email_id())
+            .await?
+            .is_some()
+    );
 
     Ok(())
 }
@@ -329,4 +607,21 @@ async fn db_contracts_filter_notification_recipient_ids_preserves_eligible_order
     );
 
     Ok(())
+}
+
+// Helpers.
+
+/// Returns the opening email recipients a survey recorded, when it was handled.
+async fn survey_open_notification_recipients(
+    uow: &PgUnitOfWork,
+    event_survey_id: Uuid,
+) -> Result<Option<i32>> {
+    uow.fetch_scalar_opt(
+        "select open_notification_recipients
+        from event_survey
+        where event_survey_id = $1::uuid
+        and open_notification_processed_at is not null",
+        &[&event_survey_id],
+    )
+    .await
 }

@@ -142,6 +142,7 @@ pub(crate) async fn prepare_list_page(
         events: results.events,
         navigation_links,
         total: results.total,
+
         offset: filters.offset,
     };
 

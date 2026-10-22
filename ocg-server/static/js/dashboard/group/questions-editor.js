@@ -1,23 +1,59 @@
+import { generateElementIdPrefix } from "/static/js/common/dom.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  focusModal,
+  openModalBodyScroll,
+  restoreModalFocus,
+  trapModalFocus,
+} from "/static/js/common/modals/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import {
+  buildQuestionsEditorIds,
   cloneQuestion,
   createBlankQuestion,
   createBlankQuestionOption,
+  normalizePositiveInteger,
   normalizeQuestionOptions,
   normalizeQuestions,
 } from "/static/js/dashboard/group/questions-editor/model.js";
 import { renderQuestionsEditor } from "/static/js/dashboard/group/questions-editor/render.js";
 
+/** Default warning shown while questions can still be edited. */
+const DEFAULT_EDITING_WARNING = "Questions cannot be edited after answers have been submitted.";
+
+/** Default empty-state message of a disabled editor. */
+const DEFAULT_EMPTY_DISABLED_MESSAGE = "No questions were added.";
+
+/** Default empty-state message of an editable editor. */
+const DEFAULT_EMPTY_MESSAGE = 'No questions yet. Click "Add question" to create one.';
+
+/** Default maximum option label length. */
+const DEFAULT_OPTION_MAX_LENGTH = 120;
+
+/** Default maximum question prompt length. */
+const DEFAULT_PROMPT_MAX_LENGTH = 500;
+
+/** Default help text of the Required toggle. */
+const DEFAULT_REQUIRED_HELP = "Required questions must be answered. Optional questions can be skipped.";
+
 /**
- * Renders the event registration questions editor and its form payload fields.
+ * Renders a questionnaire questions editor and its form payload fields. Several
+ * editors can share a page; each one renders its own element ids.
  * @extends LitWrapper
  */
 class QuestionsEditor extends LitWrapper {
   static properties = {
     disabled: { type: Boolean, reflect: true },
+    editingWarning: { type: String, attribute: "editing-warning" },
+    emptyDisabledMessage: { type: String, attribute: "empty-disabled-message" },
+    emptyMessage: { type: String, attribute: "empty-message" },
+    maxQuestions: { type: Number, attribute: "max-questions" },
     name: { type: String },
+    optionMaxLength: { type: Number, attribute: "option-max-length" },
+    promptMaxLength: { type: Number, attribute: "prompt-max-length" },
     questions: {
       attribute: "questions",
       converter: {
@@ -26,6 +62,7 @@ class QuestionsEditor extends LitWrapper {
         },
       },
     },
+    requiredHelp: { type: String, attribute: "required-help" },
     _draftQuestion: { state: true },
     _draggedOptionIndex: { state: true },
     _draggedQuestionIndex: { state: true },
@@ -39,7 +76,14 @@ class QuestionsEditor extends LitWrapper {
   constructor() {
     super();
     this.disabled = false;
+    this.editingWarning = DEFAULT_EDITING_WARNING;
+    this.emptyDisabledMessage = DEFAULT_EMPTY_DISABLED_MESSAGE;
+    this.emptyMessage = DEFAULT_EMPTY_MESSAGE;
+    this.maxQuestions = null;
     this.name = "questions";
+    this.optionMaxLength = DEFAULT_OPTION_MAX_LENGTH;
+    this.promptMaxLength = DEFAULT_PROMPT_MAX_LENGTH;
+    this.requiredHelp = DEFAULT_REQUIRED_HELP;
     this._questions = [];
     this._draftQuestion = null;
     this._draggedOptionIndex = null;
@@ -49,12 +93,53 @@ class QuestionsEditor extends LitWrapper {
     this._editingQuestionIndex = null;
     this._isModalOpen = false;
     this._isNewQuestion = false;
+    this._generatedIdPrefix = "";
+    this._handleKeydown = this._handleKeydown.bind(this);
+    this._ids = null;
+    this._removeDismissListeners = null;
   }
 
+  /**
+   * Releases modal listeners, scroll lock and focus when detached.
+   */
   disconnectedCallback() {
+    const modal = this._resolveQuestionModal();
+    const wasModalOpen = this._isModalOpen;
+    this._unbindModalDismissListeners();
     this._isModalOpen = closeModalBodyScroll(this._isModalOpen);
+    if (wasModalOpen) {
+      restoreModalFocus(modal);
+    }
 
     super.disconnectedCallback();
+  }
+
+  /**
+   * Gets the element ids of this editor instance.
+   * @returns {ReturnType<typeof buildQuestionsEditorIds>}
+   */
+  get ids() {
+    if (!this.id && !this._generatedIdPrefix) {
+      this._generatedIdPrefix = generateElementIdPrefix("questions-editor", this.name, "questions");
+    }
+
+    const prefix = this.id || this._generatedIdPrefix;
+    if (this._ids?.prefix !== prefix) {
+      this._ids = { ...buildQuestionsEditorIds(prefix), prefix };
+    }
+    return this._ids;
+  }
+
+  /**
+   * Gets the normalized length and count limits of the editor.
+   * @returns {{optionMaxLength: number, promptMaxLength: number, questions: number|null}}
+   */
+  get limits() {
+    return {
+      optionMaxLength: normalizePositiveInteger(this.optionMaxLength, DEFAULT_OPTION_MAX_LENGTH),
+      promptMaxLength: normalizePositiveInteger(this.promptMaxLength, DEFAULT_PROMPT_MAX_LENGTH),
+      questions: normalizePositiveInteger(this.maxQuestions),
+    };
   }
 
   get questions() {
@@ -68,11 +153,25 @@ class QuestionsEditor extends LitWrapper {
   }
 
   /**
+   * Checks whether the question limit has been reached.
+   * @returns {boolean}
+   */
+  get questionsLimitReached() {
+    const limit = this.limits.questions;
+    return limit !== null && this.questions.length >= limit;
+  }
+
+  /**
    * Adds a blank free-text question.
+   * @param {HTMLElement|null} [trigger=null] Element that opened the modal
    * @returns {void}
    */
-  _addQuestion() {
-    this._openQuestionModal();
+  _addQuestion(trigger = null) {
+    if (this.questionsLimitReached) {
+      return;
+    }
+
+    this._openQuestionModal(null, trigger);
   }
 
   /**
@@ -94,6 +193,7 @@ class QuestionsEditor extends LitWrapper {
       return;
     }
 
+    const modal = this._resolveQuestionModal();
     this._draftQuestion = null;
     this._draggedOptionIndex = null;
     this._dragOverOptionIndex = null;
@@ -101,24 +201,63 @@ class QuestionsEditor extends LitWrapper {
     const wasOpen = this._isModalOpen;
     this._isNewQuestion = false;
     this._isModalOpen = closeModalBodyScroll(wasOpen);
+    this._unbindModalDismissListeners();
+    this.updateComplete.then(() => {
+      if (!this._isModalOpen) {
+        restoreModalFocus(modal);
+      }
+    });
   }
 
   /**
-   * Opens the add or edit modal.
-   * @param {number|null} [questionIndex=null] Existing question index
+   * Closes the modal on Escape and keeps Tab navigation inside it.
+   * @param {KeyboardEvent} event Keyboard event
    * @returns {void}
    */
-  _openQuestionModal(questionIndex = null) {
-    if (this.disabled) {
+  _handleKeydown(event) {
+    if (!this._isModalOpen) {
       return;
     }
 
+    if (event.key === "Tab") {
+      trapModalFocus(event, this._resolveQuestionModal());
+      return;
+    }
+
+    if (isEscapeEvent(event)) {
+      this._closeQuestionModal();
+    }
+  }
+
+  /**
+   * Opens the add or edit modal and moves focus inside it.
+   * @param {number|null} [questionIndex=null] Existing question index
+   * @param {HTMLElement|null} [trigger=null] Element that opened the modal
+   * @returns {void}
+   */
+  _openQuestionModal(questionIndex = null, trigger = null) {
+    if (this.disabled || this._isModalOpen) {
+      return;
+    }
+
+    const ownerDocument = this.ownerDocument || document;
+    const activeElement = ownerDocument.activeElement;
+    const focusOrigin =
+      trigger instanceof HTMLElement ? trigger : activeElement instanceof HTMLElement ? activeElement : null;
     const existingQuestion = questionIndex === null ? null : this.questions[questionIndex];
     this._draftQuestion = existingQuestion ? cloneQuestion(existingQuestion) : createBlankQuestion();
     this._editingQuestionIndex = questionIndex;
     this._isNewQuestion = questionIndex === null;
     this._isModalOpen = openModalBodyScroll(this._isModalOpen);
-    this.updateComplete.then(() => this.querySelector("[data-question-modal-field]")?.focus());
+    this._removeDismissListeners = bindModalDismissListeners({
+      onKeydown: this._handleKeydown,
+      target: ownerDocument,
+    });
+    this.updateComplete.then(() => {
+      if (this._isModalOpen && this.isConnected) {
+        focusModal(this._resolveQuestionModal(), focusOrigin);
+      }
+    });
   }
 
   /**
@@ -390,6 +529,14 @@ class QuestionsEditor extends LitWrapper {
   }
 
   /**
+   * Resolves the question modal rendered by this editor.
+   * @returns {Element|null}
+   */
+  _resolveQuestionModal() {
+    return this.querySelector("[data-question-modal]");
+  }
+
+  /**
    * Removes a question from the editor.
    * @param {number} questionIndex Question index
    * @returns {void}
@@ -428,6 +575,15 @@ class QuestionsEditor extends LitWrapper {
     }
 
     this._closeQuestionModal();
+  }
+
+  /**
+   * Removes the modal keyboard listeners.
+   * @returns {void}
+   */
+  _unbindModalDismissListeners() {
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
   }
 
   /**

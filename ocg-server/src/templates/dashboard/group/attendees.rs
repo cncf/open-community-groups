@@ -5,12 +5,13 @@ use uuid::Uuid;
 
 use crate::types::dashboard::group::attendees::{
     Attendee, AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesSort,
+    format_payment_amount,
 };
 use crate::{
     templates::helpers::user_initials,
     types::{
         dashboard::group::PresenceFilter, event::EventSummary, pagination,
-        payments::format_amount_minor, questionnaire::QuestionnaireQuestion,
+        questionnaire::QuestionnaireQuestion,
     },
 };
 
@@ -59,42 +60,8 @@ pub(crate) struct ListPage {
 
 // Helpers.
 
-/// Format an attendee payment amount for display.
-#[allow(clippy::ref_option)]
-pub(crate) fn format_payment_amount(
-    amount_minor: &Option<i64>,
-    currency_code: Option<&str>,
-) -> Option<String> {
-    let amount_minor = (*amount_minor)?;
-
-    if amount_minor == 0 {
-        return Some("Free".to_string());
-    }
-
-    let currency_code = currency_code?;
-    Some(format_amount_minor(amount_minor, currency_code))
-}
-
 /// Returns true when the attendee has a paid event purchase.
 #[allow(clippy::ref_option)]
 pub(crate) fn is_paid_attendee(amount_minor: &Option<i64>) -> bool {
     matches!(*amount_minor, Some(amount_minor) if amount_minor > 0)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::format_payment_amount;
-
-    #[test]
-    fn test_format_payment_amount_formats_free_without_currency() {
-        assert_eq!(
-            format_payment_amount(&Some(0), None),
-            Some("Free".to_string())
-        );
-    }
-
-    #[test]
-    fn test_format_payment_amount_requires_currency_for_paid_amounts() {
-        assert_eq!(format_payment_amount(&Some(2500), None), None);
-    }
 }
