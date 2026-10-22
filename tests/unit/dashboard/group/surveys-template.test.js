@@ -145,9 +145,9 @@ describe("dashboard group event survey templates", () => {
 
     // Verify free-text previews are dense and clamp long answers.
     expect(results).to.include(
-      'class="grid grid-cols-1 gap-2 p-3 md:grid-cols-2" data-event-survey-text-answers-preview',
+      'class="grid grid-cols-1 gap-2 p-3 lg:grid-cols-2" data-event-survey-text-answers-preview',
     );
-    expect(results).to.include('<li class="line-clamp-3 whitespace-pre-line break-words');
+    expect(results).to.include('<p class="line-clamp-3 whitespace-pre-line break-words">{{ answer }}</p>');
     expect(results).not.to.include("Show more");
 
     // Verify every answer opens in a modal and failures are reported.
@@ -275,7 +275,10 @@ describe("dashboard group event survey templates", () => {
     expect(macros).to.include('disabled {{ nav_attribute }}="previous"');
     expect(macros).to.include('disabled {{ nav_attribute }}="next"');
     expect(macros).to.include(
-      '<button type="button" {{ close_attribute }} class="btn-primary">Close</button>',
+      '<button type="button" {{ close_attribute }} class="btn-primary justify-self-end">Close</button>',
     );
+
+    // Verify the navigation buttons sit in the centered footer column.
+    expect(macros).to.include("sm:grid-cols-[1fr_auto_1fr]");
   });
 });

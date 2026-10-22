@@ -6,9 +6,9 @@
 {# Survey date label. #}
 {% macro survey_date(survey) -%}
   {% if let Some(closed_at) = survey.closed_at -%}
-    Closed {{ crate::templates::dashboard::user::surveys::survey_date_label(closed_at, survey.timezone) }}
+    Closed {{ closed_at.with_timezone(survey.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}
   {% else if let Some(closes_at) = survey.closes_at -%}
-    Closes {{ crate::templates::dashboard::user::surveys::survey_date_label(closes_at, survey.timezone) }}
+    Closes {{ closes_at.with_timezone(survey.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}
   {% else -%}
     No closing date
   {% endif -%}

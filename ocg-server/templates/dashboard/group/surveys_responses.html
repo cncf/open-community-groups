@@ -14,7 +14,7 @@
     <div class="mt-10 space-y-5">
       {# Respondents search -#}
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="relative w-80 max-w-full 2xl:w-[30rem]">
+        <div class="relative w-80 max-w-full md:w-64 lg:w-80 2xl:w-[30rem]">
           <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
             <div class="svg-icon size-4 icon-search bg-stone-300"></div>
           </div>
@@ -49,7 +49,8 @@
             </div>
           </form>
         </div>
-        <div class="text-sm text-stone-600" data-event-survey-respondents-range>
+        <div class="shrink-0 whitespace-nowrap text-sm text-stone-600"
+             data-event-survey-respondents-range>
           {{ pagination::range_display(offset = offset.unwrap_or(0) , count = responses.responses.len(), total = responses.total, label = "respondent") }}
         </div>
       </div>
@@ -63,7 +64,8 @@
             <th scope="col" class="px-3 py-1.5 xl:px-5">Respondent</th>
             <th scope="col" class="hidden px-3 py-1.5 lg:table-cell xl:px-5">Ticket type</th>
             <th scope="col" class="w-28 px-3 py-1.5 xl:px-5">Answered</th>
-            <th scope="col" class="hidden w-44 px-3 py-1.5 md:table-cell xl:px-5">Submitted</th>
+            <th scope="col"
+                class="hidden w-36 px-3 py-1.5 md:table-cell xl:w-44 xl:px-5">Submitted</th>
           </tr>
         </thead>
         <tbody>
@@ -129,7 +131,7 @@
                 {# End answered questions -#}
 
                 {# Submitted -#}
-                <td class="hidden w-44 whitespace-nowrap px-3 py-4 md:table-cell xl:px-5">
+                <td class="hidden w-36 whitespace-nowrap px-3 py-4 md:table-cell xl:w-44 xl:px-5">
                   <time datetime="{{ response.created_at.to_rfc3339() }}"
                         class="block"
                         title="{{ submitted_at }}">{{ response.created_at.with_timezone(event.timezone).format("%b %-e, %Y") }}</time>

@@ -90,7 +90,7 @@ fn test_list_page_renders_surveys_by_state() {
     // Check the status, date and action of the unanswered survey
     let closing_row = survey_row(&html, Uuid::from_u128(1));
     assert!(closing_row.contains("To answer"));
-    assert!(closing_row.contains("Closes January 10, 2099 at 10:00 AM UTC"));
+    assert!(closing_row.contains("Closes Jan 10, 2099 at 10:00 AM UTC"));
     assert!(!closing_row.contains("Edit answers"));
     assert!(!closing_row.contains("View answers"));
 

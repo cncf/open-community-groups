@@ -1,9 +1,11 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 {% import "macros/surveys.html" as surveys -%}
+
 {# Event survey free-text answers modal content -#}
 {# Rendered inside the #event-survey-text-answers-modal-content wrapper owned by the Summary view. -#}
 {% let answers_url = self.answers_url() -%}
+
 {# Modal header -#}
 {% let answers_subtitle -%}
 <p class="mt-1 text-xs text-stone-500">Question {{ answers.position }} · Free-text answers</p>
@@ -60,7 +62,7 @@
 {# End answers search -#}
 
 {# Modal body -#}
-<div class="modal-body p-4 md:px-6"
+<div class="modal-body flex-1 p-4 md:px-6"
      data-event-survey-text-answers="{{ question_id }}">
   {% if answers.answers.is_empty() -%}
     <p class="py-8 text-center text-sm text-stone-500">

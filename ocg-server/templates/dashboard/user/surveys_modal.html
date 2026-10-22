@@ -1,7 +1,9 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/question_answers.html" as question_answers -%}
+
 {# User event survey modal content -#}
 {# Rendered inside the #user-event-survey-modal-content wrapper owned by the surveys list. -#}
+
 {# Modal header -#}
 {% let survey_subtitle -%}
 <p class="mt-1 text-sm text-stone-600">{{ survey.event.name }} · {{ survey.event.group_name }}</p>
@@ -12,6 +14,7 @@
   subtitle = survey_subtitle,
   align_items = "items-start") -}}
 {# End modal header -#}
+
 {% if survey.is_closed() -%}
   {# Closed survey answers -#}
   <div data-user-event-survey-answers
@@ -36,11 +39,13 @@
       </p>
     </div>
     {# End survey details -#}
+
     {# Survey answers -#}
     {{ question_answers::review_list(questions = survey.questions,
       answers = crate::templates::dashboard::user::surveys::survey_answers(survey)) -}}
     {# End survey answers -#}
   </div>
+
   <div class="flex justify-end border-t border-stone-200 p-4 md:p-5">
     <button data-user-event-survey-close type="button" class="btn-primary">Close</button>
   </div>
@@ -85,31 +90,33 @@
       {% endif -%}
     </div>
     {# End survey details -#}
+
     {# Survey answers -#}
-    {% let radio_name_prefix -%}survey-{{ survey.event_survey_id }}{%- endlet %}
-  {{ question_answers::fields(questions = survey.questions,
-    answers = crate::templates::dashboard::user::surveys::survey_answers(survey),
-    answer_attr = "data-question-answer",
-    radio_name_prefix = radio_name_prefix) -}}
-  <input type="hidden" data-question-answers-input name="answers">
-  <input type="hidden" name="revision" value="{{ survey.revision }}">
-  {# End survey answers -#}
-  <div class="flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:items-center md:justify-between">
-    {{ question_answers::required_note() -}}
-    <div class="flex flex-col gap-3 md:flex-row md:justify-end">
-      <button data-user-event-survey-close
-              type="button"
-              class="btn-primary-outline">Cancel</button>
-      <button type="submit" class="btn-primary">
-        {% if survey.response.is_some() -%}
-          Save changes
-        {% else -%}
-          Submit answers
-        {% endif -%}
-      </button>
+    {% let radio_name_prefix = "survey-{}"|format(survey.event_survey_id) -%}
+    {{ question_answers::fields(questions = survey.questions,
+      answers = crate::templates::dashboard::user::surveys::survey_answers(survey),
+      answer_attr = "data-question-answer",
+      radio_name_prefix = radio_name_prefix) -}}
+    <input type="hidden" data-question-answers-input name="answers">
+    <input type="hidden" name="revision" value="{{ survey.revision }}">
+    {# End survey answers -#}
+
+    <div class="flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:items-center md:justify-between">
+      {{ question_answers::required_note() -}}
+      <div class="flex flex-col gap-3 md:flex-row md:justify-end">
+        <button data-user-event-survey-close
+                type="button"
+                class="btn-primary-outline">Cancel</button>
+        <button type="submit" class="btn-primary">
+          {% if survey.response.is_some() -%}
+            Save changes
+          {% else -%}
+            Submit answers
+          {% endif -%}
+        </button>
+      </div>
     </div>
-  </div>
-</form>
-{# End modal form -#}
+  </form>
+  {# End modal form -#}
 {% endif -%}
 {# End user event survey modal content -#}

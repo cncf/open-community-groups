@@ -1,10 +1,12 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/question_answers.html" as question_answers -%}
 {% import "macros/surveys.html" as surveys -%}
+
 {# Event survey response modal content -#}
 {# Rendered inside the #event-survey-response-modal-content wrapper owned by the Individual view. -#}
 {% let user = response.summary.user -%}
 {% let submitted_at = crate::templates::dashboard::group::surveys::format_date(*response.summary.created_at, *event.timezone) -%}
+
 {# Modal header -#}
 {% let response_subtitle -%}
 <div class="mt-1 space-y-1" data-event-survey-response-details>

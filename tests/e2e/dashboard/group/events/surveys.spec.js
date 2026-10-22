@@ -298,7 +298,7 @@ test.describe("group dashboard event surveys tab", () => {
     await expect(firstDialog).toContainText("More time for questions after each talk.");
     await expect(firstDialog).toContainText("Excellent");
     await expect(firstDialog).toContainText("Respondent 1 of 2");
-    await expect(firstDialog.getByRole("button", { name: "Previous" })).toBeDisabled();
+    await expect(firstDialog.getByRole("button", { name: "Prev", exact: true })).toBeDisabled();
 
     // Move to the next respondent.
     await waitForActionResponse(page, () => firstDialog.getByRole("button", { name: "Next" }).click(), {
@@ -323,7 +323,7 @@ test.describe("group dashboard event surveys tab", () => {
       urlIncludes: `/responses/${attendeeIds.checkedIn2}`,
     });
     await expect(secondDialog).toBeVisible();
-    await expect(secondDialog.getByRole("button", { name: "Previous" })).toBeEnabled();
+    await expect(secondDialog.getByRole("button", { name: "Prev", exact: true })).toBeEnabled();
     await secondDialog.getByRole("button", { name: "Close", exact: true }).click();
     await expect(secondDialog).toBeHidden();
   });
@@ -388,7 +388,7 @@ test.describe("group dashboard event surveys tab", () => {
       await expect(dialog).toBeVisible();
       await expect(search).toBeFocused();
       await expect(range).toHaveText("1 - 10 of 12 answers");
-      await expect(dialog.getByRole("button", { name: "Previous" })).toBeDisabled();
+      await expect(dialog.getByRole("button", { name: "Prev", exact: true })).toBeDisabled();
 
       // Move to the second page.
       await waitForActionResponse(page, () => dialog.getByRole("button", { name: "Next" }).click(), {

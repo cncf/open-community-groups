@@ -833,13 +833,13 @@ responses, the audience and anonymity, and the closing date in the event timezon
   of respondents. Free-text questions show a compact preview of the first 10 answers, oldest first,
   with long answers shortened to a few lines. The button below the preview, for example
   `View all 42 answers`, opens every answer to the question in full in a dialog, 10 per page, with
-  `Previous` and `Next` buttons and a search box that matches the answer text. The search also
+  `Prev` and `Next` buttons and a search box that matches the answer text. The search also
   works on anonymous surveys, because answers never show who gave them.
 - `Individual` lists the respondents in a table, 20 per page and oldest response first, with each
   respondent's name, title, and company, their ticket type, how many questions they answered (for
   example `7 of 10`), and when they submitted, plus when they last edited their answers. The search
   box matches respondent names, usernames, companies, and titles. Selecting a row, by clicking it or
-  pressing Enter, opens that respondent's answers in a dialog, with `Previous` and `Next` buttons
+  pressing Enter, opens that respondent's answers in a dialog, with `Prev` and `Next` buttons
   that move through the respondents matching the search. It is only available for identified
   surveys.
 - Anonymous surveys with fewer than 5 responses show a notice that their answers may still

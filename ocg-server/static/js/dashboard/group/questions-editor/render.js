@@ -154,7 +154,9 @@ const renderQuestionCard = (editor, question, questionIndex) => html`
         <div class="min-w-0 flex-1">
           <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div class="min-w-0">
-              <div class="font-semibold text-stone-900">${question.prompt || "Untitled question"}</div>
+              <div class="font-semibold text-stone-900 md:text-sm lg:text-base">
+                ${question.prompt || "Untitled question"}
+              </div>
               <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-600">
                 <span class="text-stone-500">${getQuestionTypeLabel(question.kind)}</span>
                 ${

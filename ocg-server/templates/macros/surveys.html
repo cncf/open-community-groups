@@ -96,10 +96,10 @@
 
 {# Results modal footer -#}
 {# Used by the survey response and free-text answers modals to move between their pages. -#}
-{# The caller renders the position shown before the navigation buttons. -#}
+{# The caller renders the position shown before the centered navigation buttons. -#}
 {% macro results_modal_footer(modal_id, nav_attribute, close_attribute, error_message, previous_url, next_url) -%}
-  <div class="flex flex-col gap-3 border-t border-stone-200 p-4 sm:flex-row sm:items-center sm:justify-between md:p-5">
-    {{ caller() }}
+  <div class="grid grid-cols-[1fr_auto] items-center gap-3 border-t border-stone-200 p-4 sm:grid-cols-[1fr_auto_1fr] md:p-5">
+    <div class="col-span-2 min-w-0 sm:col-span-1">{{ caller() }}</div>
     <div class="flex items-center gap-2">
       {% if let Some(previous_url) = previous_url -%}
         <button type="button"
@@ -112,17 +112,17 @@
                 {{ nav_attribute }}="previous"
                 data-htmx-response
                 data-error-message="{{ error_message }}"
-                class="btn-primary-outline inline-flex items-center gap-2">
+                class="btn-primary-outline inline-flex w-24 items-center justify-center gap-2 px-3">
           <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
-          <span>Previous</span>
+          <span>Prev</span>
         </button>
       {% else -%}
         <button type="button"
                 disabled
                 {{ nav_attribute }}="previous"
-                class="btn-primary-outline inline-flex cursor-not-allowed items-center gap-2 opacity-50">
+                class="btn-primary-outline inline-flex w-24 cursor-not-allowed items-center justify-center gap-2 px-3 opacity-50">
           <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
-          <span>Previous</span>
+          <span>Prev</span>
         </button>
       {% endif -%}
       {% if let Some(next_url) = next_url -%}
@@ -136,7 +136,7 @@
                 {{ nav_attribute }}="next"
                 data-htmx-response
                 data-error-message="{{ error_message }}"
-                class="btn-primary-outline inline-flex items-center gap-2">
+                class="btn-primary-outline inline-flex w-24 items-center justify-center gap-2 px-3">
           <span>Next</span>
           <div class="svg-icon size-4 icon-arrow-right bg-current"
                aria-hidden="true"></div>
@@ -145,14 +145,16 @@
         <button type="button"
                 disabled
                 {{ nav_attribute }}="next"
-                class="btn-primary-outline inline-flex cursor-not-allowed items-center gap-2 opacity-50">
+                class="btn-primary-outline inline-flex w-24 cursor-not-allowed items-center justify-center gap-2 px-3 opacity-50">
           <span>Next</span>
           <div class="svg-icon size-4 icon-arrow-right bg-current"
                aria-hidden="true"></div>
         </button>
       {% endif -%}
-      <button type="button" {{ close_attribute }} class="btn-primary">Close</button>
     </div>
+    <button type="button"
+            {{ close_attribute }}
+            class="btn-primary justify-self-end">Close</button>
   </div>
 {% endmacro results_modal_footer -%}
 {# End results modal footer -#}
