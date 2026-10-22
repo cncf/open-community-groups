@@ -422,7 +422,7 @@ describe("dashboard group event add template", () => {
     );
     expect(template).to.include("Session-level speakers");
     expect(template).to.include(
-      '<div class="mt-8 border-t border-stone-200 pt-8"> <h3 class="form-label m-0">Session-level speakers</h3> <p class="mt-4 text-sm text-stone-500">',
+      '<div class="mt-8 border-t border-stone-200 pt-8"> <h3 class="form-label m-0">Session-level speakers</h3> <p class="mt-2 text-sm text-stone-500">',
     );
     expect(template).not.to.include(">Event Speakers<");
     expect(template).to.include(
@@ -479,7 +479,7 @@ describe("dashboard group event add template", () => {
     // Verify hosts and organizers use role-specific search copy.
     expect(contributorsTab).to.include('label="host" legend="Search for event hosts by their username"');
     expect(contributorsTab).to.include(
-      '<div class="text-xl lg:text-2xl font-medium text-stone-900">Event Organizers</div> <p class="mt-1 text-sm text-stone-500"> Organizers are listed on the public event page. Only accepted group team members can be added, and new events start with the whole team. People who leave the team stay listed until removed. Contact messages still go to the group team. </p>',
+      '<div class="text-xl lg:text-2xl font-medium text-stone-900">Event Organizers</div> <p class="mt-2 text-sm text-stone-500"> Organizers are listed on the public event page. Only accepted group team members can be added, and new events start with the whole team. People who leave the team stay listed until removed. Contact messages still go to the group team. </p>',
     );
 
     // Verify organizers start with the team, only search the team, and always submit the selection.

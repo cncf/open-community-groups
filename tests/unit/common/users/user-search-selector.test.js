@@ -4,6 +4,7 @@ import "/static/js/common/users/user-search-selector.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("user-search-selector", () => {
   const userSearchFieldPrototype = customElements.get("user-search-field").prototype;
@@ -80,6 +81,35 @@ describe("user-search-selector", () => {
     expect(table.querySelector("tbody td").textContent.trim()).to.equal("No organizers added yet.");
   });
 
+  it("hides the actions column on read-only tables without badge awards", async () => {
+    // Render a read-only organizer table without badge awards.
+    const element = await mountLitComponent("user-search-selector", {
+      disabled: true,
+      displayMode: "table",
+      label: "organizer",
+      selectedUsers: [{ user_id: "7", username: "ada", name: "Ada Lovelace" }],
+    });
+
+    // The table has no actions column or menu.
+    expect([...element.querySelectorAll("th")].map((header) => header.textContent.trim())).to.deep.equal([
+      "Organizer",
+    ]);
+    expect(element.querySelector("[data-actions-menu]")).to.equal(null);
+
+    // The empty state spans the remaining column.
+    element.selectedUsers = [];
+    await element.updateComplete;
+    expect(element.querySelector("tbody td").getAttribute("colspan")).to.equal("1");
+
+    // Badge awards keep the actions column on read-only tables.
+    element.selectedUsers = [{ user_id: "7", username: "ada", name: "Ada Lovelace" }];
+    element.canAwardBadges = true;
+    element.eventId = "event-1";
+    await element.updateComplete;
+    expect(element.querySelectorAll("th")).to.have.length(2);
+    expect(element.querySelector("[data-actions-menu]")).to.not.equal(null);
+  });
+
   it("limits the nested search to the available users", async () => {
     // Render one selector searching every user and one limited to the team.
     const openSelector = await mountLitComponent("user-search-selector");
@@ -107,6 +137,45 @@ describe("user-search-selector", () => {
     resultRows[0].click();
     await teamSelector.updateComplete;
     expect(teamSelector.selectedUsers.map((user) => user.username)).to.deep.equal(["ada"]);
+  });
+
+  it("disables selected hosts in API search results and removes them without confirmation", async () => {
+    // Render a host table searching every user.
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        async json() {
+          return [
+            { user_id: "7", username: "ada", name: "Ada Lovelace" },
+            { user_id: "8", username: "grace", name: "Grace Hopper" },
+          ];
+        },
+      },
+    });
+    const swal = mockSwal();
+    const element = await mountLitComponent("user-search-selector", {
+      displayMode: "table",
+      selectedUsers: [{ user_id: "7", username: "ada", name: "Ada Lovelace" }],
+    });
+
+    try {
+      // Search every user and verify the selected host is listed but disabled.
+      const field = element.querySelector("user-search-field");
+      field._searchQuery = "ad";
+      await field._performSearch("ad");
+      await field.updateComplete;
+      const resultRows = [...field.querySelectorAll("[aria-disabled]")];
+      expect(resultRows.map((row) => row.getAttribute("aria-disabled"))).to.deep.equal(["true", "false"]);
+
+      // Removing a host never asks for confirmation.
+      element.querySelector(".icon-trash").closest("button").click();
+      await waitForMicrotask();
+      expect(swal.calls).to.have.length(0);
+      expect(element.selectedUsers).to.deep.equal([]);
+    } finally {
+      fetchMock.restore();
+      swal.restore();
+    }
   });
 
   it("confirms before removing former team members", async () => {

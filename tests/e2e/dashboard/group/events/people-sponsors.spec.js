@@ -1,6 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
-import { cleanupEventsByIds } from "../../../data-graphs/events.js";
-import { TEST_USER_IDS } from "../../../seed.js";
+import { queryE2eDatabase } from "../../../database.js";
+import { cleanupEventsByIds, setupOrganizerEvent } from "../../../data-graphs/events.js";
+import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
 import {
   futureDate,
   navigateToPath,
@@ -50,6 +51,10 @@ test.describe("group dashboard event contributors", () => {
         name: "E2E Member One",
         userId: TEST_USER_IDS.member1,
         username: "e2e-member-1",
+      });
+      await expectSearchResultDisabled(organizerGroupPage, "#event-hosts-selector", {
+        name: "E2E Organizer One",
+        username: "e2e-organizer-1",
       });
       await addEventSpeaker(organizerGroupPage, {
         featured: true,
@@ -210,6 +215,10 @@ test.describe("group dashboard event contributors", () => {
         username: "e2e-group-viewer-1",
       });
       await expectEditorOrganizers(organizerGroupPage, editedOrganizers);
+      await expectSearchResultDisabled(organizerGroupPage, "#event-organizers-selector", {
+        name: "E2E Organizer One",
+        username: "e2e-organizer-1",
+      });
 
       // Create the event with the edited organizers.
       const visibleAddEventButton = organizerGroupPage.locator(
@@ -246,6 +255,50 @@ test.describe("group dashboard event contributors", () => {
     } finally {
       // Delete the event used for organizer persistence checks.
       cleanupEventsByIds(eventId ? [eventId] : []);
+    }
+  });
+
+  test("canceled event lists contributors without row actions", async ({ organizerGroupPage }) => {
+    // Create an event with one organizer, host, and speaker, then cancel it.
+    const event = setupOrganizerEvent({
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      organizerUserIds: [TEST_USER_IDS.organizer1],
+    });
+
+    try {
+      queryE2eDatabase(`
+        insert into event_host (event_id, user_id)
+        values ('${event.eventId}', '${TEST_USER_IDS.member1}');
+
+        insert into event_speaker (event_id, user_id, featured)
+        values ('${event.eventId}', '${TEST_USER_IDS.member2}', false);
+
+        update event set canceled = true where event_id = '${event.eventId}';
+      `);
+
+      // Open the contributors section of the canceled event.
+      await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
+
+      // Verify each contributor table lists its person without an actions column or menu.
+      const contributorTables = [
+        { name: "E2E Member Two", selectorId: "#event-speakers-selector", tableName: "Event speakers" },
+        { name: "E2E Member One", selectorId: "#event-hosts-selector", tableName: "Event hosts" },
+        {
+          name: "E2E Organizer One",
+          selectorId: "#event-organizers-selector",
+          tableName: "Event organizers",
+        },
+      ];
+      for (const { name, selectorId, tableName } of contributorTables) {
+        const table = organizerGroupPage.locator(selectorId).getByRole("table", { name: tableName });
+        await expect(table).toContainText(name);
+        await expect(table.getByRole("columnheader", { name: "Actions" })).toHaveCount(0);
+        await expect(table.locator("summary")).toHaveCount(0);
+      }
+    } finally {
+      // Delete the canceled event and its contributors.
+      cleanupEventsByIds([event.eventId]);
     }
   });
 
@@ -427,6 +480,18 @@ const expectEditorOrganizers = async (page, organizers) => {
   for (const [index, organizer] of organizers.entries()) {
     await expect(organizerRows.nth(index)).toContainText(organizer.name);
   }
+};
+
+/** Asserts an already selected user is listed but disabled in a selector search. */
+const expectSearchResultDisabled = async (page, selectorId, { name, username }) => {
+  const selector = page.locator(selectorId);
+  const searchInput = selector.locator("[data-user-search-input]");
+
+  await searchInput.fill(username);
+  await expect(
+    selector.locator('[data-user-search-dropdown] [aria-disabled="true"]', { hasText: name }),
+  ).toBeVisible();
+  await searchInput.fill("");
 };
 
 /** Fills the event form with contributor coverage details. */
