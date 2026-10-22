@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -53,7 +53,6 @@ select fx_group(:'group1ID', :'community1ID', :'groupCategory1ID', jsonb_build_o
     'city', 'San Francisco',
     'country_code', 'US',
     'country_name', 'United States',
-    'location', ST_GeogFromText('POINT(-122.4194 37.7749)'),
     'slug', 'test-group',
     'state', 'CA'
 ));
@@ -63,7 +62,6 @@ select fx_group(:'group2ID', :'community1ID', :'groupCategory1ID', jsonb_build_o
     'city', 'New York',
     'country_code', 'US',
     'country_name', 'United States',
-    'location', ST_GeogFromText('POINT(-73.935242 40.73061)'),
     'state', 'NY'
 ));
 
@@ -72,11 +70,10 @@ select fx_group(:'group3ID', :'community2ID', :'groupCategory2ID', jsonb_build_o
     'city', 'Chicago',
     'country_code', 'US',
     'country_name', 'United States',
-    'location', ST_GeogFromText('POINT(-87.6298 41.8781)'),
     'state', 'IL'
 ));
 
--- In-person event located through its San Francisco group
+-- In-person event in the first group
 select fx_event(:'event1ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
     'ends_at', now() + interval '1 day' + interval '2 hours',
     'published', true,
@@ -87,7 +84,7 @@ select fx_event(:'event1ID', :'group1ID', :'eventCategory1ID', jsonb_build_objec
     'venue_name', 'Tech Hub'
 ));
 
--- Virtual event located through its San Francisco group
+-- Virtual event in the first group
 select fx_event(:'event2ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
     'ends_at', now() + interval '2 days' + interval '3 hours',
     'event_kind_id', 'virtual',
@@ -98,7 +95,7 @@ select fx_event(:'event2ID', :'group1ID', :'eventCategory1ID', jsonb_build_objec
     'venue_name', 'Online'
 ));
 
--- Hybrid event located through its San Francisco group
+-- Hybrid event in the first group
 select fx_event(:'event3ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
     'ends_at', now() + interval '3 days' + interval '7 hours',
     'event_kind_id', 'hybrid',
@@ -110,10 +107,9 @@ select fx_event(:'event3ID', :'group1ID', :'eventCategory1ID', jsonb_build_objec
     'venue_name', 'Convention Center'
 ));
 
--- Event with its own location
+-- Event in the second group, which also co-hosts event1
 select fx_event(:'event5ID', :'group2ID', :'eventCategory1ID', jsonb_build_object(
     'ends_at', now() + interval '4 days' + interval '7 hours',
-    'location', ST_GeogFromText('POINT(-122.4194 37.7749)'),
     'published', true,
     'starts_at', now() + interval '4 days',
     'tags', array['cloud', 'innovation'],
@@ -122,7 +118,7 @@ select fx_event(:'event5ID', :'group2ID', :'eventCategory1ID', jsonb_build_objec
     'venue_name', 'Innovation Center'
 ));
 
--- Event located through its Chicago group in the second community
+-- Event in the second community
 select fx_event(:'event6ID', :'group3ID', :'eventCategory2ID', jsonb_build_object(
     'ends_at', now() + interval '5 days' + interval '4 hours',
     'published', true,
@@ -154,35 +150,17 @@ insert into event_cohost (
 select is(
     (select search_events(
         jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 10, 'offset', 0)
-    )::jsonb->'events'),
-    jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
-    ),
-    'Should filter events by community'
-);
-
--- Should match events located only through their group within the bbox
-select is(
-    (select search_events(
-        jsonb_build_object(
-            'bbox_ne_lat', 42.5,
-            'bbox_ne_lon', -87.0,
-            'bbox_sw_lat', 41.0,
-            'bbox_sw_lon', -88.5,
-            'limit', 10,
-            'offset', 0
-        )
     )::jsonb),
     jsonb_build_object(
         'events', jsonb_build_array(
-            get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
+            get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+            get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+            get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+            get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
         ),
-        'total', 1
+        'total', 4
     ),
-    'Should match events located only through their group within the bbox'
+    'Should filter events by community'
 );
 
 -- Should paginate results correctly
@@ -196,7 +174,7 @@ select is(
     'Should paginate results correctly'
 );
 
--- Should return all published events without filters
+-- Should return all published events without filters, showing co-hosted events once under their owner
 select is(
     (select search_events(jsonb_build_object('limit', 10, 'offset', 0))::jsonb->'events'),
     jsonb_build_array(
@@ -206,37 +184,7 @@ select is(
         get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
         get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
     ),
-    'Should return all published events without filters'
-);
-
--- Should return correct total count
-select is(
-    (
-        select (
-            search_events(jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 10, 'offset', 0))::jsonb->>'total'
-        )::bigint
-    ),
-    4::bigint,
-    'Should return correct total count'
-);
-
--- Should return events in ascending order when sort_direction is asc
-select is(
-    (select search_events(
-        jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
-            'limit', 10,
-            'offset', 0,
-            'sort_direction', 'asc'
-        )
-    )::jsonb->'events'),
-    jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
-    ),
-    'Should return events in ascending order when sort_direction is asc'
+    'Should return all published events without filters, showing co-hosted events once under their owner'
 );
 
 -- Should return events in descending order when sort_direction is desc
@@ -256,64 +204,6 @@ select is(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb
     ),
     'Should return events in descending order when sort_direction is desc'
-);
-
--- Should show a co-hosted event once under its owner
-select is(
-    (
-        select count(*)::int
-        from jsonb_array_elements(
-            search_events(jsonb_build_object('limit', 10, 'offset', 0))::jsonb->'events'
-        ) event_item
-        where event_item->>'event_id' = :'event1ID'
-        and event_item->>'group_slug' = 'test-group'
-    ),
-    1,
-    'Should show a co-hosted event once under its owner'
-);
-
--- Should sort events by distance ascending
-select is(
-    (select search_events(
-        jsonb_build_object(
-            'latitude', 37.7749,
-            'longitude', -122.4194,
-            'sort_by', 'distance',
-            'sort_direction', 'asc',
-            'limit', 10,
-            'offset', 0
-        )
-     )::jsonb->'events'),
-    jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
-        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
-    ),
-    'Should sort events by distance ascending'
-);
-
--- Should sort events by distance descending
-select is(
-    (select search_events(
-        jsonb_build_object(
-            'latitude', 37.7749,
-            'longitude', -122.4194,
-            'sort_by', 'distance',
-            'sort_direction', 'desc',
-            'limit', 10,
-            'offset', 0
-        )
-     )::jsonb->'events'),
-    jsonb_build_array(
-        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
-    ),
-    'Should sort events by distance descending'
 );
 
 -- ============================================================================

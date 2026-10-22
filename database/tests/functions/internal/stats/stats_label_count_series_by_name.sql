@@ -1,3 +1,5 @@
+-- Tests grouping label count rows into named series.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -23,7 +25,7 @@ select is(
     'Should return an empty JSON object for empty input'
 );
 
--- Should return named label series ordered by name and label
+-- Should return named label series with labels in order
 select is(
     stats_label_count_series_by_name('[
         {"series_name": "Beta", "label": "2025-02", "count": 4},
@@ -34,7 +36,7 @@ select is(
         "Alpha": [["2025-01", 1], ["2025-03", 3]],
         "Beta": [["2025-02", 4]]
     }'::jsonb,
-    'Should return named label series ordered by name and label'
+    'Should return named label series with labels in order'
 );
 
 -- ============================================================================

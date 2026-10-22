@@ -15,10 +15,6 @@ select plan(6);
 \set activeSubgroupID '8a0e0000-0000-0000-0000-000000000025'
 \set alphaCategoryID '8a0e0000-0000-0000-0000-000000000004'
 \set communityID '8a0e0000-0000-0000-0000-000000000001'
-\set deletedGroupID '8a0e0000-0000-0000-0000-000000000016'
-\set deletedParentGroupID '8a0e0000-0000-0000-0000-000000000026'
-\set deletedParentSubgroupID '8a0e0000-0000-0000-0000-000000000027'
-\set deletedSubgroupID '8a0e0000-0000-0000-0000-000000000028'
 \set eastRegionID '8a0e0000-0000-0000-0000-000000000008'
 \set emptyCategoryID '8a0e0000-0000-0000-0000-000000000005'
 \set emptyCommunityID '8a0e0000-0000-0000-0000-000000000002'
@@ -61,10 +57,10 @@ select fx_community(:'foreignCommunityID');
 -- Community with an active subgroup of an active parent group
 select fx_community(:'subgroupsCommunityID');
 
--- Community whose active subgroups have inactive or deleted parent groups
+-- Community whose active subgroup has an inactive parent group
 select fx_community(:'unavailableParentsCommunityID');
 
--- Community whose subgroups are inactive or deleted
+-- Community whose subgroup is inactive
 select fx_community(:'unavailableSubgroupsCommunityID');
 
 -- Unordered group category with active and unavailable groups
@@ -79,10 +75,10 @@ select fx_group_category(:'foreignCategoryID', :'foreignCommunityID', jsonb_buil
 -- Group category of the community with an active subgroup
 select fx_group_category(:'subgroupsCategoryID', :'subgroupsCommunityID');
 
--- Group category of the community with inactive or deleted parent groups
+-- Group category of the community with an inactive parent group
 select fx_group_category(:'unavailableParentsCategoryID', :'unavailableParentsCommunityID');
 
--- Group category of the community with inactive or deleted subgroups
+-- Group category of the community with an inactive subgroup
 select fx_group_category(:'unavailableSubgroupsCategoryID', :'unavailableSubgroupsCommunityID');
 
 -- Ordered group category listed first
@@ -111,17 +107,6 @@ values (:'zuluRegionID', :'communityID', 'Zulu', 1);
 -- Active parent group of the community with an active subgroup
 select fx_group(:'activeParentGroupID', :'subgroupsCommunityID', :'subgroupsCategoryID');
 
--- Deleted group without region, excluded from counts and group options
-select fx_group(
-    :'deletedGroupID',
-    :'communityID',
-    :'alphaCategoryID',
-    jsonb_build_object('active', false, 'deleted', true, 'name', 'Deleted')
-);
-
--- Parent group deleted once its subgroup is linked
-select fx_group(:'deletedParentGroupID', :'unavailableParentsCommunityID', :'unavailableParentsCategoryID');
-
 -- Group of the foreign community without region, parent of its active subgroup
 select fx_group(:'foreignGroupID', :'foreignCommunityID', :'foreignCategoryID');
 
@@ -147,7 +132,7 @@ select fx_group(
     jsonb_build_object('name', 'Kubernetes', 'region_id', :'eastRegionID')
 );
 
--- Active parent group of the inactive and deleted subgroups
+-- Active parent group of the inactive subgroup
 select fx_group(
     :'unavailableSubgroupsParentGroupID',
     :'unavailableSubgroupsCommunityID',
@@ -168,26 +153,6 @@ select fx_group(
     :'subgroupsCommunityID',
     :'subgroupsCategoryID',
     jsonb_build_object('parent_group_id', :'activeParentGroupID')
-);
-
--- Active subgroup of the parent group deleted below
-select fx_group(
-    :'deletedParentSubgroupID',
-    :'unavailableParentsCommunityID',
-    :'unavailableParentsCategoryID',
-    jsonb_build_object('parent_group_id', :'deletedParentGroupID')
-);
-
--- Deleted subgroup of an active parent group
-select fx_group(
-    :'deletedSubgroupID',
-    :'unavailableSubgroupsCommunityID',
-    :'unavailableSubgroupsCategoryID',
-    jsonb_build_object(
-        'active', false,
-        'deleted', true,
-        'parent_group_id', :'unavailableSubgroupsParentGroupID'
-    )
 );
 
 -- Active subgroup of the foreign community, never flagged for other communities
@@ -214,13 +179,6 @@ select fx_group(
     jsonb_build_object('active', false, 'parent_group_id', :'unavailableSubgroupsParentGroupID')
 );
 
--- Delete the linked parent group, since the parent check rejects links to deleted parents
-update "group"
-set
-    active = false,
-    deleted = true
-where group_id = :'deletedParentGroupID';
-
 -- Deactivate the linked parent group, since the parent check rejects links to inactive parents
 update "group"
 set active = false
@@ -237,18 +195,18 @@ select is(
     'Should flag subgroups when an active group has an active parent group'
 );
 
--- Should ignore inactive and deleted subgroups
+-- Should ignore inactive subgroups
 select is(
     (list_community_contact_filter_options(:'unavailableSubgroupsCommunityID'::uuid)::jsonb->>'has_subgroups')::boolean,
     false,
-    'Should ignore inactive and deleted subgroups'
+    'Should ignore inactive subgroups'
 );
 
--- Should ignore subgroups of inactive and deleted parent groups
+-- Should ignore subgroups of inactive parent groups
 select is(
     (list_community_contact_filter_options(:'unavailableParentsCommunityID'::uuid)::jsonb->>'has_subgroups')::boolean,
     false,
-    'Should ignore subgroups of inactive and deleted parent groups'
+    'Should ignore subgroups of inactive parent groups'
 );
 
 -- Should ignore subgroups of other communities

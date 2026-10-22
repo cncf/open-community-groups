@@ -96,6 +96,7 @@ select throws_ok(
             'validate-direct-charge-checkout-amounts-fee-b'
         )
     $$,
+    'P0001',
     'provider application fee does not match the purchase',
     'Should reject an application fee mismatch'
 );
@@ -114,6 +115,7 @@ select throws_ok(
             null
         )
     $$,
+    'P0001',
     'provider total does not match the ticket tax behavior',
     'Should reject exclusive totals whose subtotal differs from the ticket'
 );
@@ -132,6 +134,7 @@ select throws_ok(
             null
         )
     $$,
+    'P0001',
     'provider total does not match the ticket tax behavior',
     'Should reject inclusive totals that differ from the ticket'
 );
@@ -150,6 +153,7 @@ select throws_ok(
             null
         )
     $$,
+    'P0001',
     'direct-charge checkout is missing authoritative amounts',
     'Should reject negative subtotal amounts'
 );
@@ -168,6 +172,7 @@ select throws_ok(
             null
         )
     $$,
+    'P0001',
     'direct-charge checkout is missing authoritative amounts',
     'Should reject negative tax amounts'
 );
@@ -186,6 +191,7 @@ select throws_ok(
             null
         )
     $$,
+    'P0001',
     'no-tax checkout must have zero tax',
     'Should reject no-tax checkouts with provider tax'
 );
@@ -204,6 +210,7 @@ select throws_ok(
             null
         )
     $$,
+    'P0001',
     'direct-charge checkout is missing authoritative amounts',
     'Should reject null tax amounts'
 );
@@ -222,6 +229,7 @@ select throws_ok(
             null
         )
     $$,
+    'P0001',
     'direct-charge checkout is missing authoritative amounts',
     'Should reject null total amounts'
 );
@@ -240,6 +248,7 @@ select throws_ok(
             null
         )
     $$,
+    'P0001',
     'direct-charge checkout is missing authoritative amounts',
     'Should reject zero total amounts'
 );

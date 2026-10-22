@@ -5,30 +5,24 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set community2ID '5e060000-0000-0000-0000-000000000014'
 \set communityID '5e060000-0000-0000-0000-000000000001'
+\set event2ID '5e060000-0000-0000-0000-000000000015'
 \set eventCanceledID '5e060000-0000-0000-0000-000000000002'
+\set eventCategory2ID '5e060000-0000-0000-0000-000000000016'
 \set eventCategoryID '5e060000-0000-0000-0000-000000000003'
-\set eventDeletedID '5e060000-0000-0000-0000-000000000004'
 \set eventID '5e060000-0000-0000-0000-000000000006'
-\set eventPaidID '5e060000-0000-0000-0000-000000000007'
+\set eventUnpublishedID '5e060000-0000-0000-0000-000000000004'
+\set group2ID '5e060000-0000-0000-0000-000000000017'
+\set groupCategory2ID '5e060000-0000-0000-0000-000000000018'
 \set groupCategoryID '5e060000-0000-0000-0000-000000000008'
 \set groupID '5e060000-0000-0000-0000-000000000009'
-\set sponsor1ID '5e060000-0000-0000-0000-00000000000a'
-\set sponsor2ID '5e060000-0000-0000-0000-00000000000b'
-\set ticketPrivatePriceWindowID '5e060000-0000-0000-0000-000000000012'
-\set ticketPrivateTypeID '5e060000-0000-0000-0000-000000000013'
-\set ticketPriceWindowID '5e060000-0000-0000-0000-00000000000c'
-\set ticketTypeID '5e060000-0000-0000-0000-00000000000d'
-\set user1ID '5e060000-0000-0000-0000-00000000000e'
-\set user2ID '5e060000-0000-0000-0000-00000000000f'
-\set user3ID '5e060000-0000-0000-0000-000000000010'
-\set user4ID '5e060000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
@@ -36,30 +30,11 @@ select plan(7);
 
 -- Baseline communities, group categories and event categories
 select fx_community(:'communityID');
+select fx_community(:'community2ID');
 select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group_category(:'groupCategory2ID', :'community2ID');
 select fx_event_category(:'eventCategoryID', :'communityID');
-
--- Users with scenario-specific state
-select fx_user(:'user1ID', jsonb_build_object(
-    'bio', 'Conference opening speaker',
-    'company', 'Tech Corp',
-    'created_at', '2024-01-01 00:00:00'
-));
-select fx_user(:'user2ID', jsonb_build_object(
-    'bio', 'Community host and emcee',
-    'company', 'Dev Inc',
-    'created_at', '2024-01-01 00:00:00'
-));
-select fx_user(:'user3ID', jsonb_build_object(
-    'bio', 'Community programs lead',
-    'company', 'Cloud Co',
-    'created_at', '2024-01-01 00:00:00'
-));
-select fx_user(:'user4ID', jsonb_build_object(
-    'bio', 'Operations and logistics manager',
-    'company', 'StartUp',
-    'created_at', '2024-01-01 00:00:00'
-));
+select fx_event_category(:'eventCategory2ID', :'community2ID');
 
 -- Group with scenario-specific state
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
@@ -68,7 +43,7 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
     'slug_pretty', 'test-group-pretty'
 ));
 
--- Event with scenario-specific state
+-- Published event returned by both group slugs
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 500,
     'ends_at', '2024-06-15 17:00:00+00',
@@ -91,16 +66,6 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'venue_zip_code', '10001'
 ));
 
--- Published paid event returned with ticketing details
-select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'event_kind_id', 'virtual',
-    'payment_currency_code', 'USD',
-    'published', true,
-    'slug', 'paid-tech-conference-2024',
-    'starts_at', '2024-06-16 09:00:00+00',
-    'timezone', 'America/New_York'
-));
-
 -- Published canceled event available by slug
 select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
@@ -111,84 +76,78 @@ select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_
     'timezone', 'America/New_York'
 ));
 
--- Deleted event excluded from public lookup
-select fx_event(:'eventDeletedID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'deleted', true,
+-- Group in the other community reusing the same group slug
+select fx_group(:'group2ID', :'community2ID', :'groupCategory2ID', jsonb_build_object(
+    'slug', 'abc1234'
+));
+
+-- Published event in the other community reusing the same event slug
+select fx_event(:'event2ID', :'group2ID', :'eventCategory2ID', jsonb_build_object(
     'event_kind_id', 'virtual',
-    'slug', 'deleted-tech-conference-2024',
-    'starts_at', '2024-06-18 09:00:00+00',
+    'published', true,
+    'slug', 'def5678',
+    'starts_at', '2024-06-19 09:00:00+00',
     'timezone', 'America/New_York'
 ));
 
--- Event ticket type with scenario-specific state
-select fx_event_ticket_type(:'ticketTypeID', :'eventPaidID', jsonb_build_object('seats_total', 40));
-
--- Invitation-only ticket type excluded from the public slug contract
-select fx_event_ticket_type(:'ticketPrivateTypeID', :'eventPaidID', jsonb_build_object(
-    'availability', 'invitation_only',
-    'order', 2,
-    'seats_total', 10
+-- Unpublished event excluded from public lookup
+select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'slug', 'unpublished-tech-conference-2024',
+    'starts_at', '2024-06-18 09:00:00+00',
+    'timezone', 'America/New_York'
 ));
-
--- Event ticket price window with scenario-specific state
-select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 2500));
-
--- Invitation-only ticket price excluded from the public slug contract
-select fx_event_ticket_price_window(:'ticketPrivatePriceWindowID', :'ticketPrivateTypeID', jsonb_build_object('amount_minor', 1000));
-
--- Event Host
-insert into event_host (event_id, user_id, created_at)
-values
-    (:'eventID', :'user1ID', '2024-01-01 00:00:00'),
-    (:'eventID', :'user2ID', '2024-01-01 00:00:00');
-
--- Event Speakers
-insert into event_speaker (event_id, user_id, featured, created_at)
-values
-    (:'eventID', :'user1ID', false, '2024-01-01 00:00:00'),
-    (:'eventID', :'user2ID', true, '2024-01-01 00:00:00'),
-    (:'eventID', :'user3ID', false, '2024-01-01 00:00:00');
-
--- Event Attendee
-insert into event_attendee (event_id, user_id, checked_in, checked_in_at, created_at)
-values
-    (:'eventID', :'user1ID', true, '2024-01-01 00:00:00', '2024-01-01 00:00:00'),
-    (:'eventID', :'user2ID', false, null, '2024-01-01 00:00:00');
-
--- Group Team
-insert into group_team (group_id, user_id, role, accepted, "order", created_at)
-values
-    (:'groupID', :'user3ID', 'admin', true, 1, '2024-01-01 00:00:00'),
-    (:'groupID', :'user4ID', 'admin', true, 2, '2024-01-01 00:00:00');
-
--- Group Sponsors
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
-values
-    (:'sponsor1ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', null),
-    (
-        :'sponsor2ID',
-        :'groupID',
-        'TechCorp',
-        'https://example.com/techcorp.png',
-        'https://techcorp.com'
-    );
-
--- Event Sponsors (linking group sponsors to event)
-insert into event_sponsor (event_id, group_sponsor_id, level)
-values
-    (:'eventID', :'sponsor1ID', 'Silver'),
-    (:'eventID', :'sponsor2ID', 'Gold');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return the same payload as get_event_full
+-- Should resolve event by group pretty slug
 select is(
-    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'def5678')::jsonb,
-    get_public_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
-    'Should return the same payload as get_event_full'
+    (
+        select jsonb_build_object('event_id', e->>'event_id', 'payload', e)
+        from (
+            select get_event_full_by_slug(:'communityID'::uuid, 'test-group-pretty', 'def5678')::jsonb as e
+        ) as slug_event
+    ),
+    jsonb_build_object(
+        'event_id', :'eventID',
+        'payload', get_public_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb
+    ),
+    'Should resolve event by group pretty slug'
+);
+
+-- Should return a canceled event when it remains published
+select is(
+    (
+        select jsonb_build_object('event_id', e->>'event_id', 'payload', e)
+        from (
+            select get_event_full_by_slug(
+                :'communityID'::uuid,
+                'abc1234',
+                'canceled-tech-conference-2024'
+            )::jsonb as e
+        ) as slug_event
+    ),
+    jsonb_build_object(
+        'event_id', :'eventCanceledID',
+        'payload', get_public_event_full(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'eventCanceledID'::uuid
+        )::jsonb
+    ),
+    'Should return a canceled event when it remains published'
+);
+
+-- Should scope slug lookup to the requested community
+select is(
+    jsonb_build_array(
+        get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'def5678')::jsonb->>'event_id',
+        get_event_full_by_slug(:'community2ID'::uuid, 'abc1234', 'def5678')::jsonb->>'event_id'
+    ),
+    jsonb_build_array(:'eventID', :'event2ID'),
+    'Should scope slug lookup to the requested community'
 );
 
 -- Should return null with non-existing event slug
@@ -197,60 +156,25 @@ select ok(
     'Should return null with non-existing event slug'
 );
 
--- Should return a canceled event when it remains published
-select is(
-    get_event_full_by_slug(
-        :'communityID'::uuid,
-        'abc1234',
-        'canceled-tech-conference-2024'
-    )::jsonb,
-    get_public_event_full(
-        :'communityID'::uuid,
-        :'groupID'::uuid,
-        :'eventCanceledID'::uuid
-    )::jsonb,
-    'Should return a canceled event when it remains published'
-);
-
--- Should return null with deleted event slug
+-- Should return null with unpublished event slug
 select ok(
-    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'deleted-tech-conference-2024') is null,
-    'Should return null with deleted event slug'
+    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'unpublished-tech-conference-2024') is null,
+    'Should return null with unpublished event slug'
 );
 
--- Should return the public paid-event payload
+-- Should return the same payload as get_public_event_full
 select is(
-    get_event_full_by_slug(
-        :'communityID'::uuid,
-        'abc1234',
-        'paid-tech-conference-2024'
-    )::jsonb,
-    get_public_event_full(
-        :'communityID'::uuid,
-        :'groupID'::uuid,
-        :'eventPaidID'::uuid
-    )::jsonb,
-    'Should return the public paid-event payload'
-);
-
--- Should exclude invitation-only ticket types from public slug responses
-select is(
-    jsonb_array_length(
-        get_event_full_by_slug(
-            :'communityID'::uuid,
-            'abc1234',
-            'paid-tech-conference-2024'
-        )::jsonb->'ticket_types'
+    (
+        select jsonb_build_object('event_id', e->>'event_id', 'payload', e)
+        from (
+            select get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'def5678')::jsonb as e
+        ) as slug_event
     ),
-    1,
-    'Should exclude invitation-only ticket types from public slug responses'
-);
-
--- Should resolve event by group pretty slug
-select is(
-    get_event_full_by_slug(:'communityID'::uuid, 'test-group-pretty', 'def5678')::jsonb,
-get_public_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
-    'Should resolve event by group pretty slug'
+    jsonb_build_object(
+        'event_id', :'eventID',
+        'payload', get_public_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb
+    ),
+    'Should return the same payload as get_public_event_full'
 );
 
 -- ============================================================================

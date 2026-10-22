@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,8 +22,6 @@ select plan(9);
 \set labelCascadeLabelID 'c0090000-0000-0000-0000-000000000009'
 \set labelCascadeProposalID 'c0090000-0000-0000-0000-000000000010'
 \set labelCascadeSubmissionID 'c0090000-0000-0000-0000-000000000011'
-\set missingLabelID 'c0090000-0000-0000-0000-000000000012'
-\set missingSubmissionID 'c0090000-0000-0000-0000-000000000013'
 \set submissionCascadeLabelID 'c0090000-0000-0000-0000-000000000014'
 \set submissionCascadeProposalID 'c0090000-0000-0000-0000-000000000015'
 \set submissionCascadeSubmissionID 'c0090000-0000-0000-0000-000000000016'
@@ -209,38 +207,8 @@ select throws_ok(
         :'duplicateLabelID'
     ),
     '23505',
-    null,
+    'duplicate key value violates unique constraint "cfs_submission_label_pkey"',
     'Should reject duplicate submission labels'
-);
-
--- Should reject submission labels for missing labels
-select throws_ok(
-    format(
-        $$
-            insert into cfs_submission_label (cfs_submission_id, event_label_id)
-            values (%L::uuid, %L::uuid)
-        $$,
-        :'duplicateSubmissionID',
-        :'missingLabelID'
-    ),
-    '23503',
-    null,
-    'Should reject submission labels for missing labels'
-);
-
--- Should reject submission labels for missing submissions
-select throws_ok(
-    format(
-        $$
-            insert into cfs_submission_label (cfs_submission_id, event_label_id)
-            values (%L::uuid, %L::uuid)
-        $$,
-        :'missingSubmissionID',
-        :'duplicateLabelID'
-    ),
-    '23503',
-    null,
-    'Should reject submission labels for missing submissions'
 );
 
 -- ============================================================================

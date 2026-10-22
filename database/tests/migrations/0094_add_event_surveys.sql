@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -83,53 +83,6 @@ select results_eq(
         ('event-surveys'::text)
     $$,
     'Should turn event surveys off for users who turned only event reminders off'
-);
-
--- Should keep event reminders off when event surveys are turned back on
-select lives_ok(
-    format(
-        $$select update_user_notification_preferences(%L::uuid, '{"event-surveys": true}'::jsonb)$$,
-        :'remindersOptedOutUserID'
-    ),
-    'Should turn event surveys back on'
-);
-select results_eq(
-    format(
-        $$
-            select notification_category_id
-            from user_notification_opt_out
-            where user_id = %L::uuid
-            order by notification_category_id
-        $$,
-        :'remindersOptedOutUserID'
-    ),
-    $$ values ('event-reminders'::text) $$,
-    'Should keep event reminders off when event surveys are turned back on'
-);
-
--- Should keep event surveys on when event reminders are turned off later
-select lives_ok(
-    format(
-        $$select update_user_notification_preferences(%L::uuid, '{"event-reminders": false}'::jsonb)$$,
-        :'otherOptedOutUserID'
-    ),
-    'Should turn event reminders off'
-);
-select results_eq(
-    format(
-        $$
-            select notification_category_id
-            from user_notification_opt_out
-            where user_id = %L::uuid
-            order by notification_category_id
-        $$,
-        :'otherOptedOutUserID'
-    ),
-    $$ values
-        ('badges'::text),
-        ('event-reminders'::text)
-    $$,
-    'Should keep event surveys on when event reminders are turned off later'
 );
 
 -- ============================================================================

@@ -56,6 +56,7 @@ insert into badge_award_job (
 -- Should reject a non-positive retention window
 select throws_ok(
     $$select cleanup_badge_award_jobs(0)$$,
+    'P0001',
     'badge award job retention must be positive',
     'Should reject a non-positive retention window'
 );

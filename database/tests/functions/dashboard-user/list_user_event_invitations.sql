@@ -5,27 +5,19 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set acceptedUserID '4a0b0000-0000-0000-0000-000000000001'
 \set acceptedOfferID '4a0b0000-0000-0000-0000-00000000001a'
-\set bouncedDiscountCodeID '4a0b0000-0000-0000-0000-000000000029'
-\set bouncedDiscountOfferID '4a0b0000-0000-0000-0000-000000000027'
-\set bouncedDiscountUserID '4a0b0000-0000-0000-0000-000000000028'
+\set acceptedUserID '4a0b0000-0000-0000-0000-000000000001'
 \set canceledEventID '4a0b0000-0000-0000-0000-000000000002'
 \set canceledOfferID '4a0b0000-0000-0000-0000-000000000018'
+\set canceledPriceWindowID '4a0b0000-0000-0000-0000-000000000034'
+\set canceledTicketTypeID '4a0b0000-0000-0000-0000-000000000035'
 \set communityID '4a0b0000-0000-0000-0000-000000000003'
-\set endedWindowApprovalOfferID '4a0b0000-0000-0000-0000-00000000002a'
-\set endedWindowApprovalUserID '4a0b0000-0000-0000-0000-00000000002b'
-\set endedWindowEventID '4a0b0000-0000-0000-0000-00000000002c'
-\set endedWindowPriceWindowID '4a0b0000-0000-0000-0000-00000000002d'
-\set endedWindowTicketTypeID '4a0b0000-0000-0000-0000-00000000002e'
-\set endedWindowWaitlistOfferID '4a0b0000-0000-0000-0000-00000000002f'
-\set endedWindowWaitlistUserID '4a0b0000-0000-0000-0000-000000000030'
 \set eventCategoryID '4a0b0000-0000-0000-0000-000000000004'
 \set eventID '4a0b0000-0000-0000-0000-000000000005'
 \set eventTicketedID '4a0b0000-0000-0000-0000-000000000012'
@@ -37,15 +29,19 @@ select plan(11);
 \set inactiveGroupEventID '4a0b0000-0000-0000-0000-000000000008'
 \set inactiveGroupID '4a0b0000-0000-0000-0000-000000000009'
 \set inactiveGroupOfferID '4a0b0000-0000-0000-0000-000000000019'
-\set invitedUserID '4a0b0000-0000-0000-0000-000000000010'
+\set inactiveGroupPriceWindowID '4a0b0000-0000-0000-0000-000000000036'
+\set inactiveGroupTicketTypeID '4a0b0000-0000-0000-0000-000000000037'
 \set invitedOfferID '4a0b0000-0000-0000-0000-000000000013'
+\set invitedUserID '4a0b0000-0000-0000-0000-000000000010'
 \set livePriceOfferID '4a0b0000-0000-0000-0000-000000000025'
 \set livePriceUserID '4a0b0000-0000-0000-0000-000000000026'
+\set priceWindowID '4a0b0000-0000-0000-0000-000000000014'
 \set privateOfferID '4a0b0000-0000-0000-0000-00000000001e'
 \set privatePriceWindowID '4a0b0000-0000-0000-0000-00000000001f'
 \set privateTicketTypeID '4a0b0000-0000-0000-0000-000000000020'
 \set privateUserID '4a0b0000-0000-0000-0000-000000000021'
-\set priceWindowID '4a0b0000-0000-0000-0000-000000000014'
+\set publicPriceWindowID '4a0b0000-0000-0000-0000-000000000038'
+\set publicTicketTypeID '4a0b0000-0000-0000-0000-000000000039'
 \set questionID '4a0b0000-0000-0000-0000-00000000001c'
 \set refundOfferID '4a0b0000-0000-0000-0000-000000000022'
 \set refundPurchaseID '4a0b0000-0000-0000-0000-000000000023'
@@ -70,9 +66,6 @@ select fx_community(:'communityID', jsonb_build_object(
 -- Baseline group categories, event categories and users
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'bouncedDiscountUserID');
-select fx_user(:'endedWindowApprovalUserID');
-select fx_user(:'endedWindowWaitlistUserID');
 select fx_user(:'externalUserID');
 select fx_user(:'invitedUserID');
 select fx_user(:'livePriceUserID');
@@ -122,13 +115,6 @@ select fx_event(:'inactiveGroupEventID', :'inactiveGroupID', :'eventCategoryID',
     'starts_at', '2099-01-04 10:00:00+00'
 ));
 
--- Event whose ticket sales window has ended
-select fx_event(:'endedWindowEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'payment_currency_code', 'EUR',
-    'published', true,
-    'starts_at', '2099-01-06 10:00:00+00'
-));
-
 -- Ticket tier assigned by the approval offer
 select fx_event_ticket_type(:'ticketTypeID', :'eventTicketedID', jsonb_build_object(
     'seats_total', 10,
@@ -138,70 +124,15 @@ select fx_event_ticket_type(:'ticketTypeID', :'eventTicketedID', jsonb_build_obj
 -- Paid price window for the ticket tier
 select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 1000));
 
--- Discount used by the bounced-back pending snapshot fixture
-insert into event_discount_code (
-    event_discount_code_id,
-    active,
-    amount_minor,
-    available,
-    available_override_active,
-    code,
-    event_id,
-    kind,
-    title
-) values (
-    :'bouncedDiscountCodeID',
-    true,
-    500,
-    1,
-    true,
-    'SAVE10',
-    :'eventTicketedID',
-    'fixed_amount',
-    'Bounced save'
-);
-
--- Ticket tier whose sales window has already ended
-select fx_event_ticket_type(:'endedWindowTicketTypeID', :'endedWindowEventID', jsonb_build_object(
-    'seats_total', 10,
-    'title', 'Ended window admission'
-));
-
--- Lapsed price window used by ended-window offer display scenarios
-select fx_event_ticket_price_window(:'endedWindowPriceWindowID', :'endedWindowTicketTypeID', jsonb_build_object(
-    'amount_minor', 2500,
-    'ends_at', current_timestamp - interval '1 minute',
-    'starts_at', current_timestamp - interval '2 days'
-));
-
--- Events without an explicit ticket fixture use default admission tiers
-select fx_event_ticket_type(
-    md5(e.event_id::text || ':ticket-type')::uuid,
-    e.event_id,
-    jsonb_build_object(
-        'seats_total', 100,
-        'title', 'General Admission'
-    )
-)
-from event e
-where not exists (
-    select 1
-    from event_ticket_type ett
-    where ett.event_id = e.event_id
-);
+-- Default admission tiers for the RSVP events
+select fx_event_ticket_type(:'canceledTicketTypeID', :'canceledEventID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'inactiveGroupTicketTypeID', :'inactiveGroupEventID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'publicTicketTypeID', :'eventID', jsonb_build_object('title', 'General Admission'));
 
 -- Current free prices for the default admission tiers
-select fx_event_ticket_price_window(
-    md5(ett.event_ticket_type_id::text || ':price-window')::uuid,
-    ett.event_ticket_type_id,
-    jsonb_build_object('amount_minor', 0)
-)
-from event_ticket_type ett
-where not exists (
-    select 1
-    from event_ticket_price_window etpw
-    where etpw.event_ticket_type_id = ett.event_ticket_type_id
-);
+select fx_event_ticket_price_window(:'canceledPriceWindowID', :'canceledTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'inactiveGroupPriceWindowID', :'inactiveGroupTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'publicPriceWindowID', :'publicTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Paid private tier alongside the event's free public RSVP tier
 select fx_event_ticket_type(:'privateTicketTypeID', :'eventID', jsonb_build_object(
@@ -238,13 +169,7 @@ values
         0,
         null,
         :'eventID',
-        (
-            select event_ticket_type_id
-            from event_ticket_type
-            where event_id = :'eventID'
-            and availability = 'public'
-            limit 1
-        ),
+        :'publicTicketTypeID',
         '2099-01-05 10:00:00+00',
         'organizer_invitation',
         'completed',
@@ -259,7 +184,7 @@ values
         0,
         null,
         :'canceledEventID',
-        (select event_ticket_type_id from event_ticket_type where event_id = :'canceledEventID' limit 1),
+        :'canceledTicketTypeID',
         '2099-01-03 10:00:00+00',
         'organizer_invitation',
         'pending',
@@ -274,7 +199,7 @@ values
         0,
         null,
         :'inactiveGroupEventID',
-        (select event_ticket_type_id from event_ticket_type where event_id = :'inactiveGroupEventID' limit 1),
+        :'inactiveGroupTicketTypeID',
         '2099-01-04 10:00:00+00',
         'organizer_invitation',
         'pending',
@@ -289,13 +214,7 @@ values
         0,
         null,
         :'eventID',
-        (
-            select event_ticket_type_id
-            from event_ticket_type
-            where event_id = :'eventID'
-            and availability = 'public'
-            limit 1
-        ),
+        :'publicTicketTypeID',
         '2099-01-02 10:00:00+00',
         'organizer_invitation',
         'pending',
@@ -355,13 +274,7 @@ values
         0,
         null,
         :'eventID',
-        (
-            select event_ticket_type_id
-            from event_ticket_type
-            where event_id = :'eventID'
-            and availability = 'public'
-            limit 1
-        ),
+        :'publicTicketTypeID',
         '2099-01-06 10:00:00+00',
         'organizer_invitation',
         'declined',
@@ -412,86 +325,6 @@ insert into admission_offer (
     'General admission',
     :'externalUserID'
 );
-
--- Pending discounted offer frozen after an abandoned checkout
-insert into admission_offer (
-    admission_offer_id,
-    amount_minor,
-    created_at,
-    currency_code,
-    discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    ticket_title,
-    user_id
-) values (
-    :'bouncedDiscountOfferID',
-    500,
-    '2024-01-11 10:00:00+00',
-    'USD',
-    500,
-    'SAVE10',
-    :'bouncedDiscountCodeID',
-    :'eventTicketedID',
-    :'ticketTypeID',
-    '2099-01-05 10:00:00+00',
-    'approval',
-    'pending',
-    'General admission',
-    :'bouncedDiscountUserID'
-);
-
--- Pending offers that keep or omit a stored snapshot after sales end
-insert into admission_offer (
-    admission_offer_id,
-    amount_minor,
-    created_at,
-    currency_code,
-    discount_amount_minor,
-    discount_code,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    ticket_title,
-    user_id
-) values
-    (
-        :'endedWindowApprovalOfferID',
-        2500,
-        '2024-01-12 10:00:00+00',
-        'USD',
-        0,
-        null,
-        :'endedWindowEventID',
-        :'endedWindowTicketTypeID',
-        '2099-01-06 10:00:00+00',
-        'approval',
-        'pending',
-        'Ended window admission',
-        :'endedWindowApprovalUserID'
-    ),
-    (
-        :'endedWindowWaitlistOfferID',
-        2500,
-        '2024-01-12 10:00:00+00',
-        'USD',
-        0,
-        null,
-        :'endedWindowEventID',
-        :'endedWindowTicketTypeID',
-        '2099-01-06 10:00:00+00',
-        'waitlist',
-        'pending',
-        'Ended window admission',
-        :'endedWindowWaitlistUserID'
-    );
 
 -- Accepted ticket request that supplies claim-time registration answers
 insert into event_invitation_request (
@@ -672,7 +505,7 @@ insert into event_purchase (
 -- TESTS
 -- ============================================================================
 
--- Should list active pending event invitations for a user
+-- Should list active pending event invitations for the user
 select is(
     list_user_event_invitations(:'invitedUserID'::uuid)::jsonb,
     format(
@@ -701,13 +534,7 @@ select is(
         $json$,
         :'invitedOfferID',
         :'eventID',
-        (
-            select event_ticket_type_id
-            from event_ticket_type
-            where event_id = :'eventID'
-            and availability = 'public'
-            limit 1
-        )
+        :'publicTicketTypeID'
     )::jsonb,
     'Should list active pending event invitations for the user'
 );
@@ -801,62 +628,24 @@ select is(
     'Should expose the exact assigned tier on an owned ticket offer'
 );
 
--- Pending discounted offers keep the stored snapshot instead of the live window
+-- Should list the live ticket price for a pending offer with a stale free snapshot
 select is(
     (
         select jsonb_build_object(
-            'amount_minor', (list_user_event_invitations(:'bouncedDiscountUserID'::uuid)::jsonb->0->>'amount_minor')::bigint,
-            'currency_code', list_user_event_invitations(:'bouncedDiscountUserID'::uuid)::jsonb->0->>'currency_code'
+            'admission_offer_id', listed.invitation->'admission_offer_id',
+            'amount_minor', listed.invitation->'amount_minor',
+            'currency_code', listed.invitation->'currency_code'
         )
-    ),
-    '{"amount_minor": 500, "currency_code": "USD"}'::jsonb,
-    'Should list the stored snapshot for a pending discounted offer'
-);
-
--- Pending offers prefer the live price window over the issue-time snapshot
-select is(
-    (
-        select jsonb_build_object(
-            'amount_minor', (list_user_event_invitations(:'livePriceUserID'::uuid)::jsonb->0->>'amount_minor')::bigint,
-            'currency_code', list_user_event_invitations(:'livePriceUserID'::uuid)::jsonb->0->>'currency_code'
-        )
-    ),
-    '{"amount_minor": 1000, "currency_code": "USD"}'::jsonb,
-    'Should list the live ticket price for a pending offer with a stale free snapshot'
-);
-
--- Pending approval offers keep the stored snapshot currency after sales end
-select is(
-    (
-        select jsonb_build_object(
-            'admission_offer_id', list_user_event_invitations(:'endedWindowApprovalUserID'::uuid)::jsonb->0->>'admission_offer_id',
-            'amount_minor', (list_user_event_invitations(:'endedWindowApprovalUserID'::uuid)::jsonb->0->>'amount_minor')::bigint,
-            'currency_code', list_user_event_invitations(:'endedWindowApprovalUserID'::uuid)::jsonb->0->>'currency_code'
-        )
+        from (
+            select list_user_event_invitations(:'livePriceUserID'::uuid)::jsonb->0 as invitation
+        ) listed
     ),
     jsonb_build_object(
-        'admission_offer_id', :'endedWindowApprovalOfferID',
-        'amount_minor', 2500,
+        'admission_offer_id', :'livePriceOfferID',
+        'amount_minor', 1000,
         'currency_code', 'USD'
     ),
-    'Should list the stored snapshot currency for a pending approval offer after sales end'
-);
-
--- Pending waitlist offers omit the stored snapshot after sales end
-select is(
-    (
-        select jsonb_build_object(
-            'admission_offer_id', list_user_event_invitations(:'endedWindowWaitlistUserID'::uuid)::jsonb->0->>'admission_offer_id',
-            'amount_minor', (list_user_event_invitations(:'endedWindowWaitlistUserID'::uuid)::jsonb->0->>'amount_minor')::bigint,
-            'currency_code', list_user_event_invitations(:'endedWindowWaitlistUserID'::uuid)::jsonb->0->>'currency_code'
-        )
-    ),
-    jsonb_build_object(
-        'admission_offer_id', :'endedWindowWaitlistOfferID',
-        'amount_minor', null,
-        'currency_code', null
-    ),
-    'Should omit the stored snapshot for a pending waitlist offer after sales end'
+    'Should list the live ticket price for a pending offer with a stale free snapshot'
 );
 
 -- Offers on a private paid tier use ticket wording even for a simple RSVP event

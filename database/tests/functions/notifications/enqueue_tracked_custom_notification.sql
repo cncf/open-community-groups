@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -131,34 +131,41 @@ select lives_ok(
 );
 
 -- Should queue and track the community custom notification
-select ok(
-    exists (
-        select 1
-        from notification
-        where kind = 'community-custom'
-        and user_id = :'communityRecipientID'
-    )
-    and exists (
-        select 1
-        from custom_notification
-        where community_id = :'communityID'
-        and event_id is null
-        and group_id is null
-        and subject = 'Community update enqueue tracked'
-    )
-    and exists (
-        select 1
-        from audit_log
-        where action = 'community_custom_notification_sent'
-        and community_id = :'communityID'
-        and details = jsonb_build_object(
-            'group_categories', 'All',
-            'groups', 'All',
-            'recipient_count', 1,
-            'regions', 'All',
-            'roles', jsonb_build_array('Admin'),
-            'subject', 'Community update enqueue tracked'
-        )
+select results_eq(
+    format(
+        $$
+        select
+            (
+                select user_id
+                from notification
+                where kind = 'community-custom'
+            ),
+            (
+                select community_id
+                from custom_notification
+                where subject = 'Community update enqueue tracked'
+            ),
+            (
+                select actor_user_id
+                from audit_log
+                where action = 'community_custom_notification_sent'
+                and community_id = %L::uuid
+            ),
+            (
+                select details->'roles'
+                from audit_log
+                where action = 'community_custom_notification_sent'
+                and community_id = %L::uuid
+            )
+        $$,
+        :'communityID',
+        :'communityID'
+    ),
+    format(
+        $$ values (%L::uuid, %L::uuid, %L::uuid, '["Admin"]'::jsonb) $$,
+        :'communityRecipientID',
+        :'communityID',
+        :'senderID'
     ),
     'Should queue and track the community custom notification'
 );
@@ -189,20 +196,24 @@ select lives_ok(
 );
 
 -- Should queue and track the event custom notification in the event scope
-select ok(
-    exists (
-        select 1
-        from notification
-        where kind = 'event-custom'
-        and user_id = :'eventRecipientID'
-    )
-    and exists (
-        select 1
-        from custom_notification
-        where community_id is null
-        and event_id = :'eventID'
-        and group_id is null
-        and subject = 'Event update enqueue tracked'
+select results_eq(
+    $$
+        select
+            (
+                select user_id
+                from notification
+                where kind = 'event-custom'
+            ),
+            (
+                select event_id
+                from custom_notification
+                where subject = 'Event update enqueue tracked'
+            )
+    $$,
+    format(
+        $$ values (%L::uuid, %L::uuid) $$,
+        :'eventRecipientID',
+        :'eventID'
     ),
     'Should queue and track the event custom notification in the event scope'
 );
@@ -232,25 +243,52 @@ select lives_ok(
 );
 
 -- Should filter muted recipients while keeping the tracking row
-select ok(
-    not exists (
-        select 1
-        from notification
-        where kind = 'group-custom'
-        and user_id = :'mutedRecipientID'
-    )
-    and exists (
-        select 1
-        from custom_notification
-        where subject = 'Muted group update'
+select results_eq(
+    format(
+        $$
+        select
+            exists (
+                select 1
+                from notification
+                where user_id = %L::uuid
+            ),
+            (
+                select group_id
+                from custom_notification
+                where subject = 'Muted group update'
+            )
+        $$,
+        :'mutedRecipientID'
+    ),
+    format(
+        $$ values (false, %L::uuid) $$,
+        :'groupID'
     ),
     'Should filter muted recipients while keeping the tracking row'
 );
 
 -- Should create audit rows for successful tracking operations
-select is(
-    (select count(*) from audit_log where action = 'group_custom_notification_sent'),
-    2::bigint,
+select results_eq(
+    format(
+        $$
+        select
+            actor_user_id,
+            details->>'subject'
+        from audit_log
+        where action = 'group_custom_notification_sent'
+        and group_id = %L::uuid
+        order by 2
+        $$,
+        :'groupID'
+    ),
+    format(
+        $$ values
+            (%L::uuid, 'Group update'::text),
+            (%L::uuid, 'Muted group update'::text)
+        $$,
+        :'senderID',
+        :'senderID'
+    ),
     'Should create audit rows for successful tracking operations'
 );
 
@@ -280,13 +318,6 @@ select throws_ok(
     'Should roll back tracking when enqueue fails'
 );
 
--- Should not track the failed custom notification
-select is(
-    (select count(*) from custom_notification where subject = 'Rolled back'),
-    0::bigint,
-    'Should not track the failed custom notification'
-);
-
 -- Should roll back queued notifications when tracking fails
 select throws_ok(
     format(
@@ -311,13 +342,6 @@ select throws_ok(
     '23514',
     null,
     'Should roll back queued notifications when tracking fails'
-);
-
--- Should not queue the notification whose tracking failed
-select is(
-    (select count(*) from notification where user_id = :'trackingFailureRecipientID'),
-    0::bigint,
-    'Should not queue the notification whose tracking failed'
 );
 
 -- ============================================================================

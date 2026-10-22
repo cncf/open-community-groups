@@ -12,13 +12,19 @@ select plan(20);
 -- ============================================================================
 
 \set activeEventID 'd3010000-0000-0000-0000-000000000002'
+\set activeTicketTypeID 'd3010000-0000-0000-0000-000000000048'
 \set actorID 'd3010000-0000-0000-0000-000000000001'
 \set attendeeDraftEventID 'd3010000-0000-0000-0000-000000000003'
+\set attendeeDraftTicketTypeID 'd3010000-0000-0000-0000-000000000049'
 \set auditDraftEventID 'd3010000-0000-0000-0000-000000000004'
+\set auditDraftTicketTypeID 'd3010000-0000-0000-0000-000000000050'
 \set canceledEventID 'd3010000-0000-0000-0000-000000000005'
+\set canceledTicketTypeID 'd3010000-0000-0000-0000-000000000051'
 \set communityID 'd3010000-0000-0000-0000-000000000006'
-\set draftEventID 'd3010000-0000-0000-0000-000000000007'
 \set deletedEventID 'd3010000-0000-0000-0000-000000000031'
+\set deletedTicketTypeID 'd3010000-0000-0000-0000-000000000052'
+\set draftEventID 'd3010000-0000-0000-0000-000000000007'
+\set draftTicketTypeID 'd3010000-0000-0000-0000-000000000053'
 \set durableEventID 'd3010000-0000-0000-0000-000000000008'
 \set durablePurchaseID 'd3010000-0000-0000-0000-000000000009'
 \set durableRefundID 'd3010000-0000-0000-0000-000000000010'
@@ -36,12 +42,16 @@ select plan(20);
 \set groupCategoryID 'd3010000-0000-0000-0000-000000000013'
 \set groupID 'd3010000-0000-0000-0000-000000000014'
 \set historicalDraftEventID 'd3010000-0000-0000-0000-000000000036'
+\set historicalDraftTicketTypeID 'd3010000-0000-0000-0000-000000000054'
 \set invitationDraftEventID 'd3010000-0000-0000-0000-000000000015'
+\set invitationDraftTicketTypeID 'd3010000-0000-0000-0000-000000000055'
 \set missingEventID 'd3010000-0000-0000-0000-000000000016'
-\set otherGroupID 'd3010000-0000-0000-0000-000000000017'
 \set offerDraftEventID 'd3010000-0000-0000-0000-000000000043'
+\set offerDraftTicketTypeID 'd3010000-0000-0000-0000-000000000056'
 \set offerID 'd3010000-0000-0000-0000-000000000044'
+\set otherGroupID 'd3010000-0000-0000-0000-000000000017'
 \set pastEventID 'd3010000-0000-0000-0000-000000000018'
+\set pastTicketTypeID 'd3010000-0000-0000-0000-000000000057'
 \set pendingEventID 'd3010000-0000-0000-0000-000000000019'
 \set pendingPurchaseID 'd3010000-0000-0000-0000-000000000020'
 \set pendingTicketTypeID 'd3010000-0000-0000-0000-000000000021'
@@ -58,6 +68,7 @@ select plan(20);
 \set recoveredTicketTypeID 'd3010000-0000-0000-0000-000000000028'
 \set userID 'd3010000-0000-0000-0000-000000000029'
 \set waitlistDraftEventID 'd3010000-0000-0000-0000-000000000030'
+\set waitlistDraftTicketTypeID 'd3010000-0000-0000-0000-000000000058'
 
 -- ============================================================================
 -- SEED DATA
@@ -68,7 +79,6 @@ select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
-
 
 -- Groups used to verify ownership boundaries
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
@@ -171,27 +181,25 @@ select fx_event(:'historicalDraftEventID', :'groupID', :'eventCategoryID', jsonb
     'published_at', current_timestamp
 ));
 
--- Every event uses a free tier with stable identifiers for purchase fixtures
-select fx_event_ticket_type(
-    case e.event_id
-        when :'durableEventID'::uuid then :'durableTicketTypeID'::uuid
-        when :'expiredPendingEventID'::uuid then :'expiredPendingTicketTypeID'::uuid
-        when :'finalizedEventID'::uuid then :'finalizedTicketTypeID'::uuid
-        when :'pendingEventID'::uuid then :'pendingTicketTypeID'::uuid
-        when :'providerPendingEventID'::uuid then :'providerPendingTicketTypeID'::uuid
-        when :'purchaseDraftEventID'::uuid then :'purchaseDraftTicketTypeID'::uuid
-        when :'recoveredEventID'::uuid then :'recoveredTicketTypeID'::uuid
-        else gen_random_uuid()
-    end,
-    e.event_id,
-    jsonb_build_object('seats_total', 100)
-)
-from event e
-where not exists (
-    select 1
-    from event_ticket_type ett
-    where ett.event_id = e.event_id
-);
+-- Unpriced admission tier for every event, referenced by the enrollment and purchase rows
+select fx_event_ticket_type(:'activeTicketTypeID', :'activeEventID');
+select fx_event_ticket_type(:'attendeeDraftTicketTypeID', :'attendeeDraftEventID');
+select fx_event_ticket_type(:'auditDraftTicketTypeID', :'auditDraftEventID');
+select fx_event_ticket_type(:'canceledTicketTypeID', :'canceledEventID');
+select fx_event_ticket_type(:'deletedTicketTypeID', :'deletedEventID');
+select fx_event_ticket_type(:'draftTicketTypeID', :'draftEventID');
+select fx_event_ticket_type(:'durableTicketTypeID', :'durableEventID');
+select fx_event_ticket_type(:'expiredPendingTicketTypeID', :'expiredPendingEventID');
+select fx_event_ticket_type(:'finalizedTicketTypeID', :'finalizedEventID');
+select fx_event_ticket_type(:'historicalDraftTicketTypeID', :'historicalDraftEventID');
+select fx_event_ticket_type(:'invitationDraftTicketTypeID', :'invitationDraftEventID');
+select fx_event_ticket_type(:'offerDraftTicketTypeID', :'offerDraftEventID');
+select fx_event_ticket_type(:'pastTicketTypeID', :'pastEventID');
+select fx_event_ticket_type(:'pendingTicketTypeID', :'pendingEventID');
+select fx_event_ticket_type(:'providerPendingTicketTypeID', :'providerPendingEventID');
+select fx_event_ticket_type(:'purchaseDraftTicketTypeID', :'purchaseDraftEventID');
+select fx_event_ticket_type(:'recoveredTicketTypeID', :'recoveredEventID');
+select fx_event_ticket_type(:'waitlistDraftTicketTypeID', :'waitlistDraftEventID');
 
 -- Attendee that makes an unpublished draft ineligible for direct deletion
 insert into event_attendee (event_id, user_id)
@@ -201,7 +209,7 @@ values (:'attendeeDraftEventID', :'userID');
 insert into event_invitation_request (event_id, event_ticket_type_id, user_id)
 values (
     :'invitationDraftEventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'invitationDraftEventID' limit 1),
+    :'invitationDraftTicketTypeID',
     :'userID'
 );
 
@@ -223,7 +231,7 @@ insert into admission_offer (
     0,
     0,
     :'offerDraftEventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'offerDraftEventID' limit 1),
+    :'offerDraftTicketTypeID',
     current_timestamp + interval '1 hour',
     :'actorID',
     'organizer_invitation',
@@ -236,7 +244,7 @@ insert into admission_offer (
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)
 values (
     :'waitlistDraftEventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'waitlistDraftEventID' limit 1),
+    :'waitlistDraftTicketTypeID',
     :'userID'
 );
 

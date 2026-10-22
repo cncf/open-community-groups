@@ -50,6 +50,7 @@ insert into badge_award_job (
 -- Should reject a missing badge award job
 select throws_ok(
     $$select requeue_badge_award_job(gen_random_uuid())$$,
+    'P0001',
     'failed badge award job not found',
     'Should reject a missing badge award job'
 );
@@ -57,6 +58,7 @@ select throws_ok(
 -- Should reject a non-failed badge award job
 select throws_ok(
     format($$select requeue_badge_award_job(%L::uuid)$$, :'pendingJobID'),
+    'P0001',
     'failed badge award job not found',
     'Should reject a non-failed badge award job'
 );

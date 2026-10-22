@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,7 @@ select plan(4);
 \set groupCategoryID 'f2030000-0000-0000-0000-000000000003'
 \set inactiveGroupID 'f2030000-0000-0000-0000-000000000004'
 \set liveGroupID 'f2030000-0000-0000-0000-000000000005'
+\set missingGroupID 'f2030000-0000-0000-0000-000000000007'
 \set otherCommunityID 'f2030000-0000-0000-0000-000000000006'
 
 -- ============================================================================
@@ -63,20 +64,28 @@ select is(
     'Should return deactivated groups so they can be activated again'
 );
 
--- Should reject soft-deleted groups
-select throws_ok(
-    $$ select lock_active_group('f2030000-0000-0000-0000-000000000001', 'f2030000-0000-0000-0000-000000000002') $$,
-    'OCG01',
-    'group not found or inactive',
-    'Should reject soft-deleted groups'
-);
-
 -- Should reject groups from another community
 select throws_ok(
-    $$ select lock_active_group('f2030000-0000-0000-0000-000000000006', 'f2030000-0000-0000-0000-000000000005') $$,
+    format($$select lock_active_group(%L::uuid, %L::uuid)$$, :'otherCommunityID', :'liveGroupID'),
     'OCG01',
     'group not found or inactive',
     'Should reject groups from another community'
+);
+
+-- Should reject missing groups
+select throws_ok(
+    format($$select lock_active_group(%L::uuid, %L::uuid)$$, :'communityID', :'missingGroupID'),
+    'OCG01',
+    'group not found or inactive',
+    'Should reject missing groups'
+);
+
+-- Should reject soft-deleted groups
+select throws_ok(
+    format($$select lock_active_group(%L::uuid, %L::uuid)$$, :'communityID', :'deletedGroupID'),
+    'OCG01',
+    'group not found or inactive',
+    'Should reject soft-deleted groups'
 );
 
 -- ============================================================================

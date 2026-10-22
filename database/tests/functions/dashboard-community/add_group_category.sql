@@ -1,3 +1,5 @@
+-- Tests adding dashboard community group categories.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,6 +11,7 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c050000-0000-0000-0000-000000000002'
 \set communityID '2c050000-0000-0000-0000-000000000001'
 
 -- ============================================================================
@@ -18,6 +21,9 @@ select plan(4);
 -- Baseline community
 select fx_community(:'communityID');
 
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'add-group-category-audit-actor'));
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -26,10 +32,11 @@ select fx_community(:'communityID');
 select lives_ok(
     format(
         $$ select add_group_category(
-        null::uuid,
+        %L::uuid,
         %L::uuid,
         jsonb_build_object('name', 'Platform Engineering')
     ) $$,
+        :'actorUserID',
         :'communityID'
     ),
     'Should create a group category with generated normalized name'
@@ -65,14 +72,15 @@ select results_eq(
         $$
         select
             'group_category_added',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'add-group-category-audit-actor',
             %L::uuid,
             'group_category',
             group_category_id
         from group_category
         where community_id = %L::uuid
         $$,
+        :'actorUserID',
         :'communityID',
         :'communityID'
     ),

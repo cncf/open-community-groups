@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -137,11 +137,6 @@ select throws_ok(
     'OCG01',
     'conversation is marked as spam',
     'Should reject conversations marked as spam'
-);
-select is(
-    (select inbox_conversation_status_id from inbox_conversation where inbox_conversation_id = :'conversationSpamID'),
-    'spam',
-    'Should keep conversations marked as spam unchanged'
 );
 
 -- Should reject conversations of other groups

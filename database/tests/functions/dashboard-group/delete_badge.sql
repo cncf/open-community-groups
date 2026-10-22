@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -24,13 +24,12 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
-
 -- Community that owns the badge
 select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
 
 -- Baseline categories, users and groups
 select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_user(:'actorID');
+select fx_user(:'actorID', jsonb_build_object('username', 'delete-badge-actor'));
 select fx_user(:'recipientID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
@@ -58,16 +57,55 @@ select lives_ok(
     'Should delete the definition while retaining the credential snapshot'
 );
 
--- Should retain the issued credential and audit the deletion
-select ok(
-    not exists (select 1 from badge where badge_id = :'badgeID')
-    and exists (select 1 from user_badge where user_badge_id = :'userBadgeID' and badge_id is null and snapshot->>'name' = 'Badge')
-    and exists (
-        select 1 from audit_log
-        where action = 'badge_deleted'
-        and details = '{"badge_name":"Badge"}'::jsonb
+-- Should remove the definition
+select is(
+    (select count(*)::integer from badge where badge_id = :'badgeID'),
+    0,
+    'Should remove the definition'
+);
+
+-- Should retain the issued credential with its snapshot name
+select results_eq(
+    format(
+        $$ select badge_id, snapshot from user_badge where user_badge_id = %L::uuid $$,
+        :'userBadgeID'
     ),
-    'Should retain the issued credential and audit the deletion'
+    $$ values (null::uuid, '{"name":"Badge"}'::jsonb) $$,
+    'Should retain the issued credential with its snapshot name'
+);
+
+-- Should audit the definition deletion for the actor
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            created_at,
+            details,
+            event_id,
+            group_id,
+            resource_id,
+            resource_type
+        from audit_log
+    $$,
+    format(
+        $$ values (
+            'badge_deleted',
+            %L::uuid,
+            'delete-badge-actor',
+            %L::uuid,
+            current_timestamp,
+            '{"badge_name":"Badge"}'::jsonb,
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            'badge'
+        ) $$,
+        :'actorID', :'communityID', :'groupID', :'badgeID'
+    ),
+    'Should audit the definition deletion for the actor'
 );
 
 -- ============================================================================

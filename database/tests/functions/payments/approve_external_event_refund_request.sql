@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,6 +28,7 @@ select plan(11);
 \set leftoverAttendeeID 'e07b0000-0000-0000-0000-000000000011'
 \set leftoverPurchaseID 'e07b0000-0000-0000-0000-000000000012'
 \set leftoverRequestID 'e07b0000-0000-0000-0000-000000000013'
+\set otherGroupID 'e07b0000-0000-0000-0000-000000000018'
 \set replacementOldPurchaseID 'e07b0000-0000-0000-0000-000000000015'
 \set replacementRequestID 'e07b0000-0000-0000-0000-000000000017'
 \set replacementUserID 'e07b0000-0000-0000-0000-000000000014'
@@ -49,6 +50,9 @@ select fx_user(:'refundedAttendeeID');
 select fx_user(:'replacementUserID');
 select fx_user(:'stripeAttendeeID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Group in the same community that does not own the refund event
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Published event used by refund-approval scenarios
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -357,14 +361,16 @@ select results_eq(
 );
 
 -- Should enqueue the refund-approved notification with the approval
-select ok(
-    exists(
-        select 1
+select results_eq(
+    $$
+        select n.kind, n.user_id, ntd.data
         from notification n
         join notification_template_data ntd using (notification_template_data_id)
         where n.kind = 'event-refund-approved'
-        and n.user_id = :'attendeeID'::uuid
-        and ntd.data->>'event_name' = 'External Refund Event'
+    $$,
+    format(
+        $$ values ('event-refund-approved'::text, %L::uuid, '{"event_name":"External Refund Event"}'::jsonb) $$,
+        :'attendeeID'
     ),
     'Should enqueue the refund-approved notification with the approval'
 );
@@ -402,6 +408,8 @@ select is(
     'approved'::text,
     'Should approve a leftover pending request on an already refunded purchase'
 );
+
+-- Should reject a Stripe purchase that cannot be refunded locally
 select throws_ok(
     format(
         $$select approve_external_event_refund_request(%L::uuid, %L::uuid, %L::uuid, null)$$,
@@ -425,6 +433,19 @@ select throws_ok(
     'OCG01',
     'refund request not found',
     'Should reject a missing refund request'
+);
+
+-- Should reject a refund request approved from another group
+select throws_ok(
+    format(
+        $$select approve_external_event_refund_request(%L::uuid, %L::uuid, %L::uuid, null)$$,
+        :'actorID',
+        :'otherGroupID',
+        :'replacementOldPurchaseID'
+    ),
+    'OCG01',
+    'refund request not found',
+    'Should reject a refund request approved from another group'
 );
 
 -- Should cancel a questionnaire-pending attendee when an external refund is approved

@@ -29,7 +29,7 @@ select throws_ok(
         values ('duplicate-display-name-test', 'Badges', true)
     $$,
     '23505',
-    null,
+    'duplicate key value violates unique constraint "notification_category_display_name_key"',
     'Should reject duplicate display names'
 );
 

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -591,48 +591,6 @@ select ok(
         from result
     ),
     'Should filter invitation requests by identity search query'
-);
-
--- Should filter invitation requests by company search query
-select ok(
-    (
-        with result as (
-            select search_event_invitation_requests(
-                :'groupID'::uuid,
-                :'event1ID'::uuid,
-                jsonb_build_object(
-                    'limit', 50,
-                    'offset', 0,
-                    'ts_query', 'cloud corp'
-                )
-            )::jsonb as data
-        )
-        select (data->>'total')::int = 1
-        and data#>>'{invitation_requests,0,user,user_id}' = :'user1ID'
-        from result
-    ),
-    'Should filter invitation requests by company search query'
-);
-
--- Should filter invitation requests by title search query
-select ok(
-    (
-        with result as (
-            select search_event_invitation_requests(
-                :'groupID'::uuid,
-                :'event1ID'::uuid,
-                jsonb_build_object(
-                    'limit', 50,
-                    'offset', 0,
-                    'ts_query', 'designer'
-                )
-            )::jsonb as data
-        )
-        select (data->>'total')::int = 1
-        and data#>>'{invitation_requests,0,user,user_id}' = :'user3ID'
-        from result
-    ),
-    'Should filter invitation requests by title search query'
 );
 
 -- Should sort invitation requests by requester name ascending

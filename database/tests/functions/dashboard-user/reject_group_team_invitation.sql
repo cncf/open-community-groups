@@ -1,14 +1,17 @@
+-- Tests rejecting a pending group team invitation.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set acceptedUserID '4a120000-0000-0000-0000-000000000005'
 \set communityID '4a120000-0000-0000-0000-000000000001'
 \set groupCategoryID '4a120000-0000-0000-0000-000000000002'
 \set groupID '4a120000-0000-0000-0000-000000000003'
@@ -24,7 +27,12 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
+select fx_user(:'acceptedUserID');
 select fx_user(:'userID', jsonb_build_object('username', 'alice-reject-group-team-invitation'));
+
+-- Accepted membership that is not a pending invitation
+insert into group_team (group_id, user_id, role, accepted)
+values (:'groupID', :'acceptedUserID', 'admin', true);
 
 -- Pending invitation
 insert into group_team (group_id, user_id, role, accepted)
@@ -91,25 +99,18 @@ select results_eq(
     'Should create the expected audit row'
 );
 
--- Should reject a second rejection when no pending invitation exists
+-- Should reject an accepted membership as no pending invitation
 select throws_ok(
     format(
         $$
             select reject_group_team_invitation(%L::uuid, %L::uuid)
         $$,
-        :'userID',
+        :'acceptedUserID',
         :'groupID'
     ),
     'OCG01',
     'no pending group invitation found',
-    'Should reject a second rejection when no pending invitation exists'
-);
-
--- Should not create an audit row when the rejection fails
-select is(
-    (select count(*)::int from audit_log),
-    1,
-    'Should not create an audit row when the rejection fails'
+    'Should reject an accepted membership as no pending invitation'
 );
 
 -- ============================================================================

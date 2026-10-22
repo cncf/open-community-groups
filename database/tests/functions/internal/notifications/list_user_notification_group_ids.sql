@@ -21,8 +21,6 @@ select plan(2);
 \set communityID '9e020000-0000-0000-0000-000000000008'
 \set deletedEventGroupID '9e020000-0000-0000-0000-000000000009'
 \set deletedEventID '9e020000-0000-0000-0000-000000000010'
-\set deletedGroupID '9e020000-0000-0000-0000-000000000011'
-\set deletedGroupMemberUserID '9e020000-0000-0000-0000-000000000012'
 \set eventCategoryID '9e020000-0000-0000-0000-000000000013'
 \set eventSpeakerEventID '9e020000-0000-0000-0000-000000000014'
 \set eventSpeakerGroupID '9e020000-0000-0000-0000-000000000015'
@@ -31,6 +29,7 @@ select plan(2);
 \set inactiveCommunityGroupID '9e020000-0000-0000-0000-000000000018'
 \set inactiveCommunityID '9e020000-0000-0000-0000-000000000019'
 \set inactiveGroupID '9e020000-0000-0000-0000-000000000020'
+\set inactiveGroupMemberUserID '9e020000-0000-0000-0000-000000000012'
 \set memberGroupID '9e020000-0000-0000-0000-000000000021'
 \set pendingTeamGroupID '9e020000-0000-0000-0000-000000000022'
 \set sessionID '9e020000-0000-0000-0000-000000000023'
@@ -63,8 +62,8 @@ select fx_group_category(:'inactiveCommunityGroupCategoryID', :'inactiveCommunit
 -- User whose connected groups are listed
 select fx_user(:'userID');
 
--- Separate user used by the deleted-group exclusion scenario
-select fx_user(:'deletedGroupMemberUserID');
+-- Separate user connected only through the inactive group
+select fx_user(:'inactiveGroupMemberUserID');
 
 -- Group connected through accepted team membership
 select fx_group(:'acceptedTeamGroupID', :'communityID', :'groupCategoryID');
@@ -86,18 +85,6 @@ select fx_group(:'cohostRejectedGroupID', :'communityID', :'groupCategoryID');
 
 -- Group connected only through a deleted event
 select fx_group(:'deletedEventGroupID', :'communityID', :'groupCategoryID');
-
--- Deleted group excluded even when a user belongs to it
-select fx_group(
-    :'deletedGroupID',
-    :'communityID',
-    :'groupCategoryID',
-    jsonb_build_object(
-        'active', false,
-        'deleted', true,
-        'deleted_at', '2024-01-01 00:00:00+00'
-    )
-);
 
 -- Group connected through event speaking
 select fx_group(:'eventSpeakerGroupID', :'communityID', :'groupCategoryID');
@@ -155,10 +142,6 @@ values (:'pendingTeamGroupID', :'userID', false, 'admin');
 insert into group_member (group_id, user_id)
 values (:'memberGroupID', :'userID');
 
--- Deleted group membership excluded from the result
-insert into group_member (group_id, user_id)
-values (:'deletedGroupID', :'deletedGroupMemberUserID');
-
 -- Inactive community group membership excluded from the result
 insert into group_member (group_id, user_id)
 values (:'inactiveCommunityGroupID', :'userID');
@@ -166,6 +149,10 @@ values (:'inactiveCommunityGroupID', :'userID');
 -- Inactive group membership excluded from the result
 insert into group_member (group_id, user_id)
 values (:'inactiveGroupID', :'userID');
+
+-- Inactive group membership of the separate user
+insert into group_member (group_id, user_id)
+values (:'inactiveGroupID', :'inactiveGroupMemberUserID');
 
 -- Attendee connection to the event owner and approved co-host groups
 insert into event_attendee (event_id, user_id, status)
@@ -226,11 +213,11 @@ select is(
     'Should return every available connected group once'
 );
 
--- Should return no unavailable connected groups
+-- Should return an empty array when every connected group is unavailable
 select is(
-    list_user_notification_group_ids(:'deletedGroupMemberUserID'),
+    list_user_notification_group_ids(:'inactiveGroupMemberUserID'),
     '{}'::uuid[],
-    'Should return no unavailable connected groups'
+    'Should return an empty array when every connected group is unavailable'
 );
 
 -- ============================================================================

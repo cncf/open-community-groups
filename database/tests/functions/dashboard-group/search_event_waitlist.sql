@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -529,50 +529,6 @@ select ok(
         from result
     ),
     'Should filter waitlist entries by identity search query'
-);
-
--- Should filter waitlist entries by company search query
-select ok(
-    (
-        with result as (
-            select search_event_waitlist(
-                :'groupID'::uuid,
-                :'event1ID'::uuid,
-                jsonb_build_object(
-                    'limit', 50,
-                    'offset', 0,
-                    'ts_query', 'cloud corp'
-                )
-            )::jsonb as data
-        )
-        select (data->>'total')::int = 1
-        and data#>>'{waitlist,0,user,user_id}' = :'user1ID'
-        and data#>>'{waitlist,0,waitlist_position}' = '1'
-        from result
-    ),
-    'Should filter waitlist entries by company search query'
-);
-
--- Should filter waitlist entries by title search query
-select ok(
-    (
-        with result as (
-            select search_event_waitlist(
-                :'groupID'::uuid,
-                :'event1ID'::uuid,
-                jsonb_build_object(
-                    'limit', 50,
-                    'offset', 0,
-                    'ts_query', 'principal engineer'
-                )
-            )::jsonb as data
-        )
-        select (data->>'total')::int = 1
-        and data#>>'{waitlist,0,user,user_id}' = :'user1ID'
-        and data#>>'{waitlist,0,waitlist_position}' = '1'
-        from result
-    ),
-    'Should filter waitlist entries by title search query'
 );
 
 -- Should sort waitlist entries by name ascending

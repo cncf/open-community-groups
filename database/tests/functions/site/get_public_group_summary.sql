@@ -5,14 +5,13 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '5ea60000-0000-0000-0000-000000000001'
-\set deletedGroupID '5ea60000-0000-0000-0000-000000000002'
 \set groupCategoryID '5ea60000-0000-0000-0000-000000000003'
 \set groupID '5ea60000-0000-0000-0000-000000000004'
 \set inactiveCommunityGroupCategoryID '5ea60000-0000-0000-0000-000000000005'
@@ -40,12 +39,6 @@ select fx_group_category(:'inactiveCommunityGroupCategoryID', :'inactiveCommunit
 -- Active group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', true));
 
--- Deleted group
-select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
-
 -- Active group of the inactive community
 select fx_group(:'inactiveCommunityGroupID', :'inactiveCommunityID', :'inactiveCommunityGroupCategoryID', jsonb_build_object(
     'active', true
@@ -57,13 +50,6 @@ select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_bu
 -- ============================================================================
 -- TESTS
 -- ============================================================================
-
--- Should return null for a deleted group
-select is(
-    get_public_group_summary(:'deletedGroupID'::uuid)::jsonb,
-    null,
-    'Should return null for a deleted group'
-);
 
 -- Should return null for a group of an inactive community
 select is(

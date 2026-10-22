@@ -1,3 +1,5 @@
+-- Tests updating dashboard community event categories.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,10 +11,12 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c160000-0000-0000-0000-000000000006'
 \set communityID '2c160000-0000-0000-0000-000000000001'
 \set eventCategory1ID '2c160000-0000-0000-0000-000000000002'
 \set eventCategory2ID '2c160000-0000-0000-0000-000000000003'
-\set unknownEventCategoryID '2c160000-0000-0000-0000-000000000004'
+\set foreignEventCategoryID '2c160000-0000-0000-0000-000000000004'
+\set otherCommunityID '2c160000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
@@ -22,7 +26,15 @@ select plan(6);
 select fx_community(:'communityID');
 select fx_event_category(:'eventCategory1ID', :'communityID');
 
+-- Second event category whose name the duplicate scenario reuses
 select fx_event_category(:'eventCategory2ID', :'communityID', jsonb_build_object('name', 'Conference'));
+
+-- Other community with its own event category
+select fx_community(:'otherCommunityID');
+select fx_event_category(:'foreignEventCategoryID', :'otherCommunityID');
+
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'update-event-category-audit-actor'));
 
 -- ============================================================================
 -- TESTS
@@ -32,11 +44,12 @@ select fx_event_category(:'eventCategory2ID', :'communityID', jsonb_build_object
 select lives_ok(
     format(
         $$ select update_event_category(
-        null::uuid,
+        %L::uuid,
         %L::uuid,
         %L::uuid,
         jsonb_build_object('name', 'Lightning Talks')
     ) $$,
+        :'actorUserID',
         :'communityID',
         :'eventCategory1ID'
     ),
@@ -73,13 +86,14 @@ select results_eq(
         $$
         values (
             'event_category_updated',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'update-event-category-audit-actor',
             %L::uuid,
             'event_category',
             %L::uuid
         )
         $$,
+        :'actorUserID',
         :'communityID',
         :'eventCategory1ID'
     ),
@@ -120,7 +134,7 @@ select throws_ok(
     'Should reject event category names that generate empty slugs'
 );
 
--- Should fail when target category does not exist
+-- Should fail when target category belongs to another community
 select throws_ok(
     format(
         $$ select update_event_category(
@@ -130,11 +144,11 @@ select throws_ok(
         jsonb_build_object('name', 'Workshops')
     ) $$,
         :'communityID',
-        :'unknownEventCategoryID'
+        :'foreignEventCategoryID'
     ),
     'OCG01',
     'event category not found',
-    'Should fail when updating a non-existing event category'
+    'Should fail when updating an event category from another community'
 );
 
 -- ============================================================================

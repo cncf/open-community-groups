@@ -1,3 +1,5 @@
+-- Tests updating dashboard community group categories.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,10 +11,12 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c170000-0000-0000-0000-000000000006'
 \set communityID '2c170000-0000-0000-0000-000000000001'
+\set foreignGroupCategoryID '2c170000-0000-0000-0000-000000000004'
 \set groupCategory1ID '2c170000-0000-0000-0000-000000000002'
 \set groupCategory2ID '2c170000-0000-0000-0000-000000000003'
-\set unknownGroupCategoryID '2c170000-0000-0000-0000-000000000004'
+\set otherCommunityID '2c170000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
@@ -22,7 +26,15 @@ select plan(5);
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategory1ID', :'communityID');
 
+-- Second group category whose name the duplicate scenario reuses
 select fx_group_category(:'groupCategory2ID', :'communityID', jsonb_build_object('name', 'Conference'));
+
+-- Other community with its own group category
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'foreignGroupCategoryID', :'otherCommunityID');
+
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'update-group-category-audit-actor'));
 
 -- ============================================================================
 -- TESTS
@@ -32,11 +44,12 @@ select fx_group_category(:'groupCategory2ID', :'communityID', jsonb_build_object
 select lives_ok(
     format(
         $$ select update_group_category(
-        null::uuid,
+        %L::uuid,
         %L::uuid,
         %L::uuid,
         jsonb_build_object('name', 'Lightning Talks')
     ) $$,
+        :'actorUserID',
         :'communityID',
         :'groupCategory1ID'
     ),
@@ -73,13 +86,14 @@ select results_eq(
         $$
         values (
             'group_category_updated',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'update-group-category-audit-actor',
             %L::uuid,
             'group_category',
             %L::uuid
         )
         $$,
+        :'actorUserID',
         :'communityID',
         :'groupCategory1ID'
     ),
@@ -103,7 +117,7 @@ select throws_ok(
     'Should reject duplicate group category names'
 );
 
--- Should fail when target category does not exist
+-- Should fail when target category belongs to another community
 select throws_ok(
     format(
         $$ select update_group_category(
@@ -113,11 +127,11 @@ select throws_ok(
         jsonb_build_object('name', 'Workshops')
     ) $$,
         :'communityID',
-        :'unknownGroupCategoryID'
+        :'foreignGroupCategoryID'
     ),
     'OCG01',
     'group category not found',
-    'Should fail when updating a non-existing group category'
+    'Should fail when updating a group category from another community'
 );
 
 -- ============================================================================

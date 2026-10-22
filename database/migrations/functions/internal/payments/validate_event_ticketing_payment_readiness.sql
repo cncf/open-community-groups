@@ -14,9 +14,6 @@ create or replace function validate_event_ticketing_payment_readiness(
 returns void as $$
 declare
     v_event_kind_id text;
-    v_existing_venue_country_code text;
-    v_existing_venue_state_code text;
-    v_existing_venue_state_name text;
     v_external_payment_url text := nullif(btrim(p_external_payment_url), '');
     v_manual_tax_rate_ids text[];
     v_max_window_hours int;
@@ -48,6 +45,7 @@ begin
         raise exception 'paid-capable events require payment_currency_code' using errcode = 'OCG01';
     end if;
 
+    -- Reject currency codes outside the supported set
     perform validate_payment_currency_code(p_payment_currency_code);
 
     -- Validate external-mode fields and skip Stripe recipient requirements
@@ -108,36 +106,7 @@ begin
 
     -- Resolve the event and venue snapshot from a mutation payload or stored row
     if p_event_payload is not null then
-        -- Preserve stored codes while the deferred frontend omits the new field
-        if p_event_id is not null and not (p_event_payload ? 'venue_state_code') then
-            select
-                e.venue_country_code,
-                e.venue_state_code,
-                e.venue_state_name
-            into
-                v_existing_venue_country_code,
-                v_existing_venue_state_code,
-                v_existing_venue_state_name
-            from event e
-            where e.event_id = p_event_id;
-
-            -- Discard a code invalidated by a legacy country or subdivision edit
-            if upper(nullif(btrim(p_event_payload->>'venue_country_code'), ''))
-                    is distinct from upper(nullif(btrim(v_existing_venue_country_code), ''))
-                or (
-                    (
-                        p_event_payload ? 'venue_state_name'
-                        or p_event_payload ? 'venue_state'
-                    )
-                    and nullif(btrim(coalesce(
-                        p_event_payload->>'venue_state_name',
-                        p_event_payload->>'venue_state'
-                    )), '') is distinct from nullif(btrim(v_existing_venue_state_name), '')
-                ) then
-                v_existing_venue_state_code := null;
-            end if;
-        end if;
-
+        -- Read the event kind, tax settings and venue from the mutation payload
         v_event_kind_id := p_event_payload->>'kind_id';
         v_manual_tax_rate_ids := coalesce(
             jsonb_text_array(p_event_payload->'manual_tax_rate_ids'),
@@ -153,19 +122,6 @@ begin
             'city', nullif(btrim(p_event_payload->>'venue_city'), ''),
             'country_code', upper(nullif(btrim(p_event_payload->>'venue_country_code'), '')),
             'name', nullif(btrim(p_event_payload->>'venue_name'), ''),
-            'state_code', upper(nullif(btrim(
-                case
-                    -- Validate an explicitly submitted subdivision code
-                    when p_event_payload ? 'venue_state_code'
-                        then p_event_payload->>'venue_state_code'
-                    -- Reuse the persisted code while the frontend omits it
-                    else v_existing_venue_state_code
-                end
-            ), '')),
-            'state_name', nullif(
-                btrim(coalesce(p_event_payload->>'venue_state_name', p_event_payload->>'venue_state')),
-                ''
-            ),
             'zip_code', nullif(btrim(p_event_payload->>'venue_zip_code'), '')
         );
 
@@ -226,6 +182,7 @@ begin
 
     -- Require a nonempty, unique set of usable Stripe identifiers
     elsif v_tax_calculation_mode = 'manual' then
+        -- Reject empty, null, blank, padded or duplicate Tax Rate identifiers
         if cardinality(v_manual_tax_rate_ids) = 0
            or array_position(v_manual_tax_rate_ids, null) is not null
            or exists (
@@ -243,6 +200,7 @@ begin
 
     -- Normalize no-tax events and reject stale manual Tax Rate selections
     elsif v_tax_calculation_mode = 'none' then
+        -- Reject exclusive display or leftover Tax Rates on no-tax events
         if v_tax_behavior <> 'inclusive' or cardinality(v_manual_tax_rate_ids) > 0 then
             raise exception 'events that do not collect tax require inclusive display and no Tax Rates' using errcode = 'OCG01';
         end if;

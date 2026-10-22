@@ -217,6 +217,7 @@ select throws_ok(
         $$update event_purchase_credit_note set provider_credit_note_id = null where event_purchase_credit_note_id = %L::uuid$$,
         :'creditClearNoteID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject clearing the outcome of a completed credit note'
 );
@@ -227,6 +228,7 @@ select throws_ok(
         $$update event_purchase_application_fee_adjustment set provider_application_fee_refund_id = null where event_purchase_application_fee_adjustment_id = %L::uuid$$,
         :'feeClearAdjustmentID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject clearing the outcome of a completed fee adjustment'
 );
@@ -237,6 +239,7 @@ select throws_ok(
         $$update event_purchase_refund set finalized_at = null, status = 'provider-succeeded' where event_purchase_refund_id = %L::uuid$$,
         :'refundClearID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject clearing the finalization of a completed refund'
 );
@@ -248,6 +251,7 @@ select throws_ok(
         values (2500, 'USD', %L::uuid, %L::uuid, %L::uuid, 'stripe', 'acct_d417', 200)$$,
         :'creditAcceptNoteID', :'creditAcceptRefundID', :'creditAcceptJobID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject a credit note without an outcome behind a completed job'
 );
@@ -259,6 +263,7 @@ select throws_ok(
         values (80, %L::uuid, %L::uuid, 'tax-reconciliation', %L::uuid)$$,
         :'feeAcceptAdjustmentID', :'feeAcceptPurchaseID', :'feeAcceptJobID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject a fee adjustment without an outcome behind a completed job'
 );
@@ -270,6 +275,7 @@ select throws_ok(
         values (2500, 'USD', %L::uuid, %L::uuid, 'event-cancellation', %L::uuid, 'stripe', 'provider-pending', false)$$,
         :'refundAcceptPurchaseID', :'refundAcceptID', :'refundAcceptJobID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject an unfinalized refund behind a completed job'
 );

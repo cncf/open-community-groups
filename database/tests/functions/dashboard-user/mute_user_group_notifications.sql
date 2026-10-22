@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -131,6 +131,18 @@ select lives_ok(
     'Should treat already-muted unavailable groups as a no-op'
 );
 
+-- Should not audit an already-muted unavailable group
+select is(
+    (
+        select count(*)::integer
+        from audit_log
+        where action = 'group_notifications_muted'
+        and details->>'group_id' = :'unavailableMutedGroupID'
+    ),
+    0,
+    'Should not audit an already-muted unavailable group'
+);
+
 -- Should reject disconnected groups
 select throws_ok(
     format(
@@ -155,38 +167,25 @@ select throws_ok(
     'Should reject unknown groups'
 );
 
--- Should store more than twenty-five mutes
-select lives_ok(
-    format(
-        $$
-            do $do$
-            declare
-                v_group_id uuid;
-            begin
-                for v_group_id in
-                    select ('9e080000-0000-0000-0000-' || lpad(to_hex(100 + i), 12, '0'))::uuid
-                    from generate_series(1, 26) as s(i)
-                loop
-                    perform mute_user_group_notifications(%L::uuid, v_group_id);
-                end loop;
+-- Mute every bulk group
+select mute_user_group_notifications(
+    :'userID',
+    ('9e080000-0000-0000-0000-' || lpad(to_hex(100 + i), 12, '0'))::uuid
+)
+from generate_series(1, 26) as s(i);
 
-                if (
-                    select count(*)::int
-                    from user_group_notification_mute
-                    where user_id = %L::uuid
-                    and group_id in (
-                        select ('9e080000-0000-0000-0000-' || lpad(to_hex(100 + i), 12, '0'))::uuid
-                        from generate_series(1, 26) as s(i)
-                    )
-                ) <> 26 then
-                    raise exception 'bulk mutes were not stored';
-                end if;
-            end
-            $do$;
-        $$,
-        :'userID',
-        :'userID'
+-- Should store more than twenty-five mutes
+select is(
+    (
+        select count(*)::int
+        from user_group_notification_mute
+        where user_id = :'userID'
+        and group_id in (
+            select ('9e080000-0000-0000-0000-' || lpad(to_hex(100 + i), 12, '0'))::uuid
+            from generate_series(1, 26) as s(i)
+        )
     ),
+    26,
     'Should store more than twenty-five mutes'
 );
 

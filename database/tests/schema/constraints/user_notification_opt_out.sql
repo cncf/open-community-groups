@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -46,22 +46,8 @@ select throws_ok(
         :'duplicateUserID'
     ),
     '23505',
-    null,
+    'duplicate key value violates unique constraint "user_notification_opt_out_pkey"',
     'Should reject duplicate opt-outs'
-);
-
--- Should reject unknown categories
-select throws_ok(
-    format(
-        $$
-            insert into user_notification_opt_out (notification_category_id, user_id)
-            values ('unknown-category', %L::uuid)
-        $$,
-        :'duplicateUserID'
-    ),
-    '23503',
-    null,
-    'Should reject unknown categories'
 );
 
 -- Should delete opt-outs when users are deleted

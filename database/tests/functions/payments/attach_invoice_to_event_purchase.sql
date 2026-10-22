@@ -95,6 +95,7 @@ select throws_ok(
         'select attach_invoice_to_event_purchase(%L, %L, %L, %L, null)',
         :'purchaseID', 'acct_wrong', 'in_invoice', 'https://invoice.test/one'
     ),
+    'P0001',
     'invoice account does not match the purchase seller',
     'Should reject an invoice from a different connected account'
 );
@@ -153,6 +154,7 @@ select throws_ok(
         'select attach_invoice_to_event_purchase(%L, %L, %L, %L, null)',
         :'purchaseID', 'acct_invoice', 'in_other', 'https://invoice.test/other'
     ),
+    'P0001',
     'event purchase already has a different provider invoice',
     'Should reject replacement with a different invoice'
 );

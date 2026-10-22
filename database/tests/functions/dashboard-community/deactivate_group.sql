@@ -5,12 +5,13 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c070000-0000-0000-0000-000000000002'
 \set communityID '2c070000-0000-0000-0000-000000000001'
 \set groupAlreadyInactiveID '2c070000-0000-0000-0000-000000000003'
 \set groupCategoryID '2c070000-0000-0000-0000-000000000004'
@@ -26,6 +27,9 @@ select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'deactivate-group-audit-actor'));
+
 -- Group (inactive)
 select fx_group(:'groupAlreadyInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
@@ -36,7 +40,8 @@ select fx_group(:'groupAlreadyInactiveID', :'communityID', :'groupCategoryID', j
 -- Should set active to false
 select lives_ok(
     format(
-        'select deactivate_group(null::uuid, %L::uuid, %L::uuid)',
+        'select deactivate_group(%L::uuid, %L::uuid, %L::uuid)',
+        :'actorUserID',
         :'communityID',
         :'groupID'
     ),
@@ -74,14 +79,15 @@ select results_eq(
         $$
         values (
             'group_deactivated',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'deactivate-group-audit-actor',
             %L::uuid,
             %L::uuid,
             'group',
             %L::uuid
         )
         $$,
+        :'actorUserID',
         :'communityID',
         :'groupID',
         :'groupID'
@@ -97,6 +103,13 @@ select lives_ok(
         :'groupAlreadyInactiveID'
     ),
     'Should be idempotent for already inactive groups'
+);
+
+-- Should keep already inactive groups inactive
+select is(
+    (select active from "group" where group_id = :'groupAlreadyInactiveID'::uuid),
+    false,
+    'Should keep already inactive groups inactive'
 );
 
 -- Should throw error for non-existent group

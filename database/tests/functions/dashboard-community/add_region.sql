@@ -1,3 +1,5 @@
+-- Tests adding dashboard community regions.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,6 +11,7 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c060000-0000-0000-0000-000000000002'
 \set communityID '2c060000-0000-0000-0000-000000000001'
 
 -- ============================================================================
@@ -18,6 +21,9 @@ select plan(4);
 -- Baseline community
 select fx_community(:'communityID');
 
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'add-region-audit-actor'));
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -26,10 +32,11 @@ select fx_community(:'communityID');
 select lives_ok(
     format(
         $$ select add_region(
-        null::uuid,
+        %L::uuid,
         %L::uuid,
         jsonb_build_object('name', 'North America')
     ) $$,
+        :'actorUserID',
         :'communityID'
     ),
     'Should create a region with generated normalized name'
@@ -65,14 +72,15 @@ select results_eq(
         $$
         select
             'region_added',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'add-region-audit-actor',
             %L::uuid,
             'region',
             region_id
         from region
         where community_id = %L::uuid
         $$,
+        :'actorUserID',
         :'communityID',
         :'communityID'
     ),

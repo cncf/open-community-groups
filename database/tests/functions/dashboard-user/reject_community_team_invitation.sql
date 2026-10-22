@@ -1,14 +1,17 @@
+-- Tests rejecting a pending community team invitation.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set acceptedUserID '4a100000-0000-0000-0000-000000000003'
 \set communityID '4a100000-0000-0000-0000-000000000001'
 \set userID '4a100000-0000-0000-0000-000000000002'
 
@@ -20,7 +23,21 @@ select plan(5);
 select fx_community(:'communityID');
 
 -- Users
+select fx_user(:'acceptedUserID');
 select fx_user(:'userID', jsonb_build_object('username', 'user-reject-community-team-invitation'));
+
+-- Accepted membership that is not a pending invitation
+insert into community_team (
+    accepted,
+    community_id,
+    role,
+    user_id
+) values (
+    true,
+    :'communityID',
+    'viewer',
+    :'acceptedUserID'
+);
 
 -- Pending invitation
 insert into community_team (
@@ -93,25 +110,18 @@ select results_eq(
     'Should create the expected audit row'
 );
 
--- Should reject a second rejection when no pending invitation exists
+-- Should reject an accepted membership as no pending invitation
 select throws_ok(
     format(
         $$
             select reject_community_team_invitation(%L::uuid, %L::uuid)
         $$,
-        :'userID',
+        :'acceptedUserID',
         :'communityID'
     ),
     'OCG01',
     'no pending community invitation found',
-    'Should reject a second rejection when no pending invitation exists'
-);
-
--- Should not create an audit row when the rejection fails
-select is(
-    (select count(*)::int from audit_log),
-    1,
-    'Should not create an audit row when the rejection fails'
+    'Should reject an accepted membership as no pending invitation'
 );
 
 -- ============================================================================

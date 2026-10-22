@@ -113,8 +113,9 @@ decides who sees the message:
   `when sqlstate 'OCG01'`, never with `when others`.
 - Messages are short, lowercase, and domain-readable
   (`event not found or inactive`); pgTAP asserts them together with the
-  SQLSTATE: `throws_ok(sql, 'OCG01', 'message', description)` for user-facing
-  rejections, `throws_ok(sql, 'message', description)` for internal ones.
+  SQLSTATE: `throws_ok(sql, 'OCG01', 'message', description)` for
+  user-facing rejections, `throws_ok(sql, 'P0001', 'message', description)`
+  for internal ones.
 
 ### Conflict results
 
@@ -268,9 +269,10 @@ less context, not that the caller became shorter.
 - Every helper has its own test under `tests/functions/internal/<concern>/`
   covering its full branch matrix. Callers do not repeat that matrix.
 - A caller's test keeps every scenario that proves the caller's own decisions
-  (state transitions, audit rows, returned payload, label mapping) and at
-  least one wiring scenario per delegated rejection, proving the helper is
-  called and its error propagates.
+  (state transitions, audit rows, returned payload, label mapping) and one
+  wiring rejection per helper call site, proving the helper is called and its
+  error propagates. A caller keeps an extra scenario for a specific helper
+  error only when it remaps that error or adds behavior around it.
 - Helpers can each be correct while their ordering, inputs, or combined state
   transitions are wrong, so workflows whose risk lives in that interaction
   keep end-to-end scenarios that walk several helpers in sequence. What is
@@ -313,7 +315,10 @@ parallel against one database. These rules apply to every file in it:
 
 - Each file is an independent `begin; ... rollback;` transaction with an
   exact `plan` count and never takes table-level locks (`alter table`,
-  `lock table`, `truncate`).
+  `lock table`, `truncate`, `create [or replace] trigger`, `drop trigger`). A
+  trigger function test that needs extra wiring attaches the trigger to a
+  session-local table created with `create temporary table` in the same file;
+  `lint.sh` allows a `create trigger` statement only on such a table.
 - Each file owns its identifiers and unique key values: the UUID prefix of
   its variables is used by no other file (`just db-lint`), and no two files
   seed the same value into a unique index (`just db-tests-seed-keys`, also
@@ -322,10 +327,22 @@ parallel against one database. These rules apply to every file in it:
 - A test asserts only values it wrote itself; any value a scenario depends
   on is written explicitly by the test, never inherited from a fixture
   default. Each scenario gets its own rows rather than mutating shared ones.
+- Ticket tiers, price windows, and purchases are seeded explicitly for each
+  event that needs them, never derived table-wide with blocks such as
+  `insert ... select ... from event e where not exists (...)`.
 - Tests invoke the behavior under test and assert persisted state. Direct
   writes are the behavior under test only for constraints and triggers.
+- Tests of functions that write audit rows pass a real actor and assert it in
+  the audit row.
 - Rejections assert the SQLSTATE and message as described in the
-  [error contract](#error-contract).
+  [error contract](#error-contract), and nothing else. A `throws_ok` is never
+  followed by an "unchanged" or "nothing written" assertion: the caught error
+  rolls back the statement's writes, so such a check cannot fail. Unchanged
+  checks remain valid after calls that return without raising.
+- A test does not claim to isolate a predicate that a check constraint makes
+  redundant (a deleted group is never active; a deleted event is never
+  published), so a deleted-row scenario is kept only where the function does
+  not also filter on the implied `active` or `published` flag.
 
 Existing test files are the reference for file layout and naming.
 
@@ -336,8 +353,9 @@ changing a function updates its test in the same change. A group of
 scenarios may live in a sibling `<function>_<suffix>.sql` file when its
 precondition contradicts the base file's seed data (for example, a singleton
 configuration row that must be absent) or when the base file would otherwise
-grow unwieldy; the sibling's header names the base file and the reason for
-the split, and `just db-lint` accepts these splits.
+grow unwieldy. Within its first three lines, the sibling states the base
+file and the reason with a `-- Split from <function>.sql because ...` (or
+`... to ...`) line, which `just db-lint` requires.
 
 ### Fixture functions
 

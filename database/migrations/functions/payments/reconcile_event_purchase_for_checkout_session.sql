@@ -21,7 +21,6 @@ declare
     v_hold_expired boolean;
     v_manually_invited boolean;
     v_payment_job_id uuid;
-    v_provider_payment_reference text;
     v_purchase event_purchase;
     v_requires_refund boolean;
     v_unfulfillable boolean;
@@ -91,7 +90,6 @@ begin
     v_hold_expired := v_purchase.hold_expires_at is not null
         and v_purchase.hold_expires_at <= current_timestamp;
     v_manually_invited := coalesce(v_admission_offer.source = 'organizer_invitation', false);
-    v_provider_payment_reference := coalesce(p_provider_payment_reference, v_purchase.provider_payment_reference);
     v_unfulfillable := not event_accepts_enrollment(v_event, v_group)
         or (
             v_purchase.admission_offer_id is not null
@@ -133,14 +131,9 @@ begin
         or event_has_pending_refund_recovery(v_purchase.event_id, v_purchase.user_id, v_purchase.event_purchase_id)
         or v_unfulfillable;
 
-    -- Require the payment reference the refund handoff needs
-    if v_requires_refund and v_provider_payment_reference is null then
-        raise exception 'provider payment reference is required for refund';
-    end if;
-
     -- Persist the refund-pending state before reconciling the queues
     if v_requires_refund and v_purchase.status <> 'refund-pending' then
-        perform mark_event_purchase_refund_pending(v_purchase, v_provider_payment_reference);
+        perform mark_event_purchase_refund_pending(v_purchase, p_provider_payment_reference);
         v_purchase.status := 'refund-pending';
     end if;
 
@@ -165,7 +158,7 @@ begin
             set
                 completed_at = current_timestamp,
                 hold_expires_at = null,
-                provider_payment_reference = v_provider_payment_reference,
+                provider_payment_reference = p_provider_payment_reference,
                 status = 'completed',
                 updated_at = current_timestamp
             where event_purchase_id = v_purchase.event_purchase_id;
@@ -180,15 +173,9 @@ begin
         end if;
     end if;
 
-    -- Refund purchases that cannot be completed or are awaiting refund retry,
-    -- requiring a provider payment reference before the refund handoff
-    if v_provider_payment_reference is null then
-        raise exception 'provider payment reference is required for refund';
-    end if;
-
     -- Persist the refund-pending state for attendees that could not be confirmed
     if v_purchase.status <> 'refund-pending' then
-        perform mark_event_purchase_refund_pending(v_purchase, v_provider_payment_reference);
+        perform mark_event_purchase_refund_pending(v_purchase, p_provider_payment_reference);
     end if;
 
     -- Queue the provider refund for workers before acknowledging the webhook

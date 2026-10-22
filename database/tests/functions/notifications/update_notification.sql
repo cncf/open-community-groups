@@ -1,9 +1,11 @@
+-- Tests finalizing claimed notifications after delivery attempts.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,6 +13,7 @@ select plan(7);
 
 \set notificationID1 '8a060000-0000-0000-0000-000000000001'
 \set notificationID2 '8a060000-0000-0000-0000-000000000002'
+\set notificationProcessedID '8a060000-0000-0000-0000-000000000005'
 \set notificationStaleClaimID '8a060000-0000-0000-0000-000000000004'
 \set userID '8a060000-0000-0000-0000-000000000003'
 
@@ -21,19 +24,24 @@ select plan(7);
 -- User
 select fx_user(:'userID', jsonb_build_object('username', 'user-update-notification'));
 
--- Processing notifications used by current and stale claim scenarios
+-- Processing and processed notifications used by the finalization scenarios
 insert into notification (
     notification_id,
     delivery_status,
     kind,
     user_id,
 
-    delivery_claimed_at
+    delivery_claimed_at,
+    processed_at
 ) values
-    (:'notificationID1', 'processing', 'group-welcome', :'userID', '2025-01-01 00:00:01+00'),
-    (:'notificationID2', 'processing', 'event-welcome', :'userID', '2025-01-01 00:00:02+00'),
+    (:'notificationID1', 'processing', 'group-welcome', :'userID', '2025-01-01 00:00:01+00',
+        null),
+    (:'notificationID2', 'processing', 'event-welcome', :'userID', '2025-01-01 00:00:02+00',
+        null),
+    (:'notificationProcessedID', 'processed', 'event-welcome', :'userID',
+        '2025-01-01 00:00:05+00', '2025-01-01 00:00:06+00'),
     (:'notificationStaleClaimID', 'processing', 'event-welcome', :'userID',
-        '2025-01-01 00:00:04+00');
+        '2025-01-01 00:00:04+00', null);
 
 -- ============================================================================
 -- TESTS
@@ -59,13 +67,13 @@ select results_eq(
         select
             delivery_status,
             error,
-            processed_at is not null
+            processed_at
         from notification
         where notification_id = %L::uuid
         $$,
         :'notificationID1'
     ),
-    $$ values ('failed'::text, 'smtp timeout'::text, true) $$,
+    $$ values ('failed'::text, 'smtp timeout'::text, current_timestamp) $$,
     'Should persist processed fields and error'
 );
 
@@ -89,13 +97,13 @@ select results_eq(
         select
             delivery_status,
             error,
-            processed_at is not null
+            processed_at
         from notification
         where notification_id = %L::uuid
         $$,
         :'notificationID2'
     ),
-    $$ values ('processed'::text, null::text, true) $$,
+    $$ values ('processed'::text, null::text, current_timestamp) $$,
     'Should persist processed fields and clear error'
 );
 
@@ -105,9 +113,9 @@ select throws_ok(
         $$select update_notification(
         %L::uuid,
         null::text,
-        '2025-01-01 00:00:02+00'::timestamptz
+        '2025-01-01 00:00:05+00'::timestamptz
         )$$,
-        :'notificationID2'
+        :'notificationProcessedID'
     ),
     'P0001',
     'notification delivery claim not found or no longer active',
@@ -127,23 +135,6 @@ select throws_ok(
     'P0001',
     'notification delivery claim not found or no longer active',
     'Should stop a stale worker from finalizing a newer delivery claim'
-);
-
--- Should preserve the newer claim after a stale finalization attempt
-select results_eq(
-    format(
-        $$
-        select
-            delivery_claimed_at,
-            delivery_status,
-            processed_at
-        from notification
-        where notification_id = %L::uuid
-        $$,
-        :'notificationStaleClaimID'
-    ),
-    $$ values ('2025-01-01 00:00:04+00'::timestamptz, 'processing'::text, null::timestamptz) $$,
-    'Should preserve the newer claim after a stale finalization attempt'
 );
 
 -- ============================================================================

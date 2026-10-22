@@ -1,3 +1,5 @@
+-- Tests returning full group information.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -16,7 +18,6 @@ select plan(6);
 \set groupNoLogoID '0c0a0000-0000-0000-0000-000000000012'
 \set groupPrettySlugID '0c0a0000-0000-0000-0000-000000000013'
 \set hierarchyChildActiveID '0c0a0000-0000-0000-0000-00000000000e'
-\set hierarchyChildDeletedID '0c0a0000-0000-0000-0000-00000000000f'
 \set hierarchyChildInactiveID '0c0a0000-0000-0000-0000-000000000010'
 \set hierarchyParentID '0c0a0000-0000-0000-0000-000000000011'
 \set regionID '0c0a0000-0000-0000-0000-000000000005'
@@ -239,12 +240,6 @@ select fx_group(:'hierarchyChildActiveID', :'communityID', :'groupCategoryID', j
 select fx_group(:'hierarchyChildInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', false,
     'created_at', '2024-03-03 10:00:00+00',
-    'parent_group_id', :'hierarchyParentID'
-));
-select fx_group(:'hierarchyChildDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'created_at', '2024-03-04 10:00:00+00',
-    'deleted', true,
     'parent_group_id', :'hierarchyParentID'
 ));
 

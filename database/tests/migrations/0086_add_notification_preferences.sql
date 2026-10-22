@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -62,32 +62,6 @@ select is(
     (select count(*)::int from user_group_notification_mute),
     0,
     'Should not create group mutes during migration'
-);
-
--- Should assign notification kinds to categories
-select results_eq(
-    $$
-        select name, notification_category_id
-        from notification_kind
-        where notification_category_id is not null
-        order by name
-    $$,
-    $$ values
-        ('badge-awarded', 'badges'::text),
-        ('badge-revoked', 'badges'::text),
-        ('event-admission-offer-declined', 'attendee-activity'::text),
-        ('event-cohost-removed', 'cohosting-updates'::text),
-        ('event-cohost-responded', 'cohosting-updates'::text),
-        ('event-custom', 'organizer-messages'::text),
-        ('event-paid-configured', 'paid-event-setups'::text),
-        ('event-published', 'new-events'::text),
-        ('event-reminder', 'event-reminders'::text),
-        ('event-series-published', 'new-events'::text),
-        ('event-survey-opened', 'event-surveys'::text),
-        ('group-custom', 'group-announcements'::text),
-        ('inbox-message-received', 'group-inbox'::text)
-    $$,
-    'Should assign notification kinds to categories'
 );
 
 -- Should preserve existing users

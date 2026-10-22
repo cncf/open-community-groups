@@ -5,334 +5,792 @@
 -- ============================================================================
 
 begin;
-select plan(257);
+select plan(2);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Test: check tables have expected primary keys
-select has_pk('admission_offer');
-select has_pk('attachment');
-select has_pk('audit_log');
-select has_pk('auth_session');
-select has_pk('badge');
-select has_pk('badge_artwork');
-select has_pk('badge_award_job');
-select has_pk('badge_award_job_recipient');
-select has_pk('badge_status_list');
-select has_pk('cfs_submission');
-select has_pk('cfs_submission_label');
-select has_pk('cfs_submission_rating');
-select has_pk('cfs_submission_status');
-select has_pk('community');
-select has_pk('community_permission');
-select has_pk('community_redirect_settings');
-select has_pk('community_role');
-select has_pk('community_role_community_permission');
-select has_pk('community_role_group_permission');
-select has_pk('community_site_layout');
-select has_pk('community_team');
-select hasnt_pk('community_views');
-select has_pk('custom_notification');
-select has_pk('email_verification_code');
-select has_pk('event');
-select has_pk('event_attendee');
-select has_pk('event_category');
-select has_pk('event_cohost');
-select has_pk('event_cohost_status');
-select has_pk('event_discount_code');
-select has_pk('event_host');
-select has_pk('event_kind');
-select has_pk('event_label');
-select has_pk('event_organizer');
-select has_pk('event_purchase');
-select has_pk('event_purchase_application_fee_adjustment');
-select has_pk('event_purchase_credit_note');
-select has_pk('event_purchase_refund');
-select has_pk('event_refund_request');
-select has_pk('event_ticket_price_window');
-select has_pk('event_ticket_type');
-select has_pk('event_series');
-select has_pk('event_speaker');
-select has_pk('event_sponsor');
-select has_pk('event_survey');
-select has_pk('event_survey_response');
-select hasnt_pk('event_views');
-select hasnt_pk('event_views_utm');
-select has_pk('event_waitlist');
-select has_pk('external_payments_config');
-select has_pk('group');
-select has_pk('group_category');
-select has_pk('group_member');
-select has_pk('group_permission');
-select has_pk('group_role');
-select has_pk('group_role_group_permission');
-select has_pk('group_site_layout');
-select has_pk('group_sponsor');
-select has_pk('group_team');
-select hasnt_pk('group_views');
-select has_pk('images');
-select has_pk('inbox_conversation');
-select has_pk('inbox_conversation_status');
-select has_pk('inbox_message');
-select has_pk('legacy_event_host');
-select has_pk('legacy_event_speaker');
-select has_pk('meeting');
-select has_pk('meeting_auto_end_check_outcome');
-select has_pk('meeting_provider');
-select has_pk('notification');
-select has_pk('notification_attachment');
-select has_pk('notification_category');
-select has_pk('notification_kind');
-select has_pk('notification_template_data');
-select has_pk('payment_job');
-select has_pk('payment_provider');
-select has_pk('payment_provider_tax_location');
-select has_pk('payment_provider_tax_product');
-select has_pk('region');
-select has_pk('session');
-select has_pk('session_kind');
-select has_pk('session_label');
-select has_pk('session_proposal');
-select has_pk('session_proposal_level');
-select has_pk('session_proposal_status');
-select has_pk('session_speaker');
-select has_pk('site');
-select has_pk('user');
-select has_pk('user_badge');
-select has_pk('user_group_notification_mute');
-select has_pk('user_notification_opt_out');
-select has_pk('utm_medium');
+-- Test: primary keys should match the expected snapshot
+select bag_eq(
+    $$
+        select
+            c.conrelid::regclass::text as table_name,
+            (
+                select array_agg(a.attname::text order by k.ord)
+                from unnest(c.conkey) with ordinality as k(attnum, ord)
+                join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum
+            ) as column_names
+        from pg_constraint c
+        where c.connamespace = 'public'::regnamespace
+        and c.contype = 'p'
+        and c.conrelid::regclass::text not in ('version_functions', 'version_schema')
+        and not exists (
+            select 1
+            from pg_depend d
+            where d.classid = 'pg_class'::regclass
+            and d.objid = c.conrelid
+            and d.deptype = 'e'
+        )
+    $$,
+    $$ values
+        ('admission_offer', array['admission_offer_id']),
+        ('attachment', array['attachment_id']),
+        ('audit_log', array['audit_log_id']),
+        ('auth_session', array['auth_session_id']),
+        ('badge', array['badge_id']),
+        ('badge_artwork', array['badge_artwork_id']),
+        ('badge_award_job', array['badge_award_job_id']),
+        ('badge_award_job_recipient', array['badge_award_job_id', 'position']),
+        ('badge_status_list', array['badge_status_list_id']),
+        ('cfs_submission', array['cfs_submission_id']),
+        ('cfs_submission_label', array['cfs_submission_id', 'event_label_id']),
+        ('cfs_submission_rating', array['cfs_submission_id', 'reviewer_id']),
+        ('cfs_submission_status', array['cfs_submission_status_id']),
+        ('community', array['community_id']),
+        ('community_permission', array['community_permission_id']),
+        ('community_redirect_settings', array['community_id']),
+        ('community_role', array['community_role_id']),
+        ('community_role_community_permission', array['community_permission_id', 'community_role_id']),
+        ('community_role_group_permission', array['community_role_id', 'group_permission_id']),
+        ('community_site_layout', array['community_site_layout_id']),
+        ('community_team', array['community_id', 'user_id']),
+        ('custom_notification', array['custom_notification_id']),
+        ('email_verification_code', array['email_verification_code_id']),
+        ('event', array['event_id']),
+        ('event_attendee', array['event_id', 'user_id']),
+        ('event_category', array['event_category_id']),
+        ('event_cohost', array['event_id', 'group_id']),
+        ('event_cohost_status', array['event_cohost_status_id']),
+        ('event_discount_code', array['event_discount_code_id']),
+        ('event_host', array['event_id', 'user_id']),
+        ('event_invitation_request', array['event_id', 'user_id']),
+        ('event_kind', array['event_kind_id']),
+        ('event_label', array['event_label_id']),
+        ('event_organizer', array['event_id', 'user_id']),
+        ('event_purchase', array['event_purchase_id']),
+        ('event_purchase_application_fee_adjustment', array['event_purchase_application_fee_adjustment_id']),
+        ('event_purchase_credit_note', array['event_purchase_credit_note_id']),
+        ('event_purchase_refund', array['event_purchase_refund_id']),
+        ('event_refund_request', array['event_refund_request_id']),
+        ('event_series', array['event_series_id']),
+        ('event_speaker', array['event_id', 'user_id']),
+        ('event_sponsor', array['group_sponsor_id', 'event_id']),
+        ('event_survey', array['event_survey_id']),
+        ('event_survey_response', array['event_survey_id', 'user_id']),
+        ('event_ticket_price_window', array['event_ticket_price_window_id']),
+        ('event_ticket_type', array['event_ticket_type_id']),
+        ('event_waitlist', array['event_id', 'user_id']),
+        ('external_payments_config', array['singleton']),
+        ('"group"', array['group_id']),
+        ('group_category', array['group_category_id']),
+        ('group_member', array['group_id', 'user_id']),
+        ('group_permission', array['group_permission_id']),
+        ('group_role', array['group_role_id']),
+        ('group_role_group_permission', array['group_permission_id', 'group_role_id']),
+        ('group_site_layout', array['group_site_layout_id']),
+        ('group_sponsor', array['group_sponsor_id']),
+        ('group_team', array['group_id', 'user_id']),
+        ('images', array['file_name']),
+        ('inbox_conversation', array['inbox_conversation_id']),
+        ('inbox_conversation_status', array['inbox_conversation_status_id']),
+        ('inbox_message', array['inbox_message_id']),
+        ('legacy_event_host', array['legacy_event_host_id']),
+        ('legacy_event_speaker', array['legacy_event_speaker_id']),
+        ('meeting', array['meeting_id']),
+        ('meeting_auto_end_check_outcome', array['meeting_auto_end_check_outcome_id']),
+        ('meeting_provider', array['meeting_provider_id']),
+        ('notification', array['notification_id']),
+        ('notification_attachment', array['notification_id', 'attachment_id']),
+        ('notification_category', array['notification_category_id']),
+        ('notification_kind', array['notification_kind_id']),
+        ('notification_template_data', array['notification_template_data_id']),
+        ('payment_job', array['payment_job_id']),
+        ('payment_provider', array['payment_provider_id']),
+        ('payment_provider_tax_location', array['payment_provider_tax_location_id']),
+        ('payment_provider_tax_product', array['payment_provider_tax_product_id']),
+        ('region', array['region_id']),
+        ('session', array['session_id']),
+        ('session_kind', array['session_kind_id']),
+        ('session_label', array['session_id', 'event_label_id']),
+        ('session_proposal', array['session_proposal_id']),
+        ('session_proposal_level', array['session_proposal_level_id']),
+        ('session_proposal_status', array['session_proposal_status_id']),
+        ('session_speaker', array['session_id', 'user_id']),
+        ('site', array['site_id']),
+        ('"user"', array['user_id']),
+        ('user_badge', array['user_badge_id']),
+        ('user_group_notification_mute', array['user_id', 'group_id']),
+        ('user_notification_opt_out', array['user_id', 'notification_category_id']),
+        ('utm_medium', array['utm_medium_id'])
+    $$,
+    'Primary keys should match expected tables and columns'
+);
 
--- Test: check tables have expected foreign keys
-select col_is_fk('admission_offer', 'event_discount_code_id', 'event_discount_code');
-select col_is_fk('admission_offer', 'event_id', 'event');
-select col_is_fk('admission_offer', 'event_ticket_type_id', 'event_ticket_type');
-select col_is_fk('admission_offer', 'organizer_user_id', 'user');
-select col_is_fk('admission_offer', 'user_id', 'user');
-select col_is_fk('badge', 'group_id', 'group');
-select col_is_fk('badge_artwork', 'group_id', 'group');
-select col_is_fk('badge_award_job', 'actor_user_id', 'user');
-select col_is_fk('badge_award_job', 'badge_id', 'badge');
-select col_is_fk('badge_award_job', 'community_id', 'community');
-select col_is_fk('badge_award_job', 'event_id', 'event');
-select col_is_fk('badge_award_job', 'group_id', 'group');
-select col_is_fk('badge_award_job_recipient', 'badge_award_job_id', 'badge_award_job');
-select col_is_fk('badge_award_job_recipient', 'user_id', 'user');
-select col_is_fk('badge_status_list', 'group_id', 'group');
-select col_is_fk('cfs_submission', 'event_id', 'event');
-select col_is_fk('cfs_submission', 'reviewed_by', 'user');
-select col_is_fk('cfs_submission', 'session_proposal_id', 'session_proposal');
-select col_is_fk('cfs_submission', 'status_id', 'cfs_submission_status');
-select fk_ok('cfs_submission_label', 'cfs_submission_id', 'cfs_submission', 'cfs_submission_id');
-select fk_ok('cfs_submission_label', 'event_label_id', 'event_label', 'event_label_id');
-select col_is_fk('cfs_submission_rating', 'cfs_submission_id', 'cfs_submission');
-select col_is_fk('cfs_submission_rating', 'reviewer_id', 'user');
-select col_is_fk('community', 'community_site_layout_id', 'community_site_layout');
-select col_is_fk('community_redirect_settings', 'community_id', 'community');
-select col_is_fk('community_role_community_permission', 'community_permission_id', 'community_permission');
-select col_is_fk('community_role_community_permission', 'community_role_id', 'community_role');
-select col_is_fk('community_role_group_permission', 'community_role_id', 'community_role');
-select col_is_fk('community_role_group_permission', 'group_permission_id', 'group_permission');
-select col_is_fk('community_team', 'community_id', 'community');
-select col_is_fk('community_team', 'user_id', 'user');
-select col_is_fk('community_views', 'community_id', 'community');
-select col_is_fk('custom_notification', 'community_id', 'community');
-select col_is_fk('custom_notification', 'created_by', 'user');
-select col_is_fk('custom_notification', 'event_id', 'event');
-select col_is_fk('custom_notification', 'group_id', 'group');
-select col_is_fk('email_verification_code', 'user_id', 'user');
-select col_is_fk('event', 'event_category_id', 'event_category');
-select col_is_fk('event', 'created_by', 'user');
-select col_is_fk('event', 'event_kind_id', 'event_kind');
-select col_is_fk('event', 'event_series_id', 'event_series');
-select col_is_fk('event', 'group_id', 'group');
-select col_is_fk('event', 'meeting_provider_id', 'meeting_provider');
-select col_is_fk('event', 'published_by', 'user');
-select col_is_fk('event_attendee', 'attendance_canceled_by_user_id', 'user');
-select col_is_fk('event_attendee', 'event_id', 'event');
-select col_is_fk('event_attendee', 'user_id', 'user');
-select col_is_fk('event_category', 'community_id', 'community');
-select col_is_fk('event_cohost', 'event_cohost_status_id', 'event_cohost_status');
-select col_is_fk('event_cohost', 'event_id', 'event');
-select col_is_fk('event_cohost', 'group_id', 'group');
-select col_is_fk('event_cohost', 'invited_by', 'user');
-select col_is_fk('event_cohost', 'responded_by', 'user');
-select col_is_fk('event_discount_code', 'event_id', 'event');
-select col_is_fk('event_host', 'event_id', 'event');
-select col_is_fk('event_host', 'user_id', 'user');
-select col_is_fk('event_invitation_request', 'event_ticket_type_id', 'event_ticket_type');
-select fk_ok('event_label', 'event_id', 'event', 'event_id');
-select col_is_fk('event_organizer', 'event_id', 'event');
-select col_is_fk('event_organizer', 'user_id', 'user');
-select col_is_fk('event_purchase', 'event_discount_code_id', 'event_discount_code');
-select col_is_fk('event_purchase', 'event_id', 'event');
-select col_is_fk('event_purchase', 'external_payment_marked_by_user_id', 'user');
-select col_is_fk('event_purchase', 'payment_provider_id', 'payment_provider');
-select col_is_fk('event_purchase', 'event_ticket_type_id', 'event_ticket_type');
-select col_is_fk('event_purchase', 'user_id', 'user');
-select col_is_fk(
-    'event_purchase_application_fee_adjustment',
-    'event_purchase_id',
-    'event_purchase'
-);
-select col_is_fk(
-    'event_purchase_application_fee_adjustment',
-    'payment_job_id',
-    'payment_job'
-);
-select col_is_fk('event_purchase_credit_note', 'event_purchase_refund_id', 'event_purchase_refund');
-select col_is_fk('event_purchase_credit_note', 'payment_job_id', 'payment_job');
-select col_is_fk('event_purchase_credit_note', 'payment_provider_id', 'payment_provider');
-select col_is_fk('event_purchase_refund', 'event_purchase_id', 'event_purchase');
-select col_is_fk('event_purchase_refund', 'event_refund_request_id', 'event_refund_request');
-select col_is_fk('event_purchase_refund', 'initiated_by_user_id', 'user');
-select col_is_fk('event_purchase_refund', 'payment_job_id', 'payment_job');
-select col_is_fk('event_purchase_refund', 'payment_provider_id', 'payment_provider');
-select col_is_fk('event_refund_request', 'event_purchase_id', 'event_purchase');
-select col_is_fk('event_refund_request', 'requested_by_user_id', 'user');
-select col_is_fk('event_refund_request', 'reviewed_by_user_id', 'user');
-select col_is_fk('event_ticket_price_window', 'event_ticket_type_id', 'event_ticket_type');
-select col_is_fk('event_ticket_type', 'event_id', 'event');
-select col_is_fk('event_series', 'created_by', 'user');
-select col_is_fk('event_series', 'group_id', 'group');
-select col_is_fk('event_speaker', 'event_id', 'event');
-select col_is_fk('event_speaker', 'user_id', 'user');
-select col_is_fk('event_sponsor', 'event_id', 'event');
-select col_is_fk('event_sponsor', 'group_sponsor_id', 'group_sponsor');
-select col_is_fk('event_survey', 'created_by', 'user');
-select col_is_fk('event_survey', 'event_id', 'event');
-select col_is_fk('event_survey_response', 'event_survey_id', 'event_survey');
-select col_is_fk('event_survey_response', 'user_id', 'user');
-select col_is_fk('event_views', 'event_id', 'event');
-select col_is_fk('event_views_utm', 'event_id', 'event');
-select col_is_fk('event_waitlist', 'event_id', 'event');
-select col_is_fk('event_waitlist', 'event_ticket_type_id', 'event_ticket_type');
-select col_is_fk('event_waitlist', 'user_id', 'user');
-select col_is_fk('group', 'community_id', 'community');
-select col_is_fk('group', 'group_category_id', 'group_category');
-select col_is_fk('group', 'group_site_layout_id', 'group_site_layout');
-select col_is_fk('group', 'parent_group_id', 'group');
-select col_is_fk('group', 'region_id', 'region');
-select col_is_fk('group_category', 'community_id', 'community');
-select col_is_fk('group_member', 'group_id', 'group');
-select col_is_fk('group_member', 'user_id', 'user');
-select col_is_fk('group_role_group_permission', 'group_permission_id', 'group_permission');
-select col_is_fk('group_role_group_permission', 'group_role_id', 'group_role');
-select col_is_fk('group_sponsor', 'group_id', 'group');
-select col_is_fk('group_team', 'group_id', 'group');
-select col_is_fk('group_team', 'role', 'group_role');
-select col_is_fk('group_team', 'user_id', 'user');
-select col_is_fk('group_views', 'group_id', 'group');
-select col_is_fk('images', 'created_by', 'user');
-select fk_ok(
-    'inbox_conversation',
-    array['event_id', 'group_id']::name[],
-    'event',
-    array['event_id', 'group_id']::name[]
-);
-select col_is_fk('inbox_conversation', 'group_id', 'group');
-select col_is_fk('inbox_conversation', 'inbox_conversation_status_id', 'inbox_conversation_status');
-select col_is_fk('inbox_conversation', 'user_id', 'user');
-select col_is_fk('inbox_message', 'author_user_id', 'user');
-select col_is_fk('inbox_message', 'inbox_conversation_id', 'inbox_conversation');
-select col_is_fk('legacy_event_host', 'event_id', 'event');
-select col_is_fk('legacy_event_speaker', 'event_id', 'event');
-select col_is_fk('meeting', 'auto_end_check_outcome', 'meeting_auto_end_check_outcome');
-select col_is_fk('meeting', 'event_id', 'event');
-select col_is_fk('meeting', 'meeting_provider_id', 'meeting_provider');
-select col_is_fk('meeting', 'session_id', 'session');
-select col_is_fk('notification', 'kind', 'notification_kind');
-select col_is_fk('notification', 'notification_template_data_id', 'notification_template_data');
-select col_is_fk('notification', 'user_id', 'user');
-select col_is_fk('notification_attachment', 'attachment_id', 'attachment');
-select col_is_fk('notification_attachment', 'notification_id', 'notification');
-select col_is_fk('notification_kind', 'notification_category_id', 'notification_category');
-select col_is_fk('payment_job', 'event_purchase_id', 'event_purchase');
-select col_is_fk('payment_job', 'payment_provider_id', 'payment_provider');
-select col_is_fk('payment_job', 'recovery_completed_by_user_id', 'user');
-select col_is_fk('payment_provider_tax_location', 'payment_provider_id', 'payment_provider');
-select col_is_fk('payment_provider_tax_product', 'payment_provider_id', 'payment_provider');
-select col_is_fk('region', 'community_id', 'community');
-select col_is_fk('session', 'event_id', 'event');
-select col_is_fk('session', 'cfs_submission_id', 'cfs_submission');
-select col_is_fk('session', 'meeting_provider_id', 'meeting_provider');
-select col_is_fk('session', 'session_kind_id', 'session_kind');
-select fk_ok('session_label', 'event_label_id', 'event_label', 'event_label_id');
-select fk_ok('session_label', 'session_id', 'session', 'session_id');
-select col_is_fk('session_proposal', 'co_speaker_user_id', 'user');
-select col_is_fk('session_proposal', 'session_proposal_level_id', 'session_proposal_level');
-select col_is_fk('session_proposal', 'session_proposal_status_id', 'session_proposal_status');
-select col_is_fk('session_proposal', 'user_id', 'user');
-select col_is_fk('session_speaker', 'session_id', 'session');
-select col_is_fk('session_speaker', 'user_id', 'user');
-select fk_ok(
-    'user_badge',
-    array['badge_id', 'group_id']::name[],
-    'badge',
-    array['badge_id', 'group_id']::name[]
-);
-select fk_ok(
-    'user_badge',
-    array['badge_status_list_id', 'group_id']::name[],
-    'badge_status_list',
-    array['badge_status_list_id', 'group_id']::name[]
-);
-select fk_ok(
-    'user_badge',
-    array['event_id', 'group_id']::name[],
-    'event',
-    array['event_id', 'group_id']::name[]
-);
-select col_is_fk('user_badge', 'group_id', 'group');
-select col_is_fk('user_badge', 'revoked_by_user_id', 'user');
-select col_is_fk('user_badge', 'user_id', 'user');
-select col_is_fk('user_group_notification_mute', 'group_id', 'group');
-select col_is_fk('user_group_notification_mute', 'user_id', 'user');
-select col_is_fk('user_notification_opt_out', 'notification_category_id', 'notification_category');
-select col_is_fk('user_notification_opt_out', 'user_id', 'user');
-select fk_ok(
-    'admission_offer',
-    array['event_id', 'event_discount_code_id']::name[],
-    'event_discount_code',
-    array['event_id', 'event_discount_code_id']::name[]
-);
-select fk_ok(
-    'admission_offer',
-    array['event_id', 'event_ticket_type_id']::name[],
-    'event_ticket_type',
-    array['event_id', 'event_ticket_type_id']::name[]
-);
-select fk_ok(
-    'event_invitation_request',
-    array['event_id', 'event_ticket_type_id']::name[],
-    'event_ticket_type',
-    array['event_id', 'event_ticket_type_id']::name[]
-);
-select fk_ok(
-    'event_purchase',
-    array['admission_offer_id', 'event_id', 'user_id']::name[],
-    'admission_offer',
-    array['admission_offer_id', 'event_id', 'user_id']::name[]
-);
-select fk_ok(
-    'event_purchase',
-    array['event_id', 'event_discount_code_id']::name[],
-    'event_discount_code',
-    array['event_id', 'event_discount_code_id']::name[]
-);
-select fk_ok(
-    'event_purchase',
-    array['event_id', 'event_ticket_type_id']::name[],
-    'event_ticket_type',
-    array['event_id', 'event_ticket_type_id']::name[]
-);
-select fk_ok(
-    'event_waitlist',
-    array['event_id', 'event_ticket_type_id']::name[],
-    'event_ticket_type',
-    array['event_id', 'event_ticket_type_id']::name[]
+-- Test: foreign keys should match the expected snapshot
+select bag_eq(
+    $$
+        select
+            c.conrelid::regclass::text as table_name,
+            (
+                select array_agg(a.attname::text order by k.ord)
+                from unnest(c.conkey) with ordinality as k(attnum, ord)
+                join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum
+            ) as column_names,
+            c.confrelid::regclass::text as referenced_table_name,
+            (
+                select array_agg(a.attname::text order by k.ord)
+                from unnest(c.confkey) with ordinality as k(attnum, ord)
+                join pg_attribute a on a.attrelid = c.confrelid and a.attnum = k.attnum
+            ) as referenced_column_names,
+            case c.confdeltype
+                when 'a' then 'no action'
+                when 'c' then 'cascade'
+                when 'd' then 'set default'
+                when 'n' then 'set null' || coalesce(
+                    ' (' || (
+                        select string_agg(a.attname::text, ', ' order by k.ord)
+                        from unnest(c.confdelsetcols) with ordinality as k(attnum, ord)
+                        join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum
+                    ) || ')',
+                    ''
+                )
+                when 'r' then 'restrict'
+            end as on_delete
+        from pg_constraint c
+        where c.connamespace = 'public'::regnamespace
+        and c.contype = 'f'
+        and c.conrelid::regclass::text not in ('version_functions', 'version_schema')
+        and not exists (
+            select 1
+            from pg_depend d
+            where d.classid = 'pg_class'::regclass
+            and d.objid = c.conrelid
+            and d.deptype = 'e'
+        )
+    $$,
+    $$ values
+        (
+            'admission_offer',
+            array['event_discount_code_id'],
+            'event_discount_code',
+            array['event_discount_code_id'],
+            'no action'
+        ),
+        (
+            'admission_offer',
+            array['event_id', 'event_discount_code_id'],
+            'event_discount_code',
+            array['event_id', 'event_discount_code_id'],
+            'no action'
+        ),
+        (
+            'admission_offer',
+            array['event_id', 'event_ticket_type_id'],
+            'event_ticket_type',
+            array['event_id', 'event_ticket_type_id'],
+            'no action'
+        ),
+        ('admission_offer', array['event_id'], 'event', array['event_id'], 'no action'),
+        (
+            'admission_offer',
+            array['event_ticket_type_id'],
+            'event_ticket_type',
+            array['event_ticket_type_id'],
+            'no action'
+        ),
+        ('admission_offer', array['organizer_user_id'], '"user"', array['user_id'], 'no action'),
+        ('admission_offer', array['user_id'], '"user"', array['user_id'], 'no action'),
+        ('badge', array['group_id'], '"group"', array['group_id'], 'no action'),
+        ('badge_artwork', array['group_id'], '"group"', array['group_id'], 'no action'),
+        ('badge_award_job', array['actor_user_id'], '"user"', array['user_id'], 'set null'),
+        ('badge_award_job', array['badge_id'], 'badge', array['badge_id'], 'set null'),
+        ('badge_award_job', array['community_id'], 'community', array['community_id'], 'no action'),
+        ('badge_award_job', array['event_id'], 'event', array['event_id'], 'set null'),
+        ('badge_award_job', array['group_id'], '"group"', array['group_id'], 'no action'),
+        (
+            'badge_award_job_recipient',
+            array['badge_award_job_id'],
+            'badge_award_job',
+            array['badge_award_job_id'],
+            'cascade'
+        ),
+        ('badge_award_job_recipient', array['user_id'], '"user"', array['user_id'], 'set null'),
+        ('badge_status_list', array['group_id'], '"group"', array['group_id'], 'no action'),
+        ('cfs_submission', array['event_id'], 'event', array['event_id'], 'no action'),
+        ('cfs_submission', array['reviewed_by'], '"user"', array['user_id'], 'no action'),
+        (
+            'cfs_submission',
+            array['session_proposal_id'],
+            'session_proposal',
+            array['session_proposal_id'],
+            'no action'
+        ),
+        (
+            'cfs_submission',
+            array['status_id'],
+            'cfs_submission_status',
+            array['cfs_submission_status_id'],
+            'no action'
+        ),
+        (
+            'cfs_submission_label',
+            array['cfs_submission_id'],
+            'cfs_submission',
+            array['cfs_submission_id'],
+            'cascade'
+        ),
+        (
+            'cfs_submission_label',
+            array['event_label_id'],
+            'event_label',
+            array['event_label_id'],
+            'cascade'
+        ),
+        (
+            'cfs_submission_rating',
+            array['cfs_submission_id'],
+            'cfs_submission',
+            array['cfs_submission_id'],
+            'cascade'
+        ),
+        ('cfs_submission_rating', array['reviewer_id'], '"user"', array['user_id'], 'no action'),
+        (
+            'community',
+            array['community_site_layout_id'],
+            'community_site_layout',
+            array['community_site_layout_id'],
+            'no action'
+        ),
+        (
+            'community_redirect_settings',
+            array['community_id'],
+            'community',
+            array['community_id'],
+            'cascade'
+        ),
+        (
+            'community_role_community_permission',
+            array['community_permission_id'],
+            'community_permission',
+            array['community_permission_id'],
+            'no action'
+        ),
+        (
+            'community_role_community_permission',
+            array['community_role_id'],
+            'community_role',
+            array['community_role_id'],
+            'no action'
+        ),
+        (
+            'community_role_group_permission',
+            array['community_role_id'],
+            'community_role',
+            array['community_role_id'],
+            'no action'
+        ),
+        (
+            'community_role_group_permission',
+            array['group_permission_id'],
+            'group_permission',
+            array['group_permission_id'],
+            'no action'
+        ),
+        ('community_team', array['community_id'], 'community', array['community_id'], 'no action'),
+        ('community_team', array['role'], 'community_role', array['community_role_id'], 'no action'),
+        ('community_team', array['user_id'], '"user"', array['user_id'], 'no action'),
+        ('community_views', array['community_id'], 'community', array['community_id'], 'set null'),
+        (
+            'custom_notification',
+            array['community_id'],
+            'community',
+            array['community_id'],
+            'cascade'
+        ),
+        ('custom_notification', array['created_by'], '"user"', array['user_id'], 'set null'),
+        ('custom_notification', array['event_id'], 'event', array['event_id'], 'cascade'),
+        ('custom_notification', array['group_id'], '"group"', array['group_id'], 'cascade'),
+        ('email_verification_code', array['user_id'], '"user"', array['user_id'], 'cascade'),
+        ('event', array['created_by'], '"user"', array['user_id'], 'set null'),
+        (
+            'event',
+            array['event_category_id'],
+            'event_category',
+            array['event_category_id'],
+            'no action'
+        ),
+        ('event', array['event_kind_id'], 'event_kind', array['event_kind_id'], 'no action'),
+        ('event', array['event_series_id'], 'event_series', array['event_series_id'], 'no action'),
+        ('event', array['group_id'], '"group"', array['group_id'], 'no action'),
+        (
+            'event',
+            array['meeting_provider_id'],
+            'meeting_provider',
+            array['meeting_provider_id'],
+            'no action'
+        ),
+        ('event', array['published_by'], '"user"', array['user_id'], 'no action'),
+        (
+            'event_attendee',
+            array['attendance_canceled_by_user_id'],
+            '"user"',
+            array['user_id'],
+            'no action'
+        ),
+        ('event_attendee', array['event_id'], 'event', array['event_id'], 'no action'),
+        ('event_attendee', array['user_id'], '"user"', array['user_id'], 'no action'),
+        ('event_category', array['community_id'], 'community', array['community_id'], 'no action'),
+        (
+            'event_cohost',
+            array['event_cohost_status_id'],
+            'event_cohost_status',
+            array['event_cohost_status_id'],
+            'no action'
+        ),
+        ('event_cohost', array['event_id'], 'event', array['event_id'], 'no action'),
+        ('event_cohost', array['group_id'], '"group"', array['group_id'], 'no action'),
+        ('event_cohost', array['invited_by'], '"user"', array['user_id'], 'no action'),
+        ('event_cohost', array['responded_by'], '"user"', array['user_id'], 'no action'),
+        ('event_discount_code', array['event_id'], 'event', array['event_id'], 'cascade'),
+        ('event_host', array['event_id'], 'event', array['event_id'], 'no action'),
+        ('event_host', array['user_id'], '"user"', array['user_id'], 'no action'),
+        (
+            'event_invitation_request',
+            array['event_id', 'event_ticket_type_id'],
+            'event_ticket_type',
+            array['event_id', 'event_ticket_type_id'],
+            'no action'
+        ),
+        ('event_invitation_request', array['event_id'], 'event', array['event_id'], 'no action'),
+        (
+            'event_invitation_request',
+            array['event_ticket_type_id'],
+            'event_ticket_type',
+            array['event_ticket_type_id'],
+            'no action'
+        ),
+        ('event_invitation_request', array['reviewed_by'], '"user"', array['user_id'], 'no action'),
+        ('event_invitation_request', array['user_id'], '"user"', array['user_id'], 'no action'),
+        ('event_label', array['event_id'], 'event', array['event_id'], 'cascade'),
+        ('event_organizer', array['event_id'], 'event', array['event_id'], 'no action'),
+        ('event_organizer', array['user_id'], '"user"', array['user_id'], 'no action'),
+        (
+            'event_purchase',
+            array['admission_offer_id', 'event_id', 'user_id'],
+            'admission_offer',
+            array['admission_offer_id', 'event_id', 'user_id'],
+            'no action'
+        ),
+        (
+            'event_purchase',
+            array['event_discount_code_id'],
+            'event_discount_code',
+            array['event_discount_code_id'],
+            'no action'
+        ),
+        (
+            'event_purchase',
+            array['event_id', 'event_discount_code_id'],
+            'event_discount_code',
+            array['event_id', 'event_discount_code_id'],
+            'no action'
+        ),
+        (
+            'event_purchase',
+            array['event_id', 'event_ticket_type_id'],
+            'event_ticket_type',
+            array['event_id', 'event_ticket_type_id'],
+            'no action'
+        ),
+        ('event_purchase', array['event_id'], 'event', array['event_id'], 'no action'),
+        (
+            'event_purchase',
+            array['event_ticket_type_id'],
+            'event_ticket_type',
+            array['event_ticket_type_id'],
+            'no action'
+        ),
+        (
+            'event_purchase',
+            array['external_payment_marked_by_user_id'],
+            '"user"',
+            array['user_id'],
+            'no action'
+        ),
+        (
+            'event_purchase',
+            array['payment_provider_id'],
+            'payment_provider',
+            array['payment_provider_id'],
+            'no action'
+        ),
+        ('event_purchase', array['user_id'], '"user"', array['user_id'], 'no action'),
+        (
+            'event_purchase_application_fee_adjustment',
+            array['event_purchase_id'],
+            'event_purchase',
+            array['event_purchase_id'],
+            'no action'
+        ),
+        (
+            'event_purchase_application_fee_adjustment',
+            array['payment_job_id'],
+            'payment_job',
+            array['payment_job_id'],
+            'no action'
+        ),
+        (
+            'event_purchase_credit_note',
+            array['event_purchase_refund_id'],
+            'event_purchase_refund',
+            array['event_purchase_refund_id'],
+            'no action'
+        ),
+        (
+            'event_purchase_credit_note',
+            array['payment_job_id'],
+            'payment_job',
+            array['payment_job_id'],
+            'no action'
+        ),
+        (
+            'event_purchase_credit_note',
+            array['payment_provider_id'],
+            'payment_provider',
+            array['payment_provider_id'],
+            'no action'
+        ),
+        (
+            'event_purchase_refund',
+            array['event_purchase_id'],
+            'event_purchase',
+            array['event_purchase_id'],
+            'no action'
+        ),
+        (
+            'event_purchase_refund',
+            array['event_refund_request_id'],
+            'event_refund_request',
+            array['event_refund_request_id'],
+            'no action'
+        ),
+        (
+            'event_purchase_refund',
+            array['initiated_by_user_id'],
+            '"user"',
+            array['user_id'],
+            'no action'
+        ),
+        (
+            'event_purchase_refund',
+            array['payment_job_id'],
+            'payment_job',
+            array['payment_job_id'],
+            'no action'
+        ),
+        (
+            'event_purchase_refund',
+            array['payment_provider_id'],
+            'payment_provider',
+            array['payment_provider_id'],
+            'no action'
+        ),
+        (
+            'event_refund_request',
+            array['event_purchase_id'],
+            'event_purchase',
+            array['event_purchase_id'],
+            'no action'
+        ),
+        (
+            'event_refund_request',
+            array['requested_by_user_id'],
+            '"user"',
+            array['user_id'],
+            'no action'
+        ),
+        (
+            'event_refund_request',
+            array['reviewed_by_user_id'],
+            '"user"',
+            array['user_id'],
+            'no action'
+        ),
+        ('event_series', array['created_by'], '"user"', array['user_id'], 'no action'),
+        ('event_series', array['group_id'], '"group"', array['group_id'], 'no action'),
+        ('event_speaker', array['event_id'], 'event', array['event_id'], 'no action'),
+        ('event_speaker', array['user_id'], '"user"', array['user_id'], 'no action'),
+        ('event_sponsor', array['event_id'], 'event', array['event_id'], 'no action'),
+        (
+            'event_sponsor',
+            array['group_sponsor_id'],
+            'group_sponsor',
+            array['group_sponsor_id'],
+            'no action'
+        ),
+        ('event_survey', array['created_by'], '"user"', array['user_id'], 'set null'),
+        ('event_survey', array['event_id'], 'event', array['event_id'], 'cascade'),
+        (
+            'event_survey_response',
+            array['event_survey_id'],
+            'event_survey',
+            array['event_survey_id'],
+            'cascade'
+        ),
+        ('event_survey_response', array['user_id'], '"user"', array['user_id'], 'cascade'),
+        (
+            'event_ticket_price_window',
+            array['event_ticket_type_id'],
+            'event_ticket_type',
+            array['event_ticket_type_id'],
+            'cascade'
+        ),
+        ('event_ticket_type', array['event_id'], 'event', array['event_id'], 'cascade'),
+        ('event_views', array['event_id'], 'event', array['event_id'], 'set null'),
+        ('event_views_utm', array['event_id'], 'event', array['event_id'], 'set null'),
+        (
+            'event_waitlist',
+            array['event_id', 'event_ticket_type_id'],
+            'event_ticket_type',
+            array['event_id', 'event_ticket_type_id'],
+            'no action'
+        ),
+        ('event_waitlist', array['event_id'], 'event', array['event_id'], 'no action'),
+        (
+            'event_waitlist',
+            array['event_ticket_type_id'],
+            'event_ticket_type',
+            array['event_ticket_type_id'],
+            'no action'
+        ),
+        ('event_waitlist', array['user_id'], '"user"', array['user_id'], 'no action'),
+        ('"group"', array['community_id'], 'community', array['community_id'], 'no action'),
+        (
+            '"group"',
+            array['group_category_id'],
+            'group_category',
+            array['group_category_id'],
+            'no action'
+        ),
+        (
+            '"group"',
+            array['group_site_layout_id'],
+            'group_site_layout',
+            array['group_site_layout_id'],
+            'no action'
+        ),
+        ('"group"', array['parent_group_id'], '"group"', array['group_id'], 'no action'),
+        ('"group"', array['region_id'], 'region', array['region_id'], 'no action'),
+        ('group_category', array['community_id'], 'community', array['community_id'], 'no action'),
+        ('group_member', array['group_id'], '"group"', array['group_id'], 'no action'),
+        ('group_member', array['user_id'], '"user"', array['user_id'], 'no action'),
+        (
+            'group_role_group_permission',
+            array['group_permission_id'],
+            'group_permission',
+            array['group_permission_id'],
+            'no action'
+        ),
+        (
+            'group_role_group_permission',
+            array['group_role_id'],
+            'group_role',
+            array['group_role_id'],
+            'no action'
+        ),
+        ('group_sponsor', array['group_id'], '"group"', array['group_id'], 'no action'),
+        ('group_team', array['group_id'], '"group"', array['group_id'], 'no action'),
+        ('group_team', array['role'], 'group_role', array['group_role_id'], 'no action'),
+        ('group_team', array['user_id'], '"user"', array['user_id'], 'no action'),
+        ('group_views', array['group_id'], '"group"', array['group_id'], 'set null'),
+        ('images', array['created_by'], '"user"', array['user_id'], 'no action'),
+        (
+            'inbox_conversation',
+            array['event_id', 'group_id'],
+            'event',
+            array['event_id', 'group_id'],
+            'set null (event_id)'
+        ),
+        ('inbox_conversation', array['group_id'], '"group"', array['group_id'], 'no action'),
+        (
+            'inbox_conversation',
+            array['inbox_conversation_status_id'],
+            'inbox_conversation_status',
+            array['inbox_conversation_status_id'],
+            'no action'
+        ),
+        ('inbox_conversation', array['user_id'], '"user"', array['user_id'], 'set null'),
+        ('inbox_message', array['author_user_id'], '"user"', array['user_id'], 'set null'),
+        (
+            'inbox_message',
+            array['inbox_conversation_id'],
+            'inbox_conversation',
+            array['inbox_conversation_id'],
+            'no action'
+        ),
+        ('legacy_event_host', array['event_id'], 'event', array['event_id'], 'no action'),
+        ('legacy_event_speaker', array['event_id'], 'event', array['event_id'], 'no action'),
+        (
+            'meeting',
+            array['auto_end_check_outcome'],
+            'meeting_auto_end_check_outcome',
+            array['meeting_auto_end_check_outcome_id'],
+            'no action'
+        ),
+        ('meeting', array['event_id'], 'event', array['event_id'], 'set null'),
+        (
+            'meeting',
+            array['meeting_provider_id'],
+            'meeting_provider',
+            array['meeting_provider_id'],
+            'no action'
+        ),
+        ('meeting', array['session_id'], 'session', array['session_id'], 'set null'),
+        ('notification', array['kind'], 'notification_kind', array['name'], 'restrict'),
+        (
+            'notification',
+            array['notification_template_data_id'],
+            'notification_template_data',
+            array['notification_template_data_id'],
+            'no action'
+        ),
+        ('notification', array['user_id'], '"user"', array['user_id'], 'cascade'),
+        (
+            'notification_attachment',
+            array['attachment_id'],
+            'attachment',
+            array['attachment_id'],
+            'restrict'
+        ),
+        (
+            'notification_attachment',
+            array['notification_id'],
+            'notification',
+            array['notification_id'],
+            'cascade'
+        ),
+        (
+            'notification_kind',
+            array['notification_category_id'],
+            'notification_category',
+            array['notification_category_id'],
+            'no action'
+        ),
+        (
+            'payment_job',
+            array['event_purchase_id'],
+            'event_purchase',
+            array['event_purchase_id'],
+            'no action'
+        ),
+        (
+            'payment_job',
+            array['payment_provider_id'],
+            'payment_provider',
+            array['payment_provider_id'],
+            'no action'
+        ),
+        (
+            'payment_job',
+            array['recovery_completed_by_user_id'],
+            '"user"',
+            array['user_id'],
+            'no action'
+        ),
+        (
+            'payment_provider_tax_location',
+            array['payment_provider_id'],
+            'payment_provider',
+            array['payment_provider_id'],
+            'no action'
+        ),
+        (
+            'payment_provider_tax_product',
+            array['payment_provider_id'],
+            'payment_provider',
+            array['payment_provider_id'],
+            'no action'
+        ),
+        ('region', array['community_id'], 'community', array['community_id'], 'no action'),
+        (
+            'session',
+            array['cfs_submission_id'],
+            'cfs_submission',
+            array['cfs_submission_id'],
+            'no action'
+        ),
+        ('session', array['event_id'], 'event', array['event_id'], 'cascade'),
+        (
+            'session',
+            array['meeting_provider_id'],
+            'meeting_provider',
+            array['meeting_provider_id'],
+            'no action'
+        ),
+        ('session', array['session_kind_id'], 'session_kind', array['session_kind_id'], 'no action'),
+        (
+            'session_label',
+            array['event_label_id'],
+            'event_label',
+            array['event_label_id'],
+            'cascade'
+        ),
+        ('session_label', array['session_id'], 'session', array['session_id'], 'cascade'),
+        ('session_proposal', array['co_speaker_user_id'], '"user"', array['user_id'], 'no action'),
+        (
+            'session_proposal',
+            array['session_proposal_level_id'],
+            'session_proposal_level',
+            array['session_proposal_level_id'],
+            'no action'
+        ),
+        (
+            'session_proposal',
+            array['session_proposal_status_id'],
+            'session_proposal_status',
+            array['session_proposal_status_id'],
+            'no action'
+        ),
+        ('session_proposal', array['user_id'], '"user"', array['user_id'], 'no action'),
+        ('session_speaker', array['session_id'], 'session', array['session_id'], 'cascade'),
+        ('session_speaker', array['user_id'], '"user"', array['user_id'], 'no action'),
+        (
+            'user_badge',
+            array['badge_id', 'group_id'],
+            'badge',
+            array['badge_id', 'group_id'],
+            'set null (badge_id)'
+        ),
+        (
+            'user_badge',
+            array['badge_status_list_id', 'group_id'],
+            'badge_status_list',
+            array['badge_status_list_id', 'group_id'],
+            'no action'
+        ),
+        (
+            'user_badge',
+            array['event_id', 'group_id'],
+            'event',
+            array['event_id', 'group_id'],
+            'set null (event_id)'
+        ),
+        ('user_badge', array['group_id'], '"group"', array['group_id'], 'no action'),
+        ('user_badge', array['revoked_by_user_id'], '"user"', array['user_id'], 'set null'),
+        ('user_badge', array['user_id'], '"user"', array['user_id'], 'set null'),
+        ('user_group_notification_mute', array['group_id'], '"group"', array['group_id'], 'cascade'),
+        ('user_group_notification_mute', array['user_id'], '"user"', array['user_id'], 'cascade'),
+        (
+            'user_notification_opt_out',
+            array['notification_category_id'],
+            'notification_category',
+            array['notification_category_id'],
+            'no action'
+        ),
+        ('user_notification_opt_out', array['user_id'], '"user"', array['user_id'], 'cascade')
+    $$,
+    'Foreign keys should match expected columns, referenced keys and delete actions'
 );
 
 -- ============================================================================

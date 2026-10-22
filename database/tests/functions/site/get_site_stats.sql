@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(1);
 
 -- ============================================================================
 -- VARIABLES
@@ -57,7 +57,7 @@ select fx_community(:'community3ID', jsonb_build_object('active', false));
 select fx_group_category(:'groupCategory3ID', :'community3ID');
 select fx_event_category(:'eventCategory3ID', :'community3ID');
 
--- Groups covering active, deleted and inactive-community stats states
+-- Groups covering active, inactive and inactive-community stats states
 select fx_group(:'group1ID', :'community1ID', :'groupCategoryID', jsonb_build_object(
     'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' + interval '10 days'
 ));
@@ -66,8 +66,7 @@ select fx_group(:'group2ID', :'community2ID', :'groupCategory2ID', jsonb_build_o
 ));
 select fx_group(:'group3ID', :'community1ID', :'groupCategoryID', jsonb_build_object(
     'active', false,
-    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '10 days',
-    'deleted', true
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '10 days'
 ));
 select fx_group(:'group4ID', :'community3ID', :'groupCategory3ID', jsonb_build_object(
     'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' + interval '15 days'
@@ -77,7 +76,7 @@ select fx_group(:'group4ID', :'community3ID', :'groupCategory3ID', jsonb_build_o
 -- month_4: user1 joins group1
 -- month_3: user2 joins group1
 -- month_2: user3 joins group2
--- month_1: user4 joins group3 (deleted group)
+-- month_1: user4 joins group3 (inactive group)
 -- month_1: user5 joins group4 (inactive community)
 insert into group_member (group_id, user_id, created_at)
 values
@@ -169,6 +168,14 @@ values
 -- TESTS
 -- ============================================================================
 
+-- Rows the expected payload must not count:
+-- - group3 (inactive group) and its member user4: groups and members totals
+-- - event4 (unpublished) and its attendee user5: events and attendees totals
+-- - group4, its member user5, event5 and its attendee user1 (inactive
+--   community): groups, members, events and attendees totals
+-- - attendee user3 of event1 (invitation-pending): attendees total
+-- - event1 co-hosted by group2 (approved co-host): events total
+
 -- Should return correct site stats as JSON
 select is(
     get_site_stats()::jsonb,
@@ -236,33 +243,6 @@ select is(
         from months
     ),
     'Should return correct site stats as JSON'
-);
-
--- Should exclude deleted groups and unpublished events
-select is(
-    (get_site_stats()::jsonb->'groups'->>'total')::int,
-    2,
-    'Should exclude deleted groups from totals'
-);
-
-select is(
-    (get_site_stats()::jsonb->'events'->>'total')::int,
-    3,
-    'Should exclude unpublished events from totals'
-);
-
--- Should exclude data from inactive communities
-select is(
-    (get_site_stats()::jsonb->'members'->>'total')::int,
-    3,
-    'Should exclude members of groups in inactive communities from totals'
-);
-
--- Should not add co-host rows to site event totals
-select is(
-    (get_site_stats()::jsonb->'events'->>'total')::int,
-    3,
-    'Should not add co-host rows to site event totals'
 );
 
 -- ============================================================================

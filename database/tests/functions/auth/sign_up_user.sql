@@ -1,43 +1,63 @@
+-- Tests signing up users with verified and unverified emails.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set defaultVerificationCodeID '0a000000-0000-0000-0000-000000000001'
+\set existingEmailUserID '0a000000-0000-0000-0000-000000000005'
 \set missingTemplateVerificationCodeID '0a000000-0000-0000-0000-000000000002'
+\set takenUsernameUserID '0a000000-0000-0000-0000-000000000004'
 \set unverifiedVerificationCodeID '0a000000-0000-0000-0000-000000000003'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- User holding the email reused with different case by the duplicate scenario
+select fx_user(:'existingEmailUserID', jsonb_build_object(
+    'email', 'sign-up-user-existing@example.com'
+));
+
+-- User holding the username requested by the suffix scenario
+select fx_user(:'takenUsernameUserID', jsonb_build_object(
+    'username', 'sign-up-user-taken'
+));
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should not generate verification code when email_verified is true
-with verified_user_result as (
-    select * from sign_up_user(
-        jsonb_build_object(
-            'email', 'verified-sign-up@example.com',
-            'username', 'verifieduser',
-            'name', 'Verified User',
-            'password', 'hashedpassword123',
-            'provider', jsonb_build_object(
-                'github', jsonb_build_object(
-                    'username', 'verifieduser-gh'
-                )
+-- Sign up a user with a verified email
+select to_jsonb(signed_up) as "verifiedSignUp"
+from sign_up_user(
+    jsonb_build_object(
+        'email', 'verified-sign-up@example.com',
+        'username', 'verifieduser',
+        'name', 'Verified User',
+        'password', 'hashedpassword123',
+        'provider', jsonb_build_object(
+            'github', jsonb_build_object(
+                'username', 'verifieduser-gh'
             )
-        ),
-        true,
-        null::uuid,
-        null::jsonb
-    )
-)
-select ok(
-    ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
+        )
+    ),
+    true,
+    null::uuid,
+    null::jsonb
+) as signed_up \gset
+
+-- Should return the verified user
+select is(
+    (:'verifiedSignUp'::jsonb->'user') - 'auth_hash' - 'user_id',
+    '{
         "email": "verified-sign-up@example.com",
         "email_verified": true,
         "name": "Verified User",
@@ -47,44 +67,103 @@ select ok(
             }
         },
         "username": "verifieduser"
-    }'::jsonb)
-    and ("user"::jsonb ? 'auth_hash')
-    and length(("user"::jsonb->>'auth_hash')) = 64
-    and verification_code is null,
-    'Should not generate verification code when email_verified is true'
-) from verified_user_result;
+    }'::jsonb,
+    'Should return the verified user'
+);
 
--- Should store caller-provided verification code when email_verified is false
-with unverified_user_result as (
-    select * from sign_up_user(
-        jsonb_build_object(
-            'email', 'unverified-sign-up@example.com',
-            'username', 'unverifieduser',
-            'name', 'Unverified User',
-            'password', 'hashedpassword456'
-        ),
-        false,
-        :'unverifiedVerificationCodeID',
-        jsonb_build_object(
-            'link', 'https://example.test/verify-email/' || :'unverifiedVerificationCodeID',
-            'theme', jsonb_build_object('primary_color', '#123456')
-        )
+-- Should generate a 64 character auth hash for the verified user
+select is(
+    length(:'verifiedSignUp'::jsonb->'user'->>'auth_hash'),
+    64,
+    'Should generate a 64 character auth hash for the verified user'
+);
+
+-- Should not return a verification code when email_verified is true
+select is(
+    :'verifiedSignUp'::jsonb->'verification_code',
+    'null'::jsonb,
+    'Should not return a verification code when email_verified is true'
+);
+
+-- Should not store a verification code when email_verified is true
+select is_empty(
+    format(
+        $$select 1 from email_verification_code where user_id = %L::uuid$$,
+        :'verifiedSignUp'::jsonb->'user'->>'user_id'
+    ),
+    'Should not store a verification code when email_verified is true'
+);
+
+-- Should not enqueue a notification when email_verified is true
+select is_empty(
+    format(
+        $$select 1 from notification where user_id = %L::uuid$$,
+        :'verifiedSignUp'::jsonb->'user'->>'user_id'
+    ),
+    'Should not enqueue a notification when email_verified is true'
+);
+
+-- Sign up a user with an unverified email
+select to_jsonb(signed_up) as "unverifiedSignUp"
+from sign_up_user(
+    jsonb_build_object(
+        'email', 'unverified-sign-up@example.com',
+        'username', 'unverifieduser',
+        'name', 'Unverified User',
+        'password', 'hashedpassword456'
+    ),
+    false,
+    :'unverifiedVerificationCodeID',
+    jsonb_build_object(
+        'link', 'https://example.test/verify-email/' || :'unverifiedVerificationCodeID',
+        'theme', jsonb_build_object('primary_color', '#123456')
     )
-)
-select ok(
-    ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
+) as signed_up \gset
+
+-- Should return the unverified user
+select is(
+    (:'unverifiedSignUp'::jsonb->'user') - 'auth_hash' - 'user_id',
+    '{
         "email": "unverified-sign-up@example.com",
         "email_verified": false,
         "name": "Unverified User",
         "username": "unverifieduser"
-    }'::jsonb)
-    and ("user"::jsonb ? 'auth_hash')
-    and length(("user"::jsonb->>'auth_hash')) = 64
-    and verification_code = :'unverifiedVerificationCodeID'::uuid,
-    'Should store caller-provided verification code when email_verified is false'
-) from unverified_user_result;
+    }'::jsonb,
+    'Should return the unverified user'
+);
 
--- Should enqueue caller-provided email verification notification data when email_verified is false.
+-- Should generate a 64 character auth hash for the unverified user
+select is(
+    length(:'unverifiedSignUp'::jsonb->'user'->>'auth_hash'),
+    64,
+    'Should generate a 64 character auth hash for the unverified user'
+);
+
+-- Should return the caller-provided verification code when email_verified is false
+select is(
+    (:'unverifiedSignUp'::jsonb->>'verification_code')::uuid,
+    :'unverifiedVerificationCodeID'::uuid,
+    'Should return the caller-provided verification code when email_verified is false'
+);
+
+-- Should store the caller-provided verification code for the unverified user
+select results_eq(
+    format(
+        $$
+            select user_id
+            from email_verification_code
+            where email_verification_code_id = %L::uuid
+        $$,
+        :'unverifiedVerificationCodeID'
+    ),
+    format(
+        $$values (%L::uuid)$$,
+        :'unverifiedSignUp'::jsonb->'user'->>'user_id'
+    ),
+    'Should store the caller-provided verification code for the unverified user'
+);
+
+-- Should enqueue caller-provided email verification notification data when email_verified is false
 select ok(
     exists (
         select 1
@@ -103,36 +182,49 @@ select ok(
     'Should enqueue caller-provided email verification notification data when email_verified is false'
 );
 
--- Should default to false and store caller-provided verification code when email_verified is omitted
-with default_user_result as (
-    select * from sign_up_user(
-        jsonb_build_object(
-            'email', 'default@example.com',
-            'username', 'defaultuser',
-            'name', 'Default User',
-            'password', 'hashedpassword789'
-        ),
-        p_verification_code => :'defaultVerificationCodeID',
-        p_verification_template_data => jsonb_build_object(
-            'link', 'https://example.test/verify-email/' || :'defaultVerificationCodeID',
-            'theme', jsonb_build_object('primary_color', '#654321')
-        )
+-- Sign up a user without the email_verified argument
+select to_jsonb(signed_up) as "defaultSignUp"
+from sign_up_user(
+    jsonb_build_object(
+        'email', 'default@example.com',
+        'username', 'defaultuser',
+        'name', 'Default User',
+        'password', 'hashedpassword789'
+    ),
+    p_verification_code => :'defaultVerificationCodeID',
+    p_verification_template_data => jsonb_build_object(
+        'link', 'https://example.test/verify-email/' || :'defaultVerificationCodeID',
+        'theme', jsonb_build_object('primary_color', '#654321')
     )
-)
-select ok(
-    ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
+) as signed_up \gset
+
+-- Should default to false when email_verified is omitted
+select is(
+    (:'defaultSignUp'::jsonb->'user') - 'auth_hash' - 'user_id',
+    '{
         "email": "default@example.com",
         "email_verified": false,
         "name": "Default User",
         "username": "defaultuser"
-    }'::jsonb)
-    and ("user"::jsonb ? 'auth_hash')
-    and length(("user"::jsonb->>'auth_hash')) = 64
-    and verification_code = :'defaultVerificationCodeID'::uuid,
-    'Should default to false and store caller-provided verification code when email_verified is omitted'
-) from default_user_result;
+    }'::jsonb,
+    'Should default to false when email_verified is omitted'
+);
 
--- Should enqueue default email verification notification with the verification link.
+-- Should generate a 64 character auth hash when email_verified is omitted
+select is(
+    length(:'defaultSignUp'::jsonb->'user'->>'auth_hash'),
+    64,
+    'Should generate a 64 character auth hash when email_verified is omitted'
+);
+
+-- Should return the caller-provided verification code when email_verified is omitted
+select is(
+    (:'defaultSignUp'::jsonb->>'verification_code')::uuid,
+    :'defaultVerificationCodeID'::uuid,
+    'Should return the caller-provided verification code when email_verified is omitted'
+);
+
+-- Should enqueue default email verification notification with the verification link
 select ok(
     exists (
         select 1
@@ -151,7 +243,7 @@ select ok(
     'Should enqueue default email verification notification with the verification link'
 );
 
--- Should reject unverified signup without a verification code.
+-- Should reject unverified signup without a verification code
 select throws_ok(
     $$
         select * from sign_up_user(
@@ -166,11 +258,12 @@ select throws_ok(
             '{}'::jsonb
         )
     $$,
+    'P0001',
     'verification code is required to send verification email',
     'Should reject unverified signup without a verification code'
 );
 
--- Should reject unverified signup without verification template data.
+-- Should reject unverified signup without verification template data
 select throws_ok(
     format(
         $$
@@ -188,74 +281,29 @@ select throws_ok(
         $$,
         :'missingTemplateVerificationCodeID'
     ),
+    'P0001',
     'verification template data is required to send verification email',
     'Should reject unverified signup without verification template data'
 );
 
--- Should add numeric suffix starting at 2 for duplicate usernames
-with duplicate_user_1 as (
-    select * from sign_up_user(
-        jsonb_build_object(
-            'email', 'duplicate1@example.com',
-            'username', 'duplicateuser',
-            'name', 'First Duplicate User',
-            'password', 'hashedpassword111'
-        ),
-        true,
-        null::uuid,
-        null::jsonb
-    )
-),
-duplicate_user_2 as (
-    select * from sign_up_user(
-        jsonb_build_object(
-            'email', 'duplicate2@example.com',
-            'username', 'duplicateuser',
-            'name', 'Second Duplicate User',
-            'password', 'hashedpassword222'
-        ),
-        true,
-        null::uuid,
-        null::jsonb
-    )
-)
-select ok(
-    (select "user"::jsonb->>'username' from duplicate_user_1) = 'duplicateuser'
-    and (select "user"::jsonb->>'username' from duplicate_user_2) = 'duplicateuser2',
-    'Should add numeric suffix starting at 2 for duplicate usernames'
-);
-
--- Should increment suffix properly for multiple duplicate usernames
-with duplicate_user_3 as (
-    select * from sign_up_user(
-        jsonb_build_object(
-            'email', 'duplicate3@example.com',
-            'username', 'duplicateuser',
-            'name', 'Third Duplicate User',
-            'password', 'hashedpassword333'
-        ),
-        true,
-        null::uuid,
-        null::jsonb
-    )
-),
-duplicate_user_4 as (
-    select * from sign_up_user(
-        jsonb_build_object(
-            'email', 'duplicate4@example.com',
-            'username', 'duplicateuser',
-            'name', 'Fourth Duplicate User',
-            'password', 'hashedpassword444'
-        ),
-        true,
-        null::uuid,
-        null::jsonb
-    )
-)
-select ok(
-    (select "user"::jsonb->>'username' from duplicate_user_3) = 'duplicateuser3'
-    and (select "user"::jsonb->>'username' from duplicate_user_4) = 'duplicateuser4',
-    'Should increment suffix properly for multiple duplicate usernames (3, 4, etc)'
+-- Should resolve a unique username when the requested one is taken
+select is(
+    (
+        select "user"::jsonb->>'username'
+        from sign_up_user(
+            jsonb_build_object(
+                'email', 'sign-up-user-taken@example.com',
+                'username', 'sign-up-user-taken',
+                'name', 'Taken Username User',
+                'password', 'hashedpassword111'
+            ),
+            true,
+            null::uuid,
+            null::jsonb
+        )
+    ),
+    'sign-up-user-taken2',
+    'Should resolve a unique username when the requested one is taken'
 );
 
 -- Should store the email lowercased
@@ -283,7 +331,7 @@ select throws_ok(
     $$
         select * from sign_up_user(
             jsonb_build_object(
-                'email', 'VERIFIED-SIGN-UP@example.com',
+                'email', 'SIGN-UP-USER-EXISTING@example.com',
                 'username', 'anotheruser',
                 'name', 'Another User',
                 'password', 'hashedpassword666'
@@ -294,7 +342,7 @@ select throws_ok(
         )
     $$,
     '23505',
-    null,
+    'duplicate key value violates unique constraint "user_email_lower_idx"',
     'Should reject an email that differs only in case from an existing one'
 );
 

@@ -1,3 +1,5 @@
+-- Tests listing unique normalized legacy redirect mappings for the redirector.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -18,22 +20,22 @@ select plan(7);
 \set activeGroupID '0c010000-0000-0000-0000-000000000007'
 \set activeGroupNullLegacyID '0c010000-0000-0000-0000-000000000008'
 \set activeGroupSlashID '0c010000-0000-0000-0000-000000000009'
-\set deletedEventID '0c010000-0000-0000-0000-00000000000a'
-\set deletedGroupID '0c010000-0000-0000-0000-00000000000b'
-\set duplicateCommunityID '0c010000-0000-0000-0000-00000000000c'
-\set duplicateEventCategoryID '0c010000-0000-0000-0000-00000000000d'
-\set duplicateEventID '0c010000-0000-0000-0000-00000000000e'
-\set duplicateEventOnlyID '0c010000-0000-0000-0000-00000000000f'
-\set duplicateGroupCategoryID '0c010000-0000-0000-0000-000000000010'
-\set duplicateGroupID '0c010000-0000-0000-0000-000000000011'
-\set duplicateGroupOnlyID '0c010000-0000-0000-0000-000000000012'
+\set duplicateCommunityID '0c010000-0000-0000-0000-00000000000a'
+\set duplicateEventCategoryID '0c010000-0000-0000-0000-00000000000b'
+\set duplicateEventID '0c010000-0000-0000-0000-00000000000c'
+\set duplicateEventOnlyID '0c010000-0000-0000-0000-00000000000d'
+\set duplicateGroupCategoryID '0c010000-0000-0000-0000-00000000000e'
+\set duplicateGroupID '0c010000-0000-0000-0000-00000000000f'
+\set duplicateGroupOnlyID '0c010000-0000-0000-0000-000000000010'
+\set inactiveCommunityGroupCategoryID '0c010000-0000-0000-0000-000000000011'
+\set inactiveCommunityGroupID '0c010000-0000-0000-0000-000000000012'
 \set inactiveCommunityID '0c010000-0000-0000-0000-000000000013'
-\set inactiveGroupCategoryID '0c010000-0000-0000-0000-000000000014'
-\set inactiveGroupID '0c010000-0000-0000-0000-000000000015'
-\set rootGroupID '0c010000-0000-0000-0000-000000000016'
-\set scopedDuplicateGroupID '0c010000-0000-0000-0000-000000000017'
-\set sharedPathEventID '0c010000-0000-0000-0000-000000000018'
-\set sharedPathGroupID '0c010000-0000-0000-0000-000000000019'
+\set inactiveGroupID '0c010000-0000-0000-0000-000000000014'
+\set rootGroupID '0c010000-0000-0000-0000-000000000015'
+\set scopedDuplicateGroupID '0c010000-0000-0000-0000-000000000016'
+\set sharedPathEventID '0c010000-0000-0000-0000-000000000017'
+\set sharedPathGroupID '0c010000-0000-0000-0000-000000000018'
+\set unpublishedEventID '0c010000-0000-0000-0000-000000000019'
 
 -- ============================================================================
 -- SEED DATA
@@ -47,7 +49,7 @@ select fx_community(:'inactiveCommunityID', jsonb_build_object('active', false))
 -- Baseline group categories, event categories and groups
 select fx_group_category(:'activeGroupCategoryID', :'activeCommunityID');
 select fx_group_category(:'duplicateGroupCategoryID', :'duplicateCommunityID');
-select fx_group_category(:'inactiveGroupCategoryID', :'inactiveCommunityID');
+select fx_group_category(:'inactiveCommunityGroupCategoryID', :'inactiveCommunityID');
 select fx_event_category(:'activeEventCategoryID', :'activeCommunityID');
 select fx_event_category(:'duplicateEventCategoryID', :'duplicateCommunityID');
 select fx_group(:'activeGroupNullLegacyID', :'activeCommunityID', :'activeGroupCategoryID');
@@ -62,18 +64,17 @@ select fx_group(:'activeGroupSlashID', :'activeCommunityID', :'activeGroupCatego
     'legacy_url', 'https://legacy.example.org/groups/active-slash/',
     'slug', 'active-group-slash'
 ));
-select fx_group(:'deletedGroupID', :'activeCommunityID', :'activeGroupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true,
-    'legacy_url', 'https://legacy.example.org/deleted-group',
-    'slug', 'deleted-group'
-));
 select fx_group(:'duplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', jsonb_build_object(
     'legacy_url', 'https://legacy.example.org/group-duplicate',
     'slug', 'duplicate-group'
 ));
 select fx_group(:'duplicateGroupOnlyID', :'duplicateCommunityID', :'duplicateGroupCategoryID', jsonb_build_object('legacy_url', 'https://legacy.example.org/group-duplicate'));
-select fx_group(:'inactiveGroupID', :'inactiveCommunityID', :'inactiveGroupCategoryID', jsonb_build_object(
+select fx_group(:'inactiveCommunityGroupID', :'inactiveCommunityID', :'inactiveCommunityGroupCategoryID', jsonb_build_object(
+    'legacy_url', 'https://legacy.example.org/inactive-community-group',
+    'slug', 'inactive-community-group'
+));
+select fx_group(:'inactiveGroupID', :'activeCommunityID', :'activeGroupCategoryID', jsonb_build_object(
+    'active', false,
     'legacy_url', 'https://legacy.example.org/inactive-group',
     'slug', 'inactive-group'
 ));
@@ -105,11 +106,6 @@ select fx_event(:'activeEventNullLegacyID', :'activeGroupID', :'activeEventCateg
     'published', true,
     'slug', 'active-event-null-legacy'
 ));
-select fx_event(:'deletedEventID', :'activeGroupID', :'activeEventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'event_kind_id', 'virtual',
-    'legacy_url', 'https://legacy.example.org/events/deleted'
-));
 select fx_event(:'duplicateEventID', :'duplicateGroupID', :'duplicateEventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
     'legacy_url', 'https://legacy.example.org/events/duplicate',
@@ -124,6 +120,12 @@ select fx_event(:'sharedPathEventID', :'activeGroupID', :'activeEventCategoryID'
     'event_kind_id', 'virtual',
     'legacy_url', 'https://legacy.example.org/shared-path',
     'published', true
+));
+select fx_event(:'unpublishedEventID', :'activeGroupID', :'activeEventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'legacy_url', 'https://legacy.example.org/events/unpublished',
+    'published', false,
+    'slug', 'unpublished-event'
 ));
 
 -- ============================================================================
@@ -203,14 +205,19 @@ select ok(
     'Should exclude normalized paths shared by events and groups'
 );
 
--- Should exclude inactive, deleted, and null legacy URL records
-select ok(
-    not exists(
-        select 1
-        from list_redirects()
-        where legacy_path in ('/deleted-group', '/events/deleted', '/inactive-group', '/events/active-event-null-legacy')
+-- Should exclude inactive communities, inactive groups, unpublished events, and null legacy URL records
+-- Null legacy URLs would normalize to '/' and collide with the root group, so
+-- the root row only survives while they are excluded
+select is(
+    (
+        select jsonb_agg(row_to_json(r))
+        from list_redirects() r
+        where legacy_path in ('/', '/events/unpublished', '/inactive-community-group', '/inactive-group')
     ),
-    'Should exclude inactive, deleted, and null legacy URL records'
+    '[
+        {"community_name": "active-community-list-redirects", "legacy_path": "/", "new_path": "/active-community-list-redirects/group/root-group"}
+    ]'::jsonb,
+    'Should exclude inactive communities, inactive groups, unpublished events, and null legacy URL records'
 );
 
 -- ============================================================================

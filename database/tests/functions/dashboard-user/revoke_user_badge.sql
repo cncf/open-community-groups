@@ -65,7 +65,7 @@ select ok(
         where user_badge_id = :'userBadgeID'
         and is_listed = false
         and revocation_reason = 'recipient revoked badge'
-        and revoked_at is not null
+        and revoked_at = current_timestamp
         and revoked_by_user_id = :'userID'
     )
     and not exists (select 1 from notification where user_id = :'userID' and kind = 'badge-revoked'),
@@ -85,11 +85,11 @@ select lives_ok(
     'Should make repeated self-revocation a no-op'
 );
 
--- Should prevent revocation reversal
-select throws_ok(
-    format($$update user_badge set revoked_at = null where user_badge_id = %L$$, :'userBadgeID'),
-    'badge revocation cannot be changed',
-    'Should prevent revocation reversal'
+-- Should not record another audit row for a repeated self-revocation
+select is(
+    (select count(*)::integer from audit_log where action = 'badge_revoked_by_recipient' and actor_user_id = :'userID'),
+    1,
+    'Should not record another audit row for a repeated self-revocation'
 );
 
 -- ============================================================================

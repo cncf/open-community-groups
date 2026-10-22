@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,7 +17,6 @@ select plan(11);
 \set eventTicketTypeID '79510000-0000-0000-0000-000000000004'
 \set groupCategoryID '79510000-0000-0000-0000-000000000005'
 \set groupID '79510000-0000-0000-0000-000000000006'
-\set missingRefundID '79510000-0000-0000-0000-000000000012'
 \set priceWindowID '79510000-0000-0000-0000-000000000007'
 \set processingClaimID '79510000-0000-0000-0000-000000000017'
 \set processingJobID '79510000-0000-0000-0000-000000000020'
@@ -296,6 +295,7 @@ select throws_ok(
         'event-purchase-refund-' || :'processingPurchaseID',
         :'refundRequestID'
     ),
+    'P0001',
     'event purchase refund claim is stale',
     'Should reject a provider result from a stale worker claim'
 );
@@ -350,19 +350,9 @@ select throws_ok(
         '   ',
         're_pending_123'
     )$$, :'refundID'),
+    'P0001',
     'expected idempotency key is required',
     'Should reject empty expected idempotency keys'
-);
-
--- Should reject empty provider refund ids
-select throws_ok(
-    format($$select record_event_purchase_refund_pending(
-        %L::uuid,
-        %L,
-        '   '
-    )$$, :'refundID', 'event-purchase-refund-' || :'purchaseID'),
-    'provider refund id is required',
-    'Should reject empty provider refund ids'
 );
 
 -- Should record provider refund progress on a pending refund row
@@ -418,6 +408,7 @@ select throws_ok(
         %L,
         're_pending_456'
     )$$, :'refundID', 'event-purchase-refund-' || :'purchaseID'),
+    'P0001',
     'event purchase refund already has a different provider refund id',
     'Should reject conflicting provider refund ids'
 );
@@ -442,17 +433,6 @@ select is(
     )->>'status',
     'provider-failed',
     'Should not revive terminal provider failure as pending'
-);
-
--- Should reject missing refund rows
-select throws_ok(
-    format($$select record_event_purchase_refund_pending(
-        %L::uuid,
-        'event-purchase-refund-missing',
-        're_missing_123'
-    )$$, :'missingRefundID'),
-    'event purchase refund not found',
-    'Should reject missing refund rows'
 );
 
 -- ============================================================================

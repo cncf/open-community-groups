@@ -53,7 +53,7 @@ select fx_group(:'activeGroupID', :'communityID', :'groupCategoryID', jsonb_buil
     'name', 'Active Muted Group'
 ));
 
--- Deleted muted group listed as unavailable
+-- Deleted muted group stays listed as unavailable so it can be unmuted
 select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', false,
     'deleted', true,

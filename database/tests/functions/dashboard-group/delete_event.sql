@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,7 @@ select plan(22);
 \set activeEventID 'd1010000-0000-0000-0000-000000000001'
 \set actorID 'd1010000-0000-0000-0000-000000000002'
 \set canceledEventID 'd1010000-0000-0000-0000-000000000003'
+\set cohostGroupID 'd1010000-0000-0000-0000-000000000018'
 \set communityID 'd1010000-0000-0000-0000-000000000004'
 \set draftEventID 'd1010000-0000-0000-0000-000000000005'
 \set eventCategoryID 'd1010000-0000-0000-0000-000000000006'
@@ -33,7 +34,6 @@ select plan(22);
 -- SEED DATA
 -- ============================================================================
 
-
 -- Community owning the deletion scenarios
 select fx_community(:'communityID', jsonb_build_object('name', 'community'));
 
@@ -48,6 +48,9 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
     'name', 'Group',
     'slug', 'group'
 ));
+
+-- Co-host group invited to the canceled event
+select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID');
 
 -- Actor deleting the eligible events
 select fx_user(:'actorID', jsonb_build_object('username', 'actor-delete-event'));
@@ -104,6 +107,10 @@ select fx_event(:'pendingEventID', :'groupID', :'eventCategoryID', jsonb_build_o
     'published', true,
     'starts_at', now() + interval '1 day'
 ));
+
+-- Co-host invitation closed when the event was canceled
+insert into event_cohost (event_cohost_status_id, event_id, group_id)
+values ('event-canceled', :'canceledEventID', :'cohostGroupID');
 
 -- Ticket type owning the unresolved checkout
 select fx_event_ticket_type(:'ticketTypeID', :'pendingEventID', jsonb_build_object(
@@ -182,34 +189,6 @@ insert into session (
 -- TESTS
 -- ============================================================================
 
--- Should classify deletion eligibility across lifecycle and payment states
-select results_eq(
-    format($$
-        select event_id, get_event_delete_eligibility(%L::uuid, event_id)
-        from event
-        where group_id = %L::uuid
-        order by event_id
-    $$, :'groupID', :'groupID'),
-    format($$ values
-        (%L::uuid, 'cancel-first'::text),
-        (%L::uuid, 'allowed'::text),
-        (%L::uuid, 'allowed'::text),
-        (%L::uuid, 'allowed'::text),
-        (%L::uuid, 'allowed'::text),
-        (%L::uuid, 'allowed'::text),
-        (%L::uuid, 'refunds-pending'::text)
-    $$,
-        :'activeEventID',
-        :'canceledEventID',
-        :'draftEventID',
-        :'eventNoMeetingID',
-        :'meetingEventID',
-        :'pastEventID',
-        :'pendingEventID'
-    ),
-    'Should classify deletion eligibility across lifecycle and payment states'
-);
-
 -- Should delete an unused never-published draft
 select lives_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'draftEventID'),
@@ -220,9 +199,9 @@ select is(
     true,
     'Should mark the unused draft deleted'
 );
-select isnt(
+select is(
     (select deleted_at from event where event_id = :'draftEventID'),
-    null,
+    current_timestamp,
     'Should timestamp deletion of the unused draft'
 );
 select is(
@@ -235,6 +214,18 @@ select is(
 select lives_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'canceledEventID'),
     'Should delete a canceled event'
+);
+select results_eq(
+    format(
+        $$
+            select group_id, event_cohost_status_id
+            from event_cohost
+            where event_id = %L::uuid
+        $$,
+        :'canceledEventID'
+    ),
+    format($$ values (%L::uuid, 'event-deleted'::text) $$, :'cohostGroupID'),
+    'Should close co-host invitations of the deleted event'
 );
 
 -- Should delete a completed past event without cancellation
@@ -275,30 +266,20 @@ select is(
     'Should preserve event meeting sync state when no meeting was requested'
 );
 
--- Should preserve blocked active events
+-- Should reject an active event that has not been canceled
 select throws_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'activeEventID'),
     'OCG01',
     'event must be canceled and all payment work settled before deletion',
     'Should reject an active event that has not been canceled'
 );
-select is(
-    (select deleted from event where event_id = :'activeEventID'),
-    false,
-    'Should preserve an active event when deletion is blocked'
-);
 
--- Should preserve events with unresolved payment work
+-- Should reject an event with unresolved payment work
 select throws_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'pendingEventID'),
     'OCG01',
     'event must be canceled and all payment work settled before deletion',
     'Should reject an event with unresolved payment work'
-);
-select is(
-    (select deleted from event where event_id = :'pendingEventID'),
-    false,
-    'Should preserve an event with unresolved payment work'
 );
 
 -- Should record one audit row for every successful deletion
@@ -320,13 +301,6 @@ select ok(
         and resource_type = 'event'
     ),
     'Should record the expected deletion audit ownership'
-);
-
--- Should retain soft-deleted event rows
-select is(
-    (select count(*)::int from event where event_id = :'draftEventID'),
-    1,
-    'Should retain soft-deleted event rows'
 );
 
 -- Should reject deletion from the wrong group

@@ -112,7 +112,7 @@ select throws_ok(
         :'groupID'
     ),
     '23514',
-    null,
+    'new row for relation "custom_notification" violates check constraint "custom_notification_scope_check"',
     'Should reject notifications with every scope'
 );
 
@@ -127,7 +127,7 @@ select throws_ok(
         :'groupID'
     ),
     '23514',
-    null,
+    'new row for relation "custom_notification" violates check constraint "custom_notification_scope_check"',
     'Should reject notifications with two scopes'
 );
 
@@ -138,7 +138,7 @@ select throws_ok(
         values ('Body', 'No scope')
     $$,
     '23514',
-    null,
+    'new row for relation "custom_notification" violates check constraint "custom_notification_scope_check"',
     'Should reject notifications without a scope'
 );
 

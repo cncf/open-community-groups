@@ -1,3 +1,5 @@
+-- Tests adding dashboard community groups.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -15,13 +17,14 @@ select plan(10);
 \set groupPrettySlugID '2c040000-0000-0000-0000-000000000003'
 \set noPermissionUserID '2c040000-0000-0000-0000-000000000006'
 \set regionID '2c040000-0000-0000-0000-000000000004'
+\set slugSeed 0.25
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline users
-select fx_user(:'groupAdminID');
+-- Baseline users (the group admin is also the audited actor)
+select fx_user(:'groupAdminID', jsonb_build_object('username', 'add-group-audit-actor'));
 select fx_user(:'noPermissionUserID');
 
 select fx_community(:'communityID', jsonb_build_object('logo_url', 'https://example.com/logo.png'));
@@ -29,8 +32,13 @@ select fx_community(:'communityID', jsonb_build_object('logo_url', 'https://exam
 -- Group category
 select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Technology'));
 
--- Existing group with a pretty slug in the generated-slug space
-select fx_group(:'groupPrettySlugID', :'communityID', :'groupCategoryID', jsonb_build_object('slug_pretty', 'abc2345'));
+-- First two generated slugs for the seed replayed by the pretty slug retry scenario
+select setseed(:slugSeed);
+select generate_slug(7) as "collidingSlug" \gset
+select generate_slug(7) as "retriedSlug" \gset
+
+-- Existing group whose pretty slug matches the first generated slug
+select fx_group(:'groupPrettySlugID', :'communityID', :'groupCategoryID', jsonb_build_object('slug_pretty', :'collidingSlug'));
 
 -- Existing group team
 insert into group_team (group_id, user_id, role, accepted)
@@ -50,7 +58,7 @@ select is(
         get_group_full(
             :'communityID'::uuid,
             add_group(
-                null::uuid,
+                :'groupAdminID'::uuid,
                 :'communityID'::uuid,
                 jsonb_build_object(
                     'name', 'Simple Test Group',
@@ -99,8 +107,8 @@ select results_eq(
         $$
         select
             'group_added',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'add-group-audit-actor',
             %L::uuid,
             group_id,
             'group',
@@ -108,6 +116,7 @@ select results_eq(
         from "group"
         where name = 'Simple Test Group'
         $$,
+        :'groupAdminID',
         :'communityID'
     ),
     'Should create the expected audit row'
@@ -235,6 +244,7 @@ select lives_ok(
         "category_id": "%s",
         "description": "",
         "description_short": "",
+        "banner_mobile_url": "",
         "banner_url": "",
         "city": "",
         "country_code": "",
@@ -266,33 +276,55 @@ select lives_ok(
 select is(
     (
         select jsonb_build_object(
+            'banner_mobile_url', banner_mobile_url,
             'banner_url', banner_url,
+            'bluesky_url', bluesky_url,
             'city', city,
             'country_code', country_code,
             'country_name', country_name,
             'description', description,
             'description_short', description_short,
+            'facebook_url', facebook_url,
+            'flickr_url', flickr_url,
+            'github_url', github_url,
+            'instagram_url', instagram_url,
+            'linkedin_url', linkedin_url,
             'logo_url', logo_url,
             'og_image_url', og_image_url,
             'region_id', region_id,
+            'slack_url', slack_url,
             'state', state,
-            'website_url', website_url
+            'twitter_url', twitter_url,
+            'website_url', website_url,
+            'wechat_url', wechat_url,
+            'youtube_url', youtube_url
         )
         from "group"
         where name = 'Empty String Test Group'
     ),
     '{
+        "banner_mobile_url": null,
         "banner_url": null,
+        "bluesky_url": null,
         "city": null,
         "country_code": null,
         "country_name": null,
         "description": null,
         "description_short": null,
+        "facebook_url": null,
+        "flickr_url": null,
+        "github_url": null,
+        "instagram_url": null,
+        "linkedin_url": null,
         "logo_url": null,
         "og_image_url": null,
         "region_id": null,
+        "slack_url": null,
         "state": null,
-        "website_url": null
+        "twitter_url": null,
+        "website_url": null,
+        "wechat_url": null,
+        "youtube_url": null
     }'::jsonb,
     'Should convert empty strings to null for nullable fields'
 );
@@ -357,20 +389,8 @@ select throws_ok(
     'Should reject a selected parent when the actor cannot manage the parent'
 );
 
--- Keep this test last: it replaces generate_slug() for the rest of the transaction
 -- Should retry generated slugs matching existing pretty slugs
-create temporary sequence add_group_slug_test_seq;
-
-create or replace function generate_slug(p_length int default 7)
-returns text as $$
-begin
-    if nextval('add_group_slug_test_seq') = 1 then
-        return 'abc2345';
-    end if;
-
-    return 'def6789';
-end;
-$$ language plpgsql;
+select setseed(:slugSeed);
 
 select is(
     (
@@ -388,7 +408,7 @@ select is(
             )
         )::jsonb->>'slug'
     ),
-    'def6789',
+    :'retriedSlug',
     'Should retry generated slugs matching existing pretty slugs'
 );
 

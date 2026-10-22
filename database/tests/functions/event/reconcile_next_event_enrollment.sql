@@ -17,9 +17,11 @@ select plan(14);
 \set eventID '5e050000-0000-0000-0000-000000000004'
 \set externalGroupID '5e050000-0000-0000-0000-000000000011'
 \set externalQueueEventID '5e050000-0000-0000-0000-000000000012'
+\set externalQueuePriceWindowID '5e050000-0000-0000-0000-000000000019'
 \set externalQueueRecipientID '5e050000-0000-0000-0000-000000000013'
 \set externalQueueTicketTypeID '5e050000-0000-0000-0000-000000000014'
 \set externalReminderEventID '5e050000-0000-0000-0000-000000000015'
+\set externalReminderPriceWindowID '5e050000-0000-0000-0000-00000000001a'
 \set externalReminderPurchaseID '5e050000-0000-0000-0000-000000000016'
 \set externalReminderRecipientID '5e050000-0000-0000-0000-000000000017'
 \set externalReminderTicketTypeID '5e050000-0000-0000-0000-000000000018'
@@ -32,8 +34,10 @@ select plan(14);
 \set recipientID '5e050000-0000-0000-0000-000000000009'
 \set rsvpDueOfferID '5e050000-0000-0000-0000-00000000000d'
 \set rsvpEventID '5e050000-0000-0000-0000-00000000000e'
+\set rsvpPriceWindowID '5e050000-0000-0000-0000-00000000001b'
 \set rsvpQueueRecipientID '5e050000-0000-0000-0000-00000000000f'
 \set rsvpRecipientID '5e050000-0000-0000-0000-000000000010'
+\set rsvpTicketTypeID '5e050000-0000-0000-0000-00000000001c'
 \set ticketTypeID '5e050000-0000-0000-0000-00000000000a'
 
 -- ============================================================================
@@ -83,7 +87,6 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
 
 -- RSVP event with a due offer and one waiting recipient
 select fx_event(:'rsvpEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 1,
     'published', true,
     'starts_at', current_timestamp + interval '1 day',
     'waitlist_enabled', true
@@ -95,23 +98,11 @@ select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('sea
 -- Current positive price that requires the configured provider
 select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 1000));
 
--- RSVP events without a specialized ticket fixture use a default tier
-select fx_event_ticket_type(gen_random_uuid(), e.event_id, jsonb_build_object('seats_total', 1))
-from event e
-where not exists (
-    select 1
-    from event_ticket_type ett
-    where ett.event_id = e.event_id
-);
+-- Free RSVP tier holding the event's only seat
+select fx_event_ticket_type(:'rsvpTicketTypeID', :'rsvpEventID', jsonb_build_object('seats_total', 1));
 
--- Current free price for the RSVP event's default tier
-select fx_event_ticket_price_window(gen_random_uuid(), ett.event_ticket_type_id, jsonb_build_object('amount_minor', 0))
-from event_ticket_type ett
-where not exists (
-    select 1
-    from event_ticket_price_window etpw
-    where etpw.event_ticket_type_id = ett.event_ticket_type_id
-);
+-- Current free price for the RSVP tier
+select fx_event_ticket_price_window(:'rsvpPriceWindowID', :'rsvpTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Due and future offers reserving the ticket tier before reconciliation
 insert into admission_offer (
@@ -172,7 +163,7 @@ insert into admission_offer (
     :'rsvpDueOfferID',
     current_timestamp - interval '2 hours',
     :'rsvpEventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'rsvpEventID' limit 1),
+    :'rsvpTicketTypeID',
     current_timestamp - interval '1 hour',
     'organizer_invitation',
     'pending',
@@ -183,7 +174,7 @@ insert into admission_offer (
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)
 values (
     :'rsvpEventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'rsvpEventID' limit 1),
+    :'rsvpTicketTypeID',
     :'rsvpQueueRecipientID'
 );
 
@@ -200,7 +191,7 @@ select fx_event(:'externalQueueEventID', :'externalGroupID', :'eventCategoryID',
 select fx_event_ticket_type(:'externalQueueTicketTypeID', :'externalQueueEventID', jsonb_build_object('seats_total', 1));
 
 -- Current positive price for the external-ready worker queue
-select fx_event_ticket_price_window(gen_random_uuid(), :'externalQueueTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'externalQueuePriceWindowID', :'externalQueueTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- External-ready paid queue head promoted without a Stripe provider
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)
@@ -222,7 +213,7 @@ select fx_event(:'externalReminderEventID', :'externalGroupID', :'eventCategoryI
 select fx_event_ticket_type(:'externalReminderTicketTypeID', :'externalReminderEventID', jsonb_build_object('seats_total', 1));
 
 -- Current positive price for the reminder-due external hold
-select fx_event_ticket_price_window(gen_random_uuid(), :'externalReminderTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'externalReminderPriceWindowID', :'externalReminderTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- Reminder-due external hold claimed by the background worker
 insert into event_purchase (

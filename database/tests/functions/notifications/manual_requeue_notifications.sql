@@ -1,3 +1,5 @@
+-- Tests manually requeueing terminal notifications.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -191,13 +193,13 @@ select results_eq(
         select
             delivery_attempts,
             delivery_status,
-            processed_at is not null
+            processed_at
         from notification
         where notification_id = %L::uuid
         $$,
         :'notificationProcessedID'
     ),
-    $$ values (1, 'processed'::text, true) $$,
+    $$ values (1, 'processed'::text, current_timestamp - interval '10 minutes') $$,
     'Should leave non-terminal notifications unchanged'
 );
 

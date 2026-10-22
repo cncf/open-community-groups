@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -94,7 +94,11 @@ select fx_user(:'userMixedCaseID', jsonb_build_object(
     'name', 'MiXeD Name',
     'username', 'MixedCase-Search-User'
 ));
-select fx_user(:'userPreRegisteredID', jsonb_build_object('registration_status', 'pre-registered'));
+select fx_user(:'userPreRegisteredID', jsonb_build_object(
+    'email_verified', true,
+    'registration_status', 'pre-registered',
+    'username', 'invited-search-user'
+));
 select fx_user(:'userTurkishDotlessID', jsonb_build_object(
     'name', 'ılgaz Işık',
     'username', 'ilgaz-search-user'
@@ -230,7 +234,7 @@ select is(
 
 -- Should find users by name prefix
 select is(
-    search_user('jane'),
+    search_user('jane d'),
     jsonb_build_array(
         jsonb_build_object(
             'user_id', :'user2ID',
@@ -263,32 +267,20 @@ select is(
     'Should not find users by email prefix'
 );
 
--- Should treat percent in query as a literal character
+-- Should treat percent and underscore in query as literal characters
 select is(
-    search_user('user%'),
-    jsonb_build_array(
-        jsonb_build_object(
-            'user_id', :'user7ID',
-            'username', 'user%test',
-            'name', 'User Percent Test',
-            'photo_url', null
+    (
+        select jsonb_object_agg(
+            query,
+            (
+                select coalesce(jsonb_agg(result->>'username' order by position), '[]'::jsonb)
+                from jsonb_array_elements(search_user(query)) with ordinality as results(result, position)
+            )
         )
+        from unnest(array['user%', 'user_']) as query
     ),
-    'Should treat percent in query as a literal character'
-);
-
--- Should treat underscore in query as a literal character
-select is(
-    search_user('user_'),
-    jsonb_build_array(
-        jsonb_build_object(
-            'user_id', :'user8ID',
-            'username', 'user_special',
-            'name', 'User Underscore',
-            'photo_url', null
-        )
-    ),
-    'Should treat underscore in query as a literal character'
+    '{"user%": ["user%test"], "user_": ["user_special"]}'::jsonb,
+    'Should treat percent and underscore in query as literal characters'
 );
 
 -- Should treat backslash in query as a literal character

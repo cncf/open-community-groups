@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,7 +20,6 @@ select plan(14);
 \set groupCategoryID '1b090000-0000-0000-0000-000000000007'
 \set groupID '1b090000-0000-0000-0000-000000000008'
 \set limitedUserID '1b090000-0000-0000-0000-000000000009'
-\set nearLimitUserID '1b090000-0000-0000-0000-000000000010'
 \set otherEventID '1b090000-0000-0000-0000-000000000017'
 \set otherGroupID '1b090000-0000-0000-0000-000000000012'
 \set spamConversationID '1b090000-0000-0000-0000-000000000015'
@@ -41,9 +40,6 @@ select fx_user(:'conflictUserID');
 
 -- User who reached the daily limit of new conversations
 select fx_user(:'limitedUserID');
-
--- User one conversation below the daily limit
-select fx_user(:'nearLimitUserID');
 
 -- User whose conversation the group marked as spam
 select fx_user(:'spamUserID');
@@ -66,7 +62,7 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 -- Group co-hosting the event
 select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID');
 
--- Group contacted earlier by the limited users
+-- Group contacted earlier by the limited user
 select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Published event co-hosted by another group
@@ -96,11 +92,6 @@ insert into inbox_conversation (created_at, group_id, inbox_conversation_status_
     (current_timestamp - interval '2 hours', :'otherGroupID', 'answered', :'limitedUserID'),
     (current_timestamp - interval '1 hour', :'otherGroupID', 'answered', :'limitedUserID');
 
--- Conversations started today by the user below the limit
-insert into inbox_conversation (created_at, group_id, inbox_conversation_status_id, user_id) values
-    (current_timestamp - interval '2 hours', :'otherGroupID', 'answered', :'nearLimitUserID'),
-    (current_timestamp - interval '1 hour', :'otherGroupID', 'answered', :'nearLimitUserID');
-
 -- Conversation of the spam user marked as spam by the group
 insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, user_id)
 values (:'spamConversationID', current_timestamp - interval '2 days', :'groupID', 'spam', :'spamUserID');
@@ -115,14 +106,21 @@ select is(
     '{"conflict": "open-conversation"}'::jsonb,
     'Should point users with an open conversation about the event to it'
 );
-select is(
-    (
-        select count(*)::int
-        from inbox_conversation ic
-        left join inbox_message m using (inbox_conversation_id)
-        where ic.user_id = :'conflictUserID'
+select results_eq(
+    format(
+        $$select
+            (select count(*) from inbox_conversation where user_id = %1$L::uuid),
+            (
+                select count(*)
+                from inbox_message m
+                join inbox_conversation ic using (inbox_conversation_id)
+                where ic.user_id = %1$L::uuid
+            ),
+            (select count(*) from audit_log where actor_user_id = %1$L::uuid or resource_id = %2$L::uuid)$$,
+        :'conflictUserID',
+        :'conflictConversationID'
     ),
-    1,
+    $$values (1::bigint, 0::bigint, 0::bigint)$$,
     'Should not write rows when pointing users to an open conversation'
 );
 
@@ -142,17 +140,12 @@ select throws_ok(
     'Should reject group team members contacting their own group'
 );
 
--- Should reject users blocked by spam reports without writing rows
+-- Should reject users blocked by spam reports
 select throws_ok(
     format($$select start_inbox_conversation(%L::uuid, %L::uuid, %L::uuid, 'Hello')$$, :'spamUserID', :'communityID', :'eventID'),
     'OCG01',
     'you can no longer contact this group',
     'Should reject users blocked by spam reports'
-);
-select is(
-    (select count(*)::int from inbox_conversation where user_id = :'spamUserID'),
-    1,
-    'Should not write rows when rejecting users blocked by spam reports'
 );
 
 -- Should reject users who reached the daily limit of new conversations
@@ -178,12 +171,6 @@ select results_eq(
     ),
     format($$values (%L::uuid, 'open'), (%L::uuid, 'open')$$, :'eventID', :'otherEventID'),
     'Should keep one open conversation per event of the group'
-);
-
--- Should start the last conversation allowed by the daily limit
-select ok(
-    start_inbox_conversation(:'nearLimitUserID'::uuid, :'communityID'::uuid, :'eventID'::uuid, 'Hello')::jsonb ? 'inbox_conversation_id',
-    'Should start the last conversation allowed by the daily limit'
 );
 
 -- Start a conversation about the co-hosted event

@@ -1,3 +1,5 @@
+-- Tests listing the community team members with pagination.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -18,9 +20,10 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community
+-- Community whose team members are listed
 select fx_community(:'communityID');
 
+-- Team admin with every optional profile field set
 select fx_user(:'user1ID', jsonb_build_object(
     'company', 'Cloud Corp',
     'name', 'Alice',
@@ -28,7 +31,8 @@ select fx_user(:'user1ID', jsonb_build_object(
     'title', 'Principal Engineer',
     'username', 'alice-team-members'
 ));
--- user
+
+-- Team viewer without company or title
 select fx_user(:'user2ID', jsonb_build_object(
     'name', 'Bob',
     'photo_url', 'https://example.com/users/bob.png',

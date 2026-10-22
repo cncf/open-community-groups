@@ -14,16 +14,9 @@ declare
     v_refund event_purchase_refund;
 begin
     -- Validate the provider attempt identifiers
-    if nullif(btrim(p_expected_idempotency_key), '') is null then
-        raise exception 'expected idempotency key is required';
-    end if;
+    perform validate_event_purchase_refund_result(p_expected_idempotency_key, p_provider_refund_id);
 
-    -- Require the provider refund the attempt produced
-    if nullif(btrim(p_provider_refund_id), '') is null then
-        raise exception 'provider refund id is required';
-    end if;
-
-    -- Resolve and lock the event before its purchase and durable refund
+    -- Resolve the event that owns the refund
     select ep.event_id
     into v_event_id
     from event_purchase_refund epr
@@ -35,6 +28,7 @@ begin
         raise exception 'event purchase refund not found';
     end if;
 
+    -- Lock the event before its purchase and durable refund
     perform 1
     from event
     where event_id = v_event_id
@@ -48,11 +42,6 @@ begin
     where epr.event_purchase_refund_id = p_event_purchase_refund_id
     for update of ep, epr;
 
-    -- Reject refunds removed while waiting for the locks
-    if not found then
-        raise exception 'event purchase refund not found';
-    end if;
-
     -- Lock the payment job that owns the worker claim
     select pj.*
     into v_job
@@ -60,10 +49,8 @@ begin
     where pj.payment_job_id = v_refund.payment_job_id
     for update;
 
-    -- Reject results from a worker that no longer owns the job
-    if v_job.claim_id is distinct from p_expected_claim_id then
-        raise exception 'event purchase refund claim is stale';
-    end if;
+    -- Reject refunds removed while waiting for the locks or claimed by another worker
+    perform ensure_event_purchase_refund_claim(v_refund, v_job, p_expected_claim_id);
 
     -- Ignore superseded attempts and delayed success for terminal refunds
     if v_job.idempotency_key = p_expected_idempotency_key
@@ -118,6 +105,7 @@ begin
                 end if;
             end if;
 
+            -- Close the job now that the refund is fully recorded
             perform complete_payment_job(v_job.payment_job_id, p_expected_claim_id);
 
         -- Give local finalization a fresh attempt budget now that the provider confirmed

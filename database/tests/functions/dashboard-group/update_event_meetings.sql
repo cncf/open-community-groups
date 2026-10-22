@@ -6,19 +6,31 @@
 -- ============================================================================
 
 begin;
-select plan(29);
+select plan(27);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
+
 \set category1ID '3a3b0000-0000-0000-0000-000000000001'
 \set community1ID '3a3b0000-0000-0000-0000-000000000002'
 \set event5ID '3a3b0000-0000-0000-0000-000000000003'
+\set event5PriceWindowID '3a3b0000-0000-0000-0000-000000000018'
+\set event5TicketTypeID '3a3b0000-0000-0000-0000-000000000019'
 \set event6ID '3a3b0000-0000-0000-0000-000000000004'
+\set event6PriceWindowID '3a3b0000-0000-0000-0000-000000000020'
+\set event6TicketTypeID '3a3b0000-0000-0000-0000-000000000021'
 \set event7ID '3a3b0000-0000-0000-0000-000000000005'
+\set event7PriceWindowID '3a3b0000-0000-0000-0000-000000000022'
+\set event7TicketTypeID '3a3b0000-0000-0000-0000-000000000023'
 \set event25ID '3a3b0000-0000-0000-0000-000000000006'
+\set event25PriceWindowID '3a3b0000-0000-0000-0000-000000000024'
+\set event25TicketTypeID '3a3b0000-0000-0000-0000-000000000025'
 \set event26ID '3a3b0000-0000-0000-0000-000000000007'
+\set event26PriceWindowID '3a3b0000-0000-0000-0000-000000000026'
+\set event26TicketTypeID '3a3b0000-0000-0000-0000-000000000027'
 \set group1ID '3a3b0000-0000-0000-0000-000000000008'
+\set groupCategoryID '3a3b0000-0000-0000-0000-000000000017'
 \set meeting1ID '3a3b0000-0000-0000-0000-000000000009'
 \set meeting2ID '3a3b0000-0000-0000-0000-000000000010'
 \set meeting3ID '3a3b0000-0000-0000-0000-000000000011'
@@ -34,9 +46,9 @@ select plan(29);
 
 -- Baseline communities, group categories, event categories and groups
 select fx_community(:'community1ID');
-select fx_group_category('3a3b0000-0000-0000-0000-000000000017', :'community1ID');
+select fx_group_category(:'groupCategoryID', :'community1ID');
 select fx_event_category(:'category1ID', :'community1ID');
-select fx_group(:'group1ID', :'community1ID', '3a3b0000-0000-0000-0000-000000000017');
+select fx_group(:'group1ID', :'community1ID', :'groupCategoryID');
 
 -- Event with meeting_in_sync=false for testing preservation
 select fx_event(:'event5ID', :'group1ID', :'category1ID', jsonb_build_object(
@@ -145,7 +157,6 @@ insert into meeting (
 
 -- Started session with synced automatic meeting
 select fx_event(:'event26ID', :'group1ID', :'category1ID', jsonb_build_object(
-    'capacity', 100,
     'ends_at', '2020-02-02 13:00:00+00',
     'event_kind_id', 'virtual',
     'name', 'Started Session Parent Event',
@@ -228,26 +239,35 @@ insert into session (
 insert into meeting (join_url, meeting_id, meeting_provider_id, provider_meeting_id, session_id)
 values ('https://zoom.us/j/123123123', :'meeting1ID', 'zoom', '123123123', :'session2ID');
 
--- Every update fixture uses the unified ticket inventory
-select fx_event_ticket_type(
-    gen_random_uuid(),
-    e.event_id,
-    jsonb_build_object(
-        'seats_total', coalesce(e.capacity, 100)
-    )
-)
-from event e
-where e.group_id = :'group1ID';
+-- Free ticket tier for the pending event meeting sync event
+select fx_event_ticket_type(:'event5TicketTypeID', :'event5ID', jsonb_build_object('seats_total', 100));
 
--- Current free prices for the unified ticket inventory
-select fx_event_ticket_price_window(
-    gen_random_uuid(),
-    ett.event_ticket_type_id,
-    jsonb_build_object('amount_minor', 0)
-)
-from event_ticket_type ett
-join event e using (event_id)
-where e.group_id = :'group1ID';
+-- Free ticket tier for the session pending meeting sync event
+select fx_event_ticket_type(:'event6TicketTypeID', :'event6ID', jsonb_build_object('seats_total', 100));
+
+-- Free ticket tier for the session removal event
+select fx_event_ticket_type(:'event7TicketTypeID', :'event7ID', jsonb_build_object('seats_total', 100));
+
+-- Free ticket tier for the started synced event
+select fx_event_ticket_type(:'event25TicketTypeID', :'event25ID', jsonb_build_object('seats_total', 100));
+
+-- Free ticket tier for the started session parent event
+select fx_event_ticket_type(:'event26TicketTypeID', :'event26ID', jsonb_build_object('seats_total', 100));
+
+-- Current free price for the pending event meeting sync tier
+select fx_event_ticket_price_window(:'event5PriceWindowID', :'event5TicketTypeID');
+
+-- Current free price for the session pending meeting sync tier
+select fx_event_ticket_price_window(:'event6PriceWindowID', :'event6TicketTypeID');
+
+-- Current free price for the session removal tier
+select fx_event_ticket_price_window(:'event7PriceWindowID', :'event7TicketTypeID');
+
+-- Current free price for the started synced event tier
+select fx_event_ticket_price_window(:'event25PriceWindowID', :'event25TicketTypeID');
+
+-- Current free price for the started session parent event tier
+select fx_event_ticket_price_window(:'event26PriceWindowID', :'event26TicketTypeID');
 
 -- ============================================================================
 -- TESTS
@@ -255,88 +275,54 @@ where e.group_id = :'group1ID';
 
 -- Should reject an event meeting longer than the provider maximum duration
 select throws_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000003'::uuid,
-        '{
-            "name": "Event With Pending Sync",
-            "description": "Extended schedule",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "capacity": 100,
-            "meeting_provider_id": "zoom",
-            "meeting_requested": true,
-            "starts_at": "2030-03-01T10:00:00",
-            "ends_at": "2030-03-01T22:30:00"
-        }'::jsonb,
-        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, %L::jsonb)$$,
+        :'group1ID',
+        :'event5ID',
+        jsonb_build_object(
+            'capacity', 100,
+            'category_id', :'category1ID',
+            'description', 'Extended schedule',
+            'ends_at', '2030-03-01T22:30:00',
+            'kind_id', 'virtual',
+            'meeting_provider_id', 'zoom',
+            'meeting_requested', true,
+            'name', 'Event With Pending Sync',
+            'starts_at', '2030-03-01T10:00:00',
+            'timezone', 'America/New_York'
+        ),
+        jsonb_build_object(
+            'zoom', jsonb_build_object(
+                'max_duration_minutes', 720,
+                'max_participants', 100,
+                'min_duration_minutes', 5
+            )
+        )
+    ),
     'OCG01',
     'event meeting duration (750 minutes) must be between 5 and 720 minutes',
     'Should reject an event meeting longer than the provider maximum duration'
 );
 
--- Should keep the event schedule after rejecting a long meeting duration
-select is(
-    (select ends_at from event where event_id = :'event5ID'::uuid),
-    '2030-03-01 12:00:00-05'::timestamptz,
-    'Should keep the event schedule after rejecting a long meeting duration'
-);
-
--- Should reject a session meeting longer than the provider maximum duration
-select throws_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000004'::uuid,
-        '{
-            "name": "Event With Session Pending Sync",
-            "description": "Extended session schedule",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "starts_at": "2030-04-01T09:00:00",
-            "ends_at": "2030-04-01T23:00:00",
-            "sessions": [
-                {
-                    "session_id": "3a3b0000-0000-0000-0000-000000000014",
-                    "name": "Session With Pending Sync",
-                    "starts_at": "2030-04-01T10:00:00",
-                    "ends_at": "2030-04-01T22:01:00",
-                    "kind": "virtual",
-                    "meeting_provider_id": "zoom",
-                    "meeting_requested": true
-                }
-            ]
-        }'::jsonb,
-        '{"zoom": {"max_duration_minutes": 720, "max_participants": 100, "min_duration_minutes": 5}}'::jsonb
-    )$$,
-    'OCG01',
-    'session "Session With Pending Sync" meeting duration (721 minutes) must be between 5 and 720 minutes',
-    'Should reject a session meeting longer than the provider maximum duration'
-);
-
 -- Should execute unrelated update with pending event meeting sync
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000003'::uuid,
-        '{
-            "name": "Event With Pending Sync",
-            "description": "Updated description - unrelated to meeting",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "capacity": 100,
-            "meeting_provider_id": "zoom",
-            "meeting_requested": true,
-            "starts_at": "2030-03-01T10:00:00",
-            "ends_at": "2030-03-01T12:00:00"
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event5ID',
+        jsonb_build_object(
+            'capacity', 100,
+            'category_id', :'category1ID',
+            'description', 'Updated description - unrelated to meeting',
+            'ends_at', '2030-03-01T12:00:00',
+            'kind_id', 'virtual',
+            'meeting_provider_id', 'zoom',
+            'meeting_requested', true,
+            'name', 'Event With Pending Sync',
+            'starts_at', '2030-03-01T10:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
     'Should execute unrelated update with pending event meeting sync'
 );
 
@@ -349,21 +335,21 @@ select is(
 
 -- Should execute update when event meeting_requested changes to false
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000003'::uuid,
-        '{
-            "name": "Event With Pending Sync",
-            "description": "Updated description",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "meeting_requested": false,
-            "starts_at": "2030-03-01T10:00:00",
-            "ends_at": "2030-03-01T12:00:00"
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event5ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated description',
+            'ends_at', '2030-03-01T12:00:00',
+            'kind_id', 'virtual',
+            'meeting_requested', false,
+            'name', 'Event With Pending Sync',
+            'starts_at', '2030-03-01T10:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
     'Should execute update when event meeting_requested changes to false'
 );
 
@@ -376,26 +362,26 @@ select is(
 
 -- Should execute update when automatic event meeting recording override is provided
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000003'::uuid,
-        '{
-            "name": "Event With Pending Sync",
-            "description": "Updated description with recording override",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "capacity": 100,
-            "kind_id": "virtual",
-            "meeting_provider_id": "zoom",
-            "meeting_recording_published": false,
-            "meeting_recording_requested": false,
-            "meeting_recording_url": "https://youtube.com/watch?v=event-override",
-            "meeting_requested": true,
-            "starts_at": "2030-03-01T10:00:00",
-            "ends_at": "2030-03-01T12:00:00"
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event5ID',
+        jsonb_build_object(
+            'capacity', 100,
+            'category_id', :'category1ID',
+            'description', 'Updated description with recording override',
+            'ends_at', '2030-03-01T12:00:00',
+            'kind_id', 'virtual',
+            'meeting_provider_id', 'zoom',
+            'meeting_recording_published', false,
+            'meeting_recording_requested', false,
+            'meeting_recording_url', 'https://youtube.com/watch?v=event-override',
+            'meeting_requested', true,
+            'name', 'Event With Pending Sync',
+            'starts_at', '2030-03-01T10:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
     'Should execute update when automatic event meeting recording override is provided'
 );
 
@@ -422,24 +408,24 @@ select is(
 
 -- Should execute update when automatic event meeting recording override is cleared
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000003'::uuid,
-        '{
-            "name": "Event With Pending Sync",
-            "description": "Updated description with cleared recording override",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "capacity": 100,
-            "kind_id": "virtual",
-            "meeting_provider_id": "zoom",
-            "meeting_recording_url": "",
-            "meeting_requested": true,
-            "starts_at": "2030-03-01T10:00:00",
-            "ends_at": "2030-03-01T12:00:00"
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event5ID',
+        jsonb_build_object(
+            'capacity', 100,
+            'category_id', :'category1ID',
+            'description', 'Updated description with cleared recording override',
+            'ends_at', '2030-03-01T12:00:00',
+            'kind_id', 'virtual',
+            'meeting_provider_id', 'zoom',
+            'meeting_recording_url', '',
+            'meeting_requested', true,
+            'name', 'Event With Pending Sync',
+            'starts_at', '2030-03-01T10:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
     'Should execute update when automatic event meeting recording override is cleared'
 );
 
@@ -458,32 +444,32 @@ select is(
 
 -- Should execute unrelated update with pending session meeting sync
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000004'::uuid,
-        '{
-            "name": "Event With Session Pending Sync",
-            "description": "Updated event description - unrelated to session meeting",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "starts_at": "2030-04-01T09:00:00",
-            "ends_at": "2030-04-01T17:00:00",
-            "sessions": [
-                {
-                    "session_id": "3a3b0000-0000-0000-0000-000000000014",
-                    "name": "Session With Pending Sync",
-                    "description": "Updated session description - unrelated to meeting",
-                    "starts_at": "2030-04-01T10:00:00",
-                    "ends_at": "2030-04-01T11:00:00",
-                    "kind": "virtual",
-                    "meeting_provider_id": "zoom",
-                    "meeting_requested": true
-                }
-            ]
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event6ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated event description - unrelated to session meeting',
+            'ends_at', '2030-04-01T17:00:00',
+            'kind_id', 'virtual',
+            'name', 'Event With Session Pending Sync',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'description', 'Updated session description - unrelated to meeting',
+                    'ends_at', '2030-04-01T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_provider_id', 'zoom',
+                    'meeting_requested', true,
+                    'name', 'Session With Pending Sync',
+                    'session_id', :'session1ID',
+                    'starts_at', '2030-04-01T10:00:00'
+                )
+            ),
+            'starts_at', '2030-04-01T09:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
     'Should execute unrelated update with pending session meeting sync'
 );
 
@@ -496,31 +482,31 @@ select is(
 
 -- Should execute update when session meeting_requested changes to false
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000004'::uuid,
-        '{
-            "name": "Event With Session Pending Sync",
-            "description": "Updated event description",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "starts_at": "2030-04-01T09:00:00",
-            "ends_at": "2030-04-01T17:00:00",
-            "sessions": [
-                {
-                    "session_id": "3a3b0000-0000-0000-0000-000000000014",
-                    "name": "Session With Pending Sync",
-                    "description": "Updated session description",
-                    "starts_at": "2030-04-01T10:00:00",
-                    "ends_at": "2030-04-01T11:00:00",
-                    "kind": "virtual",
-                    "meeting_requested": false
-                }
-            ]
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event6ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated event description',
+            'ends_at', '2030-04-01T17:00:00',
+            'kind_id', 'virtual',
+            'name', 'Event With Session Pending Sync',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'description', 'Updated session description',
+                    'ends_at', '2030-04-01T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_requested', false,
+                    'name', 'Session With Pending Sync',
+                    'session_id', :'session1ID',
+                    'starts_at', '2030-04-01T10:00:00'
+                )
+            ),
+            'starts_at', '2030-04-01T09:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
     'Should execute update when session meeting_requested changes to false'
 );
 
@@ -533,34 +519,34 @@ select is(
 
 -- Should execute update when automatic session meeting recording override is provided
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000004'::uuid,
-        '{
-            "name": "Event With Session Pending Sync",
-            "description": "Updated event description with session recording override",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "starts_at": "2030-04-01T09:00:00",
-            "ends_at": "2030-04-01T17:00:00",
-            "sessions": [
-                {
-                    "session_id": "3a3b0000-0000-0000-0000-000000000014",
-                    "name": "Session With Pending Sync",
-                    "description": "Updated session description with recording override",
-                    "starts_at": "2030-04-01T10:00:00",
-                    "ends_at": "2030-04-01T11:00:00",
-                    "kind": "virtual",
-                    "meeting_provider_id": "zoom",
-                    "meeting_recording_published": false,
-                    "meeting_recording_url": "https://youtube.com/watch?v=session-override",
-                    "meeting_requested": true
-                }
-            ]
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event6ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated event description with session recording override',
+            'ends_at', '2030-04-01T17:00:00',
+            'kind_id', 'virtual',
+            'name', 'Event With Session Pending Sync',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'description', 'Updated session description with recording override',
+                    'ends_at', '2030-04-01T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_provider_id', 'zoom',
+                    'meeting_recording_published', false,
+                    'meeting_recording_url', 'https://youtube.com/watch?v=session-override',
+                    'meeting_requested', true,
+                    'name', 'Session With Pending Sync',
+                    'session_id', :'session1ID',
+                    'starts_at', '2030-04-01T10:00:00'
+                )
+            ),
+            'starts_at', '2030-04-01T09:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
     'Should execute update when automatic session meeting recording override is provided'
 );
 
@@ -580,33 +566,33 @@ select is(
 
 -- Should execute update when automatic session meeting recording override is cleared
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000004'::uuid,
-        '{
-            "name": "Event With Session Pending Sync",
-            "description": "Updated event description with cleared session recording override",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "starts_at": "2030-04-01T09:00:00",
-            "ends_at": "2030-04-01T17:00:00",
-            "sessions": [
-                {
-                    "session_id": "3a3b0000-0000-0000-0000-000000000014",
-                    "name": "Session With Pending Sync",
-                    "description": "Updated session description with cleared recording override",
-                    "starts_at": "2030-04-01T10:00:00",
-                    "ends_at": "2030-04-01T11:00:00",
-                    "kind": "virtual",
-                    "meeting_provider_id": "zoom",
-                    "meeting_recording_url": "",
-                    "meeting_requested": true
-                }
-            ]
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event6ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated event description with cleared session recording override',
+            'ends_at', '2030-04-01T17:00:00',
+            'kind_id', 'virtual',
+            'name', 'Event With Session Pending Sync',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'description', 'Updated session description with cleared recording override',
+                    'ends_at', '2030-04-01T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_provider_id', 'zoom',
+                    'meeting_recording_url', '',
+                    'meeting_requested', true,
+                    'name', 'Session With Pending Sync',
+                    'session_id', :'session1ID',
+                    'starts_at', '2030-04-01T10:00:00'
+                )
+            ),
+            'starts_at', '2030-04-01T09:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
     'Should execute update when automatic session meeting recording override is cleared'
 );
 
@@ -632,24 +618,24 @@ select is(
 
 -- Should execute update for started synced event automatic meeting settings
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000006'::uuid,
-        '{
-            "name": "Started Synced Event Updated",
-            "description": "Updated started synced event description",
-            "timezone": "UTC",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "capacity": 100,
-            "kind_id": "virtual",
-            "meeting_provider_id": "zoom",
-            "meeting_recording_requested": false,
-            "meeting_requested": true,
-            "starts_at": "2020-02-01T10:00:00",
-            "ends_at": "2020-02-01T12:00:00"
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event25ID',
+        jsonb_build_object(
+            'capacity', 100,
+            'category_id', :'category1ID',
+            'description', 'Updated started synced event description',
+            'ends_at', '2020-02-01T12:00:00',
+            'kind_id', 'virtual',
+            'meeting_provider_id', 'zoom',
+            'meeting_recording_requested', false,
+            'meeting_requested', true,
+            'name', 'Started Synced Event Updated',
+            'starts_at', '2020-02-01T10:00:00',
+            'timezone', 'UTC'
+        )
+    ),
     'Should execute update for started synced event automatic meeting settings'
 );
 
@@ -674,34 +660,34 @@ select is(
 
 -- Should execute update for started synced session automatic meeting settings
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000007'::uuid,
-        '{
-            "name": "Started Session Parent Event Updated",
-            "description": "Updated started session parent description",
-            "timezone": "UTC",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "capacity": 100,
-            "kind_id": "virtual",
-            "meeting_requested": false,
-            "starts_at": "2020-02-02T09:00:00",
-            "ends_at": "2020-02-02T13:00:00",
-            "sessions": [
-                {
-                    "session_id": "3a3b0000-0000-0000-0000-000000000016",
-                    "name": "Started Synced Session Updated",
-                    "description": "Updated started synced session description",
-                    "starts_at": "2020-02-02T10:00:00",
-                    "ends_at": "2020-02-02T11:00:00",
-                    "kind": "virtual",
-                    "meeting_provider_id": "zoom",
-                    "meeting_requested": true
-                }
-            ]
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event26ID',
+        jsonb_build_object(
+            'capacity', 100,
+            'category_id', :'category1ID',
+            'description', 'Updated started session parent description',
+            'ends_at', '2020-02-02T13:00:00',
+            'kind_id', 'virtual',
+            'meeting_requested', false,
+            'name', 'Started Session Parent Event Updated',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'description', 'Updated started synced session description',
+                    'ends_at', '2020-02-02T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_provider_id', 'zoom',
+                    'meeting_requested', true,
+                    'name', 'Started Synced Session Updated',
+                    'session_id', :'session4ID',
+                    'starts_at', '2020-02-02T10:00:00'
+                )
+            ),
+            'starts_at', '2020-02-02T09:00:00',
+            'timezone', 'UTC'
+        )
+    ),
     'Should execute update for started synced session automatic meeting settings'
 );
 
@@ -724,21 +710,21 @@ select is(
 
 -- Should remove omitted sessions on update
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3b0000-0000-0000-0000-000000000008'::uuid,
-        '3a3b0000-0000-0000-0000-000000000005'::uuid,
-        '{
-            "name": "Event For Session Removal Test",
-            "description": "This event has a session with a meeting",
-            "timezone": "America/New_York",
-            "category_id": "3a3b0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "starts_at": "2030-05-01T09:00:00",
-            "ends_at": "2030-05-01T17:00:00",
-            "sessions": []
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event7ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'This event has a session with a meeting',
+            'ends_at', '2030-05-01T17:00:00',
+            'kind_id', 'virtual',
+            'name', 'Event For Session Removal Test',
+            'sessions', '[]'::jsonb,
+            'starts_at', '2030-05-01T09:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
     'Should remove omitted sessions on update'
 );
 

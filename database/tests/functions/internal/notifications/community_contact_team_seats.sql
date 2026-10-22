@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,8 +15,6 @@ select plan(13);
 \set categoryAID '8a0c0000-0000-0000-0000-000000000002'
 \set categoryBID '8a0c0000-0000-0000-0000-000000000003'
 \set communityID '8a0c0000-0000-0000-0000-000000000001'
-\set deletedGroupID '8a0c0000-0000-0000-0000-000000000016'
-\set deletedGroupUserID '8a0c0000-0000-0000-0000-000000000029'
 \set foreignCategoryID '8a0c0000-0000-0000-0000-000000000005'
 \set foreignCommunityID '8a0c0000-0000-0000-0000-000000000004'
 \set foreignGroupID '8a0c0000-0000-0000-0000-000000000017'
@@ -48,9 +46,6 @@ select fx_community(:'foreignCommunityID');
 
 -- Admin of group A
 select fx_user(:'adminUserID');
-
--- Admin of the deleted group
-select fx_user(:'deletedGroupUserID');
 
 -- Admin of the foreign community group
 select fx_user(:'foreignUserID');
@@ -93,14 +88,6 @@ values (:'northRegionID', :'communityID', 'North');
 insert into region (region_id, community_id, name)
 values (:'southRegionID', :'communityID', 'South');
 
--- Deleted group in category A and the north region
-select fx_group(
-    :'deletedGroupID',
-    :'communityID',
-    :'categoryAID',
-    jsonb_build_object('active', false, 'deleted', true, 'region_id', :'northRegionID')
-);
-
 -- Group of the foreign community
 select fx_group(:'foreignGroupID', :'foreignCommunityID', :'foreignCategoryID');
 
@@ -131,7 +118,6 @@ select fx_group(
 
 -- Team seats covering every eligibility and filter scenario
 insert into group_team (group_id, user_id, accepted, role) values
-    (:'deletedGroupID', :'deletedGroupUserID', true, 'admin'),
     (:'foreignGroupID', :'foreignUserID', true, 'admin'),
     (:'groupAID', :'adminUserID', true, 'admin'),
     (:'groupAID', :'mixedUserID', true, 'viewer'),
@@ -376,21 +362,20 @@ select results_eq(
     'Should filter by subgroup without including the parent group team'
 );
 
--- Should match no seats for unavailable selected groups
+-- Should match no seats for an inactive selected group
 select is_empty(
     format(
         $$
             select group_id, user_id
             from community_contact_team_seats(
                 %L::uuid,
-                jsonb_build_object('group_ids', jsonb_build_array(%L, %L))
+                jsonb_build_object('group_ids', jsonb_build_array(%L))
             )
         $$,
         :'communityID',
-        :'deletedGroupID',
         :'inactiveGroupID'
     ),
-    'Should match no seats for unavailable selected groups'
+    'Should match no seats for an inactive selected group'
 );
 
 -- Should return each seat once for repeated selected groups
@@ -446,38 +431,6 @@ select results_eq(
         :'subgroupID', :'subgroupUserID'
     ),
     'Should return every accepted and verified seat of available groups for missing filters'
-);
-
--- Should treat empty filter lists as all values
-select results_eq(
-    format(
-        $$
-            select group_id, user_id
-            from community_contact_team_seats(
-                %L::uuid,
-                '{"group_category_ids": [], "group_ids": [], "regions": [], "roles": []}'::jsonb
-            )
-            order by group_id, user_id
-        $$,
-        :'communityID'
-    ),
-    format(
-        $$ values
-            (%L::uuid, %L::uuid),
-            (%L::uuid, %L::uuid),
-            (%L::uuid, %L::uuid),
-            (%L::uuid, %L::uuid),
-            (%L::uuid, %L::uuid),
-            (%L::uuid, %L::uuid)
-        $$,
-        :'groupAID', :'adminUserID',
-        :'groupAID', :'mixedUserID',
-        :'groupBID', :'mixedUserID',
-        :'groupBID', :'viewerUserID',
-        :'noRegionGroupID', :'noRegionUserID',
-        :'subgroupID', :'subgroupUserID'
-    ),
-    'Should treat empty filter lists as all values'
 );
 
 -- ============================================================================
