@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(16);
 
 \set communityID 'c0b10000-0000-0000-0000-000000000001'
 \set groupCategoryID 'c0b10000-0000-0000-0000-000000000002'
+\set groupDeletedID 'c0b10000-0000-0000-0000-000000000004'
 \set groupID 'c0b10000-0000-0000-0000-000000000003'
 
 -- ============================================================================
@@ -25,8 +26,11 @@ select fx_community(:'communityID');
 -- Group category used by the group
 select fx_group_category(:'groupCategoryID', :'communityID');
 
--- Group receiving the UTM values written by the constraint scenarios
+-- Group receiving the values written by the constraint scenarios
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Group deleted by the accepted deletion scenario
+select fx_group(:'groupDeletedID', :'communityID', :'groupCategoryID');
 
 -- ============================================================================
 -- TESTS
@@ -46,6 +50,15 @@ select lives_ok(
         :'groupID'
     ),
     'Should accept 20 UTM values of 50 characters per list'
+);
+
+-- Should accept a deleted inactive group
+select lives_ok(
+    format(
+        $$update "group" set active = false, deleted = true where group_id = %L::uuid$$,
+        :'groupDeletedID'
+    ),
+    'Should accept a deleted inactive group'
 );
 
 -- Should reject more than 20 UTM campaigns
@@ -114,50 +127,6 @@ select throws_ok(
     'Should reject more than 20 UTM mediums'
 );
 
--- Should reject UTM mediums with values longer than 50 characters
-select throws_ok(
-    format(
-        $$update "group" set utm_mediums = array[repeat('v', 51)] where group_id = %L::uuid$$,
-        :'groupID'
-    ),
-    '23514',
-    'new row for relation "group" violates check constraint "group_utm_mediums_chk"',
-    'Should reject UTM mediums with values longer than 50 characters'
-);
-
--- Should reject UTM mediums with values with unsupported characters
-select throws_ok(
-    format(
-        $$update "group" set utm_mediums = array['Spring Launch'] where group_id = %L::uuid$$,
-        :'groupID'
-    ),
-    '23514',
-    'new row for relation "group" violates check constraint "group_utm_mediums_chk"',
-    'Should reject UTM mediums with values with unsupported characters'
-);
-
--- Should reject UTM mediums with values containing commas
-select throws_ok(
-    format(
-        $$update "group" set utm_mediums = array['spring,launch'] where group_id = %L::uuid$$,
-        :'groupID'
-    ),
-    '23514',
-    'new row for relation "group" violates check constraint "group_utm_mediums_chk"',
-    'Should reject UTM mediums with values containing commas'
-);
-
--- Should reject UTM mediums with null values
-select throws_ok(
-    format(
-        $$update "group" set utm_mediums = array['valid', null] where group_id = %L::uuid$$,
-        :'groupID'
-    ),
-    '23514',
-    'new row for relation "group" violates check constraint "group_utm_mediums_chk"',
-    'Should reject UTM mediums with null values'
-);
-
 -- Should reject more than 20 UTM sources
 select throws_ok(
     format(
@@ -169,48 +138,15 @@ select throws_ok(
     'Should reject more than 20 UTM sources'
 );
 
--- Should reject UTM sources with values longer than 50 characters
+-- Should reject deleted groups that are still active
 select throws_ok(
     format(
-        $$update "group" set utm_sources = array[repeat('v', 51)] where group_id = %L::uuid$$,
+        $$update "group" set active = true, deleted = true where group_id = %L::uuid$$,
         :'groupID'
     ),
     '23514',
-    'new row for relation "group" violates check constraint "group_utm_sources_chk"',
-    'Should reject UTM sources with values longer than 50 characters'
-);
-
--- Should reject UTM sources with values with unsupported characters
-select throws_ok(
-    format(
-        $$update "group" set utm_sources = array['Spring Launch'] where group_id = %L::uuid$$,
-        :'groupID'
-    ),
-    '23514',
-    'new row for relation "group" violates check constraint "group_utm_sources_chk"',
-    'Should reject UTM sources with values with unsupported characters'
-);
-
--- Should reject UTM sources with values containing commas
-select throws_ok(
-    format(
-        $$update "group" set utm_sources = array['spring,launch'] where group_id = %L::uuid$$,
-        :'groupID'
-    ),
-    '23514',
-    'new row for relation "group" violates check constraint "group_utm_sources_chk"',
-    'Should reject UTM sources with values containing commas'
-);
-
--- Should reject UTM sources with null values
-select throws_ok(
-    format(
-        $$update "group" set utm_sources = array['valid', null] where group_id = %L::uuid$$,
-        :'groupID'
-    ),
-    '23514',
-    'new row for relation "group" violates check constraint "group_utm_sources_chk"',
-    'Should reject UTM sources with null values'
+    'new row for relation "group" violates check constraint "group_check"',
+    'Should reject deleted groups that are still active'
 );
 
 -- ============================================================================

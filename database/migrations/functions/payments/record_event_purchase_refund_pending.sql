@@ -11,14 +11,7 @@ declare
     v_refund event_purchase_refund;
 begin
     -- Validate the provider attempt identifiers
-    if nullif(btrim(p_expected_idempotency_key), '') is null then
-        raise exception 'expected idempotency key is required';
-    end if;
-
-    -- Require the provider refund the attempt produced
-    if nullif(btrim(p_provider_refund_id), '') is null then
-        raise exception 'provider refund id is required';
-    end if;
+    perform validate_event_purchase_refund_result(p_expected_idempotency_key, p_provider_refund_id);
 
     -- Lock the durable refund row before accepting the provider result
     select epr.*
@@ -27,11 +20,6 @@ begin
     where epr.event_purchase_refund_id = p_event_purchase_refund_id
     for update;
 
-    -- Reject unknown refunds
-    if not found then
-        raise exception 'event purchase refund not found';
-    end if;
-
     -- Lock the payment job that owns the worker claim
     select pj.*
     into v_job
@@ -39,10 +27,8 @@ begin
     where pj.payment_job_id = v_refund.payment_job_id
     for update;
 
-    -- Reject results from a worker that no longer owns the job
-    if v_job.claim_id is distinct from p_expected_claim_id then
-        raise exception 'event purchase refund claim is stale';
-    end if;
+    -- Reject unknown refunds and results from a worker that no longer owns the job
+    perform ensure_event_purchase_refund_claim(v_refund, v_job, p_expected_claim_id);
 
     -- Ignore stale attempts and avoid reviving completed or terminal refunds
     if v_job.idempotency_key = p_expected_idempotency_key then

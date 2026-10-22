@@ -113,6 +113,7 @@ select is(
 -- Should reject blank emails
 select throws_ok(
     $$select opt_out_user_from_optional_notifications(' ', 'smtp bounce')$$,
+    'P0001',
     'email is required',
     'Should reject blank emails'
 );
@@ -120,6 +121,7 @@ select throws_ok(
 -- Should reject blank reasons
 select throws_ok(
     $$select opt_out_user_from_optional_notifications('suppressed.user@example.test', ' ')$$,
+    'P0001',
     'suppression reason is required',
     'Should reject blank reasons'
 );
@@ -127,6 +129,7 @@ select throws_ok(
 -- Should reject unknown emails
 select throws_ok(
     $$select opt_out_user_from_optional_notifications('missing@example.test', 'smtp bounce')$$,
+    'P0001',
     'user not found',
     'Should reject unknown emails'
 );

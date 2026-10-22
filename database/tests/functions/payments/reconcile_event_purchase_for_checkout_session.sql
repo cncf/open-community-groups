@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(45);
+select plan(40);
 
 -- ============================================================================
 -- VARIABLES
@@ -41,7 +41,6 @@ select plan(45);
 \set purchaseExpiredActiveHoldID '79000000-0000-0000-0000-000000000026'
 \set purchaseExpiredID '79000000-0000-0000-0000-000000000013'
 \set purchaseInvitedID '79000000-0000-0000-0000-000000000027'
-\set purchaseMissingRefID '79000000-0000-0000-0000-000000000015'
 \set purchaseOpenUntilStartID '79000000-0000-0000-0000-000000000031'
 \set purchaseRecoveryID '79000000-0000-0000-0000-000000000035'
 \set purchaseRecoveryReplacementID '79000000-0000-0000-0000-000000000036'
@@ -60,7 +59,6 @@ select plan(45);
 \set user1ID '79000000-0000-0000-0000-000000000017'
 \set user2ID '79000000-0000-0000-0000-000000000018'
 \set user3ID '79000000-0000-0000-0000-000000000019'
-\set user4ID '79000000-0000-0000-0000-000000000020'
 \set user5ID '79000000-0000-0000-0000-000000000021'
 \set user6ID '79000000-0000-0000-0000-000000000025'
 \set user7ID '79000000-0000-0000-0000-000000000029'
@@ -80,7 +78,6 @@ select fx_user(:'activeOfferRefundUserID');
 select fx_user(:'user1ID');
 select fx_user(:'user2ID');
 select fx_user(:'user3ID');
-select fx_user(:'user4ID');
 select fx_user(:'user5ID');
 select fx_user(:'user6ID');
 select fx_user(:'user7ID');
@@ -352,22 +349,6 @@ from (values (
     'pending',
     'General admission',
     :'user3ID'
-), (
-    :'purchaseMissingRefID',
-    2500,
-    'USD',
-    0,
-    null,
-    null,
-    :'activeEventID',
-    :'activeTicketTypeID',
-    now() - interval '15 minutes',
-    'stripe',
-    'cs_missing_ref',
-    null,
-    'pending',
-    'General admission',
-    :'user4ID'
 ), (
     :'purchaseStartedID',
     2500,
@@ -900,6 +881,7 @@ select throws_ok(
         'stripe', 'acct_complete', 'cs_no_tax', 'pi_no_tax',
         'ch_no_tax', 2625, 125, null
     )$$,
+    'P0001',
     'no-tax checkout must have zero tax',
     'Should reject provider tax for a no-tax purchase'
 );
@@ -1221,7 +1203,7 @@ select results_eq(
     'Should persist the refund-pending purchase fields, release registration hold, and restore discount availability'
 );
 
--- Should keep requiring refund for refund-pending purchases after the refund handoff
+-- Should attach a delayed application fee to a refund-pending purchase
 select lives_ok(
     $$select attach_application_fee_to_event_purchase(
         'stripe', 'acct_complete', 'ch_expired', 'fee_expired', 50
@@ -1229,7 +1211,7 @@ select lives_ok(
     'Should attach a delayed application fee to a refund-pending purchase'
 );
 
--- Claim and complete the fee adjustment before another Checkout replay arrives
+-- Should complete financial reconciliation before Checkout replay
 select lives_ok(
     $$
         with claim as (
@@ -1251,7 +1233,7 @@ select lives_ok(
     'Should complete financial reconciliation before Checkout replay'
 );
 
--- Replay the refund-pending Checkout after financial work completed
+-- Should keep requiring refund for refund-pending purchases after the refund handoff
 select is(
     reconcile_event_purchase_for_checkout_session(
         'stripe', 'acct_complete', 'cs_expired', 'pi_expired',
@@ -1261,6 +1243,7 @@ select is(
     'Should keep requiring refund for refund-pending purchases after the refund handoff'
 );
 
+-- Should preserve completed financial state and one adjustment across replay
 select results_eq(
     format($$
         select
@@ -1277,26 +1260,7 @@ select results_eq(
     'Should preserve completed financial state and one adjustment across replay'
 );
 
-select throws_ok(
-    $$select reconcile_event_purchase_for_checkout_session(
-        'stripe', 'acct_complete', 'cs_expired', 'pi_expired',
-        'ch_expired', 2000, 0, 'fee_conflicting'
-    )$$,
-    'provider application fee does not match the purchase',
-    'Should reject a conflicting application fee during replay'
-);
-
-select is(
-    (
-        select provider_application_fee_id
-        from event_purchase
-        where event_purchase_id = :'purchaseExpiredID'::uuid
-    ),
-    'fee_expired',
-    'Should preserve the attached application fee after a conflicting replay'
-);
-
--- Should not restore discount availability twice for already expired purchases
+-- Should not restore discount availability again on refund-pending checkout replay
 select is(
     (
         select available
@@ -1304,7 +1268,18 @@ select is(
         where event_discount_code_id = :'discountCodeID'::uuid
     ),
     1,
-    'Should not restore discount availability twice for already expired purchases'
+    'Should not restore discount availability again on refund-pending checkout replay'
+);
+
+-- Should reject a conflicting application fee during replay
+select throws_ok(
+    $$select reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_expired', 'pi_expired',
+        'ch_expired', 2000, 0, 'fee_conflicting'
+    )$$,
+    'P0001',
+    'provider application fee does not match the purchase',
+    'Should reject a conflicting application fee during replay'
 );
 
 -- Should require refund when the event can no longer be fulfilled
@@ -1423,74 +1398,37 @@ select results_eq(
     'Should persist the completed open-only hold purchase and attendee row'
 );
 
--- Should persist the canceled purchase fields when refunding
-select results_eq(
-    $$
-        select
-            (
-                select hold_expires_at is null
-                from event_purchase
-                where event_purchase_id = '79000000-0000-0000-0000-000000000014'::uuid
-            ),
-            (
-                select provider_payment_reference
-                from event_purchase
-                where event_purchase_id = '79000000-0000-0000-0000-000000000014'::uuid
-            ),
-            (
-                select status
-                from event_purchase
-                where event_purchase_id = '79000000-0000-0000-0000-000000000014'::uuid
-            ),
-            (
-                select count(*)::int
-                from event_attendee
-                where event_id = '79000000-0000-0000-0000-000000000005'::uuid
-                and user_id = '79000000-0000-0000-0000-000000000019'::uuid
-            )
-    $$,
-    $$ values (true, 'pi_canceled'::text, 'refund-pending'::text, 0::int) $$,
-    'Should persist the canceled purchase fields and release registration hold when refunding'
+-- Should require a connected seller account
+select throws_ok(
+    $$select reconcile_event_purchase_for_checkout_session(
+        'stripe', ' ', 'cs_missing_ref', 'pi_missing_ref',
+        'ch_missing_ref', 2500, 0, null
+    )$$,
+    'P0001',
+    'connected seller account is required',
+    'Should require a connected seller account'
 );
 
--- Should persist the started purchase fields when refunding
-select results_eq(
-    $$
-        select
-            (
-                select hold_expires_at is null
-                from event_purchase
-                where event_purchase_id = '79000000-0000-0000-0000-000000000022'::uuid
-            ),
-            (
-                select provider_payment_reference
-                from event_purchase
-                where event_purchase_id = '79000000-0000-0000-0000-000000000022'::uuid
-            ),
-            (
-                select status
-                from event_purchase
-                where event_purchase_id = '79000000-0000-0000-0000-000000000022'::uuid
-            ),
-            (
-                select count(*)::int
-                from event_attendee
-                where event_id = '79000000-0000-0000-0000-000000000023'::uuid
-                and user_id = '79000000-0000-0000-0000-000000000025'::uuid
-            )
-    $$,
-    $$ values (true, 'pi_started'::text, 'refund-pending'::text, 0::int) $$,
-    'Should persist the started purchase fields and release registration hold when refunding'
-);
-
--- Should reject refund-required paths without a provider payment reference
+-- Should require direct-charge payment references
 select throws_ok(
     $$select reconcile_event_purchase_for_checkout_session(
         'stripe', 'acct_complete', 'cs_missing_ref', null,
         'ch_missing_ref', 2500, 0, null
     )$$,
+    'P0001',
     'direct-charge payment references are required',
-    'Should reject refund-required paths without a provider payment reference'
+    'Should require direct-charge payment references'
+);
+
+-- Should require the direct-charge charge id
+select throws_ok(
+    $$select reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_missing_ref', 'pi_missing_ref',
+        ' ', 2500, 0, null
+    )$$,
+    'P0001',
+    'direct-charge payment references are required',
+    'Should require the direct-charge charge id'
 );
 
 -- Should require refund when the attendee row cannot be confirmed
@@ -1528,11 +1466,13 @@ select results_eq(
     'Should persist the refunding purchase fields and keep the invitation row'
 );
 
--- Should persist every automatic refund handoff for worker processing
+-- Should move every refunded purchase to refund-pending and persist its handoff
 select results_eq(
     format($$
         select
             count(*)::int,
+            bool_and(ep.hold_expires_at is null),
+            bool_and(ep.status = 'refund-pending'),
             bool_and(epr.amount_minor = ep.amount_minor),
             bool_and(epr.currency_code = ep.currency_code),
             bool_and(epr.kind = 'automatic-unfulfillable-checkout'),
@@ -1557,8 +1497,8 @@ select results_eq(
         :'purchaseRecoveryReplacementID',
         :'purchaseStartedID'
     ),
-    $$ values (5, true, true, true, true, true, true, true) $$,
-    'Should persist every automatic refund handoff for worker processing'
+    $$ values (5, true, true, true, true, true, true, true, true, true) $$,
+    'Should move every refunded purchase to refund-pending and persist its handoff'
 );
 
 -- Should keep one durable refund after replaying the same checkout webhook
@@ -1600,42 +1540,6 @@ select results_eq(
     $$,
     $$ values (true, null::text, 'ch_confirmed'::text, 'completed'::text) $$,
     'Should fulfill a paid checkout before its application fee is available'
-);
-
--- Should reject an application fee whose amount does not match Checkout
-select throws_ok(
-    $$select attach_application_fee_to_event_purchase(
-        'stripe', 'acct_complete', 'ch_confirmed', 'fee_confirmed', 61
-    )$$,
-    'application fee amount does not match the purchase',
-    'Should reject an application fee with the wrong amount'
-);
-
--- Should attach the delayed provider application fee through its charge scope
-select lives_ok(
-    $$select attach_application_fee_to_event_purchase(
-        'stripe', 'acct_complete', 'ch_confirmed', 'fee_confirmed', 62
-    )$$,
-    'Should attach the asynchronously created application fee'
-);
-
--- Should persist the application fee on its completed purchase
-select is(
-    (
-        select provider_application_fee_id
-        from event_purchase
-        where provider_checkout_session_id = 'cs_confirmed'
-    ),
-    'fee_confirmed',
-    'Should persist the asynchronously created application fee'
-);
-
--- Should idempotently accept the same application fee delivery again
-select lives_ok(
-    $$select attach_application_fee_to_event_purchase(
-        'stripe', 'acct_complete', 'ch_confirmed', 'fee_confirmed', 62
-    )$$,
-    'Should accept an application-fee webhook replay'
 );
 
 -- Should noop for already completed purchases

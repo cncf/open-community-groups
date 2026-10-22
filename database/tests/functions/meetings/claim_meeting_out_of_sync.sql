@@ -1,9 +1,11 @@
+-- Tests claiming event, session and orphan meetings that need provider synchronization.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(26);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,11 +16,9 @@ select plan(26);
 \set eventCanceledNoMeetingID '7a050000-0000-0000-0000-000000000003'
 \set eventCategoryID '7a050000-0000-0000-0000-000000000004'
 \set eventCreateID '7a050000-0000-0000-0000-000000000005'
-\set eventDeletedID '7a050000-0000-0000-0000-000000000006'
 \set eventDisabledID '7a050000-0000-0000-0000-000000000007'
 \set eventInSyncID '7a050000-0000-0000-0000-000000000008'
 \set eventNoRequestID '7a050000-0000-0000-0000-000000000009'
-\set eventOrphanCascadeID '7a050000-0000-0000-0000-000000000010'
 \set eventPastImportID '7a050000-0000-0000-0000-000000000011'
 \set eventUnpublishedID '7a050000-0000-0000-0000-000000000012'
 \set eventUnpublishedWithMeetingID '7a050000-0000-0000-0000-000000000013'
@@ -28,23 +28,19 @@ select plan(26);
 \set groupID '7a050000-0000-0000-0000-000000000017'
 \set meetingDisabledID '7a050000-0000-0000-0000-000000000018'
 \set meetingEventCanceledDeleteID '7a050000-0000-0000-0000-000000000019'
-\set meetingEventDeletedID '7a050000-0000-0000-0000-000000000020'
-\set meetingEventOrphanCascadeID '7a050000-0000-0000-0000-000000000021'
+\set meetingEventOrphanDetachedID '7a050000-0000-0000-0000-000000000021'
 \set meetingEventUnpublishedID '7a050000-0000-0000-0000-000000000022'
 \set meetingEventUpdateID '7a050000-0000-0000-0000-000000000023'
 \set meetingOrphanID '7a050000-0000-0000-0000-000000000024'
-\set meetingSessionDeletedParentID '7a050000-0000-0000-0000-000000000025'
 \set meetingSessionDeleteID '7a050000-0000-0000-0000-000000000026'
 \set meetingSessionDisabledID '7a050000-0000-0000-0000-000000000027'
-\set meetingSessionOrphanCascadeID '7a050000-0000-0000-0000-000000000028'
+\set meetingSessionOrphanDetachedID '7a050000-0000-0000-0000-000000000028'
 \set meetingSessionUnpublishedID '7a050000-0000-0000-0000-000000000029'
 \set meetingSessionUpdateID '7a050000-0000-0000-0000-000000000030'
 \set sessionCanceledNoMeetingID '7a050000-0000-0000-0000-000000000031'
 \set sessionCreateID '7a050000-0000-0000-0000-000000000032'
-\set sessionDeletedParentID '7a050000-0000-0000-0000-000000000033'
 \set sessionDeleteID '7a050000-0000-0000-0000-000000000034'
 \set sessionDisabledID '7a050000-0000-0000-0000-000000000035'
-\set sessionOrphanCascadeID '7a050000-0000-0000-0000-000000000036'
 \set sessionPastImportID '7a050000-0000-0000-0000-000000000037'
 \set sessionUnpublishedNoMeetingID '7a050000-0000-0000-0000-000000000038'
 \set sessionUnpublishedWithMeetingID '7a050000-0000-0000-0000-000000000039'
@@ -77,31 +73,36 @@ select fx_user(:'userSessionSpeakerID', jsonb_build_object(
     'username', 'sessionspeaker'
 ));
 
--- Event candidates and exclusions
--- Update and delete-focused rows that could interfere start in sync and are reopened later
+-- Published event needing create, with a reserved host and a previous error
 select fx_event(:'eventCreateID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', current_timestamp + interval '1 day 1 hour',
     'event_kind_id', 'virtual',
+    'meeting_error', 'previous event create error',
     'meeting_hosts', array['explicit@example.com'],
     'meeting_in_sync', false,
+    'meeting_provider_host_user', 'claim-event-create-host@example.com',
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
     'name', 'Event Create Test',
     'published', true,
     'starts_at', current_timestamp + interval '1 day'
 ));
+
+-- Published event needing update of its existing meeting
 select fx_event(:'eventUpdateID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', current_timestamp + interval '2 days 2 hours',
     'event_kind_id', 'virtual',
-    'meeting_in_sync', true,
+    'meeting_in_sync', false,
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
     'name', 'Event Update Test',
     'published', true,
     'starts_at', current_timestamp + interval '2 days'
 ));
+
+-- Published in-sync parent of the session create, update and disabled rows
 select fx_event(:'eventWithSessionsID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', current_timestamp + interval '3 days 2 hours',
@@ -112,6 +113,8 @@ select fx_event(:'eventWithSessionsID', :'groupID', :'eventCategoryID', jsonb_bu
     'published', true,
     'starts_at', current_timestamp + interval '3 days'
 ));
+
+-- Canceled event needing delete of its meeting
 select fx_event(:'eventCanceledDeleteID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
     'capacity', 100,
@@ -122,54 +125,54 @@ select fx_event(:'eventCanceledDeleteID', :'groupID', :'eventCategoryID', jsonb_
     'meeting_requested', true,
     'starts_at', current_timestamp + interval '4 days'
 ));
-select fx_event(:'eventDeletedID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 100,
-    'deleted', true,
-    'ends_at', current_timestamp + interval '4 days 2 hours',
-    'event_kind_id', 'virtual',
-    'meeting_in_sync', true,
-    'meeting_provider_id', 'zoom',
-    'meeting_requested', true,
-    'starts_at', current_timestamp + interval '4 days 1 hour'
-));
+
+-- Unpublished event needing delete without a meeting row
 select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', current_timestamp + interval '5 days 1 hour',
     'event_kind_id', 'virtual',
-    'meeting_in_sync', true,
+    'meeting_in_sync', false,
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
-    'name', 'Event Unpublished Test',
     'starts_at', current_timestamp + interval '5 days'
 ));
+
+-- Unpublished event needing delete of its meeting (a deleted event is always
+-- unpublished, so it takes this same path)
 select fx_event(:'eventUnpublishedWithMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', current_timestamp + interval '5 days 2 hours',
     'event_kind_id', 'virtual',
-    'meeting_in_sync', true,
+    'meeting_in_sync', false,
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
     'starts_at', current_timestamp + interval '5 days 1 hour'
 ));
+
+-- Published event whose meeting was disabled
 select fx_event(:'eventDisabledID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', current_timestamp + interval '6 days 1 hour',
     'event_kind_id', 'virtual',
-    'meeting_in_sync', true,
+    'meeting_in_sync', false,
     'meeting_requested', false,
     'published', true,
     'starts_at', current_timestamp + interval '6 days'
 ));
+
+-- Canceled event needing delete before its meeting was created
 select fx_event(:'eventCanceledNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
     'capacity', 100,
     'ends_at', current_timestamp + interval '7 days 1 hour',
     'event_kind_id', 'virtual',
-    'meeting_in_sync', true,
+    'meeting_in_sync', false,
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
     'starts_at', current_timestamp + interval '7 days'
 ));
+
+-- Published event already in sync
 select fx_event(:'eventInSyncID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', current_timestamp + interval '8 days 1 hour',
@@ -180,6 +183,8 @@ select fx_event(:'eventInSyncID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'published', true,
     'starts_at', current_timestamp + interval '8 days'
 ));
+
+-- Published event in sync without a meeting request
 select fx_event(:'eventNoRequestID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', current_timestamp + interval '9 days 1 hour',
@@ -189,29 +194,32 @@ select fx_event(:'eventNoRequestID', :'groupID', :'eventCategoryID', jsonb_build
     'published', true,
     'starts_at', current_timestamp + interval '9 days'
 ));
+
+-- Imported past event that is eligible except for its historical start
 select fx_event(:'eventPastImportID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', '2020-06-11 11:00:00+00',
     'event_kind_id', 'virtual',
-    'meeting_in_sync', true,
+    'meeting_in_sync', false,
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
     'published', true,
     'starts_at', '2020-06-11 10:00:00+00'
 ));
-select fx_event(:'eventOrphanCascadeID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 100,
-    'ends_at', current_timestamp + interval '10 days 1 hour',
-    'event_kind_id', 'virtual',
-    'meeting_in_sync', true,
-    'meeting_provider_id', 'zoom',
-    'meeting_requested', true,
-    'published', true,
-    'starts_at', current_timestamp + interval '10 days'
-));
 
--- Session candidates
--- Update and delete-focused rows start in sync so event and session create/update priority is stable
+-- Event host included in the event and session meeting claim payloads
+insert into event_host (event_id, user_id)
+values (:'eventCreateID', :'userEventHostID');
+
+-- Parent event host included in the session meeting claim payloads
+insert into event_host (event_id, user_id)
+values (:'eventWithSessionsID', :'userEventHostID');
+
+-- Event speaker included in the event meeting claim payload
+insert into event_speaker (event_id, user_id, featured)
+values (:'eventCreateID', :'userEventSpeakerID', false);
+
+-- Session needing create on a published event
 insert into session (
     ends_at,
     event_id,
@@ -223,8 +231,7 @@ insert into session (
     session_id,
     session_kind_id,
     starts_at
-) values
-(
+) values (
     current_timestamp + interval '3 days 30 minutes',
     :'eventWithSessionsID',
     array['sessionhost@example.com'],
@@ -235,108 +242,163 @@ insert into session (
     :'sessionCreateID',
     'virtual',
     current_timestamp + interval '3 days'
-),
-(
+);
+
+-- Session needing update, with a reserved host and a previous error
+insert into session (
+    ends_at,
+    event_id,
+    meeting_error,
+    meeting_in_sync,
+    meeting_provider_host_user,
+    meeting_provider_id,
+    meeting_requested,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
     current_timestamp + interval '3 days 1 hour 30 minutes',
     :'eventWithSessionsID',
-    null,
-    true,
+    'previous session update error',
+    false,
+    'claim-session-update-host@example.com',
     'zoom',
     true,
     'Session Update Test',
     :'sessionUpdateID',
     'virtual',
     current_timestamp + interval '3 days 1 hour'
-),
-(
+);
+
+-- Session whose meeting was disabled on a published event
+insert into session (
+    ends_at,
+    event_id,
+    meeting_in_sync,
+    meeting_requested,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
+    current_timestamp + interval '3 days 2 hours',
+    :'eventWithSessionsID',
+    false,
+    false,
+    'Session Disabled Test',
+    :'sessionDisabledID',
+    'virtual',
+    current_timestamp + interval '3 days 1 hour 30 minutes'
+);
+
+-- Session needing delete because its parent event was canceled
+insert into session (
+    ends_at,
+    event_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
     current_timestamp + interval '4 days 30 minutes',
     :'eventCanceledDeleteID',
-    null,
-    true,
+    false,
     'zoom',
     true,
     'Session Delete Test',
     :'sessionDeleteID',
     'virtual',
     current_timestamp + interval '4 days'
-),
-(
-    current_timestamp + interval '4 days 1 hour 30 minutes',
-    :'eventDeletedID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Session Deleted Parent Test',
-    :'sessionDeletedParentID',
-    'virtual',
-    current_timestamp + interval '4 days 1 hour'
-),
-(
-    current_timestamp + interval '7 days 30 minutes',
-    :'eventCanceledNoMeetingID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Session Canceled No Meeting Test',
-    :'sessionCanceledNoMeetingID',
-    'virtual',
-    current_timestamp + interval '7 days'
-),
-(
+);
+
+-- Session needing delete on an unpublished event without a meeting row
+insert into session (
+    ends_at,
+    event_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
     current_timestamp + interval '5 days 30 minutes',
     :'eventUnpublishedID',
-    null,
-    true,
+    false,
     'zoom',
     true,
     'Session Unpublished No Meeting Test',
     :'sessionUnpublishedNoMeetingID',
     'virtual',
     current_timestamp + interval '5 days'
-),
-(
+);
+
+-- Session needing delete of its meeting on an unpublished event
+insert into session (
+    ends_at,
+    event_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
     current_timestamp + interval '5 days 1 hour',
     :'eventUnpublishedID',
-    null,
-    true,
+    false,
     'zoom',
     true,
     'Session Unpublished With Meeting Test',
     :'sessionUnpublishedWithMeetingID',
     'virtual',
     current_timestamp + interval '5 days 30 minutes'
-),
-(
-    current_timestamp + interval '3 days 2 hours',
-    :'eventWithSessionsID',
-    null,
-    true,
-    null,
+);
+
+-- Session needing delete on a canceled event before its meeting was created
+insert into session (
+    ends_at,
+    event_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
+    current_timestamp + interval '7 days 30 minutes',
+    :'eventCanceledNoMeetingID',
     false,
-    'Session Disabled Test',
-    :'sessionDisabledID',
-    'virtual',
-    current_timestamp + interval '3 days 1 hour 30 minutes'
-),
-(
-    current_timestamp + interval '10 days 30 minutes',
-    :'eventOrphanCascadeID',
-    null,
-    true,
     'zoom',
     true,
-    'Session Orphan Cascade Test',
-    :'sessionOrphanCascadeID',
+    'Session Canceled No Meeting Test',
+    :'sessionCanceledNoMeetingID',
     'virtual',
-    current_timestamp + interval '10 days'
-),
-(
+    current_timestamp + interval '7 days'
+);
+
+-- Imported past session that is eligible except for its historical start
+insert into session (
+    ends_at,
+    event_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
     '2020-06-11 10:30:00+00',
     :'eventPastImportID',
-    null,
-    true,
+    false,
     'zoom',
     true,
     'Past Import Session Test',
@@ -344,23 +406,6 @@ insert into session (
     'virtual',
     '2020-06-11 10:00:00+00'
 );
-
--- Hosts and speakers for combined hosts testing
--- eventCreateID combines explicit meeting_hosts, event_host, and event_speaker
-insert into event_host (event_id, user_id)
-values (:'eventCreateID', :'userEventHostID');
-
--- Event speaker included in the event meeting claim payload
-insert into event_speaker (event_id, user_id, featured)
-values (:'eventCreateID', :'userEventSpeakerID', false);
-
--- eventWithSessionsID and sessionCreateID combine parent host and session speaker
-insert into event_host (event_id, user_id)
-values (:'eventWithSessionsID', :'userEventHostID');
-
--- Session speaker included in the session meeting claim payload
-insert into session_speaker (session_id, user_id, featured)
-values (:'sessionCreateID', :'userSessionSpeakerID', false);
 
 -- Existing event meeting rows
 insert into meeting (
@@ -388,28 +433,12 @@ insert into meeting (
     'event-canceled-delete'
 ),
 (
-    :'eventDeletedID',
-    'https://zoom.us/j/event-deleted',
-    :'meetingEventDeletedID',
-    'zoom',
-    null,
-    'event-deleted'
-),
-(
     :'eventDisabledID',
     'https://zoom.us/j/event-disabled',
     :'meetingDisabledID',
     'zoom',
     null,
     'event-disabled'
-),
-(
-    :'eventOrphanCascadeID',
-    'https://zoom.us/j/event-orphan-cascade',
-    :'meetingEventOrphanCascadeID',
-    'zoom',
-    null,
-    'event-orphan-cascade'
 ),
 (
     :'eventUnpublishedWithMeetingID',
@@ -446,28 +475,12 @@ insert into meeting (
     :'sessionDeleteID'
 ),
 (
-    'https://zoom.us/j/session-deleted-parent',
-    :'meetingSessionDeletedParentID',
-    'zoom',
-    null,
-    'session-deleted-parent',
-    :'sessionDeletedParentID'
-),
-(
     'https://zoom.us/j/session-disabled',
     :'meetingSessionDisabledID',
     'zoom',
     null,
     'session-disabled',
     :'sessionDisabledID'
-),
-(
-    'https://zoom.us/j/session-orphan-cascade',
-    :'meetingSessionOrphanCascadeID',
-    'zoom',
-    null,
-    'session-orphan-cascade',
-    :'sessionOrphanCascadeID'
 ),
 (
     'https://zoom.us/j/session-unpublished',
@@ -478,555 +491,445 @@ insert into meeting (
     :'sessionUnpublishedWithMeetingID'
 );
 
--- Existing orphan meeting row
+-- Orphan meeting with the provider host user that created it
 insert into meeting (
     join_url,
     meeting_id,
     meeting_provider_id,
+    provider_host_user_id,
     provider_meeting_id
 ) values (
     'https://zoom.us/j/orphan',
     :'meetingOrphanID',
     'zoom',
+    'orphan-host-user',
     'orphan'
 );
+
+-- Further detached orphan meetings claimed in the same batch
+insert into meeting (
+    join_url,
+    meeting_id,
+    meeting_provider_id,
+    provider_meeting_id
+) values
+(
+    'https://zoom.us/j/event-orphan-detached',
+    :'meetingEventOrphanDetachedID',
+    'zoom',
+    'event-orphan-detached'
+),
+(
+    'https://zoom.us/j/session-orphan-detached',
+    :'meetingSessionOrphanDetachedID',
+    'zoom',
+    'session-orphan-detached'
+);
+
+-- Session speaker included in the session meeting claim payload
+insert into session_speaker (session_id, user_id, featured)
+values (:'sessionCreateID', :'userSessionSpeakerID', false);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Event create - returns event with delete=false and no meeting row
--- Priority: event create/update work is claimed before delete work
--- Hosts include explicit meeting_hosts, event_host, and event_speaker emails
+-- Claim every eligible owner and orphan meeting (2 event and 2 session
+-- create/update, 5 event and 5 session delete, 3 orphan), keyed by the
+-- session, event or orphan meeting id; claim order is covered by
+-- claim_meeting_out_of_sync_priority.sql
+with claims as materialized (
+    select claim_meeting_out_of_sync() as claim
+    from generate_series(1, 17)
+)
+select jsonb_object_agg(
+    coalesce(claim->>'session_id', claim->>'event_id', claim->>'meeting_id'),
+    claim
+) filter (where claim is not null) as "claims"
+from claims \gset
+
+-- Should return an event needing create with combined hosts and its reserved host
 select is(
-    claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'eventCreateID',
     format(
         $json${
-        "delete": false,
-        "duration_secs": 3600,
-        "event_id": "%s",
-        "hosts": ["eventhost@example.com", "eventspeaker@example.com", "explicit@example.com"],
-        "meeting_provider_id": "zoom",
-        "meeting_recording_requested": true,
-        "timezone": "UTC",
-        "topic": "Event Create Test"
-    }$json$,
+            "delete": false,
+            "duration_secs": 3600,
+            "event_id": "%s",
+            "hosts": ["eventhost@example.com", "eventspeaker@example.com", "explicit@example.com"],
+            "meeting_provider_id": "zoom",
+            "meeting_recording_requested": true,
+            "provider_host_user_id": "claim-event-create-host@example.com",
+            "timezone": "UTC",
+            "topic": "Event Create Test"
+        }$json$,
         :'eventCreateID'
-    )::jsonb,
-    'Event needing create returns correctly'
+    )::jsonb || jsonb_build_object(
+        'starts_at', current_timestamp + interval '1 day',
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_event_meeting_sync_state_hash(:'eventCreateID')
+    ),
+    'Should return an event needing create with combined hosts and its reserved host'
 );
-select isnt(
-    (select meeting_sync_claimed_at from event where event_id = :'eventCreateID'),
-    null,
-    'Should claim selected event create'
+
+-- Should claim the event, clear its error and keep it out of sync
+select results_eq(
+    format(
+        $$ select meeting_error, meeting_in_sync, meeting_provider_host_user, meeting_sync_claimed_at from event where event_id = %L $$,
+        :'eventCreateID'
+    ),
+    $$ values (null::text, false, 'claim-event-create-host@example.com', current_timestamp) $$,
+    'Should claim the event, clear its error and keep it out of sync'
 );
 
--- Mark claimed event as synced to advance to the next queue item
-update event set meeting_in_sync = true where event_id = :'eventCreateID';
-
--- Reopen updated event now that the event create has been claimed
-update event
-set meeting_in_sync = false
-where event_id = :'eventUpdateID';
-
--- Event update - returns event with delete=false and existing provider fields
+-- Should return an event needing update with its existing provider fields
 select is(
-    claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'eventUpdateID',
     format(
         $json${
-        "delete": false,
-        "duration_secs": 7200,
-        "event_id": "%s",
-        "join_url": "https://zoom.us/j/event-update",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "meeting_recording_requested": true,
-        "password": "eventpass",
-        "provider_meeting_id": "event-update",
-        "timezone": "UTC",
-        "topic": "Event Update Test"
-    }$json$,
+            "delete": false,
+            "duration_secs": 7200,
+            "event_id": "%s",
+            "join_url": "https://zoom.us/j/event-update",
+            "meeting_id": "%s",
+            "meeting_provider_id": "zoom",
+            "meeting_recording_requested": true,
+            "password": "eventpass",
+            "provider_meeting_id": "event-update",
+            "timezone": "UTC",
+            "topic": "Event Update Test"
+        }$json$,
         :'eventUpdateID',
         :'meetingEventUpdateID'
-    )::jsonb,
-    'Event needing update returns correctly'
+    )::jsonb || jsonb_build_object(
+        'starts_at', current_timestamp + interval '2 days',
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_event_meeting_sync_state_hash(:'eventUpdateID')
+    ),
+    'Should return an event needing update with its existing provider fields'
 );
 
--- Mark claimed event as synced to advance to the next queue item
-update event set meeting_in_sync = true where event_id = :'eventUpdateID';
-
--- Session create - returns session with delete=false and no meeting row
--- Priority: session create/update work is claimed before delete work
--- Hosts include explicit meeting_hosts, parent event_host, and session_speaker emails
+-- Should return a session needing create with combined hosts
 select is(
-    claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'sessionCreateID',
     format(
         $json${
-        "delete": false,
-        "duration_secs": 1800,
-        "hosts": ["eventhost@example.com", "sessionhost@example.com", "sessionspeaker@example.com"],
-        "meeting_provider_id": "zoom",
-        "meeting_recording_requested": true,
-        "session_id": "%s",
-        "timezone": "UTC",
-        "topic": "Session Create Test"
-    }$json$,
+            "delete": false,
+            "duration_secs": 1800,
+            "hosts": ["eventhost@example.com", "sessionhost@example.com", "sessionspeaker@example.com"],
+            "meeting_provider_id": "zoom",
+            "meeting_recording_requested": true,
+            "session_id": "%s",
+            "timezone": "UTC",
+            "topic": "Session Create Test"
+        }$json$,
         :'sessionCreateID'
-    )::jsonb,
-    'Session needing create returns correctly'
+    )::jsonb || jsonb_build_object(
+        'starts_at', current_timestamp + interval '3 days',
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_session_meeting_sync_state_hash(:'sessionCreateID')
+    ),
+    'Should return a session needing create with combined hosts'
 );
 
--- Mark claimed session as synced to advance to the next queue item
-update session set meeting_in_sync = true where session_id = :'sessionCreateID';
-
--- Reopen updated session now that the session create has been claimed
-update session
-set meeting_in_sync = false
-where session_id = :'sessionUpdateID';
-
--- Session update - returns session with delete=false and existing provider fields
--- Hosts include parent event_host emails only
+-- Should return a session needing update with its existing provider fields and reserved host
 select is(
-    claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'sessionUpdateID',
     format(
         $json${
-        "delete": false,
-        "duration_secs": 1800,
-        "hosts": ["eventhost@example.com"],
-        "join_url": "https://zoom.us/j/session-update",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "meeting_recording_requested": true,
-        "password": "sessionpass",
-        "provider_meeting_id": "session-update",
-        "session_id": "%s",
-        "timezone": "UTC",
-        "topic": "Session Update Test"
-    }$json$,
+            "delete": false,
+            "duration_secs": 1800,
+            "hosts": ["eventhost@example.com"],
+            "join_url": "https://zoom.us/j/session-update",
+            "meeting_id": "%s",
+            "meeting_provider_id": "zoom",
+            "meeting_recording_requested": true,
+            "password": "sessionpass",
+            "provider_host_user_id": "claim-session-update-host@example.com",
+            "provider_meeting_id": "session-update",
+            "session_id": "%s",
+            "timezone": "UTC",
+            "topic": "Session Update Test"
+        }$json$,
         :'meetingSessionUpdateID',
         :'sessionUpdateID'
-    )::jsonb,
-    'Session needing update returns correctly'
+    )::jsonb || jsonb_build_object(
+        'starts_at', current_timestamp + interval '3 days 1 hour',
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_session_meeting_sync_state_hash(:'sessionUpdateID')
+    ),
+    'Should return a session needing update with its existing provider fields and reserved host'
 );
 
--- Mark claimed session as synced to advance to the next queue item
-update session set meeting_in_sync = true where session_id = :'sessionUpdateID';
+-- Should claim the session, clear its error and keep it out of sync
+select results_eq(
+    format(
+        $$ select meeting_error, meeting_in_sync, meeting_provider_host_user, meeting_sync_claimed_at from session where session_id = %L $$,
+        :'sessionUpdateID'
+    ),
+    $$ values (null::text, false, 'claim-session-update-host@example.com', current_timestamp) $$,
+    'Should claim the session, clear its error and keep it out of sync'
+);
 
--- Event delete - returns canceled event with delete=true
--- Priority: delete operations come after event and session create/update work
+-- Should return a canceled event with a meeting for delete
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'eventCanceledDeleteID',
     format(
         $json${
-        "delete": true,
-        "event_id": "%s",
-        "join_url": "https://zoom.us/j/event-canceled-delete",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "provider_meeting_id": "event-canceled-delete"
-    }$json$,
+            "delete": true,
+            "event_id": "%s",
+            "join_url": "https://zoom.us/j/event-canceled-delete",
+            "meeting_id": "%s",
+            "meeting_provider_id": "zoom",
+            "provider_meeting_id": "event-canceled-delete"
+        }$json$,
         :'eventCanceledDeleteID',
         :'meetingEventCanceledDeleteID'
-    )::jsonb,
-    'Event needing delete returns correctly'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_event_meeting_sync_state_hash(:'eventCanceledDeleteID')
+    ),
+    'Should return a canceled event with a meeting for delete'
 );
 
--- Mark claimed event delete as synced to test the next delete variant
-update event set meeting_in_sync = true where event_id = :'eventCanceledDeleteID';
-
--- Reopen soft-deleted event now that higher-priority delete work has drained
-update event
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where event_id = :'eventDeletedID';
-
--- Soft-deleted event with meeting returns for delete
+-- Should return an unpublished event without a meeting for delete
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'eventUnpublishedID',
     format(
         $json${
-        "delete": true,
-        "event_id": "%s",
-        "join_url": "https://zoom.us/j/event-deleted",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "provider_meeting_id": "event-deleted"
-    }$json$,
-        :'eventDeletedID',
-        :'meetingEventDeletedID'
-    )::jsonb,
-    'Soft-deleted event with meeting returns for delete'
-);
-
--- Mark claimed event delete as synced to test the next delete variant
-update event set meeting_in_sync = true where event_id = :'eventDeletedID';
-
--- Reopen unpublished event without meeting to prove it does not wedge the queue
-update event
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where event_id = :'eventUnpublishedID';
-
--- Unpublished event without meeting returns for delete to be marked handled
-select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    format(
-        $json${
-        "delete": true,
-        "event_id": "%s"
-    }$json$,
+            "delete": true,
+            "event_id": "%s"
+        }$json$,
         :'eventUnpublishedID'
-    )::jsonb,
-    'Unpublished event without meeting returns for delete'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_event_meeting_sync_state_hash(:'eventUnpublishedID')
+    ),
+    'Should return an unpublished event without a meeting for delete'
 );
 
--- Mark claimed event delete as synced to test the next delete variant
-update event set meeting_in_sync = true where event_id = :'eventUnpublishedID';
-
--- Reopen unpublished event with meeting after the no-meeting variant is handled
-update event
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where event_id = :'eventUnpublishedWithMeetingID';
-
--- Unpublished event with meeting returns for provider deletion
+-- Should return an unpublished event with a meeting for delete
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'eventUnpublishedWithMeetingID',
     format(
         $json${
-        "delete": true,
-        "event_id": "%s",
-        "join_url": "https://zoom.us/j/event-unpublished",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "provider_meeting_id": "event-unpublished"
-    }$json$,
+            "delete": true,
+            "event_id": "%s",
+            "join_url": "https://zoom.us/j/event-unpublished",
+            "meeting_id": "%s",
+            "meeting_provider_id": "zoom",
+            "provider_meeting_id": "event-unpublished"
+        }$json$,
         :'eventUnpublishedWithMeetingID',
         :'meetingEventUnpublishedID'
-    )::jsonb,
-    'Unpublished event with meeting returns for delete'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_event_meeting_sync_state_hash(:'eventUnpublishedWithMeetingID')
+    ),
+    'Should return an unpublished event with a meeting for delete'
 );
 
--- Mark claimed event delete as synced to test the next delete variant
-update event set meeting_in_sync = true where event_id = :'eventUnpublishedWithMeetingID';
-
--- Reopen disabled event meeting after other event deletes for deterministic order
-update event
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where event_id = :'eventDisabledID';
-
--- Event with meeting disabled triggers delete
+-- Should return an event whose meeting was disabled for delete
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'eventDisabledID',
     format(
         $json${
-        "delete": true,
-        "event_id": "%s",
-        "join_url": "https://zoom.us/j/event-disabled",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "provider_meeting_id": "event-disabled"
-    }$json$,
+            "delete": true,
+            "event_id": "%s",
+            "join_url": "https://zoom.us/j/event-disabled",
+            "meeting_id": "%s",
+            "meeting_provider_id": "zoom",
+            "provider_meeting_id": "event-disabled"
+        }$json$,
         :'eventDisabledID',
         :'meetingDisabledID'
-    )::jsonb,
-    'Event with meeting disabled triggers delete'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_event_meeting_sync_state_hash(:'eventDisabledID')
+    ),
+    'Should return an event whose meeting was disabled for delete'
 );
 
--- Mark claimed event delete as synced to test the final event delete variant
-update event set meeting_in_sync = true where event_id = :'eventDisabledID';
-
--- Reopen canceled event that never had a provider meeting created
-update event
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where event_id = :'eventCanceledNoMeetingID';
-
--- Event canceled before meeting creation returns for delete with null meeting fields
+-- Should return an event canceled before meeting creation for delete without meeting fields
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'eventCanceledNoMeetingID',
     format(
         $json${
-        "delete": true,
-        "event_id": "%s"
-    }$json$,
+            "delete": true,
+            "event_id": "%s"
+        }$json$,
         :'eventCanceledNoMeetingID'
-    )::jsonb,
-    'Event canceled before meeting created returns with delete=true and null meeting fields'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_event_meeting_sync_state_hash(:'eventCanceledNoMeetingID')
+    ),
+    'Should return an event canceled before meeting creation for delete without meeting fields'
 );
 
--- Mark claimed event delete as synced so session delete work can be claimed
-update event set meeting_in_sync = true where event_id = :'eventCanceledNoMeetingID';
-
--- Reopen canceled-parent session after event delete work is handled
-update session
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where session_id = :'sessionDeleteID';
-
--- Session delete - returns canceled-parent session with delete=true
+-- Should return a session on a canceled event with a meeting for delete
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'sessionDeleteID',
     format(
         $json${
-        "delete": true,
-        "join_url": "https://zoom.us/j/session-delete",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "provider_meeting_id": "session-delete",
-        "session_id": "%s"
-    }$json$,
+            "delete": true,
+            "join_url": "https://zoom.us/j/session-delete",
+            "meeting_id": "%s",
+            "meeting_provider_id": "zoom",
+            "provider_meeting_id": "session-delete",
+            "session_id": "%s"
+        }$json$,
         :'meetingSessionDeleteID',
         :'sessionDeleteID'
-    )::jsonb,
-    'Session needing delete returns correctly'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_session_meeting_sync_state_hash(:'sessionDeleteID')
+    ),
+    'Should return a session on a canceled event with a meeting for delete'
 );
 
--- Mark claimed session delete as synced to test the next delete variant
-update session set meeting_in_sync = true where session_id = :'sessionDeleteID';
-
--- Reopen soft-deleted-parent session after the canceled-parent variant is handled
-update session
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where session_id = :'sessionDeletedParentID';
-
--- Session on soft-deleted event with meeting returns for delete
+-- Should return a session on a canceled event before meeting creation for delete without meeting fields
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'sessionCanceledNoMeetingID',
     format(
         $json${
-        "delete": true,
-        "join_url": "https://zoom.us/j/session-deleted-parent",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "provider_meeting_id": "session-deleted-parent",
-        "session_id": "%s"
-    }$json$,
-        :'meetingSessionDeletedParentID',
-        :'sessionDeletedParentID'
-    )::jsonb,
-    'Session on soft-deleted event with meeting returns for delete'
-);
-
--- Mark claimed session delete as synced to test the no-meeting variant
-update session set meeting_in_sync = true where session_id = :'sessionDeletedParentID';
-
--- Reopen canceled-parent session that never had a provider meeting created
-update session
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where session_id = :'sessionCanceledNoMeetingID';
-
--- Session on canceled event before meeting creation returns for delete
-select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    format(
-        $json${
-        "delete": true,
-        "session_id": "%s"
-    }$json$,
+            "delete": true,
+            "session_id": "%s"
+        }$json$,
         :'sessionCanceledNoMeetingID'
-    )::jsonb,
-    'Session on canceled event before meeting created returns with delete=true and null meeting fields'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_session_meeting_sync_state_hash(:'sessionCanceledNoMeetingID')
+    ),
+    'Should return a session on a canceled event before meeting creation for delete without meeting fields'
 );
 
--- Mark claimed session delete as synced to test unpublished session variants
-update session set meeting_in_sync = true where session_id = :'sessionCanceledNoMeetingID';
-
--- Reopen unpublished-parent session without meeting for queue cleanup
-update session
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where session_id = :'sessionUnpublishedNoMeetingID';
-
--- Session on unpublished event without meeting returns for delete to be handled
+-- Should return a session on an unpublished event without a meeting for delete
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'sessionUnpublishedNoMeetingID',
     format(
         $json${
-        "delete": true,
-        "session_id": "%s"
-    }$json$,
+            "delete": true,
+            "session_id": "%s"
+        }$json$,
         :'sessionUnpublishedNoMeetingID'
-    )::jsonb,
-    'Session on unpublished event without meeting returns for delete'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_session_meeting_sync_state_hash(:'sessionUnpublishedNoMeetingID')
+    ),
+    'Should return a session on an unpublished event without a meeting for delete'
 );
 
--- Mark claimed session delete as synced to test the with-meeting variant
-update session set meeting_in_sync = true where session_id = :'sessionUnpublishedNoMeetingID';
-
--- Reopen unpublished-parent session with meeting after the no-meeting variant
-update session
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where session_id = :'sessionUnpublishedWithMeetingID';
-
--- Session on unpublished event with meeting returns for provider deletion
+-- Should return a session on an unpublished event with a meeting for delete
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'sessionUnpublishedWithMeetingID',
     format(
         $json${
-        "delete": true,
-        "join_url": "https://zoom.us/j/session-unpublished",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "provider_meeting_id": "session-unpublished",
-        "session_id": "%s"
-    }$json$,
+            "delete": true,
+            "join_url": "https://zoom.us/j/session-unpublished",
+            "meeting_id": "%s",
+            "meeting_provider_id": "zoom",
+            "provider_meeting_id": "session-unpublished",
+            "session_id": "%s"
+        }$json$,
         :'meetingSessionUnpublishedID',
         :'sessionUnpublishedWithMeetingID'
-    )::jsonb,
-    'Session on unpublished event with meeting returns for delete'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_session_meeting_sync_state_hash(:'sessionUnpublishedWithMeetingID')
+    ),
+    'Should return a session on an unpublished event with a meeting for delete'
 );
 
--- Mark claimed session delete as synced to test disabled session meetings
-update session set meeting_in_sync = true where session_id = :'sessionUnpublishedWithMeetingID';
-
--- Reopen disabled session meeting after other session deletes are handled
-update session
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where session_id = :'sessionDisabledID';
-
--- Session with meeting disabled returns for delete
+-- Should return a session whose meeting was disabled for delete
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'sessionDisabledID',
     format(
         $json${
-        "delete": true,
-        "join_url": "https://zoom.us/j/session-disabled",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "provider_meeting_id": "session-disabled",
-        "session_id": "%s"
-    }$json$,
+            "delete": true,
+            "join_url": "https://zoom.us/j/session-disabled",
+            "meeting_id": "%s",
+            "meeting_provider_id": "zoom",
+            "provider_meeting_id": "session-disabled",
+            "session_id": "%s"
+        }$json$,
         :'meetingSessionDisabledID',
         :'sessionDisabledID'
-    )::jsonb,
-    'Session with meeting disabled returns for delete'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp,
+        'sync_state_hash', get_session_meeting_sync_state_hash(:'sessionDisabledID')
+    ),
+    'Should return a session whose meeting was disabled for delete'
 );
 
--- Mark claimed session delete as synced so only orphan work remains
-update session set meeting_in_sync = true where session_id = :'sessionDisabledID';
-
--- Orphan meeting - already detached meeting rows are claimed for provider cleanup
+-- Should return an orphan meeting for delete with its provider host user
 select is(
-    claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+    :'claims'::jsonb -> :'meetingOrphanID',
     format(
         $json${
-        "delete": true,
-        "join_url": "https://zoom.us/j/orphan",
-        "meeting_id": "%s",
-        "meeting_provider_id": "zoom",
-        "provider_meeting_id": "orphan"
-    }$json$,
+            "delete": true,
+            "join_url": "https://zoom.us/j/orphan",
+            "meeting_id": "%s",
+            "meeting_provider_id": "zoom",
+            "provider_host_user_id": "orphan-host-user",
+            "provider_meeting_id": "orphan"
+        }$json$,
         :'meetingOrphanID'
-    )::jsonb,
-    'Orphan meeting returns with delete=true'
-);
-select isnt(
-    (select sync_claimed_at from meeting where meeting_id = :'meetingOrphanID'),
-    null,
-    'Should claim orphan meeting'
+    )::jsonb || jsonb_build_object(
+        'sync_claimed_at', current_timestamp
+    ),
+    'Should return an orphan meeting for delete with its provider host user'
 );
 
--- Remove claimed orphan to expose the next orphan candidate
-delete from meeting where meeting_id = :'meetingOrphanID';
-
--- Multiple orphan meetings - event delete cascades to session delete
--- The event meeting and session meeting both become detached provider meetings
-delete from event where event_id = :'eventOrphanCascadeID';
-select is(
-    (claim_meeting_out_of_sync()->>'delete')::boolean,
-    true,
-    'First orphan meeting from hard-deleted event is claimed'
-);
-
--- Remove the first claimed cascade orphan to expose the second one
-delete from meeting
-where sync_claimed_at is not null
-  and meeting_id in (
-      :'meetingEventOrphanCascadeID'::uuid,
-      :'meetingSessionOrphanCascadeID'::uuid
-);
-select is(
-    (claim_meeting_out_of_sync()->>'delete')::boolean,
-    true,
-    'Second orphan meeting from hard-deleted event is claimed'
-);
-
--- Remove the second cascade orphan so the queue can drain
-delete from meeting
-where sync_claimed_at is not null
-  and meeting_id in (
-      :'meetingEventOrphanCascadeID'::uuid,
-      :'meetingSessionOrphanCascadeID'::uuid
-  );
-
--- In-sync and no-request rows are skipped once all candidates are handled
-select is(
-    claim_meeting_out_of_sync(),
-    null::jsonb,
-    'Empty queue returns null'
-);
-
--- Imported past events and sessions are never claimed for provider create/update
-update event
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where event_id = :'eventPastImportID';
-
--- Make the imported past session eligible except for its historical timestamp
-update session
-set meeting_in_sync = false,
-    meeting_sync_claimed_at = null
-where session_id = :'sessionPastImportID';
-select is(
-    claim_meeting_out_of_sync(),
-    null::jsonb,
-    'Past event and session automatic meetings are skipped'
-);
-
--- Republished event triggers create instead of delete
--- Reset the previous delete claim so the durable claim function can pick it up
-update event
-set meeting_in_sync = false,
-    meeting_provider_id = 'zoom',
-    meeting_requested = true,
-    meeting_sync_claimed_at = null,
-    published = true
-where event_id = :'eventUnpublishedID';
-select is(
-    claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
+-- Should claim the orphan meeting on the meeting row
+select results_eq(
     format(
-        $json${
-        "delete": false,
-        "duration_secs": 3600,
-        "event_id": "%s",
-        "meeting_provider_id": "zoom",
-        "meeting_recording_requested": true,
-        "timezone": "UTC",
-        "topic": "Event Unpublished Test"
-    }$json$,
-        :'eventUnpublishedID'
-    )::jsonb,
-    'Republished event triggers create'
+        $$ select sync_claimed_at, updated_at from meeting where meeting_id = %L $$,
+        :'meetingOrphanID'
+    ),
+    $$ values (current_timestamp, current_timestamp) $$,
+    'Should claim the orphan meeting on the meeting row'
 );
 
--- The same claimed row is not returned again until its claim is released or synced
+-- Should claim every detached orphan meeting
+select set_eq(
+    format(
+        $$
+        select (claim->>'meeting_id')::uuid
+        from jsonb_each(%L::jsonb) as claims(key, claim)
+        where not claim ? 'event_id'
+          and not claim ? 'session_id'
+        $$,
+        :'claims'
+    ),
+    format(
+        $$ values (%L::uuid), (%L::uuid), (%L::uuid) $$,
+        :'meetingEventOrphanDetachedID',
+        :'meetingOrphanID',
+        :'meetingSessionOrphanDetachedID'
+    ),
+    'Should claim every detached orphan meeting'
+);
+
+-- Should not claim imported past events and sessions for provider create or update
+select results_eq(
+    format(
+        $$
+        select meeting_sync_claimed_at from event where event_id = %L
+        union all
+        select meeting_sync_claimed_at from session where session_id = %L
+        $$,
+        :'eventPastImportID',
+        :'sessionPastImportID'
+    ),
+    $$ values (null::timestamptz), (null::timestamptz) $$,
+    'Should not claim imported past events and sessions for provider create or update'
+);
+
+-- Should return null once claimed, in-sync and no-request rows are all that remain
 select is(
     claim_meeting_out_of_sync(),
     null::jsonb,
-    'Should not return the same claimed owner again'
-);
-
--- Claiming records ownership of the work but does not mark the owner as synced
-select is(
-    (select meeting_in_sync from event where event_id = :'eventUnpublishedID'),
-    false,
-    'Should not mark claimed owner as synced'
+    'Should return null once claimed, in-sync and no-request rows are all that remain'
 );
 
 -- ============================================================================

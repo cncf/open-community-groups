@@ -14,13 +14,28 @@ select plan(36);
 \set abandonedCheckoutPurchaseID '3a2e0000-0000-0000-0000-000000000061'
 \set abandonedCheckoutUserID '3a2e0000-0000-0000-0000-000000000062'
 \set attendanceFilterEventID '3a2e0000-0000-0000-0000-000000000030'
+\set attendanceFilterTicketTypeID '3a2e0000-0000-0000-0000-00000000008d'
 \set canceledInvitationOfferID '3a2e0000-0000-0000-0000-000000000067'
 \set communityID '3a2e0000-0000-0000-0000-000000000001'
 \set event1ID '3a2e0000-0000-0000-0000-000000000002'
 \set event2ID '3a2e0000-0000-0000-0000-000000000003'
 \set eventCategoryID '3a2e0000-0000-0000-0000-000000000004'
+\set eventDiscountCode1ID '3a2e0000-0000-0000-0000-000000000005'
 \set eventExternalID '3a2e0000-0000-0000-0000-000000000070'
 \set eventExternalTicketTypeID '3a2e0000-0000-0000-0000-000000000071'
+\set eventPendingCheckoutID '3a2e0000-0000-0000-0000-000000000026'
+\set eventPurchase1ID '3a2e0000-0000-0000-0000-000000000006'
+\set eventPurchase2ID '3a2e0000-0000-0000-0000-000000000007'
+\set eventPurchasePendingCheckoutID '3a2e0000-0000-0000-0000-000000000025'
+\set eventQuestionsID '3a2e0000-0000-0000-0000-000000000008'
+\set eventQuestionsTicketTypeID '3a2e0000-0000-0000-0000-00000000008e'
+\set eventRefundRequest2ID '3a2e0000-0000-0000-0000-000000000009'
+\set eventStopwordSearchID '3a2e0000-0000-0000-0000-000000000028'
+\set eventStopwordSearchTicketTypeID '3a2e0000-0000-0000-0000-00000000008f'
+\set eventTicketType1ID '3a2e0000-0000-0000-0000-000000000010'
+\set eventTicketType2ID '3a2e0000-0000-0000-0000-000000000011'
+\set eventTicketTypePendingCheckoutID '3a2e0000-0000-0000-0000-000000000027'
+\set expiredInvitationOfferID '3a2e0000-0000-0000-0000-000000000065'
 \set externalCompletedPurchaseID '3a2e0000-0000-0000-0000-000000000072'
 \set externalCompletedUserID '3a2e0000-0000-0000-0000-000000000073'
 \set externalMarkedByUserID '3a2e0000-0000-0000-0000-000000000074'
@@ -29,34 +44,21 @@ select plan(36);
 \set externalOfferUserID '3a2e0000-0000-0000-0000-000000000079'
 \set externalPendingPurchaseID '3a2e0000-0000-0000-0000-000000000075'
 \set externalPendingUserID '3a2e0000-0000-0000-0000-000000000076'
-\set externalReregisterPurchaseID '3a2e0000-0000-0000-0000-00000000007c'
-\set externalReregisterUserID '3a2e0000-0000-0000-0000-00000000007d'
 \set externalReplacementPurchaseID '3a2e0000-0000-0000-0000-00000000007a'
 \set externalReplacementUserID '3a2e0000-0000-0000-0000-00000000007b'
+\set externalReregisterPurchaseID '3a2e0000-0000-0000-0000-00000000007c'
+\set externalReregisterUserID '3a2e0000-0000-0000-0000-00000000007d'
 \set focusedEligibleUserID '3a2e0000-0000-0000-0000-000000000089'
 \set focusedEventID '3a2e0000-0000-0000-0000-00000000008a'
 \set focusedOwnerMutedUserID '3a2e0000-0000-0000-0000-00000000008b'
+\set focusedTicketTypeID '3a2e0000-0000-0000-0000-000000000090'
 \set focusedUnrelatedMutedUserID '3a2e0000-0000-0000-0000-00000000008c'
-\set eventDiscountCode1ID '3a2e0000-0000-0000-0000-000000000005'
-\set expiredInvitationOfferID '3a2e0000-0000-0000-0000-000000000065'
-\set eventPurchase1ID '3a2e0000-0000-0000-0000-000000000006'
-\set eventPurchase2ID '3a2e0000-0000-0000-0000-000000000007'
-\set eventPurchasePendingCheckoutID '3a2e0000-0000-0000-0000-000000000025'
-\set eventPendingCheckoutID '3a2e0000-0000-0000-0000-000000000026'
-\set eventQuestionsID '3a2e0000-0000-0000-0000-000000000008'
-\set eventRefundRequest2ID '3a2e0000-0000-0000-0000-000000000009'
-\set eventStopwordSearchID '3a2e0000-0000-0000-0000-000000000028'
-\set eventTicketType1ID '3a2e0000-0000-0000-0000-000000000010'
-\set eventTicketType2ID '3a2e0000-0000-0000-0000-000000000011'
-\set eventTicketTypePendingCheckoutID '3a2e0000-0000-0000-0000-000000000027'
 \set group2ID '3a2e0000-0000-0000-0000-000000000012'
 \set groupCategoryID '3a2e0000-0000-0000-0000-000000000013'
 \set groupID '3a2e0000-0000-0000-0000-000000000014'
 \set missingEventID '3a2e0000-0000-0000-0000-000000000015'
 \set pendingCheckoutUserID '3a2e0000-0000-0000-0000-000000000024'
 \set pendingInvitationOfferID '3a2e0000-0000-0000-0000-000000000063'
-\set questionsInvitationOfferID '3a2e0000-0000-0000-0000-000000000066'
-\set questionsAttendeeUserID '3a2e0000-0000-0000-0000-000000000016'
 \set progressClaimID '3a2e0000-0000-0000-0000-000000000060'
 \set progressPurchase1ID '3a2e0000-0000-0000-0000-000000000040'
 \set progressPurchase2ID '3a2e0000-0000-0000-0000-000000000041'
@@ -89,10 +91,12 @@ select plan(36);
 \set progressRefund9JobID '3a2e0000-0000-0000-0000-000000000088'
 \set progressUser7ID '3a2e0000-0000-0000-0000-000000000033'
 \set progressUser8ID '3a2e0000-0000-0000-0000-000000000034'
-\set registrationQuestionID '3a2e0000-0000-0000-0000-000000000017'
-\set rejectedInvitationOfferID '3a2e0000-0000-0000-0000-000000000064'
+\set questionsAttendeeUserID '3a2e0000-0000-0000-0000-000000000016'
+\set questionsInvitationOfferID '3a2e0000-0000-0000-0000-000000000066'
 \set refundProgressEventID '3a2e0000-0000-0000-0000-000000000031'
 \set refundProgressTicketTypeID '3a2e0000-0000-0000-0000-000000000032'
+\set registrationQuestionID '3a2e0000-0000-0000-0000-000000000017'
+\set rejectedInvitationOfferID '3a2e0000-0000-0000-0000-000000000064'
 \set user1ID '3a2e0000-0000-0000-0000-000000000018'
 \set user2ID '3a2e0000-0000-0000-0000-000000000019'
 \set user3ID '3a2e0000-0000-0000-0000-000000000020'
@@ -232,14 +236,11 @@ select fx_event_ticket_type(:'refundProgressTicketTypeID', :'refundProgressEvent
     'title', 'Refund progress'
 ));
 
--- Events without explicit ticket fixtures use default admission tiers
-select fx_event_ticket_type(gen_random_uuid(), e.event_id, jsonb_build_object('seats_total', 100))
-from event e
-where not exists (
-    select 1
-    from event_ticket_type ett
-    where ett.event_id = e.event_id
-);
+-- Admission tiers for events whose ticket details are not under test
+select fx_event_ticket_type(:'attendanceFilterTicketTypeID', :'attendanceFilterEventID');
+select fx_event_ticket_type(:'eventQuestionsTicketTypeID', :'eventQuestionsID');
+select fx_event_ticket_type(:'eventStopwordSearchTicketTypeID', :'eventStopwordSearchID');
+select fx_event_ticket_type(:'focusedTicketTypeID', :'focusedEventID');
 
 -- Discount codes
 insert into event_discount_code (
@@ -362,7 +363,7 @@ insert into admission_offer (
     null,
     null,
     :'eventQuestionsID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'eventQuestionsID' limit 1),
+    :'eventQuestionsTicketTypeID',
     '2024-01-11 00:00:00+00',
     'organizer_invitation',
     'canceled',
@@ -414,7 +415,7 @@ insert into admission_offer (
     null,
     null,
     :'eventQuestionsID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'eventQuestionsID' limit 1),
+    :'eventQuestionsTicketTypeID',
     '2029-01-01 00:00:00+00',
     'organizer_invitation',
     'pending',
@@ -1435,46 +1436,16 @@ select is(
 
 -- Should return full attendee list when pagination is omitted
 select is(
-    (
-        select jsonb_set(
-            result,
-            '{attendees}',
-            coalesce((
-                select jsonb_agg(
-                    attendee
-                        - 'charge_model'
-                        - 'completed_at'
-                        - 'external_payment_deadline'
-                        - 'external_payment_details'
-                        - 'external_payment_marked_by'
-                        - 'external_payment_reference'
-                        - 'externally_paid'
-                    order by ordinality
-                )
-                from jsonb_array_elements(result->'attendees')
-                    with ordinality as t(attendee, ordinality)
-            ), '[]'::jsonb)
-        )
-        from (
-            select search_event_attendees(
-                :'groupID'::uuid,
-                :'event1ID'::uuid,
-                jsonb_build_object('status', 'all')
-            )::jsonb as result
-        ) s
-    ),
-    jsonb_build_object(
-        'attendees', '[
-            {"can_receive_attendee_email": true, "checked_in": true,  "created_at": 1704067200, "email": "alice-search-event-attendees@example.com", "manually_invited": true, "registration_answers": null, "enrollment_status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000018", "username": "alice-search-event-attendees", "bio": "Maintains event infrastructure", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "checked_in_at": 1704103200, "amount_minor": 2500, "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "3a2e0000-0000-0000-0000-000000000006", "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": null},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "enrollment_status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob-search-event-attendees", "photo_url": "https://example.com/bob.png"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null, "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": null, "offer_expires_at": null},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704585600, "email": "canceled@example.com", "manually_invited": true, "registration_answers": null, "enrollment_status": "invitation-expired", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000022", "username": "canceled", "name": "Canceled Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": "3a2e0000-0000-0000-0000-000000000065", "admission_offer_source": "organizer_invitation", "admission_offer_status": "expired", "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": 1704672000},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704240000, "email": "pending@example.com", "manually_invited": true, "registration_answers": null, "enrollment_status": "checkout-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000020", "username": "pending-search-event-attendees", "name": "Pending Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": "3a2e0000-0000-0000-0000-000000000063", "admission_offer_source": "organizer_invitation", "admission_offer_status": "checkout_pending", "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": 4071081600},
-            {"can_receive_attendee_email": true, "checked_in": false, "created_at": 1704499200, "email": "questions-pending@example.com", "manually_invited": false, "registration_answers": null, "enrollment_status": "registration-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000023", "username": "questions-pending-search-event-attendees", "name": "Questions Pending"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null, "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": null, "offer_expires_at": null},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704326400, "email": "rejected@example.com", "manually_invited": true, "registration_answers": null, "enrollment_status": "invitation-declined", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000021", "username": "rejected-search-event-attendees", "name": "Rejected Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": "3a2e0000-0000-0000-0000-000000000064", "admission_offer_source": "organizer_invitation", "admission_offer_status": "declined", "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": 4071168000}
-        ]'::jsonb,
-        'all_attendees_email_recipient_total', 2,
-        'total', 6
-    ),
+    search_event_attendees(
+        :'groupID'::uuid,
+        :'event1ID'::uuid,
+        jsonb_build_object('status', 'all')
+    )::jsonb,
+    search_event_attendees(
+        :'groupID'::uuid,
+        :'event1ID'::uuid,
+        jsonb_build_object('limit', 50, 'offset', 0, 'status', 'all')
+    )::jsonb,
     'Should return full attendee list when pagination is omitted'
 );
 
@@ -1564,7 +1535,7 @@ select is(
 );
 
 -- Should filter attendees by identity search query without changing all-recipient count
-select ok(
+select is(
     (
         with result as (
             select search_event_attendees(
@@ -1577,16 +1548,23 @@ select ok(
                 )
             )::jsonb as data
         )
-        select (data->>'total')::int = 1
-        and (data->>'all_attendees_email_recipient_total')::int = 2
-        and data#>>'{attendees,0,user,user_id}' = :'user1ID'
+        select jsonb_build_object(
+            'all_attendees_email_recipient_total', data->'all_attendees_email_recipient_total',
+            'first', data#>'{attendees,0,user,user_id}',
+            'total', data->'total'
+        )
         from result
+    ),
+    jsonb_build_object(
+        'all_attendees_email_recipient_total', 2,
+        'first', :'user1ID'::uuid,
+        'total', 1
     ),
     'Should filter attendees by identity search query without changing all-recipient count'
 );
 
 -- Should filter attendees whose names look like stop words
-select ok(
+select is(
     (
         with result as (
             select search_event_attendees(
@@ -1599,16 +1577,23 @@ select ok(
                 )
             )::jsonb as data
         )
-        select (data->>'total')::int = 1
-        and (data->>'all_attendees_email_recipient_total')::int = 1
-        and data#>>'{attendees,0,user,user_id}' = :'userStopwordSearchID'
+        select jsonb_build_object(
+            'all_attendees_email_recipient_total', data->'all_attendees_email_recipient_total',
+            'first', data#>'{attendees,0,user,user_id}',
+            'total', data->'total'
+        )
         from result
+    ),
+    jsonb_build_object(
+        'all_attendees_email_recipient_total', 1,
+        'first', :'userStopwordSearchID'::uuid,
+        'total', 1
     ),
     'Should filter attendees whose names look like stop words'
 );
 
 -- Should filter attendees by company search query
-select ok(
+select is(
     (
         with result as (
             select search_event_attendees(
@@ -1621,16 +1606,23 @@ select ok(
                 )
             )::jsonb as data
         )
-        select (data->>'total')::int = 1
-        and (data->>'all_attendees_email_recipient_total')::int = 2
-        and data#>>'{attendees,0,user,user_id}' = :'user1ID'
+        select jsonb_build_object(
+            'all_attendees_email_recipient_total', data->'all_attendees_email_recipient_total',
+            'first', data#>'{attendees,0,user,user_id}',
+            'total', data->'total'
+        )
         from result
+    ),
+    jsonb_build_object(
+        'all_attendees_email_recipient_total', 2,
+        'first', :'user1ID'::uuid,
+        'total', 1
     ),
     'Should filter attendees by company search query'
 );
 
 -- Should filter attendees by title search query
-select ok(
+select is(
     (
         with result as (
             select search_event_attendees(
@@ -1643,10 +1635,17 @@ select ok(
                 )
             )::jsonb as data
         )
-        select (data->>'total')::int = 1
-        and (data->>'all_attendees_email_recipient_total')::int = 2
-        and data#>>'{attendees,0,user,user_id}' = :'user1ID'
+        select jsonb_build_object(
+            'all_attendees_email_recipient_total', data->'all_attendees_email_recipient_total',
+            'first', data#>'{attendees,0,user,user_id}',
+            'total', data->'total'
+        )
         from result
+    ),
+    jsonb_build_object(
+        'all_attendees_email_recipient_total', 2,
+        'first', :'user1ID'::uuid,
+        'total', 1
     ),
     'Should filter attendees by title search query'
 );

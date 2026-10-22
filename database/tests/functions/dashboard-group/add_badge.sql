@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,9 +23,8 @@ select plan(4);
 -- Baseline community, categories, users and groups
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_user(:'actorID');
+select fx_user(:'actorID', jsonb_build_object('username', 'add-badge-actor'));
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-
 
 -- Artwork available to the definition
 insert into badge_artwork (file_name, group_id)
@@ -38,21 +37,56 @@ values ('badge.png', :'groupID');
 -- Should add a valid definition
 select lives_ok(
     format(
-        $$select add_badge(%L::uuid, %L::uuid, %L::uuid, '{"criteria":"Attend","description":"Attended the event","image_file_name":"/images/badges/badge.png","name":"Attendee"}'::jsonb)$$,
+        $$select add_badge(%L::uuid, %L::uuid, %L::uuid, '{"criteria":" Attend ","description":" Attended the event ","image_file_name":"/images/badges/badge.png","name":" Attendee "}'::jsonb)$$,
         :'actorID', :'communityID', :'groupID'
     ),
     'Should add a valid definition'
 );
 
--- Should persist the normalized definition and audit it
-select ok(
-    exists (select 1 from badge where name = 'Attendee' and image_file_name = 'badge.png')
-    and exists (
-        select 1 from audit_log
-        where action = 'badge_added'
-        and details = '{"badge_name":"Attendee"}'::jsonb
+-- Should persist the normalized definition
+select results_eq(
+    $$
+        select criteria, description, group_id, image_file_name, name
+        from badge
+    $$,
+    format(
+        $$ values ('Attend', 'Attended the event', %L::uuid, 'badge.png', 'Attendee') $$,
+        :'groupID'
     ),
-    'Should persist the normalized definition and audit it'
+    'Should persist the normalized definition'
+);
+
+-- Should audit the definition creation for the actor
+select results_eq(
+    $$
+        select
+            al.action,
+            al.actor_user_id,
+            al.actor_username,
+            al.community_id,
+            al.created_at,
+            al.details,
+            al.event_id,
+            al.group_id,
+            al.resource_type
+        from audit_log al
+        join badge b on b.badge_id = al.resource_id
+    $$,
+    format(
+        $$ values (
+            'badge_added',
+            %L::uuid,
+            'add-badge-actor',
+            %L::uuid,
+            current_timestamp,
+            '{"badge_name":"Attendee"}'::jsonb,
+            null::uuid,
+            %L::uuid,
+            'badge'
+        ) $$,
+        :'actorID', :'communityID', :'groupID'
+    ),
+    'Should audit the definition creation for the actor'
 );
 
 -- Should reject artwork owned outside the group gallery

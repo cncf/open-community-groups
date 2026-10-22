@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -48,6 +48,7 @@ values (
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
 -- Should accept a future event that stays in the future
 select lives_ok(
     $$select validate_update_event_dates(
@@ -81,50 +82,27 @@ select throws_ok(
     'Should reject a future event that moves into the past'
 );
 
--- Should reject registration windows where the open date is after the close date
+-- Should reject a published event that clears its start date
 select throws_ok(
     $$select validate_update_event_dates(
-        jsonb_build_object(
-            'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '3 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_starts_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_ends_at', to_char(current_timestamp at time zone 'UTC' + interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'timezone', 'UTC'
-        ),
-        jsonb_populate_record(null::event, jsonb_build_object(
-            'ends_at', current_timestamp + interval '4 days' + interval '1 hour',
-            'starts_at', current_timestamp + interval '4 days'
-        ))
+        '{"timezone": "UTC"}'::jsonb,
+        jsonb_populate_record(null::event, '{
+            "ends_at": "2030-01-01T11:00:00+00:00",
+            "published": true,
+            "starts_at": "2030-01-01T10:00:00+00:00"
+        }'::jsonb)
     )$$,
     'OCG01',
-    'registration starts_at must be before registration ends_at',
-    'Should reject registration windows where the open date is after the close date'
+    'published event must have a start date',
+    'Should reject a published event that clears its start date'
 );
 
--- Should reject registration windows where the open date equals the close date
+-- Should reject registration close dates after the new event start
 select throws_ok(
     $$select validate_update_event_dates(
         jsonb_build_object(
-            'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '3 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_starts_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
             'registration_ends_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'timezone', 'UTC'
-        ),
-        jsonb_populate_record(null::event, jsonb_build_object(
-            'ends_at', current_timestamp + interval '4 days' + interval '1 hour',
-            'starts_at', current_timestamp + interval '4 days'
-        ))
-    )$$,
-    'OCG01',
-    'registration starts_at must be before registration ends_at',
-    'Should reject registration windows where the open date equals the close date'
-);
-
--- Should reject registration close dates after the event start
-select throws_ok(
-    $$select validate_update_event_dates(
-        jsonb_build_object(
             'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_ends_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
             'timezone', 'UTC'
         ),
         jsonb_populate_record(null::event, jsonb_build_object(
@@ -134,25 +112,7 @@ select throws_ok(
     )$$,
     'OCG01',
     'registration ends_at cannot be after event starts_at',
-    'Should reject registration close dates after the event start'
-);
-
--- Should reject open-only registration windows that open after the event start
-select throws_ok(
-    $$select validate_update_event_dates(
-        jsonb_build_object(
-            'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_starts_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'timezone', 'UTC'
-        ),
-        jsonb_populate_record(null::event, jsonb_build_object(
-            'ends_at', current_timestamp + interval '4 days' + interval '1 hour',
-            'starts_at', current_timestamp + interval '4 days'
-        ))
-    )$$,
-    'OCG01',
-    'registration starts_at cannot be after event starts_at',
-    'Should reject open-only registration windows that open after the event start'
+    'Should reject registration close dates after the new event start'
 );
 
 -- Should reject a past event that moves into the future
@@ -172,6 +132,72 @@ select throws_ok(
     'Should reject a past event that moves into the future'
 );
 
+-- Should reject a past event whose end moves into the future
+select throws_ok(
+    $$select validate_update_event_dates(
+        jsonb_build_object(
+            'ends_at', to_char(current_timestamp at time zone 'UTC' + interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        ),
+        jsonb_populate_record(null::event, jsonb_build_object(
+            'ends_at', current_timestamp - interval '1 day',
+            'starts_at', current_timestamp - interval '2 days'
+        ))
+    )$$,
+    'OCG01',
+    'event ends_at cannot be in the future',
+    'Should reject a past event whose end moves into the future'
+);
+
+-- Should reject a past event whose session start moves into the future
+select throws_ok(
+    $$select validate_update_event_dates(
+        jsonb_build_object(
+            'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                    'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS')
+                )
+            ),
+            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        ),
+        jsonb_populate_record(null::event, jsonb_build_object(
+            'ends_at', current_timestamp - interval '1 day',
+            'starts_at', current_timestamp - interval '2 days'
+        ))
+    )$$,
+    'OCG01',
+    'session starts_at cannot be in the future',
+    'Should reject a past event whose session start moves into the future'
+);
+
+-- Should reject a past event whose session end moves into the future
+select throws_ok(
+    $$select validate_update_event_dates(
+        jsonb_build_object(
+            'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'ends_at', to_char(current_timestamp at time zone 'UTC' + interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                    'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS')
+                )
+            ),
+            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        ),
+        jsonb_populate_record(null::event, jsonb_build_object(
+            'ends_at', current_timestamp - interval '1 day',
+            'starts_at', current_timestamp - interval '2 days'
+        ))
+    )$$,
+    'OCG01',
+    'session ends_at cannot be in the future',
+    'Should reject a past event whose session end moves into the future'
+);
+
 -- Should reject a live event that moves earlier than its current start
 select throws_ok(
     $$select validate_update_event_dates(
@@ -187,6 +213,24 @@ select throws_ok(
     'OCG01',
     'event starts_at cannot be earlier than current value',
     'Should reject a live event that moves earlier than its current start'
+);
+
+-- Should reject a live event whose end moves into the past
+select throws_ok(
+    $$select validate_update_event_dates(
+        jsonb_build_object(
+            'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '10 minutes', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        ),
+        jsonb_populate_record(null::event, jsonb_build_object(
+            'ends_at', current_timestamp + interval '1 hour',
+            'starts_at', current_timestamp - interval '1 hour'
+        ))
+    )$$,
+    'OCG01',
+    'event ends_at cannot be in the past',
+    'Should reject a live event whose end moves into the past'
 );
 
 -- Should reject a dateless event that moves into the past
@@ -235,6 +279,68 @@ select throws_ok(
     'OCG01',
     'session starts_at cannot be in the past',
     'Should reject a future session that moves into the past'
+);
+
+-- Should reject a new session that ends in the past
+select throws_ok(
+    $$select validate_update_event_dates(
+        jsonb_build_object(
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                    'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS')
+                )
+            ),
+            'timezone', 'UTC'
+        ),
+        jsonb_populate_record(null::event, jsonb_build_object(
+            'ends_at', current_timestamp + interval '1 day' + interval '1 hour',
+            'starts_at', current_timestamp + interval '1 day'
+        ))
+    )$$,
+    'OCG01',
+    'session ends_at cannot be in the past',
+    'Should reject a new session that ends in the past'
+);
+
+-- Should reject a finished session that moves its start earlier than its current value
+select throws_ok(
+    format($$select validate_update_event_dates(
+        jsonb_build_object(
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '15 minutes', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                    'session_id', %L,
+                    'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '50 minutes', 'YYYY-MM-DD"T"HH24:MI:SS')
+                )
+            ),
+            'timezone', 'UTC'
+        ),
+        (select e from event e where e.event_id = %L)
+    )$$, :'liveSessionID', :'liveEventID'),
+    'OCG01',
+    'session starts_at cannot be earlier than current value',
+    'Should reject a finished session that moves its start earlier than its current value'
+);
+
+-- Should reject a finished session that moves its end earlier than its current value
+select throws_ok(
+    format($$select validate_update_event_dates(
+        jsonb_build_object(
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '20 minutes', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                    'session_id', %L,
+                    'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '45 minutes', 'YYYY-MM-DD"T"HH24:MI:SS')
+                )
+            ),
+            'timezone', 'UTC'
+        ),
+        (select e from event e where e.event_id = %L)
+    )$$, :'liveSessionID', :'liveEventID'),
+    'OCG01',
+    'session ends_at cannot be earlier than current value',
+    'Should reject a finished session that moves its end earlier than its current value'
 );
 
 -- Should accept a live event update when a session keeps its current past dates

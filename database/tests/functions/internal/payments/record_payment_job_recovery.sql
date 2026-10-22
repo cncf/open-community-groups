@@ -180,6 +180,7 @@ select throws_ok(
         $$select record_payment_job_recovery(%L::uuid, %L::uuid, 'case', 'note')$$,
         :'claimedJobID', :'actorID'
     ),
+    'P0001',
     'payment job is not recoverable',
     'Should reject a claimed payment job'
 );
@@ -190,6 +191,7 @@ select throws_ok(
         $$select record_payment_job_recovery(%L::uuid, %L::uuid, 'case', 'note')$$,
         :'completedJobID', :'actorID'
     ),
+    'P0001',
     'payment job is not recoverable',
     'Should reject an already completed payment job'
 );
@@ -200,6 +202,7 @@ select throws_ok(
         $$select record_payment_job_recovery(%L::uuid, %L::uuid, 'case', 'note')$$,
         :'missingJobID', :'actorID'
     ),
+    'P0001',
     'payment job is not recoverable',
     'Should reject a missing payment job'
 );

@@ -11,6 +11,7 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c010000-0000-0000-0000-000000000002'
 \set communityID '2c010000-0000-0000-0000-000000000001'
 \set groupCategoryID '2c010000-0000-0000-0000-000000000003'
 \set groupID '2c010000-0000-0000-0000-000000000004'
@@ -24,6 +25,10 @@ select plan(4);
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'activate-group-audit-actor'));
+
+-- Inactive group activated by the success scenario
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
 -- ============================================================================
@@ -33,7 +38,8 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
 -- Should set active to true
 select lives_ok(
     format(
-        'select activate_group(null::uuid, %L::uuid, %L::uuid)',
+        'select activate_group(%L::uuid, %L::uuid, %L::uuid)',
+        :'actorUserID',
         :'communityID',
         :'groupID'
     ),
@@ -64,14 +70,15 @@ select results_eq(
         $$
         values (
             'group_activated',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'activate-group-audit-actor',
             %L::uuid,
             %L::uuid,
             'group',
             %L::uuid
         )
         $$,
+        :'actorUserID',
         :'communityID',
         :'groupID',
         :'groupID'

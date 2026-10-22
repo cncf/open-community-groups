@@ -23,10 +23,8 @@ select plan(6);
 \set noSeriesEventID 'd3020000-0000-0000-0000-000000000010'
 \set otherEventID 'd3020000-0000-0000-0000-000000000011'
 \set otherGroupID 'd3020000-0000-0000-0000-000000000012'
-\set otherSeriesID 'd3020000-0000-0000-0000-000000000013'
 \set pastEventID 'd3020000-0000-0000-0000-000000000014'
 \set secondEventID 'd3020000-0000-0000-0000-000000000015'
-\set userID 'd3020000-0000-0000-0000-000000000016'
 
 -- ============================================================================
 -- SEED DATA
@@ -53,27 +51,11 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
     'slug', 'group'
 ));
 
--- User who created both event series
-select fx_user(:'userID', jsonb_build_object(
-    'auth_hash', 'user',
-    'username', 'user-list-event-series-cancelable-event-ids'
-));
-
--- Event series used for group and ownership scenarios
-insert into event_series (
-    event_series_id,
-    group_id,
-    recurrence_additional_occurrences,
-    recurrence_anchor_starts_at,
-    recurrence_pattern,
-    timezone,
-
-    created_by
-) values
-    (:'eventSeriesID', :'groupID', 4, now() + interval '1 day', 'weekly', 'UTC', :'userID'),
-    (:'otherSeriesID', :'otherGroupID', 1, now() + interval '1 day', 'weekly', 'UTC', :'userID');
+-- Event series of the group
+select fx_event_series(:'eventSeriesID', :'groupID');
 
 -- Events covering active, completed, canceled, deleted, standalone, and cross-group cases
+-- (the other group event is linked to the group series to exercise ownership scoping)
 select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
     'ends_at', now() + interval '15 days 1 hour',
@@ -110,7 +92,7 @@ select fx_event(:'noSeriesEventID', :'groupID', :'eventCategoryID', jsonb_build_
 select fx_event(:'otherEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', now() + interval '1 day 1 hour',
     'event_kind_id', 'virtual',
-    'event_series_id', :'otherSeriesID',
+    'event_series_id', :'eventSeriesID',
     'published', true,
     'slug', 'other',
     'starts_at', now() + interval '1 day'
@@ -143,11 +125,11 @@ select is(
     'Should exclude canceled, completed, and deleted occurrences'
 );
 
--- Should return active occurrences in chronological order
+-- Should return the active occurrences when an active occurrence is selected
 select is(
     list_event_series_cancelable_event_ids(:'groupID', :'secondEventID'),
     array[:'firstEventID'::uuid, :'secondEventID'::uuid],
-    'Should return active occurrences in chronological order'
+    'Should return the active occurrences when an active occurrence is selected'
 );
 
 -- Should return no occurrences for a deleted selected event

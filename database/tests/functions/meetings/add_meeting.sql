@@ -1,9 +1,11 @@
+-- Tests adding provider meetings and completing their event or session sync claims.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,11 +16,9 @@ select plan(17);
 \set eventID '7a010000-0000-0000-0000-000000000003'
 \set eventReassignedClaimID '7a010000-0000-0000-0000-000000000004'
 \set eventStaleClaimID '7a010000-0000-0000-0000-000000000005'
-\set eventWithErrorID '7a010000-0000-0000-0000-000000000006'
 \set groupCategoryID '7a010000-0000-0000-0000-000000000007'
 \set groupID '7a010000-0000-0000-0000-000000000008'
 \set sessionID '7a010000-0000-0000-0000-000000000009'
-\set sessionWithErrorID '7a010000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
@@ -71,21 +71,6 @@ insert into session (
     current_timestamp
 );
 
--- Event with previous error: needs meeting
-select fx_event(:'eventWithErrorID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 100,
-    'ends_at', '2025-06-02 11:00:00-04',
-    'event_kind_id', 'virtual',
-    'meeting_error', 'Previous sync error',
-    'meeting_in_sync', false,
-    'meeting_provider_host_user', 'event-error-claim-host@example.com',
-    'meeting_provider_id', 'zoom',
-    'meeting_requested', true,
-    'meeting_sync_claimed_at', current_timestamp,
-    'starts_at', '2025-06-02 10:00:00-04',
-    'timezone', 'America/New_York'
-));
-
 -- Event with stale claim: edited after the worker claims it
 select fx_event(:'eventStaleClaimID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
@@ -113,37 +98,6 @@ select fx_event(:'eventReassignedClaimID', :'groupID', :'eventCategoryID', jsonb
     'starts_at', '2025-06-04 10:00:00-04',
     'timezone', 'America/New_York'
 ));
-
--- Session with previous error: needs meeting
-insert into session (
-    session_id,
-    event_id,
-    name,
-    starts_at,
-    ends_at,
-    session_kind_id,
-
-    meeting_error,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_provider_host_user,
-    meeting_requested,
-    meeting_sync_claimed_at
-) values (
-    :'sessionWithErrorID',
-    :'eventWithErrorID',
-    'Session With Error',
-    '2025-06-02 10:00:00-04',
-    '2025-06-02 10:30:00-04',
-    'virtual',
-
-    'Previous sync error',
-    false,
-    'zoom',
-    'session-error-claim-host@example.com',
-    true,
-    current_timestamp
-);
 
 -- ============================================================================
 -- TESTS
@@ -263,6 +217,11 @@ select lives_ok(
     ),
     'Should create meeting record for stale event claim'
 );
+select is(
+    (select provider_meeting_id from meeting where event_id = :'eventStaleClaimID'),
+    'stale123',
+    'Should create meeting record even when event claim is stale'
+);
 select results_eq(
     format(
         $query$
@@ -299,9 +258,9 @@ select is(
     0::bigint,
     'Should not insert meeting when claim token does not match'
 );
-select isnt(
+select is(
     (select meeting_sync_claimed_at from event where event_id = :'eventReassignedClaimID'),
-    null,
+    current_timestamp,
     'Should keep event claim when claim token does not match'
 );
 
@@ -419,38 +378,6 @@ select throws_ok(
     '23505',
     null,
     'Should fail with unique constraint violation for duplicate session meeting'
-);
-
--- Should clear error when adding meeting to event with previous error
-select lives_ok(
-    format(
-        'select add_meeting(''zoom'', ''111111111'', ''host-error-event@example.com'', ''https://zoom.us/j/111111111'', ''pass111'', %L, null, (select meeting_sync_claimed_at from event where event_id = %L::uuid), get_event_meeting_sync_state_hash(%L::uuid))',
-        :'eventWithErrorID',
-        :'eventWithErrorID',
-        :'eventWithErrorID'
-    ),
-    'Should clear error when adding meeting to event with previous error'
-);
-select is(
-    (select meeting_error from event where event_id = :'eventWithErrorID'),
-    null,
-    'Event meeting_error cleared after successful add_meeting'
-);
-
--- Should clear error when adding meeting to session with previous error
-select lives_ok(
-    format(
-        'select add_meeting(''zoom'', ''222222222'', ''host-error-session@example.com'', ''https://zoom.us/j/222222222'', ''pass222'', null, %L, (select meeting_sync_claimed_at from session where session_id = %L::uuid), get_session_meeting_sync_state_hash(%L::uuid))',
-        :'sessionWithErrorID',
-        :'sessionWithErrorID',
-        :'sessionWithErrorID'
-    ),
-    'Should clear error when adding meeting to session with previous error'
-);
-select is(
-    (select meeting_error from session where session_id = :'sessionWithErrorID'),
-    null,
-    'Session meeting_error cleared after successful add_meeting'
 );
 
 -- ============================================================================

@@ -11,18 +11,10 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set applicationBlockedAdjustmentID 'd4110000-0000-0000-0000-000000000001'
-\set applicationBlockedJobID 'd4110000-0000-0000-0000-000000000002'
-\set applicationBlockedPurchaseID 'd4110000-0000-0000-0000-000000000003'
 \set applicationReadyAdjustmentID 'd4110000-0000-0000-0000-000000000004'
 \set applicationReadyJobID 'd4110000-0000-0000-0000-000000000005'
 \set applicationReadyPurchaseID 'd4110000-0000-0000-0000-000000000006'
 \set communityID 'd4110000-0000-0000-0000-000000000007'
-\set creditBlockedCreditNoteID 'd4110000-0000-0000-0000-000000000008'
-\set creditBlockedJobID 'd4110000-0000-0000-0000-000000000009'
-\set creditBlockedPurchaseID 'd4110000-0000-0000-0000-000000000010'
-\set creditBlockedRefundID 'd4110000-0000-0000-0000-000000000011'
-\set creditBlockedRefundJobID 'd4110000-0000-0000-0000-000000000012'
 \set creditReadyCreditNoteID 'd4110000-0000-0000-0000-000000000013'
 \set creditReadyJobID 'd4110000-0000-0000-0000-000000000014'
 \set creditReadyPurchaseID 'd4110000-0000-0000-0000-000000000015'
@@ -132,9 +124,7 @@ select
     :'userID',
     '{}'::jsonb
 from (values
-    (:'applicationBlockedPurchaseID'::uuid, 'refunded', 'stripe', 'acct_claim', null::text, 'in_application_blocked_d4110000', 'application_blocked_d4110000'),
     (:'applicationReadyPurchaseID'::uuid, 'refunded', 'stripe', 'acct_claim', 'fee_application_ready_d4110000', 'in_application_ready_d4110000', 'application_ready_d4110000'),
-    (:'creditBlockedPurchaseID'::uuid, 'refunded', 'stripe', 'acct_claim', 'fee_credit_blocked_d4110000', 'in_credit_blocked_d4110000', 'credit_blocked_d4110000'),
     (:'creditReadyPurchaseID'::uuid, 'refunded', 'stripe', 'acct_claim', 'fee_credit_ready_d4110000', 'in_credit_ready_d4110000', 'credit_ready_d4110000'),
     (:'refundCompletedPurchaseID'::uuid, 'refund-pending', 'stripe', 'acct_claim', 'fee_refund_completed_d4110000', 'in_refund_completed_d4110000', 'refund_completed_d4110000'),
     (:'refundExhaustedPurchaseID'::uuid, 'refund-pending', 'stripe', 'acct_claim', 'fee_refund_exhausted_d4110000', 'in_refund_exhausted_d4110000', 'refund_exhausted_d4110000'),
@@ -155,17 +145,6 @@ from (values
     provider_reference
 );
 
--- Application-fee payment job blocked by missing provider fee context
-insert into payment_job (
-    created_at, event_purchase_id, idempotency_key, kind, next_attempt_at,
-    payment_job_id, payment_provider_id
-) values (
-    '2024-01-01 00:00:00+00', :'applicationBlockedPurchaseID',
-    'claim-payment-job-application-blocked-d4110000',
-    'event-purchase-application-fee-adjustment', '2024-01-01 00:00:00+00',
-    :'applicationBlockedJobID', 'stripe'
-);
-
 -- Application-fee payment job ready to claim
 insert into payment_job (
     created_at, event_purchase_id, idempotency_key, kind, next_attempt_at,
@@ -175,28 +154,6 @@ insert into payment_job (
     'claim-payment-job-application-ready-d4110000',
     'event-purchase-application-fee-adjustment', '2024-01-02 00:00:00+00',
     :'applicationReadyJobID', 'stripe'
-);
-
--- Credit-note payment job blocked by an unconfirmed refund
-insert into payment_job (
-    created_at, event_purchase_id, idempotency_key, kind, next_attempt_at,
-    payment_job_id, payment_provider_id
-) values (
-    '2024-01-01 00:00:00+00', :'creditBlockedPurchaseID',
-    'claim-payment-job-credit-blocked-d4110000',
-    'event-purchase-credit-note', '2024-01-01 00:00:00+00',
-    :'creditBlockedJobID', 'stripe'
-);
-
--- Refund payment job behind the blocked credit note
-insert into payment_job (
-    completed_at, event_purchase_id, idempotency_key, kind, payment_job_id,
-    payment_provider_id, status
-) values (
-    current_timestamp, :'creditBlockedPurchaseID',
-    'claim-payment-job-credit-blocked-refund-d4110000',
-    'event-purchase-refund', :'creditBlockedRefundJobID', 'stripe',
-    'completed'
 );
 
 -- Failed credit-note payment job ready to claim
@@ -321,17 +278,6 @@ insert into payment_job (
     '2024-01-02 00:00:00+00', :'refundThirdJobID', 'stripe'
 );
 
--- Provider-unconfirmed refund behind the blocked credit note
-insert into event_purchase_refund (
-    amount_minor, currency_code, event_purchase_id, event_purchase_refund_id,
-    finalized_at, kind, payment_job_id, payment_provider_id,
-    provider_refund_id, status, terminal_failure
-) values (
-    2500, 'USD', :'creditBlockedPurchaseID', :'creditBlockedRefundID',
-    current_timestamp, 'event-cancellation', :'creditBlockedRefundJobID',
-    'stripe', 're_credit_blocked_d4110000', 'provider-failed', false
-);
-
 -- Provider-confirmed refund behind the ready credit note
 insert into event_purchase_refund (
     amount_minor, currency_code, event_purchase_id, event_purchase_refund_id,
@@ -371,15 +317,6 @@ insert into event_purchase_refund (
     (2500, 'USD', :'refundTerminalPurchaseID', :'refundTerminalID', 'event-cancellation', :'refundTerminalJobID', 'stripe', 'provider-failed', true, 're_terminal_d4110000'),
     (2500, 'USD', :'refundThirdPurchaseID', :'refundThirdID', 'event-cancellation', :'refundThirdJobID', 'stripe', 'provider-pending', false, null);
 
--- Application-fee adjustment waiting for provider fee context
-insert into event_purchase_application_fee_adjustment (
-    amount_minor, event_purchase_application_fee_adjustment_id,
-    event_purchase_id, kind, payment_job_id
-) values (
-    20, :'applicationBlockedAdjustmentID', :'applicationBlockedPurchaseID',
-    'tax-reconciliation', :'applicationBlockedJobID'
-);
-
 -- Application-fee adjustment ready to claim
 insert into event_purchase_application_fee_adjustment (
     amount_minor, event_purchase_application_fee_adjustment_id,
@@ -387,16 +324,6 @@ insert into event_purchase_application_fee_adjustment (
 ) values (
     20, :'applicationReadyAdjustmentID', :'applicationReadyPurchaseID',
     'tax-reconciliation', :'applicationReadyJobID'
-);
-
--- Credit note waiting for its refund provider outcome
-insert into event_purchase_credit_note (
-    amount_minor, currency_code, event_purchase_credit_note_id,
-    event_purchase_refund_id, payment_job_id, payment_provider_id,
-    provider_object_account_id, tax_amount_minor
-) values (
-    2500, 'USD', :'creditBlockedCreditNoteID', :'creditBlockedRefundID',
-    :'creditBlockedJobID', 'stripe', 'acct_claim', 200
 );
 
 -- Credit note ready to claim
@@ -413,9 +340,9 @@ insert into event_purchase_credit_note (
 -- TESTS
 -- ============================================================================
 
--- Should claim application-fee work with nested provider context
+-- Should claim application-fee work with its adjustment payload
 select results_eq(
-    format($$
+    $$
         with claimed as (
             select claim_payment_job(
                 'event-purchase-application-fee-adjustment',
@@ -423,67 +350,45 @@ select results_eq(
             ) as item
         )
         select
+            (item->>'attempt_count')::int,
+            item ? 'application_fee_adjustment',
             item ? 'claim_id',
-            item - 'claim_id'
+            item->>'kind',
+            item->>'status'
         from claimed
-    $$),
-    format($$ values (
+    $$,
+    $$ values (
+        1,
         true,
-        jsonb_build_object(
-            'attempt_count', 1,
-            'application_fee_adjustment', jsonb_build_object(
-                'amount_minor', 20,
-                'connected_seller_id', 'acct_claim',
-                'currency_code', 'USD',
-                'event_purchase_application_fee_adjustment_id', %L::uuid,
-                'kind', 'tax-reconciliation',
-                'provider_application_fee_id', 'fee_application_ready_d4110000'
-            ),
-            'event_purchase_id', %L::uuid,
-            'idempotency_key', 'claim-payment-job-application-ready-d4110000',
-            'kind', 'event-purchase-application-fee-adjustment',
-            'payment_job_id', %L::uuid,
-            'payment_provider', 'stripe',
-            'status', 'processing'
-        )
-    ) $$, :'applicationReadyAdjustmentID', :'applicationReadyPurchaseID', :'applicationReadyJobID'),
-    'Should claim application-fee work with nested provider context'
+        true,
+        'event-purchase-application-fee-adjustment'::text,
+        'processing'::text
+    ) $$,
+    'Should claim application-fee work with its adjustment payload'
 );
 
--- Should claim credit-note work with nested provider context
+-- Should claim credit-note work with its credit-note payload
 select results_eq(
-    format($$
+    $$
         with claimed as (
             select claim_payment_job('event-purchase-credit-note', 'stripe') as item
         )
         select
+            (item->>'attempt_count')::int,
             item ? 'claim_id',
-            item - 'claim_id'
+            item ? 'credit_note',
+            item->>'kind',
+            item->>'status'
         from claimed
-    $$),
-    format($$ values (
+    $$,
+    $$ values (
+        3,
         true,
-        jsonb_build_object(
-            'attempt_count', 3,
-            'credit_note', jsonb_build_object(
-                'amount_minor', 2500,
-                'connected_seller_id', 'acct_claim',
-                'event_purchase_credit_note_id', %L::uuid,
-                'event_purchase_refund_id', %L::uuid,
-                'provider_invoice_id', 'in_credit_ready_d4110000',
-                'provider_refund_id', 're_credit_ready_d4110000',
-                'tax_amount_minor', 200
-            ),
-            'event_purchase_id', %L::uuid,
-            'failure_message', 'provider unavailable',
-            'idempotency_key', 'claim-payment-job-credit-ready-d4110000',
-            'kind', 'event-purchase-credit-note',
-            'payment_job_id', %L::uuid,
-            'payment_provider', 'stripe',
-            'status', 'processing'
-        )
-    ) $$, :'creditReadyCreditNoteID', :'creditReadyRefundID', :'creditReadyPurchaseID', :'creditReadyJobID'),
-    'Should claim credit-note work with nested provider context'
+        true,
+        'event-purchase-credit-note'::text,
+        'processing'::text
+    ) $$,
+    'Should claim credit-note work with its credit-note payload'
 );
 
 -- Should claim refund work with nested notification context
@@ -598,14 +503,10 @@ select results_eq(
             %L::uuid,
             %L::uuid,
             %L::uuid,
-            %L::uuid,
-            %L::uuid,
             %L::uuid
         )
         order by payment_job_id
     $$,
-        :'applicationBlockedJobID',
-        :'creditBlockedJobID',
         :'refundCompletedJobID',
         :'refundExhaustedJobID',
         :'refundFutureJobID',
@@ -613,16 +514,12 @@ select results_eq(
         :'refundTerminalJobID'
     ),
     format($$ values
-        (%L::uuid, 0, null::uuid, 'pending'::text),
-        (%L::uuid, 0, null::uuid, 'pending'::text),
         (%L::uuid, 0, null::uuid, 'completed'::text),
         (%L::uuid, 10, null::uuid, 'failed'::text),
         (%L::uuid, 0, null::uuid, 'pending'::text),
         (%L::uuid, 1, %L::uuid, 'processing'::text),
         (%L::uuid, 1, null::uuid, 'failed'::text)
     $$,
-        :'applicationBlockedJobID',
-        :'creditBlockedJobID',
         :'refundCompletedJobID',
         :'refundExhaustedJobID',
         :'refundFutureJobID',

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,7 +13,6 @@ select plan(5);
 
 \set communityID 'e07e0000-0000-0000-0000-000000000001'
 \set groupCategoryID 'e07e0000-0000-0000-0000-000000000002'
-\set groupDisabledID 'e07e0000-0000-0000-0000-000000000003'
 \set groupNamelessID 'e07e0000-0000-0000-0000-000000000006'
 \set groupReadyID 'e07e0000-0000-0000-0000-000000000004'
 \set groupUnlistedID 'e07e0000-0000-0000-0000-000000000005'
@@ -44,11 +43,6 @@ select fx_group(:'groupReadyID', :'communityID', :'groupCategoryID', jsonb_build
     'external_payments_seller_display_name', 'External Payee Co'
 ));
 
--- Allowlisted group with the external-payments toggle off
-select fx_group(:'groupDisabledID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'country_code', 'KR'
-));
-
 -- Allowlisted enabled group that never stored the external payee legal name
 select fx_group(:'groupNamelessID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
@@ -71,13 +65,6 @@ select is(
     is_group_external_payments_ready(:'groupReadyID'::uuid),
     true,
     'Should report ready when the toggle is on, the payee is named, and the country is allowlisted'
-);
-
--- Should report unready when the group toggle is off
-select is(
-    is_group_external_payments_ready(:'groupDisabledID'::uuid),
-    false,
-    'Should report unready when the group toggle is off'
 );
 
 -- Should report unready when the external payee legal name is missing

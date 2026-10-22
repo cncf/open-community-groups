@@ -72,7 +72,10 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
 ));
 
 -- Unpublished event of another group the user asked about
-select fx_event(:'unpublishedEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object('published', false));
+select fx_event(:'unpublishedEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Unpublished Inbox Event',
+    'published', false
+));
 
 -- Answered conversation of another user
 insert into inbox_conversation (inbox_conversation_id, created_at, group_id, inbox_conversation_status_id, last_message_at, user_id)
@@ -185,7 +188,7 @@ select is(
 -- Should flag an unpublished event as not public
 select is(
     search_inbox_conversations(null, :'userID'::uuid, '{}'::jsonb)::jsonb->'conversations'->2->'event',
-    jsonb_build_object('event_id', :'unpublishedEventID'::uuid, 'is_public', false, 'name', 'Fixture Event'),
+    jsonb_build_object('event_id', :'unpublishedEventID'::uuid, 'is_public', false, 'name', 'Unpublished Inbox Event'),
     'Should flag an unpublished event as not public'
 );
 

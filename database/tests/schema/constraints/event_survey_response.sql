@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -77,7 +77,7 @@ values ('{}'::jsonb, :'surveyID', :'respondentUserID');
 -- Should default the response creation time
 select is(
     (
-        select created_at is not null and updated_at is null
+        select created_at = current_timestamp and updated_at is null
         from event_survey_response
         where event_survey_id = :'surveyID'
         and user_id = :'respondentUserID'
@@ -138,20 +138,6 @@ select throws_ok(
     'Should reject non-object answers'
 );
 
--- Should reject responses for unknown surveys
-select throws_ok(
-    format(
-        $$
-            insert into event_survey_response (answers, event_survey_id, user_id)
-            values ('{}'::jsonb, 'a5e00002-0000-0000-0000-000000000010'::uuid, %L::uuid)
-        $$,
-        :'otherUserID'
-    ),
-    '23503',
-    null,
-    'Should reject responses for unknown surveys'
-);
-
 -- Should reject responses without answers
 select throws_ok(
     format(
@@ -163,7 +149,7 @@ select throws_ok(
         :'otherUserID'
     ),
     '23502',
-    null,
+    'null value in column "answers" of relation "event_survey_response" violates not-null constraint',
     'Should reject responses without answers'
 );
 

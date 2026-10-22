@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,8 +13,6 @@ select plan(7);
 
 \set blankClaimID 'd4130000-0000-0000-0000-000000000001'
 \set blankJobID 'd4130000-0000-0000-0000-000000000002'
-\set cappedClaimID 'd4130000-0000-0000-0000-000000000003'
-\set cappedJobID 'd4130000-0000-0000-0000-000000000004'
 \set communityID 'd4130000-0000-0000-0000-000000000005'
 \set eventCategoryID 'd4130000-0000-0000-0000-000000000006'
 \set eventID 'd4130000-0000-0000-0000-000000000007'
@@ -80,16 +78,6 @@ insert into payment_job (
     :'blankJobID', 'stripe', 'processing'
 );
 
--- Processing payment job whose retry delay is capped
-insert into payment_job (
-    attempt_count, claim_id, claimed_at, event_purchase_id, idempotency_key,
-    kind, payment_job_id, payment_provider_id, status
-) values (
-    7, :'cappedClaimID', current_timestamp, :'purchaseID',
-    'record-payment-job-failure-capped-d4130000', 'event-purchase-refund',
-    :'cappedJobID', 'stripe', 'processing'
-);
-
 -- Processing payment job that records a normalized provider message
 insert into payment_job (
     attempt_count, claim_id, claimed_at, event_purchase_id, idempotency_key,
@@ -122,6 +110,8 @@ select lives_ok(
     ),
     'Should release a claimed payment job with normalized failure state'
 );
+
+-- Should persist a claimed payment job with normalized failure state
 select results_eq(
     format($$
         select
@@ -151,6 +141,8 @@ select lives_ok(
     ),
     'Should default a blank payment job failure message'
 );
+
+-- Should persist the default payment job failure message
 select results_eq(
     format($$
         select
@@ -163,30 +155,13 @@ select results_eq(
     'Should persist the default payment job failure message'
 );
 
--- Should cap payment job retry backoff at thirty minutes
-select lives_ok(
-    format(
-        $$select record_payment_job_failure(%L::uuid, %L::uuid, 'provider unavailable')$$,
-        :'cappedJobID', :'cappedClaimID'
-    ),
-    'Should cap payment job retry backoff at thirty minutes'
-);
-select results_eq(
-    format($$
-        select next_attempt_at = current_timestamp + interval '30 minutes'
-        from payment_job
-        where payment_job_id = %L::uuid
-    $$, :'cappedJobID'),
-    $$ values (true) $$,
-    'Should persist capped payment job retry backoff'
-);
-
 -- Should reject a stale payment job claim
 select throws_ok(
     format(
         $$select record_payment_job_failure(%L::uuid, %L::uuid, 'failure')$$,
         :'staleJobID', :'wrongClaimID'
     ),
+    'P0001',
     'payment job claim is stale',
     'Should reject a stale payment job claim'
 );

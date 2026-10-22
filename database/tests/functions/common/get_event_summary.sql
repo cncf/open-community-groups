@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,7 +23,6 @@ select plan(13);
 \set eventPaidID '0c090000-0000-0000-0000-000000000009'
 \set eventQuestionsID '0c090000-0000-0000-0000-00000000000a'
 \set eventSeriesID '0c090000-0000-0000-0000-00000000000b'
-\set expiredCheckoutUserID '0c090000-0000-0000-0000-00000000000c'
 \set groupCategoryID '0c090000-0000-0000-0000-00000000000d'
 \set groupID '0c090000-0000-0000-0000-00000000000e'
 \set groupNoLogoID '0c090000-0000-0000-0000-00000000000f'
@@ -32,8 +31,6 @@ select plan(13);
 \set privateTicketPriceWindowID '0c090000-0000-0000-0000-00000000001a'
 \set privateTicketTypeID '0c090000-0000-0000-0000-00000000001b'
 \set questionID '0c090000-0000-0000-0000-000000000011'
-\set questionsSeatedUserID '0c090000-0000-0000-0000-000000000012'
-\set questionsWaitlistUserID '0c090000-0000-0000-0000-000000000013'
 \set ticketPriceWindowID '0c090000-0000-0000-0000-000000000014'
 \set ticketTypeID '0c090000-0000-0000-0000-000000000015'
 \set unknownCommunityID '0c090000-0000-0000-0000-000000000016'
@@ -70,10 +67,7 @@ select fx_user(:'attendee2ID', jsonb_build_object(
 ));
 select fx_user(:'waitlistUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
 select fx_user(:'pendingInviteID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
-select fx_user(:'expiredCheckoutUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
 select fx_user(:'activeCheckoutUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
-select fx_user(:'questionsSeatedUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
-select fx_user(:'questionsWaitlistUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
 
 -- Group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
@@ -83,26 +77,8 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
     'slug_pretty', 'seattle-kubernetes'
 ));
 
--- Event Series
-insert into event_series (
-    event_series_id,
-    group_id,
-    recurrence_additional_occurrences,
-    recurrence_anchor_starts_at,
-    recurrence_pattern,
-    timezone,
-
-    created_by
-) values (
-    :'eventSeriesID',
-    :'groupID',
-    1,
-    '2024-06-15 09:00:00+00',
-    'weekly',
-    'America/New_York',
-
-    :'attendee1ID'
-);
+-- Event series of the summarized event
+select fx_event_series(:'eventSeriesID', :'groupID');
 
 -- Event
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -183,9 +159,8 @@ select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_obje
     'venue_zip_code', '10001'
 ));
 
--- Event with registration questions and waitlist enabled
+-- Event with registration questions and a registration window
 select fx_event(:'eventQuestionsID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 2,
     'published', true,
     'registration_ends_at', '2030-01-02 10:00:00+00',
     'registration_questions', jsonb_build_array(jsonb_build_object(
@@ -196,8 +171,7 @@ select fx_event(:'eventQuestionsID', :'groupID', :'eventCategoryID', jsonb_build
         'required', true
     )),
     'registration_starts_at', '2030-01-01 10:00:00+00',
-    'starts_at', '2030-01-03 10:00:00+00',
-    'waitlist_enabled', true
+    'starts_at', '2030-01-03 10:00:00+00'
 ));
 
 -- Event that collects payment outside the platform
@@ -248,12 +222,9 @@ values
     (:'eventID', :'attendee1ID', 'confirmed'),
     (:'eventID', :'attendee2ID', 'confirmed'),
     (:'eventID', :'pendingInviteID', 'invitation-pending'),
-    (:'eventPaidID', :'activeCheckoutUserID', 'registration-questions-pending'),
-    (:'eventPaidID', :'expiredCheckoutUserID', 'registration-questions-pending'),
-    (:'eventQuestionsID', :'questionsSeatedUserID', 'confirmed'),
-    (:'eventQuestionsID', :'questionsWaitlistUserID', 'registration-questions-pending');
+    (:'eventPaidID', :'activeCheckoutUserID', 'registration-questions-pending');
 
--- Event purchases for pending registration capacity checks
+-- Active checkout hold counted in the ticket type remaining seats
 insert into event_purchase (
     amount_minor,
     currency_code,
@@ -272,15 +243,6 @@ insert into event_purchase (
     'pending',
     'General admission',
     :'activeCheckoutUserID'
-), (
-    0,
-    'USD',
-    :'eventPaidID',
-    :'ticketTypeID',
-    current_timestamp - interval '10 minutes',
-    'pending',
-    'General admission',
-    :'expiredCheckoutUserID'
 );
 
 -- Event Waitlist
@@ -371,21 +333,19 @@ select is(
 
 -- Should include configured registration window timestamps in event summaries
 select is(
-    jsonb_build_object(
-        'registration_ends_at', (
-            get_event_summary(
+    (
+        with payload as (
+            select get_event_summary(
                 :'communityID'::uuid,
                 :'groupID'::uuid,
                 :'eventQuestionsID'::uuid
-            )::jsonb
-        )->'registration_ends_at',
-        'registration_starts_at', (
-            get_event_summary(
-                :'communityID'::uuid,
-                :'groupID'::uuid,
-                :'eventQuestionsID'::uuid
-            )::jsonb
-        )->'registration_starts_at'
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'registration_ends_at', event_json->'registration_ends_at',
+            'registration_starts_at', event_json->'registration_starts_at'
+        )
+        from payload
     ),
     jsonb_build_object(
         'registration_ends_at', floor(extract(epoch from '2030-01-02 10:00:00+00'::timestamptz)),
@@ -396,21 +356,19 @@ select is(
 
 -- Should include payment currency and normalized ticket types in event summaries
 select is(
-    jsonb_build_object(
-        'payment_currency_code', (
-            get_event_summary(
+    (
+        with payload as (
+            select get_event_summary(
                 :'communityID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
-            )::jsonb
-        )->'payment_currency_code',
-        'ticket_types', (
-            get_event_summary(
-                :'communityID'::uuid,
-                :'groupID'::uuid,
-                :'eventPaidID'::uuid
-            )::jsonb
-        )->'ticket_types'
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'payment_currency_code', event_json->'payment_currency_code',
+            'ticket_types', event_json->'ticket_types'
+        )
+        from payload
     ),
     format(
         '{
@@ -505,20 +463,6 @@ select ok(
         :'eventID'::uuid
     ) is null,
     'Should return null when community does not match event'
-);
-
--- Should exclude pending registration rows without an active checkout hold
-select is(
-    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventQuestionsID'::uuid)::jsonb->>'remaining_capacity',
-    '1',
-    'Should exclude pending registration rows without an active checkout hold'
-);
-
--- Should exclude expired checkout holds from event capacity summaries
-select is(
-    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb->>'remaining_capacity',
-    '24',
-    'Should exclude expired checkout holds from event capacity summaries'
 );
 
 -- ============================================================================

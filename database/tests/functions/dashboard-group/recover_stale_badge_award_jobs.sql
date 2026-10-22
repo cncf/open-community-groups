@@ -58,6 +58,7 @@ insert into badge_award_job (
 -- Should reject a non-positive failure limit
 select throws_ok(
     $$select recover_stale_badge_award_jobs(60, 0)$$,
+    'P0001',
     'badge award job failure limit must be positive',
     'Should reject a non-positive failure limit'
 );
@@ -65,6 +66,7 @@ select throws_ok(
 -- Should reject a non-positive processing timeout
 select throws_ok(
     $$select recover_stale_badge_award_jobs(0, 10)$$,
+    'P0001',
     'badge award job processing timeout must be positive',
     'Should reject a non-positive processing timeout'
 );

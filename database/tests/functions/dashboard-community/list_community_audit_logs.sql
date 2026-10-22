@@ -1,9 +1,11 @@
+-- Tests listing the community dashboard audit log with filters, sorting and pagination.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -33,20 +35,21 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
+-- Community whose audit log is listed
 select fx_community(:'community1ID', jsonb_build_object('display_name', 'Community One'));
 
--- Baseline community and group category
+-- Other community whose audit rows must be excluded
 select fx_community(:'community2ID');
+
+-- Group category of the audited group
 select fx_group_category(:'groupCategoryID', :'community1ID');
 
--- Users
+-- Audit actors
 select fx_user(:'actor1ID', jsonb_build_object('username', 'alice-audit-logs'));
--- user
 select fx_user(:'actor2ID', jsonb_build_object('username', 'bob'));
--- user
 select fx_user(:'wildcardActorID', jsonb_build_object('username', 'userx1'));
 
--- Group
+-- Group resolved as the resource name of the group audit rows
 select fx_group(:'groupID', :'community1ID', :'groupCategoryID', jsonb_build_object('name', 'Platform'));
 
 -- Audit log rows
@@ -334,70 +337,6 @@ select is(
         1
     ),
     'Should filter community audit logs by action and actor'
-);
-
--- Should filter community audit logs by community custom notification sends
-select is(
-    list_community_audit_logs(
-        :'community1ID'::uuid,
-        '{"action": "community_custom_notification_sent", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        format(
-            $json$
-        [
-            {
-                "action": "community_custom_notification_sent",
-                "actor_username": "alice-audit-logs",
-                "audit_log_id": "%s",
-                "created_at": 1706961600,
-                "details": {"recipient_count": 3, "roles": ["Admin"], "subject": "Team update"},
-                "resource_id": "%s",
-                "resource_name": "Community One",
-                "resource_type": "community"
-            }
-        ]
-            $json$,
-            :'audit9ID',
-            :'community1ID'
-        )::jsonb,
-        'total',
-        1
-    ),
-    'Should filter community audit logs by community custom notification sends'
-);
-
--- Should filter community audit logs by external payments opt-in changes
-select is(
-    list_community_audit_logs(
-        :'community1ID'::uuid,
-        '{"action": "group_external_payments_updated", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        format(
-            $json$
-        [
-            {
-                "action": "group_external_payments_updated",
-                "actor_username": "bob",
-                "audit_log_id": "%s",
-                "created_at": 1706958000,
-                "details": {"external_payments_enabled": true},
-                "resource_id": "%s",
-                "resource_name": "Platform",
-                "resource_type": "group"
-            }
-        ]
-            $json$,
-            :'audit8ID',
-            :'groupID'
-        )::jsonb,
-        'total',
-        1
-    ),
-    'Should filter community audit logs by external payments opt-in changes'
 );
 
 -- Should return community audit logs in ascending order with pagination

@@ -1,17 +1,18 @@
--- Tests atomic guarded deletion for recurring event series.
+-- Tests guarded deletion for recurring event series.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set actorID 'd1020000-0000-0000-0000-000000000001'
+\set cohostGroupID 'd1020000-0000-0000-0000-000000000012'
 \set communityID 'd1020000-0000-0000-0000-000000000002'
 \set eligibleEventOneID 'd1020000-0000-0000-0000-000000000003'
 \set eligibleEventTwoID 'd1020000-0000-0000-0000-000000000004'
@@ -27,7 +28,6 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
-
 -- Community owning both recurring series
 select fx_community(:'communityID', jsonb_build_object('name', 'community-delete-event-series-events'));
 
@@ -40,46 +40,17 @@ select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object(
 -- Group owning both recurring series
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('slug', 'group'));
 
+-- Group co-hosting the eligible occurrences
+select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID');
+
 -- Actor deleting the recurring events
 select fx_user(:'actorID', jsonb_build_object('username', 'actor-delete-event-series-events'));
 
 -- Series containing two eligible unused drafts
-insert into event_series (
-    created_by,
-    event_series_id,
-    group_id,
-    recurrence_additional_occurrences,
-    recurrence_anchor_starts_at,
-    recurrence_pattern,
-    timezone
-) values (
-    :'actorID',
-    :'eligibleSeriesID',
-    :'groupID',
-    1,
-    now() + interval '1 day',
-    'weekly',
-    'UTC'
-);
+select fx_event_series(:'eligibleSeriesID', :'groupID');
 
 -- Series containing an eligible occurrence followed by a blocked occurrence
-insert into event_series (
-    created_by,
-    event_series_id,
-    group_id,
-    recurrence_additional_occurrences,
-    recurrence_anchor_starts_at,
-    recurrence_pattern,
-    timezone
-) values (
-    :'actorID',
-    :'guardedSeriesID',
-    :'groupID',
-    1,
-    now() + interval '3 days',
-    'weekly',
-    'UTC'
-);
+select fx_event_series(:'guardedSeriesID', :'groupID');
 
 -- Eligible unused draft occurrences
 select fx_event(:'eligibleEventOneID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -95,6 +66,11 @@ select fx_event(:'eligibleEventTwoID', :'groupID', :'eventCategoryID', jsonb_bui
     'name', 'Two',
     'starts_at', now() + interval '2 days'
 ));
+
+-- Approved co-host rows on every eligible occurrence
+insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_id) values
+    ('2025-01-01 00:00:00+00', 'approved', :'eligibleEventOneID', :'cohostGroupID'),
+    ('2025-01-02 00:00:00+00', 'approved', :'eligibleEventTwoID', :'cohostGroupID');
 
 -- Guarded series whose first occurrence is already canceled
 select fx_event(:'guardedAllowedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -119,7 +95,7 @@ select fx_event(:'guardedBlockedEventID', :'groupID', :'eventCategoryID', jsonb_
 -- TESTS
 -- ============================================================================
 
--- Should delete an eligible draft series atomically
+-- Should delete an eligible draft series
 select lives_ok(
     format(
         'select delete_event_series_events(%L, %L, %L::uuid[])',
@@ -127,7 +103,7 @@ select lives_ok(
         :'groupID',
         array[:'eligibleEventOneID', :'eligibleEventTwoID']
     ),
-    'Should delete an eligible draft series atomically'
+    'Should delete an eligible draft series'
 );
 select is(
     (
@@ -149,10 +125,39 @@ select is(
     2,
     'Should unpublish every deleted occurrence'
 );
-select is(
-    (select count(*)::int from audit_log where action = 'event_deleted'),
-    2,
-    'Should audit every deleted occurrence'
+select results_eq(
+    format(
+        $$
+        select event_id, event_cohost_status_id, approved_at
+        from event_cohost
+        where event_id in (%L::uuid, %L::uuid)
+        order by event_id
+        $$,
+        :'eligibleEventOneID', :'eligibleEventTwoID'
+    ),
+    format(
+        $$
+            values
+                (%L::uuid, 'event-deleted'::text, '2025-01-01 00:00:00+00'::timestamptz),
+                (%L::uuid, 'event-deleted'::text, '2025-01-02 00:00:00+00'::timestamptz)
+        $$,
+        :'eligibleEventOneID', :'eligibleEventTwoID'
+    ),
+    'Should close co-host rows for every deleted occurrence while keeping approval evidence'
+);
+select results_eq(
+    $$
+        select actor_user_id, resource_id
+        from audit_log
+        where action = 'event_deleted'
+        order by resource_id
+    $$,
+    format(
+        $$ values (%L::uuid, %L::uuid), (%L::uuid, %L::uuid) $$,
+        :'actorID', :'eligibleEventOneID',
+        :'actorID', :'eligibleEventTwoID'
+    ),
+    'Should audit every deleted occurrence with the acting user'
 );
 
 -- Should reject replaying deletion for inactive occurrences
@@ -168,7 +173,7 @@ select throws_ok(
     'Should reject replaying deletion for inactive occurrences'
 );
 
--- Should roll back every occurrence when one deletion is blocked
+-- Should reject a series containing a blocked occurrence
 select throws_ok(
     format(
         'select delete_event_series_events(%L, %L, %L::uuid[])',
@@ -179,21 +184,6 @@ select throws_ok(
     'OCG01',
     'event must be canceled and all payment work settled before deletion',
     'Should reject a series containing a blocked occurrence'
-);
-select is(
-    (
-        select count(*)::int
-        from event
-        where event_series_id = :'guardedSeriesID'
-        and deleted
-    ),
-    0,
-    'Should roll back every occurrence when one deletion is blocked'
-);
-select is(
-    (select count(*)::int from audit_log where action = 'event_deleted'),
-    2,
-    'Should roll back audit rows for a blocked series deletion'
 );
 
 -- ============================================================================

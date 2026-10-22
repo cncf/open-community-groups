@@ -53,6 +53,7 @@
 {{ template "internal/events/validate_event_enrollment_payload.sql" }}
 {{ template "internal/events/validate_event_label_ids.sql" }}
 {{ template "internal/events/validate_event_labels_payload.sql" }}
+{{ template "internal/events/validate_event_registration_window.sql" }}
 {{ template "internal/events/validate_event_series_action_event_ids.sql" }}
 {{ template "internal/events/validate_update_event_dates.sql" }}
 
@@ -92,6 +93,7 @@
 {{ template "internal/payments/apply_event_purchase_credit_note_outcome.sql" }}
 {{ template "internal/payments/complete_payment_job.sql" }}
 {{ template "internal/payments/enqueue_payment_job.sql" }}
+{{ template "internal/payments/ensure_event_purchase_refund_claim.sql" }}
 {{ template "internal/payments/event_has_pending_refund_recovery.sql" }}
 {{ template "internal/payments/event_purchase_refund_to_json.sql" }}
 {{ template "internal/payments/expire_event_checkout_holds.sql" }}
@@ -122,6 +124,7 @@
 {{ template "internal/payments/remind_event_external_payment_holds.sql" }}
 {{ template "internal/payments/validate_direct_charge_checkout_amounts.sql" }}
 {{ template "internal/payments/validate_event_payment_validation.sql" }}
+{{ template "internal/payments/validate_event_purchase_refund_result.sql" }}
 {{ template "internal/payments/validate_event_ticketing_payment_readiness.sql" }}
 {{ template "internal/payments/validate_payment_amount.sql" }}
 {{ template "internal/payments/validate_payment_currency_code.sql" }}
@@ -174,6 +177,7 @@
 {{ template "internal/ticketing/resolve_event_discount_code_available_override.sql" }} -- Dependency for event_discount_codes_configuration
 {{ template "internal/ticketing/event_discount_codes_configuration.sql" }}
 {{ template "internal/ticketing/event_ticket_type_current_price.sql" }}
+{{ template "internal/enrollment/admission_offer_display_price.sql" }} -- Depends on event_ticket_type_current_price
 {{ template "internal/ticketing/event_ticket_types_configuration.sql" }}
 {{ template "internal/ticketing/get_event_ticket_capacity.sql" }}
 {{ template "internal/ticketing/get_event_ticket_type_allocated_seat_count.sql" }}

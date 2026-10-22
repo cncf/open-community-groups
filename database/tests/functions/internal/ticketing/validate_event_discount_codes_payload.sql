@@ -1,9 +1,11 @@
+-- Tests validating event discount code payloads.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(18);
 
 -- ============================================================================
 -- TESTS
@@ -229,24 +231,6 @@ select throws_ok(
     'Should reject fixed amount discount codes with non-positive amount_minor'
 );
 
--- Should reject fixed amount discount codes with negative amount_minor
-select throws_ok(
-    $$select validate_event_discount_codes_payload(
-        '[
-            {
-                "amount_minor": -1,
-                "code": "SAVE5",
-                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
-                "kind": "fixed_amount",
-                "title": "Launch discount"
-            }
-        ]'::jsonb
-    )$$,
-    'OCG01',
-    'discount code amount_minor must be greater than 0',
-    'Should reject fixed amount discount codes with negative amount_minor'
-);
-
 -- Should reject fixed amount discount codes with percentage values
 select throws_ok(
     $$select validate_event_discount_codes_payload(
@@ -350,6 +334,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'P0001',
     'discount codes require a valid kind',
     'Should reject discount codes with invalid kind values'
 );

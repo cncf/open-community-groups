@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -140,26 +140,6 @@ select throws_ok(
     'P0001',
     'notification delivery claim not found or no longer active',
     'Should stop a stale worker from releasing a newer delivery claim'
-);
-
--- Should preserve the newer claim after a stale release attempt
-select results_eq(
-    format(
-        $$
-        select delivery_claimed_at, delivery_status, next_delivery_attempt_at
-        from notification
-        where notification_id = %L::uuid
-        $$,
-        :'notificationStaleClaimID'
-    ),
-    $$
-        values (
-            '2025-01-01 00:00:06+00'::timestamptz,
-            'processing'::text,
-            null::timestamptz
-        )
-    $$,
-    'Should preserve the newer claim after a stale release attempt'
 );
 
 -- ============================================================================

@@ -313,6 +313,7 @@ select throws_ok(
             'payment_job_id', %L
         )))
     $$, :'successPurchaseID', :'missingDomainJobID'),
+    'P0001',
     'application-fee adjustment not found',
     'Should reject application-fee jobs without a domain row'
 );
@@ -324,6 +325,7 @@ select throws_ok(
         from payment_job pj
         where pj.payment_job_id = %L::uuid
     $$, :'missingFeeContextJobID'),
+    'P0001',
     'application-fee adjustment is missing provider context',
     'Should reject application-fee jobs without provider context'
 );
@@ -337,6 +339,7 @@ select throws_ok(
             'payment_job_id', %L
         )))
     $$, :'successPurchaseID', :'missingDomainJobID'),
+    'P0001',
     'credit note not found',
     'Should reject credit-note jobs without a domain row'
 );
@@ -348,6 +351,7 @@ select throws_ok(
         from payment_job pj
         where pj.payment_job_id = %L::uuid
     $$, :'missingCreditContextJobID'),
+    'P0001',
     'credit note is missing provider context',
     'Should reject credit-note jobs without provider context'
 );
@@ -361,6 +365,7 @@ select throws_ok(
             'payment_job_id', %L
         )))
     $$, :'missingEventPurchaseID', :'missingDomainJobID'),
+    'P0001',
     'event purchase not found',
     'Should reject jobs whose purchase is missing'
 );
@@ -374,6 +379,7 @@ select throws_ok(
             'payment_job_id', %L
         )))
     $$, :'successPurchaseID', :'missingDomainJobID'),
+    'P0001',
     'event purchase refund not found',
     'Should reject refund jobs without a domain row'
 );
@@ -385,6 +391,7 @@ select throws_ok(
         from payment_job pj
         where pj.payment_job_id = %L::uuid
     $$, :'missingSellerJobID'),
+    'P0001',
     'event purchase is missing connected seller account',
     'Should reject refund jobs without connected-seller context'
 );
@@ -398,6 +405,7 @@ select throws_ok(
             'payment_job_id', %L
         )))
     $$, :'successPurchaseID', :'unknownJobID'),
+    'P0001',
     'payment job kind has no worker payload',
     'Should reject unknown payment job kinds'
 );

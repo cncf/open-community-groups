@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(28);
+select plan(27);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,7 +19,6 @@ select plan(28);
 \set eventCategoryInactiveID '5ea70000-0000-0000-0000-000000000006'
 \set eventCategoryOtherID '5ea70000-0000-0000-0000-000000000007'
 \set eventCategoryTalksID '5ea70000-0000-0000-0000-000000000008'
-\set eventDeletedID '5ea70000-0000-0000-0000-000000000009'
 \set eventHybridID '5ea70000-0000-0000-0000-00000000000a'
 \set eventInactiveCommunityID '5ea70000-0000-0000-0000-00000000000b'
 \set eventInactiveGroupID '5ea70000-0000-0000-0000-00000000000c'
@@ -132,13 +131,6 @@ select fx_event(:'eventCanceledID', :'groupSanFranciscoID', :'eventCategoryTalks
     'starts_at', '2040-03-01 12:00:00+00'
 ));
 
--- Deleted event
-select fx_event(:'eventDeletedID', :'groupSanFranciscoID', :'eventCategoryTalksID', jsonb_build_object(
-    'deleted', true,
-    'published', false,
-    'starts_at', '2040-03-01 15:00:00+00'
-));
-
 -- Hybrid event located in London while its group is in San Francisco
 select fx_event(:'eventHybridID', :'groupSanFranciscoID', :'eventCategoryTalksID', jsonb_build_object(
     'event_kind_id', 'hybrid',
@@ -244,16 +236,6 @@ select ok(
         where event_id = :'eventCanceledID'
     ),
     'Should exclude canceled events'
-);
-
--- Should exclude deleted events
-select ok(
-    not exists (
-        select 1
-        from search_events_matches('{}'::jsonb)
-        where event_id = :'eventDeletedID'
-    ),
-    'Should exclude deleted events'
 );
 
 -- Should exclude events from inactive communities

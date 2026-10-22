@@ -1,3 +1,5 @@
+-- Tests grouping bucket count rows into named running total series.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -23,7 +25,7 @@ select is(
     'Should return an empty JSON object for empty input'
 );
 
--- Should return named cumulative series ordered by name and bucket timestamp
+-- Should return named cumulative series with buckets in timestamp order
 select is(
     stats_running_total_series_by_name('[
         {"series_name": "Beta", "bucket_start": "2025-02-01T00:00:00Z", "count": 4},
@@ -34,7 +36,7 @@ select is(
         "Alpha": [[1735689600000, 1], [1740787200000, 4]],
         "Beta": [[1738368000000, 4]]
     }'::jsonb,
-    'Should return named cumulative series ordered by name and bucket timestamp'
+    'Should return named cumulative series with buckets in timestamp order'
 );
 
 -- ============================================================================

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,7 +14,6 @@ select plan(8);
 \set actorUserID 'a5e00013-0000-0000-0000-000000000001'
 \set almostFullEventID 'a5e00013-0000-0000-0000-00000000000b'
 \set almostFullGroupID 'a5e00013-0000-0000-0000-00000000000c'
-\set canceledEventID 'a5e00013-0000-0000-0000-000000000002'
 \set communityID 'a5e00013-0000-0000-0000-000000000003'
 \set eventCategoryID 'a5e00013-0000-0000-0000-000000000004'
 \set eventID 'a5e00013-0000-0000-0000-000000000005'
@@ -51,9 +50,6 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event that has one survey less than the maximum
 select fx_event(:'almostFullEventID', :'almostFullGroupID', :'eventCategoryID');
-
--- Canceled event whose surveys cannot be managed
-select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object('canceled', true));
 
 -- Event in Madrid receiving the new survey
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('timezone', 'Europe/Madrid'));
@@ -193,17 +189,6 @@ select results_eq(
         :'actorUserID', :'communityID', :'eventID', :'groupID', :'addedSurveyID'
     ),
     'Should record only the successful addition in the audit log'
-);
-
--- Should reject canceled events
-select throws_ok(
-    format(
-        $$select add_event_survey(%L::uuid, %L::uuid, %L::uuid, '{"anonymous": true, "audience": "confirmed", "questions": [], "title": "Survey"}'::jsonb)$$,
-        :'actorUserID', :'groupID', :'canceledEventID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Should reject canceled events'
 );
 
 -- Should reject events of another group

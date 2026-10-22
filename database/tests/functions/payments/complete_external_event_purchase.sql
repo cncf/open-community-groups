@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -215,7 +215,11 @@ select is(
         :'groupID'::uuid,
         :'pendingPurchaseID'::uuid,
         'bank transfer ref 123',
-        '[]'::jsonb,
+        jsonb_build_array(jsonb_build_object(
+            'content_type', 'text/calendar',
+            'data_base64', encode(convert_to('complete-external-event-purchase.ics', 'utf8'), 'base64'),
+            'file_name', 'event.ics'
+        )),
         jsonb_build_object('event_name', 'External Complete Event')
     )::jsonb,
     jsonb_build_object(
@@ -232,22 +236,27 @@ select results_eq(
         $$
             select
                 status,
+                completed_at = current_timestamp,
                 external_payment_details,
-                external_payment_marked_by_user_id is not null,
-                hold_expires_at is null
+                external_payment_marked_by_user_id,
+                hold_expires_at
             from event_purchase
             where event_purchase_id = %L::uuid
         $$,
         :'pendingPurchaseID'
     ),
-    $$
-        values (
-            'completed'::text,
-            'bank transfer ref 123'::text,
-            true,
-            true
-        )
-    $$,
+    format(
+        $$
+            values (
+                'completed'::text,
+                true,
+                'bank transfer ref 123'::text,
+                %L::uuid,
+                null::timestamptz
+            )
+        $$,
+        :'actorID'
+    ),
     'Should complete a pending external purchase and record the organizer marker'
 );
 
@@ -316,16 +325,41 @@ select results_eq(
 );
 
 -- Should enqueue the welcome notification with the completed purchase
-select ok(
-    exists(
-        select 1
+select results_eq(
+    $$
+        select n.kind, n.user_id, ntd.data
         from notification n
         join notification_template_data ntd using (notification_template_data_id)
         where n.kind = 'event-welcome'
-        and n.user_id = :'attendeeID'::uuid
-        and ntd.data->>'event_name' = 'External Complete Event'
+    $$,
+    format(
+        $$ values ('event-welcome'::text, %L::uuid, '{"event_name":"External Complete Event"}'::jsonb) $$,
+        :'attendeeID'
     ),
     'Should enqueue the welcome notification with the completed purchase'
+);
+
+-- Should attach the provided files to the welcome notification
+select results_eq(
+    $$
+        select n.user_id, a.content_type, a.data, a.file_name
+        from notification n
+        join notification_attachment na using (notification_id)
+        join attachment a using (attachment_id)
+        where n.kind = 'event-welcome'
+    $$,
+    format(
+        $$
+            values (
+                %L::uuid,
+                'text/calendar'::text,
+                convert_to('complete-external-event-purchase.ics', 'utf8'),
+                'event.ics'::text
+            )
+        $$,
+        :'attendeeID'
+    ),
+    'Should attach the provided files to the welcome notification'
 );
 
 -- Should no-op on a repeated mark-paid for the same completed purchase

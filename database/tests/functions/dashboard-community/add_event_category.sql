@@ -1,3 +1,5 @@
+-- Tests adding dashboard community event categories.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,6 +11,7 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c030000-0000-0000-0000-000000000002'
 \set communityID '2c030000-0000-0000-0000-000000000001'
 
 -- ============================================================================
@@ -18,6 +21,9 @@ select plan(5);
 -- Baseline community
 select fx_community(:'communityID');
 
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'add-event-category-audit-actor'));
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -26,10 +32,11 @@ select fx_community(:'communityID');
 select lives_ok(
     format(
         $$ select add_event_category(
-        null::uuid,
+        %L::uuid,
         %L::uuid,
         jsonb_build_object('name', 'Cloud Native Meetup')
     ) $$,
+        :'actorUserID',
         :'communityID'
     ),
     'Should create an event category with generated slug'
@@ -65,14 +72,15 @@ select results_eq(
         $$
         select
             'event_category_added',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'add-event-category-audit-actor',
             %L::uuid,
             'event_category',
             event_category_id
         from event_category
         where community_id = %L::uuid
         $$,
+        :'actorUserID',
         :'communityID',
         :'communityID'
     ),

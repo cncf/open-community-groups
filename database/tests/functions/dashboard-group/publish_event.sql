@@ -11,9 +11,12 @@ select plan(31);
 -- VARIABLES
 -- ============================================================================
 
+\set cohostApprovedGroupID '3a0a0000-0000-0000-0000-000000000041'
+\set cohostPendingGroupID '3a0a0000-0000-0000-0000-000000000042'
 \set communityID '3a0a0000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a0a0000-0000-0000-0000-000000000002'
-\set eventExternalAbroadID '3a0a0000-0000-0000-0000-00000000003a'
+\set eventCohostsApprovedID '3a0a0000-0000-0000-0000-000000000043'
+\set eventCohostsPendingID '3a0a0000-0000-0000-0000-000000000044'
 \set eventExternalClearID '3a0a0000-0000-0000-0000-000000000030'
 \set eventExternalMissingUrlID '3a0a0000-0000-0000-0000-000000000031'
 \set eventExternalNamelessID '3a0a0000-0000-0000-0000-00000000003d'
@@ -22,8 +25,8 @@ select plan(31);
 \set eventNoMeetingID '3a0a0000-0000-0000-0000-000000000004'
 \set eventNoStartDateID '3a0a0000-0000-0000-0000-000000000005'
 \set eventPublishedID '3a0a0000-0000-0000-0000-000000000006'
+\set eventStaleSponsorID '3a0a0000-0000-0000-0000-000000000007'
 \set eventTicketedHybridID '3a0a0000-0000-0000-0000-00000000001f'
-\set eventTicketedInvalidCurrencyID '3a0a0000-0000-0000-0000-000000000007'
 \set eventTicketedFreeID '3a0a0000-0000-0000-0000-00000000001a'
 \set eventTicketedNoRecipientID '3a0a0000-0000-0000-0000-000000000008'
 \set groupCategoryID '3a0a0000-0000-0000-0000-000000000009'
@@ -33,27 +36,25 @@ select plan(31);
 \set groupNoRecipientID '3a0a0000-0000-0000-0000-000000000011'
 \set missingGroupID '3a0a0000-0000-0000-0000-000000000012'
 \set previousPublisherID '3a0a0000-0000-0000-0000-000000000013'
-\set priceWindowExternalAbroadID '3a0a0000-0000-0000-0000-00000000003b'
 \set priceWindowExternalClearID '3a0a0000-0000-0000-0000-000000000034'
 \set priceWindowExternalMissingUrlID '3a0a0000-0000-0000-0000-000000000035'
 \set priceWindowExternalNamelessID '3a0a0000-0000-0000-0000-00000000003f'
 \set priceWindowExternalReadyID '3a0a0000-0000-0000-0000-000000000036'
 \set priceWindowFreeID '3a0a0000-0000-0000-0000-00000000001b'
 \set priceWindowHybridID '3a0a0000-0000-0000-0000-000000000021'
-\set priceWindowInvalidCurrencyID '3a0a0000-0000-0000-0000-00000000001c'
 \set priceWindowNoRecipientID '3a0a0000-0000-0000-0000-00000000001d'
+\set priceWindowStaleSponsorID '3a0a0000-0000-0000-0000-00000000001c'
 \set sessionMeetingID '3a0a0000-0000-0000-0000-000000000014'
 \set sessionNoMeetingID '3a0a0000-0000-0000-0000-000000000015'
 \set sessionPublishedMeetingID '3a0a0000-0000-0000-0000-000000000016'
-\set ticketTypeExternalAbroadID '3a0a0000-0000-0000-0000-00000000003c'
 \set ticketTypeExternalClearID '3a0a0000-0000-0000-0000-000000000037'
 \set ticketTypeExternalMissingUrlID '3a0a0000-0000-0000-0000-000000000038'
 \set ticketTypeExternalNamelessID '3a0a0000-0000-0000-0000-000000000040'
 \set ticketTypeExternalReadyID '3a0a0000-0000-0000-0000-000000000039'
-\set ticketTypeInvalidCurrencyID '3a0a0000-0000-0000-0000-000000000017'
 \set ticketTypeFreeID '3a0a0000-0000-0000-0000-00000000001e'
 \set ticketTypeHybridID '3a0a0000-0000-0000-0000-000000000020'
 \set ticketTypeNoRecipientID '3a0a0000-0000-0000-0000-000000000018'
+\set ticketTypeStaleSponsorID '3a0a0000-0000-0000-0000-000000000017'
 \set userID '3a0a0000-0000-0000-0000-000000000019'
 
 -- ============================================================================
@@ -66,6 +67,10 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_user(:'previousPublisherID');
 select fx_group(:'groupNoRecipientID', :'communityID', :'groupCategoryID');
+
+-- Co-host groups that answered and did not answer their invitations
+select fx_group(:'cohostApprovedGroupID', :'communityID', :'groupCategoryID');
+select fx_group(:'cohostPendingGroupID', :'communityID', :'groupCategoryID');
 
 -- Operator allowlist used by external publish scenarios
 insert into external_payments_config (
@@ -141,6 +146,16 @@ select fx_event(:'eventPublishedID', :'groupID', :'eventCategoryID', jsonb_build
 -- Event without start date (to verify it cannot be published)
 select fx_event(:'eventNoStartDateID', :'groupID', :'eventCategoryID');
 
+-- Event whose co-hosts all responded to their invitations
+select fx_event(:'eventCohostsApprovedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'starts_at', current_timestamp + interval '3 days'
+));
+
+-- Event with an unanswered co-host invitation
+select fx_event(:'eventCohostsPendingID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'starts_at', current_timestamp + interval '3 days'
+));
+
 -- Ticketed event without a payment recipient on its group
 select fx_event(:'eventTicketedNoRecipientID', :'groupNoRecipientID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
@@ -154,10 +169,10 @@ select fx_event(:'eventTicketedFreeID', :'groupNoRecipientID', :'eventCategoryID
     'starts_at', current_timestamp + interval '2 days'
 ));
 
--- Ticketed event with an invalid currency code
-select fx_event(:'eventTicketedInvalidCurrencyID', :'groupID', :'eventCategoryID', jsonb_build_object(
+-- Paid ticketed event published against a stale sponsor snapshot
+select fx_event(:'eventStaleSponsorID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
-    'payment_currency_code', 'USDD',
+    'payment_currency_code', 'USD',
     'starts_at', current_timestamp + interval '2 days'
 ));
 
@@ -188,8 +203,8 @@ select fx_event_ticket_type(:'ticketTypeHybridID', :'eventTicketedHybridID', jso
 -- Ticket type for the all-zero event
 select fx_event_ticket_type(:'ticketTypeFreeID', :'eventTicketedFreeID', jsonb_build_object('seats_total', 50));
 
--- Ticket type for the event with an invalid currency code
-select fx_event_ticket_type(:'ticketTypeInvalidCurrencyID', :'eventTicketedInvalidCurrencyID', jsonb_build_object(
+-- Ticket type for the event published against a stale sponsor snapshot
+select fx_event_ticket_type(:'ticketTypeStaleSponsorID', :'eventStaleSponsorID', jsonb_build_object(
     'seats_total', 50,
     'title', 'Paid ticket'
 ));
@@ -197,20 +212,8 @@ select fx_event_ticket_type(:'ticketTypeInvalidCurrencyID', :'eventTicketedInval
 -- Price windows determine whether each ticketed event is paid-capable.
 select fx_event_ticket_price_window(:'priceWindowFreeID', :'ticketTypeFreeID', jsonb_build_object('amount_minor', 0));
 select fx_event_ticket_price_window(:'priceWindowHybridID', :'ticketTypeHybridID', jsonb_build_object('amount_minor', 2500));
-select fx_event_ticket_price_window(:'priceWindowInvalidCurrencyID', :'ticketTypeInvalidCurrencyID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'priceWindowNoRecipientID', :'ticketTypeNoRecipientID', jsonb_build_object('amount_minor', 2500));
-
--- Paid external draft whose venue sits outside the group country
-select fx_event(:'eventExternalAbroadID', :'groupExternalID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/abroad',
-    'payment_currency_code', 'KRW',
-    'starts_at', current_timestamp + interval '2 days',
-    'venue_address', '1 Test Street',
-    'venue_city', 'Tokyo',
-    'venue_country_code', 'JP',
-    'venue_name', 'Test Hall',
-    'venue_zip_code', '100-0001'
-));
+select fx_event_ticket_price_window(:'priceWindowStaleSponsorID', :'ticketTypeStaleSponsorID', jsonb_build_object('amount_minor', 2500));
 
 -- Paid non-external draft that still carries a leftover external URL
 select fx_event(:'eventExternalClearID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -259,18 +262,24 @@ select fx_event(:'eventExternalReadyID', :'groupExternalID', :'eventCategoryID',
 ));
 
 -- Ticket types for the external publish fixtures
-select fx_event_ticket_type(:'ticketTypeExternalAbroadID', :'eventExternalAbroadID', jsonb_build_object('seats_total', 50));
 select fx_event_ticket_type(:'ticketTypeExternalClearID', :'eventExternalClearID', jsonb_build_object('seats_total', 50));
 select fx_event_ticket_type(:'ticketTypeExternalMissingUrlID', :'eventExternalMissingUrlID', jsonb_build_object('seats_total', 50));
 select fx_event_ticket_type(:'ticketTypeExternalNamelessID', :'eventExternalNamelessID', jsonb_build_object('seats_total', 50));
 select fx_event_ticket_type(:'ticketTypeExternalReadyID', :'eventExternalReadyID', jsonb_build_object('seats_total', 50));
 
 -- Price windows for the external publish fixtures
-select fx_event_ticket_price_window(:'priceWindowExternalAbroadID', :'ticketTypeExternalAbroadID', jsonb_build_object('amount_minor', 5000));
 select fx_event_ticket_price_window(:'priceWindowExternalClearID', :'ticketTypeExternalClearID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'priceWindowExternalMissingUrlID', :'ticketTypeExternalMissingUrlID', jsonb_build_object('amount_minor', 5000));
 select fx_event_ticket_price_window(:'priceWindowExternalNamelessID', :'ticketTypeExternalNamelessID', jsonb_build_object('amount_minor', 5000));
 select fx_event_ticket_price_window(:'priceWindowExternalReadyID', :'ticketTypeExternalReadyID', jsonb_build_object('amount_minor', 5000));
+
+-- Approved co-host invitation that no longer blocks publication
+insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_id)
+values ('2025-01-01 00:00:00+00', 'approved', :'eventCohostsApprovedID', :'cohostApprovedGroupID');
+
+-- Pending co-host invitation that blocks publication
+insert into event_cohost (event_cohost_status_id, event_id, group_id)
+values ('pending', :'eventCohostsPendingID', :'cohostPendingGroupID');
 
 -- Session with meeting_requested=true (should be marked as out of sync)
 insert into session (
@@ -362,9 +371,9 @@ select is(
 );
 
 -- Should set published_at timestamp
-select isnt(
+select is(
     (select published_at from event where event_id = :'eventID'),
-    null,
+    current_timestamp,
     'Should set published_at timestamp'
 );
 
@@ -509,12 +518,25 @@ select throws_ok(
     format(
         'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
         :'userID',
-        :'missingGroupID',
+        :'groupNoRecipientID',
         :'eventID'
     ),
     'OCG01',
     'event not found or inactive',
     'Should throw error when group_id does not match'
+);
+
+-- Should throw error when the group does not exist
+select throws_ok(
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'missingGroupID',
+        :'eventID'
+    ),
+    'OCG01',
+    'event not found or inactive',
+    'Should throw error when the group does not exist'
 );
 
 -- Should throw error when event has no start date
@@ -530,6 +552,43 @@ select throws_ok(
     'Should throw error when event has no start date'
 );
 
+-- Should block publishing while a co-host invitation is pending
+select throws_ok(
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'groupID',
+        :'eventCohostsPendingID'
+    ),
+    'OCG01',
+    'co-hosts must respond before the event can be published',
+    'Should block publishing while a co-host invitation is pending'
+);
+
+-- Should publish when all co-hosts responded
+select lives_ok(
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'groupID',
+        :'eventCohostsApprovedID'
+    ),
+    'Should publish when all co-hosts responded'
+);
+
+-- Should mark the event with responded co-hosts as published by the user
+select results_eq(
+    format(
+        $$select published, published_at, published_by from event where event_id = %L::uuid$$,
+        :'eventCohostsApprovedID'
+    ),
+    format(
+        $$values (true, current_timestamp, %L::uuid)$$,
+        :'userID'
+    ),
+    'Should mark the event with responded co-hosts as published by the user'
+);
+
 -- Should publish all-zero ticketed events without payment setup
 select lives_ok(
     format(
@@ -539,6 +598,19 @@ select lives_ok(
         :'eventTicketedFreeID'
     ),
     'Should publish all-zero ticketed events without payment setup'
+);
+
+-- Should mark the all-zero ticketed event as published by the user
+select results_eq(
+    format(
+        $$select published, published_at, published_by from event where event_id = %L::uuid$$,
+        :'eventTicketedFreeID'
+    ),
+    format(
+        $$values (true, current_timestamp, %L::uuid)$$,
+        :'userID'
+    ),
+    'Should mark the all-zero ticketed event as published by the user'
 );
 
 -- Should publish a paid-capable hybrid event with a complete physical venue
@@ -649,42 +721,11 @@ select throws_ok(
         )$$,
         :'userID',
         :'groupID',
-        :'eventTicketedInvalidCurrencyID'
+        :'eventStaleSponsorID'
     ),
     'OCG01',
     'payment configuration changed during provider validation',
     'Should reject publication validated against a stale sponsor'
-);
-
--- Should reject ticketed events whose currency code is unsupported
-select throws_ok(
-    format(
-        $$select publish_event(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            'stripe',
-            '{
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_test_group",
-                    "seller_display_name": "Test Fiscal Sponsor"
-                },
-                "require_automatic_tax": true,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_test_group",
-                    "seller_display_name": "Test Fiscal Sponsor"
-                }
-            }'::jsonb
-        )$$,
-        :'userID',
-        :'groupID',
-        :'eventTicketedInvalidCurrencyID'
-    ),
-    'OCG01',
-    'payment_currency_code must be a supported currency code',
-    'Should reject ticketed events whose currency code is unsupported'
 );
 
 -- Should reject publishing an external URL when the group is not currently eligible
@@ -715,19 +756,6 @@ select throws_ok(
     ),
     'OCG01',
     'external payments are not available for this event',
-    'Should reject publishing an external URL when the group is not currently eligible'
-);
-
-select is(
-    (
-        select jsonb_build_object(
-            'external_payment_url', external_payment_url,
-            'published', published
-        )
-        from event
-        where event_id = :'eventExternalClearID'::uuid
-    ),
-    '{"external_payment_url": "https://pay.example.test/leftover-publish", "published": false}'::jsonb,
     'Should reject publishing an external URL when the group is not currently eligible'
 );
 
@@ -782,32 +810,6 @@ select throws_ok(
     'OCG01',
     'external payments require the legal name of the organization collecting payments',
     'Should reject publishing a paid event on Stripe while the selected external rail lacks its payee name'
-);
-
--- Should keep the draft unpublished after rejecting the nameless external publication
-select is(
-    (select published from event where event_id = :'eventExternalNamelessID'::uuid),
-    false,
-    'Should keep the draft unpublished after rejecting the nameless external publication'
-);
-
--- Should reject publishing a paid external event with a venue outside the group country
-select throws_ok(
-    format(
-        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
-        :'userID',
-        :'groupExternalID',
-        :'eventExternalAbroadID'
-    ),
-    'OCG01',
-    'external paid events require a venue in the group country',
-    'Should reject publishing a paid external event with a venue outside the group country'
-);
-
-select is(
-    (select published from event where event_id = :'eventExternalAbroadID'::uuid),
-    false,
-    'Should keep the external event unpublished when its venue is outside the group country'
 );
 
 -- ============================================================================

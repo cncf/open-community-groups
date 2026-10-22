@@ -1,3 +1,5 @@
+-- Tests marking stale processing notifications with an unknown delivery outcome.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -80,7 +82,7 @@ select throws_ok(
 select is(
     mark_stale_processing_notifications_unknown(900),
     1,
-    'Marks only stale processing notifications'
+    'Should mark only stale processing notifications'
 );
 
 -- Should persist delivery-unknown state for stale claims
@@ -90,7 +92,7 @@ select results_eq(
         select
             delivery_status,
             error,
-            processed_at is not null
+            processed_at
         from notification
         where notification_id = %L::uuid
         $$,
@@ -100,10 +102,10 @@ select results_eq(
         values (
             'delivery-unknown'::text,
             'delivery outcome unknown after processing timeout'::text,
-            true
+            current_timestamp
         )
     $$,
-    'Persists delivery-unknown state for stale claims'
+    'Should persist delivery-unknown state for stale claims'
 );
 
 -- Should leave fresh processing notifications active
@@ -119,7 +121,7 @@ select results_eq(
         :'notificationFreshProcessingID'
     ),
     $$ values ('processing'::text, null::timestamptz) $$,
-    'Leaves fresh processing notifications active'
+    'Should leave fresh processing notifications active'
 );
 
 -- Should leave other delivery statuses unchanged
@@ -148,7 +150,7 @@ select results_eq(
         :'notificationPendingID',
         :'notificationProcessedID'
     ),
-    'Leaves other delivery statuses unchanged'
+    'Should leave other delivery statuses unchanged'
 );
 
 -- ============================================================================

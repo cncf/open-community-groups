@@ -15,8 +15,7 @@ select plan(2);
 \set event1ID '0d040000-0000-0000-0000-000000000002'
 \set event2ID '0d040000-0000-0000-0000-000000000003'
 \set event3ID '0d040000-0000-0000-0000-000000000004'
-\set event4ID '0d040000-0000-0000-0000-000000000005'
-\set event5ID '0d040000-0000-0000-0000-000000000015'
+\set event4ID '0d040000-0000-0000-0000-000000000015'
 \set eventCategoryID '0d040000-0000-0000-0000-000000000006'
 \set group1ID '0d040000-0000-0000-0000-000000000007'
 \set group2ID '0d040000-0000-0000-0000-000000000008'
@@ -41,20 +40,16 @@ select fx_user(:'user3ID');
 select fx_group(:'group1ID', :'communityID', :'groupCategoryID');
 select fx_group(:'group2ID', :'communityID', :'groupCategoryID');
 
--- Deleted group excluded from community stats
-select fx_group(:'group3ID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
+-- Inactive group excluded from community stats
+select fx_group(:'group3ID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
--- Events covering published, unpublished, canceled and deleted stats states
+-- Events covering published, unpublished and canceled stats states
 select fx_event(:'event1ID', :'group1ID', :'eventCategoryID', jsonb_build_object('published', true));
 select fx_event(:'event2ID', :'group1ID', :'eventCategoryID');
 select fx_event(:'event3ID', :'group2ID', :'eventCategoryID', jsonb_build_object('canceled', true));
-select fx_event(:'event4ID', :'group2ID', :'eventCategoryID', jsonb_build_object('deleted', true));
 
 -- Published test event excluded from community stats
-select fx_event(:'event5ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
+select fx_event(:'event4ID', :'group1ID', :'eventCategoryID', jsonb_build_object(
     'published', true,
     'test_event', true
 ));
@@ -88,8 +83,7 @@ values
     (:'event1ID', :'user3ID', 'invitation-pending', '2024-01-01 00:00:00'),
     (:'event2ID', :'user1ID', 'confirmed', '2024-01-01 00:00:00'),
     (:'event3ID', :'user2ID', 'confirmed', '2024-01-01 00:00:00'),
-    (:'event4ID', :'user3ID', 'confirmed', '2024-01-01 00:00:00'),
-    (:'event5ID', :'user3ID', 'confirmed', '2024-01-01 00:00:00');
+    (:'event4ID', :'user3ID', 'confirmed', '2024-01-01 00:00:00');
 
 -- ============================================================================
 -- TESTS
@@ -107,15 +101,15 @@ select is(
     'Should return zeros for non-existing community'
 );
 
--- Should exclude deleted groups and unpublished/canceled/deleted events
+-- Should exclude inactive groups and unpublished/canceled/test events
 -- Data setup:
--- - 3 groups: 2 active (group1, group2), 1 deleted (group3)
--- - 5 events: 1 published (event1), 1 unpublished (event2), 1 canceled (event3),
---   1 deleted (event4), 1 test event (event5)
+-- - 3 groups: 2 active (group1, group2), 1 inactive (group3)
+-- - 4 events: 1 published (event1), 1 unpublished (event2), 1 canceled (event3),
+--   1 test event (event4)
 -- - 1 approved co-host credit for event1 (owner-only attribution)
--- - 4 group members: 3 in active groups, 1 in deleted group (should be excluded)
--- - 7 event attendees: 2 confirmed in published event, 1 non-confirmed in
---   published event (should be excluded), 4 in excluded events (should be excluded)
+-- - 4 group members: 3 in active groups, 1 in inactive group (should be excluded)
+-- - 6 event attendees: 2 confirmed in published event, 1 non-confirmed in
+--   published event (should be excluded), 3 in excluded events (should be excluded)
 -- Expected: groups=2, events=1, groups_members=3, events_attendees=2
 select is(
     (get_community_site_stats(:'communityID'::uuid)::jsonb),
@@ -125,7 +119,7 @@ select is(
         "groups_members": 3,
         "events_attendees": 2
     }'::jsonb,
-    'Should exclude deleted groups and unpublished/canceled/deleted events'
+    'Should exclude inactive groups and unpublished/canceled/test events'
 );
 
 -- ============================================================================

@@ -127,7 +127,7 @@ select throws_ok(
         :'eventID'
     ),
     '23505',
-    null,
+    'duplicate key value violates unique constraint "event_views_utm_event_id_day_utm_key"',
     'Should reject duplicate counters for the same event, day and UTM parameters'
 );
 
@@ -141,7 +141,7 @@ select throws_ok(
         :'eventID'
     ),
     '23514',
-    null,
+    'new row for relation "event_views_utm" violates check constraint "event_views_utm_utm_campaign_chk"',
     'Should reject UTM campaigns longer than 50 characters'
 );
 
@@ -155,7 +155,7 @@ select throws_ok(
         :'eventID'
     ),
     '23514',
-    null,
+    'new row for relation "event_views_utm" violates check constraint "event_views_utm_utm_campaign_chk"',
     'Should reject UTM campaigns with unsupported characters'
 );
 
@@ -169,7 +169,7 @@ select throws_ok(
         :'eventID'
     ),
     '23514',
-    null,
+    'new row for relation "event_views_utm" violates check constraint "event_views_utm_utm_medium_chk"',
     'Should reject UTM mediums longer than 50 characters'
 );
 
@@ -183,7 +183,7 @@ select throws_ok(
         :'eventID'
     ),
     '23514',
-    null,
+    'new row for relation "event_views_utm" violates check constraint "event_views_utm_utm_medium_chk"',
     'Should reject UTM mediums with unsupported characters'
 );
 
@@ -197,7 +197,7 @@ select throws_ok(
         :'eventID'
     ),
     '23514',
-    null,
+    'new row for relation "event_views_utm" violates check constraint "event_views_utm_utm_source_chk"',
     'Should reject UTM sources longer than 50 characters'
 );
 
@@ -211,10 +211,9 @@ select throws_ok(
         :'eventID'
     ),
     '23514',
-    null,
+    'new row for relation "event_views_utm" violates check constraint "event_views_utm_utm_source_chk"',
     'Should reject UTM sources with unsupported characters'
 );
-
 
 -- ============================================================================
 -- CLEANUP

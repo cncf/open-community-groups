@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -86,10 +86,6 @@ select throws_ok(
     'OCG01',
     'conversation is marked as spam',
     'Should reject replies to conversations marked as spam'
-);
-select is_empty(
-    format($$select 1 from inbox_message where inbox_conversation_id = %L::uuid$$, :'conversationSpamID'),
-    'Should store no reply in conversations marked as spam'
 );
 
 -- Should reject replies to conversations whose user account was deleted

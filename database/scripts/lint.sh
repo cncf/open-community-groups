@@ -10,14 +10,16 @@
 #   - Schema migrations newer than the sweep migration may only define the
 #     first body of a new trigger function; later body changes belong to the
 #     loader copy only.
-#   - create trigger statements live in schema migrations, never in loader
-#     function files.
+#   - create [or replace] [constraint] trigger statements live in schema
+#     migrations, never in loader function files.
 #
 # Layout rules:
 #   - Every function file has a mirrored pgTAP test at the same path under
 #     tests/functions, and every test under tests/functions mirrors a function
-#     file (scenario-split test files named <function>_<suffix>.sql and the
-#     payments/refund_worker_lifecycle.sql lifecycle suite are allowed).
+#     file (the payments/refund_worker_lifecycle.sql lifecycle suite excepted).
+#   - A scenario-split test file named <function>_<suffix>.sql states its base
+#     and reason within its first three lines with a
+#     "-- Split from <function>.sql because|to ..." header.
 #   - Functions under functions/internal/ are SQL-only helpers: the Rust
 #     crates never call them (contract tests excepted).
 #   - Every test under tests/schema/constraints is named after a table created
@@ -25,7 +27,10 @@
 #
 # Test rules:
 #   - pgTAP schema and function tests run in parallel against one database, so
-#     they must not take table-level locks (alter table, lock table, truncate).
+#     they must not take table-level locks (alter table, lock table, truncate,
+#     create [or replace] [constraint] trigger, drop trigger). A create
+#     trigger statement is allowed only when its target is a session-local
+#     table created with create temporary table in the same file.
 #   - Fixture functions (fx_*) are installed by the test recipes only; nothing
 #     under migrations/ may reference them.
 #   - Each parallel test owns its UUID prefix (the first segment of its \set
@@ -50,6 +55,7 @@ fail() {
 }
 
 # Every function file has a mirrored test, and every test mirrors a function
+# or is a scenario split that names its base file in its header
 for file in $(cd "$functions_dir" && find . -name '*.sql' ! -name '001_load_functions.sql' | sed 's|^\./||' | sort); do
     if [ ! -f "$tests_dir/functions/$file" ]; then
         fail "$functions_dir/$file has no mirrored test at $tests_dir/functions/$file"
@@ -65,14 +71,24 @@ for file in $(cd "$tests_dir/functions" && find . -name '*.sql' | sed 's|^\./||'
     dir=$(dirname "$file")
     base=$(basename "$file" .sql)
     matched=0
+    headed=0
+    header=$(head -n 3 "$tests_dir/functions/$file")
     for candidate in "$functions_dir/$dir"/*.sql; do
         name=$(basename "$candidate" .sql)
         case "$base" in
-            "${name}_"*) matched=1; break ;;
+            "${name}_"*)
+                matched=1
+                # A sibling may prefix-match several functions; any of them may be its base
+                if printf '%s\n' "$header" | grep -qE "^-- Split from $name\.sql (because|to) "; then
+                    headed=1
+                fi
+                ;;
         esac
     done
     if [ "$matched" -eq 0 ]; then
         fail "$tests_dir/functions/$file does not mirror a function file under $functions_dir/$dir"
+    elif [ "$headed" -eq 0 ]; then
+        fail "$tests_dir/functions/$file is a scenario split without a '-- Split from <function>.sql because|to ...' header in its first 3 lines"
     fi
 done
 
@@ -154,13 +170,34 @@ if [ -n "$redefinitions" ]; then
 fi
 
 # Loader function files must not create triggers
-for file in $(find "$functions_dir" -name '*.sql' -exec grep -lE 'create (constraint )?trigger ' {} +); do
+for file in $(find "$functions_dir" -name '*.sql' -exec grep -lE 'create (or replace )?(constraint )?trigger ' {} +); do
     fail "$file creates a trigger; create trigger statements belong to schema migrations"
 done
 
-# Parallel tests must not take table-level locks
-for file in $(find "$tests_dir/schema" "$tests_dir/functions" -name '*.sql' -exec grep -liE '^[[:space:]]*(alter table|lock table|truncate) ' {} +); do
-    fail "$file takes a table-level lock; pgTAP tests run in parallel and must stay transactional"
+# Parallel tests must not take table-level locks; create trigger is allowed
+# only on a temporary table created in the same file
+table_lock_pattern='^[[:space:]]*(alter table|lock table|truncate|drop trigger) '
+create_trigger_pattern='create (or replace )?(constraint )?trigger '
+for file in $(find "$tests_dir/schema" "$tests_dir/functions" -name '*.sql' -exec grep -liE "$table_lock_pattern|$create_trigger_pattern" {} +); do
+    if grep -qiE "$table_lock_pattern" "$file"; then
+        fail "$file takes a table-level lock; pgTAP tests run in parallel and must stay transactional"
+        continue
+    fi
+    # Join statements onto one line, without comments, and check every target
+    statements=$(sed 's/--.*$//' "$file" | tr '\n' ' ' | tr -s ' ')
+    temporary_tables=$(printf '%s\n' "$statements" \
+        | grep -ioE 'create (temporary|temp) table (if not exists )?[a-z_][a-z0-9_]*' \
+        | awk '{ print tolower($NF) }')
+    printf '%s\n' "$statements" \
+        | grep -ioE "${create_trigger_pattern}[^;]*(;|\$)" \
+        | while read -r statement; do
+            target=$(printf '%s\n' "$statement" | awk '{ for (i = 1; i < NF; i++) if (tolower($i) == "on") { t = tolower($(i + 1)); sub(/;$/, "", t); print t; exit } }')
+            if [ -z "$target" ] || ! printf '%s\n' "$temporary_tables" | grep -qxF "$target"; then
+                echo "$statement"
+            fi
+        done \
+        | grep -q . \
+        && fail "$file creates a trigger on a table it did not create as temporary; pgTAP tests run in parallel and must stay transactional"
 done
 
 # Parallel tests must not share UUID prefixes

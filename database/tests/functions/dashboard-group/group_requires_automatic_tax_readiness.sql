@@ -13,22 +13,37 @@ select plan(9);
 
 \set canceledEventID '5f030000-0000-0000-0000-000000000010'
 \set canceledGroupID '5f030000-0000-0000-0000-000000000016'
+\set canceledPriceWindowID '5f030000-0000-0000-0000-000000000034'
+\set canceledTicketTypeID '5f030000-0000-0000-0000-000000000024'
 \set communityID '5f030000-0000-0000-0000-000000000001'
 \set eventCategoryID '5f030000-0000-0000-0000-000000000002'
 \set freeEventID '5f030000-0000-0000-0000-000000000008'
 \set freeGroupID '5f030000-0000-0000-0000-000000000014'
+\set freePriceWindowID '5f030000-0000-0000-0000-000000000032'
+\set freeTicketTypeID '5f030000-0000-0000-0000-000000000022'
 \set futureEventID '5f030000-0000-0000-0000-000000000003'
+\set futurePriceWindowID '5f030000-0000-0000-0000-000000000030'
+\set futureTicketTypeID '5f030000-0000-0000-0000-000000000020'
 \set groupCategoryID '5f030000-0000-0000-0000-000000000004'
 \set groupID '5f030000-0000-0000-0000-000000000005'
 \set manualEventID '5f030000-0000-0000-0000-000000000007'
 \set manualGroupID '5f030000-0000-0000-0000-000000000013'
+\set manualPriceWindowID '5f030000-0000-0000-0000-000000000031'
+\set manualTicketTypeID '5f030000-0000-0000-0000-000000000021'
 \set openEventID '5f030000-0000-0000-0000-000000000012'
 \set openGroupID '5f030000-0000-0000-0000-000000000018'
+\set openPriceWindowID '5f030000-0000-0000-0000-000000000036'
+\set openTicketTypeID '5f030000-0000-0000-0000-000000000026'
 \set otherCommunityID '5f030000-0000-0000-0000-000000000006'
 \set pastEventID '5f030000-0000-0000-0000-000000000011'
 \set pastGroupID '5f030000-0000-0000-0000-000000000017'
+\set pastPriceWindowID '5f030000-0000-0000-0000-000000000035'
+\set pastTicketTypeID '5f030000-0000-0000-0000-000000000025'
+\set unknownGroupID '5f030000-0000-0000-0000-000000000099'
 \set unpublishedEventID '5f030000-0000-0000-0000-000000000009'
 \set unpublishedGroupID '5f030000-0000-0000-0000-000000000015'
+\set unpublishedPriceWindowID '5f030000-0000-0000-0000-000000000033'
+\set unpublishedTicketTypeID '5f030000-0000-0000-0000-000000000023'
 
 -- ============================================================================
 -- SEED DATA
@@ -46,7 +61,6 @@ select fx_group(:'unpublishedGroupID', :'communityID', :'groupCategoryID');
 select fx_group(:'canceledGroupID', :'communityID', :'groupCategoryID');
 select fx_group(:'pastGroupID', :'communityID', :'groupCategoryID');
 select fx_group(:'openGroupID', :'communityID', :'groupCategoryID');
-
 
 -- Purpose-built event rows for each readiness branch
 select fx_event(:'futureEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -91,22 +105,22 @@ select fx_event(:'openEventID', :'openGroupID', :'eventCategoryID', jsonb_build_
 ));
 
 -- Ticket tiers that make every row except the free event paid-capable
-select fx_event_ticket_type('5f030000-0000-0000-0000-000000000020', :'futureEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type('5f030000-0000-0000-0000-000000000021', :'manualEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type('5f030000-0000-0000-0000-000000000022', :'freeEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type('5f030000-0000-0000-0000-000000000023', :'unpublishedEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type('5f030000-0000-0000-0000-000000000024', :'canceledEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type('5f030000-0000-0000-0000-000000000025', :'pastEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type('5f030000-0000-0000-0000-000000000026', :'openEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'futureTicketTypeID', :'futureEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'manualTicketTypeID', :'manualEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'freeTicketTypeID', :'freeEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'unpublishedTicketTypeID', :'unpublishedEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'canceledTicketTypeID', :'canceledEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'pastTicketTypeID', :'pastEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'openTicketTypeID', :'openEventID', jsonb_build_object('seats_total', 10));
 
 -- Price windows that make every ticket tier except the free event paid-capable
-select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000030', '5f030000-0000-0000-0000-000000000020', jsonb_build_object('amount_minor', 2500));
-select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000031', '5f030000-0000-0000-0000-000000000021', jsonb_build_object('amount_minor', 2500));
-select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000032', '5f030000-0000-0000-0000-000000000022', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000033', '5f030000-0000-0000-0000-000000000023', jsonb_build_object('amount_minor', 2500));
-select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000034', '5f030000-0000-0000-0000-000000000024', jsonb_build_object('amount_minor', 2500));
-select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000035', '5f030000-0000-0000-0000-000000000025', jsonb_build_object('amount_minor', 2500));
-select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000036', '5f030000-0000-0000-0000-000000000026', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'futurePriceWindowID', :'futureTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'manualPriceWindowID', :'manualTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'freePriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'unpublishedPriceWindowID', :'unpublishedTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'canceledPriceWindowID', :'canceledTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'pastPriceWindowID', :'pastTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'openPriceWindowID', :'openTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- ============================================================================
 -- TESTS
@@ -170,10 +184,7 @@ select is(
 
 -- Should return false for an unknown group
 select is(
-    group_requires_automatic_tax_readiness(
-        :'communityID',
-        '5f030000-0000-0000-0000-000000000099'
-    ),
+    group_requires_automatic_tax_readiness(:'communityID', :'unknownGroupID'),
     false,
     'Should return false for an unknown group'
 );

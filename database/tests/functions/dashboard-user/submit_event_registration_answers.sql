@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -495,6 +495,31 @@ select lives_ok(
     'Should allow manually invited users to answer after the registration window closes'
 );
 
+-- Should store manually invited user answers after the registration window closes
+select results_eq(
+    format(
+        $$
+            select status, registration_answers
+            from event_attendee
+            where event_id = %L::uuid
+            and user_id = %L::uuid
+        $$,
+        :'eventRegistrationClosedID',
+        :'windowManualUserID'
+    ),
+    format(
+        $$
+            values (
+                'registration-questions-pending'::text,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'questionID',
+        :'optionVegetarianID'
+    ),
+    'Should store manually invited user answers after the registration window closes'
+);
+
 -- Should update a confirmed attendee's answers without changing enrollment
 select lives_ok(
     format(
@@ -515,25 +540,29 @@ select lives_ok(
     'Should update confirmed attendee answers'
 );
 
--- Should reject confirmed attendee updates after the event starts
-select throws_ok(
+-- Should replace confirmed attendee answers without changing the status
+select results_eq(
     format(
         $$
-            select submit_event_registration_answers(
-                %L::uuid,
-                %L::uuid,
-                %L::uuid,
-                '{"answers": [{"question_id": "%s", "value": "Changed"}]}'::jsonb
+            select status, registration_answers
+            from event_attendee
+            where event_id = %L::uuid
+            and user_id = %L::uuid
+        $$,
+        :'eventID',
+        :'updateUserID'
+    ),
+    format(
+        $$
+            values (
+                'confirmed'::text,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
             )
         $$,
-        :'startedEventUserID',
-        :'communityID',
-        :'eventStartedID',
-        :'questionID'
+        :'questionID',
+        :'optionVegetarianID'
     ),
-    'OCG01',
-    'registration answers can only be submitted before the event starts',
-    'Should reject confirmed attendee updates after the event starts'
+    'Should replace confirmed attendee answers without changing the status'
 );
 
 -- Should reject started events before validating answers

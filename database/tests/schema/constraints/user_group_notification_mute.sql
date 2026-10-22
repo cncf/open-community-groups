@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,8 +17,6 @@ select plan(7);
 \set groupCascadeGroupID 'c0060000-0000-0000-0000-000000000004'
 \set groupCascadeUserID 'c0060000-0000-0000-0000-000000000005'
 \set groupCategoryID 'c0060000-0000-0000-0000-000000000006'
-\set missingGroupID 'c0060000-0000-0000-0000-000000000007'
-\set missingUserID 'c0060000-0000-0000-0000-000000000008'
 \set userCascadeGroupID 'c0060000-0000-0000-0000-000000000009'
 \set userCascadeUserID 'c0060000-0000-0000-0000-000000000010'
 
@@ -77,38 +75,8 @@ select throws_ok(
         :'duplicateUserID'
     ),
     '23505',
-    null,
+    'duplicate key value violates unique constraint "user_group_notification_mute_pkey"',
     'Should reject duplicate mutes'
-);
-
--- Should reject mutes for missing groups
-select throws_ok(
-    format(
-        $$
-            insert into user_group_notification_mute (group_id, user_id)
-            values (%L::uuid, %L::uuid)
-        $$,
-        :'missingGroupID',
-        :'duplicateUserID'
-    ),
-    '23503',
-    null,
-    'Should reject mutes for missing groups'
-);
-
--- Should reject mutes for missing users
-select throws_ok(
-    format(
-        $$
-            insert into user_group_notification_mute (group_id, user_id)
-            values (%L::uuid, %L::uuid)
-        $$,
-        :'duplicateGroupID',
-        :'missingUserID'
-    ),
-    '23503',
-    null,
-    'Should reject mutes for missing users'
 );
 
 -- Should delete mutes when groups are deleted

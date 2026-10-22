@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,7 +20,9 @@ select plan(4);
 \set groupCategoryID 'd7340000-0000-0000-0000-000000000006'
 \set groupID 'd7340000-0000-0000-0000-000000000007'
 \set purchaseID 'd7340000-0000-0000-0000-000000000008'
+\set staleClaimID 'd7340000-0000-0000-0000-000000000012'
 \set ticketTypeID 'd7340000-0000-0000-0000-000000000009'
+\set unknownAdjustmentID 'd7340000-0000-0000-0000-000000000013'
 \set userID 'd7340000-0000-0000-0000-000000000010'
 
 -- ============================================================================
@@ -90,6 +92,39 @@ insert into event_purchase_application_fee_adjustment (
 -- TESTS
 -- ============================================================================
 
+-- Should reject a blank provider application-fee refund id
+select throws_ok(
+    format(
+        'select record_event_purchase_application_fee_adjustment_succeeded(%L, %L, %L)',
+        :'adjustmentID', :'claimID', ' '
+    ),
+    'P0001',
+    'provider application-fee refund id is required',
+    'Should reject a blank provider application-fee refund id'
+);
+
+-- Should reject an unknown application-fee adjustment
+select throws_ok(
+    format(
+        'select record_event_purchase_application_fee_adjustment_succeeded(%L, %L, %L)',
+        :'unknownAdjustmentID', :'claimID', 'fr_adjust'
+    ),
+    'P0001',
+    'application-fee adjustment not found',
+    'Should reject an unknown application-fee adjustment'
+);
+
+-- Should reject a stale application-fee adjustment claim
+select throws_ok(
+    format(
+        'select record_event_purchase_application_fee_adjustment_succeeded(%L, %L, %L)',
+        :'adjustmentID', :'staleClaimID', 'fr_adjust'
+    ),
+    'P0001',
+    'application-fee adjustment claim is stale',
+    'Should reject a stale application-fee adjustment claim'
+);
+
 -- Should complete a claimed application-fee adjustment
 select lives_ok(
     format(
@@ -104,9 +139,9 @@ select results_eq(
     format($$
         select
             a.provider_application_fee_refund_id,
-            p.financially_reconciled_at is not null,
+            p.financially_reconciled_at = current_timestamp,
             pj.status,
-            pj.completed_at is not null
+            pj.completed_at = current_timestamp
         from event_purchase_application_fee_adjustment a
         join event_purchase p using (event_purchase_id)
         join payment_job pj using (payment_job_id)
@@ -131,6 +166,7 @@ select throws_ok(
         'select record_event_purchase_application_fee_adjustment_succeeded(%L, %L, %L)',
         :'adjustmentID', :'claimID', 'fr_other'
     ),
+    'P0001',
     'application-fee adjustment has a different provider refund',
     'Should reject a conflicting application-fee completion replay'
 );

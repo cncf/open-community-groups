@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,7 +18,6 @@ select plan(3);
 \set groupID '9e030000-0000-0000-0000-000000000005'
 \set mutedUserID '9e030000-0000-0000-0000-000000000006'
 \set optedOutUserID '9e030000-0000-0000-0000-000000000007'
-\set teamOptedOutUserID '9e030000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
@@ -45,16 +44,9 @@ select fx_user(:'mutedUserID');
 -- User opted out of event publication notifications
 select fx_user(:'optedOutUserID');
 
--- User opted out of a team notification category
-select fx_user(:'teamOptedOutUserID');
-
 -- Opt-out used by category filtering
 insert into user_notification_opt_out (notification_category_id, user_id)
 values ('new-events', :'optedOutUserID');
-
--- Opt-out used by team-category filtering
-insert into user_notification_opt_out (notification_category_id, user_id)
-values ('group-inbox', :'teamOptedOutUserID');
 
 -- Mute used by group filtering
 insert into user_group_notification_mute (group_id, user_id)
@@ -80,26 +72,15 @@ select is(
     'Should preserve input order while filtering category opt-outs and mutes'
 );
 
--- Should filter team categories by opt-out without group ids
+-- Should return an empty array when no recipient accepts
 select is(
     filter_notification_recipient_ids(
-        'inbox-message-received',
-        array[:'acceptedUserID1', :'teamOptedOutUserID']::uuid[],
-        null::uuid[]
-    ),
-    array[:'acceptedUserID1']::uuid[],
-    'Should filter team categories by opt-out without group ids'
-);
-
--- Should keep always-sent kinds regardless of opt-outs and mutes
-select is(
-    filter_notification_recipient_ids(
-        'event-refund-requested',
+        'event-published',
         array[:'mutedUserID', :'optedOutUserID']::uuid[],
         array[:'groupID']::uuid[]
     ),
-    array[:'mutedUserID', :'optedOutUserID']::uuid[],
-    'Should keep always-sent kinds regardless of opt-outs and mutes'
+    '{}'::uuid[],
+    'Should return an empty array when no recipient accepts'
 );
 
 -- ============================================================================

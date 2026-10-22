@@ -1,3 +1,5 @@
+-- Tests group dashboard statistics.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -8,20 +10,19 @@ select plan(3);
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
+
 \set community2ID '3a120000-0000-0000-0000-000000000001'
 \set communityID '3a120000-0000-0000-0000-000000000002'
 \set event1ID '3a120000-0000-0000-0000-000000000003'
 \set event2ID '3a120000-0000-0000-0000-000000000004'
 \set event3ID '3a120000-0000-0000-0000-000000000005'
 \set event4ID '3a120000-0000-0000-0000-000000000018'
-\set event5ID '3a120000-0000-0000-0000-000000000019'
 \set eventCategory2ID '3a120000-0000-0000-0000-000000000006'
 \set eventCategoryID '3a120000-0000-0000-0000-000000000007'
 \set group1ID '3a120000-0000-0000-0000-000000000008'
 \set group2ID '3a120000-0000-0000-0000-000000000009'
 \set group3ID '3a120000-0000-0000-0000-000000000010'
 \set group4ID '3a120000-0000-0000-0000-000000000020'
-\set group5ID '3a120000-0000-0000-0000-000000000021'
 \set groupCategory2ID '3a120000-0000-0000-0000-000000000011'
 \set groupCategoryID '3a120000-0000-0000-0000-000000000012'
 \set nonExistentGroupID '3a120000-0000-0000-0000-000000000013'
@@ -42,12 +43,11 @@ select fx_group_category(:'groupCategory2ID', :'community2ID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_event_category(:'eventCategory2ID', :'community2ID');
 
-
 -- Top-level groups (using relative dates within 2-year window)
 select fx_group(:'group1ID', :'communityID', :'groupCategoryID', jsonb_build_object('created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months'));
 select fx_group(:'group3ID', :'community2ID', :'groupCategory2ID', jsonb_build_object('created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months'));
 
--- Child groups
+-- Child groups, one active and one inactive that subgroup stats exclude
 select fx_group(:'group2ID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months',
     'parent_group_id', :'group1ID'
@@ -55,12 +55,6 @@ select fx_group(:'group2ID', :'communityID', :'groupCategoryID', jsonb_build_obj
 select fx_group(:'group4ID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', false,
     'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months',
-    'parent_group_id', :'group1ID'
-));
-select fx_group(:'group5ID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months',
-    'deleted', true,
     'parent_group_id', :'group1ID'
 ));
 
@@ -92,10 +86,6 @@ insert into group_member (group_id, user_id, created_at) values
         :'group4ID',
         :'user4ID',
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '20 days'
-    ), (
-        :'group5ID',
-        :'user4ID',
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '20 days'
     );
 
 -- Events (month -2 and current month)
@@ -113,10 +103,6 @@ select fx_event(:'event3ID', :'group3ID', :'eventCategory2ID', jsonb_build_objec
     'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') + interval '20 days'
 ));
 select fx_event(:'event4ID', :'group4ID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') + interval '5 days'
-));
-select fx_event(:'event5ID', :'group5ID', :'eventCategoryID', jsonb_build_object(
     'published', true,
     'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') + interval '5 days'
 ));
@@ -143,10 +129,6 @@ insert into event_attendee (event_id, user_id, created_at) values
         :'event4ID',
         :'user4ID',
         date_trunc('month', current_timestamp at time zone 'UTC') + interval '5 days'
-    ), (
-        :'event5ID',
-        :'user4ID',
-        date_trunc('month', current_timestamp at time zone 'UTC') + interval '5 days'
     );
 
 -- Page views
@@ -154,16 +136,14 @@ insert into group_views (day, group_id, total) values
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months', :'group1ID', 4),
     (current_date, :'group1ID', 6),
     (current_date, :'group2ID', 10),
-    (current_date, :'group4ID', 100),
-    (current_date, :'group5ID', 100);
+    (current_date, :'group4ID', 100);
 
 -- Event views aggregated into group analytics
 insert into event_views (day, event_id, total) values
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months', :'event1ID', 7),
     (current_date, :'event2ID', 5),
     (current_date, :'event3ID', 9),
-    (current_date, :'event4ID', 100),
-    (current_date, :'event5ID', 100);
+    (current_date, :'event4ID', 100);
 
 -- ============================================================================
 -- TESTS

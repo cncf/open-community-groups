@@ -1,9 +1,11 @@
+-- Tests validating add payload dates.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(7);
 
 -- ============================================================================
 -- TESTS
@@ -53,62 +55,18 @@ select throws_ok(
     'Should reject event ends_at in the past'
 );
 
--- Should reject registration windows where the open date is after the close date
-select throws_ok(
-    $$select validate_add_event_dates(
-        jsonb_build_object(
-            'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '3 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_starts_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_ends_at', to_char(current_timestamp at time zone 'UTC' + interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'timezone', 'UTC'
-        )
-    )$$,
-    'OCG01',
-    'registration starts_at must be before registration ends_at',
-    'Should reject registration windows where the open date is after the close date'
-);
-
--- Should reject registration windows where the open date equals the close date
-select throws_ok(
-    $$select validate_add_event_dates(
-        jsonb_build_object(
-            'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '3 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_starts_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_ends_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'timezone', 'UTC'
-        )
-    )$$,
-    'OCG01',
-    'registration starts_at must be before registration ends_at',
-    'Should reject registration windows where the open date equals the close date'
-);
-
 -- Should reject registration close dates after the event start
 select throws_ok(
     $$select validate_add_event_dates(
         jsonb_build_object(
-            'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
             'registration_ends_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
             'timezone', 'UTC'
         )
     )$$,
     'OCG01',
     'registration ends_at cannot be after event starts_at',
     'Should reject registration close dates after the event start'
-);
-
--- Should reject open-only registration windows that open after the event start
-select throws_ok(
-    $$select validate_add_event_dates(
-        jsonb_build_object(
-            'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'registration_starts_at', to_char(current_timestamp at time zone 'UTC' + interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'timezone', 'UTC'
-        )
-    )$$,
-    'OCG01',
-    'registration starts_at cannot be after event starts_at',
-    'Should reject open-only registration windows that open after the event start'
 );
 
 -- Should reject session starts_at in the past

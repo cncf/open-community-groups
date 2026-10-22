@@ -11,12 +11,18 @@ select plan(24);
 -- VARIABLES
 -- ============================================================================
 
+\set cohostGroupID '3a060000-0000-0000-0000-000000000032'
 \set communityID '3a060000-0000-0000-0000-000000000001'
-\set eventCategoryID '3a060000-0000-0000-0000-000000000002'
+\set discountCodeID '3a060000-0000-0000-0000-000000000033'
+\set discountPriceWindowID '3a060000-0000-0000-0000-000000000034'
+\set discountPurchaseID '3a060000-0000-0000-0000-000000000035'
+\set discountTicketTypeID '3a060000-0000-0000-0000-000000000036'
+\set discountUserID '3a060000-0000-0000-0000-000000000037'
 \set eventAlreadyCanceledID '3a060000-0000-0000-0000-000000000023'
+\set eventCategoryID '3a060000-0000-0000-0000-000000000002'
+\set eventDiscountID '3a060000-0000-0000-0000-000000000038'
 \set eventExternalID '3a060000-0000-0000-0000-00000000002b'
 \set eventID '3a060000-0000-0000-0000-000000000003'
-\set eventInvalidPaymentID '3a060000-0000-0000-0000-000000000019'
 \set eventNoMeetingID '3a060000-0000-0000-0000-000000000004'
 \set eventPastID '3a060000-0000-0000-0000-000000000024'
 \set externalCompletedPurchaseID '3a060000-0000-0000-0000-00000000002c'
@@ -29,12 +35,10 @@ select plan(24);
 \set freeUserID '3a060000-0000-0000-0000-000000000013'
 \set groupCategoryID '3a060000-0000-0000-0000-000000000005'
 \set groupID '3a060000-0000-0000-0000-000000000006'
-\set siteID '3a060000-0000-0000-0000-000000000031'
-\set invalidPaymentPurchaseID '3a060000-0000-0000-0000-000000000022'
-\set invalidPaymentTicketTypeID '3a060000-0000-0000-0000-000000000021'
-\set invalidPaymentUserID '3a060000-0000-0000-0000-000000000020'
 \set invitationUserID '3a060000-0000-0000-0000-000000000017'
 \set missingGroupID '3a060000-0000-0000-0000-000000000007'
+\set offerID '3a060000-0000-0000-0000-000000000028'
+\set offerUserID '3a060000-0000-0000-0000-000000000029'
 \set paidPurchaseID '3a060000-0000-0000-0000-000000000014'
 \set paidRefundRequestID '3a060000-0000-0000-0000-000000000018'
 \set paidUserID '3a060000-0000-0000-0000-000000000015'
@@ -43,10 +47,9 @@ select plan(24);
 \set rejectedPaidUserID '3a060000-0000-0000-0000-000000000027'
 \set sessionMeetingID '3a060000-0000-0000-0000-000000000008'
 \set sessionNoMeetingID '3a060000-0000-0000-0000-000000000009'
-\set offerID '3a060000-0000-0000-0000-000000000028'
-\set offerUserID '3a060000-0000-0000-0000-000000000029'
-\set userID '3a060000-0000-0000-0000-000000000010'
+\set siteID '3a060000-0000-0000-0000-000000000031'
 \set ticketTypeID '3a060000-0000-0000-0000-000000000016'
+\set userID '3a060000-0000-0000-0000-000000000010'
 \set waitlistUserID '3a060000-0000-0000-0000-00000000002a'
 
 -- ============================================================================
@@ -56,17 +59,17 @@ select plan(24);
 -- Baseline community, categories, users and groups
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'discountUserID');
 select fx_user(:'externalCompletedUserID');
 select fx_user(:'externalPendingUserID');
 select fx_user(:'freeUserID');
-select fx_user(:'invalidPaymentUserID');
 select fx_user(:'invitationUserID');
 select fx_user(:'offerUserID');
 select fx_user(:'paidUserID');
 select fx_user(:'rejectedPaidUserID');
 select fx_user(:'waitlistUserID');
+select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-
 
 -- Site theme used by external payment expiry notifications
 insert into site (description, site_id, theme, title)
@@ -92,7 +95,7 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
     'published', true,
-    'published_at', now(),
+    'published_at', '2025-01-01 00:00:00+00',
     'published_by', :'userID',
     'starts_at', now() + interval '1 day',
     'waitlist_enabled', true
@@ -108,14 +111,9 @@ select fx_event(:'eventNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build
     'starts_at', now()
 ));
 
--- Events rejected because they are already canceled, completed, or not refund-ready
+-- Events rejected because they are already canceled or completed
 select fx_event(:'eventAlreadyCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
-    'ends_at', now() + interval '1 day 1 hour',
-    'published', true,
-    'starts_at', now() + interval '1 day'
-));
-select fx_event(:'eventInvalidPaymentID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', now() + interval '1 day 1 hour',
     'published', true,
     'starts_at', now() + interval '1 day'
@@ -127,6 +125,10 @@ select fx_event(:'eventPastID', :'groupID', :'eventCategoryID', jsonb_build_obje
     'slug', 'past',
     'starts_at', now() - interval '2 hours'
 ));
+
+-- Pending co-host invitation closed with the event
+insert into event_cohost (event_id, group_id)
+values (:'eventID', :'cohostGroupID');
 
 -- Session with meeting_requested=true (should be marked as out of sync)
 insert into session (
@@ -172,22 +174,20 @@ insert into session (
     false
 );
 
--- Ticket types used by refundable and invalid-payment purchases
+-- Ticket type used by refundable purchases
 select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
     'seats_total', 100,
     'title', 'General admission'
 ));
-select fx_event_ticket_type(:'invalidPaymentTicketTypeID', :'eventInvalidPaymentID', jsonb_build_object('seats_total', 100));
 
--- Attendees covering confirmed attendance, pending invitations, and validation rollback
+-- Attendees covering confirmed attendance and pending invitations
 insert into event_attendee (checked_in, checked_in_at, event_id, status, user_id) values
     (true, current_timestamp, :'eventID', 'confirmed', :'freeUserID'),
     (false, null, :'eventID', 'invitation-pending', :'invitationUserID'),
     (true, current_timestamp, :'eventID', 'confirmed', :'paidUserID'),
-    (true, current_timestamp, :'eventID', 'confirmed', :'rejectedPaidUserID'),
-    (true, current_timestamp, :'eventInvalidPaymentID', 'confirmed', :'invalidPaymentUserID');
+    (true, current_timestamp, :'eventID', 'confirmed', :'rejectedPaidUserID');
 
--- Purchases covering free, provider-backed, and invalid refund handoffs
+-- Purchases covering free and provider-backed refund handoffs
 insert into event_purchase (
     amount_minor,
     currency_code,
@@ -377,6 +377,76 @@ insert into event_purchase (
     :'externalCompletedUserID'
 );
 
+-- Paid-ticket event whose free discounted purchase is closed on cancellation
+select fx_event(:'eventDiscountID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '3 days'
+));
+
+-- Ticket type for the discounted cancellation event
+select fx_event_ticket_type(:'discountTicketTypeID', :'eventDiscountID', jsonb_build_object(
+    'seats_total', 20,
+    'title', 'Discounted admission'
+));
+
+-- Paid price window fully covered by the discount code
+select fx_event_ticket_price_window(:'discountPriceWindowID', :'discountTicketTypeID', jsonb_build_object(
+    'amount_minor', 2500
+));
+
+-- Limited discount code whose reserved seat returns on cancellation
+insert into event_discount_code (
+    event_discount_code_id,
+    amount_minor,
+    available,
+    available_override_active,
+    code,
+    event_id,
+    kind,
+    title
+) values (
+    :'discountCodeID',
+    2500,
+    4,
+    true,
+    'CANCELEVENTFREE',
+    :'eventDiscountID',
+    'fixed_amount',
+    'Cancel event free pass'
+);
+
+-- Completed free purchase that consumed one discount seat
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    'ocg-free',
+    current_timestamp - interval '1 hour',
+    'USD',
+    2500,
+    'CANCELEVENTFREE',
+    :'discountCodeID',
+    :'eventDiscountID',
+    :'discountPurchaseID',
+    :'discountTicketTypeID',
+    'completed',
+    'Discounted admission',
+    :'discountUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -406,31 +476,41 @@ select throws_ok(
 -- Should mark as canceled and preserve publication metadata
 select lives_ok(
     format(
-        $$select cancel_event(null::uuid, %L::uuid, %L::uuid)$$,
-        :'groupID', :'eventID'
+        $$select cancel_event(%L::uuid, %L::uuid, %L::uuid)$$,
+        :'userID', :'groupID', :'eventID'
     ),
     'Should mark as canceled and preserve publication metadata'
 );
 
--- Should set canceled=true
-select is(
-    (select canceled from event where event_id = :'eventID'),
-    true,
-    'Should set canceled=true'
+-- Should set canceled and keep the seeded publication metadata
+select results_eq(
+    format(
+        $$
+            select canceled, published, published_at, published_by
+            from event
+            where event_id = %L::uuid
+        $$,
+        :'eventID'
+    ),
+    format(
+        $$ values (true, true, '2025-01-01 00:00:00+00'::timestamptz, %L::uuid) $$,
+        :'userID'
+    ),
+    'Should set canceled and keep the seeded publication metadata'
 );
 
--- Should keep published=true
-select is(
-    (select published from event where event_id = :'eventID'),
-    true,
-    'Should keep published=true'
-);
-
--- Should keep published_at
-select isnt(
-    (select published_at from event where event_id = :'eventID'),
-    null::timestamptz,
-    'Should keep published_at'
+-- Should close pending co-host invitations with the event
+select results_eq(
+    format(
+        $$
+            select group_id, event_cohost_status_id
+            from event_cohost
+            where event_id = %L::uuid
+        $$,
+        :'eventID'
+    ),
+    format($$ values (%L::uuid, 'event-canceled'::text) $$, :'cohostGroupID'),
+    'Should close pending co-host invitations with the event'
 );
 
 -- Should finalize free purchases and queue provider-backed refunds
@@ -506,34 +586,31 @@ select results_eq(
     'Should preserve rejected request history without attaching it to cancellation work'
 );
 
--- Should keep published_by
-select is(
-    (select published_by from event where event_id = :'eventID'),
-    :'userID'::uuid,
-    'Should keep published_by'
-);
-
 -- Should create the expected audit row
 select results_eq(
-    $$
-        select
-            action,
-            actor_user_id,
-            actor_username,
-            community_id,
-            group_id,
-            event_id,
-            resource_type,
-            resource_id
-        from audit_log
-        where action = 'event_canceled'
-    $$,
+    format(
+        $$
+            select
+                action,
+                actor_user_id,
+                actor_username,
+                community_id,
+                group_id,
+                event_id,
+                resource_type,
+                resource_id
+            from audit_log
+            where action = 'event_canceled'
+            and resource_id = %L::uuid
+        $$,
+        :'eventID'
+    ),
     format(
         $$
         values (
             'event_canceled',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'user-cancel-event'::text,
             %L::uuid,
             %L::uuid,
             %L::uuid,
@@ -541,7 +618,7 @@ select results_eq(
             %L::uuid
         )
         $$,
-        :'communityID', :'groupID', :'eventID', :'eventID'
+        :'userID', :'communityID', :'groupID', :'eventID', :'eventID'
     ),
     'Should create the expected audit row'
 );
@@ -674,6 +751,33 @@ select is(
     ),
     'attendance-canceled',
     'Should preserve attendance history for completed external purchases'
+);
+
+-- Should cancel an event with a completed free discounted purchase
+select lives_ok(
+    format(
+        $$select cancel_event(%L::uuid, %L::uuid, %L::uuid)$$,
+        :'userID', :'groupID', :'eventDiscountID'
+    ),
+    'Should cancel an event with a completed free discounted purchase'
+);
+
+-- Should refund free discounted purchases and restore discount availability
+select results_eq(
+    format(
+        $$
+            select
+                ep.refunded_at,
+                ep.status,
+                edc.available
+            from event_purchase ep
+            join event_discount_code edc using (event_discount_code_id)
+            where ep.event_purchase_id = %L::uuid
+        $$,
+        :'discountPurchaseID'
+    ),
+    $$ values (current_timestamp, 'refunded'::text, 5) $$,
+    'Should refund free discounted purchases and restore discount availability'
 );
 
 -- ============================================================================

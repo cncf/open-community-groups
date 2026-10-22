@@ -196,6 +196,7 @@ select throws_ok(
 -- Should require a scope
 select throws_ok(
     $$ select lock_active_event(null, null, 'f2020000-0000-0000-0000-00000000000b', true) $$,
+    'P0001',
     'lock_active_event requires a community or group scope',
     'Should require a scope'
 );

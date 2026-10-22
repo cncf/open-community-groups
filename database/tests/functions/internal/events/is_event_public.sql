@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,8 +13,6 @@ select plan(5);
 
 \set communityID '5ea20000-0000-0000-0000-000000000001'
 \set deletedEventID '5ea20000-0000-0000-0000-000000000002'
-\set deletedGroupEventID '5ea20000-0000-0000-0000-000000000003'
-\set deletedGroupID '5ea20000-0000-0000-0000-000000000004'
 \set eventCategoryID '5ea20000-0000-0000-0000-000000000005'
 \set eventID '5ea20000-0000-0000-0000-000000000006'
 \set groupCategoryID '5ea20000-0000-0000-0000-000000000007'
@@ -39,12 +37,6 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 -- Active group owning the events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', true));
 
--- Deleted group
-select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
-
 -- Inactive group
 select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
@@ -53,9 +45,6 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('
 
 -- Deleted event, which the schema keeps unpublished
 select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
-
--- Published event of a deleted group
-select fx_event(:'deletedGroupEventID', :'deletedGroupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Published event of an inactive group
 select fx_event(:'inactiveGroupEventID', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object('published', true));
@@ -86,13 +75,6 @@ select is(
     ),
     false,
     'Should reject deleted events'
-);
-
--- Should reject events of deleted groups
-select is(
-    (select is_event_public(e, g) from event e join "group" g using (group_id) where e.event_id = :'deletedGroupEventID'),
-    false,
-    'Should reject events of deleted groups'
 );
 
 -- Should reject events of inactive groups

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -285,7 +285,7 @@ insert into event_purchase_refund (
     'stripe',
     'finalized',
 
-    current_timestamp,
+    current_timestamp - interval '1 hour',
     're_finalized_123',
     current_timestamp
 ), (
@@ -311,7 +311,7 @@ insert into event_purchase_refund (
     'stripe',
     'provider-failed',
 
-    current_timestamp,
+    current_timestamp - interval '1 hour',
     null,
     null
 ), (
@@ -341,20 +341,9 @@ select throws_ok(
         're_failed_123_refund_terminal_failed',
         'provider refund failed'
     )$$, :'failedRefundID'),
+    'P0001',
     'expected idempotency key is required',
     'Should reject empty expected idempotency keys'
-);
-
--- Should reject empty provider refund ids
-select throws_ok(
-    format($$select record_event_purchase_refund_terminal_failed(
-        %L::uuid,
-        %L,
-        '   ',
-        'provider refund failed'
-    )$$, :'failedRefundID', 'event-purchase-refund-' || :'failedPurchaseID'),
-    'provider refund id is required',
-    'Should reject empty provider refund ids'
 );
 
 -- Should reject a provider refund id that conflicts with the pinned attempt
@@ -370,6 +359,7 @@ select throws_ok(
         'event-purchase-refund-' || :'failedPurchaseID',
         :'failedClaimID'
     ),
+    'P0001',
     'event purchase refund already has a different provider refund id',
     'Should reject a provider refund id that conflicts with the pinned attempt'
 );
@@ -387,6 +377,7 @@ select throws_ok(
         'event-purchase-refund-' || :'failedPurchaseID',
         :'staleClaimID'
     ),
+    'P0001',
     'event purchase refund claim is stale',
     'Should reject a provider failure from a stale worker claim'
 );
@@ -537,7 +528,7 @@ select results_eq(
     format($$
         select
             epr.status,
-            epr.finalized_at is not null,
+            epr.finalized_at = current_timestamp - interval '1 hour',
             epr.provider_refund_id,
             epr.provider_refunded_at,
             pj.status,
@@ -580,7 +571,7 @@ select lives_ok(
 -- Should pin the repeated failed attempt without clearing finalization
 select results_eq(
     format($$
-        select epr.finalized_at is not null, epr.provider_refund_id, epr.status, ep.status
+        select epr.finalized_at = current_timestamp - interval '1 hour', epr.provider_refund_id, epr.status, ep.status
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
         where epr.event_purchase_refund_id = %L::uuid
@@ -602,20 +593,9 @@ select throws_ok(
         're_invalid_123',
         'provider refund failed'
     )$$, :'invalidRefundID', 'event-purchase-refund-' || :'invalidPurchaseID'),
+    'P0001',
     'finalized event purchase not found',
     'Should reject finalized refunds whose purchase is not recoverable'
-);
-
--- Should preserve invalid refund and purchase state after rejection
-select results_eq(
-    format($$
-        select epr.provider_refund_id, epr.status, ep.status
-        from event_purchase_refund epr
-        join event_purchase ep using (event_purchase_id)
-        where epr.event_purchase_refund_id = %L::uuid
-    $$, :'invalidRefundID'),
-    $$ values ('re_invalid_123'::text, 'finalized'::text, 'completed'::text) $$,
-    'Should preserve invalid refund and purchase state after rejection'
 );
 
 -- Should reject missing refund rows
@@ -626,6 +606,7 @@ select throws_ok(
         're_missing_123',
         'provider refund failed'
     )$$, :'missingRefundID'),
+    'P0001',
     'event purchase refund not found',
     'Should reject missing refund rows'
 );

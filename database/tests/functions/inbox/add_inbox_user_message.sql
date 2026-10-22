@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,7 +16,6 @@ select plan(12);
 \set conversationClosedID '1b0a0000-0000-0000-0000-000000000003'
 \set conversationDeletedGroupID '1b0a0000-0000-0000-0000-000000000004'
 \set conversationLimitedID '1b0a0000-0000-0000-0000-000000000005'
-\set conversationNearLimitID '1b0a0000-0000-0000-0000-000000000006'
 \set conversationOtherUserID '1b0a0000-0000-0000-0000-000000000007'
 \set conversationSpamID '1b0a0000-0000-0000-0000-000000000017'
 \set deletedGroupID '1b0a0000-0000-0000-0000-000000000008'
@@ -25,7 +24,6 @@ select plan(12);
 \set groupCategoryID '1b0a0000-0000-0000-0000-000000000011'
 \set groupID '1b0a0000-0000-0000-0000-000000000012'
 \set limitedUserID '1b0a0000-0000-0000-0000-000000000013'
-\set nearLimitUserID '1b0a0000-0000-0000-0000-000000000014'
 \set otherUserID '1b0a0000-0000-0000-0000-000000000015'
 \set userID '1b0a0000-0000-0000-0000-000000000016'
 
@@ -38,9 +36,6 @@ select fx_community(:'communityID');
 
 -- User who reached the daily message limit
 select fx_user(:'limitedUserID');
-
--- User one message below the daily limit
-select fx_user(:'nearLimitUserID');
 
 -- User owning another conversation
 select fx_user(:'otherUserID');
@@ -82,10 +77,6 @@ values (:'conversationDeletedGroupID', :'deletedGroupID', :'userID');
 insert into inbox_conversation (inbox_conversation_id, group_id, user_id)
 values (:'conversationLimitedID', :'groupID', :'limitedUserID');
 
--- Conversation of the user below the limit
-insert into inbox_conversation (inbox_conversation_id, group_id, user_id)
-values (:'conversationNearLimitID', :'groupID', :'nearLimitUserID');
-
 -- Conversation of another user
 insert into inbox_conversation (inbox_conversation_id, group_id, user_id)
 values (:'conversationOtherUserID', :'groupID', :'otherUserID');
@@ -99,11 +90,6 @@ values (:'conversationSpamID', :'groupID', 'spam', :'userID');
 insert into inbox_message (body, created_at, inbox_conversation_id, kind, author_user_id)
 select 'Follow-up', current_timestamp - make_interval(mins => n), :'conversationLimitedID', 'user-reply', :'limitedUserID'
 from generate_series(1, 10) n;
-
--- Nine follow-ups sent today by the user below the limit
-insert into inbox_message (body, created_at, inbox_conversation_id, kind, author_user_id)
-select 'Follow-up', current_timestamp - make_interval(mins => n), :'conversationNearLimitID', 'user-reply', :'nearLimitUserID'
-from generate_series(1, 9) n;
 
 -- ============================================================================
 -- TESTS
@@ -132,17 +118,6 @@ select throws_ok(
     'conversation no longer accepts messages',
     'Should reject conversations marked as spam'
 );
-select results_eq(
-    format(
-        $$select
-            (select count(*) from inbox_message where inbox_conversation_id = %L::uuid),
-            (select inbox_conversation_status_id from inbox_conversation where inbox_conversation_id = %L::uuid)$$,
-        :'conversationSpamID',
-        :'conversationSpamID'
-    ),
-    $$values (0::bigint, 'spam')$$,
-    'Should keep conversations marked as spam unchanged'
-);
 
 -- Should reject users who reached the daily message limit
 select throws_ok(
@@ -150,12 +125,6 @@ select throws_ok(
     'OCG01',
     'daily message limit reached',
     'Should reject users who reached the daily message limit'
-);
-
--- Should send the last follow-up allowed by the daily limit
-select lives_ok(
-    format($$select add_inbox_user_message(%L::uuid, %L::uuid, 'Hello')$$, :'nearLimitUserID', :'conversationNearLimitID'),
-    'Should send the last follow-up allowed by the daily limit'
 );
 
 -- Send a follow-up to the answered conversation

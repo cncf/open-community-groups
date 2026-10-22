@@ -12,7 +12,6 @@ select plan(4);
 -- ============================================================================
 
 \set communityID '4a0d0000-0000-0000-0000-000000000001'
-\set deletedGroupID '4a0d0000-0000-0000-0000-000000000002'
 \set emptyUserID '4a0d0000-0000-0000-0000-000000000003'
 \set groupCategoryID '4a0d0000-0000-0000-0000-000000000004'
 \set inactiveCommunityCategoryID '4a0d0000-0000-0000-0000-000000000011'
@@ -46,13 +45,7 @@ select fx_group(:'pendingTeamGroupID', :'communityID', :'groupCategoryID');
 -- Active, hidden, and pending group relationship fixtures
 select fx_group(:'memberGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Alpha Group'));
 select fx_group(:'memberTeamGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Beta Group'));
-select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
-
 select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
-
 select fx_group(:'teamGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Team Group'));
 
 -- Membership relationships including hidden groups and a duplicate team group
@@ -61,10 +54,6 @@ insert into group_member (
     user_id,
     created_at
 ) values (
-    :'deletedGroupID',
-    :'userID',
-    '2024-01-06 10:00:00+00'
-), (
     :'inactiveGroupID',
     :'userID',
     '2024-01-07 10:00:00+00'
@@ -115,7 +104,7 @@ insert into group_team (
 
 -- Should list visible member and accepted team groups in name order
 select results_eq(
-    $$
+    format($$
         select
             item->'group'->>'name',
             item->'group'->>'community_display_name',
@@ -124,12 +113,12 @@ select results_eq(
             (item->>'joined_at')::bigint
         from jsonb_array_elements(
             list_user_dashboard_groups(
-                '4a0d0000-0000-0000-0000-000000000010'::uuid,
+                %L::uuid,
                 '{"limit": 10, "offset": 0}'::jsonb
             )::jsonb->'groups'
         ) with ordinality as rows(item, position)
         order by position
-    $$,
+    $$, :'userID'),
     $$
         values
             ('Alpha Group'::text, 'User Groups Community'::text, true, false, 1704189600::bigint),

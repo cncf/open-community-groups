@@ -1,3 +1,5 @@
+-- Tests listing the user dashboard audit log.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -20,6 +22,7 @@ select plan(6);
 \set audit8ID '4a080000-0000-0000-0000-000000000019'
 \set audit9ID '4a080000-0000-0000-0000-000000000020'
 \set audit10ID '4a080000-0000-0000-0000-000000000021'
+\set audit11ID '4a080000-0000-0000-0000-000000000022'
 \set communityID '4a080000-0000-0000-0000-000000000014'
 \set eventAcceptedID '4a080000-0000-0000-0000-000000000007'
 \set eventRejectedID '4a080000-0000-0000-0000-000000000008'
@@ -72,7 +75,7 @@ insert into session_proposal (
 insert into inbox_conversation (inbox_conversation_id, group_id, user_id)
 values (:'inboxConversationID', :'groupID', :'inboxActorID');
 
--- Audit log rows
+-- Audit log rows, including a newer non-dashboard action the listing must skip
 insert into audit_log (
     audit_log_id,
     action,
@@ -182,6 +185,16 @@ insert into audit_log (
         '{"opted_out_categories":["new-events"]}'::jsonb,
         :'otherActorID',
         'user'
+    ),
+    (
+        :'audit11ID',
+        'group_updated',
+        :'actorID',
+        'alice-user-audit-logs',
+        '2024-04-06 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        'group'
     );
 
 -- ============================================================================
@@ -366,29 +379,22 @@ select is(
     'Should return user audit logs in ascending order with pagination'
 );
 
--- Should list notification preference audit actions
-select results_eq(
-    format(
-        $$
-            select action
-            from jsonb_to_recordset(
-                list_user_audit_logs(
-                    %L::uuid,
-                    '{"limit": 50, "offset": 0, "sort": "created-asc"}'::jsonb
-                )::jsonb->'logs'
-            ) as logs(action text)
-            where action like 'group_notifications_%%'
-            or action = 'user_notification_preferences_updated'
-            order by action
-        $$,
-        :'otherActorID'
+-- Should list notification preference actions with the other dashboard actions of the user in ascending order
+select is(
+    jsonb_path_query_array(
+        list_user_audit_logs(
+            :'otherActorID'::uuid,
+            '{"limit": 50, "offset": 0, "sort": "created-asc"}'::jsonb
+        )::jsonb,
+        '$.logs[*].action'
     ),
-    $$ values
-        ('group_notifications_muted'::text),
-        ('group_notifications_unmuted'::text),
-        ('user_notification_preferences_updated'::text)
-    $$,
-    'Should list notification preference audit actions'
+    '[
+        "submission_withdrawn",
+        "group_notifications_muted",
+        "group_notifications_unmuted",
+        "user_notification_preferences_updated"
+    ]'::jsonb,
+    'Should list notification preference actions with the other dashboard actions of the user in ascending order'
 );
 
 -- Should default unsupported sort values to created descending

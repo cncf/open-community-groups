@@ -13,7 +13,6 @@ select plan(1);
 
 \set categoryID '8a140000-0000-0000-0000-000000000003'
 \set communityID '8a140000-0000-0000-0000-000000000001'
-\set deletedGroupID '8a140000-0000-0000-0000-000000000013'
 \set foreignCategoryID '8a140000-0000-0000-0000-000000000004'
 \set foreignCommunityID '8a140000-0000-0000-0000-000000000002'
 \set foreignGroupID '8a140000-0000-0000-0000-000000000014'
@@ -42,14 +41,6 @@ select fx_group_category(:'foreignCategoryID', :'foreignCommunityID');
 insert into region (region_id, community_id, name)
 values (:'regionID', :'communityID', 'North');
 
--- Deleted group of the community
-select fx_group(
-    :'deletedGroupID',
-    :'communityID',
-    :'categoryID',
-    jsonb_build_object('active', false, 'deleted', true)
-);
-
 -- Active group of the foreign community
 select fx_group(:'foreignGroupID', :'foreignCommunityID', :'foreignCategoryID');
 
@@ -66,7 +57,7 @@ select fx_group(:'subgroupID', :'communityID', :'categoryID', jsonb_build_object
 -- TESTS
 -- ============================================================================
 
--- Should return the active non-deleted groups of the community with their category, parent and region
+-- Should return the active groups of the community with their category, parent and region
 select results_eq(
     format(
         $$
@@ -84,7 +75,7 @@ select results_eq(
         :'categoryID', :'groupID', :'regionID',
         :'categoryID', :'subgroupID', :'groupID'
     ),
-    'Should return the active non-deleted groups of the community with their category, parent and region'
+    'Should return the active groups of the community with their category, parent and region'
 );
 
 -- ============================================================================

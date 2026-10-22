@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -117,14 +117,6 @@ values (:'clearEmptySubmissionID', :'label1ID');
 insert into cfs_submission_label (cfs_submission_id, event_label_id)
 values (:'clearNullSubmissionID', :'label1ID');
 
--- Label linked to the submission receiving a foreign label
-insert into cfs_submission_label (cfs_submission_id, event_label_id)
-values (:'foreignLabelSubmissionID', :'label1ID');
-
--- Label linked to the other event submission
-insert into cfs_submission_label (cfs_submission_id, event_label_id)
-values (:'otherSubmissionID', :'labelOtherID');
-
 -- Label replaced on the submission
 insert into cfs_submission_label (cfs_submission_id, event_label_id)
 values (:'replaceSubmissionID', :'label1ID');
@@ -175,14 +167,6 @@ select throws_ok(
     'invalid event labels',
     'Should reject labels from another event'
 );
-select results_eq(
-    format(
-        $$select event_label_id from cfs_submission_label where cfs_submission_id = %L::uuid$$,
-        :'foreignLabelSubmissionID'
-    ),
-    format($$values (%L::uuid)$$, :'label1ID'),
-    'Should keep labels when rejecting labels from another event'
-);
 
 -- Should reject mismatched submission and event IDs
 select throws_ok(
@@ -195,14 +179,6 @@ select throws_ok(
     'OCG01',
     'submission not found',
     'Should reject mismatched submission and event IDs'
-);
-select results_eq(
-    format(
-        $$select event_label_id from cfs_submission_label where cfs_submission_id = %L::uuid$$,
-        :'otherSubmissionID'
-    ),
-    format($$values (%L::uuid)$$, :'labelOtherID'),
-    'Should leave mismatched submission labels unchanged'
 );
 
 -- Should replace labels and remove duplicates

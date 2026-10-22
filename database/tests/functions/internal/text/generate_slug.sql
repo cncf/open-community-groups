@@ -1,22 +1,17 @@
+-- Tests generating random slugs.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(3);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should generate slug with default length of 7
-select is(
-    length(generate_slug()),
-    7,
-    'Should generate slug with default length of 7'
-);
-
--- Should generate slug with custom length
+-- Should generate slug with custom length of 10
 select is(
     length(generate_slug(10)),
     10,
@@ -29,7 +24,7 @@ select ok(
     'Should only contain allowed characters'
 );
 
--- Should generate non-empty slugs (regression test for off-by-one bug)
+-- Should consistently generate 7-character slugs (no empty characters)
 select ok(
     (
         select bool_and(length(generate_slug()) = 7)
