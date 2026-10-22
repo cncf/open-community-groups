@@ -35,9 +35,7 @@ describe("question answers macros", () => {
     expect(template).to.include("{{ loop.index }}");
     expect(template).to.include("No answer provided");
     expect(template).to.include("text-sm italic text-stone-500");
-    expect(template).to.include(
-      '<div class="mt-3 py-3 text-sm italic leading-6 text-stone-500">No answer provided</div>',
-    );
+    expect(template).not.to.include('<div class="mt-3 py-3 text-sm italic leading-6 text-stone-500">');
     expect(template).to.include(
       '<div class="mt-3 border border-transparent py-1 text-sm italic text-stone-500">No answer provided</div>',
     );

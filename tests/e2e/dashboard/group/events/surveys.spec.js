@@ -1,17 +1,28 @@
+import { randomUUID } from "node:crypto";
+
 import { expect, test } from "../../../fixtures.js";
-import { queryE2eDatabase } from "../../../database.js";
+import { queryE2eDatabase, queryE2eDatabaseRows } from "../../../database.js";
 import {
   TEST_EVENT_SURVEYS,
   cleanupEventSurveys,
   cleanupEventSurveysByTitle,
+  cleanupSurveyRespondents,
   setupOwnedEventSurvey,
+  setupOwnedSurveyRespondents,
   setupOwnedSurveyResponse,
   setupOwnedSurveyTextAnswers,
 } from "../../../data-graphs/surveys.js";
-import { expectTableHeaders, uniqueName, waitForActionResponse } from "../../../utils.js";
+import { expectTableHeaders, navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
 import { openCurrentEventEditorSection, openEventUpdateFormByName } from "./helpers.js";
 
 const { attendeeIds, event, surveys } = TEST_EVENT_SURVEYS;
+
+// Commit SHA advertised by a page loaded before the latest deployment.
+const STALE_COMMIT_SHA = "e2e-stale-build";
+
+// Error shown when a request reaches a new version while the survey form has unsaved changes.
+const DIRTY_DEPLOYMENT_BLOCKED_MESSAGE =
+  "A new version is live. This request did not complete. Copy any unsaved work, then reload to pick up the update.";
 
 test.describe("group dashboard event surveys tab", () => {
   test("organizer reviews the seeded surveys in every state", async ({ organizerGroupPage }) => {
@@ -56,7 +67,7 @@ test.describe("group dashboard event surveys tab", () => {
     await expect(content.getByRole("button", { name: `Reopen: ${surveys.closed.title}` })).toBeEnabled();
   });
 
-  test("organizer creates, schedules, closes, reopens and deletes a survey", async ({
+  test("organizer creates, schedules, closes, reopens and deletes a survey, with an audit trail", async ({
     organizerGroupPage,
   }) => {
     test.setTimeout(120_000);
@@ -99,6 +110,12 @@ test.describe("group dashboard event surveys tab", () => {
       expect(addParams.get("questions[0][kind]")).toBe("single-select");
       expect(addParams.has("name")).toBe(false);
       await dismissAlert(page, "You have successfully added the survey.");
+      const surveyId = queryE2eDatabase(`
+        select event_survey_id
+        from event_survey
+        where event_id = '${event.id}'::uuid
+        and title = '${title}';
+      `);
 
       // Verify the refreshed list shows the draft.
       const row = getSurveyRow(content, title);
@@ -161,9 +178,127 @@ test.describe("group dashboard event surveys tab", () => {
       await confirmAlert(page, "Delete this survey? This cannot be undone.", "Delete");
       await dismissAlert(page, "You have successfully deleted the survey.");
       await expect(row).toHaveCount(0);
+
+      // Verify every change was audited and the deletion is listed in the group logs.
+      const auditLogs = readSurveyAuditLogs(surveyId);
+      expect(auditLogs.map(({ action }) => action)).toEqual([
+        "event_survey_added",
+        "event_survey_updated",
+        "event_survey_marked_ready",
+        "event_survey_closed",
+        "event_survey_reopened",
+        "event_survey_deleted",
+      ]);
+      await navigateToPath(page, "/dashboard/group?tab=logs&action=event_survey_deleted");
+      const auditRow = page
+        .locator("#dashboard-content tr.audit-log-row")
+        .filter({ has: page.locator(`#audit-log-details-${auditLogs.at(-1).id}`) });
+      await expect(auditRow).toContainText("Event survey deleted");
+      await expect(auditRow).toContainText("Event survey");
+      await expect(auditRow).toContainText("e2e-organizer-1");
     } finally {
       cleanupEventSurveysByTitle({ eventId: event.id, title });
     }
+  });
+
+  test("organizer schedules a survey and moves it back to draft", async ({ organizerGroupPage }) => {
+    const page = organizerGroupPage;
+    const owned = setupOwnedEventSurvey({
+      eventId: event.id,
+      opensAtSql: "current_timestamp + interval '3 days'",
+    });
+    const emailed = setupOwnedEventSurvey({
+      eventId: event.id,
+      opensAtSql: "current_timestamp + interval '3 days'",
+      status: "ready",
+    });
+
+    try {
+      // Record that the opening email of the second survey was already sent.
+      queryE2eDatabase(`
+        update event_survey
+        set open_notification_processed_at = current_timestamp, open_notification_recipients = 0
+        where event_survey_id = '${emailed.id}'::uuid;
+      `);
+
+      // Mark the draft ready and verify it is scheduled to open later.
+      const content = await openSurveysTab(page);
+      const row = getSurveyRow(content, owned.title);
+      await expect(row.locator(".custom-badge")).toHaveText("Draft");
+      await openSurveyActions(content, owned.title);
+      await row.getByRole("button", { name: `Mark ready: ${owned.title}` }).click();
+      await confirmAlert(page, "Mark this survey ready? Test events do not email attendees.", "Mark ready");
+      await dismissAlert(page, "You have successfully marked the survey ready.");
+      await expect(row.locator(".custom-badge")).toHaveText("Scheduled");
+
+      // Move the scheduled survey back to draft.
+      await openSurveyActions(content, owned.title);
+      await row.getByRole("button", { name: `Back to draft: ${owned.title}` }).click();
+      await confirmAlert(
+        page,
+        "Move this survey back to draft? It will not open until it is marked ready again.",
+        "Back to draft",
+      );
+      await dismissAlert(page, "You have successfully moved the survey back to draft.");
+      await expect(row.locator(".custom-badge")).toHaveText("Draft");
+      expect(readSurveyAuditLogs(owned.id).map(({ action }) => action)).toEqual([
+        "event_survey_marked_ready",
+        "event_survey_moved_to_draft",
+      ]);
+
+      // Verify a scheduled survey whose opening email was sent stays scheduled.
+      const emailedRow = getSurveyRow(content, emailed.title);
+      await expect(emailedRow.locator(".custom-badge")).toHaveText("Scheduled");
+      await openSurveyActions(content, emailed.title);
+      const backToDraft = emailedRow.getByRole("button", { name: `Back to draft: ${emailed.title}` });
+      await expect(backToDraft).toBeDisabled();
+      await expect(backToDraft).toHaveAttribute("title", "The opening email was already sent.");
+    } finally {
+      cleanupEventSurveys([owned.id, emailed.id]);
+    }
+  });
+
+  test("organizer is told about invalid survey dates before saving", async ({ organizerGroupPage }) => {
+    const page = organizerGroupPage;
+
+    // Open the add form and fill the title.
+    const content = await openSurveysTab(page);
+    await waitForActionResponse(page, () => content.getByRole("button", { name: "Add survey" }).click(), {
+      method: "GET",
+      urlIncludes: `/dashboard/group/events/${event.id}/surveys/add`,
+    });
+    const form = page.locator("#event-survey-form");
+    await form.getByLabel("Title").fill(uniqueName("Invalid dates survey"));
+    const opensAt = form.getByLabel("Opens at");
+    const closesAt = form.getByLabel("Closes at");
+
+    // Set a closing date in the past and verify saving is blocked.
+    let requestsSent = 0;
+    const countRequests = (request) => {
+      if (request.method() === "POST" && request.url().endsWith("/surveys/add")) {
+        requestsSent += 1;
+      }
+    };
+    page.on("request", countRequests);
+    await closesAt.fill("2020-01-01T10:00");
+    await form.getByRole("button", { name: "Add survey" }).click();
+    await expect
+      .poll(() => closesAt.evaluate((input) => input.validationMessage))
+      .toBe("Closing date must be in the future.");
+
+    // Close the survey before it opens and verify saving is still blocked.
+    await opensAt.fill("2099-06-01T10:00");
+    await closesAt.fill("2099-05-01T10:00");
+    await form.getByRole("button", { name: "Add survey" }).click();
+    await expect
+      .poll(() => closesAt.evaluate((input) => input.validationMessage))
+      .toBe("Closing date must be after the opening date.");
+    page.off("request", countRequests);
+    expect(requestsSent).toBe(0);
+
+    // Move the closing date after the opening and verify the error clears.
+    await closesAt.fill("2099-06-15T10:00");
+    await expect.poll(() => closesAt.evaluate((input) => input.validationMessage)).toBe("");
   });
 
   test("organizer reviews results, individual responses and the CSV of an identified survey", async ({
@@ -441,6 +576,148 @@ test.describe("group dashboard event surveys tab", () => {
     }
   });
 
+  test("organizer pages respondents and finds no matches for unknown searches", async ({
+    organizerGroupPage,
+  }) => {
+    const page = organizerGroupPage;
+    const owned = setupOwnedEventSurvey({ anonymous: false, eventId: event.id, status: "ready" });
+    let respondentIds = [];
+
+    try {
+      // Answer the identified survey from more respondents than fit in one page.
+      respondentIds = setupOwnedSurveyRespondents({
+        count: 21,
+        questionId: owned.questionId,
+        surveyId: owned.id,
+      });
+
+      // Open the Individual view of the survey.
+      const content = await openSurveysTab(page);
+      await waitForActionResponse(
+        page,
+        () => content.getByRole("button", { name: `View results: ${owned.title}` }).click(),
+        { method: "GET", urlIncludes: `/surveys/${owned.id}/results` },
+      );
+      await waitForActionResponse(page, () => content.getByRole("button", { name: "Individual" }).click(), {
+        method: "GET",
+        urlIncludes: `/surveys/${owned.id}/responses`,
+      });
+      const table = content.getByRole("table", { name: "Survey respondents" });
+      const range = content.locator("[data-event-survey-respondents-range]");
+      await expect(range).toContainText("1 - 20 of 21 respondents");
+      await expect(table.locator("tbody tr")).toHaveCount(20);
+      await expect(table.locator("tbody tr").first()).toContainText("E2E Survey Respondent 01");
+
+      // Move to the second page.
+      await waitForActionResponse(
+        page,
+        () => content.locator(".pagination").getByRole("link", { name: "Next" }).click(),
+        { method: "GET", urlIncludes: "offset=20" },
+      );
+      await expect(range).toHaveText(/^\s*21 - 21 of 21\s+respondent\s*$/);
+      await expect(table.locator("tbody tr")).toHaveCount(1);
+      await expect(table.locator("tbody tr")).toContainText("E2E Survey Respondent 21");
+
+      // Search for a respondent that does not exist.
+      const search = content.getByLabel("Search respondents");
+      await waitForActionResponse(
+        page,
+        async () => {
+          await search.fill("nobody-answered-this");
+          await search.press("Enter");
+        },
+        { method: "GET", urlIncludes: "ts_query=nobody-answered-this" },
+      );
+      await expect(content).toContainText("No respondents found matching your search.");
+
+      // Open every free-text answer from the Summary view and search for an unknown answer.
+      await waitForActionResponse(page, () => content.getByRole("button", { name: "Summary" }).click(), {
+        method: "GET",
+        urlIncludes: `/surveys/${owned.id}/results`,
+      });
+      const question = content.locator(`[data-event-survey-question="${owned.questionId}"]`);
+      await waitForActionResponse(
+        page,
+        () => question.getByRole("button", { name: "View all 21 answers" }).click(),
+        { method: "GET", urlIncludes: `/results/questions/${owned.questionId}/answers` },
+      );
+      const dialog = page.getByRole("dialog", { name: "Any feedback?" });
+      const answersSearch = dialog.getByLabel("Search answers");
+      await waitForActionResponse(
+        page,
+        async () => {
+          await answersSearch.fill("nothing-like-this");
+          await answersSearch.press("Enter");
+        },
+        { method: "GET", urlIncludes: "ts_query=nothing-like-this" },
+      );
+      await expect(dialog).toContainText("No answers found matching your search.");
+      await expect(dialog.getByRole("list", { name: "Answers" })).toHaveCount(0);
+    } finally {
+      cleanupSurveyRespondents(respondentIds);
+      cleanupEventSurveys([owned.id]);
+    }
+  });
+
+  test("organizer expands the options of a multi-select question beyond the first ten", async ({
+    organizerGroupPage,
+  }) => {
+    const page = organizerGroupPage;
+    const questionId = randomUUID();
+    const options = Array.from({ length: 12 }, (_, index) => ({
+      id: randomUUID(),
+      label: `Topic ${String(index + 1).padStart(2, "0")}`,
+    }));
+    const owned = setupOwnedEventSurvey({
+      anonymous: false,
+      eventId: event.id,
+      questions: [
+        { id: questionId, kind: "multi-select", options, prompt: "Which topics?", required: false },
+      ],
+      status: "ready",
+    });
+
+    try {
+      // Select the first two topics from both checked-in attendees.
+      for (const userId of [attendeeIds.checkedIn1, attendeeIds.checkedIn2]) {
+        setupOwnedSurveyResponse({
+          answers: { answers: [{ question_id: questionId, value: [options[0].id, options[1].id] }] },
+          surveyId: owned.id,
+          userId,
+        });
+      }
+
+      // Open the Summary view and verify only the first ten options are listed.
+      const content = await openSurveysTab(page);
+      await waitForActionResponse(
+        page,
+        () => content.getByRole("button", { name: `View results: ${owned.title}` }).click(),
+        { method: "GET", urlIncludes: `/surveys/${owned.id}/results` },
+      );
+      const question = content.locator(`[data-event-survey-question="${questionId}"]`);
+      const items = question.getByRole("listitem");
+      await expect(items).toHaveCount(10);
+      await expect(items.first()).toContainText("2 · 100%");
+      await expect(question).toContainText(
+        "Several options can be selected, so percentages of respondents can add up to more than 100%.",
+      );
+
+      // Show every option and hide the extra ones again.
+      const toggle = question.locator("[data-question-options-toggle]");
+      await expect(toggle).toHaveText("Show 2 more options");
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      await toggle.click();
+      await expect(items).toHaveCount(12);
+      await expect(toggle).toHaveText("Show fewer options");
+      await expect(toggle).toHaveAttribute("aria-expanded", "true");
+      await toggle.click();
+      await expect(items).toHaveCount(10);
+      await expect(toggle).toHaveText("Show 2 more options");
+    } finally {
+      cleanupEventSurveys([owned.id]);
+    }
+  });
+
   test("organizer edits a locked survey without changing its locked fields", async ({
     organizerGroupPage,
   }) => {
@@ -538,6 +815,46 @@ test.describe("group dashboard event surveys tab", () => {
     await expect(content.getByRole("table", { name: "Event surveys list" })).toBeVisible();
     await expect(getSurveyRow(content, title)).toHaveCount(0);
     await expect(eventCancelButton).toBeVisible();
+  });
+
+  test("unsaved survey edits block page unloads and deployment reloads", async ({ organizerGroupPage }) => {
+    const page = organizerGroupPage;
+    const title = uniqueName("Guarded survey");
+
+    // Open the add form and type a title.
+    const content = await openSurveysTab(page);
+    await waitForActionResponse(page, () => content.getByRole("button", { name: "Add survey" }).click(), {
+      method: "GET",
+      urlIncludes: `/dashboard/group/events/${event.id}/surveys/add`,
+    });
+    const form = page.locator("#event-survey-form");
+    const titleInput = form.getByLabel("Title");
+    await titleInput.click();
+    await titleInput.pressSequentially(title);
+    await expect(form).toHaveAttribute("data-pending-changes-dirty");
+
+    // Make the page stale and verify the refused reload keeps the edits.
+    await page.locator('meta[name="ocg-commit-sha"]').evaluate((meta, commitSha) => {
+      meta.setAttribute("content", commitSha);
+    }, STALE_COMMIT_SHA);
+    await page.evaluate(() => {
+      window.e2eSurveyFormMarker = true;
+    });
+    await page.evaluate(() =>
+      window.htmx.ajax("GET", window.location.pathname, { swap: "none", target: "#dashboard-spinner" }),
+    );
+    await dismissAlert(page, DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
+    expect(await page.evaluate(() => window.e2eSurveyFormMarker === true)).toBe(true);
+    await expect(titleInput).toHaveValue(title);
+
+    // Try to leave the page and stay on it from the browser prompt.
+    const dialogPromise = page.waitForEvent("dialog");
+    await page.close({ runBeforeUnload: true });
+    const dialog = await dialogPromise;
+    expect(dialog.type()).toBe("beforeunload");
+    await dialog.dismiss();
+    expect(page.isClosed()).toBe(false);
+    await expect(titleInput).toHaveValue(title);
   });
 
   test("group viewer reviews survey results with mutation controls disabled", async ({ groupViewerPage }) => {
@@ -660,3 +977,17 @@ const readDownload = async (download) => {
   }
   return Buffer.concat(chunks).toString("utf8");
 };
+
+/**
+ * Reads the audit log entries of one survey in the order they were recorded.
+ * @param {string} surveyId - Survey identifier.
+ * @returns {{ action: string, id: string }[]} Audit log identifiers and actions.
+ */
+const readSurveyAuditLogs = (surveyId) =>
+  queryE2eDatabaseRows(`
+    select audit_log_id, action
+    from audit_log
+    where resource_type = 'event_survey'
+    and resource_id = '${surveyId}'::uuid
+    order by created_at, audit_log_id
+  `).map(([id, action]) => ({ action, id }));

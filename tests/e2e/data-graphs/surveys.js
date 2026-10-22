@@ -147,6 +147,22 @@ export const cleanupEventSurveysByTitle = ({ eventId, title }) => {
 };
 
 /**
+ * Deletes respondents an E2E scenario created, together with their responses.
+ * @param {string[]} userIds - Exact user identifiers created by the scenario.
+ * @returns {void}
+ */
+export const cleanupSurveyRespondents = (userIds) => {
+  if (userIds.length === 0) {
+    return;
+  }
+
+  queryE2eDatabase(`
+    delete from "user"
+    where user_id = any(${sqlUuidArray(userIds)});
+  `);
+};
+
+/**
  * Deletes one response an E2E scenario submitted.
  * @param {{ surveyId: string, userId: string }} ids - Survey and respondent.
  * @returns {void}
@@ -314,6 +330,48 @@ export const setupOwnedSurveyEvent = ({ attendeeUserIds }) => {
   `);
 
   return { id, name };
+};
+
+/**
+ * Creates users owned by an E2E scenario, named `E2E Survey Respondent NN`, who each answered the
+ * free-text question of a ready survey owned by the scenario with `Respondent NN answer`, one
+ * minute apart in respondent order. Locks the survey, as the first response submitted from the
+ * user dashboard does. Remove them with `cleanupSurveyRespondents`.
+ * @param {{ count: number, questionId: string, surveyId: string }} input - Number of respondents,
+ * free-text question and survey.
+ * @returns {string[]} Respondent user identifiers in response order.
+ */
+export const setupOwnedSurveyRespondents = ({ count, questionId, surveyId }) => {
+  const userIds = Array.from({ length: count }, () => randomUUID());
+
+  queryE2eDatabase(`
+    insert into "user" (user_id, auth_hash, email, email_verified, name, username)
+    select
+      user_id,
+      'e2e-survey-respondent-' || user_id,
+      'e2e-survey-respondent-' || user_id || '@example.com',
+      true,
+      'E2E Survey Respondent ' || lpad(position::text, 2, '0'),
+      'e2e-survey-respondent-' || user_id
+    from unnest(${sqlUuidArray(userIds)}) with ordinality as r(user_id, position);
+
+    insert into event_survey_response (event_survey_id, user_id, answers, created_at)
+    select
+      ${sqlString(surveyId)}::uuid,
+      user_id,
+      jsonb_build_object('answers', jsonb_build_array(jsonb_build_object(
+        'question_id', ${sqlString(questionId)}::uuid,
+        'value', 'Respondent ' || lpad(position::text, 2, '0') || ' answer'
+      ))),
+      current_timestamp - interval '1 day' + make_interval(mins => position::int)
+    from unnest(${sqlUuidArray(userIds)}) with ordinality as r(user_id, position);
+
+    update event_survey
+    set first_response_at = current_timestamp
+    where event_survey_id = ${sqlString(surveyId)}::uuid;
+  `);
+
+  return userIds;
 };
 
 /**
