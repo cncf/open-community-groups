@@ -107,6 +107,10 @@ const CONTACT_CATEGORY_B_ID: &str = "00000000-0000-0000-0000-00000000e113";
 const CONTACT_COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000e101";
 /// Active contact group with a region.
 const CONTACT_GROUP_A_ID: &str = "00000000-0000-0000-0000-00000000e121";
+/// Active contact group without a region whose only seat is a viewer.
+const CONTACT_GROUP_B_ID: &str = "00000000-0000-0000-0000-00000000e122";
+/// Inactive contact group excluded from contact.
+const CONTACT_INACTIVE_GROUP_ID: &str = "00000000-0000-0000-0000-00000000e123";
 /// Verified contact user who is events manager of one active group.
 const CONTACT_MANAGER_ID: &str = "00000000-0000-0000-0000-00000000e142";
 /// Region of the contact community.
@@ -702,6 +706,16 @@ pub(super) fn contact_community_id() -> Uuid {
 /// Returns the active contact group with a region.
 pub(super) fn contact_group_a_id() -> Uuid {
     parse_uuid(CONTACT_GROUP_A_ID)
+}
+
+/// Returns the active contact group without a region whose only seat is a viewer.
+pub(super) fn contact_group_b_id() -> Uuid {
+    parse_uuid(CONTACT_GROUP_B_ID)
+}
+
+/// Returns the inactive contact group excluded from contact.
+pub(super) fn contact_inactive_group_id() -> Uuid {
+    parse_uuid(CONTACT_INACTIVE_GROUP_ID)
 }
 
 /// Returns the verified contact user who is events manager of one active group.

@@ -7,6 +7,9 @@ import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
 
 const CATEGORY_ID = "00000000-0000-0000-0000-0000000000a1";
 const CATEGORY_KEY = `filters%5Bgroup_category_ids%5D%5B%5D=${CATEGORY_ID}`;
+const GROUP_ID = "00000000-0000-0000-0000-0000000000b1";
+const GROUP_KEY = `filters%5Bgroup_ids%5D%5B%5D=${GROUP_ID}`;
+const SECOND_GROUP_ID = "00000000-0000-0000-0000-0000000000b2";
 
 describe("community contact", () => {
   const env = useDashboardTestEnv({
@@ -15,16 +18,43 @@ describe("community contact", () => {
     withSwal: true,
   });
 
-  it("builds the filters key from hidden inputs in document order", () => {
-    // Render filter inputs in document order
+  it("builds the filters key sorted by filter name, keeping each filter's value order", () => {
+    // Select groups first, then a role, a region and a category
     const form = renderContactForm();
-    addFilterValue(form, "categories", "filters[group_category_ids][]", CATEGORY_ID);
+    addFilterValue(form, "groups", "filters[group_ids][]", SECOND_GROUP_ID);
+    addFilterValue(form, "groups", "filters[group_ids][]", GROUP_ID);
     addFilterValue(form, "roles", "filters[roles][]", "admin");
+    addFilterValue(form, "regions", "filters[regions][]", "none");
+    addFilterValue(form, "categories", "filters[group_category_ids][]", CATEGORY_ID);
 
     // Verify the key matches the server canonical query
     expect(buildFiltersKey(form.querySelector("#community-contact-filters"))).to.equal(
-      `${CATEGORY_KEY}&filters%5Broles%5D%5B%5D=admin`,
+      [
+        CATEGORY_KEY,
+        `filters%5Bgroup_ids%5D%5B%5D=${SECOND_GROUP_ID}`,
+        GROUP_KEY,
+        "filters%5Bregions%5D%5B%5D=none",
+        "filters%5Broles%5D%5B%5D=admin",
+      ].join("&"),
     );
+  });
+
+  it("builds the same filters key whatever the order of the filter pickers", () => {
+    // Select a value in every picker
+    const form = renderContactForm();
+    addFilterValue(form, "categories", "filters[group_category_ids][]", CATEGORY_ID);
+    addFilterValue(form, "regions", "filters[regions][]", "none");
+    addFilterValue(form, "roles", "filters[roles][]", "admin");
+    addFilterValue(form, "groups", "filters[group_ids][]", GROUP_ID);
+    addFilterValue(form, "groups", "filters[group_ids][]", SECOND_GROUP_ID);
+    const filters = form.querySelector("#community-contact-filters");
+    const key = buildFiltersKey(filters);
+
+    // Reverse the order of the pickers on the page
+    filters.replaceChildren(...[...filters.children].reverse());
+
+    // Verify the key is unchanged
+    expect(buildFiltersKey(filters)).to.equal(key);
   });
 
   it("enables sending for a current preview with recipients", () => {
@@ -74,6 +104,24 @@ describe("community contact", () => {
     swapSummary(form, { filtersKey: CATEGORY_KEY, peopleCount: 2 });
     expect(submitButton(form).disabled).to.equal(false);
     expect(form.querySelector("#community-contact-recipients").hasAttribute("aria-busy")).to.equal(false);
+  });
+
+  it("refreshes the preview when the selected groups change", () => {
+    // Render, initialize and select a group
+    const form = renderContactForm();
+    initializeCommunityContactForm(form);
+    changeFilter(form, "groups", "filters[group_ids][]", GROUP_ID);
+
+    // Verify sending is disabled while the preview is refreshed
+    const recipients = form.querySelector("#community-contact-recipients");
+    expect(submitButton(form).disabled).to.equal(true);
+    expect(recipients.getAttribute("aria-busy")).to.equal("true");
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[recipients, "contact-filters-changed"]]);
+
+    // Swap in the summary for the selected group
+    swapSummary(form, { filtersKey: GROUP_KEY, peopleCount: 1 });
+    expect(submitButton(form).disabled).to.equal(false);
+    expect(recipients.hasAttribute("aria-busy")).to.equal(false);
   });
 
   it("keeps sending disabled for an empty current summary", () => {
@@ -415,7 +463,9 @@ const renderContactForm = ({ canSend = true, filtersKey = "", peopleCount = 2 } 
     <form id="community-contact-form" data-can-send="${canSend}">
       <div id="community-contact-filters">
         <div data-picker="categories"></div>
+        <div data-picker="regions"></div>
         <div data-picker="roles"></div>
+        <div data-picker="groups"></div>
       </div>
       <div id="community-contact-recipients">
         ${summaryMarkup({ filtersKey, peopleCount })}

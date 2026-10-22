@@ -1,28 +1,30 @@
 -- Returns the group team seats in a community that match the contact filters.
--- A seat matches only when it passes every filter on its own; an empty or
--- missing filter list matches every value. Callers validate the filters with
--- validate_community_contact_filters first.
+-- A seat matches only when it passes every filter together; an empty or
+-- missing filter list matches every value. The group filter matches the team
+-- of each selected group only, never the teams of its subgroups. Callers
+-- validate the filters with validate_community_contact_filters first.
 create or replace function community_contact_team_seats(
     p_community_id uuid,
     p_filters jsonb
 )
 returns table (group_id uuid, user_id uuid) as $$
-    -- Select accepted and verified seats of available groups matching every filter
+    -- Select accepted and verified seats of contactable groups matching every filter
     select
         gt.group_id,
         gt.user_id
     from community_contact_filter_values(p_filters) f
-    cross join "group" g
+    cross join community_contact_groups(p_community_id) g
     join group_team gt on gt.group_id = g.group_id
     join "user" u on u.user_id = gt.user_id
-    where g.community_id = p_community_id
-    and g.active = true
-    and g.deleted = false
-    and gt.accepted = true
+    where gt.accepted = true
     and u.email_verified = true
     and (
         cardinality(f.group_category_ids) = 0
         or g.group_category_id = any(f.group_category_ids)
+    )
+    and (
+        cardinality(f.group_ids) = 0
+        or g.group_id = any(f.group_ids)
     )
     and (
         (cardinality(f.region_ids) = 0 and not f.include_no_region)

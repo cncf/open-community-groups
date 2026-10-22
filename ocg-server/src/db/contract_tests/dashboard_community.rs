@@ -51,6 +51,7 @@ async fn db_contracts_get_community_contact_recipients_summary_deserializes() ->
     assert_eq!(summary.groups_count, 2);
     assert_eq!(summary.people_count, 2);
     assert_eq!(summary.seats_count, 3);
+    assert!(summary.unmatched_groups.is_empty());
 
     // Summarize the seats matching every filter together
     let filtered = db
@@ -58,16 +59,68 @@ async fn db_contracts_get_community_contact_recipients_summary_deserializes() ->
             contact_community_id(),
             &CommunityContactFilters {
                 group_category_ids: vec![contact_category_b_id()],
+                group_ids: vec![contact_group_b_id()],
                 regions: vec![RegionFilterValue::NoRegion],
                 roles: vec![GroupRole::Viewer],
             },
         )
         .await?;
 
-    // Check only the viewer seat in the group without a region matches
+    // Check only the viewer seat in the selected group without a region matches
+    assert_eq!(filtered.groups.len(), 1);
+    assert_eq!(filtered.groups[0].group_id, contact_group_b_id());
     assert_eq!(filtered.groups_count, 1);
     assert_eq!(filtered.people_count, 1);
     assert_eq!(filtered.seats_count, 1);
+    assert!(filtered.unmatched_groups.is_empty());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_community_contact_recipients_summary_lists_unmatched_groups() -> Result<()>
+{
+    // Setup the contract database and admin seats of three selected groups
+    let db = contract_tests_db()?;
+    let filters = CommunityContactFilters {
+        group_ids: vec![
+            contact_inactive_group_id(),
+            contact_group_b_id(),
+            contact_group_a_id(),
+        ],
+        roles: vec![GroupRole::Admin],
+        ..Default::default()
+    };
+
+    // Summarize the recipients of the selected groups
+    let summary = db
+        .get_community_contact_recipients_summary(contact_community_id(), &filters)
+        .await?;
+
+    // Check the verified admin of the active group with a region matches
+    assert_eq!(summary.groups.len(), 1);
+    assert_eq!(summary.groups[0].group_id, contact_group_a_id());
+    assert_eq!(summary.groups[0].seats_count, 1);
+    assert_eq!(summary.groups_count, 1);
+    assert_eq!(summary.people_count, 1);
+    assert_eq!(summary.seats_count, 1);
+
+    // Check the viewer-only and inactive groups are reported by label
+    assert_eq!(summary.unmatched_groups.len(), 2);
+    assert_eq!(summary.unmatched_groups[0].group_id, contact_group_b_id());
+    assert_eq!(
+        summary.unmatched_groups[0].label,
+        "Contact Group B · Contact Category B"
+    );
+    assert_eq!(
+        summary.unmatched_groups[1].group_id,
+        contact_inactive_group_id()
+    );
+    assert_eq!(
+        summary.unmatched_groups[1].label,
+        "Contact Inactive Group · Contact Category A"
+    );
 
     Ok(())
 }
@@ -94,6 +147,29 @@ async fn db_contracts_get_community_contact_recipients_summary_rejects_foreign_f
         ocg01_message(&err).as_deref(),
         Some("group category not found")
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_community_contact_recipients_summary_rejects_foreign_groups() -> Result<()>
+{
+    // Setup the contract database and a group of another community
+    let db = contract_tests_db()?;
+    let filters = CommunityContactFilters {
+        group_ids: vec![contact_group_a_id(), group_id()],
+        ..Default::default()
+    };
+
+    // Summarize recipients with the foreign group
+    let err = db
+        .get_community_contact_recipients_summary(contact_community_id(), &filters)
+        .await
+        .expect_err("foreign group should be rejected");
+
+    // Check the user-facing rejection is raised
+    assert_eq!(ocg01_message(&err).as_deref(), Some("group not found"));
 
     Ok(())
 }
@@ -158,7 +234,8 @@ async fn db_contracts_list_community_contact_filter_options_deserializes() -> Re
         .list_community_contact_filter_options(contact_community_id())
         .await?;
 
-    // Check categories, regions and the no region count cover active groups only
+    // Check categories, groups, regions and the no region count cover active
+    // groups only, none of which is a subgroup
     assert_eq!(options.group_categories.len(), 2);
     assert_eq!(
         options.group_categories[0].group_category_id,
@@ -167,11 +244,40 @@ async fn db_contracts_list_community_contact_filter_options_deserializes() -> Re
     assert_eq!(options.group_categories[0].groups_count, 1);
     assert_eq!(options.group_categories[0].name, "Contact Category A");
     assert_eq!(options.group_categories[1].groups_count, 1);
+    assert_eq!(options.groups.len(), 2);
+    assert_eq!(options.groups[0].group_id, contact_group_a_id());
+    assert_eq!(
+        options.groups[0].label,
+        "Contact Group A · Contact Category A · Contact Region"
+    );
+    assert_eq!(options.groups[1].group_id, contact_group_b_id());
+    assert_eq!(
+        options.groups[1].label,
+        "Contact Group B · Contact Category B"
+    );
+    assert!(!options.has_subgroups);
     assert_eq!(options.no_region_groups_count, 1);
     assert_eq!(options.regions.len(), 1);
     assert_eq!(options.regions[0].groups_count, 1);
     assert_eq!(options.regions[0].name, "Contact Region");
     assert_eq!(options.regions[0].region_id, contact_region_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_community_contact_filter_options_reports_subgroups() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the contact filter options of the community with a subgroup
+    let options = db.list_community_contact_filter_options(community_id()).await?;
+
+    // Check the active subgroup and its parent are offered and reported
+    assert!(options.groups.iter().any(|group| group.group_id == group_id()));
+    assert!(options.groups.iter().any(|group| group.group_id == subgroup_id()));
+    assert!(options.has_subgroups);
 
     Ok(())
 }

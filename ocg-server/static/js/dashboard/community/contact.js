@@ -172,15 +172,18 @@ export const initializeCommunityContactForm = (form) => {
 
 /**
  * Builds the canonical query of the selected filters, matching the key the
- * server renders for the recipients summary.
+ * server renders for the recipients summary whatever the order of the filter
+ * inputs on the page.
  * @param {Element} filters - Filters container.
- * @returns {string} Form-encoded filters in document order.
+ * @returns {string} Form-encoded filters sorted by name, with each filter's
+ * values in selection order.
  */
 export const buildFiltersKey = (filters) => {
   const params = new URLSearchParams();
   filters.querySelectorAll(FILTER_INPUTS_SELECTOR).forEach((input) => {
     params.append(input.name, input.value);
   });
+  params.sort();
   return params.toString();
 };
 

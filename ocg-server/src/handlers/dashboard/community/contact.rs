@@ -17,7 +17,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs, ValidatedQuery},
+        extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
     },
     services::notifications::enqueue::enqueue_tracked_community_custom_notification,
     templates::dashboard::community::contact,
@@ -48,20 +48,23 @@ pub(crate) async fn page(
 }
 
 /// Displays the summary of the group team members matching the filters.
+///
+/// The filters arrive in a form body, as a long group selection would not fit
+/// in a request line.
 #[instrument(skip_all)]
 pub(crate) async fn recipients(
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
-    ValidatedQuery(query): ValidatedQuery<CommunityContactRecipientsQuery>,
+    ValidatedFormQs(form): ValidatedFormQs<CommunityContactRecipientsForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Summarize the recipients matching the filters
     let summary = db
-        .get_community_contact_recipients_summary(community_id, &query.filters)
+        .get_community_contact_recipients_summary(community_id, &form.filters)
         .await?;
 
     // Prepare template
     let template = contact::RecipientsSummary {
-        filters_key: query.filters.to_canonical_query(),
+        filters_key: form.filters.to_canonical_query(),
         summary,
     };
 
@@ -97,6 +100,18 @@ pub(crate) async fn send_community_custom_notification(
 
 // Types.
 
+/// Form data for the recipients summary.
+///
+/// Fields other than the filters, such as the message of the enclosing contact
+/// form, are ignored.
+#[derive(Debug, Default, Deserialize, Serialize, Validate)]
+pub(crate) struct CommunityContactRecipientsForm {
+    /// Filters selecting the group team members to summarize.
+    #[serde(default)]
+    #[garde(dive)]
+    pub filters: CommunityContactFilters,
+}
+
 /// Form data for community custom notifications.
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct CommunityCustomNotification {
@@ -106,15 +121,6 @@ pub(crate) struct CommunityCustomNotification {
     pub content: CustomNotificationContent,
 
     /// Filters selecting the group team members to notify.
-    #[serde(default)]
-    #[garde(dive)]
-    pub filters: CommunityContactFilters,
-}
-
-/// Query parameters for the recipients summary.
-#[derive(Debug, Default, Deserialize, Serialize, Validate)]
-pub(crate) struct CommunityContactRecipientsQuery {
-    /// Filters selecting the group team members to summarize.
     #[serde(default)]
     #[garde(dive)]
     pub filters: CommunityContactFilters,

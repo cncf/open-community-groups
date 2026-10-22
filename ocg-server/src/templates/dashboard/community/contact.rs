@@ -49,6 +49,24 @@ impl Page {
             .collect()
     }
 
+    /// Returns the group filter options labelled by name, category and region,
+    /// in the order the database returned them.
+    pub(crate) fn group_options(&self) -> Vec<MultiSelectOption> {
+        self.filter_options
+            .groups
+            .iter()
+            .map(|group| MultiSelectOption {
+                name: group.label.clone(),
+                value: group.group_id.to_string(),
+            })
+            .collect()
+    }
+
+    /// Returns whether the community has active groups to filter by.
+    pub(crate) fn has_groups(&self) -> bool {
+        !self.filter_options.groups.is_empty()
+    }
+
     /// Returns whether the community has regions to filter by.
     pub(crate) fn has_regions(&self) -> bool {
         !self.filter_options.regions.is_empty()

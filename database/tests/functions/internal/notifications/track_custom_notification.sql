@@ -34,8 +34,8 @@ select fx_event_category(:'eventCategoryID', :'communityID');
 -- Group category named by the community notification filters
 select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Platform Teams'));
 
--- Group of the event and group notifications
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+-- Group of the event and group notifications, named by the community notification filters
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Platform Core'));
 
 -- Event of the event notification
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
@@ -57,12 +57,14 @@ select lives_ok(
             'Body for community notification',
             jsonb_build_object(
                 'group_category_ids', jsonb_build_array(%L),
+                'group_ids', jsonb_build_array(%L),
                 'roles', jsonb_build_array('admin')
             )
         )$$,
         :'userID',
         :'communityID',
-        :'groupCategoryID'
+        :'groupCategoryID',
+        :'groupID'
     ),
     'Should store the community custom notification'
 );
@@ -126,6 +128,7 @@ select results_eq(
             %L::uuid,
             jsonb_build_object(
                 'group_categories', jsonb_build_array('Platform Teams'),
+                'groups', jsonb_build_array('Platform Core · Platform Teams'),
                 'recipient_count', 5,
                 'regions', 'All',
                 'roles', jsonb_build_array('Admin'),

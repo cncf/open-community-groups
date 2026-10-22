@@ -7,6 +7,7 @@ create or replace function community_contact_filter_values(
 )
 returns table (
     group_category_ids uuid[],
+    group_ids uuid[],
     include_no_region boolean,
     region_ids uuid[],
     roles text[]
@@ -16,6 +17,10 @@ returns table (
             select value::uuid
             from jsonb_array_elements_text(coalesce(p_filters->'group_category_ids', '[]'))
         ) as group_category_ids,
+        array(
+            select value::uuid
+            from jsonb_array_elements_text(coalesce(p_filters->'group_ids', '[]'))
+        ) as group_ids,
         coalesce(p_filters->'regions', '[]') ? 'none' as include_no_region,
         array(
             select value::uuid

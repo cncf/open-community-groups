@@ -1,4 +1,5 @@
--- Returns the group team recipients summary of the community contact filters.
+-- Returns the group team recipients summary of the community contact filters,
+-- including the selected groups that contribute no matching seats.
 -- Uses PL/pgSQL because filter validation raises user-facing errors.
 create or replace function get_community_contact_recipients_summary(
     p_community_id uuid,
@@ -32,6 +33,19 @@ begin
                 join group_category gc on gc.group_category_id = g.group_category_id
                 left join region r on r.region_id = g.region_id
                 group by g.group_id, g.name, gc.name, r.name
+            ),
+            -- Label each selected group that contributes no matching seats
+            unmatched_groups as (
+                select
+                    l.group_id,
+                    l.label
+                from community_contact_filter_values(p_filters) f
+                join community_contact_group_labels(p_community_id) l on l.group_id = any(f.group_ids)
+                where not exists (
+                    select 1
+                    from seats s
+                    where s.group_id = l.group_id
+                )
             )
         -- Build the recipients summary payload
         select json_build_object(
@@ -54,7 +68,20 @@ begin
             ),
             'groups_count', (select count(*)::int from group_seats),
             'people_count', (select count(distinct s.user_id)::int from seats s),
-            'seats_count', (select count(*)::int from seats)
+            'seats_count', (select count(*)::int from seats),
+            'unmatched_groups', coalesce(
+                (
+                    select json_agg(
+                        json_build_object(
+                            'group_id', ug.group_id,
+                            'label', ug.label
+                        )
+                        order by ug.label, ug.group_id
+                    )
+                    from unmatched_groups ug
+                ),
+                '[]'
+            )
         )
     );
 end;

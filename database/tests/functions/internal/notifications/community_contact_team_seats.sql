@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -169,6 +169,41 @@ select results_eq(
     'Should apply all filters to the same seat'
 );
 
+-- Should apply the group filter together with the other filters
+select results_eq(
+    format(
+        $$
+            select group_id, user_id
+            from community_contact_team_seats(
+                %L::uuid,
+                jsonb_build_object(
+                    'group_category_ids', jsonb_build_array(%L, %L),
+                    'group_ids', jsonb_build_array(%L, %L),
+                    'regions', jsonb_build_array(%L, %L),
+                    'roles', jsonb_build_array('admin', 'check-in-manager')
+                )
+            )
+            order by group_id, user_id
+        $$,
+        :'communityID',
+        :'categoryAID',
+        :'categoryBID',
+        :'groupAID',
+        :'subgroupID',
+        :'northRegionID',
+        :'southRegionID'
+    ),
+    format(
+        $$ values
+            (%L::uuid, %L::uuid),
+            (%L::uuid, %L::uuid)
+        $$,
+        :'groupAID', :'adminUserID',
+        :'subgroupID', :'subgroupUserID'
+    ),
+    'Should apply the group filter together with the other filters'
+);
+
 -- Should filter by group category
 select results_eq(
     format(
@@ -220,6 +255,31 @@ select results_eq(
         :'subgroupID', :'subgroupUserID'
     ),
     'Should filter by group role'
+);
+
+-- Should filter by group without including subgroup teams
+select results_eq(
+    format(
+        $$
+            select group_id, user_id
+            from community_contact_team_seats(
+                %L::uuid,
+                jsonb_build_object('group_ids', jsonb_build_array(%L))
+            )
+            order by group_id, user_id
+        $$,
+        :'communityID',
+        :'groupAID'
+    ),
+    format(
+        $$ values
+            (%L::uuid, %L::uuid),
+            (%L::uuid, %L::uuid)
+        $$,
+        :'groupAID', :'adminUserID',
+        :'groupAID', :'mixedUserID'
+    ),
+    'Should filter by group without including subgroup teams'
 );
 
 -- Should filter by no region only
@@ -294,6 +354,71 @@ select results_eq(
     'Should filter by regions and no region'
 );
 
+-- Should filter by subgroup without including the parent group team
+select results_eq(
+    format(
+        $$
+            select group_id, user_id
+            from community_contact_team_seats(
+                %L::uuid,
+                jsonb_build_object('group_ids', jsonb_build_array(%L))
+            )
+            order by group_id, user_id
+        $$,
+        :'communityID',
+        :'subgroupID'
+    ),
+    format(
+        $$ values (%L::uuid, %L::uuid) $$,
+        :'subgroupID',
+        :'subgroupUserID'
+    ),
+    'Should filter by subgroup without including the parent group team'
+);
+
+-- Should match no seats for unavailable selected groups
+select is_empty(
+    format(
+        $$
+            select group_id, user_id
+            from community_contact_team_seats(
+                %L::uuid,
+                jsonb_build_object('group_ids', jsonb_build_array(%L, %L))
+            )
+        $$,
+        :'communityID',
+        :'deletedGroupID',
+        :'inactiveGroupID'
+    ),
+    'Should match no seats for unavailable selected groups'
+);
+
+-- Should return each seat once for repeated selected groups
+select results_eq(
+    format(
+        $$
+            select group_id, user_id
+            from community_contact_team_seats(
+                %L::uuid,
+                jsonb_build_object('group_ids', jsonb_build_array(%L, %L))
+            )
+            order by group_id, user_id
+        $$,
+        :'communityID',
+        :'groupAID',
+        :'groupAID'
+    ),
+    format(
+        $$ values
+            (%L::uuid, %L::uuid),
+            (%L::uuid, %L::uuid)
+        $$,
+        :'groupAID', :'adminUserID',
+        :'groupAID', :'mixedUserID'
+    ),
+    'Should return each seat once for repeated selected groups'
+);
+
 -- Should return every accepted and verified seat of available groups for missing filters
 select results_eq(
     format(
@@ -330,7 +455,7 @@ select results_eq(
             select group_id, user_id
             from community_contact_team_seats(
                 %L::uuid,
-                '{"group_category_ids": [], "regions": [], "roles": []}'::jsonb
+                '{"group_category_ids": [], "group_ids": [], "regions": [], "roles": []}'::jsonb
             )
             order by group_id, user_id
         $$,

@@ -23,7 +23,7 @@
   {# Recipients -#}
   <div class="text-lg font-medium text-stone-900">Recipients</div>
   <p class="mt-1 text-sm text-stone-500">
-    Accepted team members with a verified email in active groups. Leave a filter empty to include all.
+    Accepted team members with a verified email in active groups. Recipients must match every filter; leave a filter empty to include all.
   </p>
   <div id="community-contact-filters"
        class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -47,15 +47,27 @@
         <multi-select id="community-contact-roles" labelledby="community-contact-roles-label" name="filters[roles]" keep-order close-on-select placeholder="All roles" options="{{ self.role_options()|json }}"></multi-select>
       </div>
     </div>
+    <div class="lg:col-span-3">
+      <label id="community-contact-groups-label" class="form-label">Groups</label>
+      <div class="mt-2">
+        {% if self.has_groups() -%}
+          <multi-select id="community-contact-groups" labelledby="community-contact-groups-label" name="filters[group_ids]" keep-order close-on-select max-selected="{{ crate::validation::MAX_CONTACT_FILTER_VALUES }}" placeholder="All groups" legend="Select up to {{ crate::validation::MAX_CONTACT_FILTER_VALUES }} groups.{% if filter_options.has_subgroups %} Selecting a group doesn't include its subgroups; select them too.{% endif %}" options="{{ self.group_options()|json }}"></multi-select>
+        {% else -%}
+          <multi-select id="community-contact-groups" labelledby="community-contact-groups-label" name="filters[group_ids]" disabled placeholder="All groups" legend="This community has no active groups."></multi-select>
+        {% endif -%}
+      </div>
+    </div>
   </div>
   {# End recipients -#}
 
   {# Recipients summary -#}
+  {# Posting includes the enclosing form, so only the filter fields are sent. -#}
   <div id="community-contact-recipients"
        class="mt-4 transition-opacity aria-busy:opacity-50"
        aria-live="polite"
        data-skip-validation="true"
-       hx-get="/dashboard/community/contact/recipients"
+       hx-post="/dashboard/community/contact/recipients"
+       hx-params="filters[group_category_ids][],filters[group_ids][],filters[regions][],filters[roles][]"
        hx-include="#community-contact-filters"
        hx-indicator="this"
        hx-trigger="contact-filters-changed delay:300ms"

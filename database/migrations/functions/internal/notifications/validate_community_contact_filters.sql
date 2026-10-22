@@ -1,4 +1,6 @@
 -- Validates community contact filters against the community they target.
+-- Selected groups only need to belong to the community: inactive or deleted
+-- ones are accepted and simply match no seats.
 create or replace function validate_community_contact_filters(
     p_community_id uuid,
     p_filters jsonb
@@ -21,6 +23,24 @@ begin
     -- Reject group categories outside the community
     if found then
         raise exception 'group category not found' using errcode = 'OCG01';
+    end if;
+
+    -- Look for groups outside the community
+    perform 1
+    from jsonb_array_elements_text(coalesce(p_filters->'group_ids', '[]')) as input(value)
+    where case
+        when coalesce(pg_input_is_valid(input.value, 'uuid'), false) then not exists (
+            select 1
+            from "group" g
+            where g.community_id = p_community_id
+            and g.group_id = input.value::uuid
+        )
+        else true
+    end;
+
+    -- Reject groups outside the community
+    if found then
+        raise exception 'group not found' using errcode = 'OCG01';
     end if;
 
     -- Look for region values that are neither the no-region option nor identifiers

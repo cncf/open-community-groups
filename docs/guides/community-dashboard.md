@@ -242,32 +242,48 @@ When a group is inactive, its public-view shortcut is disabled in the groups tab
 groups in the community. Everyone on the community team can open it and review the recipients;
 only the `admin` and `groups-manager` roles can send.
 
-Choose the recipients with three filters:
+Choose the recipients with four filters:
 
 - `Group categories`: groups in the selected categories.
 - `Regions`: groups in the selected regions. `No region` selects groups without a region, and this
   filter is only shown when the community has regions. Regions are independent of categories.
 - `Team roles`: team members holding the selected roles.
+- `Groups`: individual active groups of the community, up to 500 per email. Each group is named
+  with its category and, when it has one, its region, for example `Rust Madrid · Meetups · Europe`,
+  so you can search the list by name, category, or region. When another group of the community has
+  the same label, the group slug is added, using the pretty URL slug when the group has one, for
+  example `Rust Madrid · Meetups · Europe (rust-madrid-2)`. Selecting a group reaches its own team
+  only, not the teams of its subgroups; select the subgroups too to include them. When the community
+  has subgroups, the note under the filter reminds you of this. When the community has no active
+  groups, the filter is disabled.
 
-An empty filter means all, so categories and regions added later are included automatically.
-Category and region options show how many active groups they hold.
+An empty filter means all, so categories, regions, and groups added later are included
+automatically. Category and region options show how many active groups they hold.
 
-A person receives the email when at least one of their group team seats passes the three filters
+A person receives the email when at least one of their group team seats passes the four filters
 together. For example, selecting a category and the `Admin` role reaches admins of groups in that
-category, not people who are admins elsewhere and viewers in that category. Only accepted team
-members with a verified email address in active groups qualify, subgroups included, and the sender
-is included when they qualify. Each person receives one email, however many seats they hold.
+category, not people who are admins elsewhere and viewers in that category. In the same way,
+selecting two groups and the `Admin` role reaches the admins of those two groups only, and a
+selected group outside the selected categories or regions adds nobody. Only accepted team members
+with a verified email address in active groups qualify. Subgroups are matched like any other group,
+so selecting a parent group doesn't include them. The sender is included when they qualify. Each
+person receives one email, however many seats they hold.
 
 The summary below the filters updates as you change them, showing the number of people, the team
-seats they hold, and the groups those seats belong to. `Show groups` lists the groups. `Send email`
-stays disabled until the summary matches the selected filters and includes at least one person,
-and a confirmation shows the number of people before the email is sent. OCG finds the recipients
-again when the email is sent; if nobody matches the filters by then, the email is not sent. After
-a successful send, the subject and body are cleared and the filters are kept.
+seats they hold, and the groups those seats belong to. `Show groups` lists the groups. Selected
+groups that add nobody are listed below the summary as having no matching team members, and the
+email goes to the other recipients. This happens when a group has no accepted team members with a
+verified email address, when its team members don't pass the other filters, or when the group was
+deactivated or deleted after the page loaded. `Send email` stays disabled until the summary matches
+the selected filters and includes at least one person, and a confirmation shows the number of
+people before the email is sent. OCG finds the recipients again when the email is sent; if nobody
+matches the filters by then, the email is not sent. After a successful send, the subject and body
+are cleared and the filters are kept.
 
 These emails are always sent: recipients can't turn them off in their notification preferences,
 and group mutes don't apply to them. Each send is recorded in `Logs` with the number of recipients,
-the subject, and the names of the selected filters.
+the subject, and the names of the selected filters, including the names of the selected groups as
+shown in the `Groups` filter.
 
 ## Audit: Logs
 

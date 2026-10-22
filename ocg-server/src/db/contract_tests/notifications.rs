@@ -364,6 +364,76 @@ async fn db_contracts_enqueue_notification_filters_all_group_scoped_recipients()
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_enqueue_tracked_community_custom_notification_audits_selected_groups()
+-> Result<()> {
+    // Setup the contract database and filters selecting two groups
+    let db = contract_tests_db()?;
+    let client = contract_tests_pool()?.get().await?;
+    let subject = "Contract community contact groups";
+
+    // Enqueue the notification for the selected groups only
+    let count = db
+        .enqueue_tracked_community_custom_notification(CommunityCustomNotificationEnqueue {
+            body: "Hello selected group teams".to_string(),
+            community_id: contact_community_id(),
+            created_by: contact_manager_id(),
+            filters: CommunityContactFilters {
+                group_ids: vec![contact_inactive_group_id(), contact_group_b_id()],
+                ..Default::default()
+            },
+            subject: subject.to_string(),
+            template_data: serde_json::json!({ "subject": subject }),
+        })
+        .await?;
+
+    // Check only the team member of the active selected group was notified
+    assert_eq!(count, 1);
+    let recipients: Vec<uuid::Uuid> = client
+        .query(
+            "select n.user_id
+            from notification n
+            join notification_template_data ntd using (notification_template_data_id)
+            where n.kind = 'community-custom'
+            and ntd.data->>'subject' = $1::text",
+            &[&subject],
+        )
+        .await?
+        .iter()
+        .map(|row| row.get(0))
+        .collect();
+    assert_eq!(recipients, vec![contact_admin_id()]);
+
+    // Check the audit row names the selected groups by label
+    let details: serde_json::Value = client
+        .query_one(
+            "select details
+            from audit_log
+            where action = 'community_custom_notification_sent'
+            and details->>'subject' = $1::text",
+            &[&subject],
+        )
+        .await?
+        .get(0);
+    assert_eq!(
+        details,
+        serde_json::json!({
+            "group_categories": "All",
+            "groups": [
+                "Contact Group B · Contact Category B",
+                "Contact Inactive Group · Contact Category A",
+            ],
+            "recipient_count": 1,
+            "regions": "All",
+            "roles": "All",
+            "subject": subject,
+        })
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_enqueue_tracked_community_custom_notification_enqueues_and_audits()
 -> Result<()> {
     // Setup the contract database and admin-only filters
@@ -431,6 +501,7 @@ async fn db_contracts_enqueue_tracked_community_custom_notification_enqueues_and
         audit.get::<_, serde_json::Value>("details"),
         serde_json::json!({
             "group_categories": "All",
+            "groups": "All",
             "recipient_count": 1,
             "regions": "All",
             "roles": ["Admin"],

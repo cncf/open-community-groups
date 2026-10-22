@@ -14,8 +14,12 @@ select plan(4);
 \set alphaCategoryID '8a0d0000-0000-0000-0000-000000000002'
 \set betaCategoryID '8a0d0000-0000-0000-0000-000000000003'
 \set communityID '8a0d0000-0000-0000-0000-000000000001'
+\set deletedGroupID '8a0d0000-0000-0000-0000-000000000009'
 \set eastRegionID '8a0d0000-0000-0000-0000-000000000006'
+\set kubernetesGroupID '8a0d0000-0000-0000-0000-000000000010'
+\set rustGroupID '8a0d0000-0000-0000-0000-000000000011'
 \set unselectedCategoryID '8a0d0000-0000-0000-0000-000000000005'
+\set unselectedGroupID '8a0d0000-0000-0000-0000-000000000012'
 \set unselectedRegionID '8a0d0000-0000-0000-0000-000000000008'
 \set zetaCategoryID '8a0d0000-0000-0000-0000-000000000004'
 \set zuluRegionID '8a0d0000-0000-0000-0000-000000000007'
@@ -55,6 +59,28 @@ values (:'unselectedRegionID', :'communityID', 'West');
 insert into region (region_id, community_id, name, "order")
 values (:'zuluRegionID', :'communityID', 'Zulu', 1);
 
+-- Deleted group still described when selected
+select fx_group(
+    :'deletedGroupID',
+    :'communityID',
+    :'betaCategoryID',
+    jsonb_build_object('active', false, 'deleted', true, 'name', 'Archived', 'region_id', :'zuluRegionID')
+);
+
+-- Group in the alpha category and the east region
+select fx_group(
+    :'kubernetesGroupID',
+    :'communityID',
+    :'alphaCategoryID',
+    jsonb_build_object('name', 'Kubernetes', 'region_id', :'eastRegionID')
+);
+
+-- Group in the zeta category without region
+select fx_group(:'rustGroupID', :'communityID', :'zetaCategoryID', jsonb_build_object('name', 'Rust'));
+
+-- Group left out of the selected filters
+select fx_group(:'unselectedGroupID', :'communityID', :'alphaCategoryID', jsonb_build_object('name', 'Unselected'));
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -63,20 +89,20 @@ values (:'zuluRegionID', :'communityID', 'Zulu', 1);
 select is(
     describe_community_contact_filters(
         :'communityID'::uuid,
-        '{"group_category_ids": [], "regions": [], "roles": []}'::jsonb
+        '{"group_category_ids": [], "group_ids": [], "regions": [], "roles": []}'::jsonb
     ),
-    '{"group_categories": "All", "regions": "All", "roles": "All"}'::jsonb,
+    '{"group_categories": "All", "groups": "All", "regions": "All", "roles": "All"}'::jsonb,
     'Should describe empty filter lists as All'
 );
 
 -- Should describe missing filter lists as All
 select is(
     describe_community_contact_filters(:'communityID'::uuid, '{}'::jsonb),
-    '{"group_categories": "All", "regions": "All", "roles": "All"}'::jsonb,
+    '{"group_categories": "All", "groups": "All", "regions": "All", "roles": "All"}'::jsonb,
     'Should describe missing filter lists as All'
 );
 
--- Should describe selected filter values with ordered names
+-- Should describe selected filter values with ordered names and group labels
 select is(
     describe_community_contact_filters(
         :'communityID'::uuid,
@@ -87,16 +113,23 @@ select is(
                 :'zetaCategoryID',
                 :'betaCategoryID'
             ),
+            'group_ids', jsonb_build_array(
+                :'rustGroupID',
+                :'kubernetesGroupID',
+                :'deletedGroupID',
+                :'rustGroupID'
+            ),
             'regions', jsonb_build_array('none', :'eastRegionID', :'zuluRegionID'),
             'roles', jsonb_build_array('viewer', 'check-in-manager', 'admin', 'events-manager')
         )
     ),
     '{
         "group_categories": ["Zeta", "Alpha", "Beta"],
+        "groups": ["Archived · Beta · Zulu", "Kubernetes · Alpha · East", "Rust · Zeta"],
         "regions": ["Zulu", "East", "No region"],
         "roles": ["Admin", "Events Manager", "Check-In Manager", "Viewer"]
     }'::jsonb,
-    'Should describe selected filter values with ordered names'
+    'Should describe selected filter values with ordered names and group labels'
 );
 
 -- Should describe the no region option alone
@@ -105,7 +138,7 @@ select is(
         :'communityID'::uuid,
         '{"regions": ["none"], "roles": ["viewer"]}'::jsonb
     ),
-    '{"group_categories": "All", "regions": ["No region"], "roles": ["Viewer"]}'::jsonb,
+    '{"group_categories": "All", "groups": "All", "regions": ["No region"], "roles": ["Viewer"]}'::jsonb,
     'Should describe the no region option alone'
 );
 
