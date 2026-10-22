@@ -15,7 +15,7 @@ WORKDIR /ocg/ocg-server
 RUN cargo build --locked --release
 
 # Final stage
-FROM alpine:3.24.2
+FROM alpine:3.24.3
 RUN apk --no-cache add ca-certificates postgresql17-client && addgroup -S ocg && adduser -S ocg -G ocg
 USER ocg
 WORKDIR /home/ocg
