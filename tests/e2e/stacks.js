@@ -12,10 +12,17 @@ export const getE2eStacks = () => {
     return [];
   }
 
-  const stacks = JSON.parse(value);
+  const message = "OCG_E2E_STACKS must be a JSON array of { baseUrl, dbName } objects";
+  let stacks;
+
+  try {
+    stacks = JSON.parse(value);
+  } catch (error) {
+    throw new Error(message, { cause: error });
+  }
 
   if (!Array.isArray(stacks) || stacks.some((stack) => !stack?.baseUrl || !stack?.dbName)) {
-    throw new Error("OCG_E2E_STACKS must be a JSON array of { baseUrl, dbName } objects");
+    throw new Error(message);
   }
 
   return stacks;

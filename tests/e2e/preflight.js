@@ -15,10 +15,22 @@ const MARKER_PATTERN = /E2E seed run [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 
 /**
  * Verifies server readiness and cross-boundary database identity before any test runs.
+ * @param {import("@playwright/test").FullConfig} config - Resolved config, including `--workers`.
  * @returns {Promise<void>} Resolves when every stack passes; throws with diagnostics otherwise.
  */
-const preflight = async () => {
+const preflight = async (config) => {
   const stacks = getE2eStacks();
+
+  // Each worker needs a stack of its own, so fail once here instead of in every worker.
+  if (stacks.length > 0 && config.workers > stacks.length) {
+    throw new Error(
+      [
+        `E2E preflight failed: ${config.workers} workers requested but only ${stacks.length} stacks are running.`,
+        `Pass --workers ${stacks.length} or fewer, or set OCG_E2E_PARALLEL_WORKERS=${config.workers}.`,
+      ].join("\n"),
+    );
+  }
+
   const targets = stacks.length > 0 ? stacks : [{ baseUrl: BASE_URL, dbName: process.env.OCG_E2E_DB_NAME }];
 
   for (const target of targets) {

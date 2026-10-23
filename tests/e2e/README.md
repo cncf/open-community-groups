@@ -48,6 +48,14 @@ every stack. Reports and artifacts go to the usual folders, and server logs to
 `$TMPDIR/ocg-e2e-parallel/`. Firefox and WebKit smoke projects run in CI
 only.
 
+The databases are kept after the run so a failure can be inspected. Each run
+recreates them under the same names, so they do not pile up: there is the
+template plus one per worker of the largest run. To drop one, for example:
+
+```sh
+OCG_E2E_DB_NAME=ocg_tests_parallel_1_e2e just db-drop-tests-e2e
+```
+
 Other useful commands:
 
 ```sh
