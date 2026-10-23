@@ -1,6 +1,7 @@
 -- Describes community contact filters with readable names for audit details.
--- Empty or missing filter lists are described as "All". Callers validate the
--- filters with validate_community_contact_filters first.
+-- Empty or missing filter lists are described as "All", and selected groups
+-- by their contact filter labels. Callers validate the filters with
+-- validate_community_contact_filters first.
 create or replace function describe_community_contact_filters(
     p_community_id uuid,
     p_filters jsonb
@@ -15,6 +16,14 @@ returns jsonb as $$
                 from group_category gc
                 where gc.community_id = p_community_id
                 and gc.group_category_id = any(f.group_category_ids)
+            )
+        end,
+        'groups', case
+            when cardinality(f.group_ids) = 0 then to_jsonb('All'::text)
+            else (
+                select coalesce(jsonb_agg(l.label order by l.label, l.group_id), '[]')
+                from community_contact_group_labels(p_community_id) l
+                where l.group_id = any(f.group_ids)
             )
         end,
         'regions', case

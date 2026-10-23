@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,10 +13,14 @@ select plan(10);
 
 \set communityID '8a0b0000-0000-0000-0000-000000000001'
 \set deletedGroupCategoryID '8a0b0000-0000-0000-0000-000000000002'
+\set deletedGroupID '8a0b0000-0000-0000-0000-000000000008'
 \set foreignCommunityID '8a0b0000-0000-0000-0000-000000000003'
 \set foreignGroupCategoryID '8a0b0000-0000-0000-0000-000000000004'
+\set foreignGroupID '8a0b0000-0000-0000-0000-000000000009'
 \set foreignRegionID '8a0b0000-0000-0000-0000-000000000005'
 \set groupCategoryID '8a0b0000-0000-0000-0000-000000000006'
+\set groupID '8a0b0000-0000-0000-0000-000000000010'
+\set inactiveGroupID '8a0b0000-0000-0000-0000-000000000011'
 \set regionID '8a0b0000-0000-0000-0000-000000000007'
 
 -- ============================================================================
@@ -43,6 +47,23 @@ values (:'foreignRegionID', :'foreignCommunityID', 'Foreign Region');
 insert into region (region_id, community_id, name)
 values (:'regionID', :'communityID', 'Local Region');
 
+-- Deleted group of the validated community
+select fx_group(
+    :'deletedGroupID',
+    :'communityID',
+    :'groupCategoryID',
+    jsonb_build_object('active', false, 'deleted', true)
+);
+
+-- Group of the foreign community
+select fx_group(:'foreignGroupID', :'foreignCommunityID', :'foreignGroupCategoryID');
+
+-- Active group of the validated community
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Inactive group of the validated community
+select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -52,7 +73,7 @@ select lives_ok(
     format(
         $$select validate_community_contact_filters(
             %L::uuid,
-            '{"group_category_ids": [], "regions": [], "roles": []}'::jsonb
+            '{"group_category_ids": [], "group_ids": [], "regions": [], "roles": []}'::jsonb
         )$$,
         :'communityID'
     ),
@@ -66,15 +87,31 @@ select lives_ok(
             %L::uuid,
             jsonb_build_object(
                 'group_category_ids', jsonb_build_array(%L),
+                'group_ids', jsonb_build_array(%L),
                 'regions', jsonb_build_array(%L, 'none'),
                 'roles', jsonb_build_array('admin', 'check-in-manager', 'events-manager', 'viewer')
             )
         )$$,
         :'communityID',
         :'groupCategoryID',
+        :'groupID',
         :'regionID'
     ),
     'Should accept filter values of the community'
+);
+
+-- Should accept inactive and deleted groups of the community
+select lives_ok(
+    format(
+        $$select validate_community_contact_filters(
+            %L::uuid,
+            jsonb_build_object('group_ids', jsonb_build_array(%L, %L))
+        )$$,
+        :'communityID',
+        :'deletedGroupID',
+        :'inactiveGroupID'
+    ),
+    'Should accept inactive and deleted groups of the community'
 );
 
 -- Should accept missing filter lists
@@ -116,6 +153,22 @@ select throws_ok(
     'Should reject group categories from another community'
 );
 
+-- Should reject groups from another community
+select throws_ok(
+    format(
+        $$select validate_community_contact_filters(
+            %L::uuid,
+            jsonb_build_object('group_ids', jsonb_build_array(%L, %L))
+        )$$,
+        :'communityID',
+        :'groupID',
+        :'foreignGroupID'
+    ),
+    'OCG01',
+    'group not found',
+    'Should reject groups from another community'
+);
+
 -- Should reject malformed group category identifiers
 select throws_ok(
     format(
@@ -128,6 +181,20 @@ select throws_ok(
     'OCG01',
     'group category not found',
     'Should reject malformed group category identifiers'
+);
+
+-- Should reject malformed group identifiers
+select throws_ok(
+    format(
+        $$select validate_community_contact_filters(
+            %L::uuid,
+            '{"group_ids": ["not-a-uuid"]}'::jsonb
+        )$$,
+        :'communityID'
+    ),
+    'OCG01',
+    'group not found',
+    'Should reject malformed group identifiers'
 );
 
 -- Should reject malformed region values

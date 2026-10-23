@@ -42,9 +42,10 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
     let dashboard_read = Router::new()
         .route("/analytics", get(dashboard::community::analytics::page))
         .route("/contact", get(dashboard::community::contact::page))
+        // The recipients preview posts its filters but does not change state
         .route(
             "/contact/recipients",
-            get(dashboard::community::contact::recipients),
+            post(dashboard::community::contact::recipients),
         )
         .route(
             "/event-categories",

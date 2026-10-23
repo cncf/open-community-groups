@@ -19,6 +19,13 @@ use crate::{
 
 use super::*;
 
+/// Dashboard routes posting a request body too long for a query string
+/// without changing state.
+///
+/// Only their `POST` method is guarded by read access instead of a write
+/// permission.
+const READ_ONLY_POST_ROUTES: [&str; 1] = ["/dashboard/community/contact/recipients"];
+
 /// Dashboard mutation routes that only change the session's selected scope.
 ///
 /// They are guarded by login and read access instead of a write permission.
@@ -288,6 +295,14 @@ async fn test_dashboard_mutation_routes_require_write_permission() {
 
     // Collect every mutation route declared by the community and group dashboards
     let mutation_routes = dashboard_mutation_routes();
+    for read_only_route in READ_ONLY_POST_ROUTES {
+        assert!(
+            mutation_routes
+                .iter()
+                .any(|(path, method)| path == read_only_route && *method == Method::POST),
+            "read-only post route {read_only_route} is no longer declared"
+        );
+    }
     for scope_route in SCOPE_SELECTION_ROUTES {
         assert!(
             mutation_routes.iter().any(|(path, _)| path == scope_route),
@@ -296,7 +311,12 @@ async fn test_dashboard_mutation_routes_require_write_permission() {
     }
     let write_routes: Vec<_> = mutation_routes
         .into_iter()
-        .filter(|(path, _)| !SCOPE_SELECTION_ROUTES.contains(&path.as_str()))
+        .filter(|(path, method)| {
+            let is_read_only_post =
+                *method == Method::POST && READ_ONLY_POST_ROUTES.contains(&path.as_str());
+            let is_scope_selection = SCOPE_SELECTION_ROUTES.contains(&path.as_str());
+            !is_read_only_post && !is_scope_selection
+        })
         .collect();
     assert!(
         !write_routes.is_empty(),

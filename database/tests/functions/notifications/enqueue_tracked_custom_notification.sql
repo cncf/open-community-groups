@@ -153,6 +153,7 @@ select ok(
         and community_id = :'communityID'
         and details = jsonb_build_object(
             'group_categories', 'All',
+            'groups', 'All',
             'recipient_count', 1,
             'regions', 'All',
             'roles', jsonb_build_array('Admin'),

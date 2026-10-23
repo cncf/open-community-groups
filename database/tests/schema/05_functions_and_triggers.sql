@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(597);
+select plan(599);
 
 -- ============================================================================
 -- VARIABLES
@@ -189,6 +189,8 @@ select has_function('close_event_cohosts', array['uuid', 'uuid', 'text']::name[]
 select has_function('close_event_enrollment', array['uuid', 'uuid']::name[]);
 select has_function('close_inbox_conversation', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('community_contact_filter_values', array['jsonb']::name[]);
+select has_function('community_contact_group_labels', array['uuid']::name[]);
+select has_function('community_contact_groups', array['uuid']::name[]);
 select has_function('community_contact_team_seats', array['uuid', 'jsonb']::name[]);
 select hasnt_function(
     'complete_event_purchase_application_fee_adjustment_recovery',

@@ -20,13 +20,17 @@ const FORM_URLENCODED_SAFE: &AsciiSet =
 /// Filters used to select the group team members a community email targets.
 ///
 /// An empty list means All for that filter. A team seat matches only when it
-/// passes the three filters together.
+/// passes every filter together.
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Validate)]
 pub(crate) struct CommunityContactFilters {
     /// Group categories to include.
     #[serde(default)]
     #[garde(length(max = MAX_CONTACT_FILTER_VALUES))]
     pub group_category_ids: Vec<Uuid>,
+    /// Groups whose own team is included, without expanding their subgroups.
+    #[serde(default)]
+    #[garde(length(max = MAX_CONTACT_FILTER_VALUES))]
+    pub group_ids: Vec<Uuid>,
     /// Regions to include, optionally including groups without a region.
     #[serde(default)]
     #[garde(length(max = MAX_CONTACT_FILTER_VALUES))]
@@ -40,14 +44,22 @@ pub(crate) struct CommunityContactFilters {
 impl CommunityContactFilters {
     /// Returns the canonical form-encoded query of the filters.
     ///
-    /// Values keep their submitted order and use the same names and encoding
-    /// as the dashboard filter inputs serialized with `URLSearchParams`, so the
-    /// page can tell which filters a recipients summary was computed for.
+    /// Pairs are sorted by filter name, matching `URLSearchParams.sort()`, and
+    /// values keep their submitted order within a filter. Names and encoding
+    /// match the dashboard filter inputs serialized with `URLSearchParams`, so
+    /// the page can tell which filters a recipients summary was computed for,
+    /// whatever the order of the filter inputs on the page.
     pub(crate) fn to_canonical_query(&self) -> String {
+        // Chain the filters in the alphabetical order of their names
         let pairs = self
             .group_category_ids
             .iter()
             .map(|id| ("filters[group_category_ids][]", id.to_string()))
+            .chain(
+                self.group_ids
+                    .iter()
+                    .map(|id| ("filters[group_ids][]", id.to_string())),
+            )
             .chain(
                 self.regions
                     .iter()
@@ -55,6 +67,7 @@ impl CommunityContactFilters {
             )
             .chain(self.roles.iter().map(|role| ("filters[roles][]", role.to_string())));
 
+        // Encode the pairs as a form-encoded query
         let mut query = String::new();
         for (name, value) in pairs {
             if !query.is_empty() {
@@ -76,6 +89,10 @@ impl CommunityContactFilters {
 pub(crate) struct CommunityContactFilterOptions {
     /// Community group categories.
     pub group_categories: Vec<CommunityContactGroupCategoryOption>,
+    /// Active groups of the community, ordered by label.
+    pub groups: Vec<CommunityContactGroupLabel>,
+    /// Whether an active group of the community has an active parent group.
+    pub has_subgroups: bool,
     /// Number of active groups without a region.
     pub no_region_groups_count: usize,
     /// Community regions.
@@ -91,6 +108,17 @@ pub(crate) struct CommunityContactGroupCategoryOption {
     pub groups_count: usize,
     /// Group category name.
     pub name: String,
+}
+
+/// Group identified by its contact label, as offered by the groups filter and
+/// reported for selected groups without matching team seats.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct CommunityContactGroupLabel {
+    /// Group identifier.
+    pub group_id: Uuid,
+    /// Group name, category and region when the group has one, followed by
+    /// the slug when another group of the community would get the same label.
+    pub label: String,
 }
 
 /// Group contributing matching team seats to a community contact summary.
@@ -121,6 +149,8 @@ pub(crate) struct CommunityContactRecipientsSummary {
     pub people_count: usize,
     /// Number of matching team seats.
     pub seats_count: usize,
+    /// Selected groups contributing no matching team seats, ordered by label.
+    pub unmatched_groups: Vec<CommunityContactGroupLabel>,
 }
 
 /// Region option for the community contact filters.

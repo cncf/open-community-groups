@@ -1626,6 +1626,7 @@ async fn test_enqueue_tracked_community_custom_notification_builds_content_and_e
     let actor_user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let group_category_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
     let region_id = Uuid::new_v4();
     let community = sample_community_summary(community_id);
     let expected_template_data = serde_json::to_value(build_community_custom_notification(
@@ -1641,6 +1642,7 @@ async fn test_enqueue_tracked_community_custom_notification_builds_content_and_e
         content: sample_content("Community Update", "Hello, group teams!"),
         filters: CommunityContactFilters {
             group_category_ids: vec![group_category_id],
+            group_ids: vec![group_id],
             regions: vec![
                 RegionFilterValue::NoRegion,
                 RegionFilterValue::Region(region_id),
@@ -1665,6 +1667,7 @@ async fn test_enqueue_tracked_community_custom_notification_builds_content_and_e
                 && input.community_id == community_id
                 && input.created_by == actor_user_id
                 && input.filters.group_category_ids == vec![group_category_id]
+                && input.filters.group_ids == vec![group_id]
                 && input.filters.regions
                     == vec![
                         RegionFilterValue::NoRegion,

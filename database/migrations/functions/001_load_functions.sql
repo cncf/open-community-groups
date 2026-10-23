@@ -78,6 +78,8 @@
 {{ template "internal/meetings/validate_event_meeting_durations.sql" }}
 
 {{ template "internal/notifications/community_contact_filter_values.sql" }}
+{{ template "internal/notifications/community_contact_group_labels.sql" }}
+{{ template "internal/notifications/community_contact_groups.sql" }}
 {{ template "internal/notifications/community_contact_team_seats.sql" }}
 {{ template "internal/notifications/describe_community_contact_filters.sql" }}
 {{ template "internal/notifications/list_user_notification_group_ids.sql" }}

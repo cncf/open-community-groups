@@ -189,6 +189,7 @@ select results_eq(
             %L::uuid,
             jsonb_build_object(
                 'group_categories', jsonb_build_array('Platform'),
+                'groups', 'All',
                 'recipient_count', 4,
                 'regions', 'All',
                 'roles', 'All',
