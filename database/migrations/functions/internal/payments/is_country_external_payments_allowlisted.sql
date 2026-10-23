@@ -9,4 +9,4 @@ returns boolean as $$
         where cfg.singleton
         and upper(nullif(btrim(p_country_code), '')) = any(cfg.allowed_countries)
     );
-$$ language sql;
+$$ language sql stable;

@@ -10,16 +10,6 @@ declare
     v_username text;
     v_verification_code uuid;
 begin
-    -- Require a verification code before any mutation that depends on it
-    if p_verification_code is null then
-        raise exception 'verification code is required to send verification email';
-    end if;
-
-    -- Require verification template data before any mutation that depends on it
-    if p_verification_template_data is null then
-        raise exception 'verification template data is required to send verification email';
-    end if;
-
     -- Lock the placeholder user if this email was pre-registered
     select u.user_id
     into v_user_id
@@ -54,37 +44,15 @@ begin
         raise exception 'pre-registered user not found' using errcode = 'OCG01';
     end if;
 
-    -- Create/refresh email verification code for the activated user
-    insert into email_verification_code (email_verification_code_id, user_id)
-    values (p_verification_code, v_user_id)
-    on conflict (user_id) do update
-    set
-        created_at = current_timestamp,
-        email_verification_code_id = excluded.email_verification_code_id
-    returning email_verification_code_id into v_verification_code;
-
-    -- Enqueue verification email before returning the activated user
-    perform enqueue_notification(
-        'email-verification',
-        p_verification_template_data,
-        '[]'::jsonb,
-        array[v_user_id]
+    -- Issue the verification email for the activated user
+    v_verification_code := issue_email_verification(
+        v_user_id,
+        p_verification_code,
+        p_verification_template_data
     );
 
     -- Return the activated user and verification code
     return query
-    select
-        json_strip_nulls(json_build_object(
-            'auth_hash', u.auth_hash,
-            'email', u.email,
-            'email_verified', u.email_verified,
-            'name', u.name,
-            'provider', u.provider,
-            'user_id', u.user_id,
-            'username', u.username
-        )),
-        v_verification_code
-    from "user" u
-    where u.user_id = v_user_id;
+    select get_user_by_id(v_user_id, false), v_verification_code;
 end;
 $$ language plpgsql;

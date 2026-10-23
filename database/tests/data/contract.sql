@@ -185,6 +185,14 @@ insert into "user" (
         'pre-registered',
         '00000000-0000-0000-0000-00000000c045',
         'invited-7ab2e187f4d3bb1c96fda1b4'
+    ),
+    (
+        'contract_hash_activation_password',
+        'activation-password.contract@example.com',
+        false,
+        'pre-registered',
+        '00000000-0000-0000-0000-00000000c048',
+        'invited-3e9c5a7d1b2f4e6a8c0d2f4b'
     );
 
 insert into "user" (
@@ -5733,6 +5741,273 @@ insert into event_survey_response (
         '00000000-0000-0000-0000-00000000f317',
         null
     );
+
+-- ============================================================================
+-- ENROLLMENT LOCK ORDER
+-- ============================================================================
+
+-- Attendee and offer recipient racing on the enrollment lock order contract
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values
+    (
+        'contract_hash_enrollment_race_attendee',
+        'enrollment-race-attendee.contract@example.com',
+        true,
+        'Contract Enrollment Race Attendee',
+        '00000000-0000-0000-0000-00000000f370',
+        'enrollment-race-attendee'
+    ),
+    (
+        'contract_hash_enrollment_race_decliner',
+        'enrollment-race-decliner.contract@example.com',
+        true,
+        'Contract Enrollment Race Decliner',
+        '00000000-0000-0000-0000-00000000f371',
+        'enrollment-race-decliner'
+    );
+
+-- Free one-seat event whose only seat is held by the declined offer
+insert into event (
+    capacity,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone,
+    waitlist_enabled
+) values (
+    1,
+    'An event whose attend and offer decline race on the enrollment lock order',
+    '2099-08-10 11:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000f372',
+    'virtual',
+    '00000000-0000-0000-0000-00000000c022',
+    'Contract Enrollment Race Event',
+    true,
+    'contract-enrollment-race-event',
+    '2099-08-10 10:00:00+00',
+    true,
+    'UTC',
+    true
+);
+
+-- One-seat public tier of the enrollment race event
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    '00000000-0000-0000-0000-00000000f372',
+    '00000000-0000-0000-0000-00000000f373',
+    1,
+    1,
+    'General Admission'
+);
+
+-- Free price window of the enrollment race tier
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    0,
+    '00000000-0000-0000-0000-00000000f374',
+    '00000000-0000-0000-0000-00000000f373'
+);
+
+-- Pending approval offer declined while another user attends
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    source,
+    status,
+    user_id,
+
+    expires_at
+) values (
+    '00000000-0000-0000-0000-00000000f375',
+    '00000000-0000-0000-0000-00000000f372',
+    '00000000-0000-0000-0000-00000000f373',
+    'approval',
+    'pending',
+    '00000000-0000-0000-0000-00000000f371',
+
+    '2099-08-10 09:00:00+00'
+);
+
+-- ============================================================================
+-- GROUP PAYMENT LOCK ORDER
+-- ============================================================================
+
+-- Inactive community holding the group payment lock order fixture; inactive
+-- so public listings and statistics exclude it
+insert into community (
+    active,
+    banner_mobile_url,
+    banner_url,
+    community_id,
+    description,
+    display_name,
+    logo_url,
+    name
+) values (
+    false,
+    'https://example.com/payment-lock-community-banner-mobile.png',
+    'https://example.com/payment-lock-community-banner.png',
+    '00000000-0000-0000-0000-00000000f401',
+    'A community used to verify the group payment lock order in Rust database contract tests',
+    'Contract Payment Lock Community',
+    'https://example.com/payment-lock-community-logo.png',
+    'contract-payment-lock-community'
+);
+
+-- Group category of the payment lock community
+insert into group_category (
+    community_id,
+    group_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000f401',
+    '00000000-0000-0000-0000-00000000f402',
+    'Payment Lock'
+);
+
+-- Event category of the payment lock community
+insert into event_category (
+    community_id,
+    event_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000f401',
+    '00000000-0000-0000-0000-00000000f403',
+    'Payment Lock'
+);
+
+-- Allowlisted external-payments group whose seller name a concurrent update clears
+insert into "group" (
+    community_id,
+    country_code,
+    country_name,
+    external_payments_enabled,
+    external_payments_seller_display_name,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    '00000000-0000-0000-0000-00000000f401',
+    'US',
+    'United States',
+    true,
+    'Contract Payment Lock Payee',
+    '00000000-0000-0000-0000-00000000f402',
+    '00000000-0000-0000-0000-00000000f404',
+    'Contract Payment Lock Group',
+    'contract-payment-lock-group'
+);
+
+-- Dedicated admin publishing the payment lock event, so the contract
+-- organizer's group listings are unchanged
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_payment_lock_admin',
+    'payment-lock-admin.contract@example.com',
+    true,
+    'Contract Payment Lock Admin',
+    '00000000-0000-0000-0000-00000000f408',
+    'payment-lock-admin'
+);
+
+-- Admin team membership of the payment lock group
+insert into group_team (
+    accepted,
+    group_id,
+    role,
+    user_id,
+    "order"
+) values (
+    true,
+    '00000000-0000-0000-0000-00000000f404',
+    'admin',
+    '00000000-0000-0000-0000-00000000f408',
+    1
+);
+
+-- Unpublished paid event published while the seller name is cleared
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'An unpublished paid event published while its group payment state changes',
+    '2099-08-20 11:00:00+00',
+    '00000000-0000-0000-0000-00000000f403',
+    '00000000-0000-0000-0000-00000000f405',
+    'virtual',
+    '00000000-0000-0000-0000-00000000f404',
+    'Contract Payment Lock Event',
+    'USD',
+    'contract-payment-lock-event',
+    '2099-08-20 10:00:00+00',
+    'UTC'
+);
+
+-- Paid ticket type of the payment lock event
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    '00000000-0000-0000-0000-00000000f405',
+    '00000000-0000-0000-0000-00000000f406',
+    1,
+    50,
+    'Payment Lock Pass'
+);
+
+-- Positive price window making the payment lock event paid-capable
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    2500,
+    '00000000-0000-0000-0000-00000000f407',
+    '00000000-0000-0000-0000-00000000f406'
+);
 
 -- Every remaining event uses a default free tier in the contract fixture
 insert into event_ticket_type (

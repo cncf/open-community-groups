@@ -1,6 +1,7 @@
--- Updates a CFS submission for an event.
+-- Updates a CFS submission for an event owned by the group.
 create or replace function update_cfs_submission(
     p_reviewer_id uuid,
+    p_group_id uuid,
     p_event_id uuid,
     p_cfs_submission_id uuid,
     p_submission jsonb
@@ -40,6 +41,18 @@ begin
         if v_rating_stars < 0 or v_rating_stars > 5 then
             raise exception 'invalid rating stars' using errcode = 'OCG01';
         end if;
+    end if;
+
+    -- Validate that the event belongs to the selected group
+    perform 1
+    from event e
+    where e.event_id = p_event_id
+    and e.group_id = p_group_id
+    and e.deleted = false;
+
+    -- Reject events outside the group or already deleted
+    if not found then
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Ensure submission exists and load previous state
@@ -122,14 +135,8 @@ begin
         p_reviewer_id,
         'cfs_submission',
         p_cfs_submission_id,
-        (
-            select g.community_id
-            from event e
-            join "group" g on g.group_id = e.group_id
-            where e.event_id = p_event_id
-        ),
-        (select group_id from event where event_id = p_event_id),
-        p_event_id
+        p_group_id => p_group_id,
+        p_event_id => p_event_id
     );
 
     -- Return whether the submitter should be notified

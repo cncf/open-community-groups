@@ -8,4 +8,4 @@ returns json as $$
     where e.event_id = p_event_id
     and c.active = true
     and is_event_public(e, g);
-$$ language sql;
+$$ language sql stable;

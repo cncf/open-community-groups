@@ -12,13 +12,14 @@ declare
     v_image_file_name text;
 begin
     -- Normalize and lock the selected group-owned gallery artwork
-    v_image_file_name := regexp_replace(p_badge->>'image_file_name', '^/images/(badges/)?', '');
+    v_image_file_name := normalize_badge_image_file_name(p_badge->>'image_file_name');
     perform 1
     from badge_artwork
     where file_name = v_image_file_name
     and group_id = p_group_id
     for key share;
 
+    -- Reject artwork missing from the group gallery
     if not found then
         raise exception 'badge artwork not found' using errcode = 'OCG01';
     end if;
@@ -34,6 +35,7 @@ begin
     and group_id = p_group_id
     returning name into v_badge_name;
 
+    -- Reject definitions missing from the group
     if not found then
         raise exception 'badge not found' using errcode = 'OCG01';
     end if;
@@ -50,6 +52,7 @@ begin
         jsonb_build_object('badge_name', v_badge_name)
     );
 exception
+    -- Translate missing or invalid definition fields
     when not_null_violation or check_violation then
         raise exception 'badge fields are invalid' using errcode = 'OCG01';
 end;

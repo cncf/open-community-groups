@@ -12,12 +12,15 @@
 --
 -- Each domain is scanned once into monthly buckets split at the period start,
 -- so totals and series come from the same aggregation. Totals default to zero
--- because summing an empty set returns null.
+-- because summing an empty set returns null. The shared stats_timeline helper
+-- builds each domain from its buckets.
 create or replace function get_site_stats()
 returns json as $$
+-- Start the reporting period ten years ago
 with params as (
     select current_date - interval '10 years' as period_start
 ),
+-- Select active groups of active communities
 filtered_groups as (
     select
         g.created_at,
@@ -28,6 +31,7 @@ filtered_groups as (
         and g.active = true
         and g.deleted = false
 ),
+-- Select published non-test events of those groups that were not canceled
 events as (
     select
         e.event_id,
@@ -91,105 +95,24 @@ attendee_buckets as (
     cross join params p
     where ea.status = 'confirmed'
     group by 1, 2
-),
-domain_running_total_counts as (
-    select
-        'groups' as domain,
-        gb.bucket_start,
-        sum(gb.count)::int as count
-    from group_buckets gb
-    where gb.in_period
-    group by gb.bucket_start
-
-    union all
-
-    select
-        'members' as domain,
-        mb.bucket_start,
-        sum(mb.count)::int as count
-    from member_buckets mb
-    where mb.in_period
-    group by mb.bucket_start
-
-    union all
-
-    select
-        'events' as domain,
-        eb.bucket_start,
-        sum(eb.count)::int as count
-    from event_buckets eb
-    where eb.in_period
-    group by eb.bucket_start
-
-    union all
-
-    select
-        'attendees' as domain,
-        ab.bucket_start,
-        sum(ab.count)::int as count
-    from attendee_buckets ab
-    where ab.in_period
-    group by ab.bucket_start
-),
-domain_monthly_counts as (
-    select
-        domain,
-        to_char(bucket_start, 'YYYY-MM') as label,
-        count
-    from domain_running_total_counts
 )
+-- Build each domain timeline from its buckets
 select json_strip_nulls(json_build_object(
-    'groups', json_build_object(
-        'per_month', stats_label_count_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_monthly_counts counts
-            where domain = 'groups'
-        )),
-        'running_total', stats_running_total_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_running_total_counts counts
-            where domain = 'groups'
-        )),
-        'total', (select coalesce(sum(count), 0)::int from group_buckets)
+    'attendees', stats_timeline(
+        (select jsonb_agg(to_jsonb(b)) from attendee_buckets b),
+        true
     ),
-    'members', json_build_object(
-        'per_month', stats_label_count_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_monthly_counts counts
-            where domain = 'members'
-        )),
-        'running_total', stats_running_total_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_running_total_counts counts
-            where domain = 'members'
-        )),
-        'total', (select coalesce(sum(count), 0)::int from member_buckets)
+    'events', stats_timeline(
+        (select jsonb_agg(to_jsonb(b)) from event_buckets b),
+        true
     ),
-    'events', json_build_object(
-        'per_month', stats_label_count_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_monthly_counts counts
-            where domain = 'events'
-        )),
-        'running_total', stats_running_total_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_running_total_counts counts
-            where domain = 'events'
-        )),
-        'total', (select coalesce(sum(count), 0)::int from event_buckets)
+    'groups', stats_timeline(
+        (select jsonb_agg(to_jsonb(b)) from group_buckets b),
+        true
     ),
-    'attendees', json_build_object(
-        'per_month', stats_label_count_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_monthly_counts counts
-            where domain = 'attendees'
-        )),
-        'running_total', stats_running_total_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_running_total_counts counts
-            where domain = 'attendees'
-        )),
-        'total', (select coalesce(sum(count), 0)::int from attendee_buckets)
+    'members', stats_timeline(
+        (select jsonb_agg(to_jsonb(b)) from member_buckets b),
+        true
     )
 ));
-$$ language sql;
+$$ language sql stable;

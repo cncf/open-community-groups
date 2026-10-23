@@ -11,10 +11,7 @@ declare
     v_file_name text;
 begin
     -- Normalize the content-addressed file name stored by the image service
-    v_file_name := nullif(
-        btrim(regexp_replace(p_file_name, '^/images/(badges/)?', '')),
-        ''
-    );
+    v_file_name := normalize_badge_image_file_name(p_file_name);
 
     -- Add the gallery entry without duplicating an existing image
     insert into badge_artwork (file_name, group_id)
@@ -22,6 +19,7 @@ begin
     on conflict (group_id, file_name) do nothing
     returning badge_artwork_id into v_badge_artwork_id;
 
+    -- Skip the audit when the image is already in the gallery
     if v_badge_artwork_id is null then
         return;
     end if;
@@ -39,6 +37,7 @@ begin
     );
 
 exception
+    -- Translate missing or invalid gallery file names
     when not_null_violation or check_violation then
         raise exception 'badge artwork file name is invalid' using errcode = 'OCG01';
 end;

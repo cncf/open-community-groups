@@ -13,4 +13,4 @@ returns json as $$
         and ct.community_id = c.community_id
         and ct.accepted = true
     );
-$$ language sql;
+$$ language sql stable;

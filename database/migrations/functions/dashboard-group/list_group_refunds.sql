@@ -57,29 +57,25 @@ returns json as $$
                 err.requested_reason,
                 coalesce(epr.review_note, err.review_note) as review_note,
                 case
-                    when epr.status = 'finalized' or ep.status = 'refunded'
+                    -- Settled refunds win over any request review state
+                    when rp.progress = 'refunded'
                         then 'refunded'
+                    -- Rejected requests without refund work stay rejected
                     when err.status = 'rejected' and epr.event_purchase_refund_id is null
                         then 'rejected'
+                    -- Pending requests without refund work wait for organizer review
                     when err.status = 'pending' and epr.event_purchase_refund_id is null
                         then 'needs-review'
-                    when ep.status = 'refund-recovery-pending'
-                        or (epr.status = 'provider-failed' and epr.terminal_failure)
-                        then 'recovery-required'
-                    when payment_job_is_exhausted(pj)
-                        then 'retryable-failure'
-                    when pj.status = 'processing'
-                        or epr.status = 'provider-succeeded'
-                        or epr.provider_refund_id is not null
-                        then 'processing'
-                    when pj.status in ('failed', 'pending')
-                        then 'queued'
-                    when ep.status = 'refund-pending'
-                        or (e.canceled and ep.status = 'pending')
-                        then 'awaiting-checkout'
-                    when err.status = 'approving'
-                        then 'processing'
-                    else 'queued'
+                    -- Refund progress, or the approval state when no workflow applies yet
+                    else coalesce(
+                        rp.progress,
+                        case
+                            -- Requests whose approval is still being processed
+                            when err.status = 'approving' then 'processing'
+                            -- Other requests wait for refund work to start
+                            else 'queued'
+                        end
+                    )
                 end as status
             from event_purchase ep
             join event e using (event_id)
@@ -87,6 +83,9 @@ returns json as $$
             left join event_refund_request err using (event_purchase_id)
             left join event_purchase_refund epr using (event_purchase_id)
             left join payment_job pj on pj.payment_job_id = epr.payment_job_id
+            cross join lateral (
+                select event_purchase_refund_progress(ep, e.canceled, epr, pj) as progress
+            ) rp
             where e.group_id = p_group_id
             and (
                 err.event_refund_request_id is not null
@@ -379,4 +378,4 @@ returns json as $$
         'total', totals.total
     )
     from events_json, financial_recoveries_json, refunds_json, totals;
-$$ language sql;
+$$ language sql stable;

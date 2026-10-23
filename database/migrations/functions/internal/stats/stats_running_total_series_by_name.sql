@@ -21,4 +21,4 @@ select coalesce(
     '{}'::json
 )
 from named_counts;
-$$ language sql immutable;
+$$ language sql stable;

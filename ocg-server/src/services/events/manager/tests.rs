@@ -2251,14 +2251,10 @@ async fn test_publish_series_sends_aggregate_notification() {
             },
         )
         .returning(move |_, _, _, _, _| Ok(()));
-    tx.expect_list_group_members_ids()
+    tx.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![member_id]));
-    tx.expect_list_group_team_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![]));
     tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -2440,11 +2436,7 @@ async fn test_publish_speakers_only() {
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_full.clone()));
     // No group members
-    tx.expect_list_group_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![]));
-    tx.expect_list_group_team_members_ids()
+    tx.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![]));
@@ -2506,8 +2498,9 @@ async fn test_publish_success() {
     let site_settings = sample_site_settings();
     let site_settings_for_member_notification = site_settings.clone();
     let site_settings_for_speaker_notification = site_settings.clone();
-    let mut expected_member_recipients = vec![member_id, team_member_id];
-    expected_member_recipients.sort();
+    let mut audience_ids = vec![member_id, team_member_id];
+    audience_ids.sort();
+    let expected_member_recipients = audience_ids.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2540,14 +2533,10 @@ async fn test_publish_success() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_full.clone()));
-    tx.expect_list_group_members_ids()
+    tx.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![member_id]));
-    tx.expect_list_group_team_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![team_member_id]));
+        .returning(move |_| Ok(audience_ids.clone()));
     tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));

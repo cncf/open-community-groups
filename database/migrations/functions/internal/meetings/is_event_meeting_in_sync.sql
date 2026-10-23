@@ -1,7 +1,10 @@
 -- Determines the meeting sync state of an event after an update. The prior
 -- state is the locked event row plus its host and speaker rows; the new state
--- is the update payload. Returns null when no meeting is involved, false when
--- the provider meeting needs create, update or delete work, and true when the
+-- is the update payload. Returns null when no meeting is involved, or when the
+-- payload leaves the meeting request unset and the linked meeting has
+-- captured recordings or its join URL is kept as the manual link. Returns
+-- false when the provider meeting needs create, update or delete work,
+-- including work still pending from an earlier change, and true when the
 -- provider meeting already matches the payload. Prior timestamps are compared
 -- at the whole-second precision the payload carries.
 create or replace function is_event_meeting_in_sync(
@@ -27,6 +30,24 @@ declare
     v_before_speaker_ids uuid[];
     v_before_starts_at timestamptz := date_trunc('second', p_before.starts_at);
 begin
+    -- Keep a meeting still in use when the payload leaves the request unset
+    if v_after_meeting_requested is null and exists (
+        select 1
+        from meeting m
+        where m.event_id = p_before.event_id
+        and (
+            cardinality(m.recording_urls) > 0
+            or m.join_url = p_after->>'meeting_join_url'
+        )
+    ) then
+        return null;
+    end if;
+
+    -- Keep pending provider work until the meetings worker resolves it
+    if p_before.meeting_in_sync = false then
+        return false;
+    end if;
+
     -- Parse the payload schedule in the payload timezone
     v_after_starts_at := (p_after->>'starts_at')::timestamp at time zone v_after_timezone;
     v_after_ends_at := (p_after->>'ends_at')::timestamp at time zone v_after_timezone;
@@ -54,11 +75,6 @@ begin
     -- Schedule deletion work when a requested meeting is no longer requested
     if v_after_meeting_requested is distinct from true then
         return case when v_before_meeting_requested = true then false else null end;
-    end if;
-
-    -- Preserve real pending/error states instead of hiding unsynced work
-    if v_before_meeting_requested = true and p_before.meeting_in_sync = false then
-        return false;
     end if;
 
     -- Provider create/update sync is not claimed after the meeting starts

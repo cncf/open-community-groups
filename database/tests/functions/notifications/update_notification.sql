@@ -5,12 +5,13 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set notificationBlankErrorID '8a060000-0000-0000-0000-000000000006'
 \set notificationID1 '8a060000-0000-0000-0000-000000000001'
 \set notificationID2 '8a060000-0000-0000-0000-000000000002'
 \set notificationProcessedID '8a060000-0000-0000-0000-000000000005'
@@ -24,7 +25,7 @@ select plan(6);
 -- User
 select fx_user(:'userID', jsonb_build_object('username', 'user-update-notification'));
 
--- Processing and processed notifications used by the finalization scenarios
+-- Processing and processed notifications used by the finalization and validation scenarios
 insert into notification (
     notification_id,
     delivery_status,
@@ -34,6 +35,8 @@ insert into notification (
     delivery_claimed_at,
     processed_at
 ) values
+    (:'notificationBlankErrorID', 'processing', 'event-welcome', :'userID',
+        '2025-01-01 00:00:06+00', null),
     (:'notificationID1', 'processing', 'group-welcome', :'userID', '2025-01-01 00:00:01+00',
         null),
     (:'notificationID2', 'processing', 'event-welcome', :'userID', '2025-01-01 00:00:02+00',
@@ -105,6 +108,21 @@ select results_eq(
     ),
     $$ values ('processed'::text, null::text, current_timestamp) $$,
     'Should persist processed fields and clear error'
+);
+
+-- Should reject blank delivery errors
+select throws_ok(
+    format(
+        $$select update_notification(
+        %L::uuid,
+        ' ',
+        '2025-01-01 00:00:06+00'::timestamptz
+        )$$,
+        :'notificationBlankErrorID'
+    ),
+    'P0001',
+    'delivery error is required',
+    'Should reject blank delivery errors'
 );
 
 -- Should reject updating a notification that is not being processed

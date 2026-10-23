@@ -1,4 +1,4 @@
--- Returns all active communities with at least one active group.
+-- Returns all active communities with at least one publicly visible group.
 create or replace function list_communities()
 returns json as $$
     select coalesce(json_agg(
@@ -6,11 +6,5 @@ returns json as $$
     ), '[]')
     from community c
     where c.active = true
-    and exists (
-        select 1
-        from "group" g
-        where g.community_id = c.community_id
-        and g.active = true
-        and g.deleted = false
-    );
-$$ language sql;
+    and community_has_public_group(c.community_id);
+$$ language sql stable;

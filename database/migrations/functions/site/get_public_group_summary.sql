@@ -7,4 +7,4 @@ returns json as $$
     where g.group_id = p_group_id
     and c.active = true
     and is_group_public(g);
-$$ language sql;
+$$ language sql stable;

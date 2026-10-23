@@ -7,4 +7,4 @@ returns json as $$
     where g.community_id = p_community_id
     and (g.slug = p_group_slug or g.slug_pretty = p_group_slug)
     and is_group_public(g);
-$$ language sql;
+$$ language sql stable;

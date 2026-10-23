@@ -14,4 +14,4 @@ returns text as $$
         coalesce(p_group_slug_pretty, p_group_slug),
         p_event_slug
     );
-$$ language sql immutable;
+$$ language sql stable;

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,8 @@ select plan(5);
 
 \set actorUserID '2c090000-0000-0000-0000-000000000009'
 \set communityID '2c090000-0000-0000-0000-000000000001'
+\set deletedEventID '2c090000-0000-0000-0000-00000000000b'
+\set deletedReferenceEventCategoryID '2c090000-0000-0000-0000-00000000000a'
 \set eventID '2c090000-0000-0000-0000-000000000002'
 \set foreignEventCategoryID '2c090000-0000-0000-0000-000000000006'
 \set groupCategoryID '2c090000-0000-0000-0000-000000000003'
@@ -25,28 +27,49 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories, groups and events
+-- Community owning the taxonomy under test
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Other community owning the foreign event category
+select fx_community(:'otherCommunityID');
+
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'delete-event-category-audit-actor'));
+
+-- Event category referenced only by a deleted event
+select fx_event_category(:'deletedReferenceEventCategoryID', :'communityID');
+
+-- Event category owned by the other community
+select fx_event_category(:'foreignEventCategoryID', :'otherCommunityID');
+
+-- Event category referenced by a live event
 select fx_event_category(:'inUseEventCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-select fx_event(:'eventID', :'groupID', :'inUseEventCategoryID');
 
 -- Unused event category deleted by the success scenario
 select fx_event_category(:'unusedEventCategoryID', :'communityID', jsonb_build_object('name', 'Webinar'));
 
--- Other community with its own event category
-select fx_community(:'otherCommunityID');
-select fx_event_category(:'foreignEventCategoryID', :'otherCommunityID');
+-- Group category required by the group
+select fx_group_category(:'groupCategoryID', :'communityID');
 
--- Actor recorded in the audit row
-select fx_user(:'actorUserID', jsonb_build_object('username', 'delete-event-category-audit-actor'));
+-- Group hosting the referencing events
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Deleted event that still references its category
+select fx_event(
+    :'deletedEventID',
+    :'groupID',
+    :'deletedReferenceEventCategoryID',
+    jsonb_build_object('deleted', true, 'published', false)
+);
+
+-- Live event referencing the in-use category
+select fx_event(:'eventID', :'groupID', :'inUseEventCategoryID');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should block deleting category that is still referenced by events
+-- Should block deleting event category referenced by events
 select throws_ok(
     format(
         $$ select delete_event_category(
@@ -62,7 +85,23 @@ select throws_ok(
     'Should block deleting event category referenced by events'
 );
 
--- Should delete event category with no event references
+-- Should block deleting event category referenced only by deleted events
+select throws_ok(
+    format(
+        $$ select delete_event_category(
+        null::uuid,
+        %L::uuid,
+        %L::uuid
+    ) $$,
+        :'communityID',
+        :'deletedReferenceEventCategoryID'
+    ),
+    'OCG01',
+    'cannot delete event category in use by events',
+    'Should block deleting event category referenced only by deleted events'
+);
+
+-- Should delete an unused event category
 select lives_ok(
     format(
         $$ select delete_event_category(
@@ -121,7 +160,7 @@ select results_eq(
     'Should create the expected audit row'
 );
 
--- Should fail when target category belongs to another community
+-- Should fail when deleting an event category from another community
 select throws_ok(
     format(
         $$ select delete_event_category(

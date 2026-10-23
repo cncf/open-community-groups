@@ -1,134 +1,78 @@
 -- Returns paginated audit log rows for the group dashboard.
 create or replace function list_group_audit_logs(p_group_id uuid, p_filters jsonb)
 returns json as $$
-    with
-        -- Parse the supported audit log filters
-        filters as (
-            select
-                nullif(p_filters->>'action', '') as action_value,
-                nullif(p_filters->>'actor', '') as actor_value,
-                f.date_from as date_from_value,
-                f.date_to as date_to_value,
-                coalesce(f.limit_value, 50) as limit_value,
-                coalesce(f.offset_value, 0) as offset_value,
-                case
-                    when f.sort in ('created-asc', 'created-desc') then f.sort
-                    else 'created-desc'
-                end as sort_value
-            from parse_search_filters(p_filters) f
-        ),
-        -- Filter rows before pagination
-        filtered_logs as (
-            select al.*
-            from audit_log al
-            cross join filters f
-            where al.group_id = p_group_id
-            and al.action = any(array[
-                'cfs_submission_updated',
-                'event_added',
-                'event_application_fee_adjustment_recovery_completed',
-                'event_attendee_attendance_canceled',
-                'event_attendee_checked_in',
-                'event_attendee_invitation_accepted',
-                'event_attendee_invitation_canceled',
-                'event_attendee_invitation_rejected',
-                'event_attendee_invitation_sent',
-                'event_canceled',
-                'event_cohost_approved',
-                'event_cohost_canceled',
-                'event_cohost_closed',
-                'event_cohost_invited',
-                'event_cohost_rejected',
-                'event_cohost_removed',
-                'event_credit_note_recovery_completed',
-                'event_custom_notification_sent',
-                'event_deleted',
-                'event_invitation_request_accepted',
-                'event_invitation_request_rejected',
-                'event_published',
-                'event_purchase_external_payment_completed',
-                'event_refund_approved',
-                'event_refund_recovery_completed',
-                'event_refund_rejected',
-                'event_refund_requested',
-                'event_refunded',
-                'event_survey_added',
-                'event_survey_closed',
-                'event_survey_deleted',
-                'event_survey_marked_ready',
-                'event_survey_moved_to_draft',
-                'event_survey_reopened',
-                'event_survey_updated',
-                'event_unpublished',
-                'event_updated',
-                'group_custom_notification_sent',
-                'group_external_payments_updated',
-                'group_payment_recipient_updated',
-                'group_sponsor_added',
-                'group_sponsor_deleted',
-                'group_sponsor_updated',
-                'group_team_member_added',
-                'group_team_member_removed',
-                'group_team_member_role_updated',
-                'group_updated',
-                'inbox_conversation_closed',
-                'inbox_conversation_marked_as_spam',
-                'inbox_conversation_reopened',
-                'inbox_conversation_unmarked_as_spam',
-                'inbox_reply_sent'
-            ]::text[])
-            and (f.action_value is null or al.action = f.action_value)
-            and (
-                f.actor_value is null
-                or coalesce(al.actor_username, '') ilike (
-                    '%' || escape_ilike_pattern(f.actor_value) || '%'
-                ) escape '\'
-            )
-            and (
-                f.date_from_value is null
-                or al.created_at >= (f.date_from_value::timestamp at time zone 'UTC')
-            )
-            and (
-                f.date_to_value is null
-                or al.created_at < (((f.date_to_value + 1)::timestamp) at time zone 'UTC')
-            )
-        ),
-        -- Count total rows before pagination
-        totals as (
-            select count(*)::int as total
-            from filtered_logs
-        ),
-        -- Select the paginated audit log rows
-        logs as (
-            select
-                fl.action,
-                fl.audit_log_id,
-                epoch_seconds(fl.created_at) as created_at,
-                fl.details,
-                fl.resource_id,
-                fl.resource_type,
-
-                fl.actor_username,
-                audit_log_resource_name(fl.resource_type, fl.resource_id) as resource_name
-            from filtered_logs fl
-            cross join filters f
-            order by
-                case when f.sort_value = 'created-asc' then fl.created_at end asc,
-                case when f.sort_value = 'created-asc' then fl.audit_log_id end asc,
-                case when f.sort_value <> 'created-asc' then fl.created_at end desc,
-                case when f.sort_value <> 'created-asc' then fl.audit_log_id end desc
-            offset (select offset_value from filters)
-            limit (select limit_value from filters)
-        ),
-        -- Render rows as JSON
-        logs_json as (
-            select coalesce(json_agg(row_to_json(logs)), '[]'::json) as logs
-            from logs
-        )
-    -- Build final payload
-    select json_build_object(
-        'logs', logs_json.logs,
-        'total', totals.total
-    )
-    from logs_json, totals;
-$$ language sql;
+    select search_audit_logs(
+        null,
+        p_group_id,
+        null,
+        array[
+            'admission_offer_expired',
+            'badge_added',
+            'badge_artwork_added',
+            'badge_artwork_deleted',
+            'badge_awarded',
+            'badge_deleted',
+            'badge_revoked',
+            'badge_revoked_account_deleted',
+            'badge_revoked_by_recipient',
+            'badge_updated',
+            'cfs_submission_updated',
+            'event_added',
+            'event_admission_offer_canceled',
+            'event_admission_offer_declined',
+            'event_admission_offer_reissued',
+            'event_application_fee_adjustment_recovery_completed',
+            'event_attendee_attendance_canceled',
+            'event_attendee_checked_in',
+            'event_attendee_invitation_accepted',
+            'event_attendee_invitation_canceled',
+            'event_attendee_invitation_rejected',
+            'event_attendee_invitation_sent',
+            'event_canceled',
+            'event_cohost_approved',
+            'event_cohost_canceled',
+            'event_cohost_closed',
+            'event_cohost_invited',
+            'event_cohost_rejected',
+            'event_cohost_removed',
+            'event_credit_note_recovery_completed',
+            'event_custom_notification_sent',
+            'event_deleted',
+            'event_invitation_request_accepted',
+            'event_invitation_request_rejected',
+            'event_published',
+            'event_purchase_external_payment_completed',
+            'event_refund_approved',
+            'event_refund_recovery_completed',
+            'event_refund_rejected',
+            'event_refund_requested',
+            'event_refunded',
+            'event_survey_added',
+            'event_survey_closed',
+            'event_survey_deleted',
+            'event_survey_marked_ready',
+            'event_survey_moved_to_draft',
+            'event_survey_reopened',
+            'event_survey_updated',
+            'event_ticket_waitlist_offer_created',
+            'event_unpublished',
+            'event_updated',
+            'group_custom_notification_sent',
+            'group_external_payments_updated',
+            'group_payment_recipient_updated',
+            'group_sponsor_added',
+            'group_sponsor_deleted',
+            'group_sponsor_updated',
+            'group_team_member_added',
+            'group_team_member_removed',
+            'group_team_member_role_updated',
+            'group_updated',
+            'inbox_conversation_closed',
+            'inbox_conversation_marked_as_spam',
+            'inbox_conversation_reopened',
+            'inbox_conversation_unmarked_as_spam',
+            'inbox_reply_sent'
+        ]::text[],
+        p_filters
+    );
+$$ language sql stable;

@@ -6,7 +6,7 @@
 -- ============================================================================
 
 begin;
-select plan(27);
+select plan(35);
 
 -- ============================================================================
 -- VARIABLES
@@ -360,6 +360,67 @@ select is(
     'Should keep event meeting_in_sync=false when meeting_requested changes to false'
 );
 
+-- Should execute a repeated update with the event meeting still disabled
+select lives_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event5ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated description again',
+            'ends_at', '2030-03-01T12:00:00',
+            'kind_id', 'virtual',
+            'meeting_requested', false,
+            'name', 'Event With Pending Sync',
+            'starts_at', '2030-03-01T10:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
+    'Should execute a repeated update with the event meeting still disabled'
+);
+
+-- Should keep a queued event meeting deletion when the event is saved again with the meeting disabled
+select is(
+    (select meeting_in_sync from event where event_id = :'event5ID'::uuid),
+    false,
+    'Should keep a queued event meeting deletion when the event is saved again with the meeting disabled'
+);
+
+-- Should execute an update that resubmits the projected join URL of the disabled event meeting
+select lives_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event5ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated description with the projected join URL',
+            'ends_at', '2030-03-01T12:00:00',
+            'kind_id', 'virtual',
+            'meeting_join_url', (
+                select get_event_full(
+                    :'community1ID'::uuid,
+                    :'group1ID'::uuid,
+                    :'event5ID'::uuid
+                )::jsonb->>'meeting_join_url'
+            ),
+            'meeting_requested', false,
+            'name', 'Event With Pending Sync',
+            'starts_at', '2030-03-01T10:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
+    'Should execute an update that resubmits the projected join URL of the disabled event meeting'
+);
+
+-- Should not store the provider join URL as the manual link of the disabled event meeting
+select is(
+    (select meeting_join_url from event where event_id = :'event5ID'::uuid),
+    null::text,
+    'Should not store the provider join URL as the manual link of the disabled event meeting'
+);
+
 -- Should execute update when automatic event meeting recording override is provided
 select lives_ok(
     format(
@@ -515,6 +576,92 @@ select is(
     (select meeting_in_sync from session where session_id = :'session1ID'::uuid),
     false,
     'Should keep session meeting_in_sync=false when meeting_requested changes to false'
+);
+
+-- Should execute a repeated update with the session meeting still disabled
+select lives_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event6ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated event description again',
+            'ends_at', '2030-04-01T17:00:00',
+            'kind_id', 'virtual',
+            'name', 'Event With Session Pending Sync',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'description', 'Updated session description again',
+                    'ends_at', '2030-04-01T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_requested', false,
+                    'name', 'Session With Pending Sync',
+                    'session_id', :'session1ID',
+                    'starts_at', '2030-04-01T10:00:00'
+                )
+            ),
+            'starts_at', '2030-04-01T09:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
+    'Should execute a repeated update with the session meeting still disabled'
+);
+
+-- Should keep a queued session meeting deletion when the event is saved again with the meeting disabled
+select is(
+    (select meeting_in_sync from session where session_id = :'session1ID'::uuid),
+    false,
+    'Should keep a queued session meeting deletion when the event is saved again with the meeting disabled'
+);
+
+-- Should execute an update that resubmits the projected join URL of the disabled session meeting
+select lives_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event6ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Updated event description with the projected join URL',
+            'ends_at', '2030-04-01T17:00:00',
+            'kind_id', 'virtual',
+            'name', 'Event With Session Pending Sync',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'description', 'Updated session description with the projected join URL',
+                    'ends_at', '2030-04-01T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_join_url', (
+                        select session_json->>'meeting_join_url'
+                        from jsonb_each(
+                            get_event_full(
+                                :'community1ID'::uuid,
+                                :'group1ID'::uuid,
+                                :'event6ID'::uuid
+                            )::jsonb->'sessions'
+                        ) as day(day, sessions)
+                        cross join lateral jsonb_array_elements(sessions) as session_json
+                        where session_json->>'session_id' = :'session1ID'
+                    ),
+                    'meeting_requested', false,
+                    'name', 'Session With Pending Sync',
+                    'session_id', :'session1ID',
+                    'starts_at', '2030-04-01T10:00:00'
+                )
+            ),
+            'starts_at', '2030-04-01T09:00:00',
+            'timezone', 'America/New_York'
+        )
+    ),
+    'Should execute an update that resubmits the projected join URL of the disabled session meeting'
+);
+
+-- Should not store the provider join URL as the manual link of the disabled session meeting
+select is(
+    (select meeting_join_url from session where session_id = :'session1ID'::uuid),
+    null::text,
+    'Should not store the provider join URL as the manual link of the disabled session meeting'
 );
 
 -- Should execute update when automatic session meeting recording override is provided

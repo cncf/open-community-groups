@@ -7,46 +7,35 @@ returns uuid[] as $$
 declare
     v_admission_offer record;
     v_canceled_user_ids uuid[] := array[]::uuid[];
-    v_community_id uuid;
-    v_event_name text;
-    v_event_purchase record;
-    v_group_id uuid;
-    v_group_name text;
+    v_event event;
+    v_group "group";
+    v_purchase event_purchase;
     v_theme jsonb;
     v_user_id uuid;
 begin
     -- Lock the event before every tier and enrollment row closed below
-    select
-        g.community_id,
-        e.name,
-        e.group_id,
-        g.name
-    into
-        v_community_id,
-        v_event_name,
-        v_group_id,
-        v_group_name
+    select e.*
+    into v_event
     from event e
-    join "group" g using (group_id)
     where e.event_id = p_event_id
     for update of e;
 
+    -- Reject missing events
     if not found then
         raise exception 'event not found';
     end if;
 
+    -- Load the owning group shown in cancellation notifications
+    select g.*
+    into v_group
+    from "group" g
+    where g.group_id = v_event.group_id;
+
     -- Load shared presentation data for transactional cancellation notifications
-    select s.theme
-    into v_theme
-    from site s
-    limit 1;
+    v_theme := site_theme();
 
     -- Lock ticket tiers before event-user and enrollment row locks
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = p_event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
+    perform lock_event_ticket_types(p_event_id);
 
     -- Acquire every affected event-user lock in stable order
     for v_user_id in
@@ -93,7 +82,8 @@ begin
         ) affected_user
         order by affected_user.user_id
     loop
-        perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(v_user_id::text));
+        -- Serialize the enrollment of each affected user
+        perform lock_event_user(p_event_id, v_user_id);
     end loop;
 
     -- Lock active enrollment rows in stable identifier and FIFO order
@@ -139,109 +129,95 @@ begin
     for update of ew;
 
     -- Expire pending checkouts and release their discount and attendee holds
-    for v_event_purchase in
-        update event_purchase
-        set
-            hold_expires_at = least(hold_expires_at, current_timestamp),
-            status = 'expired',
-            updated_at = current_timestamp
-        where event_id = p_event_id
-        and status = 'pending'
-        returning
-            charge_model,
-            event_discount_code_id,
-            event_purchase_id,
-            user_id
+    for v_purchase in
+        select ep.*
+        from event_purchase ep
+        where ep.event_id = p_event_id
+        and ep.status = 'pending'
+        order by ep.event_purchase_id
     loop
-        -- Release any reserved discount redemption after expiring the hold
-        if v_event_purchase.event_discount_code_id is not null then
-            perform release_event_discount_code_availability(
-                v_event_purchase.event_discount_code_id
-            );
+        -- Expire the hold, skipping holds that are no longer pending
+        if not expire_event_checkout_hold(v_purchase.event_purchase_id) then
+            continue;
         end if;
 
-        perform release_event_checkout_attendee_hold(
-            p_event_id,
-            v_event_purchase.user_id
-        );
-
         -- Tell external payers not to send money after the event is canceled
-        if v_event_purchase.charge_model = 'external' then
+        if v_purchase.charge_model = 'external' then
             perform enqueue_notification(
                 'event-external-payment-expired',
-                jsonb_strip_nulls(jsonb_build_object(
-                    'dashboard_url', '/dashboard/user?tab=events',
-                    'do_not_pay', true,
-                    'event_id', p_event_id,
-                    'event_name', v_event_name,
-                    'event_purchase_id', v_event_purchase.event_purchase_id,
-                    'group_name', v_group_name,
-                    'theme', v_theme
-                )),
+                external_payment_notification_payload(v_event, v_group, v_purchase, v_theme)
+                    || jsonb_build_object('do_not_pay', true),
                 '[]'::jsonb,
-                array[v_event_purchase.user_id]
+                array[v_purchase.user_id]
             );
         end if;
     end loop;
 
-    -- Return abandoned checkouts to pending before canceling every active offer
-    update admission_offer
-    set
-        status = 'pending',
-        updated_at = current_timestamp
-    where event_id = p_event_id
-    and status = 'checkout_pending';
-
+    -- Cancel each active offer in stable identifier order
     for v_admission_offer in
         select
             ao.admission_offer_id,
+            ao.event_ticket_type_id,
+            ao.source,
             coalesce(ao.ticket_title, ett.title) as ticket_title,
             ao.user_id
         from admission_offer ao
         left join event_ticket_type ett
             on ett.event_ticket_type_id = ao.event_ticket_type_id
         where ao.event_id = p_event_id
-        and ao.status = 'pending'
+        and admission_offer_is_active(ao.status)
         order by ao.admission_offer_id
     loop
+        -- Cancel the offer only while it is still active
         update admission_offer
         set
             status = 'canceled',
             updated_at = current_timestamp
         where admission_offer_id = v_admission_offer.admission_offer_id
-        and status = 'pending';
+        and admission_offer_is_active(status);
 
+        -- Skip offers that are no longer active
         if not found then
             continue;
         end if;
 
+        -- Track the recipient returned to the caller
         v_canceled_user_ids := array_append(
             v_canceled_user_ids,
             v_admission_offer.user_id
         );
 
+        -- Track each canceled offer like an organizer cancellation
         perform insert_audit_log(
-            'admission_offer_canceled',
+            case
+                -- Record organizer invitations as canceled invitations
+                when v_admission_offer.source = 'organizer_invitation'
+                    then 'event_attendee_invitation_canceled'
+                -- Record every other offer as a canceled admission offer
+                else 'event_admission_offer_canceled'
+            end,
             p_actor_user_id,
-            'admission_offer',
-            v_admission_offer.admission_offer_id,
-            v_community_id,
-            v_group_id,
-            p_event_id,
-            jsonb_build_object(
+            'user',
+            v_admission_offer.user_id,
+            p_group_id => v_event.group_id,
+            p_event_id => p_event_id,
+            p_details => jsonb_build_object(
                 'admission_offer_id', v_admission_offer.admission_offer_id,
+                'event_id', p_event_id,
+                'event_ticket_type_id', v_admission_offer.event_ticket_type_id,
                 'user_id', v_admission_offer.user_id
             )
         );
 
+        -- Notify the recipient that the offer was canceled
         perform enqueue_notification(
             'event-admission-offer-canceled',
             jsonb_strip_nulls(jsonb_build_object(
                 'admission_offer_id', v_admission_offer.admission_offer_id,
                 'dashboard_url', '/dashboard/user?tab=events',
                 'event_id', p_event_id,
-                'event_name', v_event_name,
-                'group_name', v_group_name,
+                'event_name', v_event.name,
+                'group_name', v_group.name,
                 'theme', v_theme,
                 'ticket_title', v_admission_offer.ticket_title
             )),

@@ -6,28 +6,27 @@ create or replace function delete_region(
 )
 returns void as $$
 declare
-    v_groups_count bigint;
     v_name text;
 begin
-    -- Ensure the region exists in the selected community, snapshotting its
-    -- name so the audit row remains readable after deletion
+    -- Lock the region and snapshot its name for the audit row
     select r.name
     into v_name
     from region r
     where r.community_id = p_community_id
-      and r.region_id = p_region_id;
+      and r.region_id = p_region_id
+    for update of r;
 
+    -- Reject regions outside the selected community
     if not found then
         raise exception 'region not found' using errcode = 'OCG01';
     end if;
 
-    -- Block deletion when groups still reference this region
-    select count(*)
-    into v_groups_count
-    from "group" g
-    where g.region_id = p_region_id;
-
-    if v_groups_count > 0 then
+    -- Reject regions still used by any groups, including deleted ones
+    if exists (
+        select 1
+        from "group" g
+        where g.region_id = p_region_id
+    ) then
         raise exception 'cannot delete region in use by groups' using errcode = 'OCG01';
     end if;
 

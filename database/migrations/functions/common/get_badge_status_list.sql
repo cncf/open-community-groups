@@ -14,4 +14,4 @@ returns json as $$
     )
     from badge_status_list bsl
     where bsl.badge_status_list_id = p_badge_status_list_id;
-$$ language sql;
+$$ language sql stable;

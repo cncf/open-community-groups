@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(59);
+select plan(61);
 
 -- ============================================================================
 -- VARIABLES
@@ -27,6 +27,11 @@ select plan(59);
 \set communityID '79100000-0000-0000-0000-000000000001'
 \set completedPurchaseID '79100000-0000-0000-0000-000000000019'
 \set completedUserID '79100000-0000-0000-0000-000000000024'
+\set directRecoveryOfferID '79100000-0000-0000-0000-0000000000aa'
+\set directRecoveryPriceWindowID '79100000-0000-0000-0000-0000000000ad'
+\set directRecoveryPurchaseID '79100000-0000-0000-0000-0000000000ab'
+\set directRecoveryTicketTypeID '79100000-0000-0000-0000-0000000000ae'
+\set directRecoveryUserID '79100000-0000-0000-0000-0000000000ac'
 \set discountUserID '79100000-0000-0000-0000-000000000028'
 \set endedWindowDiscountOfferID '79100000-0000-0000-0000-000000000077'
 \set endedWindowDiscountUserID '79100000-0000-0000-0000-000000000078'
@@ -138,6 +143,7 @@ select fx_user(:'closedWindowMatchingUserID');
 select fx_user(:'closedWindowMismatchedUserID');
 select fx_user(:'closedWindowNewUserID');
 select fx_user(:'completedUserID');
+select fx_user(:'directRecoveryUserID');
 select fx_user(:'discountUserID');
 select fx_user(:'endedWindowDiscountUserID');
 select fx_user(:'endedWindowUserID');
@@ -375,6 +381,13 @@ select fx_event_ticket_type(:'questionsTicketTypeID', :'questionsEventID', jsonb
     'title', 'General admission'
 ));
 
+-- Ticket type dedicated to the cross-path refund recovery scenario
+select fx_event_ticket_type(:'directRecoveryTicketTypeID', :'mainEventID', jsonb_build_object(
+    'order', 4,
+    'seats_total', 10,
+    'title', 'Recovery admission'
+));
+
 -- Ticket type sold by the manual-tax event
 select fx_event_ticket_type(:'manualTaxTicketTypeID', :'manualTaxEventID', jsonb_build_object(
     'seats_total', 10,
@@ -400,6 +413,9 @@ select fx_event_ticket_price_window(:'soldOutPriceWindowID', :'soldOutTicketType
 select fx_event_ticket_price_window(:'inactivePriceWindowID', :'inactiveTicketTypeID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'offerPrivatePriceWindowID', :'offerPrivateTicketTypeID', jsonb_build_object('amount_minor', 3000));
 select fx_event_ticket_price_window(:'questionsPriceWindowID', :'questionsTicketTypeID', jsonb_build_object('amount_minor', 2500));
+
+-- Current paid price window for the cross-path refund recovery scenario
+select fx_event_ticket_price_window(:'directRecoveryPriceWindowID', :'directRecoveryTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Current paid price window for the manual-tax event
 select fx_event_ticket_price_window(:'manualTaxPriceWindowID', :'manualTaxTicketTypeID', jsonb_build_object('amount_minor', 2500));
@@ -506,6 +522,149 @@ insert into event_discount_code (
     5,
     true,
     25
+);
+
+-- Owned offers for paid, discounted-to-zero, and intrinsic-free claims
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values
+    (
+        :'ineffectiveDiscountOfferID',
+        :'mainEventID',
+        :'ineffectiveDiscountTicketTypeID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        :'ineffectiveDiscountUserID'
+    ),
+    (
+        :'offerDiscountID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        :'offerDiscountUserID'
+    ),
+    (
+        :'offerFreeID',
+        :'freeEventID',
+        :'freeTicketTypeID',
+        now() + interval '1 day',
+        'organizer_invitation',
+        'pending',
+        :'offerFreeUserID'
+    ),
+    (
+        :'offerPaidID',
+        :'mainEventID',
+        :'offerPrivateTicketTypeID',
+        now() + interval '1 day',
+        'organizer_invitation',
+        'pending',
+        :'offerPaidUserID'
+    );
+
+-- Pending offers that already have an issue-time or bounced-back price snapshot
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values
+    (
+        :'endedWindowDiscountOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        :'priceUnavailableEventID',
+        :'priceUnavailableTicketTypeID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        'Price unavailable admission',
+        :'endedWindowDiscountUserID'
+    ),
+    (
+        :'endedWindowOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        :'priceUnavailableEventID',
+        :'priceUnavailableTicketTypeID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        'Price unavailable admission',
+        :'endedWindowUserID'
+    ),
+    (
+        :'endedWindowWaitlistOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        :'priceUnavailableEventID',
+        :'priceUnavailableTicketTypeID',
+        now() + interval '1 day',
+        'waitlist',
+        'pending',
+        'Price unavailable admission',
+        :'endedWindowWaitlistUserID'
+    ),
+    (
+        :'liveSnapshotOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        :'mainEventID',
+        :'ticketTypeAID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        'General admission',
+        :'liveSnapshotUserID'
+    );
+
+-- Offer issued after the user's direct purchase was refunded
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'directRecoveryOfferID',
+    :'mainEventID',
+    :'directRecoveryTicketTypeID',
+    now() + interval '1 day',
+    'approval',
+    'pending',
+    :'directRecoveryUserID'
 );
 
 -- Existing attendee
@@ -835,6 +994,63 @@ from (values (
     user_id
 );
 
+-- Refunded direct purchase whose finalized refund later enters recovery
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+) values (
+    :'directRecoveryPurchaseID',
+    2500,
+    'USD',
+    0,
+    :'mainEventID',
+    :'directRecoveryTicketTypeID',
+    'refunded',
+    'Recovery admission',
+    :'directRecoveryUserID',
+
+    'direct-charge',
+    'acct_prepare',
+    0,
+    'stripe',
+    'ch_prepare_direct_recovery',
+    'cs_prepare_direct_recovery',
+    'acct_prepare',
+    'pi_prepare_direct_recovery',
+    2500,
+    '{"connected_account_id":"acct_prepare","display_name":"Prepare Group","provider":"stripe"}'::jsonb,
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+);
+
 -- FIFO queue that must take released capacity before direct checkout
 insert into event_waitlist (
     created_at,
@@ -847,130 +1063,6 @@ insert into event_waitlist (
     :'queueTicketTypeID',
     :'queueUserID'
 );
-
--- Owned offers for paid, discounted-to-zero, and intrinsic-free claims
-insert into admission_offer (
-    admission_offer_id,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    user_id
-) values
-    (
-        :'ineffectiveDiscountOfferID',
-        :'mainEventID',
-        :'ineffectiveDiscountTicketTypeID',
-        now() + interval '1 day',
-        'approval',
-        'pending',
-        :'ineffectiveDiscountUserID'
-    ),
-    (
-        :'offerDiscountID',
-        :'mainEventID',
-        :'ticketTypeAID',
-        now() + interval '1 day',
-        'approval',
-        'pending',
-        :'offerDiscountUserID'
-    ),
-    (
-        :'offerFreeID',
-        :'freeEventID',
-        :'freeTicketTypeID',
-        now() + interval '1 day',
-        'organizer_invitation',
-        'pending',
-        :'offerFreeUserID'
-    ),
-    (
-        :'offerPaidID',
-        :'mainEventID',
-        :'offerPrivateTicketTypeID',
-        now() + interval '1 day',
-        'organizer_invitation',
-        'pending',
-        :'offerPaidUserID'
-    );
-
--- Pending offers that already have an issue-time or bounced-back price snapshot
-insert into admission_offer (
-    admission_offer_id,
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    ticket_title,
-    user_id
-) values
-    (
-        :'endedWindowDiscountOfferID',
-        2500,
-        'USD',
-        0,
-        null,
-        null,
-        :'priceUnavailableEventID',
-        :'priceUnavailableTicketTypeID',
-        now() + interval '1 day',
-        'approval',
-        'pending',
-        'Price unavailable admission',
-        :'endedWindowDiscountUserID'
-    ),
-    (
-        :'endedWindowOfferID',
-        2500,
-        'USD',
-        0,
-        null,
-        null,
-        :'priceUnavailableEventID',
-        :'priceUnavailableTicketTypeID',
-        now() + interval '1 day',
-        'approval',
-        'pending',
-        'Price unavailable admission',
-        :'endedWindowUserID'
-    ),
-    (
-        :'endedWindowWaitlistOfferID',
-        2500,
-        'USD',
-        0,
-        null,
-        null,
-        :'priceUnavailableEventID',
-        :'priceUnavailableTicketTypeID',
-        now() + interval '1 day',
-        'waitlist',
-        'pending',
-        'Price unavailable admission',
-        :'endedWindowWaitlistUserID'
-    ),
-    (
-        :'liveSnapshotOfferID',
-        2500,
-        'USD',
-        0,
-        null,
-        null,
-        :'mainEventID',
-        :'ticketTypeAID',
-        now() + interval '1 day',
-        'approval',
-        'pending',
-        'General admission',
-        :'liveSnapshotUserID'
-    );
 
 -- Account-scoped tax location reused by the cache-reuse scenario
 insert into payment_provider_tax_location (
@@ -1033,6 +1125,13 @@ values (
     'txcd_50013001',
     'General admission'
 );
+
+-- Move the refunded direct purchase into recovery after the offer was issued,
+-- as a failed finalized refund does; the purchase and offer triggers reject
+-- seeding a seat-holding direct purchase beside an active offer
+update event_purchase
+set status = 'refund-recovery-pending'
+where event_purchase_id = :'directRecoveryPurchaseID';
 
 -- ============================================================================
 -- TESTS
@@ -1515,6 +1614,51 @@ select is(
     ),
     '{"offer_status":"pending","purchase_status":"expired","waitlist_count":0}'::jsonb,
     'Should persist reconciliation before rejecting direct checkout'
+);
+
+-- Should block offer checkout while a direct purchase awaits refund recovery
+select is(
+    (
+        select jsonb_build_object(
+            'event_purchase_id', summary->>'event_purchase_id',
+            'status', summary->>'status'
+        )
+        from prepare_event_checkout_purchase(
+            :'communityID'::uuid,
+            :'mainEventID'::uuid,
+            :'directRecoveryTicketTypeID'::uuid,
+            :'directRecoveryUserID'::uuid,
+            null,
+            'stripe',
+            null,
+            :'directRecoveryOfferID'::uuid
+        ) as summary
+    ),
+    jsonb_build_object(
+        'event_purchase_id', :'directRecoveryPurchaseID'::text,
+        'status', 'refund-recovery-pending'
+    ),
+    'Should block offer checkout while a direct purchase awaits refund recovery'
+);
+
+-- Should not create an offer purchase while a direct purchase awaits refund recovery
+select results_eq(
+    format(
+        $$
+        select ep.admission_offer_id, ep.event_purchase_id, ep.status, ao.status
+        from event_purchase ep
+        cross join admission_offer ao
+        where ep.user_id = %L::uuid
+        and ao.admission_offer_id = %L::uuid
+        $$,
+        :'directRecoveryUserID',
+        :'directRecoveryOfferID'
+    ),
+    format(
+        $$ values (null::uuid, %L::uuid, 'refund-recovery-pending'::text, 'pending'::text) $$,
+        :'directRecoveryPurchaseID'
+    ),
+    'Should not create an offer purchase while a direct purchase awaits refund recovery'
 );
 
 -- Should reject claiming an offer owned by another user

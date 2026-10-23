@@ -9,12 +9,7 @@ returns table (option_id uuid, question_id uuid) as $$
     select
         selected.value::uuid as option_id,
         (answer.value->>'question_id')::uuid as question_id
-    from jsonb_array_elements(
-        case
-            when jsonb_typeof(p_answers->'answers') = 'array' then p_answers->'answers'
-            else '[]'::jsonb
-        end
-    ) as answer(value)
+    from questionnaire_answer_entries(p_answers) as answer(value)
     cross join lateral (
         select answer.value->>'value' as value
         where jsonb_typeof(answer.value->'value') = 'string'
@@ -32,4 +27,4 @@ returns table (option_id uuid, question_id uuid) as $$
     ) selected
     where pg_input_is_valid(answer.value->>'question_id', 'uuid')
     and pg_input_is_valid(selected.value, 'uuid');
-$$ language sql immutable;
+$$ language sql stable;

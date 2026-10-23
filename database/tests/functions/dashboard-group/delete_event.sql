@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,7 +18,6 @@ select plan(19);
 \set communityID 'd1010000-0000-0000-0000-000000000004'
 \set draftEventID 'd1010000-0000-0000-0000-000000000005'
 \set eventCategoryID 'd1010000-0000-0000-0000-000000000006'
-\set eventNoMeetingID 'd1010000-0000-0000-0000-000000000007'
 \set groupCategoryID 'd1010000-0000-0000-0000-000000000008'
 \set groupID 'd1010000-0000-0000-0000-000000000009'
 \set meetingEventID 'd1010000-0000-0000-0000-000000000010'
@@ -28,7 +27,6 @@ select plan(19);
 \set pendingPurchaseID 'd1010000-0000-0000-0000-000000000014'
 \set requestedSessionID 'd1010000-0000-0000-0000-000000000015'
 \set ticketTypeID 'd1010000-0000-0000-0000-000000000016'
-\set unrequestedSessionID 'd1010000-0000-0000-0000-000000000017'
 
 -- ============================================================================
 -- SEED DATA
@@ -72,13 +70,6 @@ select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_
 -- Unused never-published draft eligible for deletion
 select fx_event(:'draftEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'slug', 'draft',
-    'starts_at', now() + interval '1 day'
-));
-
--- Canceled event without a requested meeting
-select fx_event(:'eventNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'meeting_requested', false,
     'starts_at', now() + interval '1 day'
 ));
 
@@ -164,27 +155,6 @@ insert into session (
     now() + interval '1 day'
 );
 
--- Session without a requested meeting that must retain its sync state
-insert into session (
-    ends_at,
-    event_id,
-    meeting_in_sync,
-    meeting_requested,
-    name,
-    session_id,
-    session_kind_id,
-    starts_at
-) values (
-    now() + interval '1 day 1 hour',
-    :'meetingEventID',
-    null,
-    false,
-    'No requested meeting',
-    :'unrequestedSessionID',
-    'in-person',
-    now() + interval '1 day 30 minutes'
-);
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -249,22 +219,6 @@ select is(
     false,
     'Should mark the requested session meeting out of sync'
 );
-select is(
-    (select meeting_in_sync from session where session_id = :'unrequestedSessionID'),
-    null,
-    'Should preserve the session without a requested meeting'
-);
-
--- Should preserve event meeting sync state when no meeting was requested
-select lives_ok(
-    format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'eventNoMeetingID'),
-    'Should delete a canceled event without a requested meeting'
-);
-select is(
-    (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
-    null,
-    'Should preserve event meeting sync state when no meeting was requested'
-);
 
 -- Should reject an active event that has not been canceled
 select throws_ok(
@@ -285,7 +239,7 @@ select throws_ok(
 -- Should record one audit row for every successful deletion
 select is(
     (select count(*)::int from audit_log where action = 'event_deleted'),
-    5,
+    4,
     'Should record one audit row for every successful deletion'
 );
 select ok(

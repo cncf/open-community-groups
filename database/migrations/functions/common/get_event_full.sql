@@ -46,6 +46,7 @@ returns json as $$
             'external_payment_instructions', e.external_payment_instructions,
             'external_payment_url', e.external_payment_url,
             'external_payment_window_hours', e.external_payment_window_hours,
+            -- Report whether another live event shares the series
             'has_related_events', exists (
                 select 1
                 from event related_event
@@ -68,12 +69,32 @@ returns json as $$
             'meeting_hosts', e.meeting_hosts,
             'meeting_in_sync', e.meeting_in_sync,
             'meeting_join_instructions', e.meeting_join_instructions,
-            'meeting_join_url', coalesce(m_event.join_url, e.meeting_join_url),
-            'meeting_password', m_event.password,
+            -- Show the provider link only while the automatic meeting is requested
+            'meeting_join_url', case
+                -- Use the provider link of a requested meeting
+                when e.meeting_requested
+                then m_event.join_url
+                -- Otherwise use the stored manual link
+                else e.meeting_join_url
+            end,
+            -- Show the provider password only alongside a link to the provider meeting
+            'meeting_password', case
+                -- Use the provider password of a requested meeting
+                when e.meeting_requested
+                then m_event.password
+                -- Keep the provider password of a manual link to the provider meeting
+                when e.meeting_join_url = m_event.join_url
+                then m_event.password
+                -- Otherwise hide the password of an unrelated or missing link
+                else null
+            end,
             'meeting_provider', e.meeting_provider_id,
+            -- Expose the recording publicly only once the organizer publishes it
             'meeting_recording_public_url', case
+                -- Use the recording link of a published recording
                 when e.meeting_recording_published
                 then e.meeting_recording_url
+                -- Keep unpublished recordings private
                 else null
             end,
             'meeting_recording_published', e.meeting_recording_published,
@@ -115,23 +136,10 @@ returns json as $$
             'group', get_group_summary(g.community_id, g.group_id),
             -- Include event hosts profiles
             'hosts', (
-                select coalesce(json_agg(json_strip_nulls(json_build_object(
-                    'user_id', u.user_id,
-                    'username', u.username,
-
-                    'bio', u.bio,
-                    'bluesky_url', u.bluesky_url,
-                    'company', u.company,
-                    'facebook_url', u.facebook_url,
-                    'github_url', u.github_url,
-                    'linkedin_url', u.linkedin_url,
-                    'name', u.name,
-                    'photo_url', u.photo_url,
-                    'provider', get_public_user_provider(u.provider),
-                    'title', u.title,
-                    'twitter_url', u.twitter_url,
-                    'website_url', u.website_url
-                )) order by u.name), '[]')
+                select coalesce(
+                    jsonb_agg(public_user_profile(u) order by u.name),
+                    '[]'::jsonb
+                )
                 from event_host eh
                 join "user" u using (user_id)
                 where eh.event_id = e.event_id
@@ -160,23 +168,13 @@ returns json as $$
             ),
             -- Include event organizers
             'organizers', (
-                select coalesce(json_agg(json_strip_nulls(json_build_object(
-                    'user_id', u.user_id,
-                    'username', u.username,
-
-                    'bio', u.bio,
-                    'bluesky_url', u.bluesky_url,
-                    'company', u.company,
-                    'facebook_url', u.facebook_url,
-                    'github_url', u.github_url,
-                    'linkedin_url', u.linkedin_url,
-                    'name', u.name,
-                    'photo_url', u.photo_url,
-                    'provider', get_public_user_provider(u.provider),
-                    'title', u.title,
-                    'twitter_url', u.twitter_url,
-                    'website_url', u.website_url
-                )) order by eo."order" nulls last, u.name nulls last, u.username, u.user_id), '[]')
+                select coalesce(
+                    jsonb_agg(
+                        public_user_profile(u)
+                        order by eo."order" nulls last, u.name nulls last, u.username, u.user_id
+                    ),
+                    '[]'::jsonb
+                )
                 from event_organizer eo
                 join "user" u using (user_id)
                 where eo.event_id = e.event_id
@@ -186,13 +184,17 @@ returns json as $$
             -- Include remaining capacity when event capacity is set
             'remaining_capacity',
                 case
+                    -- Leave remaining capacity unset for unlimited events
                     when e.capacity is null then null
+                    -- Otherwise subtract occupied seats without going negative
                     else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
                 end,
             -- Resolve the legal seller from the payment rail the event uses
             'seller_display_name',
                 case
+                    -- Use the external payments seller for externally paid events
                     when e.external_payment_url is not null then g.external_payments_seller_display_name
+                    -- Otherwise use the payment recipient seller
                     else g.payment_recipient->>'seller_display_name'
                 end,
             -- Include sessions grouped by local event day
@@ -217,12 +219,32 @@ returns json as $$
                             'meeting_hosts', s.meeting_hosts,
                             'meeting_in_sync', s.meeting_in_sync,
                             'meeting_join_instructions', s.meeting_join_instructions,
-                            'meeting_join_url', coalesce(m_session.join_url, s.meeting_join_url),
-                            'meeting_password', m_session.password,
+                            -- Show the provider link only while the automatic meeting is requested
+                            'meeting_join_url', case
+                                -- Use the provider link of a requested meeting
+                                when s.meeting_requested
+                                then m_session.join_url
+                                -- Otherwise use the stored manual link
+                                else s.meeting_join_url
+                            end,
+                            -- Show the provider password only alongside a link to the provider meeting
+                            'meeting_password', case
+                                -- Use the provider password of a requested meeting
+                                when s.meeting_requested
+                                then m_session.password
+                                -- Keep the provider password of a manual link to the provider meeting
+                                when s.meeting_join_url = m_session.join_url
+                                then m_session.password
+                                -- Otherwise hide the password of an unrelated or missing link
+                                else null
+                            end,
                             'meeting_provider', s.meeting_provider_id,
+                            -- Expose the recording publicly only once the organizer publishes it
                             'meeting_recording_public_url', case
+                                -- Use the recording link of a published recording
                                 when s.meeting_recording_published
                                 then s.meeting_recording_url
+                                -- Keep unpublished recordings private
                                 else null
                             end,
                             'meeting_recording_published', s.meeting_recording_published,
@@ -238,55 +260,30 @@ returns json as $$
                                 )
                             ),
                             'speakers', coalesce(
+                                -- Prefer the speakers assigned to the session
                                 (
-                                    select json_agg(json_strip_nulls(json_build_object(
-                                        'user_id', u.user_id,
-                                        'username', u.username,
-
-                                        'bio', u.bio,
-                                        'bluesky_url', u.bluesky_url,
-                                        'company', u.company,
-                                        'facebook_url', u.facebook_url,
-                                        'github_url', u.github_url,
-                                        'featured', ss.featured,
-                                        'linkedin_url', u.linkedin_url,
-                                        'name', u.name,
-                                        'photo_url', u.photo_url,
-                                        'provider', get_public_user_provider(u.provider),
-                                        'title', u.title,
-                                        'twitter_url', u.twitter_url,
-                                        'website_url', u.website_url
-                                    )) order by ss.featured desc, u.name)
+                                    select jsonb_agg(
+                                        public_user_profile(u) || jsonb_build_object('featured', ss.featured)
+                                        order by ss.featured desc, u.name
+                                    )
                                     from session_speaker ss
                                     join "user" u using (user_id)
                                     where ss.session_id = s.session_id
                                 ),
+                                -- Fall back to the speakers of the linked session proposal
                                 (
-                                    select json_agg(json_strip_nulls(json_build_object(
-                                        'user_id', u.user_id,
-                                        'username', u.username,
-
-                                        'bio', u.bio,
-                                        'bluesky_url', u.bluesky_url,
-                                        'company', u.company,
-                                        'facebook_url', u.facebook_url,
-                                        'github_url', u.github_url,
-                                        'featured', false,
-                                        'linkedin_url', u.linkedin_url,
-                                        'name', u.name,
-                                        'photo_url', u.photo_url,
-                                        'provider', get_public_user_provider(u.provider),
-                                        'title', u.title,
-                                        'twitter_url', u.twitter_url,
-                                        'website_url', u.website_url
-                                    )) order by
-                                        case when u.user_id = sp.user_id then 0 else 1 end,
-                                        u.name
+                                    select jsonb_agg(
+                                        public_user_profile(u) || jsonb_build_object('featured', false)
+                                        order by
+                                            -- List the proposal author before the co-speaker
+                                            case when u.user_id = sp.user_id then 0 else 1 end,
+                                            u.name
                                     )
                                     from "user" u
                                     where u.user_id in (sp.user_id, sp.co_speaker_user_id)
                                 ),
-                                '[]'
+                                -- Default to no speakers
+                                '[]'::jsonb
                             )
                         )) as session_json
                     from session s
@@ -308,24 +305,13 @@ returns json as $$
             ),
             -- Include event speakers
             'speakers', (
-                select coalesce(json_agg(json_strip_nulls(json_build_object(
-                    'user_id', u.user_id,
-                    'username', u.username,
-
-                    'bio', u.bio,
-                    'bluesky_url', u.bluesky_url,
-                    'company', u.company,
-                    'facebook_url', u.facebook_url,
-                    'github_url', u.github_url,
-                    'featured', es.featured,
-                    'linkedin_url', u.linkedin_url,
-                    'name', u.name,
-                    'photo_url', u.photo_url,
-                    'provider', get_public_user_provider(u.provider),
-                    'title', u.title,
-                    'twitter_url', u.twitter_url,
-                    'website_url', u.website_url
-                )) order by es.featured desc, u.name), '[]')
+                select coalesce(
+                    jsonb_agg(
+                        public_user_profile(u) || jsonb_build_object('featured', es.featured)
+                        order by es.featured desc, u.name
+                    ),
+                    '[]'::jsonb
+                )
                 from event_speaker es
                 join "user" u using (user_id)
                 where es.event_id = e.event_id
@@ -360,4 +346,4 @@ returns json as $$
     where e.event_id = p_event_id
     and g.group_id = p_group_id
     and g.community_id = p_community_id;
-$$ language sql;
+$$ language sql stable;

@@ -6,4 +6,4 @@
 create or replace function epoch_seconds(p_timestamp timestamptz)
 returns bigint as $$
     select floor(extract(epoch from p_timestamp))::bigint;
-$$ language sql immutable;
+$$ language sql stable;

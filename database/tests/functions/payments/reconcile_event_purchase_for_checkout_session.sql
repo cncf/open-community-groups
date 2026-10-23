@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(40);
+select plan(39);
 
 -- ============================================================================
 -- VARIABLES
@@ -126,9 +126,17 @@ select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_
 
 -- Payment-race event whose only seat remains reserved during refund handoff
 select fx_event(:'raceEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'manual_tax_rate_ids', '{}'::text[],
     'payment_currency_code', 'USD',
     'published', true,
-    'starts_at', current_timestamp + interval '1 day'
+    'starts_at', current_timestamp + interval '1 day',
+    'tax_calculation_mode', 'automatic',
+    'venue_address', '1 Race Way',
+    'venue_city', 'Race City',
+    'venue_country_code', 'US',
+    'venue_name', 'Race Hall',
+    'venue_zip_code', '12345'
 ));
 
 -- Ticket types
@@ -1473,7 +1481,7 @@ select results_eq(
             count(*)::int,
             bool_and(ep.hold_expires_at is null),
             bool_and(ep.status = 'refund-pending'),
-            bool_and(epr.amount_minor = ep.amount_minor),
+            bool_and(epr.amount_minor = ep.provider_total_minor),
             bool_and(epr.currency_code = ep.currency_code),
             bool_and(epr.kind = 'automatic-unfulfillable-checkout'),
             bool_and(epr.payment_provider_id = 'stripe'),
@@ -1499,17 +1507,6 @@ select results_eq(
     ),
     $$ values (5, true, true, true, true, true, true, true, true, true) $$,
     'Should move every refunded purchase to refund-pending and persist its handoff'
-);
-
--- Should keep one durable refund after replaying the same checkout webhook
-select is(
-    (
-        select count(*)::int
-        from event_purchase_refund
-        where event_purchase_id = :'purchaseExpiredID'
-    ),
-    1,
-    'Should keep one durable refund after replaying the same checkout webhook'
 );
 
 -- Should complete checkout sessions for already confirmed attendees

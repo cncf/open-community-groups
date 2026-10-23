@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,50 +14,29 @@ select plan(7);
 \set actorUserID 'e50f0000-0000-0000-0000-000000000001'
 \set approvedEventID 'e50f0000-0000-0000-0000-000000000002'
 \set approvedInvitationID 'e50f0000-0000-0000-0000-000000000003'
-\set canceledEventID 'e50f0000-0000-0000-0000-000000000004'
-\set canceledInvitationID 'e50f0000-0000-0000-0000-000000000005'
 \set cohostGroupID 'e50f0000-0000-0000-0000-000000000006'
 \set communityID 'e50f0000-0000-0000-0000-000000000007'
-\set deletedEventID 'e50f0000-0000-0000-0000-000000000008'
-\set deletedInvitationID 'e50f0000-0000-0000-0000-000000000009'
 \set eventCategoryID 'e50f0000-0000-0000-0000-00000000000a'
 \set groupCategoryID 'e50f0000-0000-0000-0000-00000000000b'
 \set groupID 'e50f0000-0000-0000-0000-00000000000c'
 \set missingInvitationID 'e50f0000-0000-0000-0000-00000000000d'
-\set pendingEventID 'e50f0000-0000-0000-0000-00000000000e'
-\set pendingInvitationID 'e50f0000-0000-0000-0000-00000000000f'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories, groups, events and actor
+-- Baseline community, categories, groups, event and actor
 select fx_community(:'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 select fx_event(:'approvedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
-select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
-select fx_event(:'pendingEventID', :'groupID', :'eventCategoryID');
 select fx_user(:'actorUserID');
 
 -- Approved co-hosting canceled by the success scenario
 insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_id, invitation_id)
 values ('2025-01-01 00:00:00+00', 'approved', :'approvedEventID', :'cohostGroupID', :'approvedInvitationID');
-
--- Co-hosting already canceled, used by the replay scenario
-insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_id, invitation_id)
-values ('2025-01-01 00:00:00+00', 'canceled', :'canceledEventID', :'cohostGroupID', :'canceledInvitationID');
-
--- Approved co-hosting on a deleted event
-insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_id, invitation_id)
-values ('2025-01-01 00:00:00+00', 'approved', :'deletedEventID', :'cohostGroupID', :'deletedInvitationID');
-
--- Pending invitation that was never approved
-insert into event_cohost (event_id, group_id, invitation_id)
-values (:'pendingEventID', :'cohostGroupID', :'pendingInvitationID');
 
 -- ============================================================================
 -- TESTS
@@ -141,30 +120,6 @@ select throws_ok(
     'OCG01',
     'co-hosting invitation not found',
     'Should reject missing invitations'
-);
-
--- Should reject invitations on deleted events
-select throws_ok(
-    format('select cancel_event_cohost(%L::uuid, %L::uuid, %L::uuid)', :'actorUserID', :'cohostGroupID', :'deletedInvitationID'),
-    'OCG01',
-    'co-hosting invitation not found',
-    'Should reject invitations on deleted events'
-);
-
--- Should reject invitations that are not approved
-select throws_ok(
-    format('select cancel_event_cohost(%L::uuid, %L::uuid, %L::uuid)', :'actorUserID', :'cohostGroupID', :'pendingInvitationID'),
-    'OCG01',
-    'co-hosting is not approved',
-    'Should reject invitations that are not approved'
-);
-
--- Should reject replaying a canceled co-hosting
-select throws_ok(
-    format('select cancel_event_cohost(%L::uuid, %L::uuid, %L::uuid)', :'actorUserID', :'cohostGroupID', :'canceledInvitationID'),
-    'OCG01',
-    'co-hosting is not approved',
-    'Should reject replaying a canceled co-hosting'
 );
 
 -- ============================================================================

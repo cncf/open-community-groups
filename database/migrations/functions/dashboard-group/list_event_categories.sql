@@ -18,4 +18,4 @@ returns json as $$
         group by e.event_category_id
     ) stats using (event_category_id)
     where ec.community_id = p_community_id;
-$$ language sql;
+$$ language sql stable;

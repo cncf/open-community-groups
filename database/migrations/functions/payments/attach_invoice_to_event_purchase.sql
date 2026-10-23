@@ -8,7 +8,6 @@ create or replace function attach_invoice_to_event_purchase(
 )
 returns void as $$
 declare
-    v_payment_job_id uuid;
     v_purchase event_purchase;
     v_refund event_purchase_refund;
 begin
@@ -54,33 +53,10 @@ begin
 
     -- Document the confirmed refund once its invoice is known
     if found then
-        v_payment_job_id := enqueue_payment_job(
-            'event-purchase-credit-note',
-            v_purchase.payment_provider_id,
-            v_purchase.event_purchase_id,
-            format('event-purchase-credit-note-%s', v_refund.event_purchase_refund_id)
+        perform enqueue_event_purchase_credit_note(
+            v_purchase,
+            v_refund.event_purchase_refund_id
         );
-
-        -- Create the credit note only once per refund
-        if v_payment_job_id is not null then
-            insert into event_purchase_credit_note (
-                amount_minor,
-                currency_code,
-                event_purchase_refund_id,
-                payment_job_id,
-                payment_provider_id,
-                provider_object_account_id,
-                tax_amount_minor
-            ) values (
-                v_purchase.provider_total_minor,
-                v_purchase.currency_code,
-                v_refund.event_purchase_refund_id,
-                v_payment_job_id,
-                v_purchase.payment_provider_id,
-                v_purchase.provider_object_account_id,
-                v_purchase.tax_amount_minor
-            );
-        end if;
     end if;
 end;
 $$ language plpgsql;

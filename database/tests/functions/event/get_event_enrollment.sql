@@ -5,38 +5,37 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set attendeeID '6e000000-0000-0000-0000-000000000010'
+\set attendeePurchaseID '6e000000-0000-0000-0000-000000000011'
 \set communityID '6e000000-0000-0000-0000-000000000001'
+\set endedAttendeeID '6e000000-0000-0000-0000-000000000037'
 \set endedCanceledEventID '6e000000-0000-0000-0000-000000000035'
 \set endedEventID '6e000000-0000-0000-0000-000000000036'
 \set eventCategoryID '6e000000-0000-0000-0000-000000000002'
 \set eventID '6e000000-0000-0000-0000-000000000003'
+\set expiredOfferID '6e000000-0000-0000-0000-000000000012'
+\set expiredUserID '6e000000-0000-0000-0000-000000000013'
 \set externalPaymentID '6e000000-0000-0000-0000-000000000033'
 \set externalPaymentUserID '6e000000-0000-0000-0000-000000000034'
 \set groupCategoryID '6e000000-0000-0000-0000-000000000004'
 \set groupID '6e000000-0000-0000-0000-000000000005'
+\set offeredUserID '6e000000-0000-0000-0000-000000000015'
+\set offerID '6e000000-0000-0000-0000-000000000014'
 \set openEventID '6e000000-0000-0000-0000-000000000006'
 \set openPriceWindowID '6e000000-0000-0000-0000-000000000028'
+\set openRequestUserID '6e000000-0000-0000-0000-000000000016'
 \set openTicketTypeID '6e000000-0000-0000-0000-000000000007'
 \set otherCommunityID '6e000000-0000-0000-0000-000000000008'
-\set priceWindowID '6e000000-0000-0000-0000-000000000029'
-\set ticketTypeID '6e000000-0000-0000-0000-000000000009'
-\set attendeeID '6e000000-0000-0000-0000-000000000010'
-\set attendeePurchaseID '6e000000-0000-0000-0000-000000000011'
-\set endedAttendeeID '6e000000-0000-0000-0000-000000000037'
-\set expiredOfferID '6e000000-0000-0000-0000-000000000012'
-\set expiredUserID '6e000000-0000-0000-0000-000000000013'
-\set offerID '6e000000-0000-0000-0000-000000000014'
-\set offeredUserID '6e000000-0000-0000-0000-000000000015'
-\set openRequestUserID '6e000000-0000-0000-0000-000000000016'
 \set pendingPaymentID '6e000000-0000-0000-0000-000000000017'
 \set pendingPaymentUserID '6e000000-0000-0000-0000-000000000018'
 \set pendingRequestUserID '6e000000-0000-0000-0000-000000000019'
+\set priceWindowID '6e000000-0000-0000-0000-000000000029'
 \set refundOfferID '6e000000-0000-0000-0000-000000000020'
 \set refundOfferPurchaseID '6e000000-0000-0000-0000-000000000021'
 \set refundOfferUserID '6e000000-0000-0000-0000-000000000022'
@@ -47,35 +46,73 @@ select plan(15);
 \set rejectedRefundRequestID '6e000000-0000-0000-0000-000000000031'
 \set rejectedRefundUserID '6e000000-0000-0000-0000-000000000032'
 \set rejectedRequestUserID '6e000000-0000-0000-0000-000000000026'
+\set startedAttendeeID '6e000000-0000-0000-0000-000000000039'
+\set startedEventID '6e000000-0000-0000-0000-000000000038'
+\set ticketTypeID '6e000000-0000-0000-0000-000000000009'
 \set waitlistUserID '6e000000-0000-0000-0000-000000000027'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories and users
+-- Community owning the events
 select fx_community(:'communityID');
+
+-- Community that does not own the events
 select fx_community(:'otherCommunityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Confirmed attendee who checked in
 select fx_user(:'attendeeID');
+
+-- Attendee of the ended events
 select fx_user(:'endedAttendeeID');
+
+-- User whose latest offer expired
 select fx_user(:'expiredUserID');
+
+-- User with a pending external checkout
 select fx_user(:'externalPaymentUserID');
+
+-- User with an active organizer offer
 select fx_user(:'offeredUserID');
+
+-- User with a request on an approval-disabled event
 select fx_user(:'openRequestUserID');
+
+-- User with a resumable direct-charge checkout
 select fx_user(:'pendingPaymentUserID');
+
+-- User with a pending approval request
 select fx_user(:'pendingRequestUserID');
+
+-- User whose offer purchase is being refunded
 select fx_user(:'refundOfferUserID');
+
+-- Attendee with a pending refund review
 select fx_user(:'refundUserID');
+
+-- Attendee with a rejected refund review
 select fx_user(:'rejectedRefundUserID');
+
+-- User with a rejected approval request
 select fx_user(:'rejectedRequestUserID');
+
+-- Attendee of the started event without an end
+select fx_user(:'startedAttendeeID');
+
+-- Waitlisted user
 select fx_user(:'waitlistUserID');
 
--- Seed the active owning group.
+-- Event category of the events
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category of the group
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Active group owning the events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('slug', 'enrollment'));
 
--- Seed approval-enabled and approval-disabled events.
+-- Approval-enabled event with external payment details
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'attendee_approval_required', true,
     'capacity', 20,
@@ -85,34 +122,36 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published', true,
     'starts_at', '2099-01-01 10:00:00+00'
 ));
+
+-- Approval-disabled event
 select fx_event(:'openEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 10,
     'published', true,
     'starts_at', '2099-01-02 10:00:00+00'
 ));
 
--- Seed ended published events, one of them canceled.
+-- Ended canceled event
 select fx_event(:'endedCanceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
     'ends_at', '2020-01-01 12:00:00+00',
     'published', true,
     'starts_at', '2020-01-01 10:00:00+00'
 ));
+
+-- Ended event that was not canceled
 select fx_event(:'endedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', '2020-01-01 12:00:00+00',
     'published', true,
     'starts_at', '2020-01-01 10:00:00+00'
 ));
 
--- Seed one ticket tier for each event.
-select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 20));
-select fx_event_ticket_type(:'openTicketTypeID', :'openEventID', jsonb_build_object('seats_total', 10));
+-- Event that started without an end
+select fx_event(:'startedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', '2020-01-01 10:00:00+00'
+));
 
--- Seed current free price windows for both tiers.
-select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'openPriceWindowID', :'openTicketTypeID', jsonb_build_object('amount_minor', 0));
-
--- Seed confirmed attendee states for check-in and refund scenarios.
+-- Confirmed attendee states for check-in, refund and visibility scenarios
 insert into event_attendee (
     checked_in,
     checked_in_at,
@@ -125,9 +164,16 @@ insert into event_attendee (
     (false, null, :'eventID', false, 'confirmed', :'refundUserID'),
     (false, null, :'eventID', false, 'confirmed', :'rejectedRefundUserID'),
     (false, null, :'endedCanceledEventID', false, 'confirmed', :'endedAttendeeID'),
-    (false, null, :'endedEventID', false, 'confirmed', :'endedAttendeeID');
+    (false, null, :'endedEventID', false, 'confirmed', :'endedAttendeeID'),
+    (false, null, :'startedEventID', false, 'confirmed', :'startedAttendeeID');
 
--- Seed active, expired, and refund-linked admission offers.
+-- Ticket tier of the approval-enabled event
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 20));
+
+-- Ticket tier of the approval-disabled event
+select fx_event_ticket_type(:'openTicketTypeID', :'openEventID', jsonb_build_object('seats_total', 10));
+
+-- Active, expired and refund-linked admission offers
 insert into admission_offer (
     admission_offer_id,
     amount_minor,
@@ -185,7 +231,37 @@ insert into admission_offer (
         :'refundOfferUserID'
     );
 
--- Seed completed, pending, and refunding purchase states.
+-- Pending, rejected and approval-disabled invitation requests
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    reviewed_at,
+    reviewed_by,
+    status,
+    user_id
+) values
+    (:'eventID', null, null, null, 'pending', :'pendingRequestUserID'),
+    (
+        :'eventID',
+        :'ticketTypeID',
+        '2026-01-01 10:00:00+00',
+        :'attendeeID',
+        'rejected',
+        :'rejectedRequestUserID'
+    ),
+    (:'openEventID', null, null, null, 'pending', :'openRequestUserID');
+
+-- Current free price window of the approval-enabled tier
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price window of the approval-disabled tier
+select fx_event_ticket_price_window(:'openPriceWindowID', :'openTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Tier-scoped waitlist entry
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'eventID', :'ticketTypeID', :'waitlistUserID');
+
+-- Completed, pending and refunding purchase states
 insert into event_purchase (
     admission_offer_id,
     amount_minor,
@@ -257,7 +333,7 @@ insert into event_purchase (
         :'rejectedRefundUserID'
     );
 
--- Seed a pending direct-charge checkout.
+-- Pending direct-charge checkout
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -302,7 +378,7 @@ insert into event_purchase (
     'https://example.test/checkout/resume'
 );
 
--- Seed a pending external checkout with payment instructions.
+-- Pending external checkout with payment instructions
 insert into event_purchase (
     amount_minor,
     charge_model,
@@ -331,7 +407,7 @@ insert into event_purchase (
     :'externalPaymentUserID'
 );
 
--- Seed a pending refund review for a confirmed attendee.
+-- Pending refund review for a confirmed attendee
 insert into event_refund_request (
     event_purchase_id,
     event_refund_request_id,
@@ -339,7 +415,7 @@ insert into event_refund_request (
     status
 ) values (:'refundPurchaseID', :'refundRequestID', :'refundUserID', 'pending');
 
--- Seed a rejected refund review with its attendee-visible reason.
+-- Rejected refund review with its attendee-visible reason
 insert into event_refund_request (
     event_purchase_id,
     event_refund_request_id,
@@ -359,30 +435,6 @@ insert into event_refund_request (
     '2026-01-04 11:00:00+00',
     :'attendeeID'
 );
-
--- Seed pending, rejected, and approval-disabled invitation requests.
-insert into event_invitation_request (
-    event_id,
-    event_ticket_type_id,
-    reviewed_at,
-    reviewed_by,
-    status,
-    user_id
-) values
-    (:'eventID', null, null, null, 'pending', :'pendingRequestUserID'),
-    (
-        :'eventID',
-        :'ticketTypeID',
-        '2026-01-01 10:00:00+00',
-        :'attendeeID',
-        'rejected',
-        :'rejectedRequestUserID'
-    ),
-    (:'openEventID', null, null, null, 'pending', :'openRequestUserID');
-
--- Seed a tier-scoped waitlist entry.
-insert into event_waitlist (event_id, event_ticket_type_id, user_id)
-values (:'eventID', :'ticketTypeID', :'waitlistUserID');
 
 -- ============================================================================
 -- TESTS
@@ -509,6 +561,13 @@ select is(
     get_event_enrollment(:'communityID', :'endedEventID', :'endedAttendeeID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
     'Should not expose enrollment for an ended event that was not canceled'
+);
+
+-- Should not expose enrollment for a started event without an end that was not canceled
+select is(
+    get_event_enrollment(:'communityID', :'startedEventID', :'startedAttendeeID')::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
+    'Should not expose enrollment for a started event without an end that was not canceled'
 );
 
 -- Should not expose enrollment across communities

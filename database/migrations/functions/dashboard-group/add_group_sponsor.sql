@@ -22,7 +22,7 @@ begin
         p_sponsor->>'logo_url',
         p_sponsor->>'name',
 
-        p_sponsor->>'website_url'
+        nullif(p_sponsor->>'website_url', '')
     )
     returning group_sponsor_id into v_group_sponsor_id;
 
@@ -32,10 +32,10 @@ begin
         p_actor_user_id,
         'group_sponsor',
         v_group_sponsor_id,
-        (select community_id from "group" where group_id = p_group_id),
-        p_group_id
+        p_group_id => p_group_id
     );
 
+    -- Return the new sponsor identifier
     return v_group_sponsor_id;
 end;
 $$ language plpgsql;

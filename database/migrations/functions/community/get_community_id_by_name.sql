@@ -5,4 +5,4 @@ returns uuid as $$
     from community
     where name = p_name
     and active = true;
-$$ language sql;
+$$ language sql stable;

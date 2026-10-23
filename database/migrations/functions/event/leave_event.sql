@@ -12,17 +12,13 @@ declare
     v_purchase_ticket_type_id uuid;
 begin
     -- Lock and validate the attendee-visible event
-    v_event := lock_active_event(p_community_id, null, p_event_id, true);
+    v_event := lock_active_event(p_community_id, null, p_event_id);
 
     -- Lock ticket tiers before serializing this attendee's enrollment state
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = v_event.event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
+    perform lock_event_ticket_types(v_event.event_id);
 
     -- Serialize this attendee's enrollment transitions
-    perform pg_advisory_xact_lock(hashtext(v_event.event_id::text), hashtext(p_user_id::text));
+    perform lock_event_user(v_event.event_id, p_user_id);
 
     -- Paid attendees must request a refund instead of leaving the event
     select
@@ -46,23 +42,11 @@ begin
         raise exception 'paid attendees must request a refund instead of leaving the event' using errcode = 'OCG01';
     end if;
 
-    -- Preserve the confirmed attendee row while removing active attendance
-    update event_attendee
-    set
-        attendance_canceled_at = current_timestamp,
-        attendance_canceled_by_user_id = p_user_id,
-        checked_in = false,
-        checked_in_at = null,
-        status = 'attendance-canceled'
-    where event_id = p_event_id
-    and user_id = p_user_id
-    and status = 'confirmed';
-
-    -- Return after canceling active attendance
-    if found then
-        -- If the user had a free ticket purchase, delegate the refund transition
+    -- Return after canceling confirmed attendance, preserving the attendee row
+    if mark_event_attendance_canceled(p_event_id, p_user_id, p_user_id) then
+        -- Refund the free ticket purchase locally when the user had one
         if v_purchase_id is not null then
-            perform refund_free_event_purchase(v_purchase_id);
+            perform refund_event_purchase_locally(v_purchase_id, p_user_id);
         end if;
 
         -- Reconcile the released ticket-tier capacity
@@ -72,6 +56,7 @@ begin
             p_configured_provider
         );
 
+        -- Report the canceled attendance
         return json_build_object('left_status', 'attendee');
     end if;
 

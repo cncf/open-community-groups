@@ -1,7 +1,8 @@
 -- enqueue_notification inserts notifications, templates, and attachments and
 -- returns the identifiers of the notifications created. Recipient preferences
 -- (category opt-outs and group mutes) are applied here, when the notification
--- is queued; group-mutable kinds must name the groups the notification is about.
+-- is queued, and nothing is written when no recipient remains; group-mutable
+-- kinds must name the groups the notification is about.
 create or replace function enqueue_notification(
     p_kind text,
     p_template_data jsonb,
@@ -15,19 +16,14 @@ declare
     v_attachment_id uuid;
     v_data bytea;
     v_group_mutable boolean;
-    v_notification_category_id text;
     v_notification_ids uuid[];
     v_notification_template_data_id uuid;
     v_recipients uuid[];
     v_template_hash text;
 begin
     -- Resolve notification kind metadata before creating notification data
-    select
-        nc.group_mutable,
-        nk.notification_category_id
-    into
-        v_group_mutable,
-        v_notification_category_id
+    select nc.group_mutable
+    into v_group_mutable
     from notification_kind nk
     left join notification_category nc using (notification_category_id)
     where nk.name = p_kind;
@@ -48,23 +44,17 @@ begin
         raise exception 'group ids are required for notification kind: %', p_kind;
     end if;
 
-    -- Filter recipients who do not accept optional notifications of this kind
-    if v_notification_category_id is not null then
-        select coalesce(array_agg(a.user_id order by a.ordinal), '{}')
-        into v_recipients
-        from users_accepting_notification(p_kind, p_recipients, p_group_ids) a;
+    -- Keep only recipients who accept this kind
+    select coalesce(array_agg(a.user_id order by a.ordinal), '{}')
+    into v_recipients
+    from users_accepting_notification(p_kind, p_recipients, p_group_ids) a;
 
-        -- Nothing to enqueue when every recipient declined
-        if cardinality(v_recipients) = 0 then
-            return '{}'::uuid[];
-        end if;
-
-    -- Send kinds without a category to every recipient
-    else
-        v_recipients := p_recipients;
+    -- Write nothing when no recipient remains
+    if cardinality(v_recipients) = 0 then
+        return '{}'::uuid[];
     end if;
 
-    -- Insert or reuse template data and get its ID
+    -- Insert or reuse template data and get its ID when provided
     if p_template_data is not null then
         v_template_hash := encode(digest(convert_to(p_template_data::text, 'utf8'), 'sha256'), 'hex');
 

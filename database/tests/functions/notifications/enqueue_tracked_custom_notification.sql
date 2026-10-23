@@ -18,6 +18,7 @@ select plan(12);
 \set eventRecipientID '8a070000-0000-0000-0000-000000000010'
 \set groupCategoryID '8a070000-0000-0000-0000-000000000002'
 \set groupID '8a070000-0000-0000-0000-000000000003'
+\set groupSecondRecipientID '8a070000-0000-0000-0000-000000000012'
 \set mutedRecipientID '8a070000-0000-0000-0000-000000000006'
 \set recipientID '8a070000-0000-0000-0000-000000000005'
 \set senderID '8a070000-0000-0000-0000-000000000004'
@@ -35,6 +36,9 @@ select fx_user(:'communityRecipientID');
 
 -- User who receives the event custom notification
 select fx_user(:'eventRecipientID');
+
+-- Second user who receives the baseline custom notification
+select fx_user(:'groupSecondRecipientID');
 
 -- User who muted the group named by the custom notification
 select fx_user(:'mutedRecipientID', jsonb_build_object('username', 'muted-recipient-enqueue-tracked'));
@@ -75,16 +79,16 @@ select lives_ok(
             'group-custom',
             jsonb_build_object('subject', 'Group update'),
             '[]'::jsonb,
-            array[%L::uuid],
+            array[%L::uuid, %L::uuid],
             %L::uuid,
             %L::uuid,
             null::uuid,
             %L::uuid,
-            1,
             'Group update',
             'Body for group notification'
         )$$,
         :'recipientID',
+        :'groupSecondRecipientID',
         :'senderID',
         :'communityID',
         :'groupID'
@@ -92,11 +96,11 @@ select lives_ok(
     'Should enqueue and track a custom notification atomically'
 );
 
--- Should create one notification row
+-- Should create one notification row per recipient
 select is(
     (select count(*) from notification where kind = 'group-custom'),
-    1::bigint,
-    'Should create one notification row'
+    2::bigint,
+    'Should create one notification row per recipient'
 );
 
 -- Should create one custom notification row
@@ -118,7 +122,6 @@ select lives_ok(
             %L::uuid,
             null::uuid,
             null::uuid,
-            1,
             'Community update enqueue tracked',
             'Body for community notification',
             '{"roles": ["admin"]}'::jsonb
@@ -152,6 +155,12 @@ select results_eq(
                 and community_id = %L::uuid
             ),
             (
+                select details->>'recipient_count'
+                from audit_log
+                where action = 'community_custom_notification_sent'
+                and community_id = %L::uuid
+            ),
+            (
                 select details->'roles'
                 from audit_log
                 where action = 'community_custom_notification_sent'
@@ -159,10 +168,11 @@ select results_eq(
             )
         $$,
         :'communityID',
+        :'communityID',
         :'communityID'
     ),
     format(
-        $$ values (%L::uuid, %L::uuid, %L::uuid, '["Admin"]'::jsonb) $$,
+        $$ values (%L::uuid, %L::uuid, %L::uuid, '1'::text, '["Admin"]'::jsonb) $$,
         :'communityRecipientID',
         :'communityID',
         :'senderID'
@@ -182,7 +192,6 @@ select lives_ok(
             %L::uuid,
             %L::uuid,
             %L::uuid,
-            1,
             'Event update enqueue tracked',
             'Body for event notification'
         )$$,
@@ -197,7 +206,8 @@ select lives_ok(
 
 -- Should queue and track the event custom notification in the event scope
 select results_eq(
-    $$
+    format(
+        $$
         select
             (
                 select user_id
@@ -208,10 +218,18 @@ select results_eq(
                 select event_id
                 from custom_notification
                 where subject = 'Event update enqueue tracked'
+            ),
+            (
+                select details->>'recipient_count'
+                from audit_log
+                where action = 'event_custom_notification_sent'
+                and event_id = %L::uuid
             )
-    $$,
+        $$,
+        :'eventID'
+    ),
     format(
-        $$ values (%L::uuid, %L::uuid) $$,
+        $$ values (%L::uuid, %L::uuid, '1'::text) $$,
         :'eventRecipientID',
         :'eventID'
     ),
@@ -230,7 +248,6 @@ select lives_ok(
             %L::uuid,
             null::uuid,
             %L::uuid,
-            1,
             'Muted group update',
             'Body for muted group notification'
         )$$,
@@ -267,13 +284,14 @@ select results_eq(
     'Should filter muted recipients while keeping the tracking row'
 );
 
--- Should create audit rows for successful tracking operations
+-- Should audit successful tracking operations with the attempted recipient count
 select results_eq(
     format(
         $$
         select
             actor_user_id,
-            details->>'subject'
+            details->>'subject',
+            details->>'recipient_count'
         from audit_log
         where action = 'group_custom_notification_sent'
         and group_id = %L::uuid
@@ -283,13 +301,13 @@ select results_eq(
     ),
     format(
         $$ values
-            (%L::uuid, 'Group update'::text),
-            (%L::uuid, 'Muted group update'::text)
+            (%L::uuid, 'Group update'::text, '2'::text),
+            (%L::uuid, 'Muted group update'::text, '1'::text)
         $$,
         :'senderID',
         :'senderID'
     ),
-    'Should create audit rows for successful tracking operations'
+    'Should audit successful tracking operations with the attempted recipient count'
 );
 
 -- Should roll back tracking when enqueue fails
@@ -304,7 +322,6 @@ select throws_ok(
             %L::uuid,
             null::uuid,
             %L::uuid,
-            1,
             'Rolled back',
             'This should not be tracked'
         )$$,
@@ -330,7 +347,6 @@ select throws_ok(
             %L::uuid,
             null::uuid,
             %L::uuid,
-            1,
             'Tracking failure enqueue tracked',
             ' '
         )$$,

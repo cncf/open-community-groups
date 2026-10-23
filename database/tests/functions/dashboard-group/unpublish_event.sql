@@ -5,18 +5,18 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set canceledEventID '3a360000-0000-0000-0000-000000000017'
+\set canceledEventTicketTypeID '3a360000-0000-0000-0000-000000000018'
 \set cohostGroupID '3a360000-0000-0000-0000-000000000016'
 \set communityID '3a360000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a360000-0000-0000-0000-000000000002'
 \set eventID '3a360000-0000-0000-0000-000000000003'
-\set eventNoMeetingID '3a360000-0000-0000-0000-000000000004'
-\set eventNoMeetingTicketTypeID '3a360000-0000-0000-0000-000000000015'
 \set eventTicketTypeID '3a360000-0000-0000-0000-000000000014'
 \set groupCategoryID '3a360000-0000-0000-0000-000000000005'
 \set groupID '3a360000-0000-0000-0000-000000000006'
@@ -24,7 +24,6 @@ select plan(15);
 \set offerID '3a360000-0000-0000-0000-000000000011'
 \set offerUserID '3a360000-0000-0000-0000-000000000012'
 \set sessionMeetingID '3a360000-0000-0000-0000-000000000008'
-\set sessionNoMeetingID '3a360000-0000-0000-0000-000000000009'
 \set userID '3a360000-0000-0000-0000-000000000010'
 \set waitlistUserID '3a360000-0000-0000-0000-000000000013'
 
@@ -32,19 +31,39 @@ select plan(15);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories, users and groups
+-- Community owning the unpublish scenarios
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- User holding the active organizer offer
 select fx_user(:'offerUserID');
+
+-- User who published the events and issued the organizer offer
+select fx_user(:'userID', jsonb_build_object('username', 'user-unpublish-event'));
+
+-- User queued on the event waitlist
 select fx_user(:'waitlistUserID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Co-host group that approved its invitation
 select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID');
 
--- Users covering publication and enrollment state
-select fx_user(:'userID', jsonb_build_object('username', 'user-unpublish-event'));
+-- Group owning the events
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Canceled published event that can still be unpublished
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', '2025-06-03 11:00:00+00',
+    'published', true,
+    'published_at', now(),
+    'published_by', :'userID',
+    'starts_at', '2025-06-03 10:00:00+00'
+));
 
 -- Event (published, with meeting_in_sync=true to verify it gets set to false)
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -61,18 +80,19 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'waitlist_enabled', true
 ));
 
--- Event without meeting_requested (to verify meeting_in_sync is not changed)
-select fx_event(:'eventNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', '2025-06-02 11:00:00+00',
-    'published', true,
-    'published_at', now(),
-    'published_by', :'userID',
-    'starts_at', '2025-06-02 10:00:00+00'
-));
-
 -- Approved co-host invitation preserved through unpublish
 insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_id)
 values ('2025-01-01 00:00:00+00', 'approved', :'eventID', :'cohostGroupID');
+
+-- Ticket type satisfying the enrollment invariant of the canceled event
+select fx_event_ticket_type(:'canceledEventTicketTypeID', :'canceledEventID', jsonb_build_object(
+    'seats_total', 100
+));
+
+-- Ticket type satisfying the enrollment invariant of the meeting event
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 100
+));
 
 -- Session with meeting_requested=true (should be marked as out of sync)
 insert into session (
@@ -97,35 +117,6 @@ insert into session (
     true
 );
 
--- Session with meeting_requested=false (should NOT be marked as out of sync)
-insert into session (
-    session_id,
-    event_id,
-    name,
-    starts_at,
-    ends_at,
-    session_kind_id,
-    meeting_in_sync,
-    meeting_requested
-) values (
-    :'sessionNoMeetingID',
-    :'eventID',
-    'Session Without Meeting',
-    '2025-06-01 10:30:00+00',
-    '2025-06-01 11:00:00+00',
-    'in-person',
-    null,
-    false
-);
-
--- Ticket types satisfying the event enrollment invariant
-select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
-    'seats_total', 100
-));
-select fx_event_ticket_type(:'eventNoMeetingTicketTypeID', :'eventNoMeetingID', jsonb_build_object(
-    'seats_total', 100
-));
-
 -- Active organizer offer canceled when the event is unpublished
 insert into admission_offer (
     admission_offer_id,
@@ -139,7 +130,7 @@ insert into admission_offer (
 ) values (
     :'offerID',
     :'eventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1),
+    :'eventTicketTypeID',
     current_timestamp + interval '1 hour',
     :'userID',
     'organizer_invitation',
@@ -154,7 +145,7 @@ insert into event_waitlist (
     user_id
 ) values (
     :'eventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1),
+    :'eventTicketTypeID',
     :'waitlistUserID'
 );
 
@@ -284,42 +275,36 @@ select results_eq(
     'Should preserve co-host status and approval evidence'
 );
 
--- Should set event meeting_in_sync to false
+-- Should mark the requested event meeting out of sync
 select is(
     (select meeting_in_sync from event where event_id = :'eventID'),
     false,
-    'Should set event meeting_in_sync=false'
+    'Should mark the requested event meeting out of sync'
 );
 
--- Should set session meeting_in_sync to false when meeting_requested=true
+-- Should mark the requested session meeting out of sync
 select is(
     (select meeting_in_sync from session where session_id = :'sessionMeetingID'),
     false,
-    'Should set session meeting_in_sync=false when meeting_requested=true'
+    'Should mark the requested session meeting out of sync'
 );
 
--- Should not change session meeting_in_sync when meeting_requested=false
-select is(
-    (select meeting_in_sync from session where session_id = :'sessionNoMeetingID'),
-    null,
-    'Should not change session meeting_in_sync when meeting_requested=false'
-);
-
--- Should unpublish event when meeting_requested=false
+-- Should unpublish a canceled event
 select lives_ok(
     format(
         'select unpublish_event(null::uuid, %L::uuid, %L::uuid)',
         :'groupID',
-        :'eventNoMeetingID'
+        :'canceledEventID'
     ),
-    'Should unpublish event when meeting_requested=false'
+    'Should unpublish a canceled event'
 );
-
--- Should keep event meeting_in_sync unchanged when meeting_requested=false
-select is(
-    (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
-    null,
-    'Should keep event meeting_in_sync unchanged when meeting_requested=false'
+select results_eq(
+    format(
+        $$select canceled, published, published_at, published_by from event where event_id = %L::uuid$$,
+        :'canceledEventID'
+    ),
+    $$values (true, false, null::timestamptz, null::uuid)$$,
+    'Should clear the publication state of the canceled event'
 );
 
 -- Should throw error when group_id does not match

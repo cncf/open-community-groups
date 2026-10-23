@@ -1,13 +1,17 @@
--- Reconciles the enrollment state of an event under the global lock order:
+-- Reconciles the enrollment state of an event under the enrollment lock order:
 -- expires stale checkout holds and due admission offers, reminds external
 -- payment holders, returns abandoned checkout offers to pending and, while
--- the event accepts public registration, promotes waitlist entries into
+-- the event accepts waitlist promotion, promotes waitlist entries into
 -- admission offers. Returns the promoted user identifiers. A scoped ticket
--- type limits the queues that are promoted.
+-- type limits the queues that are promoted. An optional user is locked
+-- together with the affected users, so callers can mutate that user's
+-- enrollment after reconciling. The lock is taken only when the event exists;
+-- callers lock the event first.
 create or replace function reconcile_event_enrollment(
     p_event_id uuid,
     p_event_ticket_type_id uuid default null,
-    p_configured_provider text default null
+    p_configured_provider text default null,
+    p_user_id uuid default null
 )
 returns uuid[] as $$
 declare
@@ -34,32 +38,18 @@ begin
     where g.group_id = v_event.group_id;
 
     -- Take the tier, user, offer and purchase locks in the global order
-    perform lock_event_enrollment_rows(p_event_id, p_event_ticket_type_id, null);
+    perform lock_event_enrollment_rows(p_event_id, p_event_ticket_type_id, p_user_id);
 
     -- Load the site theme once for enrollment notifications
-    select s.theme
-    into v_theme
-    from site s
-    limit 1;
+    v_theme := site_theme();
 
     -- Settle expired holds, reminders and due offers before allocating capacity
     perform expire_event_checkout_holds(v_event, v_group, v_theme);
     perform remind_event_external_payment_holds(v_event, v_group, v_theme);
     perform reconcile_event_admission_offers(v_event, v_group);
 
-    -- Stop ticket offer creation when the event is not open or public registration is closed
-    if not (
-        v_group.active
-        and not v_event.canceled
-        and not v_event.deleted
-        and v_event.published
-        and (v_event.starts_at is null or v_event.starts_at > current_timestamp)
-    )
-    or not is_registration_window_open(
-        v_event.registration_starts_at,
-        v_event.registration_ends_at,
-        v_event.starts_at
-    ) then
+    -- Stop ticket offer creation while the event does not accept waitlist promotion
+    if not event_accepts_waitlist_promotion(v_event, v_group) then
         return array[]::uuid[];
     end if;
 

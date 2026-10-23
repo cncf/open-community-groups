@@ -772,6 +772,68 @@ async fn db_contracts_queue_event_refund_request_approval_deserializes() -> Resu
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_record_event_purchase_refund_pending_blocks_event_writers() -> Result<()> {
+    // Setup independent refund result and lock-probe connections
+    let pool = contract_tests_pool()?;
+    let probe_client = pool.get().await?;
+    let result_client = pool.get().await?;
+
+    // Record a superseded attempt so the probes only meet the result locks
+    result_client.batch_execute("begin").await?;
+    result_client
+        .query_one(
+            "select record_event_purchase_refund_pending($1::uuid, $2::text, $3::text, null::uuid)",
+            &[
+                &refund_recovery_refund_id(),
+                &"event-purchase-refund-superseded-lock-contract",
+                &"re_contract_lock_probe",
+            ],
+        )
+        .await?;
+
+    // Probe whether a competing writer can lock the owning event
+    probe_client
+        .batch_execute("begin; set local lock_timeout = '250ms'")
+        .await?;
+    let event_lock_result = probe_client
+        .query_one(
+            "select event_id from event where event_id = $1::uuid for update",
+            &[&refund_event_id()],
+        )
+        .await;
+    probe_client.batch_execute("rollback").await?;
+
+    // Probe whether a competing writer can lock the refunded purchase
+    probe_client
+        .batch_execute("begin; set local lock_timeout = '250ms'")
+        .await?;
+    let purchase_lock_result = probe_client
+        .query_one(
+            "select event_purchase_id from event_purchase where event_purchase_id = $1::uuid for update",
+            &[&refund_recovery_purchase_id()],
+        )
+        .await;
+    probe_client.batch_execute("rollback").await?;
+
+    // Roll back the refund result before checking the outcomes
+    result_client.batch_execute("rollback").await?;
+
+    // Check the result holds the event and purchase locks
+    let event_lock_err =
+        event_lock_result.expect_err("event writer should wait for the refund result");
+    assert_eq!(event_lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+    let purchase_lock_err =
+        purchase_lock_result.expect_err("purchase writer should wait for the refund result");
+    assert_eq!(
+        purchase_lock_err.code(),
+        Some(&SqlState::LOCK_NOT_AVAILABLE)
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_record_payment_job_failure_releases_claim() -> Result<()> {
     // Setup a processing payment job with a deterministic claim
     let db = contract_tests_db()?;

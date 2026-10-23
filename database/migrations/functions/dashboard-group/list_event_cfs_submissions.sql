@@ -1,5 +1,9 @@
--- Returns paginated CFS submissions for an event.
-create or replace function list_event_cfs_submissions(p_event_id uuid, p_filters jsonb)
+-- Returns paginated CFS submissions for an event owned by the group.
+create or replace function list_event_cfs_submissions(
+    p_group_id uuid,
+    p_event_id uuid,
+    p_filters jsonb
+)
 returns json as $$
     with
         -- Parse pagination and sorting filters
@@ -30,7 +34,7 @@ returns json as $$
                 from jsonb_array_elements_text(coalesce(p_filters->'label_ids', '[]'::jsonb))
             ) input_labels
         ),
-        -- Filter submissions for the event
+        -- Filter submissions for the event, scoped to the group
         filtered_submissions as (
             select
                 cs.action_required_message,
@@ -42,8 +46,11 @@ returns json as $$
                 cs.status_id,
                 cs.updated_at
             from cfs_submission cs
+            join event e on e.event_id = cs.event_id
             where cs.event_id = p_event_id
             and cs.status_id <> 'withdrawn'
+            and e.deleted = false
+            and e.group_id = p_group_id
             and (
                 (select labels_total from label_filter) = 0
                 or cs.cfs_submission_id in (
@@ -119,19 +126,7 @@ returns json as $$
             select
                 fs.cfs_submission_id,
                 epoch_seconds(fs.created_at) as created_at,
-                json_strip_nulls(json_build_object(
-                    'description', sp.description,
-                    'duration_minutes', floor(extract(epoch from sp.duration) / 60)::int,
-                    'session_proposal_id', sp.session_proposal_id,
-                    'session_proposal_level_id', sp.session_proposal_level_id,
-                    'session_proposal_level_name', spl.display_name,
-                    'title', sp.title,
-
-                    'co_speaker', case
-                        when co.user_id is null then null
-                        else public_user_summary(co)
-                    end
-                )) as session_proposal,
+                jsonb_strip_nulls(session_proposal_json(sp)) as session_proposal,
                 public_user_summary(u) as speaker,
                 coalesce(rs.ratings_count, 0) as ratings_count,
                 fs.status_id,
@@ -166,10 +161,8 @@ returns json as $$
             from paginated_submission_ids psi
             join filtered_submissions fs on fs.cfs_submission_id = psi.cfs_submission_id
             join session_proposal sp on sp.session_proposal_id = fs.session_proposal_id
-            join session_proposal_level spl using (session_proposal_level_id)
             join "user" u on u.user_id = sp.user_id
             join cfs_submission_status css on css.cfs_submission_status_id = fs.status_id
-            left join "user" co on co.user_id = sp.co_speaker_user_id
             left join "user" reviewer on reviewer.user_id = fs.reviewed_by
             left join rating_summaries rs on rs.cfs_submission_id = fs.cfs_submission_id
             left join session s on s.cfs_submission_id = fs.cfs_submission_id
@@ -193,4 +186,4 @@ returns json as $$
         'total', totals.total
     )
     from submissions_json, totals;
-$$ language sql;
+$$ language sql stable;

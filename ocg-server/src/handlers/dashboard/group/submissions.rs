@@ -19,7 +19,8 @@ use crate::{
         },
     },
     services::notifications::{
-        DynNotificationsManager, best_effort::enqueue_cfs_submission_updated_best_effort,
+        DynNotificationsManager,
+        best_effort::{CfsSubmissionUpdatedNotice, enqueue_cfs_submission_updated_best_effort},
     },
     templates::dashboard::group::submissions,
     types::{
@@ -46,7 +47,7 @@ pub(crate) async fn list_page(
     Path(event_id): Path<Uuid>,
     ValidatedQuery(filters): ValidatedQuery<CfsSubmissionsFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event submissions (checking event belongs to group)
+    // Fetch event submissions (checking event belongs to group for event-keyed labels)
     let (can_manage_events, _event, labels, submissions) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -56,7 +57,7 @@ pub(crate) async fn list_page(
         ),
         db.get_event_summary(community_id, group_id, event_id), // ensure event belongs to group
         db.list_event_labels(event_id),
-        db.list_event_cfs_submissions(event_id, &filters)
+        db.list_event_cfs_submissions(group_id, event_id, &filters)
     )?;
 
     // Prepare template
@@ -94,12 +95,15 @@ pub(crate) async fn update(
     Path((event_id, cfs_submission_id)): Path<(Uuid, Uuid)>,
     ValidatedFormQs(update): ValidatedFormQs<CfsSubmissionUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Ensure event belongs to the group
-    let event = db.get_event_summary(community_id, group_id, event_id).await?;
-
-    // Update submission in database
+    // Update submission in database (checking event belongs to group)
     let should_notify = db
-        .update_cfs_submission(reviewer.user_id, event_id, cfs_submission_id, &update)
+        .update_cfs_submission(
+            reviewer.user_id,
+            group_id,
+            event_id,
+            cfs_submission_id,
+            &update,
+        )
         .await?;
 
     // Enqueue notification to submission author best-effort
@@ -108,9 +112,13 @@ pub(crate) async fn update(
             db.as_ref(),
             &notifications_manager,
             &server_cfg,
-            reviewer.user_id,
-            cfs_submission_id,
-            event,
+            CfsSubmissionUpdatedNotice {
+                cfs_submission_id,
+                community_id,
+                event_id,
+                group_id,
+                reviewer_id: reviewer.user_id,
+            },
         )
         .await;
     }

@@ -57,7 +57,7 @@ returns text as $$
         -- Canceled events have already completed the required workflow
         when e.canceled then 'allowed'
         -- Past events no longer need cancellation before deletion
-        when event_effective_ends_at(e) < current_timestamp then 'allowed'
+        when event_is_past(e) then 'allowed'
         -- Unused drafts have no lifecycle records that deletion could orphan
         when not e.published
              and e.published_at is null
@@ -86,4 +86,4 @@ returns text as $$
     where e.event_id = p_event_id
     and e.group_id = p_group_id
     and e.deleted = false;
-$$ language sql;
+$$ language sql stable;

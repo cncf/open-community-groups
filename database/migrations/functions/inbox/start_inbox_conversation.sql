@@ -46,14 +46,7 @@ begin
     end if;
 
     -- Point the user to the open conversation they already have about the event
-    if exists (
-        select 1
-        from inbox_conversation ic
-        where ic.event_id = v_event_id
-        and ic.group_id = v_group_id
-        and ic.user_id = p_actor_user_id
-        and ic.inbox_conversation_status_id = 'open'
-    ) then
+    if user_open_inbox_conversation_id(v_group_id, v_event_id, p_actor_user_id) is not null then
         return json_build_object('conflict', 'open-conversation');
     end if;
 
@@ -100,15 +93,11 @@ begin
     );
 
     -- Record the audit row
-    perform insert_audit_log(
+    perform insert_inbox_conversation_audit(
         'inbox_conversation_started',
         p_actor_user_id,
-        'inbox_conversation',
-        v_conversation.inbox_conversation_id,
-        p_community_id,
-        v_group_id,
-        v_event_id,
-        p_created_at => v_now
+        v_conversation,
+        v_now
     );
 
     -- Return the posted identifiers

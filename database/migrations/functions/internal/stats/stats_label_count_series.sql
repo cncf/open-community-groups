@@ -14,4 +14,4 @@ from (
         count int
     )
 ) counts;
-$$ language sql immutable;
+$$ language sql stable;

@@ -23,19 +23,7 @@ declare
     );
 begin
     -- Lock and validate the editable owner event
-    select e.*
-    into v_event
-    from event e
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.canceled = false
-    and e.deleted = false
-    for update of e;
-
-    -- Reject inactive or cross-group events
-    if not found then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
+    v_event := lock_manageable_event(p_group_id, p_event_id, false);
 
     -- Reject stale editor revisions
     if v_event.cohosts_revision is distinct from p_expected_revision then
@@ -118,13 +106,14 @@ begin
         where event_id = p_event_id
         and group_id = v_group_id;
 
-        -- Track and audit each removal
+        -- Track each removal in the result
         v_removed := v_removed || jsonb_build_array(jsonb_build_object(
             'cohost_group_id', v_group_id,
             'event_id', p_event_id,
             'invitation_id', v_invitation_id
         ));
 
+        -- Audit the removal on the owner and co-host scopes
         perform insert_event_cohost_audit(
             'event_cohost_removed',
             p_actor_user_id,
@@ -190,13 +179,14 @@ begin
             raise exception 'event co-host invitation cannot be reopened';
         end if;
 
-        -- Track and audit each invitation
+        -- Track each invitation in the result
         v_added := v_added || jsonb_build_array(jsonb_build_object(
             'cohost_group_id', v_group_id,
             'event_id', p_event_id,
             'invitation_id', v_invitation_id
         ));
 
+        -- Audit the invitation on the owner and co-host scopes
         perform insert_event_cohost_audit(
             'event_cohost_invited',
             p_actor_user_id,

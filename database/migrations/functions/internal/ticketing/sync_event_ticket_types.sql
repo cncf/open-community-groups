@@ -109,27 +109,13 @@ begin
         -- Resolve the identifier of the ticket type being synchronized
         v_ticket_type_id := (v_ticket_type->>'event_ticket_type_id')::uuid;
 
-        -- Reject seat totals that would undershoot allocated inventory,
-        -- ignoring stale reservations reconciliation is due to sweep
-        select get_event_ticket_type_allocated_seat_count(
+        -- Reject seat totals that would undershoot allocated inventory; the
+        -- allocation helper already ignores lapsed offers that reconciliation
+        -- will sweep
+        v_allocated_seat_count := get_event_ticket_type_allocated_seat_count(
             p_event_id,
             v_ticket_type_id
-        ) - (
-            select count(*)
-            from admission_offer ao
-            where ao.event_id = p_event_id
-            and ao.event_ticket_type_id = v_ticket_type_id
-            and admission_offer_is_active(ao.status)
-            and ao.expires_at is not null
-            and ao.expires_at <= current_timestamp
-            and not exists (
-                select 1
-                from event_purchase ep
-                where ep.admission_offer_id = ao.admission_offer_id
-                and event_purchase_holds_seat(ep.status)
-            )
-        )
-        into v_allocated_seat_count;
+        );
 
         -- Reject the seat total when it is below the allocated seats
         if coalesce((v_ticket_type->>'seats_total')::int, 0) < v_allocated_seat_count then
@@ -146,8 +132,7 @@ begin
                 from admission_offer ao
                 where ao.event_id = p_event_id
                 and ao.event_ticket_type_id = v_ticket_type_id
-                and admission_offer_is_active(ao.status)
-                and ao.expires_at > current_timestamp
+                and admission_offer_reserves_seat(ao.status, ao.expires_at)
            ) then
             raise exception 'ticket types with active offers cannot be deactivated' using errcode = 'OCG01';
         end if;

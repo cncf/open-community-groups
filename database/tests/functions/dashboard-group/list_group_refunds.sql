@@ -5,12 +5,18 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set approvedPurchaseID 'd4100000-0000-0000-0000-000000000035'
+\set approvedRequestID 'd4100000-0000-0000-0000-000000000036'
+\set approvedUserID 'd4100000-0000-0000-0000-000000000037'
+\set approvingPurchaseID 'd4100000-0000-0000-0000-000000000032'
+\set approvingRequestID 'd4100000-0000-0000-0000-000000000033'
+\set approvingUserID 'd4100000-0000-0000-0000-000000000034'
 \set communityID 'd4100000-0000-0000-0000-000000000001'
 \set creditNoteID 'd4100000-0000-0000-0000-000000000024'
 \set creditNoteJobID 'd4100000-0000-0000-0000-000000000028'
@@ -66,6 +72,14 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
 ));
 
 -- Users representing every operational view
+select fx_user(:'approvedUserID', jsonb_build_object(
+    'auth_hash', 'approved',
+    'username', 'approved-list-group-refunds'
+));
+select fx_user(:'approvingUserID', jsonb_build_object(
+    'auth_hash', 'approving',
+    'username', 'approving-list-group-refunds'
+));
 select fx_user(:'needsUserID', jsonb_build_object(
     'auth_hash', 'needs',
     'email', 'requester@example.test',
@@ -119,7 +133,7 @@ select fx_event_ticket_type(:'ticketType2ID', :'event2ID', jsonb_build_object(
     'title', 'Workshop'
 ));
 
--- Purchases covering review, retry, live checkout, refunded, and rejected states
+-- Purchases covering review, approval, retry, live checkout, refunded, and rejected states
 insert into event_purchase (
     amount_minor,
     created_at,
@@ -195,7 +209,9 @@ from (
         (2500, '2024-01-02 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'retryPurchaseID'::uuid, :'ticketTypeID'::uuid, 'refund-pending', 'General admission', '2024-01-02 01:00:00+00'::timestamptz, :'retryUserID'::uuid, null::text, 'pi_retry'),
         (2500, '2024-01-03 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'waitingPurchaseID'::uuid, :'ticketTypeID'::uuid, 'pending', 'General admission', '2024-01-03 01:00:00+00'::timestamptz, :'waitingUserID'::uuid, 'cs_waiting', null),
         (5000, '2024-01-04 00:00:00+00'::timestamptz, 'USD', :'event2ID'::uuid, :'refundedPurchaseID'::uuid, :'ticketType2ID'::uuid, 'refunded', 'Workshop', '2024-01-04 01:00:00+00'::timestamptz, :'refundedUserID'::uuid, null::text, 'pi_refunded'),
-        (2500, '2024-01-05 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'rejectedPurchaseID'::uuid, :'ticketTypeID'::uuid, 'completed', 'General admission', '2024-01-05 01:00:00+00'::timestamptz, :'rejectedUserID'::uuid, null::text, 'pi_rejected')
+        (2500, '2024-01-05 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'rejectedPurchaseID'::uuid, :'ticketTypeID'::uuid, 'completed', 'General admission', '2024-01-05 01:00:00+00'::timestamptz, :'rejectedUserID'::uuid, null::text, 'pi_rejected'),
+        (2500, '2024-01-07 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'approvingPurchaseID'::uuid, :'ticketTypeID'::uuid, 'refund-requested', 'General admission', '2024-01-07 01:00:00+00'::timestamptz, :'approvingUserID'::uuid, null::text, 'pi_approving'),
+        (2500, '2024-01-08 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'approvedPurchaseID'::uuid, :'ticketTypeID'::uuid, 'refund-requested', 'General admission', '2024-01-08 01:00:00+00'::timestamptz, :'approvedUserID'::uuid, null::text, 'pi_approved')
 ) as fixture(
     amount_minor,
     created_at,
@@ -244,7 +260,7 @@ insert into event_purchase (
     :'externalUserID'
 );
 
--- Attendee requests represented in needs-review and completed history
+-- Attendee requests represented in needs-review, approval, and completed history
 insert into event_refund_request (
     created_at,
     event_purchase_id,
@@ -274,6 +290,26 @@ insert into event_refund_request (
         'Outside policy',
         'rejected',
         '2024-01-05 03:00:00+00'
+    ),
+    (
+        '2024-01-07 02:00:00+00',
+        :'approvingPurchaseID',
+        :'approvingRequestID',
+        :'approvingUserID',
+        null,
+        null,
+        'approving',
+        '2024-01-07 03:00:00+00'
+    ),
+    (
+        '2024-01-08 02:00:00+00',
+        :'approvedPurchaseID',
+        :'approvedRequestID',
+        :'approvedUserID',
+        null,
+        null,
+        'approved',
+        '2024-01-08 03:00:00+00'
     );
 
 -- Retryable refund job whose lifecycle update is newer than its refund row
@@ -480,7 +516,7 @@ select is(
             '{"limit": 50, "offset": 0}'::jsonb
         )->>'total'
     )::int,
-    5,
+    7,
     'Should default to unfinished refund work'
 );
 
@@ -498,6 +534,38 @@ select is(
     ),
     'awaiting-checkout',
     'Should expose unresolved checkout work for a canceled event'
+);
+
+-- Should expose an approved request without refund work as queued
+select is(
+    (
+        select refund->>'status'
+        from jsonb_array_elements(
+            list_group_refunds(
+                :'groupID'::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb->'refunds'
+        ) refund
+        where (refund->>'event_purchase_id')::uuid = :'approvedPurchaseID'
+    ),
+    'queued',
+    'Should expose an approved request without refund work as queued'
+);
+
+-- Should expose an approving request without refund work as processing
+select is(
+    (
+        select refund->>'status'
+        from jsonb_array_elements(
+            list_group_refunds(
+                :'groupID'::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb->'refunds'
+        ) refund
+        where (refund->>'event_purchase_id')::uuid = :'approvingPurchaseID'
+    ),
+    'processing',
+    'Should expose an approving request without refund work as processing'
 );
 
 -- Should expose all administrator attention states
@@ -629,7 +697,7 @@ select is(
             '{"limit": 50, "offset": 0, "view": "all"}'::jsonb
         )->>'total'
     )::int,
-    8,
+    10,
     'Should include every refund workflow in the all view'
 );
 
@@ -729,7 +797,7 @@ select results_eq(
     $$,
     $$ values (
         1,
-        8
+        10
     ) $$,
     'Should paginate all operational history while retaining the filtered total'
 );

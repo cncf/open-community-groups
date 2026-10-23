@@ -473,10 +473,6 @@ async fn test_update_binds_changed_sponsor_validation_to_locked_state() {
             *cid == community_id && *gid == group_id && country_code.as_deref() == Some("US")
         })
         .returning(|_, _, _| Ok(false));
-    db.expect_group_requires_automatic_tax_readiness()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(true));
     db.expect_list_group_automatic_tax_readiness_event_ids()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -580,10 +576,6 @@ async fn test_update_rejects_changed_sponsor_when_upcoming_event_is_not_ready() 
             *cid == community_id && *gid == group_id && country_code.as_deref() == Some("US")
         })
         .returning(|_, _, _| Ok(false));
-    db.expect_group_requires_automatic_tax_readiness()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(true));
     db.expect_list_group_automatic_tax_readiness_event_ids()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -630,6 +622,7 @@ async fn test_update_rejects_changed_sponsor_when_upcoming_event_is_not_ready() 
 async fn test_update_rejects_changed_sponsor_without_required_automatic_tax() {
     // Setup an authenticated settings update selecting a fiscal sponsor
     let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -667,10 +660,10 @@ async fn test_update_rejects_changed_sponsor_without_required_automatic_tax() {
             *cid == community_id && *gid == group_id && country_code.as_deref() == Some("US")
         })
         .returning(|_, _, _| Ok(false));
-    db.expect_group_requires_automatic_tax_readiness()
+    db.expect_list_group_automatic_tax_readiness_event_ids()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(true));
+        .returning(move |_, _| Ok(vec![event_id]));
     db.expect_update_group().never();
 
     // Reject the sponsor at the provider boundary before persistence
@@ -737,7 +730,6 @@ async fn test_update_rejects_new_sponsor_when_resulting_country_is_allowlisted()
             *cid == community_id && *gid == group_id && country_code.as_deref() == Some("US")
         })
         .returning(|_, _, _| Ok(true));
-    db.expect_group_requires_automatic_tax_readiness().never();
     db.expect_list_group_automatic_tax_readiness_event_ids().never();
     db.expect_update_group().never();
 
@@ -800,7 +792,6 @@ async fn test_update_rejects_replacement_sponsor_when_moving_between_allowlisted
             *cid == community_id && *gid == group_id && country_code.as_deref() == Some("JP")
         })
         .returning(|_, _, _| Ok(true));
-    db.expect_group_requires_automatic_tax_readiness().never();
     db.expect_list_group_automatic_tax_readiness_event_ids().never();
     db.expect_update_group().never();
 
@@ -862,10 +853,10 @@ async fn test_update_validates_sponsor_when_same_save_leaves_allowlist() {
             *cid == community_id && *gid == group_id && country_code.as_deref() == Some("US")
         })
         .returning(|_, _, _| Ok(false));
-    db.expect_group_requires_automatic_tax_readiness()
+    db.expect_list_group_automatic_tax_readiness_event_ids()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(false));
+        .returning(|_, _| Ok(vec![]));
     db.expect_update_group()
         .times(1)
         .withf(move |uid, cid, gid, group| {

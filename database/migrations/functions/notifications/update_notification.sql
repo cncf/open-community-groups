@@ -6,6 +6,11 @@ create or replace function update_notification(
 )
 returns void as $$
 begin
+    -- Reject blank failure reasons, which operators could not act on
+    if p_error is not null and btrim(p_error) = '' then
+        raise exception 'delivery error is required';
+    end if;
+
     -- Finalize the claimed notification with the delivery outcome
     update notification
     set
@@ -17,6 +22,7 @@ begin
     and delivery_status = 'processing'
     and delivery_claimed_at = p_delivery_claimed_at;
 
+    -- Reject stale or missing delivery claims
     if not found then
         raise exception 'notification delivery claim not found or no longer active';
     end if;

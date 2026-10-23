@@ -1,5 +1,7 @@
--- Returns submission data needed for notifications.
+-- Returns submission data needed for notifications for an event owned by the
+-- group.
 create or replace function get_cfs_submission_notification_data(
+    p_group_id uuid,
     p_event_id uuid,
     p_cfs_submission_id uuid
 )
@@ -12,8 +14,11 @@ returns json as $$
         'action_required_message', cs.action_required_message
     ))
     from cfs_submission cs
-    join session_proposal sp on sp.session_proposal_id = cs.session_proposal_id
     join cfs_submission_status css on css.cfs_submission_status_id = cs.status_id
+    join event e on e.event_id = cs.event_id
+    join session_proposal sp on sp.session_proposal_id = cs.session_proposal_id
     where cs.event_id = p_event_id
-    and cs.cfs_submission_id = p_cfs_submission_id;
-$$ language sql;
+    and cs.cfs_submission_id = p_cfs_submission_id
+    and e.deleted = false
+    and e.group_id = p_group_id;
+$$ language sql stable;

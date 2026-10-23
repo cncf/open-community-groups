@@ -190,6 +190,9 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     assert_eq!(event.kind, EventKind::Hybrid);
     assert_eq!(event.waitlist_count, 1);
 
+    // Check the venue zip code key
+    assert_eq!(event.venue_zip_code.as_deref(), Some("94105"));
+
     Ok(())
 }
 

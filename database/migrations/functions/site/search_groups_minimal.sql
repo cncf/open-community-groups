@@ -52,4 +52,4 @@ returns json as $$
         'truncated', s.total > p_limit
     )
     from stats s;
-$$ language sql;
+$$ language sql stable;

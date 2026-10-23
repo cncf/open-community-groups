@@ -12,7 +12,6 @@ select plan(5);
 -- ============================================================================
 
 \set admissionOfferID '4a000000-0000-0000-0000-000000000014'
-\set canceledEventID '4a000000-0000-0000-0000-000000000010'
 \set communityID '4a000000-0000-0000-0000-000000000001'
 \set currentEventID '4a000000-0000-0000-0000-000000000002'
 \set endedEventID '4a000000-0000-0000-0000-000000000009'
@@ -23,20 +22,28 @@ select plan(5);
 \set nonConfirmedEventID '4a000000-0000-0000-0000-000000000013'
 \set otherUserID '4a000000-0000-0000-0000-000000000007'
 \set ticketTypeID '4a000000-0000-0000-0000-000000000015'
-\set unpublishedEventID '4a000000-0000-0000-0000-000000000011'
-\set unscheduledEventID '4a000000-0000-0000-0000-000000000012'
 \set userID '4a000000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, group categories, event categories, users and groups
+-- Community owning the group
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- User whose attendance is excluded from the listed user's events
 select fx_user(:'otherUserID');
+
+-- User whose check-in events are listed
 select fx_user(:'userID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group owning the events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Current, future, and explicitly ended events used by attendee ordering scenarios
@@ -59,6 +66,13 @@ select fx_event(:'futureEventID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'published', true,
     'published_at', current_timestamp,
     'starts_at', current_timestamp + interval '1 day'
+));
+
+-- Event used by the non-confirmed attendance exclusion
+select fx_event(:'nonConfirmedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '2 days'
 ));
 
 -- Ticket type used by the completed admission offer fallback
@@ -91,25 +105,7 @@ insert into admission_offer (
     'Offer admission'
 );
 
--- Events used by attendee and event visibility exclusions
-select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'published', true,
-    'published_at', current_timestamp,
-    'starts_at', current_timestamp + interval '2 days'
-));
-select fx_event(:'nonConfirmedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'published_at', current_timestamp,
-    'starts_at', current_timestamp + interval '2 days'
-));
-select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('starts_at', current_timestamp + interval '2 days'));
-select fx_event(:'unscheduledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'published_at', current_timestamp
-));
-
--- Attendee rows for current, future, and excluded-event scenarios
+-- Attendee rows for current, future, closed-window and non-confirmed scenarios
 insert into event_attendee (
     event_id,
     user_id,
@@ -118,13 +114,10 @@ insert into event_attendee (
 
     attendance_canceled_at
 ) values
-    (:'canceledEventID', :'userID', false, 'confirmed', null),
     (:'currentEventID', :'userID', true, 'confirmed', null),
     (:'endedEventID', :'userID', false, 'confirmed', null),
     (:'futureEventID', :'userID', false, 'confirmed', null),
-    (:'nonConfirmedEventID', :'userID', false, 'attendance-canceled', current_timestamp),
-    (:'unpublishedEventID', :'userID', false, 'confirmed', null),
-    (:'unscheduledEventID', :'userID', false, 'confirmed', null);
+    (:'nonConfirmedEventID', :'userID', false, 'attendance-canceled', current_timestamp);
 
 -- Unrelated attendance excluded from the user's list
 insert into event_attendee (event_id, user_id, status)

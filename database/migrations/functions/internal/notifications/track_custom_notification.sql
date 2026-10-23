@@ -61,4 +61,4 @@ returns void as $$
         end
     )
     from insert_custom_notification;
-$$ language sql;
+$$ language sql volatile;

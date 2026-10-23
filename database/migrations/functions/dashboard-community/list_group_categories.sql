@@ -23,4 +23,4 @@ returns json as $$
         group by g.group_category_id
     ) stats using (group_category_id)
     where gc.community_id = p_community_id;
-$$ language sql;
+$$ language sql stable;

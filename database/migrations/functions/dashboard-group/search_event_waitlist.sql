@@ -105,19 +105,9 @@ returns json as $$
                 u.username,
                 ee.waitlist_position,
 
-                u.bio,
-                u.bluesky_url,
-                u.company,
-                u.facebook_url,
-                u.github_url,
-                u.linkedin_url,
                 u.name,
-                u.photo_url,
-                get_public_user_provider(u.provider) as provider,
-                u.twitter_url,
                 u.tsdoc,
-                u.title,
-                u.website_url
+                u.title
             from enrollment_entries ee
             join event e on e.event_id = ee.event_id
             join "user" u on u.user_id = ee.user_id
@@ -149,23 +139,11 @@ returns json as $$
                 event_ticket_type_id,
                 offer_expires_at,
                 ticket_title,
-                json_strip_nulls(json_build_object(
-                    'user_id', user_id,
-                    'username', username,
-
-                    'bio', bio,
-                    'bluesky_url', bluesky_url,
-                    'company', company,
-                    'facebook_url', facebook_url,
-                    'github_url', github_url,
-                    'linkedin_url', linkedin_url,
-                    'name', name,
-                    'photo_url', photo_url,
-                    'provider', provider,
-                    'title', title,
-                    'twitter_url', twitter_url,
-                    'website_url', website_url
-                )) as "user",
+                (
+                    select public_user_profile(u)
+                    from "user" u
+                    where u.user_id = filtered_waitlist.user_id
+                ) as "user",
                 waitlist_position
             from filtered_waitlist
             cross join filters f
@@ -218,4 +196,4 @@ returns json as $$
         'waitlist', waitlist_json.waitlist
     )
     from waitlist_json, totals;
-$$ language sql;
+$$ language sql stable;

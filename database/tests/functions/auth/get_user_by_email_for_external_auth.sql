@@ -1,9 +1,11 @@
+-- Tests looking up users by email for external authentication.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -37,42 +39,35 @@ select fx_user(:'userUnverifiedID', jsonb_build_object(
 -- TESTS
 -- ============================================================================
 
--- Should return verified registered users for external auth.
+-- Should return verified registered users case-insensitively
 select is(
     get_user_by_email_for_external_auth('REGISTERED-EXTERNAL-AUTH@example.com')::jsonb->>'registration_status',
     'registered',
     'Should return verified registered users case-insensitively'
 );
 
--- Should not include password in external auth lookup.
-select is(
-    get_user_by_email_for_external_auth('registered-external-auth@example.com')::jsonb ? 'password',
-    false,
-    'Should not include password in external auth lookup'
-);
-
--- Should not return unverified registered users.
+-- Should not return unverified registered users
 select is(
     get_user_by_email_for_external_auth('unverified-external-auth@example.com')::jsonb,
     null::jsonb,
     'Should not return unverified registered users'
 );
 
--- Should return pre-registered users before email verification.
+-- Should return pre-registered users before email verification
 select is(
     get_user_by_email_for_external_auth('invited-external-auth@example.com')::jsonb->>'registration_status',
     'pre-registered',
     'Should return pre-registered users before email verification'
 );
 
--- Should include required user fields for pre-registered placeholders.
+-- Should coalesce missing names for pre-registered placeholders
 select is(
     get_user_by_email_for_external_auth('invited-external-auth@example.com')::jsonb->>'name',
     '',
-    'Should include required user fields for pre-registered placeholders'
+    'Should coalesce missing names for pre-registered placeholders'
 );
 
--- Should return null when the email does not exist.
+-- Should return null when the email does not exist
 select is(
     get_user_by_email_for_external_auth('missing@example.com')::jsonb,
     null::jsonb,

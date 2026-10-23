@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -48,6 +48,13 @@ select is(
     (select is_group_public(g) from "group" g where g.group_id = :'groupID'),
     true,
     'Should accept active groups'
+);
+
+-- Should be parallel safe so parallel queries can call it
+select is(
+    (select proparallel from pg_proc where proname = 'is_group_public'),
+    's'::"char",
+    'Should be parallel safe so parallel queries can call it'
 );
 
 -- Should reject deleted groups

@@ -175,11 +175,7 @@ async fn test_send_group_custom_notification_no_members() {
         GroupPermission::MembersWrite,
     );
     db.expect_get_group_summary().never();
-    db.expect_list_group_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![]));
-    db.expect_list_group_team_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![]));
@@ -232,14 +228,10 @@ async fn test_send_group_custom_notification_success() {
         user_id,
         GroupPermission::MembersWrite,
     );
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![member_id]));
-    db.expect_list_group_team_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(|_| Ok(vec![]));
     db.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));

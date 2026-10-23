@@ -28,6 +28,21 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+/// CFS submission reviewed in a way that requires notifying its speaker.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct CfsSubmissionUpdatedNotice {
+    /// Reviewed CFS submission identifier.
+    pub cfs_submission_id: Uuid,
+    /// Community owning the event.
+    pub community_id: Uuid,
+    /// Event the submission was made to.
+    pub event_id: Uuid,
+    /// Group owning the event.
+    pub group_id: Uuid,
+    /// User who reviewed the submission.
+    pub reviewer_id: Uuid,
+}
+
 /// Co-speaker invitation created or retargeted on a session proposal.
 #[derive(Debug, Clone)]
 pub(crate) struct CoSpeakerInvitationNotice<'a> {
@@ -46,22 +61,27 @@ pub(crate) struct CoSpeakerInvitationNotice<'a> {
 
 /// Enqueues the speaker notification for a reviewed CFS submission best-effort.
 ///
-/// The submission author and status are loaded together with the site
-/// settings; the caller supplies the event the submission belongs to. Failures
-/// are logged with the submission identifiers and swallowed.
+/// The event, the submission author and status, and the site settings are
+/// loaded from the notice identifiers. Failures are logged with every notice
+/// identifier and swallowed.
 pub(crate) async fn enqueue_cfs_submission_updated_best_effort(
     db: &dyn DBOperations,
     notifications_manager: &DynNotificationsManager,
     server_cfg: &HttpServerConfig,
-    reviewer_id: Uuid,
-    cfs_submission_id: Uuid,
-    event: EventSummary,
+    notice: CfsSubmissionUpdatedNotice,
 ) {
-    let event_id = event.event_id;
+    let CfsSubmissionUpdatedNotice {
+        cfs_submission_id,
+        community_id,
+        event_id,
+        group_id,
+        reviewer_id,
+    } = notice;
     if let Err(err) = async {
-        // Load the submission author, status, and site context
-        let (notification_data, site_settings) = tokio::try_join!(
-            db.get_cfs_submission_notification_data(event_id, cfs_submission_id),
+        // Load the event, submission author, status, and site context
+        let (event, notification_data, site_settings) = tokio::try_join!(
+            db.get_event_summary(community_id, group_id, event_id),
+            db.get_cfs_submission_notification_data(group_id, event_id, cfs_submission_id),
             db.get_site_settings(),
         )?;
 
@@ -87,8 +107,10 @@ pub(crate) async fn enqueue_cfs_submission_updated_best_effort(
     {
         warn!(
             error = %format_args!("{err:#}"),
-            %event_id,
             %cfs_submission_id,
+            %community_id,
+            %event_id,
+            %group_id,
             %reviewer_id,
             "failed to enqueue CFS submission update notification"
         );

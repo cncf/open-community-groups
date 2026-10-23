@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,13 +14,12 @@ select plan(6);
 \set communityID '79440000-0000-0000-0000-000000000001'
 \set completedPurchaseID '79440000-0000-0000-0000-000000000002'
 \set completedUserID '79440000-0000-0000-0000-000000000003'
-\set discountCodeID '79440000-0000-0000-0000-000000000004'
 \set eventCategoryID '79440000-0000-0000-0000-000000000005'
 \set eventID '79440000-0000-0000-0000-000000000006'
 \set eventTicketTypeID '79440000-0000-0000-0000-000000000007'
-\set offerID '79440000-0000-0000-0000-000000000013'
 \set groupCategoryID '79440000-0000-0000-0000-000000000008'
 \set groupID '79440000-0000-0000-0000-000000000009'
+\set offerID '79440000-0000-0000-0000-000000000013'
 \set pendingPurchaseID '79440000-0000-0000-0000-000000000010'
 \set priceWindowID '79440000-0000-0000-0000-000000000011'
 \set userID '79440000-0000-0000-0000-000000000012'
@@ -29,12 +28,20 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and users
+-- Community owning the checkout event
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- User whose purchase is already completed
 select fx_user(:'completedUserID');
+
+-- User whose checkout session expires
 select fx_user(:'userID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
@@ -57,30 +64,6 @@ select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object
     'title', 'General admission'
 ));
 
--- Price window
-select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
-
--- Discount code
-insert into event_discount_code (
-    event_discount_code_id,
-    amount_minor,
-    available,
-    available_override_active,
-    code,
-    event_id,
-    kind,
-    title
-) values (
-    :'discountCodeID',
-    500,
-    0,
-    true,
-    'SAVE5',
-    :'eventID',
-    'fixed_amount',
-    'Save 5'
-);
-
 -- Checkout-pending offer linked to the expiring purchase
 insert into admission_offer (
     admission_offer_id,
@@ -94,8 +77,6 @@ insert into admission_offer (
     amount_minor,
     currency_code,
     discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
     ticket_title
 ) values (
     :'offerID',
@@ -106,13 +87,14 @@ insert into admission_offer (
     'checkout_pending',
     :'userID',
 
-    2000,
+    2500,
     'USD',
-    500,
-    'SAVE5',
-    :'discountCodeID',
+    0,
     'General admission'
 );
+
+-- Price window
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Purchases
 insert into event_purchase (
@@ -123,8 +105,6 @@ insert into event_purchase (
     connected_seller_id,
     currency_code,
     discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
     event_id,
     event_ticket_type_id,
     hold_expires_at,
@@ -149,13 +129,11 @@ insert into event_purchase (
 ) values (
     :'offerID',
     :'pendingPurchaseID',
-    2000,
+    2500,
     'direct-charge',
     'acct_expire',
     'USD',
-    500,
-    'SAVE5',
-    :'discountCodeID',
+    0,
     :'eventID',
     :'eventTicketTypeID',
     now() + interval '15 minutes',
@@ -184,8 +162,6 @@ insert into event_purchase (
     'acct_expire',
     'USD',
     0,
-    null,
-    null,
     :'eventID',
     :'eventTicketTypeID',
     null,
@@ -208,14 +184,6 @@ insert into event_purchase (
     0
 );
 
--- Pending attendee row with registration answers created during checkout
-insert into event_attendee (event_id, user_id, status)
-values (
-    :'eventID',
-    :'userID',
-    'registration-questions-pending'
-);
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -226,7 +194,7 @@ select lives_ok(
     'Should expire the matching pending purchase'
 );
 
--- Should mark the pending purchase as expired and release its registration hold
+-- Should expire the purchase and return its offer to pending
 select results_eq(
     format($$
         select
@@ -236,30 +204,13 @@ select results_eq(
                 where event_purchase_id = %L::uuid
             ),
             (
-                select count(*)::int
-                from event_attendee
-                where event_id = %L::uuid
-                and user_id = %L::uuid
-            ),
-            (
                 select status
                 from admission_offer
                 where admission_offer_id = %L::uuid
             )
-    $$, :'pendingPurchaseID', :'eventID', :'userID', :'offerID'),
-    $$ values ('expired'::text, 0::int, 'pending'::text) $$,
-    'Should expire the purchase, release its registration hold, and preserve its offer'
-);
-
--- Should restore discount availability when expiring the purchase
-select is(
-    (
-        select available
-        from event_discount_code
-        where event_discount_code_id = :'discountCodeID'::uuid
-    ),
-    1,
-    'Should restore discount availability when expiring the purchase'
+    $$, :'pendingPurchaseID', :'offerID'),
+    $$ values ('expired'::text, 'pending'::text) $$,
+    'Should expire the purchase and return its offer to pending'
 );
 
 -- Should ignore missing checkout sessions

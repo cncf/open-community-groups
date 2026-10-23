@@ -10,12 +10,11 @@ declare
     v_community_id uuid;
     v_event event;
     v_existing_refund_kind text;
-    v_payment_job_id uuid;
     v_purchase event_purchase;
     v_refund_request_id uuid;
 begin
     -- Lock the event and verify it belongs to the selected group and can be changed
-    v_event := lock_active_event(null, p_group_id, p_event_id, true);
+    v_event := lock_active_event(null, p_group_id, p_event_id);
 
     -- Load group context needed for audit
     select g.community_id
@@ -24,14 +23,10 @@ begin
     where g.group_id = v_event.group_id;
 
     -- Lock ticket tiers before serializing this attendee's enrollment state
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = p_event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
+    perform lock_event_ticket_types(p_event_id);
 
     -- Serialize this attendee's enrollment transitions
-    perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(p_user_id::text));
+    perform lock_event_user(p_event_id, p_user_id);
 
     -- Require active attendance before changing or refunding it
     perform 1
@@ -78,6 +73,7 @@ begin
                 raise exception 'event purchase refund already started with different kind' using errcode = 'OCG01';
             end if;
 
+            -- Report the refund work already queued
             return json_build_object('cancellation_status', 'refund-queued');
         end if;
 
@@ -114,43 +110,16 @@ begin
             raise exception 'refund request is not available for attendance cancellation' using errcode = 'OCG01';
         end if;
 
-        -- Insert durable worker work with the purchase-level idempotency key
-        v_payment_job_id := enqueue_payment_job(
-            'event-purchase-refund',
-            v_purchase.payment_provider_id,
-            v_purchase.event_purchase_id,
-            format('event-purchase-refund-%s', v_purchase.event_purchase_id)
-        );
-
-        -- Reject purchases whose refund work already exists
-        if v_payment_job_id is null then
-            raise exception 'event purchase refund already started' using errcode = 'OCG01';
-        end if;
-
-        -- Record the attendee refund linked to the queued worker job
-        insert into event_purchase_refund (
-            amount_minor,
-            currency_code,
-            event_purchase_id,
-            kind,
-            payment_job_id,
-            payment_provider_id,
-            status,
-
-            event_refund_request_id,
-            initiated_by_user_id
-        ) values (
-            v_purchase.provider_total_minor,
-            v_purchase.currency_code,
-            v_purchase.event_purchase_id,
+        -- Queue the attendee refund, rejecting purchases whose refund work already exists
+        if enqueue_event_purchase_refund(
+            v_purchase,
             'attendance-cancellation',
-            v_payment_job_id,
-            v_purchase.payment_provider_id,
-            'provider-pending',
-
+            v_purchase.provider_total_minor,
             v_refund_request_id,
             p_actor_user_id
-        );
+        ) is null then
+            raise exception 'event purchase refund already started' using errcode = 'OCG01';
+        end if;
 
         -- Mark the purchase as awaiting its queued refund
         update event_purchase
@@ -164,50 +133,11 @@ begin
     end if;
 
     -- Preserve the attendee row while removing free active attendance
-    update event_attendee
-    set
-        attendance_canceled_at = current_timestamp,
-        attendance_canceled_by_user_id = p_actor_user_id,
-        checked_in = false,
-        checked_in_at = null,
-        status = 'attendance-canceled'
-    where event_id = p_event_id
-    and user_id = p_user_id
-    and status = 'confirmed';
+    perform mark_event_attendance_canceled(p_event_id, p_user_id, p_actor_user_id);
 
     -- Refund free or external purchases locally after attendance is canceled
     if v_purchase.event_purchase_id is not null then
-        -- Mark external purchases refunded without creating provider work
-        if v_purchase.charge_model = 'external' then
-            update event_purchase
-            set
-                refunded_at = current_timestamp,
-                status = 'refunded',
-                updated_at = current_timestamp
-            where event_purchase_id = v_purchase.event_purchase_id
-            and status in ('completed', 'refund-requested');
-
-            -- Resolve a leftover attendee refund request after the local refund
-            update event_refund_request
-            set
-                reviewed_at = current_timestamp,
-                reviewed_by_user_id = p_actor_user_id,
-                status = 'approved',
-                updated_at = current_timestamp
-            where event_purchase_id = v_purchase.event_purchase_id
-            and status = 'pending';
-
-            -- Release any reserved discount redemption after refunding the purchase
-            if v_purchase.event_discount_code_id is not null then
-                perform release_event_discount_code_availability(
-                    v_purchase.event_discount_code_id
-                );
-            end if;
-
-        -- Delegate free-purchase refunds to the existing local helper
-        else
-            perform refund_free_event_purchase(v_purchase.event_purchase_id);
-        end if;
+        perform refund_event_purchase_locally(v_purchase.event_purchase_id, p_actor_user_id);
     end if;
 
     -- Reconcile the released ticket-tier capacity

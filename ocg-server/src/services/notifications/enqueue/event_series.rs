@@ -20,8 +20,6 @@ use crate::{
     util::{base_url_without_trailing_slash, build_event_page_link},
 };
 
-use super::group_audience_ids;
-
 /// Enqueues one aggregate cancellation notification per recipient event set.
 pub(crate) async fn enqueue_event_series_canceled_notifications(
     db: &dyn DBOperations,
@@ -109,7 +107,7 @@ pub(crate) async fn enqueue_event_series_published_notifications(
     let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
 
     // Fetch the owner audience shared by all published occurrences
-    let owner_audience = group_audience_ids(db, group_id).await?;
+    let owner_audience = db.list_group_audience_ids(group_id).await?;
 
     // Build recipient event lists for each published occurrence
     let mut cohost_audiences: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
@@ -367,7 +365,7 @@ async fn load_event_series_occurrence_audience<'a>(
         let audience = if let Some(audience) = cohost_audiences_cache.get(&cohost.group_id) {
             audience.clone()
         } else {
-            let audience = group_audience_ids(db, cohost.group_id).await?;
+            let audience = db.list_group_audience_ids(cohost.group_id).await?;
             cohost_audiences_cache.insert(cohost.group_id, audience.clone());
             audience
         };

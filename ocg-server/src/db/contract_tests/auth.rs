@@ -7,10 +7,54 @@ use axum_login::tower_sessions::session;
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
 use tokio_postgres::types::Json;
+use uuid::Uuid;
 
-use crate::{auth::ExternalUserProfile, db::auth::DBAuth, types::user::UserProvider};
+use crate::{
+    auth::ExternalUserProfile,
+    db::auth::{DBAuth, EmailVerificationNotification},
+    types::user::UserProvider,
+};
 
 use super::helpers::*;
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_activate_pre_registered_user_email_password_deserializes() -> Result<()> {
+    // Setup the activation password profile and verification notification
+    let db = contract_tests_db()?;
+    let profile = ExternalUserProfile {
+        email: "activation-password.contract@example.com".to_string(),
+        name: "Contract Password Activation".to_string(),
+        username: "contract-password-activation".to_string(),
+
+        has_password: None,
+        password: Some("contract_password_hash".to_string()),
+        provider: None,
+    };
+    let verification = EmailVerificationNotification {
+        code: Uuid::new_v4(),
+        template_data: json!({
+            "link": "https://example.com/verify-email/contract-password-activation",
+        }),
+    };
+
+    // Activate the pre-registered user through the Rust contract
+    let (user, verification_code) = db
+        .activate_pre_registered_user_email_password(&profile, &verification)
+        .await?
+        .expect("contract password activation user should exist");
+
+    // Check the activated user and verification code
+    assert!(!user.email_verified);
+    assert_eq!(user.name, "Contract Password Activation");
+    assert_eq!(user.registration_status, "registered");
+    assert_eq!(user.user_id, activation_password_id());
+    assert_eq!(user.username, "contract-password-activation");
+    assert_eq!(user.has_password, Some(true));
+    assert_eq!(verification_code, verification.code);
+
+    Ok(())
+}
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
@@ -198,6 +242,38 @@ async fn db_contracts_get_user_by_username_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_sign_up_user_deserializes() -> Result<()> {
+    // Setup a verified sign-up profile without a password
+    let db = contract_tests_db()?;
+    let profile = ExternalUserProfile {
+        email: "sign-up.contract@example.com".to_string(),
+        name: "Contract Sign Up".to_string(),
+        username: "contract-sign-up".to_string(),
+
+        has_password: None,
+        password: None,
+        provider: None,
+    };
+
+    // Sign up the user through the Rust contract
+    let (user, verification_code) = db.sign_up_user(&profile, true, None).await?;
+
+    // Check the signed up user fields and computed membership flags
+    assert!(user.email_verified);
+    assert_eq!(user.email, "sign-up.contract@example.com");
+    assert_eq!(user.name, "Contract Sign Up");
+    assert_eq!(user.registration_status, "registered");
+    assert_eq!(user.username, "contract-sign-up");
+    assert_eq!(user.has_password, None);
+    assert_eq!(user.belongs_to_any_group_team, Some(false));
+    assert_eq!(user.belongs_to_community_team, Some(false));
+    assert!(verification_code.is_none());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
     // Setup the contract database and external profile update
     let db = contract_tests_db()?;
@@ -222,6 +298,7 @@ async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
     assert_eq!(user.email, "external-update-new.contract@example.com");
     assert!(user.email_verified);
     assert_eq!(user.name, "Contract External Update");
+    assert_eq!(user.registration_status, "registered");
     assert_eq!(user.user_id, external_update_id());
 
     // Check provider identities deserialize as expected

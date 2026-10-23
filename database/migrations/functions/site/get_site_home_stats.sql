@@ -4,24 +4,19 @@
 create or replace function get_site_home_stats()
 returns json as $$
 begin
-    -- Count published events, their attendees, groups and group members
+    -- Count listed events, their attendees, public groups and group members
     return (
         select json_build_object(
-            -- Count published events
+            -- Count listed events
             'events', (
                 select count(*)
                 from event e
                 join "group" g using (group_id)
                 join community c on c.community_id = g.community_id
                 where c.active = true
-                and g.active = true
-                and g.deleted = false
-                and e.canceled = false
-                and e.deleted = false
-                and e.published = true
-                and e.test_event = false
+                and is_event_listed(e, g)
             ),
-            -- Count attendees across published events
+            -- Count confirmed attendees across listed events
             'events_attendees', (
                 select count(*)
                 from event_attendee ea
@@ -29,32 +24,25 @@ begin
                 join "group" g using (group_id)
                 join community c on c.community_id = g.community_id
                 where c.active = true
-                and g.active = true
                 and ea.status = 'confirmed'
-                and g.deleted = false
-                and e.canceled = false
-                and e.deleted = false
-                and e.published = true
-                and e.test_event = false
+                and is_event_listed(e, g)
             ),
-            -- Count groups
+            -- Count public groups
             'groups', (
                 select count(*)
                 from "group" g
                 join community c on c.community_id = g.community_id
                 where c.active = true
-                and g.active = true
-                and g.deleted = false
+                and is_group_public(g)
             ),
-            -- Count groups members
+            -- Count members across public groups
             'groups_members', (
                 select count(*)
                 from group_member gm
                 join "group" g using (group_id)
                 join community c on c.community_id = g.community_id
                 where c.active = true
-                and g.active = true
-                and g.deleted = false
+                and is_group_public(g)
             )
         )
     );

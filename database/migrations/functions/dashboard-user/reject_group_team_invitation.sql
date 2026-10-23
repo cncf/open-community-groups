@@ -11,6 +11,7 @@ begin
       and gt.user_id = p_actor_user_id
       and gt.accepted = false;
 
+    -- Ensure a pending invitation existed
     if not found then
         raise exception 'no pending group invitation found' using errcode = 'OCG01';
     end if;
@@ -21,8 +22,7 @@ begin
         p_actor_user_id,
         'user',
         p_actor_user_id,
-        (select community_id from "group" where group_id = p_group_id),
-        p_group_id
+        p_group_id => p_group_id
     );
 end;
 $$ language plpgsql;

@@ -13,11 +13,11 @@ returns json as $$
         group_events as (
             select
                 g.community_id,
-                e.ends_at,
                 e.event_id,
                 e.group_id,
                 e.name,
-                e.starts_at
+                e.starts_at,
+                event_is_past(e) as is_past
             from event e
             join "group" g using (group_id)
             where e.group_id = p_group_id
@@ -27,8 +27,7 @@ returns json as $$
         past_events as (
             select ge.*
             from group_events ge
-            where coalesce(ge.ends_at, ge.starts_at) is not null
-            and coalesce(ge.ends_at, ge.starts_at) < current_timestamp
+            where ge.is_past
             order by ge.starts_at desc nulls last, ge.name asc, ge.event_id asc
             offset (select past_offset from filters)
             limit (select limit_value from filters)
@@ -37,15 +36,13 @@ returns json as $$
         past_total as (
             select count(*)::int as total
             from group_events ge
-            where coalesce(ge.ends_at, ge.starts_at) is not null
-            and coalesce(ge.ends_at, ge.starts_at) < current_timestamp
+            where ge.is_past
         ),
         -- Select the upcoming events page
         upcoming_events as (
             select ge.*
             from group_events ge
-            where coalesce(ge.ends_at, ge.starts_at) is null
-            or coalesce(ge.ends_at, ge.starts_at) >= current_timestamp
+            where not ge.is_past
             order by ge.starts_at asc nulls last, ge.name asc, ge.event_id asc
             offset (select upcoming_offset from filters)
             limit (select limit_value from filters)
@@ -54,8 +51,7 @@ returns json as $$
         upcoming_total as (
             select count(*)::int as total
             from group_events ge
-            where coalesce(ge.ends_at, ge.starts_at) is null
-            or coalesce(ge.ends_at, ge.starts_at) >= current_timestamp
+            where not ge.is_past
         ),
         -- Render past events as summary JSON
         past_json as (
@@ -99,4 +95,4 @@ returns json as $$
         )
     )
     from past_json, past_total, upcoming_json, upcoming_total;
-$$ language sql;
+$$ language sql stable;

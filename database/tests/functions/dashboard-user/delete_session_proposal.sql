@@ -133,7 +133,7 @@ select is(
     'Should remove session proposal record'
 );
 
--- Should create the expected audit row
+-- Should create the expected audit row with the proposal title
 select results_eq(
     $$
         select
@@ -141,7 +141,8 @@ select results_eq(
             actor_user_id,
             actor_username,
             resource_type,
-            resource_id
+            resource_id,
+            details->>'title'
         from audit_log
     $$,
     format(
@@ -151,13 +152,14 @@ select results_eq(
             %L::uuid,
             'alice-delete-session-proposal',
             'session_proposal',
-            %L::uuid
+            %L::uuid,
+            'Rust 101'
         )
         $$,
         :'userID',
         :'sessionProposalID'
     ),
-    'Should create the expected audit row'
+    'Should create the expected audit row with the proposal title'
 );
 
 -- Should reject deleting proposals with submissions

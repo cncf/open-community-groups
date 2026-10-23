@@ -10,18 +10,12 @@ returns void as $$
 declare
     v_purchase event_purchase;
 begin
-    -- Remind holders whose deadline is within the reminder window
+    -- Remind each external payment hold of the event that is due its reminder
     for v_purchase in
         select ep.*
         from event_purchase ep
         where ep.event_id = p_event.event_id
-        and ep.status = 'pending'
-        and ep.charge_model = 'external'
-        and ep.external_payment_reminder_sent_at is null
-        and ep.hold_expires_at is not null
-        and ep.created_at <= ep.hold_expires_at - interval '24 hours'
-        and ep.hold_expires_at - interval '24 hours' <= current_timestamp
-        and ep.hold_expires_at > current_timestamp
+        and event_purchase_external_reminder_is_due(ep)
         order by ep.event_purchase_id
     loop
         -- Mark the reminder before enqueueing so retries cannot duplicate it
@@ -38,6 +32,7 @@ begin
             continue;
         end if;
 
+        -- Notify the holder that the payment deadline is approaching
         perform enqueue_notification(
             'event-external-payment-reminder',
             external_payment_notification_payload(p_event, p_group, v_purchase, p_theme),

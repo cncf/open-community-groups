@@ -5,13 +5,12 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set canceledEventID '3a2c0000-0000-0000-0000-000000000009'
 \set cohostGroupID '3a2c0000-0000-0000-0000-000000000012'
 \set communityID '3a2c0000-0000-0000-0000-000000000001'
 \set currentEventID '3a2c0000-0000-0000-0000-000000000002'
@@ -20,14 +19,9 @@ select plan(3);
 \set futureEventID '3a2c0000-0000-0000-0000-000000000004'
 \set groupCategoryID '3a2c0000-0000-0000-0000-000000000005'
 \set groupID '3a2c0000-0000-0000-0000-000000000006'
-\set inactiveGroupEventID '3a2c0000-0000-0000-0000-000000000013'
-\set inactiveGroupID '3a2c0000-0000-0000-0000-000000000014'
 \set noLogoGroupEventID '3a2c0000-0000-0000-0000-000000000017'
 \set noLogoGroupID '3a2c0000-0000-0000-0000-000000000016'
-\set pastEventID '3a2c0000-0000-0000-0000-000000000007'
 \set startedTodayEventID '3a2c0000-0000-0000-0000-000000000015'
-\set unpublishedEventID '3a2c0000-0000-0000-0000-000000000010'
-\set unscheduledEventID '3a2c0000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
@@ -61,17 +55,6 @@ select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID', jsonb_buil
 -- Group without a logo, falling back to the community logo
 select fx_group(:'noLogoGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('logo_url', null));
 
--- Inactive group with an otherwise listable event
-select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
-
--- Canceled event excluded from the scanner
-select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'published', true,
-    'published_at', current_timestamp,
-    'starts_at', current_timestamp + interval '2 days'
-));
-
 -- In-progress event with a full venue and no own logo
 select fx_event(:'currentEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp + interval '1 hour',
@@ -87,7 +70,7 @@ select fx_event(:'currentEventID', :'groupID', :'eventCategoryID', jsonb_build_o
     'venue_state_name', 'Lisboa'
 ));
 
--- Event that explicitly ended at the start of today
+-- Event that explicitly ended at the start of today, excluded by the scanner window
 select fx_event(:'endedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', date_trunc('day', current_timestamp at time zone 'UTC') at time zone 'UTC',
     'published', true,
@@ -108,26 +91,11 @@ select fx_event(:'futureEventID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'timezone', 'UTC'
 ));
 
--- Published event of the inactive group
-select fx_event(:'inactiveGroupEventID', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'published_at', current_timestamp,
-    'starts_at', current_timestamp + interval '1 day'
-));
-
 -- Upcoming event without a logo in the group without a logo
 select fx_event(:'noLogoGroupEventID', :'noLogoGroupID', :'eventCategoryID', jsonb_build_object(
     'published', true,
     'published_at', current_timestamp,
     'starts_at', current_timestamp + interval '1 day'
-));
-
--- Event that ended two days ago
-select fx_event(:'pastEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', current_timestamp - interval '2 days',
-    'published', true,
-    'published_at', current_timestamp - interval '4 days',
-    'starts_at', current_timestamp - interval '3 days'
 ));
 
 -- Event started today without an end, listed until local midnight
@@ -144,15 +112,6 @@ select fx_event(:'startedTodayEventID', :'groupID', :'eventCategoryID', jsonb_bu
     'venue_city', 'Porto'
 ));
 
--- Unpublished event excluded from the scanner
-select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('starts_at', current_timestamp + interval '2 days'));
-
--- Unscheduled event excluded from the scanner
-select fx_event(:'unscheduledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'published_at', current_timestamp
-));
-
 -- Approved co-host credited on the current event
 insert into event_cohost (event_cohost_status_id, event_id, group_id, approved_at)
 values ('approved', :'currentEventID', :'cohostGroupID', current_timestamp);
@@ -160,13 +119,6 @@ values ('approved', :'currentEventID', :'cohostGroupID', current_timestamp);
 -- ============================================================================
 -- TESTS
 -- ============================================================================
-
--- Should ignore events of inactive groups
-select is(
-    list_group_check_in_events(:'inactiveGroupID'::uuid)::jsonb,
-    '[]'::jsonb,
-    'Should ignore events of inactive groups'
-);
 
 -- Should fall back to the community logo when the event and group have none
 select is(

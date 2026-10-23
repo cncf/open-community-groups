@@ -14,4 +14,4 @@ returns boolean as $$
         where eir.event_id = p_event_id
         and eir.registration_answers is not null
     );
-$$ language sql;
+$$ language sql stable;

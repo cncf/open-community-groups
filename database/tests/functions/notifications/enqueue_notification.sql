@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(25);
+select plan(28);
 
 -- ============================================================================
 -- VARIABLES
@@ -189,6 +189,55 @@ select is(
     ),
     0,
     'Should write no rows when every recipient opted out'
+);
+
+-- Should return no identifiers for an uncategorized kind without recipients
+select is(
+    enqueue_notification(
+        'email-verification',
+        '{"link":"/verify/enqueue-notification-empty"}'::jsonb,
+        jsonb_build_array(
+            jsonb_build_object(
+                'content_type', 'text/plain',
+                'data_base64', encode(convert_to('enqueue-notification-empty', 'utf8'), 'base64'),
+                'file_name', 'empty.txt'
+            )
+        ),
+        '{}'::uuid[]
+    ),
+    '{}'::uuid[],
+    'Should return no identifiers for an uncategorized kind without recipients'
+);
+
+-- Should write no template data for an uncategorized kind without recipients
+select is(
+    (
+        select count(*)::int
+        from notification_template_data
+        where hash = encode(
+            digest(
+                convert_to('{"link":"/verify/enqueue-notification-empty"}'::jsonb::text, 'utf8'),
+                'sha256'
+            ),
+            'hex'
+        )
+    ),
+    0,
+    'Should write no template data for an uncategorized kind without recipients'
+);
+
+-- Should write no attachments for an uncategorized kind without recipients
+select is(
+    (
+        select count(*)::int
+        from attachment
+        where hash = encode(
+            digest(convert_to('enqueue-notification-empty', 'utf8'), 'sha256'),
+            'hex'
+        )
+    ),
+    0,
+    'Should write no attachments for an uncategorized kind without recipients'
 );
 
 -- Should enqueue optional notifications only for recipients who receive them

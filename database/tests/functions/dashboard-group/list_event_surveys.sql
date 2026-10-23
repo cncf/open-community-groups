@@ -5,15 +5,13 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID 'a5e00011-0000-0000-0000-000000000001'
-\set deletedEventID 'a5e00011-0000-0000-0000-000000000002'
-\set deletedEventSurveyID 'a5e00011-0000-0000-0000-000000000003'
 \set emptyEventID 'a5e00011-0000-0000-0000-000000000004'
 \set eventCategoryID 'a5e00011-0000-0000-0000-000000000005'
 \set eventID 'a5e00011-0000-0000-0000-000000000006'
@@ -43,21 +41,11 @@ select fx_group(:'foreignGroupID', :'communityID', :'groupCategoryID');
 -- Group hosting the surveyed events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Deleted event whose surveys are hidden
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'deleted_at', '2025-01-01 10:00:00+00'
-));
-
 -- Event without surveys
 select fx_event(:'emptyEventID', :'groupID', :'eventCategoryID');
 
 -- Event with several surveys
 select fx_event(:'eventID', :'groupID', :'eventCategoryID');
-
--- Survey of the deleted event
-insert into event_survey (event_survey_id, event_id, title)
-values (:'deletedEventSurveyID', :'deletedEventID', 'Deleted event survey');
 
 -- Survey created first, sharing its creation time with the second one
 insert into event_survey (event_survey_id, created_at, event_id, title)
@@ -95,13 +83,6 @@ select is(
         where s.event_survey_id = :'firstSurveyID'
     ),
     'Should project each survey with the shared summary'
-);
-
--- Should return an empty list for deleted events
-select is(
-    list_event_surveys(:'groupID'::uuid, :'deletedEventID'::uuid)::jsonb,
-    '[]'::jsonb,
-    'Should return an empty list for deleted events'
 );
 
 -- Should return an empty list for events of another group

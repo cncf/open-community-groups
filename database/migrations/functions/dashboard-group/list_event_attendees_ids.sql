@@ -15,4 +15,4 @@ returns uuid[] as $$
     and ea.status = 'confirmed'
     and (not p_checked_in_only or ea.checked_in = true)
     and u.email_verified = true;
-$$ language sql;
+$$ language sql stable;

@@ -1,7 +1,7 @@
 -- Reports whether an event still accepts enrollment transitions: its group is
 -- active and the event is published, not deleted, not canceled and not over.
--- This is the row-based form of the lock_active_event predicate for callers
--- that already hold the rows.
+-- Single home of the enrollment-active rule; lock_active_event,
+-- ensure_event_is_active and list_user_event_invitations delegate to it.
 create or replace function event_accepts_enrollment(
     p_event event,
     p_group "group"
@@ -11,8 +11,5 @@ returns boolean as $$
         and p_event.published
         and not p_event.deleted
         and not p_event.canceled
-        and (
-            event_effective_ends_at(p_event) is null
-            or event_effective_ends_at(p_event) >= current_timestamp
-        );
+        and not event_is_past(p_event);
 $$ language sql stable;

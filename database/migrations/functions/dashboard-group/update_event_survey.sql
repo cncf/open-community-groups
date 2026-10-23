@@ -83,12 +83,24 @@ begin
     update event_survey set
         anonymous = v_values.anonymous,
         audience = v_values.audience,
-        closes_at = case when v_dates_changed then v_values.closes_at else closes_at end,
+        closes_at = case
+            -- Store the new date when a date changed
+            when v_dates_changed then v_values.closes_at
+            -- Keep the stored date when it matches at whole seconds
+            else closes_at
+        end,
         description = v_values.description,
-        opens_at = case when v_dates_changed then v_values.opens_at else opens_at end,
+        opens_at = case
+            -- Store the new date when a date changed
+            when v_dates_changed then v_values.opens_at
+            -- Keep the stored date when it matches at whole seconds
+            else opens_at
+        end,
         questions = v_values.questions,
         revision = revision + case
+            -- Bump the revision when answer-bound settings or dates change
             when v_locked_settings_changed or v_dates_changed then 1
+            -- Keep the revision for title or description edits
             else 0
         end,
         title = v_values.title,
@@ -101,10 +113,9 @@ begin
         p_actor_user_id,
         'event_survey',
         p_event_survey_id,
-        (select g.community_id from "group" g where g.group_id = v_event.group_id),
-        v_event.group_id,
-        p_event_id,
-        jsonb_build_object('title', v_values.title)
+        p_group_id => v_event.group_id,
+        p_event_id => p_event_id,
+        p_details => jsonb_build_object('title', v_values.title)
     );
 end;
 $$ language plpgsql;

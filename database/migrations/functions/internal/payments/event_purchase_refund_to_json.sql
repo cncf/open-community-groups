@@ -23,4 +23,4 @@ returns jsonb as $$
         'provider_refund_id', p_refund.provider_refund_id,
         'provider_refunded_at', epoch_seconds(p_refund.provider_refunded_at)
     ));
-$$ language sql immutable;
+$$ language sql stable;

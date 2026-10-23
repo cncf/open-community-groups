@@ -1,4 +1,8 @@
 -- Returns the user's current enrollment state for an attendee-visible event.
+-- The status label follows this precedence: attendee, pending-payment,
+-- invitation-approved, pending-approval, rejected, waitlisted, offer-expired,
+-- none. Events stop being attendee-visible once they are past, unless they
+-- were canceled.
 create or replace function get_event_enrollment(
     p_community_id uuid,
     p_event_id uuid,
@@ -6,7 +10,7 @@ create or replace function get_event_enrollment(
 )
 returns json as $$
     with
-    -- Scope every downstream state lookup to an attendee-visible event.
+    -- Scope every downstream state lookup to an attendee-visible event
     scoped_event as (
         select e.attendee_approval_required
         from event e
@@ -16,31 +20,24 @@ returns json as $$
         and g.active = true
         and e.deleted = false
         and e.published = true
-        and (e.canceled = true or e.ends_at is null or e.ends_at >= current_timestamp)
+        and (e.canceled or not event_is_past(e))
     ),
-    -- Resolve the shared enrollment facts only for a visible event.
+    -- Resolve the shared enrollment facts only for a visible event
     enrollment as (
         select en.*
         from scoped_event se
         cross join lateral event_user_enrollment(p_event_id, p_user_id) en
     ),
-    -- Load the purchase the enrollment points at, with the event payment details.
+    -- Load the purchase the enrollment points at, with the event payment details
     purchase_state as (
         select
-            ep.amount_minor,
-            ep.charge_model,
-            ep.currency_code,
-            ep.event_purchase_id,
-            e.external_payment_instructions,
-            e.external_payment_url,
-            ep.hold_expires_at,
-            ep.provider_checkout_url,
-            ep.status
+            e as event,
+            ep as purchase
         from enrollment en
         join event_purchase ep on ep.event_purchase_id = en.event_purchase_id
         join event e using (event_id)
     ),
-    -- Map the shared facts to the attendee-facing labels.
+    -- Map the shared facts to the attendee-facing labels
     enrollment_state as (
         select
             coalesce((select attendee_checked_in from enrollment), false) as is_checked_in,
@@ -51,45 +48,40 @@ returns json as $$
             ), false) as manually_invited,
             coalesce((
                 select case
+                    -- Report a held seat first
                     when en.attendee_status = 'confirmed' then 'attendee'
+                    -- Report a resumable checkout hold
                     when en.purchase_status = 'pending' then 'pending-payment'
+                    -- Report a claimable admission offer
                     when en.admission_offer_id is not null then 'invitation-approved'
+                    -- Report a request awaiting review on approval events
                     when en.invitation_request_status = 'pending'
                         and se.attendee_approval_required then 'pending-approval'
+                    -- Report a rejected request on approval events
                     when en.invitation_request_status = 'rejected'
                         and se.attendee_approval_required then 'rejected'
+                    -- Report a waitlist entry
                     when en.waitlisted then 'waitlisted'
+                    -- Report an elapsed latest offer
                     when en.latest_offer_expired then 'offer-expired'
+                    -- Report no enrollment state
                     else 'none'
                 end
                 from enrollment en
                 cross join scoped_event se
             ), 'none') as status
-    ),
-    -- Attach the latest active review state for the selected purchase.
-    refund_request_state as (
-        select
-            case
-                when err.status = 'rejected' then nullif(btrim(err.review_note), '')
-            end as rejection_reason,
-            err.status
-        from event_refund_request err
-        join purchase_state ps using (event_purchase_id)
-        where err.status in ('approved', 'approving', 'pending', 'rejected')
-        order by err.created_at desc, err.event_refund_request_id desc
-        limit 1
     )
-    -- Project the normalized state into the Rust enrollment JSON contract.
+    -- Project the normalized state into the Rust enrollment JSON contract
     select (
         jsonb_build_object(
             'is_checked_in', es.is_checked_in,
-            'purchase_amount_minor', (select amount_minor from purchase_state),
-            'purchase_charge_model', (select charge_model from purchase_state),
-            'refund_request_status', (select status from refund_request_state),
+            'purchase_amount_minor', (select (ps.purchase).amount_minor from purchase_state ps),
+            'purchase_charge_model', (select (ps.purchase).charge_model from purchase_state ps),
+            'refund_request_status', (select refund_request_status from enrollment),
             'resume_checkout_url', (
-                select provider_checkout_url
-                from purchase_state
-                where charge_model is distinct from 'external'
+                select (ps.purchase).provider_checkout_url
+                from purchase_state ps
+                where (ps.purchase).charge_model is distinct from 'external'
             ),
             'status', es.status
         )
@@ -97,24 +89,19 @@ returns json as $$
             'admission_offer_id', (select admission_offer_id from enrollment),
             'event_ticket_type_id', (select admission_offer_event_ticket_type_id from enrollment),
             'external_payment', (
-                select jsonb_strip_nulls(jsonb_build_object(
-                    'amount_minor', amount_minor,
-                    'currency_code', currency_code,
-                    'deadline', epoch_seconds(hold_expires_at),
-                    'instructions', external_payment_instructions,
-                    'reference', event_purchase_id,
-                    'url', external_payment_url
-                ))
-                from purchase_state
-                where status = 'pending'
-                and charge_model = 'external'
+                select event_purchase_external_payment_json(ps.event, ps.purchase)
+                from purchase_state ps
+                where (ps.purchase).status = 'pending'
+                and (ps.purchase).charge_model = 'external'
             ),
-            'refund_rejection_reason', (select rejection_reason from refund_request_state)
+            'refund_rejection_reason', (select refund_rejection_reason from enrollment)
         ))
         || case
+            -- Flag organizer invitations
             when es.manually_invited then jsonb_build_object('manually_invited', true)
+            -- Omit the flag otherwise
             else '{}'::jsonb
         end
     )::json
     from enrollment_state es;
-$$ language sql;
+$$ language sql stable;

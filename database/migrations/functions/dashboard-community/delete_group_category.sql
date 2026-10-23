@@ -6,28 +6,27 @@ create or replace function delete_group_category(
 )
 returns void as $$
 declare
-    v_groups_count bigint;
     v_name text;
 begin
-    -- Ensure the group category exists in the selected community, snapshotting
-    -- its name so the audit row remains readable after deletion
+    -- Lock the category and snapshot its name for the audit row
     select gc.name
     into v_name
     from group_category gc
     where gc.community_id = p_community_id
-      and gc.group_category_id = p_group_category_id;
+      and gc.group_category_id = p_group_category_id
+    for update of gc;
 
+    -- Reject categories outside the selected community
     if not found then
         raise exception 'group category not found' using errcode = 'OCG01';
     end if;
 
-    -- Block deletion when groups still reference this category
-    select count(*)
-    into v_groups_count
-    from "group" g
-    where g.group_category_id = p_group_category_id;
-
-    if v_groups_count > 0 then
+    -- Reject categories still used by any groups, including deleted ones
+    if exists (
+        select 1
+        from "group" g
+        where g.group_category_id = p_group_category_id
+    ) then
         raise exception 'cannot delete group category in use by groups' using errcode = 'OCG01';
     end if;
 

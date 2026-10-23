@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,27 +23,22 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community and categories
+-- Community owning the discounted event
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Event category for the discounted event
 select fx_event_category(:'eventCategoryID', :'communityID');
 
--- Group
-select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
-        'provider', 'stripe',
-        'recipient_id', 'acct_release_discount',
-        'seller_display_name', 'Release Discount Fiscal Sponsor'
-    )));
+-- Group category for the organizing group
+select fx_group_category(:'groupCategoryID', :'communityID');
 
--- Event
-select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'payment_currency_code', 'USD',
-    'published', true,
-    'published_at', now(),
-    'starts_at', now() + interval '1 day'
-));
+-- Group organizing the discounted event
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Discount codes
+-- Event owning both discount codes
+select fx_event(:'eventID', :'groupID', :'eventCategoryID');
+
+-- Limited discount code and unlimited discount code
 insert into event_discount_code (
     event_discount_code_id,
     active,
@@ -80,19 +75,20 @@ insert into event_discount_code (
 -- TESTS
 -- ============================================================================
 
--- Should restore one redemption by default for limited discount codes
+-- Should release limited and unlimited discount codes
 select lives_ok(
-    format($$select release_event_discount_code_availability(%L::uuid)$$, :'limitedDiscountID'),
-    'Should restore one redemption by default for limited discount codes'
+    format($$
+        select release_event_discount_code_availability(
+            %L::uuid
+        );
+        select release_event_discount_code_availability(
+            %L::uuid
+        );
+    $$, :'limitedDiscountID', :'unlimitedDiscountID'),
+    'Should release limited and unlimited discount codes'
 );
 
--- Should restore multiple redemptions when a quantity is provided
-select lives_ok(
-    format($$select release_event_discount_code_availability(%L::uuid, 2)$$, :'limitedDiscountID'),
-    'Should restore multiple redemptions when a quantity is provided'
-);
-
--- Should leave unlimited discount codes untouched
+-- Should restore limited discount codes and leave unlimited ones untouched
 select results_eq(
     format($$
         select
@@ -107,8 +103,8 @@ select results_eq(
                 where event_discount_code_id = %L::uuid
             )
     $$, :'limitedDiscountID', :'unlimitedDiscountID'),
-    $$ values ('3'::text, null::text) $$,
-    'Should leave unlimited discount codes untouched'
+    $$ values ('1'::text, null::text) $$,
+    'Should restore limited discount codes and leave unlimited ones untouched'
 );
 
 -- ============================================================================

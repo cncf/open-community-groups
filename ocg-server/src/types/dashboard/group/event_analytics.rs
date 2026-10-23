@@ -377,7 +377,7 @@ pub(crate) struct EventTicketTypeUsage {
     pub remaining: i64,
     /// Configured seats.
     pub seats_total: i64,
-    /// Purchases holding a seat.
+    /// Seats held by purchases, counting purchases that share an admission offer once.
     pub sold: i64,
     /// Ticket type title.
     pub title: String,

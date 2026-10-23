@@ -2,14 +2,14 @@
 create or replace function list_user_events(p_user_id uuid, p_filters jsonb)
 returns json as $$
     with
-        -- Normalize common list filters.
+        -- Normalize common list filters
         filters as (
             select
                 f.limit_value,
                 f.offset_value
             from parse_search_filters(p_filters) f
         ),
-        -- Collect visible upcoming events once for all participation roles.
+        -- Collect visible upcoming events once for all participation roles
         visible_events as (
             select
                 g.community_id,
@@ -25,23 +25,7 @@ returns json as $$
             and g.active = true
             and g.deleted = false
         ),
-        -- Select the latest refund review attached to each user event purchase.
-        latest_refund_request as (
-            select distinct on (ep.event_id)
-                ep.event_id,
-                case
-                    when err.status = 'rejected' then nullif(btrim(err.review_note), '')
-                end as refund_rejection_reason,
-                err.status as refund_request_status
-            from event_purchase ep
-            join event_refund_request err using (event_purchase_id)
-            where ep.user_id = p_user_id
-            order by
-                ep.event_id,
-                err.created_at desc,
-                err.event_refund_request_id desc
-        ),
-        -- Collect user participation roles.
+        -- Collect user participation roles
         role_rows as (
             -- Attendee
             select
@@ -51,9 +35,12 @@ returns json as $$
                 pending_purchase.amount_minor,
                 pending_purchase.currency_code,
                 case
+                    -- Report a questionnaire reservation backed by a live checkout
                     when ea.status = 'registration-questions-pending'
                         and pending_purchase.event_purchase_id is not null then 'pending-payment'
+                    -- Report a questionnaire reservation waiting on answers
                     when ea.status = 'registration-questions-pending' then 'registration-questions-pending'
+                    -- Report a confirmed attendee
                     else 'attendee'
                 end as enrollment_status,
                 ea.event_id,
@@ -62,13 +49,18 @@ returns json as $$
                 pending_purchase.offer_expires_at,
                 ea.registration_answers,
                 case
+                    -- Resume the live checkout of a questionnaire reservation
                     when ea.status = 'registration-questions-pending' then pending_purchase.provider_checkout_url
+                    -- Leave confirmed attendees without a checkout to resume
                     else null
                 end as resume_checkout_url,
                 case
+                    -- Report a checkout that claims an admission offer as an offer
                     when pending_purchase.admission_offer_id is not null then 'offer'
+                    -- Leave a direct checkout to the active direct checkout branch
                     when ea.status = 'registration-questions-pending'
                         and pending_purchase.event_purchase_id is not null then null
+                    -- Report the attendee role
                     else 'attendee'
                 end as role,
                 pending_purchase.ticket_title
@@ -169,22 +161,11 @@ returns json as $$
                 limit 1
             ) pending_purchase on true
             where ao.user_id = p_user_id
-            and admission_offer_is_active(ao.status)
-            and ao.expires_at > current_timestamp
-            and not exists (
-                select 1
-                from event_purchase ep
-                where ep.admission_offer_id = ao.admission_offer_id
-                and ep.status in (
-                    'refund-pending',
-                    'refund-recovery-pending',
-                    'refund-requested'
-                )
-            )
+            and admission_offer_is_claimable(ao)
 
             union all
 
-            -- Host
+            -- Host, organizer and speaker roles
             select
                 null::uuid as admission_offer_id,
                 null::text as admission_offer_source,
@@ -192,82 +173,44 @@ returns json as $$
                 null::bigint as amount_minor,
                 null::text as currency_code,
                 null::text as enrollment_status,
-                eh.event_id,
+                r.event_id,
                 null::uuid as event_ticket_type_id,
                 false as manually_invited,
                 null::timestamptz as offer_expires_at,
                 null::jsonb as registration_answers,
                 null::text as resume_checkout_url,
-                'host'::text as role,
+                r.role,
                 null::text as ticket_title
-            from event_host eh
-            where eh.user_id = p_user_id
+            from (
+                -- Event host
+                select eh.event_id, 'host'::text as role
+                from event_host eh
+                where eh.user_id = p_user_id
 
-            union all
+                union all
 
-            -- Event organizer
-            select
-                null::uuid as admission_offer_id,
-                null::text as admission_offer_source,
-                null::text as admission_offer_status,
-                null::bigint as amount_minor,
-                null::text as currency_code,
-                null::text as enrollment_status,
-                eo.event_id,
-                null::uuid as event_ticket_type_id,
-                false as manually_invited,
-                null::timestamptz as offer_expires_at,
-                null::jsonb as registration_answers,
-                null::text as resume_checkout_url,
-                'organizer'::text as role,
-                null::text as ticket_title
-            from event_organizer eo
-            where eo.user_id = p_user_id
+                -- Event organizer
+                select eo.event_id, 'organizer'
+                from event_organizer eo
+                where eo.user_id = p_user_id
 
-            union all
+                union all
 
-            -- Event speaker
-            select
-                null::uuid as admission_offer_id,
-                null::text as admission_offer_source,
-                null::text as admission_offer_status,
-                null::bigint as amount_minor,
-                null::text as currency_code,
-                null::text as enrollment_status,
-                es.event_id,
-                null::uuid as event_ticket_type_id,
-                false as manually_invited,
-                null::timestamptz as offer_expires_at,
-                null::jsonb as registration_answers,
-                null::text as resume_checkout_url,
-                'speaker'::text as role,
-                null::text as ticket_title
-            from event_speaker es
-            where es.user_id = p_user_id
+                -- Event speaker
+                select es.event_id, 'speaker'
+                from event_speaker es
+                where es.user_id = p_user_id
 
-            union all
+                union all
 
-            -- Session speaker
-            select
-                null::uuid as admission_offer_id,
-                null::text as admission_offer_source,
-                null::text as admission_offer_status,
-                null::bigint as amount_minor,
-                null::text as currency_code,
-                null::text as enrollment_status,
-                s.event_id,
-                null::uuid as event_ticket_type_id,
-                false as manually_invited,
-                null::timestamptz as offer_expires_at,
-                null::jsonb as registration_answers,
-                null::text as resume_checkout_url,
-                'speaker'::text as role,
-                null::text as ticket_title
-            from session_speaker ss
-            join session s using (session_id)
-            where ss.user_id = p_user_id
+                -- Session speaker
+                select s.event_id, 'speaker'
+                from session_speaker ss
+                join session s using (session_id)
+                where ss.user_id = p_user_id
+            ) r
         ),
-        -- Aggregate roles per event.
+        -- Aggregate roles per event
         event_rows as (
             select
                 (array_agg(rr.admission_offer_id) filter (
@@ -301,7 +244,7 @@ returns json as $$
             join role_rows rr using (event_id)
             group by ve.community_id, ve.event_id, ve.group_id, ve.starts_at
         ),
-        -- Select the requested page.
+        -- Select the requested page
         event_rows_page as (
             select
                 er.admission_offer_id,
@@ -317,19 +260,16 @@ returns json as $$
                 er.manually_invited,
                 er.offer_expires_at,
                 er.registration_answers,
-                lrr.refund_rejection_reason,
-                lrr.refund_request_status,
                 er.resume_checkout_url,
                 er.roles,
                 er.starts_at,
                 er.ticket_title
             from event_rows er
-            left join latest_refund_request lrr using (event_id)
             order by er.starts_at asc, er.event_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         )
-    -- Build final payload.
+    -- Build final payload
     select json_build_object(
         'events',
         (
@@ -375,50 +315,25 @@ returns json as $$
                             'event_ticket_type_id',
                             erp.event_ticket_type_id,
                             'external_payment',
-                            (
-                                select jsonb_strip_nulls(jsonb_build_object(
-                                    'amount_minor', ep.amount_minor,
-                                    'currency_code', ep.currency_code,
-                                    'deadline', epoch_seconds(ep.hold_expires_at),
-                                    'instructions', e.external_payment_instructions,
-                                    'reference', ep.event_purchase_id,
-                                    'url', e.external_payment_url
-                                ))
-                                from event_purchase ep
-                                join event e using (event_id)
-                                where ep.event_id = erp.event_id
-                                and ep.user_id = p_user_id
-                                and ep.status = 'pending'
-                                and ep.charge_model = 'external'
-                                and ep.hold_expires_at > current_timestamp
-                                order by ep.created_at desc, ep.event_purchase_id desc
-                                limit 1
-                            ),
+                            ext.external_payment,
                             'offer_expires_at',
                             epoch_seconds(erp.offer_expires_at),
                             'refund_rejection_reason',
-                            erp.refund_rejection_reason,
+                            en.refund_rejection_reason,
                             'refund_request_status',
-                            erp.refund_request_status,
+                            en.refund_request_status,
                             'resume_checkout_url',
                             case
-                                when erp.resume_checkout_url is not null
-                                    and not exists (
-                                        select 1
-                                        from event_purchase ep
-                                        where ep.event_id = erp.event_id
-                                        and ep.user_id = p_user_id
-                                        and ep.status = 'pending'
-                                        and ep.charge_model = 'external'
-                                        and ep.hold_expires_at > current_timestamp
-                                    )
-                                then erp.resume_checkout_url
+                                -- Resume provider checkout unless an external payment is pending
+                                when ext.external_payment is null then erp.resume_checkout_url
                             end,
                             'ticket_title',
                             erp.ticket_title
                         ))
                         || case
+                            -- Flag events the user was manually invited to
                             when erp.manually_invited then jsonb_build_object('manually_invited', true)
+                            -- Omit the flag otherwise
                             else '{}'::jsonb
                         end
                     )
@@ -427,6 +342,22 @@ returns json as $$
                 '[]'::json
             )
             from event_rows_page erp
+            -- Read the refund state from the purchase that represents the enrollment
+            cross join lateral event_user_enrollment(erp.event_id, p_user_id) en
+            -- Describe the external payment owed by the latest live external checkout
+            left join lateral (
+                select event_purchase_external_payment_json(e, ep) as external_payment
+                from event_purchase ep
+                join event e using (event_id)
+                where ep.event_id = erp.event_id
+                and ep.user_id = p_user_id
+                and ep.status = 'pending'
+                and ep.charge_model = 'external'
+                and ep.hold_expires_at > current_timestamp
+                order by ep.created_at desc, ep.event_purchase_id desc
+                limit 1
+            ) ext on true
+            -- Load the registration questions shown with the event
             cross join lateral (
                 select get_event_registration_questions(erp.community_id, erp.event_id)
                     as registration_questions
@@ -435,4 +366,4 @@ returns json as $$
         'total',
         (select count(*)::int from event_rows)
     );
-$$ language sql;
+$$ language sql stable;

@@ -19,4 +19,4 @@ returns uuid as $$
     )
     on conflict (idempotency_key) do nothing
     returning payment_job_id;
-$$ language sql;
+$$ language sql volatile;

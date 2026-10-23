@@ -46,4 +46,4 @@ returns json as $$
         'total', totals.total
     )
     from totals, sponsors_json;
-$$ language sql;
+$$ language sql stable;

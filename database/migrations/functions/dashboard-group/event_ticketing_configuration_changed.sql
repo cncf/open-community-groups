@@ -15,6 +15,7 @@ create or replace function event_ticketing_configuration_changed(
 )
 returns boolean as $$
 declare
+    v_after event;
     v_before event;
     v_discount_codes jsonb;
     v_discount_codes_before jsonb;
@@ -87,17 +88,14 @@ begin
         else v_before.ends_at
     end;
 
+    -- Build the proposed event schedule on a local copy of the stored row
+    v_after := v_before;
+    v_after.ends_at := v_ends_at;
+    v_after.starts_at := v_starts_at;
+
     -- Resolve the prior and proposed paid-ticketing activity states
-    v_was_payment_active := v_before.published
-        and (
-            event_effective_ends_at(v_before) is null
-            or event_effective_ends_at(v_before) > current_timestamp
-        );
-    v_will_payment_active := v_before.published
-        and (
-            coalesce(v_ends_at, v_starts_at) is null
-            or coalesce(v_ends_at, v_starts_at) > current_timestamp
-        );
+    v_was_payment_active := v_before.published and not event_is_past(v_before);
+    v_will_payment_active := v_before.published and not event_is_past(v_after);
     v_payment_became_active := not v_was_payment_active and v_will_payment_active;
 
     -- Compare the taxable performance context

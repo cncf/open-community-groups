@@ -1,10 +1,13 @@
 -- Determines the meeting sync state of a session after an event update. The
 -- prior state is the stored session row, its speaker rows and the locked
 -- parent event row with its host rows; the new state is the session and event
--- payloads. Returns null when no meeting is involved, false when the provider
--- meeting needs create, update or delete work, and true when the provider
--- meeting already matches the payload. Prior timestamps are compared at the
--- whole-second precision the payload carries.
+-- payloads. Returns null when no meeting is involved, or when the session
+-- payload leaves the meeting request unset and the linked meeting has
+-- captured recordings or its join URL is kept as the manual link. Returns
+-- false when the provider meeting needs create, update or delete work,
+-- including work still pending from an earlier change, and true when the
+-- provider meeting already matches the payload. Prior timestamps are compared
+-- at the whole-second precision the payload carries.
 create or replace function is_session_meeting_in_sync(
     p_before_session session,
     p_after_session jsonb,
@@ -31,6 +34,24 @@ declare
     v_before_speaker_ids uuid[];
     v_before_starts_at timestamptz := date_trunc('second', p_before_session.starts_at);
 begin
+    -- Keep a meeting still in use when the payload leaves the request unset
+    if v_after_meeting_requested is null and exists (
+        select 1
+        from meeting m
+        where m.session_id = p_before_session.session_id
+        and (
+            cardinality(m.recording_urls) > 0
+            or m.join_url = p_after_session->>'meeting_join_url'
+        )
+    ) then
+        return null;
+    end if;
+
+    -- Keep pending provider work until the meetings worker resolves it
+    if p_before_session.meeting_in_sync = false then
+        return false;
+    end if;
+
     -- Parse the payload schedule in the payload event timezone
     v_after_starts_at := (p_after_session->>'starts_at')::timestamp at time zone v_after_timezone;
     v_after_ends_at := (p_after_session->>'ends_at')::timestamp at time zone v_after_timezone;
@@ -62,11 +83,6 @@ begin
 
     -- Schedule deletion work when a session with a meeting becomes in-person
     if v_after_session_kind_id = 'in-person' and v_before_meeting_requested = true then
-        return false;
-    end if;
-
-    -- Preserve real pending/error states instead of hiding unsynced work
-    if v_before_meeting_requested = true and p_before_session.meeting_in_sync = false then
         return false;
     end if;
 

@@ -104,23 +104,22 @@ pub(crate) async fn update(
                 ));
             }
 
-            let require_automatic_tax = db
-                .group_requires_automatic_tax_readiness(community_id, group_id)
+            // Load the events that require automatic tax readiness
+            let event_ids = db
+                .list_group_automatic_tax_readiness_event_ids(community_id, group_id)
                 .await?;
+            let require_automatic_tax = !event_ids.is_empty();
+
+            // Validate the new fiscal sponsor
             payments_manager.validate_fiscal_sponsor(recipient, None).await?;
 
             // Recheck each upcoming automatic-tax event against the new sponsor
-            if require_automatic_tax {
-                let event_ids = db
-                    .list_group_automatic_tax_readiness_event_ids(community_id, group_id)
-                    .await?;
-                for event_id in event_ids {
-                    let event = db.get_event_full(community_id, group_id, event_id).await?;
-                    payments_manager
-                        .ensure_automatic_tax_readiness(recipient, &event.ticket_venue())
-                        .await
-                        .map_err(|error| upcoming_event_automatic_tax_error(&event.name, error))?;
-                }
+            for event_id in event_ids {
+                let event = db.get_event_full(community_id, group_id, event_id).await?;
+                payments_manager
+                    .ensure_automatic_tax_readiness(recipient, &event.ticket_venue())
+                    .await
+                    .map_err(|error| upcoming_event_automatic_tax_error(&event.name, error))?;
             }
             payment_validation = Some(PaymentConfigurationValidation {
                 require_automatic_tax,

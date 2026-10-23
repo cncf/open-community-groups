@@ -13,4 +13,4 @@ create or replace function is_group_member(
         and gm.user_id = p_user_id
         and g.active = true
     );
-$$ language sql;
+$$ language sql stable;

@@ -8,4 +8,4 @@ returns uuid[] as $$
     where ew.event_id = p_event_id
     and e.group_id = p_group_id
     and u.email_verified = true;
-$$ language sql;
+$$ language sql stable;

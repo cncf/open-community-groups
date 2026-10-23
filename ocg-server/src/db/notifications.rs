@@ -28,7 +28,7 @@ pub(crate) trait DBNotifications {
 
     /// Enqueues due event reminders and returns the number of reminder recipients
     /// attempted, before preference filtering.
-    async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize>;
+    async fn enqueue_due_event_reminders(&self) -> Result<usize>;
 
     /// Enqueues the opening email of every event survey that is now open and
     /// returns the number of notifications enqueued.
@@ -49,7 +49,8 @@ pub(crate) trait DBNotifications {
     ) -> Result<usize>;
 
     /// Enqueues and tracks a custom notification atomically. The notification is
-    /// scoped to the tracking group, so recipients who muted it are skipped.
+    /// scoped to the tracking group, so recipients who muted it are skipped. The
+    /// audit records the number of recipients attempted, before preferences.
     async fn enqueue_tracked_custom_notification(
         &self,
         notification: &NewNotification,
@@ -165,14 +166,14 @@ where
 
     /// [`DBNotifications::enqueue_due_event_reminders`].
     #[instrument(skip(self), err)]
-    async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize> {
+    async fn enqueue_due_event_reminders(&self) -> Result<usize> {
         let db = self.client().await?;
         let count = db
             .query_one(
                 "
-                select enqueue_due_event_reminders($1::text)::int;
+                select enqueue_due_event_reminders()::int;
                 ",
-                &[&base_url],
+                &[],
             )
             .await?
             .get::<_, i32>(0);
@@ -285,10 +286,6 @@ where
             return Ok(());
         }
 
-        // Convert recipient count to the database integer type
-        let recipient_count = i32::try_from(tracking.recipient_count)
-            .map_err(|_| anyhow!("recipient count cannot exceed i32::MAX"))?;
-
         // Prepare attachments payload
         let attachments = serialize_notification_attachments(&notification.attachments)?;
 
@@ -307,7 +304,6 @@ where
 
         // Enqueue notification and store the custom-notification audit atomically
         let kind = notification.kind.to_string();
-        let recipient_filters: Option<serde_json::Value> = None;
         self.execute(
             "
             select enqueue_tracked_custom_notification(
@@ -319,10 +315,8 @@ where
                 $6::uuid,
                 $7::uuid,
                 $8::uuid,
-                $9::int,
-                $10::text,
-                $11::text,
-                $12::jsonb
+                $9::text,
+                $10::text
             );
             ",
             &[
@@ -334,10 +328,8 @@ where
                 &community_id,
                 &event_id,
                 &group_id,
-                &recipient_count,
                 &tracking.subject,
                 &tracking.body,
-                &recipient_filters,
             ],
         )
         .await
@@ -582,9 +574,6 @@ pub(crate) struct CustomNotificationTracking {
     pub(crate) body: String,
     /// User who sent the custom notification.
     pub(crate) created_by: Uuid,
-    /// Attempted recipients after eligibility resolution, before the final
-    /// enqueue filter.
-    pub(crate) recipient_count: usize,
     /// Entity the notification is sent from.
     pub(crate) scope: CustomNotificationScope,
     /// Subject stored in the custom notification record.

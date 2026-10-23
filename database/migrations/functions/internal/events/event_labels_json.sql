@@ -14,4 +14,4 @@ returns json as $$
     )
     from event_label el
     where el.event_label_id = any(p_event_label_ids);
-$$ language sql;
+$$ language sql stable;

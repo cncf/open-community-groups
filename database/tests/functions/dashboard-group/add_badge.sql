@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -48,6 +48,7 @@ select results_eq(
     $$
         select criteria, description, group_id, image_file_name, name
         from badge
+        where name = 'Attendee'
     $$,
     format(
         $$ values ('Attend', 'Attended the event', %L::uuid, 'badge.png', 'Attendee') $$,
@@ -71,6 +72,7 @@ select results_eq(
             al.resource_type
         from audit_log al
         join badge b on b.badge_id = al.resource_id
+        where b.name = 'Attendee'
     $$,
     format(
         $$ values (
@@ -109,6 +111,20 @@ select throws_ok(
     'OCG01',
     'badge fields are invalid',
     'Should reject empty badge fields'
+);
+
+-- Should resolve a padded image value to the gallery file
+select lives_ok(
+    format(
+        $$select add_badge(%L::uuid, %L::uuid, %L::uuid, '{"criteria":"C","description":"D","image_file_name":"  /images/badges/badge.png  ","name":"Padded"}'::jsonb)$$,
+        :'actorID', :'communityID', :'groupID'
+    ),
+    'Should resolve a padded image value to the gallery file'
+);
+select results_eq(
+    $$ select image_file_name from badge where name = 'Padded' $$,
+    $$ values ('badge.png'::text) $$,
+    'Should store the padded image value as the gallery file name'
 );
 
 -- ============================================================================

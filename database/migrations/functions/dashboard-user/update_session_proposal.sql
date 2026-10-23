@@ -72,11 +72,6 @@ begin
     where session_proposal_id = p_session_proposal_id
     and user_id = p_actor_user_id;
 
-    -- Reject proposals removed after ownership validation
-    if not found then
-        raise exception 'session proposal not found' using errcode = 'OCG01';
-    end if;
-
     -- Track the session proposal update
     perform insert_audit_log(
         'session_proposal_updated',

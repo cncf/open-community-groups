@@ -112,4 +112,4 @@ returns json as $$
         'total',
         (select count(*)::int from purchase_rows)
     );
-$$ language sql;
+$$ language sql stable;

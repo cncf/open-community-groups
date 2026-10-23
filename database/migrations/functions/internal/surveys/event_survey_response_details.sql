@@ -1,9 +1,9 @@
 -- Returns the details of the response of a user to a survey: the submitted
 -- answers, the respondent summary, how many survey questions it answers (a
 -- non-blank text or at least one selected option), the ticket title of the
--- respondent's latest seat-holding purchase for the event and the last edit
--- date. No rows when the user has not answered the survey. Callers keep
--- respondents of anonymous surveys hidden.
+-- respondent's seat purchase for the event and the last edit date. No rows
+-- when the user has not answered the survey. Callers keep respondents of
+-- anonymous surveys hidden.
 create or replace function event_survey_response_details(
     p_event_survey_id uuid,
     p_user_id uuid
@@ -28,13 +28,9 @@ returns table (
         ),
         r.answers,
         (
-            select ep.ticket_title
-            from event_purchase ep
-            where ep.event_id = s.event_id
-            and ep.user_id = r.user_id
-            and event_purchase_holds_seat(ep.status)
-            order by ep.created_at desc, ep.event_purchase_id desc
-            limit 1
+            select sp.ticket_title
+            from event_seat_purchases(s.event_id) sp
+            where sp.user_id = r.user_id
         ),
         r.updated_at,
         public_user_summary(u)

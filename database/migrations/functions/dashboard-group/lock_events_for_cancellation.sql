@@ -25,13 +25,11 @@ begin
     and e.group_id = p_group_id
     and e.canceled = false
     and e.deleted = false
-    and (
-        event_effective_ends_at(e) is null
-        or event_effective_ends_at(e) >= current_timestamp
-    )
+    and not event_is_past(e)
     order by e.event_id
     for update;
 
+    -- Count the targets locked by this scope
     get diagnostics v_locked_event_count = row_count;
 
     -- Reject stale or cross-group scopes after acquiring all available locks

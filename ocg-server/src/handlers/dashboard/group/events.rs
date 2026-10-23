@@ -211,7 +211,7 @@ pub(crate) async fn update_page(
             GroupPermission::EventsWrite
         ),
         db.get_event_full(community_id, group_id, event_id),
-        db.list_event_approved_cfs_submissions(event_id),
+        db.list_event_approved_cfs_submissions(group_id, event_id),
         db.list_event_categories(community_id),
         db.list_cfs_submission_statuses_for_review(),
         db.list_event_cohosts(group_id, event_id),

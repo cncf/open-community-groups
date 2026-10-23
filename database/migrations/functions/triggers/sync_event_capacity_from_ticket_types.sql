@@ -3,88 +3,52 @@ create or replace function sync_event_capacity_from_ticket_types()
 returns trigger as $$
 declare
     v_event_id uuid;
+    v_event_ids uuid[];
 begin
-    -- Recompute capacity for events that received new tiers
+    -- Resolve events that received new tiers
     if tg_op = 'INSERT' then
-        for v_event_id in
+        select array_agg(distinct ntt.event_id order by ntt.event_id)
+        into v_event_ids
+        from new_ticket_types ntt;
+
+    -- Resolve events that lost tiers
+    elsif tg_op = 'DELETE' then
+        select array_agg(distinct ott.event_id order by ott.event_id)
+        into v_event_ids
+        from old_ticket_types ott;
+
+    -- Resolve events touched on either side of an update
+    else
+        select array_agg(distinct ae.event_id order by ae.event_id)
+        into v_event_ids
+        from (
             select ntt.event_id
             from new_ticket_types ntt
-            group by ntt.event_id
-            order by ntt.event_id
-        loop
-            -- Lock before aggregating so a waiter sees concurrent committed tier writes
-            perform 1
-            from event
-            where event_id = v_event_id
-            for no key update;
 
-            -- Persist the summed seats as the event capacity
-            update event e
-            set capacity = coalesce((
-                select sum(ett.seats_total)::int
-                from event_ticket_type ett
-                where ett.event_id = v_event_id
-            ), 0)
-            where e.event_id = v_event_id;
-        end loop;
+            union all
 
-    -- Recompute capacity for events that lost tiers
-    elsif tg_op = 'DELETE' then
-        for v_event_id in
             select ott.event_id
             from old_ticket_types ott
-            group by ott.event_id
-            order by ott.event_id
-        loop
-            -- Lock before aggregating so a waiter sees concurrent committed tier writes
-            perform 1
-            from event
-            where event_id = v_event_id
-            for no key update;
-
-            -- Persist the summed seats as the event capacity
-            update event e
-            set capacity = coalesce((
-                select sum(ett.seats_total)::int
-                from event_ticket_type ett
-                where ett.event_id = v_event_id
-            ), 0)
-            where e.event_id = v_event_id;
-        end loop;
-
-    -- Recompute capacity for events touched on either side of an update
-    else
-        for v_event_id in
-            with affected_events as (
-                select ntt.event_id
-                from new_ticket_types ntt
-
-                union all
-
-                select ott.event_id
-                from old_ticket_types ott
-            )
-            select ae.event_id
-            from affected_events ae
-            group by ae.event_id
-            order by ae.event_id
-        loop
-            -- Lock before aggregating so a waiter sees concurrent committed tier writes
-            perform 1
-            from event
-            where event_id = v_event_id
-            for no key update;
-
-            -- Persist the summed seats as the event capacity
-            update event e
-            set capacity = coalesce((
-                select sum(ett.seats_total)::int
-                from event_ticket_type ett
-                where ett.event_id = v_event_id
-            ), 0)
-            where e.event_id = v_event_id;
-        end loop;
+        ) ae;
     end if;
+
+    -- Recompute capacity for each affected event in event_id order
+    foreach v_event_id in array coalesce(v_event_ids, array[]::uuid[]) loop
+        -- Lock before aggregating so a waiter sees concurrent committed tier writes
+        perform 1
+        from event
+        where event_id = v_event_id
+        for no key update;
+
+        -- Persist the summed seats as the event capacity
+        update event e
+        set capacity = coalesce((
+            select sum(ett.seats_total)::int
+            from event_ticket_type ett
+            where ett.event_id = v_event_id
+        ), 0)
+        where e.event_id = v_event_id;
+    end loop;
 
     -- Statement triggers ignore the returned row
     return null;

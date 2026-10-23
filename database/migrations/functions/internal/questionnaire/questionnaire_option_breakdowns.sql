@@ -86,4 +86,4 @@ select coalesce(
     '[]'::json
 )
 from questions q;
-$$ language sql immutable;
+$$ language sql stable;

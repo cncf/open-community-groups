@@ -17,4 +17,4 @@ returns json as $$
           and gt.accepted = false
         order by gt.created_at desc
     ) invitation;
-$$ language sql;
+$$ language sql stable;

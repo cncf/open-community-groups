@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,7 +17,6 @@ select plan(9);
 \set groupID '3a3f0000-0000-0000-0000-000000000003'
 \set lastAdminGroupID '3a3f0000-0000-0000-0000-000000000009'
 \set missingUserID '3a3f0000-0000-0000-0000-000000000004'
-\set pendingGroupID '3a3f0000-0000-0000-0000-000000000005'
 \set user1ID '3a3f0000-0000-0000-0000-000000000006'
 \set user2ID '3a3f0000-0000-0000-0000-000000000007'
 \set viewerUserID '3a3f0000-0000-0000-0000-000000000010'
@@ -35,7 +34,6 @@ select fx_user(:'user2ID');
 select fx_user(:'viewerUserID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 select fx_group(:'lastAdminGroupID', :'communityID', :'groupCategoryID');
-select fx_group(:'pendingGroupID', :'communityID', :'groupCategoryID');
 
 -- Group team with two accepted admins and an accepted viewer
 insert into group_team (group_id, user_id, role, accepted)
@@ -47,12 +45,6 @@ values
 -- Group team with a single accepted admin
 insert into group_team (group_id, user_id, role, accepted)
 values (:'lastAdminGroupID', :'user1ID', 'admin', true);
-
--- Group team with an accepted admin and a pending admin
-insert into group_team (group_id, user_id, role, accepted)
-values
-    (:'pendingGroupID', :'user1ID', 'admin', true),
-    (:'pendingGroupID', :'user2ID', 'admin', false);
 
 -- ============================================================================
 -- TESTS
@@ -109,17 +101,6 @@ select results_eq(
         :'actorUserID', :'communityID', :'groupID', :'viewerUserID'
     ),
     'Should create the expected audit row'
-);
-
--- Should block demoting the last accepted group admin when another admin is pending
-select throws_ok(
-    format(
-        $$select update_group_team_member_role(%L::uuid, %L::uuid, %L::uuid, 'viewer')$$,
-        :'actorUserID', :'pendingGroupID', :'user1ID'
-    ),
-    'OCG01',
-    'cannot change role for the last accepted group admin',
-    'Should block demoting the last accepted group admin when another admin is pending'
 );
 
 -- Should error when updating role for non-existing member

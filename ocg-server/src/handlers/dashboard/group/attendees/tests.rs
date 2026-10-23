@@ -1784,6 +1784,64 @@ async fn test_list_page_with_search_query() {
 }
 
 #[tokio::test]
+async fn test_manual_check_in_rejects_event_outside_group() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let target_user_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock rejecting the event outside the selected group
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::CheckInsWrite,
+    );
+    db.expect_check_in_event()
+        .times(1)
+        .withf(move |actor_uid, cid, eid, gid, uid| {
+            *actor_uid == user_id
+                && *cid == community_id
+                && *eid == event_id
+                && *gid == group_id
+                && *uid == target_user_id
+        })
+        .returning(|_, _, _, _, _| {
+            Err(HandlerError::Database("event unavailable for check-in".to_string()).into())
+        });
+
+    // Setup notifications manager mock (not used by this handler)
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/{target_user_id}/check-in"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the rejection message is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "event unavailable for check-in"
+    );
+}
+
+#[tokio::test]
 async fn test_manual_check_in_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1792,7 +1850,6 @@ async fn test_manual_check_in_success() {
     let session_id = session::Id::default();
     let target_user_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1804,19 +1861,16 @@ async fn test_manual_check_in_success() {
         user_id,
         GroupPermission::CheckInsWrite,
     );
-    db.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event.clone()));
     db.expect_check_in_event()
         .times(1)
-        .withf(move |actor_uid, cid, eid, uid| {
+        .withf(move |actor_uid, cid, eid, gid, uid| {
             *actor_uid == user_id
                 && *cid == community_id
                 && *eid == event_id
+                && *gid == group_id
                 && *uid == target_user_id
         })
-        .returning(|_, _, _, _| Ok(true));
+        .returning(|_, _, _, _, _| Ok(true));
 
     // Setup notifications manager mock (not used by this handler)
     let nm = MockNotificationsManager::new();
@@ -2350,7 +2404,6 @@ async fn test_send_event_custom_notification_success() {
             matches!(notification.kind, NotificationKind::EventCustom)
                 && notification.recipients == vec![attendee_id1, attendee_id2]
                 && tracking.created_by == track_user_id
-                && tracking.recipient_count == 2
                 && tracking.subject == track_subject
                 && tracking.body == track_body
         })
@@ -2439,7 +2492,6 @@ async fn test_send_event_custom_notification_selected_recipients_success() {
             matches!(notification.kind, NotificationKind::EventCustom)
                 && notification.recipients == vec![selected_attendee_id]
                 && tracking.created_by == user_id
-                && tracking.recipient_count == 1
                 && tracking.subject == track_subject
                 && tracking.body == track_body
         })

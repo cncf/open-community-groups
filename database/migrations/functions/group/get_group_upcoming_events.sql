@@ -24,4 +24,4 @@ create or replace function get_group_upcoming_events(
         order by page_events.starts_at asc, page_events.event_id asc
         limit p_limit
     ) e;
-$$ language sql;
+$$ language sql stable;

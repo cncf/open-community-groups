@@ -11,4 +11,4 @@ returns jsonb as $$
         'photo_url', p_user.photo_url,
         'title', p_user.title
     ));
-$$ language sql immutable;
+$$ language sql stable;

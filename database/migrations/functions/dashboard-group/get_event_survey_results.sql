@@ -10,17 +10,15 @@ create or replace function get_event_survey_results(
     p_event_survey_id uuid
 )
 returns json as $$
+-- Load the survey of the group event
 with survey as (
     select
-        e as event_row,
-        s as event_survey_row
-    from event e
-    join event_survey s on s.event_id = e.event_id
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and s.event_survey_id = p_event_survey_id
+        gs.event_row,
+        gs.event_survey_row
+    from group_dashboard_event_surveys(p_group_id, p_event_id, p_event_survey_id) gs
+    where p_event_survey_id is not null
 ),
+-- Collect the responses of a survey in scope
 responses as (
     select
         r.answers,
@@ -29,6 +27,7 @@ responses as (
     where r.event_survey_id = p_event_survey_id
     and exists (select 1 from survey)
 ),
+-- Break down the selected options of every select question
 breakdowns as (
     select breakdown.value
     from survey sv
@@ -52,6 +51,7 @@ breakdowns as (
         )::jsonb
     ) as breakdown(value)
 ),
+-- Rank the free-text answers in response creation order
 text_answers as (
     select
         ta.question_id,
@@ -63,6 +63,7 @@ text_answers as (
     from survey sv
     cross join lateral event_survey_text_answers((sv.event_survey_row).event_survey_id) ta
 )
+-- Project the questions in definition order with the survey summary
 select jsonb_build_object(
     'questions', coalesce((
         select jsonb_agg(
@@ -79,6 +80,7 @@ select jsonb_build_object(
                     where (b.value->>'position')::bigint = question.position
                 ),
                 'text_answers', case
+                    -- Report the first answers and the total of free-text questions
                     when question.definition->>'kind' = 'free-text' then jsonb_build_object(
                         'answers', coalesce((
                             select jsonb_agg(ta.value order by ta.rank)

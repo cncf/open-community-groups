@@ -25,18 +25,6 @@ returns json as $$
         join "group" g using (group_id)
         join community c using (community_id)
         where e.group_id = p_group_id
-        and e.canceled = false
-        and e.deleted = false
-        and e.published = true
-        and e.starts_at is not null
-        and g.active = true
-        and g.deleted = false
-        and current_timestamp < coalesce(
-            e.ends_at,
-            (
-                date_trunc('day', e.starts_at at time zone e.timezone)
-                + interval '1 day'
-            ) at time zone e.timezone
-        )
+        and is_event_check_in_open(e, g)
     ) event_row;
-$$ language sql;
+$$ language sql stable;

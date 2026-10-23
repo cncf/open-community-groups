@@ -128,10 +128,18 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
 
 -- Active event used to verify queue promotion after recovery completion
 select fx_event(:'activeRecoveryEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'manual_tax_rate_ids', '{}'::text[],
     'payment_currency_code', 'USD',
     'published', true,
     'published_at', current_timestamp,
-    'starts_at', current_timestamp + interval '1 day'
+    'starts_at', current_timestamp + interval '1 day',
+    'tax_calculation_mode', 'automatic',
+    'venue_address', '1 Recovery Way',
+    'venue_city', 'Recovery City',
+    'venue_country_code', 'US',
+    'venue_name', 'Recovery Hall',
+    'venue_zip_code', '12345'
 ));
 
 -- Canceled event used to preserve attendance backed by a replacement purchase

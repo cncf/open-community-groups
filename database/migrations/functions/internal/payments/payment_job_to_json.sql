@@ -13,4 +13,4 @@ returns jsonb as $$
         'claim_id', p_job.claim_id,
         'failure_message', p_job.failure_message
     ));
-$$ language sql immutable;
+$$ language sql stable;

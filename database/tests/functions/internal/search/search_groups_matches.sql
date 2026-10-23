@@ -7,6 +7,9 @@
 begin;
 select plan(14);
 
+-- Reproduce a server whose default text search config is not simple
+set local default_text_search_config = 'pg_catalog.english';
+
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
@@ -101,7 +104,7 @@ select fx_group(:'groupNewYorkID', :'communityID', :'groupCategoryID', jsonb_bui
     'name', 'SGM Container Users',
     'region_id', :'regionID',
     'slug', 'sgm-group-ny',
-    'tags', array['docker']
+    'tags', array['community', 'docker', 'overland']
 ));
 
 -- Group in Chicago in the second community
@@ -264,23 +267,24 @@ select ok(
     'Should leave distances empty unless sorting by distance'
 );
 
--- Should match all communities when the community selection is empty
+-- Should match stop words as prefixes
 select set_eq(
-    $$select group_id from search_groups_matches('{"community": []}'::jsonb)$$,
-    array[
-        :'groupAustinID',
-        :'groupLondonID',
-        :'groupNewYorkID',
-        :'groupOtherID',
-        :'groupSanFranciscoID'
-    ]::uuid[],
-    'Should match all communities when the community selection is empty'
+    $$select group_id from search_groups_matches('{"ts_query": "over"}'::jsonb)$$,
+    array[:'groupNewYorkID']::uuid[],
+    'Should match stop words as prefixes'
 );
 
--- Should match nothing for an unknown community
-select is_empty(
-    $$select group_id from search_groups_matches('{"community": ["sgm-unknown-community"]}'::jsonb)$$,
-    'Should match nothing for an unknown community'
+-- Should match words whose english stem differs from the stored lexeme
+select set_eq(
+    $$
+        select group_id
+        from search_groups_matches('{
+            "community": ["sgm-community"],
+            "ts_query": "community"
+        }'::jsonb)
+    $$,
+    array[:'groupNewYorkID']::uuid[],
+    'Should match words whose english stem differs from the stored lexeme'
 );
 
 -- Should return every public group without filters

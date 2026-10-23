@@ -15,19 +15,7 @@ returns json as $$
                 cs.cfs_submission_id,
                 epoch_seconds(cs.created_at) as created_at,
                 get_event_summary(g.community_id, g.group_id, e.event_id) as event,
-                json_strip_nulls(json_build_object(
-                    'description', sp.description,
-                    'duration_minutes', floor(extract(epoch from sp.duration) / 60)::int,
-                    'session_proposal_id', sp.session_proposal_id,
-                    'session_proposal_level_id', sp.session_proposal_level_id,
-                    'session_proposal_level_name', spl.display_name,
-                    'title', sp.title,
-
-                    'co_speaker', case
-                        when co.user_id is null then null
-                        else public_user_summary(co)
-                    end
-                )) as session_proposal,
+                jsonb_strip_nulls(session_proposal_json(sp)) as session_proposal,
                 event_labels_json(
                     array(
                         select csl.event_label_id
@@ -43,11 +31,9 @@ returns json as $$
                 epoch_seconds(cs.updated_at) as updated_at
             from cfs_submission cs
             join session_proposal sp on sp.session_proposal_id = cs.session_proposal_id
-            join session_proposal_level spl using (session_proposal_level_id)
             join event e on e.event_id = cs.event_id
             join "group" g on g.group_id = e.group_id
             join cfs_submission_status css on css.cfs_submission_status_id = cs.status_id
-            left join "user" co on co.user_id = sp.co_speaker_user_id
             left join session s on s.cfs_submission_id = cs.cfs_submission_id
             where sp.user_id = p_user_id
             order by cs.created_at desc, cs.cfs_submission_id asc
@@ -71,4 +57,4 @@ returns json as $$
         'total', totals.total
     )
     from submissions_json, totals;
-$$ language sql;
+$$ language sql stable;

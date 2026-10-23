@@ -21,8 +21,5 @@ returns uuid[] as $$
     and e.group_id = p_group_id
     and e.canceled = false
     and e.deleted = false
-    and (
-        event_effective_ends_at(e) is null
-        or event_effective_ends_at(e) >= current_timestamp
-    );
-$$ language sql;
+    and not event_is_past(e);
+$$ language sql stable;

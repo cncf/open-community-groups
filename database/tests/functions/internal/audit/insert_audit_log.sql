@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,27 +16,55 @@ select plan(7);
 \set eventID '0c0c0000-0000-0000-0000-000000000003'
 \set groupCategoryID '0c0c0000-0000-0000-0000-000000000004'
 \set groupID '0c0c0000-0000-0000-0000-000000000005'
+\set otherCommunityID '0c0c0000-0000-0000-0000-000000000007'
 \set userID '0c0c0000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories and groups
+-- Community owning the group and event
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- User
+-- Community passed explicitly for a group of another community
+select fx_community(:'otherCommunityID');
+
+-- Actor whose username is snapshotted
 select fx_user(:'userID', jsonb_build_object('username', 'user'));
 
--- Event
+-- Event category of the event
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category of the group
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group whose community is derived when omitted
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Event scoped by the full audit row
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should derive the community from the group when omitted
+select lives_ok(
+    format($$select insert_audit_log(
+        'group_team_member_added',
+        %L::uuid,
+        'user',
+        %L::uuid,
+        p_group_id => %L::uuid
+    )$$, :'userID', :'userID', :'groupID'),
+    'Should insert a group-scoped audit row without a community'
+);
+
+select is(
+    (select community_id from audit_log where action = 'group_team_member_added'),
+    :'communityID'::uuid,
+    'Should derive the community from the group when omitted'
+);
 
 -- Should insert an audit row with actor snapshot and default details
 select lives_ok(
@@ -54,7 +82,9 @@ select is(
     (
         select row_to_json(t.*)::jsonb - 'audit_log_id' - 'created_at'
         from (
-            select * from audit_log
+            select *
+            from audit_log
+            where action = 'community_updated'
         ) t
     ),
     format('{
@@ -75,6 +105,42 @@ select is(
     (select created_at from audit_log where action = 'community_updated'),
     now(),
     'Should default the creation time to the transaction time'
+);
+
+-- Should keep an explicit community when given
+select lives_ok(
+    format($$select insert_audit_log(
+        'group_team_member_removed',
+        %L::uuid,
+        'user',
+        %L::uuid,
+        %L::uuid,
+        %L::uuid
+    )$$, :'userID', :'userID', :'otherCommunityID', :'groupID'),
+    'Should insert a group-scoped audit row with an explicit community'
+);
+
+select is(
+    (select community_id from audit_log where action = 'group_team_member_removed'),
+    :'otherCommunityID'::uuid,
+    'Should keep an explicit community when given'
+);
+
+-- Should leave community null without a group
+select lives_ok(
+    format($$select insert_audit_log(
+        'user_details_updated',
+        %L::uuid,
+        'user',
+        %L::uuid
+    )$$, :'userID', :'userID'),
+    'Should insert an audit row without scope ids'
+);
+
+select is(
+    (select community_id from audit_log where action = 'user_details_updated'),
+    null::uuid,
+    'Should leave community null without a group'
 );
 
 -- Should store an explicit creation time

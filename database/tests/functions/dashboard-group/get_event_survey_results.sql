@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,8 +13,6 @@ select plan(8);
 
 \set badOptionID 'a5e00017-0000-0000-0000-000000000001'
 \set communityID 'a5e00017-0000-0000-0000-000000000002'
-\set deletedEventID 'a5e00017-0000-0000-0000-000000000003'
-\set deletedEventSurveyID 'a5e00017-0000-0000-0000-000000000004'
 \set emptySurveyID 'a5e00017-0000-0000-0000-000000000005'
 \set eventCategoryID 'a5e00017-0000-0000-0000-000000000006'
 \set eventID 'a5e00017-0000-0000-0000-000000000007'
@@ -24,7 +22,6 @@ select plan(8);
 \set groupCategoryID 'a5e00017-0000-0000-0000-00000000000b'
 \set groupID 'a5e00017-0000-0000-0000-00000000000c'
 \set noQuestionsSurveyID 'a5e00017-0000-0000-0000-000000000012'
-\set otherEventID 'a5e00017-0000-0000-0000-000000000013'
 \set ratingQuestionID 'a5e00017-0000-0000-0000-00000000000d'
 \set rustOptionID 'a5e00017-0000-0000-0000-00000000000e'
 \set sqlOptionID 'a5e00017-0000-0000-0000-00000000000f'
@@ -54,25 +51,12 @@ select fx_group(:'foreignGroupID', :'communityID', :'groupCategoryID');
 -- Group hosting the surveyed events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Deleted event whose survey is hidden
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'deleted_at', '2025-01-01 10:00:00+00'
-));
-
 -- Published event that already ended
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', '2025-01-01 12:00:00+00',
     'published', true,
     'starts_at', '2025-01-01 10:00:00+00'
 ));
-
--- Other event of the group
-select fx_event(:'otherEventID', :'groupID', :'eventCategoryID');
-
--- Survey of the deleted event
-insert into event_survey (event_survey_id, event_id, title)
-values (:'deletedEventSurveyID', :'deletedEventID', 'Deleted event survey');
 
 -- Ready survey without responses
 insert into event_survey (event_survey_id, event_id, questions, status, title)
@@ -234,25 +218,18 @@ select is(
     'Should return an empty questions list for surveys without questions'
 );
 
--- Should return null for deleted events
-select is(
-    get_event_survey_results(:'groupID'::uuid, :'deletedEventID'::uuid, :'deletedEventSurveyID'::uuid)::jsonb,
-    null,
-    'Should return null for deleted events'
-);
-
--- Should return null for surveys of another event
-select is(
-    get_event_survey_results(:'groupID'::uuid, :'otherEventID'::uuid, :'surveyID'::uuid)::jsonb,
-    null,
-    'Should return null for surveys of another event'
-);
-
 -- Should return null for surveys of another group
 select is(
     get_event_survey_results(:'foreignGroupID'::uuid, :'eventID'::uuid, :'surveyID'::uuid)::jsonb,
     null,
     'Should return null for surveys of another group'
+);
+
+-- Should return null without a survey id
+select is(
+    get_event_survey_results(:'groupID'::uuid, :'eventID'::uuid, null)::jsonb,
+    null,
+    'Should return null without a survey id'
 );
 
 -- Should return the questions in order with breakdowns and the first text answers

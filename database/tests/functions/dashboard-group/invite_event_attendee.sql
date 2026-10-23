@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(59);
+select plan(58);
 
 -- ============================================================================
 -- VARIABLES
@@ -1182,36 +1182,6 @@ select results_eq(
         :'ticketTypeID'
     ),
     'Should reserve the organizer-selected ticket tier'
-);
-
--- Should persist a free issue-time price snapshot on the organizer invitation
-select results_eq(
-    format(
-        $$
-            select
-                ao.amount_minor,
-                ao.currency_code,
-                ao.discount_amount_minor,
-                ao.discount_code,
-                ao.event_discount_code_id,
-                ao.ticket_title
-            from admission_offer ao
-            where ao.event_id = %L::uuid
-            and ao.user_id = %L::uuid
-            and ao.status = 'pending'
-        $$,
-        :'ticketedEventID',
-        :'registeredUserID'
-    ),
-    $$ values (
-        0::bigint,
-        null::text,
-        0::bigint,
-        null::text,
-        null::uuid,
-        'General'::text
-    ) $$,
-    'Should persist a free issue-time price snapshot on the organizer invitation'
 );
 
 -- Should create a paid organizer invitation

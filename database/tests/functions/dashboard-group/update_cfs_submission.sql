@@ -5,13 +5,15 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '3a380000-0000-0000-0000-000000000001'
+\set deletedEventID '3a380000-0000-0000-0000-000000000018'
+\set deletedEventSubmissionID '3a380000-0000-0000-0000-000000000019'
 \set event2ID '3a380000-0000-0000-0000-000000000002'
 \set eventCategoryID '3a380000-0000-0000-0000-000000000003'
 \set eventID '3a380000-0000-0000-0000-000000000004'
@@ -20,6 +22,9 @@ select plan(18);
 \set label1ID '3a380000-0000-0000-0000-000000000007'
 \set label2ID '3a380000-0000-0000-0000-000000000008'
 \set labelInvalidID '3a380000-0000-0000-0000-000000000009'
+\set otherGroupEventID '3a380000-0000-0000-0000-000000000020'
+\set otherGroupEventSubmissionID '3a380000-0000-0000-0000-000000000021'
+\set otherGroupID '3a380000-0000-0000-0000-000000000022'
 \set proposal2ID '3a380000-0000-0000-0000-000000000010'
 \set proposal3ID '3a380000-0000-0000-0000-000000000011'
 \set proposalID '3a380000-0000-0000-0000-000000000012'
@@ -33,17 +38,22 @@ select plan(18);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories, users and groups
+-- Community
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'userID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Users
+-- Reviewer
 select fx_user(:'reviewerID', jsonb_build_object('username', 'reviewer'));
 
--- Session proposal
+-- Speaker
+select fx_user(:'userID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Session proposals
 insert into session_proposal (
     session_proposal_id,
     created_at,
@@ -78,24 +88,38 @@ insert into session_proposal (
     :'userID'
 );
 
+-- Group selected by the reviewer
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Group outside the reviewer selection
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
+
+-- Deleted event in the selected group
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
+
 -- Event
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Event used for invalid label checks
 select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
+-- Event owned by another group
+select fx_event(:'otherGroupEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object('published', true));
+
+-- CFS submissions
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values
+    (:'submissionID', :'eventID', :'proposalID', 'not-reviewed'),
+    (:'submission2ID', :'eventID', :'proposal2ID', 'withdrawn'),
+    (:'submission3ID', :'eventID', :'proposal3ID', 'approved'),
+    (:'deletedEventSubmissionID', :'deletedEventID', :'proposalID', 'not-reviewed'),
+    (:'otherGroupEventSubmissionID', :'otherGroupEventID', :'proposalID', 'not-reviewed');
+
 -- Event labels
 insert into event_label (event_label_id, event_id, name, color) values
     (:'label1ID', :'eventID', 'track / backend', '#DBEAFE'),
     (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2'),
     (:'labelInvalidID', :'event2ID', 'track / invalid', '#CCFBF1');
-
--- CFS submission
-insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
-values
-    (:'submissionID', :'eventID', :'proposalID', 'not-reviewed'),
-    (:'submission2ID', :'eventID', :'proposal2ID', 'withdrawn'),
-    (:'submission3ID', :'eventID', :'proposal3ID', 'approved');
 
 -- CFS submission labels
 insert into cfs_submission_label (cfs_submission_id, event_label_id)
@@ -127,6 +151,7 @@ select is(
     (
         select update_cfs_submission(
             :'reviewerID'::uuid,
+            :'groupID'::uuid,
             :'eventID'::uuid,
             :'submissionID'::uuid,
             jsonb_build_object(
@@ -201,6 +226,7 @@ select is(
     (
         select update_cfs_submission(
             :'reviewerID'::uuid,
+            :'groupID'::uuid,
             :'eventID'::uuid,
             :'submissionID'::uuid,
             format(
@@ -229,6 +255,7 @@ select is(
     (
         select update_cfs_submission(
             :'reviewerID'::uuid,
+            :'groupID'::uuid,
             :'eventID'::uuid,
             :'submissionID'::uuid,
             jsonb_build_object(
@@ -269,6 +296,7 @@ select lives_ok(
             %L::uuid,
             %L::uuid,
             %L::uuid,
+            %L::uuid,
             jsonb_build_object(
                 'action_required_message', 'Need more info',
                 'status_id', 'information-requested',
@@ -277,7 +305,7 @@ select lives_ok(
             )
         )
         $$,
-        :'reviewerID', :'eventID', :'submissionID'
+        :'reviewerID', :'groupID', :'eventID', :'submissionID'
     ),
     'Should update an existing reviewer rating without error'
 );
@@ -301,6 +329,7 @@ select lives_ok(
             %L::uuid,
             %L::uuid,
             %L::uuid,
+            %L::uuid,
             jsonb_build_object(
                 'action_required_message', 'Need more info',
                 'status_id', 'information-requested',
@@ -308,7 +337,7 @@ select lives_ok(
             )
         )
         $$,
-        :'reviewerID', :'eventID', :'submissionID'
+        :'reviewerID', :'groupID', :'eventID', :'submissionID'
     ),
     'Should accept a zero stars rating without error'
 );
@@ -324,6 +353,48 @@ select is(
     'Should clear reviewer rating when stars are zero'
 );
 
+-- Should reject a deleted event
+select throws_ok(
+    format(
+        $$select update_cfs_submission(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::jsonb
+        )$$,
+        :'reviewerID',
+        :'groupID',
+        :'deletedEventID',
+        :'deletedEventSubmissionID',
+        '{"status_id":"approved"}'
+    ),
+    'OCG01',
+    'event not found or inactive',
+    'Should reject a deleted event'
+);
+
+-- Should reject an event outside the group
+select throws_ok(
+    format(
+        $$select update_cfs_submission(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::jsonb
+        )$$,
+        :'reviewerID',
+        :'groupID',
+        :'otherGroupEventID',
+        :'otherGroupEventSubmissionID',
+        '{"status_id":"approved"}'
+    ),
+    'OCG01',
+    'event not found or inactive',
+    'Should reject an event outside the group'
+);
+
 -- Should reject invalid rating stars
 select throws_ok(
     format(
@@ -331,9 +402,11 @@ select throws_ok(
             %L::uuid,
             %L::uuid,
             %L::uuid,
+            %L::uuid,
             %L::jsonb
         )$$,
         :'reviewerID',
+        :'groupID',
         :'eventID',
         :'submissionID',
         '{"action_required_message":"Need more info","status_id":"information-requested","rating_stars":6}'
@@ -350,9 +423,11 @@ select throws_ok(
             %L::uuid,
             %L::uuid,
             %L::uuid,
+            %L::uuid,
             %L::jsonb
         )$$,
         :'reviewerID',
+        :'groupID',
         :'eventID',
         :'submission3ID',
         '{"status_id":"rejected"}'
@@ -369,9 +444,11 @@ select throws_ok(
             %L::uuid,
             %L::uuid,
             %L::uuid,
+            %L::uuid,
             %L::jsonb
         )$$,
         :'reviewerID',
+        :'groupID',
         :'eventID',
         :'submissionID',
         '{"status_id":"withdrawn"}'
@@ -388,9 +465,11 @@ select throws_ok(
             %L::uuid,
             %L::uuid,
             %L::uuid,
+            %L::uuid,
             %L::jsonb
         )$$,
         :'reviewerID',
+        :'groupID',
         :'eventID',
         :'submission2ID',
         '{"status_id":"approved"}'
@@ -407,9 +486,11 @@ select throws_ok(
             %L::uuid,
             %L::uuid,
             %L::uuid,
+            %L::uuid,
             %L::jsonb
         )$$,
         :'reviewerID',
+        :'groupID',
         :'eventID',
         :'submissionID',
         format(

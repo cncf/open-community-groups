@@ -6,4 +6,4 @@ returns json as $$
     join "group" g using (group_id)
     where e.event_id = p_event_id
     and g.community_id = p_community_id;
-$$ language sql;
+$$ language sql stable;

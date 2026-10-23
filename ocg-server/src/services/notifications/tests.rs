@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::{
     config::{EmailConfig, SmtpConfig},
     db::{DynDB, mock::MockDB},
+    templates::notifications::EventReminder,
 };
 
 use super::{
@@ -58,10 +59,7 @@ async fn test_notifications_manager_enqueue() {
 async fn test_enqueue_worker_enqueue_due_notifications() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_enqueue_due_event_reminders()
-        .times(1)
-        .withf(|base_url| base_url == TEST_BASE_URL)
-        .returning(|_| Ok(2));
+    db.expect_enqueue_due_event_reminders().times(1).returning(|| Ok(2));
     db.expect_enqueue_due_event_survey_notifications()
         .times(1)
         .returning(|| Ok(3));
@@ -79,8 +77,7 @@ async fn test_enqueue_worker_enqueue_due_notifications_returns_first_error_when_
     let mut db = MockDB::new();
     db.expect_enqueue_due_event_reminders()
         .times(1)
-        .withf(|base_url| base_url == TEST_BASE_URL)
-        .returning(|_| Err(anyhow!("reminders error")));
+        .returning(|| Err(anyhow!("reminders error")));
     db.expect_enqueue_due_event_survey_notifications()
         .times(1)
         .returning(|| Err(anyhow!("surveys error")));
@@ -99,10 +96,7 @@ async fn test_enqueue_worker_enqueue_due_notifications_returns_first_error_when_
 async fn test_enqueue_worker_enqueue_due_notifications_runs_reminders_when_surveys_fail() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_enqueue_due_event_reminders()
-        .times(1)
-        .withf(|base_url| base_url == TEST_BASE_URL)
-        .returning(|_| Ok(2));
+    db.expect_enqueue_due_event_reminders().times(1).returning(|| Ok(2));
     db.expect_enqueue_due_event_survey_notifications()
         .times(1)
         .returning(|| Err(anyhow!("surveys error")));
@@ -123,8 +117,7 @@ async fn test_enqueue_worker_enqueue_due_notifications_runs_surveys_when_reminde
     let mut db = MockDB::new();
     db.expect_enqueue_due_event_reminders()
         .times(1)
-        .withf(|base_url| base_url == TEST_BASE_URL)
-        .returning(|_| Err(anyhow!("reminders error")));
+        .returning(|| Err(anyhow!("reminders error")));
     db.expect_enqueue_due_event_survey_notifications()
         .times(1)
         .returning(|| Ok(3));
@@ -1417,6 +1410,86 @@ fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_reminder_legacy_zip_code_template_data() {
+    // Setup notification
+    let template_data = sample_event_reminder_legacy_zip_code_template_data();
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventReminder,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data.clone()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(
+        subject,
+        "[Notification Group] Reminder: Reminder Event starts in 24 hours"
+    );
+    assert!(body.contains("Reminder Event"));
+
+    // Check the legacy zip code key reads into the venue zip code
+    let template: EventReminder = serde_json::from_value(template_data).unwrap();
+    assert_eq!(template.event.venue_zip_code.as_deref(), Some("10001"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_reminder_relative_links() {
+    // Setup notification with links stored relative to the site root
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventReminder,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(json!({
+            "dashboard_link": "/dashboard/user?tab=events",
+            "event": {
+                "canceled": false,
+                "community_display_name": "Test Community",
+                "community_name": "test-community",
+                "event_id": "11111111-1111-1111-1111-111111111111",
+                "group_category_name": "Community",
+                "group_name": "Notification Group",
+                "group_slug": "notification-group",
+                "kind": "hybrid",
+                "logo_url": "https://example.com/logo.png",
+                "name": "Reminder Event",
+                "published": true,
+                "slug": "reminder-event",
+                "starts_at": 1_914_724_800,
+                "timezone": "UTC",
+                "venue_name": "Conference Hall",
+                "waitlist_count": 0,
+                "waitlist_enabled": false
+            },
+            "link": "/test-community/group/notification-group/event/reminder-event",
+            "show_attendance_cancellation_copy": true,
+            "theme": {
+                "primary_color": "#000000"
+            }
+        })),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check the links are completed with the deployment base URL
+    assert_eq!(
+        subject,
+        "[Notification Group] Reminder: Reminder Event starts in 24 hours"
+    );
+    assert!(body.contains(
+        "https://example.test/test-community/group/notification-group/event/reminder-event"
+    ));
+    assert!(body.contains("https://example.test/dashboard/user?tab=events"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_event_reminder_speaker_only() {
     // Setup notification
     let mut template_data = sample_event_reminder_template_data();
@@ -2536,7 +2609,6 @@ fn sample_email_verification_template_data() -> serde_json::Value {
 /// Create a sample enqueue worker with a mock database.
 fn sample_enqueue_worker(db: MockDB) -> EnqueueWorker {
     EnqueueWorker {
-        base_url: TEST_BASE_URL.to_string(),
         cancellation_token: CancellationToken::new(),
         db: Arc::new(db),
     }
@@ -2737,6 +2809,37 @@ fn sample_event_reminder_legacy_template_data() -> serde_json::Value {
             "starts_at": 1_914_724_800,
             "timezone": "UTC",
             "venue_name": "Conference Hall"
+        },
+        "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
+        "show_attendance_cancellation_copy": true,
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
+}
+
+/// Sample legacy payload for event reminder notifications with the old zip code key.
+fn sample_event_reminder_legacy_zip_code_template_data() -> serde_json::Value {
+    json!({
+        "event": {
+            "canceled": false,
+            "community_display_name": "Test Community",
+            "community_name": "test-community",
+            "event_id": "11111111-1111-1111-1111-111111111111",
+            "group_category_name": "Community",
+            "group_name": "Notification Group",
+            "group_slug": "notification-group",
+            "kind": "hybrid",
+            "logo_url": "https://example.com/logo.png",
+            "name": "Reminder Event",
+            "published": true,
+            "slug": "reminder-event",
+            "starts_at": 1_914_724_800,
+            "timezone": "UTC",
+            "venue_name": "Conference Hall",
+            "waitlist_count": 0,
+            "waitlist_enabled": false,
+            "zip_code": "10001"
         },
         "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
         "show_attendance_cancellation_copy": true,

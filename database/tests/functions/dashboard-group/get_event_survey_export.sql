@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,8 +13,6 @@ select plan(8);
 
 \set anonymousSurveyID 'a5e0001a-0000-0000-0000-000000000001'
 \set communityID 'a5e0001a-0000-0000-0000-000000000002'
-\set deletedEventID 'a5e0001a-0000-0000-0000-000000000003'
-\set deletedEventSurveyID 'a5e0001a-0000-0000-0000-000000000004'
 \set detailedUserID 'a5e0001a-0000-0000-0000-000000000005'
 \set emptySurveyID 'a5e0001a-0000-0000-0000-00000000000e'
 \set eventCategoryID 'a5e0001a-0000-0000-0000-000000000006'
@@ -22,7 +20,6 @@ select plan(8);
 \set foreignGroupID 'a5e0001a-0000-0000-0000-000000000008'
 \set groupCategoryID 'a5e0001a-0000-0000-0000-000000000009'
 \set groupID 'a5e0001a-0000-0000-0000-00000000000a'
-\set otherEventID 'a5e0001a-0000-0000-0000-00000000000f'
 \set plainUserID 'a5e0001a-0000-0000-0000-00000000000b'
 \set questionID 'a5e0001a-0000-0000-0000-00000000000c'
 \set surveyID 'a5e0001a-0000-0000-0000-00000000000d'
@@ -58,17 +55,8 @@ select fx_group(:'foreignGroupID', :'communityID', :'groupCategoryID');
 -- Group hosting the surveyed events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Deleted event whose survey is hidden
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'deleted_at', '2025-01-01 10:00:00+00'
-));
-
 -- Event owning the surveys
 select fx_event(:'eventID', :'groupID', :'eventCategoryID');
-
--- Event of the same group that does not own the surveys
-select fx_event(:'otherEventID', :'groupID', :'eventCategoryID');
 
 -- Anonymous survey with one free-text question
 insert into event_survey (event_survey_id, anonymous, event_id, questions, title)
@@ -84,10 +72,6 @@ values (
     )),
     'Anonymous survey'
 );
-
--- Identified survey of the deleted event
-insert into event_survey (event_survey_id, anonymous, event_id, title)
-values (:'deletedEventSurveyID', false, :'deletedEventID', 'Deleted event survey');
 
 -- Identified survey without responses
 insert into event_survey (event_survey_id, anonymous, event_id, title)
@@ -211,25 +195,18 @@ select throws_ok(
     'Should reject exports above the responses bound'
 );
 
--- Should return null for deleted events
-select is(
-    get_event_survey_export(:'groupID'::uuid, :'deletedEventID'::uuid, :'deletedEventSurveyID'::uuid, 10, 1000)::jsonb,
-    null,
-    'Should return null for deleted events'
-);
-
--- Should return null for surveys of another event
-select is(
-    get_event_survey_export(:'groupID'::uuid, :'otherEventID'::uuid, :'surveyID'::uuid, 10, 1000)::jsonb,
-    null,
-    'Should return null for surveys of another event'
-);
-
 -- Should return null for surveys of another group
 select is(
     get_event_survey_export(:'foreignGroupID'::uuid, :'eventID'::uuid, :'surveyID'::uuid, 10, 1000)::jsonb,
     null,
     'Should return null for surveys of another group'
+);
+
+-- Should return null without a survey id
+select is(
+    get_event_survey_export(:'groupID'::uuid, :'eventID'::uuid, null, 10, 1000)::jsonb,
+    null,
+    'Should return null without a survey id'
 );
 
 -- ============================================================================

@@ -15,4 +15,4 @@ returns json as $$
           and ct.accepted = false
         order by ct.created_at desc
     ) invitation;
-$$ language sql;
+$$ language sql stable;

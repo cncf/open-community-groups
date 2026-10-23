@@ -1,15 +1,23 @@
 -- Returns seat and discount code usage counts for a ticketed event.
+-- 'redemptions' counts seat-holding purchases (settled sales) and intentionally
+-- differs from the enforced limit, which also counts live checkout holds.
+-- 'sold' counts the seats held by seat-holding purchases, counting purchases
+-- that share an admission offer once, so it never exceeds 'allocated'.
 create or replace function stats_event_tickets(p_event event)
 returns json as $$
+-- Load the purchases holding a seat
 with seat_purchases as (
     select
+        ep.admission_offer_id,
         ep.event_discount_code_id,
         ep.event_ticket_type_id
     from event_purchase ep
     where ep.event_id = p_event.event_id
     and event_purchase_holds_seat(ep.status)
 ),
-ticket_types as (
+-- Count the allocated and sold seats of each tier; materialized so each
+-- reference reuses the allocated count
+ticket_types as materialized (
     select
         ett.active,
         get_event_ticket_type_allocated_seat_count(
@@ -20,7 +28,12 @@ ticket_types as (
         ett."order",
         ett.seats_total,
         (
-            select count(*)::bigint
+            -- Purchases sharing an admission offer hold one seat, as in the
+            -- allocated count
+            select (
+                count(*) filter (where sp.admission_offer_id is null)
+                + count(distinct sp.admission_offer_id)
+            )::bigint
             from seat_purchases sp
             where sp.event_ticket_type_id = ett.event_ticket_type_id
         ) as sold,
@@ -28,6 +41,7 @@ ticket_types as (
     from event_ticket_type ett
     where ett.event_id = p_event.event_id
 )
+-- Build the seat and discount code usage payload
 select json_build_object(
     'discount_codes', coalesce((
         select json_agg(

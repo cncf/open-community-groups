@@ -524,18 +524,18 @@ async fn test_enqueue_event_series_published_notifications_dedupes_cohost_audien
 
     // Setup database mock with each audience loaded once
     let mut db = MockDB::new();
-    db.expect_list_group_members_ids().times(3).returning(move |gid| {
-        if gid == group_id {
-            Ok(vec![owner_member_id])
-        } else if gid == alpha_group_id {
-            Ok(vec![owner_member_id, alpha_member_id])
-        } else {
-            Ok(vec![alpha_member_id, beta_member_id])
-        }
-    });
-    db.expect_list_group_team_members_ids()
-        .times(3)
-        .returning(|_| Ok(vec![]));
+    db.expect_list_group_audience_ids()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(move |_| Ok(vec![owner_member_id]));
+    db.expect_list_group_audience_ids()
+        .times(1)
+        .withf(move |gid| *gid == alpha_group_id)
+        .returning(move |_| Ok(sorted_ids(vec![alpha_member_id, owner_member_id])));
+    db.expect_list_group_audience_ids()
+        .times(1)
+        .withf(move |gid| *gid == beta_group_id)
+        .returning(move |_| Ok(sorted_ids(vec![alpha_member_id, beta_member_id])));
     db.expect_get_event_full()
         .times(1)
         .withf(move |_, _, eid| *eid == event_id)
@@ -644,17 +644,14 @@ async fn test_enqueue_event_series_published_notifications_filters_recipients_pe
 
     // Setup audience expectations
     let mut db = MockDB::new();
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![muting_member_id, owner_member_id]));
-    db.expect_list_group_members_ids()
+        .returning(move |_| Ok(owner_audience.clone()));
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == cohost_group_id)
         .returning(move |_| Ok(vec![cohost_member_id]));
-    db.expect_list_group_team_members_ids()
-        .times(2)
-        .returning(|_| Ok(vec![]));
 
     // Setup event expectations
     db.expect_get_event_full()
@@ -782,14 +779,10 @@ async fn test_enqueue_event_series_published_notifications_groups_members_and_sp
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![member_id, speaker_id]));
-    db.expect_list_group_team_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![team_member_id, member_id]));
+        .returning(move |_| Ok(sorted_ids(vec![member_id, speaker_id, team_member_id])));
     db.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -902,21 +895,18 @@ async fn test_enqueue_event_series_published_notifications_skips_covered_cohost_
 
     // Setup audience expectations with each audience loaded once
     let mut db = MockDB::new();
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![owner_member_id]));
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == alpha_group_id)
-        .returning(move |_| Ok(vec![alpha_member_id, speaker_id]));
-    db.expect_list_group_members_ids()
+        .returning(move |_| Ok(sorted_ids(vec![alpha_member_id, speaker_id])));
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == beta_group_id)
-        .returning(move |_| Ok(vec![owner_member_id, alpha_member_id]));
-    db.expect_list_group_team_members_ids()
-        .times(3)
-        .returning(|_| Ok(vec![]));
+        .returning(move |_| Ok(sorted_ids(vec![alpha_member_id, owner_member_id])));
 
     // Setup event expectations
     db.expect_get_event_full()
@@ -1061,25 +1051,28 @@ async fn test_enqueue_event_published_notifications_dedupes_cohost_audiences() {
         .returning(move |_, _, _| Ok(event.clone()));
 
     // Setup audience expectations, each co-host overlapping an earlier audience
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![owner_member_id]));
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == alpha_group_id)
-        .returning(move |_| Ok(vec![owner_member_id, alpha_member_id]));
-    db.expect_list_group_members_ids()
+        .returning(move |_| Ok(sorted_ids(vec![alpha_member_id, owner_member_id])));
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == beta_group_id)
-        .returning(move |_| Ok(vec![alpha_member_id, beta_member_id, speaker_id]));
-    db.expect_list_group_members_ids()
+        .returning(move |_| {
+            Ok(sorted_ids(vec![
+                alpha_member_id,
+                beta_member_id,
+                speaker_id,
+            ]))
+        });
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == gamma_group_id)
-        .returning(move |_| Ok(vec![owner_member_id, speaker_id]));
-    db.expect_list_group_team_members_ids()
-        .times(4)
-        .returning(|_| Ok(vec![]));
+        .returning(move |_| Ok(sorted_ids(vec![owner_member_id, speaker_id])));
 
     // Setup notification expectations
     db.expect_get_site_settings()
@@ -1166,16 +1159,14 @@ async fn test_enqueue_event_published_notifications_notifies_cohost_audience_alo
     db.expect_get_event_full()
         .times(1)
         .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_list_group_members_ids().times(2).returning(move |gid| {
-        if gid == cohost_group_id {
-            Ok(vec![cohost_member_id])
-        } else {
-            Ok(vec![])
-        }
-    });
-    db.expect_list_group_team_members_ids()
-        .times(2)
+    db.expect_list_group_audience_ids()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
         .returning(|_| Ok(vec![]));
+    db.expect_list_group_audience_ids()
+        .times(1)
+        .withf(move |gid| *gid == cohost_group_id)
+        .returning(move |_| Ok(vec![cohost_member_id]));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -1238,14 +1229,16 @@ async fn test_enqueue_event_published_notifications_sends_members_and_speakers_s
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![member_id, speaker_member_id]));
-    db.expect_list_group_team_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![team_member_id, member_id]));
+        .returning(move |_| {
+            Ok(sorted_ids(vec![
+                member_id,
+                speaker_member_id,
+                team_member_id,
+            ]))
+        });
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -1785,7 +1778,6 @@ async fn test_enqueue_tracked_event_custom_notification_builds_content_and_track
                 && notification.template_data.as_ref() == Some(&expected_template_data)
                 && tracking.body == "Hello, event attendees!"
                 && tracking.created_by == actor_user_id
-                && tracking.recipient_count == 2
                 && matches!(
                     tracking.scope,
                     CustomNotificationScope::Event {
@@ -1844,8 +1836,8 @@ async fn test_enqueue_tracked_group_custom_notification_builds_content_and_track
     let member_id = Uuid::new_v4();
     let member_and_team_id = Uuid::new_v4();
     let team_member_id = Uuid::new_v4();
-    let mut expected_recipients = vec![member_id, member_and_team_id, team_member_id];
-    expected_recipients.sort();
+    let audience_ids = sorted_ids(vec![member_id, member_and_team_id, team_member_id]);
+    let expected_recipients = audience_ids.clone();
     let mut group = sample_group_summary(group_id);
     group.slug_pretty = Some("pretty-group".to_string());
     let expected_template_data = serde_json::to_value(build_group_custom_notification(
@@ -1862,16 +1854,12 @@ async fn test_enqueue_tracked_group_custom_notification_builds_content_and_track
         group_id,
     };
 
-    // Setup audience expectations with a member who is also on the team
+    // Setup the audience expectation, already deduplicated by the database
     let mut db = MockDB::new();
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![member_and_team_id, member_id]));
-    db.expect_list_group_team_members_ids()
-        .times(1)
-        .withf(move |gid| *gid == group_id)
-        .returning(move |_| Ok(vec![team_member_id, member_and_team_id]));
+        .returning(move |_| Ok(audience_ids.clone()));
 
     // Setup context and enqueue expectations
     db.expect_get_group_summary()
@@ -1891,7 +1879,6 @@ async fn test_enqueue_tracked_group_custom_notification_builds_content_and_track
                 && notification.template_data.as_ref() == Some(&expected_template_data)
                 && tracking.body == "Hello, group members!"
                 && tracking.created_by == actor_user_id
-                && tracking.recipient_count == 3
                 && matches!(
                     tracking.scope,
                     CustomNotificationScope::Group {
@@ -1908,7 +1895,7 @@ async fn test_enqueue_tracked_group_custom_notification_builds_content_and_track
         .await
         .unwrap();
 
-    // Check the deduplicated audience was notified
+    // Check the whole audience was notified
     assert_eq!(outcome, GroupCustomNotificationOutcome::Sent(3));
 }
 
@@ -1924,12 +1911,9 @@ async fn test_enqueue_tracked_group_custom_notification_propagates_context_failu
 
     // Setup database mock with a failing context load
     let mut db = MockDB::new();
-    db.expect_list_group_members_ids()
+    db.expect_list_group_audience_ids()
         .times(1)
         .returning(|_| Ok(vec![Uuid::new_v4()]));
-    db.expect_list_group_team_members_ids()
-        .times(1)
-        .returning(|_| Ok(vec![]));
     db.expect_get_site_settings()
         .times(0..=1)
         .returning(|| Ok(sample_site_settings()));
@@ -1957,10 +1941,7 @@ async fn test_enqueue_tracked_group_custom_notification_returns_no_recipients() 
 
     // Setup database expectations with an empty audience
     let mut db = MockDB::new();
-    db.expect_list_group_members_ids().times(1).returning(|_| Ok(vec![]));
-    db.expect_list_group_team_members_ids()
-        .times(1)
-        .returning(|_| Ok(vec![]));
+    db.expect_list_group_audience_ids().times(1).returning(|_| Ok(vec![]));
     db.expect_get_group_summary().never();
     db.expect_enqueue_tracked_custom_notification().never();
 

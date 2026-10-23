@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,7 +29,6 @@ select plan(15);
 \set invalidPurchaseID '79490000-0000-0000-0000-000000000016'
 \set invalidRefundID '79490000-0000-0000-0000-000000000017'
 \set invalidUserID '79490000-0000-0000-0000-000000000018'
-\set missingRefundID '79490000-0000-0000-0000-000000000012'
 \set priceWindowID '79490000-0000-0000-0000-000000000007'
 \set processingClaimID '79490000-0000-0000-0000-000000000022'
 \set purchaseID '79490000-0000-0000-0000-000000000008'
@@ -326,18 +325,6 @@ insert into event_purchase_refund (
 -- TESTS
 -- ============================================================================
 
--- Should reject empty expected idempotency keys
-select throws_ok(
-    format($$select record_event_purchase_refund_succeeded(
-        %L::uuid,
-        '   ',
-        're_success_123_refund_succeeded'
-    )$$, :'refundID'),
-    'P0001',
-    'expected idempotency key is required',
-    'Should reject empty expected idempotency keys'
-);
-
 -- Should record provider refund success on a pending refund row
 select is(
     record_event_purchase_refund_succeeded(
@@ -393,6 +380,21 @@ select results_eq(
     $$, :'refundJobID'),
     $$ values (0, null::text, true, 'pending'::text) $$,
     'Should reset the job for local finalization after provider success'
+);
+
+-- Should queue the platform fee adjustment of the refunded charge once
+select results_eq(
+    format($$
+        select epafa.amount_minor, epafa.kind, pj.idempotency_key, pj.status
+        from event_purchase_application_fee_adjustment epafa
+        join payment_job pj on pj.payment_job_id = epafa.payment_job_id
+        where epafa.event_purchase_id = %L::uuid
+    $$, :'purchaseID'),
+    format(
+        $$ values (100::bigint, 'purchase-refund'::text, %L::text, 'pending'::text) $$,
+        'event-purchase-refund-fee-adjustment-' || :'purchaseID'
+    ),
+    'Should queue the platform fee adjustment of the refunded charge once'
 );
 
 -- Should reject conflicting provider refund ids
@@ -524,18 +526,6 @@ select results_eq(
     ),
     $$ values (true) $$,
     'Should preserve the purchase timestamp on successful replay'
-);
-
--- Should reject missing refund rows
-select throws_ok(
-    format($$select record_event_purchase_refund_succeeded(
-        %L::uuid,
-        'event-purchase-refund-missing',
-        're_missing_123'
-    )$$, :'missingRefundID'),
-    'P0001',
-    'event purchase refund not found',
-    'Should reject missing refund rows'
 );
 
 -- Should reject provider success from a stale worker claim

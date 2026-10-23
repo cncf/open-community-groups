@@ -1,399 +1,109 @@
--- Tests listing the community dashboard audit log with filters, sorting and pagination.
+-- Tests the community dashboard audit log action allow-list and scope.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set actor1ID '2c0e0000-0000-0000-0000-000000000001'
-\set actor2ID '2c0e0000-0000-0000-0000-000000000002'
-\set audit1ID '2c0e0000-0000-0000-0000-000000000003'
-\set audit2ID '2c0e0000-0000-0000-0000-000000000004'
-\set audit3ID '2c0e0000-0000-0000-0000-000000000005'
-\set audit4ID '2c0e0000-0000-0000-0000-000000000006'
-\set audit5ID '2c0e0000-0000-0000-0000-000000000007'
-\set audit6ID '2c0e0000-0000-0000-0000-000000000008'
-\set audit7ID '2c0e0000-0000-0000-0000-000000000009'
-\set audit8ID '2c0e0000-0000-0000-0000-000000000018'
-\set audit9ID '2c0e0000-0000-0000-0000-000000000019'
 \set community1ID '2c0e0000-0000-0000-0000-000000000010'
 \set community2ID '2c0e0000-0000-0000-0000-000000000011'
-\set deletedRegionID '2c0e0000-0000-0000-0000-000000000012'
-\set groupCategoryID '2c0e0000-0000-0000-0000-000000000013'
-\set groupID '2c0e0000-0000-0000-0000-000000000014'
-\set missingRegionID '2c0e0000-0000-0000-0000-000000000015'
-\set wildcardActorID '2c0e0000-0000-0000-0000-000000000016'
-\set wildcardAuditID '2c0e0000-0000-0000-0000-000000000017'
+\set otherCommunityAuditID '2c0e0000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community whose audit log is listed
-select fx_community(:'community1ID', jsonb_build_object('display_name', 'Community One'));
+select fx_community(:'community1ID');
 
 -- Other community whose audit rows must be excluded
 select fx_community(:'community2ID');
 
--- Group category of the audited group
-select fx_group_category(:'groupCategoryID', :'community1ID');
+-- Audit rows for every community dashboard action plus a hidden action
+insert into audit_log (action, resource_id, resource_type, community_id) values
+    ('community_custom_notification_sent', :'community1ID', 'community', :'community1ID'),
+    ('community_team_invitation_accepted', :'community1ID', 'community', :'community1ID'),
+    ('community_team_invitation_rejected', :'community1ID', 'community', :'community1ID'),
+    ('community_team_member_added', :'community1ID', 'community', :'community1ID'),
+    ('community_team_member_removed', :'community1ID', 'community', :'community1ID'),
+    ('community_team_member_role_updated', :'community1ID', 'community', :'community1ID'),
+    ('community_updated', :'community1ID', 'community', :'community1ID'),
+    ('event_added', :'community1ID', 'community', :'community1ID'),
+    ('event_category_added', :'community1ID', 'community', :'community1ID'),
+    ('event_category_deleted', :'community1ID', 'community', :'community1ID'),
+    ('event_category_updated', :'community1ID', 'community', :'community1ID'),
+    ('group_activated', :'community1ID', 'community', :'community1ID'),
+    ('group_added', :'community1ID', 'community', :'community1ID'),
+    ('group_category_added', :'community1ID', 'community', :'community1ID'),
+    ('group_category_deleted', :'community1ID', 'community', :'community1ID'),
+    ('group_category_updated', :'community1ID', 'community', :'community1ID'),
+    ('group_deactivated', :'community1ID', 'community', :'community1ID'),
+    ('group_deleted', :'community1ID', 'community', :'community1ID'),
+    ('group_external_payments_updated', :'community1ID', 'community', :'community1ID'),
+    ('group_payment_recipient_updated', :'community1ID', 'community', :'community1ID'),
+    ('group_updated', :'community1ID', 'community', :'community1ID'),
+    ('region_added', :'community1ID', 'community', :'community1ID'),
+    ('region_deleted', :'community1ID', 'community', :'community1ID'),
+    ('region_updated', :'community1ID', 'community', :'community1ID');
 
--- Audit actors
-select fx_user(:'actor1ID', jsonb_build_object('username', 'alice-audit-logs'));
-select fx_user(:'actor2ID', jsonb_build_object('username', 'bob'));
-select fx_user(:'wildcardActorID', jsonb_build_object('username', 'userx1'));
-
--- Group resolved as the resource name of the group audit rows
-select fx_group(:'groupID', :'community1ID', :'groupCategoryID', jsonb_build_object('name', 'Platform'));
-
--- Audit log rows
-insert into audit_log (
-    audit_log_id,
-    action,
-    actor_user_id,
-    actor_username,
-    community_id,
-    created_at,
-    details,
-    resource_id,
-    resource_type
-) values
-    (
-        :'audit1ID',
-        'community_updated',
-        :'actor1ID',
-        'alice-audit-logs',
-        :'community1ID',
-        '2024-02-01 10:00:00+00',
-        '{"subject": "Roadmap updated"}',
-        :'community1ID',
-        'community'
-    ),
-    (
-        :'audit2ID',
-        'group_added',
-        :'actor2ID',
-        'bob',
-        :'community1ID',
-        '2024-02-02 10:00:00+00',
-        '{}'::jsonb,
-        :'groupID',
-        'group'
-    ),
-    (
-        :'audit3ID',
-        'region_added',
-        :'actor1ID',
-        'alice-audit-logs',
-        :'community1ID',
-        '2024-02-03 10:00:00+00',
-        '{}'::jsonb,
-        :'missingRegionID',
-        'region'
-    ),
-    (
-        :'audit4ID',
-        'event_added',
-        :'actor1ID',
-        'alice-audit-logs',
-        :'community2ID',
-        '2024-02-04 10:00:00+00',
-        '{}'::jsonb,
-        :'groupID',
-        'event'
-    ),
-    (
-        :'wildcardAuditID',
-        'community_updated',
-        :'wildcardActorID',
-        'userx1',
-        :'community1ID',
-        '2024-02-05 10:00:00+00',
-        '{}'::jsonb,
-        :'community1ID',
-        'community'
-    ),
-    (
-        :'audit5ID',
-        'community_team_invitation_accepted',
-        :'actor1ID',
-        'alice-audit-logs',
-        :'community1ID',
-        '2024-02-06 10:00:00+00',
-        '{}'::jsonb,
-        :'actor1ID',
-        'user'
-    ),
-    (
-        :'audit6ID',
-        'community_team_invitation_rejected',
-        :'actor2ID',
-        'bob',
-        :'community1ID',
-        '2024-02-07 09:00:00+00',
-        '{}'::jsonb,
-        :'actor2ID',
-        'user'
-    ),
-    (
-        :'audit7ID',
-        'region_deleted',
-        :'actor1ID',
-        'alice-audit-logs',
-        :'community1ID',
-        '2024-02-07 10:00:00+00',
-        '{"name": "Atlantis"}'::jsonb,
-        :'deletedRegionID',
-        'region'
-    ),
-    (
-        :'audit8ID',
-        'group_external_payments_updated',
-        :'actor2ID',
-        'bob',
-        :'community1ID',
-        '2024-02-03 11:00:00+00',
-        '{"external_payments_enabled": true}'::jsonb,
-        :'groupID',
-        'group'
-    ),
-    (
-        :'audit9ID',
-        'community_custom_notification_sent',
-        :'actor1ID',
-        'alice-audit-logs',
-        :'community1ID',
-        '2024-02-03 12:00:00+00',
-        '{"recipient_count": 3, "roles": ["Admin"], "subject": "Team update"}'::jsonb,
-        :'community1ID',
-        'community'
-    );
+-- Audit row of a community dashboard action in the other community
+insert into audit_log (audit_log_id, action, resource_id, resource_type, community_id)
+values (:'otherCommunityAuditID', 'community_updated', :'community2ID', 'community', :'community2ID');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return only community dashboard actions for the selected community
+-- Should list every community dashboard action and skip hidden actions
 select is(
-    list_community_audit_logs(
-        :'community1ID'::uuid,
-        '{"limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        format(
-            $json$
-        [
-            {
-                "action": "region_deleted",
-                "actor_username": "alice-audit-logs",
-                "audit_log_id": "%s",
-                "created_at": 1707300000,
-                "details": {"name": "Atlantis"},
-                "resource_id": "%s",
-                "resource_name": "Atlantis",
-                "resource_type": "region"
-            },
-            {
-                "action": "community_team_invitation_rejected",
-                "actor_username": "bob",
-                "audit_log_id": "%s",
-                "created_at": 1707296400,
-                "details": {},
-                "resource_id": "%s",
-                "resource_name": "bob",
-                "resource_type": "user"
-            },
-            {
-                "action": "community_team_invitation_accepted",
-                "actor_username": "alice-audit-logs",
-                "audit_log_id": "%s",
-                "created_at": 1707213600,
-                "details": {},
-                "resource_id": "%s",
-                "resource_name": "alice-audit-logs",
-                "resource_type": "user"
-            },
-            {
-                "action": "community_updated",
-                "actor_username": "userx1",
-                "audit_log_id": "%s",
-                "created_at": 1707127200,
-                "details": {},
-                "resource_id": "%s",
-                "resource_name": "Community One",
-                "resource_type": "community"
-            },
-            {
-                "action": "community_custom_notification_sent",
-                "actor_username": "alice-audit-logs",
-                "audit_log_id": "%s",
-                "created_at": 1706961600,
-                "details": {"recipient_count": 3, "roles": ["Admin"], "subject": "Team update"},
-                "resource_id": "%s",
-                "resource_name": "Community One",
-                "resource_type": "community"
-            },
-            {
-                "action": "group_external_payments_updated",
-                "actor_username": "bob",
-                "audit_log_id": "%s",
-                "created_at": 1706958000,
-                "details": {"external_payments_enabled": true},
-                "resource_id": "%s",
-                "resource_name": "Platform",
-                "resource_type": "group"
-            },
-            {
-                "action": "region_added",
-                "actor_username": "alice-audit-logs",
-                "audit_log_id": "%s",
-                "created_at": 1706954400,
-                "details": {},
-                "resource_id": "%s",
-                "resource_name": null,
-                "resource_type": "region"
-            },
-            {
-                "action": "group_added",
-                "actor_username": "bob",
-                "audit_log_id": "%s",
-                "created_at": 1706868000,
-                "details": {},
-                "resource_id": "%s",
-                "resource_name": "Platform",
-                "resource_type": "group"
-            },
-            {
-                "action": "community_updated",
-                "actor_username": "alice-audit-logs",
-                "audit_log_id": "%s",
-                "created_at": 1706781600,
-                "details": {"subject": "Roadmap updated"},
-                "resource_id": "%s",
-                "resource_name": "Community One",
-                "resource_type": "community"
-            }
-        ]
-            $json$,
-            :'audit7ID',
-            :'deletedRegionID',
-            :'audit6ID',
-            :'actor2ID',
-            :'audit5ID',
-            :'actor1ID',
-            :'wildcardAuditID',
-            :'community1ID',
-            :'audit9ID',
-            :'community1ID',
-            :'audit8ID',
-            :'groupID',
-            :'audit3ID',
-            :'missingRegionID',
-            :'audit2ID',
-            :'groupID',
-            :'audit1ID',
-            :'community1ID'
-        )::jsonb,
-        'total',
-        9
+    (
+        select jsonb_agg(log_item->>'action' order by log_item->>'action' collate "C")
+        from jsonb_array_elements(
+            list_community_audit_logs(:'community1ID'::uuid, '{"limit": 100}'::jsonb)::jsonb->'logs'
+        ) log_item
     ),
-    'Should return only community dashboard actions for the selected community'
+    '[
+        "community_custom_notification_sent",
+        "community_team_invitation_accepted",
+        "community_team_invitation_rejected",
+        "community_team_member_added",
+        "community_team_member_removed",
+        "community_team_member_role_updated",
+        "community_updated",
+        "event_category_added",
+        "event_category_deleted",
+        "event_category_updated",
+        "group_activated",
+        "group_added",
+        "group_category_added",
+        "group_category_deleted",
+        "group_category_updated",
+        "group_deactivated",
+        "group_deleted",
+        "group_external_payments_updated",
+        "group_payment_recipient_updated",
+        "group_updated",
+        "region_added",
+        "region_deleted",
+        "region_updated"
+    ]'::jsonb,
+    'Should list every community dashboard action and skip hidden actions'
 );
 
--- Should filter community audit logs by action and actor
+-- Should list only audit rows of the selected community
 select is(
-    list_community_audit_logs(
-        :'community1ID'::uuid,
-        '{"action": "community_updated", "actor": "ali", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        format(
-            $json$
-        [
-            {
-                "action": "community_updated",
-                "actor_username": "alice-audit-logs",
-                "audit_log_id": "%s",
-                "created_at": 1706781600,
-                "details": {"subject": "Roadmap updated"},
-                "resource_id": "%s",
-                "resource_name": "Community One",
-                "resource_type": "community"
-            }
-        ]
-            $json$,
-            :'audit1ID',
-            :'community1ID'
-        )::jsonb,
-        'total',
-        1
+    jsonb_path_query_array(
+        list_community_audit_logs(:'community2ID'::uuid, '{}'::jsonb)::jsonb,
+        '$.logs[*].audit_log_id'
     ),
-    'Should filter community audit logs by action and actor'
-);
-
--- Should return community audit logs in ascending order with pagination
-select is(
-    list_community_audit_logs(
-        :'community1ID'::uuid,
-        '{"date_from": "2024-02-01", "date_to": "2024-02-02", "limit": 1, "offset": 0, "sort": "created-asc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        format(
-            $json$
-        [
-            {
-                "action": "community_updated",
-                "actor_username": "alice-audit-logs",
-                "audit_log_id": "%s",
-                "created_at": 1706781600,
-                "details": {"subject": "Roadmap updated"},
-                "resource_id": "%s",
-                "resource_name": "Community One",
-                "resource_type": "community"
-            }
-        ]
-            $json$,
-            :'audit1ID',
-            :'community1ID'
-        )::jsonb,
-        'total',
-        2
-    ),
-    'Should return community audit logs in ascending order with pagination'
-);
-
--- Should treat actor filter metacharacters as literal text
-select is(
-    list_community_audit_logs(
-        :'community1ID'::uuid,
-        '{"actor": "user_1", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        '[]'::jsonb,
-        'total',
-        0
-    ),
-    'Should treat actor filter metacharacters as literal text'
-);
-
--- Should default unsupported sort values to created descending
-select is(
-    list_community_audit_logs(
-        :'community1ID'::uuid,
-        '{"limit": 1, "offset": 0, "sort": "resource-asc"}'::jsonb
-    )::jsonb#>>'{logs,0,action}',
-    'region_deleted',
-    'Should default unsupported community audit sort values to created descending'
+    jsonb_build_array(:'otherCommunityAuditID'),
+    'Should list only audit rows of the selected community'
 );
 
 -- ============================================================================

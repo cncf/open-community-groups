@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(24);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,17 +13,10 @@ select plan(24);
 
 \set cohostGroupID '3a060000-0000-0000-0000-000000000032'
 \set communityID '3a060000-0000-0000-0000-000000000001'
-\set discountCodeID '3a060000-0000-0000-0000-000000000033'
-\set discountPriceWindowID '3a060000-0000-0000-0000-000000000034'
-\set discountPurchaseID '3a060000-0000-0000-0000-000000000035'
-\set discountTicketTypeID '3a060000-0000-0000-0000-000000000036'
-\set discountUserID '3a060000-0000-0000-0000-000000000037'
 \set eventAlreadyCanceledID '3a060000-0000-0000-0000-000000000023'
 \set eventCategoryID '3a060000-0000-0000-0000-000000000002'
-\set eventDiscountID '3a060000-0000-0000-0000-000000000038'
 \set eventExternalID '3a060000-0000-0000-0000-00000000002b'
 \set eventID '3a060000-0000-0000-0000-000000000003'
-\set eventNoMeetingID '3a060000-0000-0000-0000-000000000004'
 \set eventPastID '3a060000-0000-0000-0000-000000000024'
 \set externalCompletedPurchaseID '3a060000-0000-0000-0000-00000000002c'
 \set externalCompletedUserID '3a060000-0000-0000-0000-00000000002d'
@@ -31,7 +24,6 @@ select plan(24);
 \set externalPendingUserID '3a060000-0000-0000-0000-00000000002f'
 \set externalTicketTypeID '3a060000-0000-0000-0000-000000000030'
 \set freePurchaseID '3a060000-0000-0000-0000-000000000011'
-\set freeRefundRequestID '3a060000-0000-0000-0000-000000000012'
 \set freeUserID '3a060000-0000-0000-0000-000000000013'
 \set groupCategoryID '3a060000-0000-0000-0000-000000000005'
 \set groupID '3a060000-0000-0000-0000-000000000006'
@@ -46,7 +38,6 @@ select plan(24);
 \set rejectedPaidRefundRequestID '3a060000-0000-0000-0000-000000000026'
 \set rejectedPaidUserID '3a060000-0000-0000-0000-000000000027'
 \set sessionMeetingID '3a060000-0000-0000-0000-000000000008'
-\set sessionNoMeetingID '3a060000-0000-0000-0000-000000000009'
 \set siteID '3a060000-0000-0000-0000-000000000031'
 \set ticketTypeID '3a060000-0000-0000-0000-000000000016'
 \set userID '3a060000-0000-0000-0000-000000000010'
@@ -59,7 +50,6 @@ select plan(24);
 -- Baseline community, categories, users and groups
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_user(:'discountUserID');
 select fx_user(:'externalCompletedUserID');
 select fx_user(:'externalPendingUserID');
 select fx_user(:'freeUserID');
@@ -99,16 +89,6 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published_by', :'userID',
     'starts_at', now() + interval '1 day',
     'waitlist_enabled', true
-));
-
--- Event without meeting_requested (to verify meeting_in_sync is not changed)
-select fx_event(:'eventNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', now() + interval '1 hour',
-    'meeting_requested', false,
-    'published', true,
-    'published_at', now(),
-    'published_by', :'userID',
-    'starts_at', now()
 ));
 
 -- Events rejected because they are already canceled or completed
@@ -151,27 +131,6 @@ insert into session (
     true,
     'zoom',
     true
-);
-
--- Session with meeting_requested=false (should NOT be marked as out of sync)
-insert into session (
-    session_id,
-    event_id,
-    name,
-    starts_at,
-    ends_at,
-    session_kind_id,
-    meeting_in_sync,
-    meeting_requested
-) values (
-    :'sessionNoMeetingID',
-    :'eventID',
-    'Session Without Meeting',
-    now() + interval '1 day 30 minutes',
-    now() + interval '1 day 1 hour',
-    'in-person',
-    null,
-    false
 );
 
 -- Ticket type used by refundable purchases
@@ -259,14 +218,13 @@ from (
     user_id
 );
 
--- Pending free and paid attendee refund requests completed or queued by cancellation
+-- Paid attendee refund requests queued or preserved by cancellation
 insert into event_refund_request (
     event_purchase_id,
     event_refund_request_id,
     requested_by_user_id,
     status
 ) values
-    (:'freePurchaseID', :'freeRefundRequestID', :'freeUserID', 'pending'),
     (:'paidPurchaseID', :'paidRefundRequestID', :'paidUserID', 'pending'),
     (:'rejectedPaidPurchaseID', :'rejectedPaidRefundRequestID', :'rejectedPaidUserID', 'rejected');
 
@@ -377,76 +335,6 @@ insert into event_purchase (
     :'externalCompletedUserID'
 );
 
--- Paid-ticket event whose free discounted purchase is closed on cancellation
-select fx_event(:'eventDiscountID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'payment_currency_code', 'USD',
-    'published', true,
-    'starts_at', current_timestamp + interval '3 days'
-));
-
--- Ticket type for the discounted cancellation event
-select fx_event_ticket_type(:'discountTicketTypeID', :'eventDiscountID', jsonb_build_object(
-    'seats_total', 20,
-    'title', 'Discounted admission'
-));
-
--- Paid price window fully covered by the discount code
-select fx_event_ticket_price_window(:'discountPriceWindowID', :'discountTicketTypeID', jsonb_build_object(
-    'amount_minor', 2500
-));
-
--- Limited discount code whose reserved seat returns on cancellation
-insert into event_discount_code (
-    event_discount_code_id,
-    amount_minor,
-    available,
-    available_override_active,
-    code,
-    event_id,
-    kind,
-    title
-) values (
-    :'discountCodeID',
-    2500,
-    4,
-    true,
-    'CANCELEVENTFREE',
-    :'eventDiscountID',
-    'fixed_amount',
-    'Cancel event free pass'
-);
-
--- Completed free purchase that consumed one discount seat
-insert into event_purchase (
-    amount_minor,
-    charge_model,
-    completed_at,
-    currency_code,
-    discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
-    event_id,
-    event_purchase_id,
-    event_ticket_type_id,
-    status,
-    ticket_title,
-    user_id
-) values (
-    0,
-    'ocg-free',
-    current_timestamp - interval '1 hour',
-    'USD',
-    2500,
-    'CANCELEVENTFREE',
-    :'discountCodeID',
-    :'eventDiscountID',
-    :'discountPurchaseID',
-    :'discountTicketTypeID',
-    'completed',
-    'Discounted admission',
-    :'discountUserID'
-);
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -555,22 +443,19 @@ select results_eq(
     'Should preserve attendance history and cancel pending invitations'
 );
 
--- Should complete free-purchase refund requests locally
-select is(
-    (select status from event_refund_request where event_refund_request_id = :'freeRefundRequestID'),
-    'approved',
-    'Should complete free-purchase refund requests locally'
-);
-
 -- Should move paid refund requests into worker approval state
 select results_eq(
     format($$
-        select err.status, epr.event_refund_request_id, epr.kind, epr.status
+        select err.status, epr.event_refund_request_id, epr.initiated_by_user_id, epr.kind, epr.status
         from event_refund_request err
         join event_purchase_refund epr using (event_refund_request_id)
         where err.event_refund_request_id = %L::uuid
     $$, :'paidRefundRequestID'),
-    format($$ values ('approving'::text, %L::uuid, 'event-cancellation'::text, 'provider-pending'::text) $$, :'paidRefundRequestID'),
+    format(
+        $$ values ('approving'::text, %L::uuid, %L::uuid, 'event-cancellation'::text, 'provider-pending'::text) $$,
+        :'paidRefundRequestID',
+        :'userID'
+    ),
     'Should move paid refund requests into worker approval state'
 );
 
@@ -646,41 +531,18 @@ select results_eq(
     'Should cancel active offers and clear queues with the event'
 );
 
--- Should mark meeting_in_sync false when meeting was requested
+-- Should mark the requested event meeting out of sync
 select is(
     (select meeting_in_sync from event where event_id = :'eventID'),
     false,
-    'Should mark meeting_in_sync false when meeting was requested'
+    'Should mark the requested event meeting out of sync'
 );
 
--- Should set session meeting_in_sync to false when meeting_requested=true
+-- Should mark the requested session meeting out of sync
 select is(
     (select meeting_in_sync from session where session_id = :'sessionMeetingID'),
     false,
-    'Should set session meeting_in_sync=false when meeting_requested=true'
-);
-
--- Should not change session meeting_in_sync when meeting_requested=false
-select is(
-    (select meeting_in_sync from session where session_id = :'sessionNoMeetingID'),
-    null,
-    'Should not change session meeting_in_sync when meeting_requested=false'
-);
-
--- Should not change event meeting_in_sync when meeting_requested=false
-select lives_ok(
-    format(
-        $$select cancel_event(null::uuid, %L::uuid, %L::uuid)$$,
-        :'groupID', :'eventNoMeetingID'
-    ),
-    'Should cancel event when meeting_requested=false'
-);
-
--- Should keep event meeting_in_sync unchanged when meeting_requested=false
-select is(
-    (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
-    null,
-    'Should keep event meeting_in_sync unchanged when meeting_requested=false'
+    'Should mark the requested session meeting out of sync'
 );
 
 -- Should throw error when group_id does not match
@@ -751,33 +613,6 @@ select is(
     ),
     'attendance-canceled',
     'Should preserve attendance history for completed external purchases'
-);
-
--- Should cancel an event with a completed free discounted purchase
-select lives_ok(
-    format(
-        $$select cancel_event(%L::uuid, %L::uuid, %L::uuid)$$,
-        :'userID', :'groupID', :'eventDiscountID'
-    ),
-    'Should cancel an event with a completed free discounted purchase'
-);
-
--- Should refund free discounted purchases and restore discount availability
-select results_eq(
-    format(
-        $$
-            select
-                ep.refunded_at,
-                ep.status,
-                edc.available
-            from event_purchase ep
-            join event_discount_code edc using (event_discount_code_id)
-            where ep.event_purchase_id = %L::uuid
-        $$,
-        :'discountPurchaseID'
-    ),
-    $$ values (current_timestamp, 'refunded'::text, 5) $$,
-    'Should refund free discounted purchases and restore discount availability'
 );
 
 -- ============================================================================

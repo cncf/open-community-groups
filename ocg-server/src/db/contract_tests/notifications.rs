@@ -603,7 +603,6 @@ async fn db_contracts_enqueue_tracked_custom_notification_tracks_group_scope() -
         CustomNotificationTracking {
             body: "Hello group".to_string(),
             created_by: contact_admin_id(),
-            recipient_count: 1,
             scope: CustomNotificationScope::Group {
                 community_id: contact_community_id(),
                 group_id: contact_group_a_id(),
@@ -629,10 +628,10 @@ async fn db_contracts_enqueue_tracked_custom_notification_tracks_group_scope() -
         Some(contact_group_a_id())
     );
 
-    // Check the audit row carries the community of the group
+    // Check the audit row carries the community of the group and the recipient count
     let audit = client
         .query_one(
-            "select community_id, group_id
+            "select community_id, group_id, details->>'recipient_count' as recipient_count
             from audit_log
             where action = 'group_custom_notification_sent'
             and details->>'subject' = $1::text",
@@ -646,6 +645,10 @@ async fn db_contracts_enqueue_tracked_custom_notification_tracks_group_scope() -
     assert_eq!(
         audit.get::<_, Option<uuid::Uuid>>("group_id"),
         Some(contact_group_a_id())
+    );
+    assert_eq!(
+        audit.get::<_, Option<String>>("recipient_count").as_deref(),
+        Some("1")
     );
 
     Ok(())

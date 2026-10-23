@@ -12,4 +12,4 @@ returns json as $$
         '[]'
     )
     from community_role cr;
-$$ language sql;
+$$ language sql stable;

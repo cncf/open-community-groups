@@ -5,13 +5,15 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '3a1a0000-0000-0000-0000-000000000001'
+\set deletedEventID '3a1a0000-0000-0000-0000-000000000028'
+\set deletedEventSubmissionID '3a1a0000-0000-0000-0000-000000000029'
 \set eventCategoryID '3a1a0000-0000-0000-0000-000000000002'
 \set eventEmptyID '3a1a0000-0000-0000-0000-000000000003'
 \set eventID '3a1a0000-0000-0000-0000-000000000004'
@@ -20,6 +22,7 @@ select plan(5);
 \set groupID '3a1a0000-0000-0000-0000-000000000007'
 \set label1ID '3a1a0000-0000-0000-0000-000000000008'
 \set label2ID '3a1a0000-0000-0000-0000-000000000009'
+\set otherGroupID '3a1a0000-0000-0000-0000-000000000027'
 \set proposal1ID '3a1a0000-0000-0000-0000-000000000010'
 \set proposal2ID '3a1a0000-0000-0000-0000-000000000011'
 \set proposal3ID '3a1a0000-0000-0000-0000-000000000012'
@@ -42,18 +45,29 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories and groups
+-- Community
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Users
-select fx_user(:'user1ID', jsonb_build_object('username', 'alice-list-event-cfs-submissions'));
-select fx_user(:'user2ID', jsonb_build_object('username', 'bob-list-event-cfs-submissions'));
+-- First reviewer
 select fx_user(:'reviewer1ID', jsonb_build_object('username', 'reviewer-1'));
+
+-- Second reviewer
 select fx_user(:'reviewer2ID', jsonb_build_object('username', 'reviewer-2'));
+
+-- Third reviewer, used only by the sort event
 select fx_user(:'reviewer3ID', jsonb_build_object('username', 'reviewer-3-list-event-cfs-submissions'));
+
+-- Speaker of the Rust and SQL proposals
+select fx_user(:'user1ID', jsonb_build_object('username', 'alice-list-event-cfs-submissions'));
+
+-- Speaker of the Go and Postgres proposals
+select fx_user(:'user2ID', jsonb_build_object('username', 'bob-list-event-cfs-submissions'));
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Session proposals
 insert into session_proposal (
@@ -102,16 +116,17 @@ insert into session_proposal (
         :'user2ID'
     );
 
+-- Group owning the events
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Group that owns none of the events
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
+
 -- Event
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'description', 'Event description',
     'published', true
 ));
-
--- Event labels
-insert into event_label (event_label_id, event_id, name, color) values
-    (:'label1ID', :'eventID', 'track / backend', '#DBEAFE'),
-    (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2');
 
 -- Empty event
 select fx_event(:'eventEmptyID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -124,6 +139,9 @@ select fx_event(:'eventSortID', :'groupID', :'eventCategoryID', jsonb_build_obje
     'description', 'Event description',
     'published', true
 ));
+
+-- Deleted event of the owning group
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
 
 -- CFS submissions
 insert into cfs_submission (
@@ -180,22 +198,18 @@ insert into cfs_submission (
     (:'sortSubmission3ID', '2024-01-03 00:00:00+00', :'eventSortID', :'proposal3ID', 'not-reviewed'),
     (:'sortSubmission4ID', '2024-01-04 00:00:00+00', :'eventSortID', :'proposal4ID', 'not-reviewed');
 
--- Session
-insert into session (
-    session_id,
+-- Deleted event submission
+insert into cfs_submission (
     cfs_submission_id,
     event_id,
-    name,
-    session_kind_id,
-    starts_at
-) values (
-    :'sessionID',
-    :'submission2ID',
-    :'eventID',
-    'Session 1',
-    'in-person',
-    '2024-02-01 10:00:00+00'
-);
+    session_proposal_id,
+    status_id
+) values (:'deletedEventSubmissionID', :'deletedEventID', :'proposal1ID', 'not-reviewed');
+
+-- Event labels
+insert into event_label (event_label_id, event_id, name, color) values
+    (:'label1ID', :'eventID', 'track / backend', '#DBEAFE'),
+    (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2');
 
 -- CFS submission labels
 insert into cfs_submission_label (cfs_submission_id, event_label_id) values
@@ -246,13 +260,30 @@ insert into cfs_submission_rating (
     (:'sortSubmission3ID', :'reviewer1ID', 2),
     (:'sortSubmission3ID', :'reviewer2ID', 4);
 
+-- Session
+insert into session (
+    session_id,
+    cfs_submission_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at
+) values (
+    :'sessionID',
+    :'submission2ID',
+    :'eventID',
+    'Session 1',
+    'in-person',
+    '2024-02-01 10:00:00+00'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should list event submissions
 select is(
-    list_event_cfs_submissions(:'eventID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
+    list_event_cfs_submissions(:'groupID'::uuid, :'eventID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
     jsonb_build_object(
         'submissions', jsonb_build_array(
             jsonb_build_object(
@@ -366,16 +397,36 @@ select is(
 -- Should paginate submissions
 select is(
     (
-        list_event_cfs_submissions(:'eventID'::uuid, '{"limit": 1, "offset": 1}'::jsonb)::jsonb
+        list_event_cfs_submissions(:'groupID'::uuid, :'eventID'::uuid, '{"limit": 1, "offset": 1}'::jsonb)::jsonb
         -> 'submissions' -> 0 ->> 'cfs_submission_id'
     )::uuid,
     :'submission1ID'::uuid,
     'Should paginate submissions'
 );
 
+-- Should return empty submissions for deleted events
+select is(
+    list_event_cfs_submissions(:'groupID'::uuid, :'deletedEventID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
+    jsonb_build_object(
+        'submissions', '[]'::jsonb,
+        'total', 0
+    ),
+    'Should return empty submissions for deleted events'
+);
+
+-- Should return empty submissions for events outside the group
+select is(
+    list_event_cfs_submissions(:'otherGroupID'::uuid, :'eventID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
+    jsonb_build_object(
+        'submissions', '[]'::jsonb,
+        'total', 0
+    ),
+    'Should return empty submissions for events outside the group'
+);
+
 -- Should return empty submissions for events without submissions
 select is(
-    list_event_cfs_submissions(:'eventEmptyID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
+    list_event_cfs_submissions(:'groupID'::uuid, :'eventEmptyID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
     jsonb_build_object(
         'submissions', '[]'::jsonb,
         'total', 0
@@ -386,6 +437,7 @@ select is(
 -- Should filter submissions requiring all selected labels
 select is(
     list_event_cfs_submissions(
+        :'groupID'::uuid,
         :'eventID'::uuid,
         format(
             '{"limit": 10, "offset": 0, "label_ids": ["%s", "%s"]}',
@@ -468,6 +520,7 @@ select results_eq(
                     from jsonb_array_elements(
                         list_event_cfs_submissions(
                             %L::uuid,
+                            %L::uuid,
                             jsonb_build_object('limit', 10, 'offset', 0, 'sort', sorts.sort_key)
                         )::jsonb->'submissions'
                     ) with ordinality as listed(submission, position)
@@ -485,6 +538,7 @@ select results_eq(
             ) as sorts(position, sort_key)
             order by sorts.position
         $$,
+        :'groupID',
         :'eventSortID'
     ),
     format(

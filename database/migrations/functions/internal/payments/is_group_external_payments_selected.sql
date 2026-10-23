@@ -12,4 +12,4 @@ returns boolean as $$
         and g.external_payments_enabled
         and is_country_external_payments_allowlisted(g.country_code)
     );
-$$ language sql;
+$$ language sql stable;

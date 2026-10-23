@@ -7,11 +7,9 @@ create or replace function cancel_event_checkout(
 )
 returns void as $$
 declare
-    v_event_discount_code_id uuid;
     v_event_id uuid;
     v_event_purchase_id uuid;
     v_event_ticket_type_id uuid;
-    v_user_id uuid;
 begin
     -- Resolve the active checkout before taking lifecycle locks
     select
@@ -31,6 +29,7 @@ begin
     and ep.status = 'pending'
     and ep.hold_expires_at > current_timestamp;
 
+    -- Ignore requests without an active checkout in the community
     if not found then
         return;
     end if;
@@ -42,40 +41,16 @@ begin
         p_configured_provider
     );
 
-    -- Expire the attendee's active pending purchase for this event
-    update event_purchase
-    set
-        hold_expires_at = least(hold_expires_at, current_timestamp),
-        status = 'expired',
-        updated_at = current_timestamp
-    where event_purchase_id = v_event_purchase_id
-    and status = 'pending'
-    returning
-        event_discount_code_id,
-        user_id
-    into
-        v_event_discount_code_id,
-        v_user_id;
-
-    if not found then
+    -- Expire the attendee's active pending purchase, stopping when it is no longer pending
+    if not expire_event_checkout_hold(v_event_purchase_id) then
         return;
     end if;
 
-    -- Restore any reserved discount usage released by the canceled checkout
-    if v_event_discount_code_id is not null then
-        perform release_event_discount_code_availability(v_event_discount_code_id);
-    end if;
-
-    -- Release the pending attendee row created for checkout answers
-    if v_event_id is not null then
-        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
-
-        -- Return linked offers to pending and fill the released capacity
-        perform reconcile_event_enrollment(
-            v_event_id,
-            v_event_ticket_type_id,
-            p_configured_provider
-        );
-    end if;
+    -- Return linked offers to pending and fill the released capacity
+    perform reconcile_event_enrollment(
+        v_event_id,
+        v_event_ticket_type_id,
+        p_configured_provider
+    );
 end;
 $$ language plpgsql;

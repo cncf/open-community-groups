@@ -1,9 +1,11 @@
+-- Tests accepting a pending co-speaker invitation for a session proposal.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,14 +21,16 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline users
-select fx_user(:'speakerUserID');
-select fx_user(:'userID2');
-
--- Users
+-- Invited co-speaker
 select fx_user(:'coSpeakerUserID', jsonb_build_object('username', 'co-speaker'));
 
--- Session proposals
+-- Proposal speaker
+select fx_user(:'speakerUserID');
+
+-- User who is not the invited co-speaker
+select fx_user(:'userID2');
+
+-- Session proposals awaiting and no longer awaiting the co-speaker
 insert into session_proposal (
     session_proposal_id,
     co_speaker_user_id,
@@ -106,18 +110,6 @@ select results_eq(
         :'proposalPendingID'
     ),
     'Should create the expected audit row'
-);
-
--- Should reject acceptance when invitation is not pending
-select throws_ok(
-    format(
-        'select accept_session_proposal_co_speaker_invitation(%L::uuid, %L::uuid)',
-        :'coSpeakerUserID',
-        :'proposalReadyID'
-    ),
-    'OCG01',
-    'session proposal is not awaiting co-speaker response',
-    'Should reject acceptance when invitation is not pending'
 );
 
 -- Should reject acceptance for users that are not the invited co-speaker

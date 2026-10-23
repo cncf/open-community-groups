@@ -5,6 +5,7 @@
 -- purchase, or a manual invitation recorded without a purchase.
 create or replace function stats_event_enrollment(p_event event)
 returns json as $$
+-- Count attendee outcomes
 with attendees as (
     select
         count(*) filter (where ea.status = 'attendance-canceled')::bigint as cancellations,
@@ -13,6 +14,7 @@ with attendees as (
     from event_attendee ea
     where ea.event_id = p_event.event_id
 ),
+-- Count invitation requests by review status
 invitation_requests as (
     select
         count(*) filter (where eir.status = 'accepted')::bigint as accepted,
@@ -21,40 +23,35 @@ invitation_requests as (
     from event_invitation_request eir
     where eir.event_id = p_event.event_id
 ),
-seat_purchases as (
-    select distinct on (ep.user_id)
-        ep.admission_offer_id,
-        ep.user_id
-    from event_purchase ep
-    where ep.event_id = p_event.event_id
-    and event_purchase_holds_seat(ep.status)
-    order by
-        ep.user_id,
-        ep.completed_at desc nulls last,
-        ep.created_at desc,
-        ep.event_purchase_id desc
-),
+-- Attribute each confirmed registration to the path that admitted it
 registration_paths as (
     select
         case
+            -- Credit the source of the offer claimed by the seat purchase
             when ao.source is not null then ao.source
+            -- Credit a direct purchase made without an offer
             when sp.user_id is not null then 'direct'
+            -- Credit a manual invitation recorded without a purchase
             when ea.manually_invited then 'organizer_invitation'
+            -- Report registrations with no recorded path
             else 'unknown'
         end as path
     from event_attendee ea
-    left join seat_purchases sp on sp.user_id = ea.user_id
+    left join event_seat_purchases(p_event.event_id) sp on sp.user_id = ea.user_id
     left join admission_offer ao on ao.admission_offer_id = sp.admission_offer_id
     where ea.event_id = p_event.event_id
     and ea.status = 'confirmed'
 ),
+-- Count admission offers by source and outcome
 admission_offers as (
     select
         count(*)::bigint as count,
         case
-            when admission_offer_is_active(ao.status) and ao.expires_at > current_timestamp
-                then 'active'
-            when admission_offer_is_active(ao.status) then 'deadline-passed'
+            -- Report offers still reserving a seat as active
+            when admission_offer_reserves_seat(ao.status, ao.expires_at) then 'active'
+            -- Report active offers whose deadline passed before expiry ran
+            when admission_offer_is_lapsed(ao.status, ao.expires_at) then 'deadline-passed'
+            -- Report settled offers by their stored status
             else ao.status
         end as outcome,
         ao.source
@@ -62,6 +59,7 @@ admission_offers as (
     where ao.event_id = p_event.event_id
     group by outcome, ao.source
 )
+-- Build the enrollment counts payload
 select json_build_object(
     'admission_offers', coalesce((
         select json_agg(

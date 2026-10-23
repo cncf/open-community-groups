@@ -20,46 +20,15 @@ returns json as $$
                 e.venue_state_name,
                 e.venue_country_name
             ), '') as location,
-            coalesce(purchase.ticket_title, offer.ticket_title) as ticket_title,
+            event_attendee_ticket_title(ea.event_id, ea.user_id) as ticket_title,
 
             e.starts_at <= current_timestamp as in_progress
         from event_attendee ea
         join event e using (event_id)
         join "group" g using (group_id)
         join community c using (community_id)
-        left join lateral (
-            select ep.ticket_title
-            from event_purchase ep
-            where ep.event_id = ea.event_id
-            and ep.user_id = ea.user_id
-            and (event_purchase_holds_seat(ep.status) or ep.status = 'refunded')
-            order by ep.created_at desc, ep.event_purchase_id desc
-            limit 1
-        ) purchase on true
-        left join lateral (
-            select coalesce(ao.ticket_title, ett.title) as ticket_title
-            from admission_offer ao
-            left join event_ticket_type ett using (event_ticket_type_id)
-            where ao.event_id = ea.event_id
-            and ao.user_id = ea.user_id
-            and ao.status = 'completed'
-            order by ao.created_at desc, ao.admission_offer_id desc
-            limit 1
-        ) offer on true
         where ea.user_id = p_user_id
         and ea.status = 'confirmed'
-        and e.canceled = false
-        and e.deleted = false
-        and e.published = true
-        and e.starts_at is not null
-        and g.active = true
-        and g.deleted = false
-        and current_timestamp < coalesce(
-            e.ends_at,
-            (
-                date_trunc('day', e.starts_at at time zone e.timezone)
-                + interval '1 day'
-            ) at time zone e.timezone
-        )
+        and is_event_check_in_open(e, g)
     ) event_row;
-$$ language sql;
+$$ language sql stable;

@@ -1,8 +1,8 @@
 -- Locks an event whose surveys organizers can manage and returns its row. The
--- event must belong to the group, its group must be active and not deleted,
--- and the event must be neither deleted nor canceled. Ended events are
--- allowed because surveys are managed after the event. Callers lock the event
--- before any of its surveys.
+-- event must belong to the group, its group must be active (a deleted group is
+-- never active), and the event must be neither deleted nor canceled. Ended
+-- events are allowed because surveys are managed after the event. Callers lock
+-- the event before any of its surveys.
 create or replace function lock_event_for_surveys(
     p_group_id uuid,
     p_event_id uuid
@@ -19,12 +19,11 @@ begin
     where e.event_id = p_event_id
     and e.group_id = p_group_id
     and g.active = true
-    and g.deleted = false
     and e.canceled = false
     and e.deleted = false
     for update of e;
 
-    -- Reject missing, foreign, canceled or deleted events
+    -- Reject missing, foreign, canceled or deleted events and inactive groups
     if not found then
         raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;

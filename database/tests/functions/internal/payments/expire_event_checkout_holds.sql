@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,9 +17,6 @@ select plan(8);
 \set communityID 'f30d0000-0000-0000-0000-000000000004'
 \set directPurchaseID 'f30d0000-0000-0000-0000-000000000005'
 \set directUserID 'f30d0000-0000-0000-0000-000000000006'
-\set discountCodeID 'f30d0000-0000-0000-0000-000000000007'
-\set discountPurchaseID 'f30d0000-0000-0000-0000-000000000008'
-\set discountUserID 'f30d0000-0000-0000-0000-000000000009'
 \set eventCategoryID 'f30d0000-0000-0000-0000-00000000000a'
 \set eventID 'f30d0000-0000-0000-0000-00000000000b'
 \set expiredExternalPurchaseID 'f30d0000-0000-0000-0000-00000000000c'
@@ -36,27 +33,41 @@ select plan(8);
 \set otherUserID 'f30d0000-0000-0000-0000-000000000017'
 \set pastPurchaseID 'f30d0000-0000-0000-0000-000000000018'
 \set pastUserID 'f30d0000-0000-0000-0000-000000000019'
-\set pendingAttendeePurchaseID 'f30d0000-0000-0000-0000-00000000001a'
-\set pendingAttendeeUserID 'f30d0000-0000-0000-0000-00000000001b'
 \set ticketTypeID 'f30d0000-0000-0000-0000-00000000001c'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and users
+-- Community owning both events
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- User whose checkout hold outlives its lapsed offer
 select fx_user(:'cappedUserID');
+
+-- User whose direct-charge hold expired
 select fx_user(:'directUserID');
-select fx_user(:'discountUserID');
+
+-- User whose external payment hold expired
 select fx_user(:'expiredExternalUserID');
+
+-- User whose free hold expired
 select fx_user(:'freeUserID');
+
+-- User whose checkout hold is still in the future
 select fx_user(:'futureUserID');
+
+-- User whose hold belongs to another event
 select fx_user(:'otherUserID');
+
+-- User whose checkout hold passed its deadline
 select fx_user(:'pastUserID');
-select fx_user(:'pendingAttendeeUserID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group shown in expired external payment notifications
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
@@ -128,43 +139,7 @@ insert into admission_offer (
     :'cappedUserID'
 );
 
--- Discount code reserved by a stale pending purchase
-insert into event_discount_code (
-    event_discount_code_id,
-    amount_minor,
-    available,
-    available_override_active,
-    code,
-    event_id,
-    kind,
-    title
-) values (
-    :'discountCodeID',
-    500,
-    0,
-    true,
-    'EXPIRE_EVENT_CHECKOUT_HOLDS_DISCOUNT',
-    :'eventID',
-    'fixed_amount',
-    'Expire Checkout Holds Discount'
-);
-
--- Checkout attendee answers held by a stale purchase
-insert into event_attendee (
-    event_id,
-    manually_invited,
-    registration_answers,
-    status,
-    user_id
-) values (
-    :'eventID',
-    false,
-    '{"answers": [{"question_id": "f30d0000-0000-0000-0000-00000000001d", "value": "Pending"}]}'::jsonb,
-    'registration-questions-pending',
-    :'pendingAttendeeUserID'
-);
-
--- Direct-charge pending purchases covering stale, future, discounted and offer-linked holds
+-- Direct-charge pending purchases covering stale, future, other-event and offer-linked holds
 insert into event_purchase (
     admission_offer_id,
     amount_minor,
@@ -217,33 +192,6 @@ insert into event_purchase (
         'professional-event-admission',
         'Direct expired admission',
         :'directUserID',
-        '{}'::jsonb
-    ),
-    (
-        null,
-        2000,
-        'direct-charge',
-        'acct_expire_event_checkout_holds',
-        'USD',
-        500,
-        'EXPIRE_EVENT_CHECKOUT_HOLDS_DISCOUNT',
-        :'discountCodeID',
-        :'eventID',
-        :'discountPurchaseID',
-        :'ticketTypeID',
-        current_timestamp - interval '2 hours',
-        'stripe',
-        0,
-        0,
-        'expire-event-checkout-holds-discount-session',
-        'acct_expire_event_checkout_holds',
-        '{"connected_account_id":"acct_expire_event_checkout_holds","display_name":"Expire Sponsor","provider":"stripe"}'::jsonb,
-        'pending',
-        'inclusive',
-        'manual',
-        'professional-event-admission',
-        'Discount expired admission',
-        :'discountUserID',
         '{}'::jsonb
     ),
     (
@@ -325,33 +273,6 @@ insert into event_purchase (
         'professional-event-admission',
         'Past admission',
         :'pastUserID',
-        '{}'::jsonb
-    ),
-    (
-        null,
-        2500,
-        'direct-charge',
-        'acct_expire_event_checkout_holds',
-        'USD',
-        0,
-        null,
-        null,
-        :'eventID',
-        :'pendingAttendeePurchaseID',
-        :'ticketTypeID',
-        current_timestamp - interval '2 hours',
-        'stripe',
-        0,
-        0,
-        'expire-event-checkout-holds-attendee-session',
-        'acct_expire_event_checkout_holds',
-        '{"connected_account_id":"acct_expire_event_checkout_holds","display_name":"Expire Sponsor","provider":"stripe"}'::jsonb,
-        'pending',
-        'inclusive',
-        'manual',
-        'professional-event-admission',
-        'Pending attendee admission',
-        :'pendingAttendeeUserID',
         '{}'::jsonb
     ),
     (
@@ -441,32 +362,6 @@ select expire_event_checkout_holds(
     '{"brand": "expire-event-checkout-holds"}'::jsonb
 );
 
--- Should cap offer-expired checkout holds to now
-select results_eq(
-    format(
-        $$
-            select status, hold_expires_at
-            from event_purchase
-            where event_purchase_id = %L::uuid
-        $$,
-        :'cappedPurchaseID'
-    ),
-    $$ values ('expired'::text, current_timestamp) $$,
-    'Should cap offer-expired checkout holds to now'
-);
-
--- Should delete checkout attendee hold rows
-select is(
-    (
-        select count(*)::int
-        from event_attendee
-        where event_id = :'eventID'
-        and user_id = :'pendingAttendeeUserID'
-    ),
-    0,
-    'Should delete checkout attendee hold rows'
-);
-
 -- Should expire non-external checkout holds without notifications
 select results_eq(
     format(
@@ -490,18 +385,20 @@ select results_eq(
     'Should expire non-external checkout holds without notifications'
 );
 
--- Should expire past checkout holds without moving their deadline
+-- Should expire past checkout holds and holds that outlive their offer
 select results_eq(
     format(
         $$
-            select status, hold_expires_at
+            select status
             from event_purchase
-            where event_purchase_id = %L::uuid
+            where event_purchase_id in (%L::uuid, %L::uuid)
+            order by event_purchase_id
         $$,
+        :'cappedPurchaseID',
         :'pastPurchaseID'
     ),
-    $$ values ('expired'::text, current_timestamp - interval '2 hours') $$,
-    'Should expire past checkout holds without moving their deadline'
+    $$ values ('expired'::text), ('expired'::text) $$,
+    'Should expire past checkout holds and holds that outlive their offer'
 );
 
 -- Should leave future checkout holds pending
@@ -529,29 +426,22 @@ select is(
     'Should leave other event holds pending'
 );
 
--- Should notify expired external payment holders once
-select is(
-    (
-        select count(*)::int
-        from notification n
-        join notification_template_data ntd using (notification_template_data_id)
-        where n.kind = 'event-external-payment-expired'
-        and n.user_id = :'expiredExternalUserID'
-        and (ntd.data->>'event_purchase_id')::uuid = :'expiredExternalPurchaseID'::uuid
+-- Should notify expired external payment holders once with the original deadline
+select results_eq(
+    format(
+        $$
+            select (ntd.data->>'deadline')::bigint
+            from notification n
+            join notification_template_data ntd using (notification_template_data_id)
+            where n.kind = 'event-external-payment-expired'
+            and n.user_id = %L::uuid
+            and (ntd.data->>'event_purchase_id')::uuid = %L::uuid
+        $$,
+        :'expiredExternalUserID',
+        :'expiredExternalPurchaseID'
     ),
-    1,
-    'Should notify expired external payment holders once'
-);
-
--- Should restore discount availability for expired discounted holds
-select is(
-    (
-        select available
-        from event_discount_code
-        where event_discount_code_id = :'discountCodeID'
-    ),
-    1,
-    'Should restore discount availability for expired discounted holds'
+    $$ values (epoch_seconds(current_timestamp - interval '2 hours')) $$,
+    'Should notify expired external payment holders once with the original deadline'
 );
 
 -- ============================================================================

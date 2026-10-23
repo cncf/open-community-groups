@@ -12,16 +12,19 @@
 --   - page_views.total/community/groups/events: Page views
 --
 -- Time series data is returned as arrays of [timestamp, value] pairs, where
--- timestamps are Unix milliseconds. Category/region breakdowns use entity
--- names as keys.
+-- timestamps are Unix milliseconds. Month buckets and their 'YYYY-MM' labels
+-- are taken at UTC, so they do not depend on the session time zone.
+-- Category/region breakdowns use entity names as keys.
 create or replace function get_community_stats(p_community_id uuid)
 returns json as $$
+-- Resolve the community and reporting windows
 with params as (
     select
         p_community_id as community_id,
         current_date - interval '2 years' as period_start,
         current_date - interval '1 month' as recent_views_start
 ),
+-- Collect the event categories of the community
 event_categories as (
     select
         ec.event_category_id,
@@ -29,6 +32,7 @@ event_categories as (
     from event_category ec
     join params p on ec.community_id = p.community_id
 ),
+-- Collect the group categories of the community
 group_categories as (
     select
         gc.group_category_id,
@@ -36,6 +40,7 @@ group_categories as (
     from group_category gc
     join params p on gc.community_id = p.community_id
 ),
+-- Collect the regions of the community
 regions as (
     select
         r.region_id,
@@ -43,6 +48,7 @@ regions as (
     from region r
     join params p on r.community_id = p.community_id
 ),
+-- Select active groups of the community
 filtered_groups as (
     select
         g.group_id,
@@ -56,6 +62,7 @@ filtered_groups as (
         and g.active = true
         and g.deleted = false
 ),
+-- Select members of the active groups
 members as (
     select
         gm.group_id,
@@ -66,6 +73,7 @@ members as (
     from group_member gm
     join filtered_groups fg on fg.group_id = gm.group_id
 ),
+-- Select published non-test events of the active groups that were not canceled
 events as (
     select
         e.event_id,
@@ -82,23 +90,22 @@ events as (
         and e.deleted = false
         and e.test_event = false
 ),
+-- Select published non-test events of the active groups, canceled included, for views
 events_for_views as (
-    select
-        e.event_id,
-        e.event_category_id,
-        fg.group_category_id,
-        fg.region_id
+    select e.event_id
     from event e
     join filtered_groups fg on fg.group_id = e.group_id
     where e.deleted = false
         and e.published = true
         and e.test_event = false
 ),
+-- Keep events with a start date for the event timelines
 events_with_start as (
     select *
     from events
     where starts_at is not null
 ),
+-- Select confirmed attendees of the selected events
 attendees as (
     select
         ea.event_id,
@@ -111,47 +118,43 @@ attendees as (
     join events e on e.event_id = ea.event_id
     where ea.status = 'confirmed'
 ),
-event_views_data as (
+-- Sum event page views by day into parallel arrays
+event_view_days as (
     select
-        ev.event_id,
-        ev.total,
-        efv.event_category_id,
-        efv.group_category_id,
-        efv.region_id,
-        timezone('UTC', date_trunc('month', ev.day::timestamp)) as viewed_month,
-        ev.day
-    from event_views ev
-    join events_for_views efv on efv.event_id = ev.event_id
+        array_agg(d.day) as days,
+        array_agg(d.total) as totals
+    from (
+        select
+            ev.day,
+            sum(ev.total)::int as total
+        from event_views ev
+        join events_for_views efv on efv.event_id = ev.event_id
+        group by ev.day
+    ) d
 ),
-group_views_data as (
+-- Sum group page views by day into parallel arrays
+group_view_days as (
     select
-        gv.group_id,
-        gv.total,
-        fg.group_category_id,
-        fg.region_id,
-        timezone('UTC', date_trunc('month', gv.day::timestamp)) as viewed_month,
-        gv.day
-    from group_views gv
-    join filtered_groups fg on fg.group_id = gv.group_id
+        array_agg(d.day) as days,
+        array_agg(d.total) as totals
+    from (
+        select
+            gv.day,
+            sum(gv.total)::int as total
+        from group_views gv
+        join filtered_groups fg on fg.group_id = gv.group_id
+        group by gv.day
+    ) d
 ),
-community_views_data as (
+-- Collect community page views, stored once per day, into parallel arrays
+community_view_days as (
     select
-        cv.total,
-        timezone('UTC', date_trunc('month', cv.day::timestamp)) as viewed_month,
-        cv.day
+        array_agg(cv.day) as days,
+        array_agg(cv.total) as totals
     from community_views cv
     join params p on cv.community_id = p.community_id
 ),
-all_page_views_data as (
-    select total, viewed_month, day
-    from community_views_data
-    union all
-    select total, viewed_month, day
-    from event_views_data
-    union all
-    select total, viewed_month, day
-    from group_views_data
-),
+-- Count each domain by month for the all-time running totals
 domain_running_total_counts as (
     select
         'groups' as domain,
@@ -187,45 +190,47 @@ domain_running_total_counts as (
     from attendees a
     group by a.created_month
 ),
+-- Count each domain by UTC month label within the reporting period
 domain_monthly_counts as (
     select
         'groups' as domain,
-        to_char(fg.created_month, 'YYYY-MM') as label,
+        to_char(fg.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from filtered_groups fg
     join params p on fg.created_at >= p.period_start
-    group by to_char(fg.created_month, 'YYYY-MM')
+    group by to_char(fg.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
     select
         'members' as domain,
-        to_char(m.created_month, 'YYYY-MM') as label,
+        to_char(m.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from members m
     join params p on m.created_at >= p.period_start
-    group by to_char(m.created_month, 'YYYY-MM')
+    group by to_char(m.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
     select
         'events' as domain,
-        to_char(e.starts_month, 'YYYY-MM') as label,
+        to_char(e.starts_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from events_with_start e
     join params p on e.starts_at >= p.period_start
-    group by to_char(e.starts_month, 'YYYY-MM')
+    group by to_char(e.starts_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
     select
         'attendees' as domain,
-        to_char(a.created_month, 'YYYY-MM') as label,
+        to_char(a.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from attendees a
     join params p on a.created_at >= p.period_start
-    group by to_char(a.created_month, 'YYYY-MM')
+    group by to_char(a.created_month at time zone 'UTC', 'YYYY-MM')
 ),
+-- Count each domain by category or region and month for the running totals
 dimension_running_total_counts as (
     select
         'groups' as domain,
@@ -345,17 +350,18 @@ dimension_running_total_counts as (
     join regions r on r.region_id = a.region_id
     group by r.name, a.created_month
 ),
+-- Count each domain by category or region and UTC month label within the reporting period
 dimension_monthly_counts as (
     select
         'groups' as domain,
         'category' as dimension,
         gc.name as series_name,
-        to_char(fg.created_month, 'YYYY-MM') as label,
+        to_char(fg.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from filtered_groups fg
     join params p on fg.created_at >= p.period_start
     join group_categories gc on gc.group_category_id = fg.group_category_id
-    group by gc.name, to_char(fg.created_month, 'YYYY-MM')
+    group by gc.name, to_char(fg.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
@@ -363,12 +369,12 @@ dimension_monthly_counts as (
         'groups' as domain,
         'region' as dimension,
         r.name as series_name,
-        to_char(fg.created_month, 'YYYY-MM') as label,
+        to_char(fg.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from filtered_groups fg
     join params p on fg.created_at >= p.period_start
     join regions r on r.region_id = fg.region_id
-    group by r.name, to_char(fg.created_month, 'YYYY-MM')
+    group by r.name, to_char(fg.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
@@ -376,12 +382,12 @@ dimension_monthly_counts as (
         'members' as domain,
         'category' as dimension,
         gc.name as series_name,
-        to_char(m.created_month, 'YYYY-MM') as label,
+        to_char(m.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from members m
     join params p on m.created_at >= p.period_start
     join group_categories gc on gc.group_category_id = m.group_category_id
-    group by gc.name, to_char(m.created_month, 'YYYY-MM')
+    group by gc.name, to_char(m.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
@@ -389,12 +395,12 @@ dimension_monthly_counts as (
         'members' as domain,
         'region' as dimension,
         r.name as series_name,
-        to_char(m.created_month, 'YYYY-MM') as label,
+        to_char(m.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from members m
     join params p on m.created_at >= p.period_start
     join regions r on r.region_id = m.region_id
-    group by r.name, to_char(m.created_month, 'YYYY-MM')
+    group by r.name, to_char(m.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
@@ -402,12 +408,12 @@ dimension_monthly_counts as (
         'events' as domain,
         'event_category' as dimension,
         ec.name as series_name,
-        to_char(e.starts_month, 'YYYY-MM') as label,
+        to_char(e.starts_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from events_with_start e
     join params p on e.starts_at >= p.period_start
     join event_categories ec on ec.event_category_id = e.event_category_id
-    group by ec.name, to_char(e.starts_month, 'YYYY-MM')
+    group by ec.name, to_char(e.starts_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
@@ -415,12 +421,12 @@ dimension_monthly_counts as (
         'events' as domain,
         'group_category' as dimension,
         gc.name as series_name,
-        to_char(e.starts_month, 'YYYY-MM') as label,
+        to_char(e.starts_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from events_with_start e
     join params p on e.starts_at >= p.period_start
     join group_categories gc on gc.group_category_id = e.group_category_id
-    group by gc.name, to_char(e.starts_month, 'YYYY-MM')
+    group by gc.name, to_char(e.starts_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
@@ -428,12 +434,12 @@ dimension_monthly_counts as (
         'events' as domain,
         'group_region' as dimension,
         r.name as series_name,
-        to_char(e.starts_month, 'YYYY-MM') as label,
+        to_char(e.starts_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from events_with_start e
     join params p on e.starts_at >= p.period_start
     join regions r on r.region_id = e.region_id
-    group by r.name, to_char(e.starts_month, 'YYYY-MM')
+    group by r.name, to_char(e.starts_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
@@ -441,12 +447,12 @@ dimension_monthly_counts as (
         'attendees' as domain,
         'event_category' as dimension,
         ec.name as series_name,
-        to_char(a.created_month, 'YYYY-MM') as label,
+        to_char(a.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from attendees a
     join params p on a.created_at >= p.period_start
     join event_categories ec on ec.event_category_id = a.event_category_id
-    group by ec.name, to_char(a.created_month, 'YYYY-MM')
+    group by ec.name, to_char(a.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
@@ -454,12 +460,12 @@ dimension_monthly_counts as (
         'attendees' as domain,
         'group_category' as dimension,
         gc.name as series_name,
-        to_char(a.created_month, 'YYYY-MM') as label,
+        to_char(a.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from attendees a
     join params p on a.created_at >= p.period_start
     join group_categories gc on gc.group_category_id = a.group_category_id
-    group by gc.name, to_char(a.created_month, 'YYYY-MM')
+    group by gc.name, to_char(a.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
 
@@ -467,118 +473,46 @@ dimension_monthly_counts as (
         'attendees' as domain,
         'group_region' as dimension,
         r.name as series_name,
-        to_char(a.created_month, 'YYYY-MM') as label,
+        to_char(a.created_month at time zone 'UTC', 'YYYY-MM') as label,
         count(*)::int as count
     from attendees a
     join params p on a.created_at >= p.period_start
     join regions r on r.region_id = a.region_id
-    group by r.name, to_char(a.created_month, 'YYYY-MM')
+    group by r.name, to_char(a.created_month at time zone 'UTC', 'YYYY-MM')
 ),
-page_view_total_counts as (
+-- Build the page views block of each scope, the total one from all scopes
+page_view_blocks as (
     select
-        'total' as scope,
-        coalesce(sum(apv.total), 0)::int as total_views
-    from all_page_views_data apv
-
-    union all
-
-    select
-        'community' as scope,
-        coalesce(sum(cv.total), 0)::int as total_views
-    from community_views_data cv
-
-    union all
-
-    select
-        'events' as scope,
-        coalesce(sum(ev.total), 0)::int as total_views
-    from event_views_data ev
-
-    union all
-
-    select
-        'groups' as scope,
-        coalesce(sum(gv.total), 0)::int as total_views
-    from group_views_data gv
-),
-page_view_daily_counts as (
-    select
-        'total' as scope,
-        to_char(apv.day, 'YYYY-MM-DD') as label,
-        sum(apv.total)::int as count
-    from all_page_views_data apv
-    join params p on apv.day >= p.recent_views_start
-    group by to_char(apv.day, 'YYYY-MM-DD')
-
-    union all
-
-    select
-        'community' as scope,
-        to_char(cv.day, 'YYYY-MM-DD') as label,
-        sum(cv.total)::int as count
-    from community_views_data cv
-    join params p on cv.day >= p.recent_views_start
-    group by to_char(cv.day, 'YYYY-MM-DD')
-
-    union all
-
-    select
-        'events' as scope,
-        to_char(ev.day, 'YYYY-MM-DD') as label,
-        sum(ev.total)::int as count
-    from event_views_data ev
-    join params p on ev.day >= p.recent_views_start
-    group by to_char(ev.day, 'YYYY-MM-DD')
-
-    union all
-
-    select
-        'groups' as scope,
-        to_char(gv.day, 'YYYY-MM-DD') as label,
-        sum(gv.total)::int as count
-    from group_views_data gv
-    join params p on gv.day >= p.recent_views_start
-    group by to_char(gv.day, 'YYYY-MM-DD')
-),
-page_view_monthly_counts as (
-    select
-        'total' as scope,
-        to_char(apv.viewed_month, 'YYYY-MM') as label,
-        sum(apv.total)::int as count
-    from all_page_views_data apv
-    join params p on apv.day >= p.period_start
-    group by to_char(apv.viewed_month, 'YYYY-MM')
-
-    union all
-
-    select
-        'community' as scope,
-        to_char(cv.viewed_month, 'YYYY-MM') as label,
-        sum(cv.total)::int as count
-    from community_views_data cv
-    join params p on cv.day >= p.period_start
-    group by to_char(cv.viewed_month, 'YYYY-MM')
-
-    union all
-
-    select
-        'events' as scope,
-        to_char(ev.viewed_month, 'YYYY-MM') as label,
-        sum(ev.total)::int as count
-    from event_views_data ev
-    join params p on ev.day >= p.period_start
-    group by to_char(ev.viewed_month, 'YYYY-MM')
-
-    union all
-
-    select
-        'groups' as scope,
-        to_char(gv.viewed_month, 'YYYY-MM') as label,
-        sum(gv.total)::int as count
-    from group_views_data gv
-    join params p on gv.day >= p.period_start
-    group by to_char(gv.viewed_month, 'YYYY-MM')
+        stats_page_views(
+            cvd.days,
+            cvd.totals,
+            p.period_start::date,
+            p.recent_views_start::date
+        ) as community_block,
+        stats_page_views(
+            evd.days,
+            evd.totals,
+            p.period_start::date,
+            p.recent_views_start::date
+        ) as events_block,
+        stats_page_views(
+            gvd.days,
+            gvd.totals,
+            p.period_start::date,
+            p.recent_views_start::date
+        ) as groups_block,
+        stats_page_views(
+            cvd.days || evd.days || gvd.days,
+            cvd.totals || evd.totals || gvd.totals,
+            p.period_start::date,
+            p.recent_views_start::date
+        ) as total_block
+    from params p
+    cross join community_view_days cvd
+    cross join event_view_days evd
+    cross join group_view_days gvd
 )
+-- Build each domain block and the page view metrics
 select json_strip_nulls(json_build_object(
     -- ========================================================================
     -- GROUPS STATISTICS
@@ -878,59 +812,12 @@ select json_strip_nulls(json_build_object(
     -- PAGE VIEWS STATISTICS
     -- ========================================================================
     'page_views', json_build_object(
-        'total_views', (select total_views from page_view_total_counts where scope = 'total'),
-        'total', json_build_object(
-            'total_views', (select total_views from page_view_total_counts where scope = 'total'),
-            'per_day_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_daily_counts counts
-                where scope = 'total'
-            )),
-            'per_month_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_monthly_counts counts
-                where scope = 'total'
-            ))
-        ),
-        'community', json_build_object(
-            'total_views', (select total_views from page_view_total_counts where scope = 'community'),
-            'per_day_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_daily_counts counts
-                where scope = 'community'
-            )),
-            'per_month_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_monthly_counts counts
-                where scope = 'community'
-            ))
-        ),
-        'events', json_build_object(
-            'total_views', (select total_views from page_view_total_counts where scope = 'events'),
-            'per_day_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_daily_counts counts
-                where scope = 'events'
-            )),
-            'per_month_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_monthly_counts counts
-                where scope = 'events'
-            ))
-        ),
-        'groups', json_build_object(
-            'total_views', (select total_views from page_view_total_counts where scope = 'groups'),
-            'per_day_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_daily_counts counts
-                where scope = 'groups'
-            )),
-            'per_month_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_monthly_counts counts
-                where scope = 'groups'
-            ))
-        )
+        'community', pvb.community_block,
+        'events', pvb.events_block,
+        'groups', pvb.groups_block,
+        'total', pvb.total_block,
+        'total_views', (pvb.total_block->>'total_views')::int
     )
-));
-$$ language sql;
+))
+from page_view_blocks pvb;
+$$ language sql stable;

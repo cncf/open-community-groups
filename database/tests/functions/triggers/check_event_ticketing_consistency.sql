@@ -1,11 +1,11 @@
--- Tests the settled ticketing shape enforced across event pricing tables.
+-- Tests the settled ticketing shape enforced across event ticket type and pricing tables.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -37,9 +37,14 @@ select plan(11);
 \set freeTicketTypeID 'ab1b0000-0000-0000-0000-000000000018'
 \set groupCategoryID 'ab1b0000-0000-0000-0000-000000000019'
 \set groupID 'ab1b0000-0000-0000-0000-00000000001a'
+\set lastTierEventID 'ab1b0000-0000-0000-0000-00000000001e'
+\set lastTierTicketTypeID 'ab1b0000-0000-0000-0000-00000000001f'
+\set pairedTierEventID 'ab1b0000-0000-0000-0000-000000000020'
 \set repricedEventID 'ab1b0000-0000-0000-0000-00000000001b'
 \set repricedPriceWindowID 'ab1b0000-0000-0000-0000-00000000001c'
 \set repricedTicketTypeID 'ab1b0000-0000-0000-0000-00000000001d'
+\set spareTierEventID 'ab1b0000-0000-0000-0000-000000000021'
+\set spareTierTicketTypeID 'ab1b0000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
@@ -75,9 +80,17 @@ values (:'discountsRemainEventID', 'Discounts remain event', :'eventCategoryID',
 insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
 values (:'freeEventID', 'Free event', :'eventCategoryID', 'virtual', :'groupID', 'Free Event', 'free-event', 'UTC');
 
+-- Free event whose only ticket tier is deleted or moved away
+insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
+values (:'lastTierEventID', 'Last tier event', :'eventCategoryID', 'virtual', :'groupID', 'Last Tier Event', 'last-tier-event', 'UTC');
+
 -- Free event that receives positive pricing and a payment currency together
 insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
 values (:'repricedEventID', 'Repriced event', :'eventCategoryID', 'virtual', :'groupID', 'Repriced Event', 'repriced-event', 'UTC');
+
+-- Free event that receives a moved ticket tier
+insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
+values (:'spareTierEventID', 'Spare tier event', :'eventCategoryID', 'virtual', :'groupID', 'Spare Tier Event', 'spare-tier-event', 'UTC');
 
 -- Discount code of the cleared event
 insert into event_discount_code (event_discount_code_id, event_id, code, kind, title, amount_minor)
@@ -115,9 +128,17 @@ values (:'discountsRemainTicketTypeID', :'discountsRemainEventID', 1, 10, 'Gener
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values (:'freeTicketTypeID', :'freeEventID', 1, 10, 'General admission');
 
+-- Only ticket tier of the event whose last tier is deleted or moved away
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values (:'lastTierTicketTypeID', :'lastTierEventID', 1, 10, 'General admission');
+
 -- Ticket tier of the repriced event
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values (:'repricedTicketTypeID', :'repricedEventID', 1, 10, 'General admission');
+
+-- Ticket tier of the event that receives a moved tier
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values (:'spareTierTicketTypeID', :'spareTierEventID', 1, 10, 'General admission');
 
 -- Positive price window of the cleared event
 insert into event_ticket_price_window (amount_minor, event_ticket_price_window_id, event_ticket_type_id)
@@ -167,6 +188,25 @@ set constraints
     event_ticketing_consistency_on_event_ticket_price_window,
     event_ticketing_consistency_on_event_ticket_type
     immediate;
+
+-- Should accept an event inserted together with its first ticket tier
+select lives_ok(
+    format(
+        $$
+            with paired_tier_event as (
+                insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
+                values (%L::uuid, 'Paired tier event', %L::uuid, 'virtual', %L::uuid, 'Paired Tier Event', 'paired-tier-event', 'UTC')
+            )
+            insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+            values (gen_random_uuid(), %L::uuid, 1, 5, 'General admission')
+        $$,
+        :'pairedTierEventID',
+        :'eventCategoryID',
+        :'groupID',
+        :'pairedTierEventID'
+    ),
+    'Should accept an event inserted together with its first ticket tier'
+);
 
 -- Should accept clearing all payment-only configuration together
 select lives_ok(
@@ -247,6 +287,14 @@ select throws_ok(
     'Should reject a positive ticket tier moved to an event without a payment currency'
 );
 
+-- Should reject deleting an event's last ticket tier
+select throws_ok(
+    format($$delete from event_ticket_type where event_ticket_type_id = %L::uuid$$, :'lastTierTicketTypeID'),
+    'OCG01',
+    'events require at least one ticket type',
+    'Should reject deleting an event''s last ticket tier'
+);
+
 -- Should reject discount codes when the event has no positive ticket pricing
 select throws_ok(
     format(
@@ -259,6 +307,33 @@ select throws_ok(
     'OCG01',
     'discount_codes require positive ticket pricing',
     'Should reject discount codes when the event has no positive ticket pricing'
+);
+
+-- Should reject moving an event's last ticket tier to another event
+select throws_ok(
+    format(
+        $$update event_ticket_type set event_id = %L::uuid where event_ticket_type_id = %L::uuid$$,
+        :'spareTierEventID',
+        :'lastTierTicketTypeID'
+    ),
+    'OCG01',
+    'events require at least one ticket type',
+    'Should reject moving an event''s last ticket tier to another event'
+);
+
+-- Should reject persisting an event without a ticket tier
+select throws_ok(
+    format(
+        $$
+            insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
+            values (gen_random_uuid(), 'Tierless event', %L::uuid, 'virtual', %L::uuid, 'Tierless Event', 'tierless-event', 'UTC')
+        $$,
+        :'eventCategoryID',
+        :'groupID'
+    ),
+    'OCG01',
+    'events require at least one ticket type',
+    'Should reject persisting an event without a ticket tier'
 );
 
 -- Should reject positive pricing without a payment currency

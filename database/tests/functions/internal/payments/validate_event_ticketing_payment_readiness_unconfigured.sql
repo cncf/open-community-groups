@@ -20,18 +20,20 @@ select throws_ok(
         true,
         'KRW',
         null,
-        null,
-        '{
-            "kind_id": "in-person",
+        jsonb_populate_record(null::event, '{
+            "event_kind_id": "in-person",
+            "external_payment_url": "https://pay.example.test/unconfigured",
+            "manual_tax_rate_ids": [],
+            "payment_currency_code": "KRW",
+            "tax_behavior": "inclusive",
+            "tax_calculation_mode": "automatic",
             "venue_address": "1 Test Street",
             "venue_city": "Seoul",
             "venue_country_code": "KR",
             "venue_name": "Test Hall",
             "venue_zip_code": "00000"
-        }'::jsonb,
+        }'::jsonb),
         true,
-        'https://pay.example.test/unconfigured',
-        null,
         'KR'
     )$$,
     'OCG01',

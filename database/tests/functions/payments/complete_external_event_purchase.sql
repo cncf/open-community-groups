@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,13 +19,15 @@ select plan(12);
 \set eventCategoryID 'e07a0000-0000-0000-0000-000000000005'
 \set eventID 'e07a0000-0000-0000-0000-000000000006'
 \set eventTicketTypeID 'e07a0000-0000-0000-0000-000000000007'
-\set expiredAttendeeID 'e07a0000-0000-0000-0000-000000000011'
-\set expiredPurchaseID 'e07a0000-0000-0000-0000-000000000008'
 \set groupCategoryID 'e07a0000-0000-0000-0000-000000000009'
 \set groupID 'e07a0000-0000-0000-0000-00000000000a'
+\set invitedAttendeeID 'e07a0000-0000-0000-0000-000000000008'
+\set invitedPurchaseID 'e07a0000-0000-0000-0000-000000000011'
 \set otherGroupID 'e07a0000-0000-0000-0000-00000000000b'
 \set pendingPurchaseID 'e07a0000-0000-0000-0000-00000000000d'
 \set priceWindowID 'e07a0000-0000-0000-0000-00000000000e'
+\set refundedAttendeeID 'e07a0000-0000-0000-0000-00000000000c'
+\set refundedPurchaseID 'e07a0000-0000-0000-0000-000000000013'
 \set stripeAttendeeID 'e07a0000-0000-0000-0000-000000000012'
 \set stripePurchaseID 'e07a0000-0000-0000-0000-00000000000f'
 
@@ -39,7 +41,8 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_user(:'attendeeID');
 select fx_user(:'completedAttendeeID');
-select fx_user(:'expiredAttendeeID');
+select fx_user(:'invitedAttendeeID');
+select fx_user(:'refundedAttendeeID');
 select fx_user(:'stripeAttendeeID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
@@ -134,7 +137,11 @@ insert into event_purchase (
 insert into event_attendee (event_id, status, user_id)
 values (:'eventID', 'confirmed', :'completedAttendeeID');
 
--- Expired external purchase rejected by the expiry scenario
+-- Pending invitation that checkout cannot confirm
+insert into event_attendee (event_id, manually_invited, status, user_id)
+values (:'eventID', true, 'invitation-pending', :'invitedAttendeeID');
+
+-- Pending external purchase of the user whose invitation is still pending
 insert into event_purchase (
     amount_minor,
     charge_model,
@@ -153,14 +160,41 @@ insert into event_purchase (
     'external',
     'KRW',
     :'eventID',
-    :'expiredPurchaseID',
+    :'invitedPurchaseID',
     :'eventTicketTypeID',
-    current_timestamp - interval '1 minute',
+    current_timestamp + interval '2 days',
     0,
     0,
     'pending',
     'General admission',
-    :'expiredAttendeeID'
+    :'invitedAttendeeID'
+);
+
+-- Refunded external purchase rejected by the pending guard
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    'KRW',
+    :'eventID',
+    :'refundedPurchaseID',
+    :'eventTicketTypeID',
+    0,
+    0,
+    'refunded',
+    'General admission',
+    :'refundedAttendeeID'
 );
 
 -- Stripe purchase rejected by the charge-model boundary
@@ -384,17 +418,16 @@ select is(
     'Should no-op on a repeated mark-paid for the same completed purchase'
 );
 
--- Should reject an expired external purchase
+-- Should reject a call without the group scope
 select throws_ok(
     format(
-        $$select complete_external_event_purchase(%L::uuid, %L::uuid, %L::uuid, null)$$,
+        $$select complete_external_event_purchase(%L::uuid, null::uuid, %L::uuid, null)$$,
         :'actorID',
-        :'groupID',
-        :'expiredPurchaseID'
+        :'pendingPurchaseID'
     ),
-    'OCG01',
-    'purchase hold has expired',
-    'Should reject an expired external purchase'
+    'P0001',
+    'group id is required',
+    'Should reject a call without the group scope'
 );
 
 -- Should reject a purchase that belongs to another group
@@ -410,6 +443,19 @@ select throws_ok(
     'Should reject a purchase that belongs to another group'
 );
 
+-- Should reject a purchase whose attendee row cannot be confirmed
+select throws_ok(
+    format(
+        $$select complete_external_event_purchase(%L::uuid, %L::uuid, %L::uuid, null)$$,
+        :'actorID',
+        :'groupID',
+        :'invitedPurchaseID'
+    ),
+    'OCG01',
+    'attendee cannot be confirmed for this event',
+    'Should reject a purchase whose attendee row cannot be confirmed'
+);
+
 -- Should reject a Stripe purchase that cannot be marked paid locally
 select throws_ok(
     format(
@@ -423,17 +469,17 @@ select throws_ok(
     'Should reject a Stripe purchase that cannot be marked paid locally'
 );
 
--- Should reject a missing purchase
+-- Should reject an external purchase that is no longer pending
 select throws_ok(
     format(
         $$select complete_external_event_purchase(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID',
         :'groupID',
-        '00000000-0000-0000-0000-000000000000'
+        :'refundedPurchaseID'
     ),
     'OCG01',
-    'purchase not found',
-    'Should reject a missing purchase'
+    'purchase is no longer pending',
+    'Should reject an external purchase that is no longer pending'
 );
 
 -- ============================================================================

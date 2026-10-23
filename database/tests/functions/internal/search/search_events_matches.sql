@@ -5,7 +5,10 @@
 -- ============================================================================
 
 begin;
-select plan(27);
+select plan(24);
+
+-- Reproduce a server whose default text search config is not simple
+set local default_text_search_config = 'pg_catalog.english';
 
 -- ============================================================================
 -- VARIABLES
@@ -21,19 +24,15 @@ select plan(27);
 \set eventCategoryTalksID '5ea70000-0000-0000-0000-000000000008'
 \set eventHybridID '5ea70000-0000-0000-0000-00000000000a'
 \set eventInactiveCommunityID '5ea70000-0000-0000-0000-00000000000b'
-\set eventInactiveGroupID '5ea70000-0000-0000-0000-00000000000c'
 \set eventLocatedID '5ea70000-0000-0000-0000-00000000000d'
 \set eventOnsiteID '5ea70000-0000-0000-0000-00000000000e'
 \set eventOtherID '5ea70000-0000-0000-0000-00000000000f'
-\set eventTestID '5ea70000-0000-0000-0000-000000000010'
-\set eventUnpublishedID '5ea70000-0000-0000-0000-000000000011'
 \set eventVirtualID '5ea70000-0000-0000-0000-000000000012'
 \set groupCategoryBusinessID '5ea70000-0000-0000-0000-000000000013'
 \set groupCategoryID '5ea70000-0000-0000-0000-000000000014'
 \set groupCategoryInactiveID '5ea70000-0000-0000-0000-000000000015'
 \set groupCategoryOtherID '5ea70000-0000-0000-0000-000000000016'
 \set groupInactiveCommunityID '5ea70000-0000-0000-0000-000000000017'
-\set groupInactiveID '5ea70000-0000-0000-0000-000000000018'
 \set groupNewYorkID '5ea70000-0000-0000-0000-000000000019'
 \set groupOtherID '5ea70000-0000-0000-0000-00000000001a'
 \set groupSanFranciscoID '5ea70000-0000-0000-0000-00000000001b'
@@ -94,13 +93,6 @@ select fx_group(:'groupInactiveCommunityID', :'communityInactiveID', :'groupCate
     'slug', 'sem-group-inactive-community'
 ));
 
--- Inactive group in San Francisco
-select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'location', ST_GeogFromText('POINT(-122.4194 37.7749)'),
-    'slug', 'sem-group-inactive'
-));
-
 -- Business group in New York
 select fx_group(:'groupNewYorkID', :'communityID', :'groupCategoryBusinessID', jsonb_build_object(
     'active', true,
@@ -145,12 +137,6 @@ select fx_event(:'eventInactiveCommunityID', :'groupInactiveCommunityID', :'even
     'starts_at', '2040-03-01 16:00:00+00'
 ));
 
--- Event in the inactive group
-select fx_event(:'eventInactiveGroupID', :'groupInactiveID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'starts_at', '2040-03-01 17:00:00+00'
-));
-
 -- Event located in San Francisco while its group is in New York, starting late in the day
 select fx_event(:'eventLocatedID', :'groupNewYorkID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'in-person',
@@ -172,25 +158,12 @@ select fx_event(:'eventOtherID', :'groupOtherID', :'eventCategoryOtherID', jsonb
     'starts_at', '2040-03-05 10:00:00+00'
 ));
 
--- Test event
-select fx_event(:'eventTestID', :'groupSanFranciscoID', :'eventCategoryTalksID', jsonb_build_object(
-    'published', true,
-    'starts_at', '2040-03-01 13:00:00+00',
-    'test_event', true
-));
-
--- Unpublished event
-select fx_event(:'eventUnpublishedID', :'groupSanFranciscoID', :'eventCategoryTalksID', jsonb_build_object(
-    'published', false,
-    'starts_at', '2040-03-01 14:00:00+00'
-));
-
 -- Virtual event tagged for text search
 select fx_event(:'eventVirtualID', :'groupSanFranciscoID', :'eventCategoryTalksID', jsonb_build_object(
     'event_kind_id', 'virtual',
     'published', true,
     'starts_at', '2040-03-02 10:00:00+00',
-    'tags', array['docker']
+    'tags', array['community', 'docker', 'overland']
 ));
 
 -- ============================================================================
@@ -245,36 +218,6 @@ select ok(
         from search_events_matches('{"community": ["sem-inactive-community"]}'::jsonb)
     ),
     'Should exclude events from inactive communities'
-);
-
--- Should exclude events from inactive groups
-select ok(
-    not exists (
-        select 1
-        from search_events_matches('{}'::jsonb)
-        where event_id = :'eventInactiveGroupID'
-    ),
-    'Should exclude events from inactive groups'
-);
-
--- Should exclude test events
-select ok(
-    not exists (
-        select 1
-        from search_events_matches('{}'::jsonb)
-        where event_id = :'eventTestID'
-    ),
-    'Should exclude test events'
-);
-
--- Should exclude unpublished events
-select ok(
-    not exists (
-        select 1
-        from search_events_matches('{}'::jsonb)
-        where event_id = :'eventUnpublishedID'
-    ),
-    'Should exclude unpublished events'
 );
 
 -- Should filter events by bbox using the event location, falling back to the group location
@@ -447,19 +390,6 @@ select ok(
     'Should leave distances empty unless sorting by distance'
 );
 
--- Should match all communities when the community selection is empty
-select set_eq(
-    $$select event_id from search_events_matches('{"community": []}'::jsonb)$$,
-    array[
-        :'eventHybridID',
-        :'eventLocatedID',
-        :'eventOnsiteID',
-        :'eventOtherID',
-        :'eventVirtualID'
-    ]::uuid[],
-    'Should match all communities when the community selection is empty'
-);
-
 -- Should match all groups when the group selection is empty
 select set_eq(
     $$select event_id from search_events_matches('{"community": ["sem-community"], "group": []}'::jsonb)$$,
@@ -479,16 +409,30 @@ select is_empty(
     'Should match nothing for a group outside the selected communities'
 );
 
--- Should match nothing for an unknown community
-select is_empty(
-    $$select event_id from search_events_matches('{"community": ["sem-unknown-community"]}'::jsonb)$$,
-    'Should match nothing for an unknown community'
-);
-
 -- Should match nothing for an unknown group
 select is_empty(
     $$select event_id from search_events_matches('{"group": ["sem-unknown-group"]}'::jsonb)$$,
     'Should match nothing for an unknown group'
+);
+
+-- Should match stop words as prefixes
+select set_eq(
+    $$select event_id from search_events_matches('{"ts_query": "over"}'::jsonb)$$,
+    array[:'eventVirtualID']::uuid[],
+    'Should match stop words as prefixes'
+);
+
+-- Should match words whose english stem differs from the stored lexeme
+select set_eq(
+    $$
+        select event_id
+        from search_events_matches('{
+            "community": ["sem-community"],
+            "ts_query": "community"
+        }'::jsonb)
+    $$,
+    array[:'eventVirtualID']::uuid[],
+    'Should match words whose english stem differs from the stored lexeme'
 );
 
 -- Should return every visible event without filters

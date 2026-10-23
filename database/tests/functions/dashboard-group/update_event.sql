@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(67);
+select plan(70);
 
 -- ============================================================================
 -- VARIABLES
@@ -93,6 +93,10 @@ select plan(67);
 \set eventTestPaidToTestID '3a390000-0000-0000-0000-000000000038'
 \set eventTestPaidToTestPriceWindowID '3a390000-0000-0000-0000-000000000039'
 \set eventTestPaidToTestTicketTypeID '3a390000-0000-0000-0000-000000000040'
+\set eventUnsetRequestID '3a390000-0000-0000-0000-0000000000ee'
+\set eventUnsetRequestMeetingID '3a390000-0000-0000-0000-0000000000ef'
+\set eventUnsetRequestPriceWindowID '3a390000-0000-0000-0000-0000000000f0'
+\set eventUnsetRequestTicketTypeID '3a390000-0000-0000-0000-0000000000f1'
 \set eventWaitlistWindowID '3a390000-0000-0000-0000-000000000021'
 \set eventWaitlistWindowPriceWindowID '3a390000-0000-0000-0000-0000000000ec'
 \set eventWaitlistWindowTicketTypeID '3a390000-0000-0000-0000-0000000000ed'
@@ -114,6 +118,10 @@ select plan(67);
 \set sessionHostsID '3a390000-0000-0000-0000-000000000065'
 \set sessionLabelRemovedID '3a390000-0000-0000-0000-0000000000a7'
 \set sessionLabelRenameID '3a390000-0000-0000-0000-0000000000a8'
+\set sessionUnsetRequestRecordedID '3a390000-0000-0000-0000-0000000000f2'
+\set sessionUnsetRequestRecordedMeetingID '3a390000-0000-0000-0000-0000000000f3'
+\set sessionUnsetRequestUnusedID '3a390000-0000-0000-0000-0000000000f4'
+\set sessionUnsetRequestUnusedMeetingID '3a390000-0000-0000-0000-0000000000f5'
 \set sponsorNewID '3a390000-0000-0000-0000-000000000015'
 \set sponsorOrigID '3a390000-0000-0000-0000-000000000016'
 \set teamMemberID '3a390000-0000-0000-0000-0000000000b4'
@@ -313,6 +321,20 @@ select fx_event(:'eventSessionHostsID', :'group1ID', :'category1ID', jsonb_build
     'event_kind_id', 'virtual',
     'name', 'Session Hosts Event',
     'starts_at', '2030-03-01 10:00:00+00',
+    'timezone', 'UTC'
+));
+
+-- Event with synced event and session meetings saved without a meeting request
+select fx_event(:'eventUnsetRequestID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2030-04-01 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'name', 'Unset Request Event',
+    'published', true,
+    'starts_at', '2030-04-01 10:00:00+00',
     'timezone', 'UTC'
 ));
 
@@ -517,6 +539,12 @@ select fx_event_ticket_type(:'eventSessionHostsTicketTypeID', :'eventSessionHost
     'title', 'General Admission'
 ));
 
+-- Free ticket tier for the unset request event
+select fx_event_ticket_type(:'eventUnsetRequestTicketTypeID', :'eventUnsetRequestID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
 -- Free ticket tier for the reminder event
 select fx_event_ticket_type(:'event10TicketTypeID', :'event10ID', jsonb_build_object(
     'seats_total', 100,
@@ -598,6 +626,9 @@ select fx_event_ticket_price_window(:'event1PriceWindowID', :'event1TicketTypeID
 -- Current free price for the session hosts event tier
 select fx_event_ticket_price_window(:'eventSessionHostsPriceWindowID', :'eventSessionHostsTicketTypeID', jsonb_build_object('amount_minor', 0));
 
+-- Current free price for the unset request event tier
+select fx_event_ticket_price_window(:'eventUnsetRequestPriceWindowID', :'eventUnsetRequestTicketTypeID', jsonb_build_object('amount_minor', 0));
+
 -- Current free price for the reminder event tier
 select fx_event_ticket_price_window(:'event10PriceWindowID', :'event10TicketTypeID', jsonb_build_object('amount_minor', 0));
 
@@ -649,6 +680,83 @@ insert into session (
     true,
     'zoom',
     true
+);
+
+-- Synced meeting session whose meeting has captured recordings
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionUnsetRequestRecordedID',
+    :'eventUnsetRequestID',
+    'Recorded Session',
+    'virtual',
+    '2030-04-01 10:00:00+00',
+    '2030-04-01 10:30:00+00',
+    true,
+    'zoom',
+    true
+);
+
+-- Synced meeting session whose meeting is no longer used
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionUnsetRequestUnusedID',
+    :'eventUnsetRequestID',
+    'Unused Session',
+    'virtual',
+    '2030-04-01 10:30:00+00',
+    '2030-04-01 11:00:00+00',
+    true,
+    'zoom',
+    true
+);
+
+-- Event meeting whose join URL the update keeps as the manual link
+insert into meeting (event_id, join_url, meeting_id, meeting_provider_id, provider_meeting_id)
+values (
+    :'eventUnsetRequestID',
+    'https://zoom.example/j/update-event-unset-request',
+    :'eventUnsetRequestMeetingID',
+    'zoom',
+    'update-event-unset-request'
+);
+
+-- Session meeting with captured recordings
+insert into meeting (session_id, join_url, meeting_id, meeting_provider_id, provider_meeting_id, recording_urls)
+values (
+    :'sessionUnsetRequestRecordedID',
+    'https://zoom.example/j/update-event-unset-request-recorded',
+    :'sessionUnsetRequestRecordedMeetingID',
+    'zoom',
+    'update-event-unset-request-recorded',
+    array['https://zoom.example/rec/update-event-unset-request-recorded']
+);
+
+-- Session meeting replaced by an unrelated manual link
+insert into meeting (session_id, join_url, meeting_id, meeting_provider_id, provider_meeting_id)
+values (
+    :'sessionUnsetRequestUnusedID',
+    'https://zoom.example/j/update-event-unset-request-unused',
+    :'sessionUnsetRequestUnusedMeetingID',
+    'zoom',
+    'update-event-unset-request-unused'
 );
 
 -- Session linked to the label renamed by the payload
@@ -2065,7 +2173,7 @@ select throws_ok(
         )
     ),
     'OCG01',
-    'event not found or inactive',
+    'group not found or inactive',
     'Should throw error when the group does not exist'
 );
 
@@ -2808,6 +2916,88 @@ select throws_ok(
     'OCG01',
     'external paid events require a venue in the group country',
     'Should reject moving a paid external event venue outside the group country'
+);
+
+-- Should save an event and its sessions without a meeting request
+select lives_ok(
+    format(
+        $$select update_event(%L::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'user1ID',
+        :'group1ID',
+        :'eventUnsetRequestID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Unset request event',
+            'ends_at', '2030-04-01T12:00:00',
+            'kind_id', 'virtual',
+            'meeting_join_url', 'https://zoom.example/j/update-event-unset-request',
+            'name', 'Unset Request Event',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'ends_at', '2030-04-01T10:30:00',
+                    'kind', 'virtual',
+                    'meeting_join_url', 'https://meet.example/update-event-unset-request-recorded',
+                    'name', 'Recorded Session',
+                    'session_id', :'sessionUnsetRequestRecordedID',
+                    'starts_at', '2030-04-01T10:00:00'
+                ),
+                jsonb_build_object(
+                    'ends_at', '2030-04-01T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_join_url', 'https://meet.example/update-event-unset-request-unused',
+                    'name', 'Unused Session',
+                    'session_id', :'sessionUnsetRequestUnusedID',
+                    'starts_at', '2030-04-01T10:30:00'
+                )
+            ),
+            'starts_at', '2030-04-01T10:00:00',
+            'timezone', 'UTC'
+        )
+    ),
+    'Should save an event and its sessions without a meeting request'
+);
+
+-- Should schedule deletion only for the meeting no longer in use
+select is(
+    (
+        select jsonb_build_object(
+            'event', e.meeting_in_sync,
+            'recorded_session', (
+                select s.meeting_in_sync
+                from session s
+                where s.session_id = :'sessionUnsetRequestRecordedID'
+            ),
+            'unused_session', (
+                select s.meeting_in_sync
+                from session s
+                where s.session_id = :'sessionUnsetRequestUnusedID'
+            )
+        )
+        from event e
+        where e.event_id = :'eventUnsetRequestID'
+    ),
+    '{"event": null, "recorded_session": null, "unused_session": false}'::jsonb,
+    'Should schedule deletion only for the meeting no longer in use'
+);
+
+-- Claim every pending meeting sync after the save
+create temporary table claimed_meeting_sync as
+select claim_meeting_out_of_sync() as payload
+from generate_series(1, 100);
+
+-- Should claim only the deletion of the meeting no longer in use
+select is(
+    (
+        select array_agg((payload->>'meeting_id')::uuid)
+        from claimed_meeting_sync
+        where (payload->>'meeting_id')::uuid in (
+            :'eventUnsetRequestMeetingID',
+            :'sessionUnsetRequestRecordedMeetingID',
+            :'sessionUnsetRequestUnusedMeetingID'
+        )
+    ),
+    array[:'sessionUnsetRequestUnusedMeetingID'::uuid],
+    'Should claim only the deletion of the meeting no longer in use'
 );
 
 -- ============================================================================

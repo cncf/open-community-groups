@@ -30,11 +30,13 @@ returns json as $$
             display_price.amount_minor,
             display_price.currency_code,
             case
+                -- Prefer the answers submitted with the approval request
                 when ao.source = 'approval'
                     then coalesce(
                         invitation_request.registration_answers,
                         ea.registration_answers
                     )
+                -- Prefer the answers stored on the attendee row
                 else coalesce(
                     ea.registration_answers,
                     invitation_request.registration_answers
@@ -43,21 +45,16 @@ returns json as $$
             get_event_registration_questions(c.community_id, e.event_id)
                 as registration_questions,
             case
-                when pending_purchase.charge_model is distinct from 'external'
-                then pending_purchase.provider_checkout_url
+                -- Resume provider checkout for non-external pending purchases
+                when (pending_purchase.purchase).charge_model is distinct from 'external'
+                then (pending_purchase.purchase).provider_checkout_url
             end as resume_checkout_url,
             epoch_seconds(e.starts_at) as starts_at,
 
             case
-                when pending_purchase.charge_model = 'external'
-                then jsonb_strip_nulls(jsonb_build_object(
-                    'amount_minor', pending_purchase.amount_minor,
-                    'currency_code', pending_purchase.currency_code,
-                    'deadline', epoch_seconds(pending_purchase.hold_expires_at),
-                    'instructions', e.external_payment_instructions,
-                    'reference', pending_purchase.event_purchase_id,
-                    'url', e.external_payment_url
-                ))
+                -- Describe the external payment owed by a pending purchase
+                when (pending_purchase.purchase).charge_model = 'external'
+                then event_purchase_external_payment_json(e, pending_purchase.purchase)
             end as external_payment
         from admission_offer ao
         join event e using (event_id)
@@ -77,13 +74,7 @@ returns json as $$
         ) invitation_request on true
         cross join lateral admission_offer_display_price(ao, e) display_price
         left join lateral (
-            select
-                ep.amount_minor,
-                ep.charge_model,
-                ep.currency_code,
-                ep.event_purchase_id,
-                ep.hold_expires_at,
-                ep.provider_checkout_url
+            select ep as purchase
             from event_purchase ep
             where ep.admission_offer_id = ao.admission_offer_id
             and ep.status = 'pending'
@@ -92,26 +83,8 @@ returns json as $$
             limit 1
         ) pending_purchase on true
         where ao.user_id = p_user_id
-        and admission_offer_is_active(ao.status)
-        and ao.expires_at > current_timestamp
-        and not exists (
-            select 1
-            from event_purchase ep
-            where ep.admission_offer_id = ao.admission_offer_id
-            and ep.status in (
-                'refund-pending',
-                'refund-recovery-pending',
-                'refund-requested'
-            )
-        )
-        and g.active = true
-        and e.deleted = false
-        and e.published = true
-        and e.canceled = false
-        and (
-            event_effective_ends_at(e) is null
-            or event_effective_ends_at(e) >= current_timestamp
-        )
+        and admission_offer_is_claimable(ao)
+        and event_accepts_enrollment(e, g)
         order by ao.created_at desc
     ) invitation;
-$$ language sql;
+$$ language sql stable;

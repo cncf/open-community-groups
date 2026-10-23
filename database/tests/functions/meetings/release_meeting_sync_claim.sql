@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,8 @@ select plan(15);
 \set eventID '7a0c0000-0000-0000-0000-000000000003'
 \set groupCategoryID '7a0c0000-0000-0000-0000-000000000004'
 \set groupID '7a0c0000-0000-0000-0000-000000000005'
+\set keptEventID '7a0c0000-0000-0000-0000-000000000008'
+\set keptSessionID '7a0c0000-0000-0000-0000-000000000009'
 \set meetingID '7a0c0000-0000-0000-0000-000000000006'
 \set sessionID '7a0c0000-0000-0000-0000-000000000007'
 
@@ -36,6 +38,20 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'meeting_provider_host_user', 'host@example.com',
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'published', true,
+    'starts_at', '2026-06-01 10:00:00+00'
+));
+
+-- Claimed event meeting marked keep (null) while claimed
+select fx_event(:'keptEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2026-06-01 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', null,
+    'meeting_provider_host_user', 'kept-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', null,
     'meeting_sync_claimed_at', current_timestamp,
     'published', true,
     'starts_at', '2026-06-01 10:00:00+00'
@@ -64,6 +80,33 @@ insert into session (
     'session-host@example.com',
     'zoom',
     true,
+    current_timestamp,
+    '2026-06-01 10:00:00+00'
+);
+
+-- Claimed session meeting marked keep (null) while claimed
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    ends_at,
+    meeting_in_sync,
+    meeting_provider_host_user,
+    meeting_provider_id,
+    meeting_requested,
+    meeting_sync_claimed_at,
+    starts_at
+) values (
+    :'keptSessionID',
+    :'eventID',
+    'Kept Session',
+    'virtual',
+    '2026-06-01 10:30:00+00',
+    null,
+    'kept-session-host@example.com',
+    'zoom',
+    null,
     current_timestamp,
     '2026-06-01 10:00:00+00'
 );
@@ -149,6 +192,48 @@ select is(
     (select meeting_sync_claimed_at from session where session_id = :'sessionID'),
     null,
     'Should clear session sync claim timestamp'
+);
+
+-- Should release a claim on an event marked keep and leave it kept
+select release_meeting_sync_claim(
+    :'keptEventID',
+    null,
+    null,
+    (select meeting_sync_claimed_at from event where event_id = :'keptEventID')
+);
+select is(
+    (
+        select jsonb_build_object(
+            'meeting_in_sync', meeting_in_sync,
+            'meeting_provider_host_user', meeting_provider_host_user,
+            'meeting_sync_claimed_at', meeting_sync_claimed_at
+        )
+        from event
+        where event_id = :'keptEventID'
+    ),
+    '{"meeting_in_sync": null, "meeting_provider_host_user": null, "meeting_sync_claimed_at": null}'::jsonb,
+    'Should release a kept event claim and keep it marked null'
+);
+
+-- Should release a claim on a session marked keep and leave it kept
+select release_meeting_sync_claim(
+    null,
+    null,
+    :'keptSessionID',
+    (select meeting_sync_claimed_at from session where session_id = :'keptSessionID')
+);
+select is(
+    (
+        select jsonb_build_object(
+            'meeting_in_sync', meeting_in_sync,
+            'meeting_provider_host_user', meeting_provider_host_user,
+            'meeting_sync_claimed_at', meeting_sync_claimed_at
+        )
+        from session
+        where session_id = :'keptSessionID'
+    ),
+    '{"meeting_in_sync": null, "meeting_provider_host_user": null, "meeting_sync_claimed_at": null}'::jsonb,
+    'Should release a kept session claim and keep it marked null'
 );
 
 -- Should release an orphan meeting sync claim

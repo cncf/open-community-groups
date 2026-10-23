@@ -11,4 +11,4 @@ returns jsonb as $$
         'state_name', nullif(btrim(p_event.venue_state_name), ''),
         'zip_code', nullif(btrim(p_event.venue_zip_code), '')
     );
-$$ language sql immutable;
+$$ language sql stable;

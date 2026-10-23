@@ -38,19 +38,8 @@ begin
                 (discount_code->>'event_discount_code_id')::uuid
         where edc.event_id = p_event_id
         and (discount_code->>'total_available') is not null
-        and (
-            select count(*)::int
-            from event_purchase ep
-            where ep.event_id = p_event_id
-            and ep.event_discount_code_id = edc.event_discount_code_id
-            and (
-                ep.status in ('completed', 'refund-requested')
-                or (
-                    ep.status = 'pending'
-                    and ep.hold_expires_at > current_timestamp
-                )
-            )
-        ) > (discount_code->>'total_available')::int
+        and event_discount_code_redemption_count(edc.event_discount_code_id) >
+            (discount_code->>'total_available')::int
     ) then
         raise exception 'discount code total_available cannot be less than existing redemptions' using errcode = 'OCG01';
     end if;

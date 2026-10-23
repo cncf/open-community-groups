@@ -1,4 +1,6 @@
--- Finds an attendee's active purchase for a ticket selection.
+-- Finds an attendee's active purchase for a ticket selection. Purchases in
+-- refund recovery are found regardless of their admission offer, so checkout
+-- on either path stays blocked until the recovery settles.
 create or replace function prepare_event_checkout_find_existing_purchase(
     p_event_id uuid,
     p_event_ticket_type_id uuid,
@@ -19,12 +21,12 @@ returns table (
     from event_purchase ep
     where ep.event_id = p_event_id
     and ep.user_id = p_user_id
-    and ep.admission_offer_id is not distinct from p_admission_offer_id
     and (
-        -- Block checkout during recovery without invalidating a completed replacement purchase
-        event_purchase_holds_seat(ep.status)
-        or (ep.status = 'pending' and ep.hold_expires_at > current_timestamp)
+        ep.admission_offer_id is not distinct from p_admission_offer_id
+        or ep.status = 'refund-recovery-pending'
     )
+    -- Block checkout during recovery without invalidating a completed replacement purchase
+    and event_purchase_reserves_seat(ep.status, ep.hold_expires_at)
     order by
         case
             when ep.status = 'completed' then 0
@@ -38,4 +40,4 @@ returns table (
         ep.created_at desc,
         ep.event_purchase_id desc
     limit 1;
-$$ language sql;
+$$ language sql stable;

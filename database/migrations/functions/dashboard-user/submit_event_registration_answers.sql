@@ -13,7 +13,7 @@ declare
     v_registration_window_open boolean;
 begin
     -- Load active event context before validating answer edits
-    v_event := lock_active_event(p_community_id, null, p_event_id, true);
+    v_event := lock_active_event(p_community_id, null, p_event_id);
 
     -- Require a questionnaire before accepting answers
     if jsonb_array_length(coalesce(v_event.registration_questions, '[]'::jsonb)) = 0 then

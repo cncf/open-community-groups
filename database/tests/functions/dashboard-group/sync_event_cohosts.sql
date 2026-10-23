@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(23);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,7 +19,6 @@ select plan(23);
 \set canceledReinviteInvitationID 'e50c0000-0000-0000-0000-000000000006'
 \set cohostResponderUserID 'e50c0000-0000-0000-0000-000000000007'
 \set communityID 'e50c0000-0000-0000-0000-000000000008'
-\set deletedEventID 'e50c0000-0000-0000-0000-000000000009'
 \set eventCategoryID 'e50c0000-0000-0000-0000-00000000000a'
 \set groupCategoryID 'e50c0000-0000-0000-0000-00000000000b'
 \set groupID 'e50c0000-0000-0000-0000-00000000000c'
@@ -153,9 +152,6 @@ select fx_event(:'addEventID', :'groupID', :'eventCategoryID');
 
 -- Canceled event
 select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object('canceled', true));
-
--- Deleted event
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
 
 -- Event with an approved co-host group that is now inactive
 select fx_event(:'inactiveExistingEventID', :'groupID', :'eventCategoryID');
@@ -559,17 +555,6 @@ select throws_ok(
     'OCG01',
     'event not found or inactive',
     'Should reject canceled events'
-);
-
--- Should reject deleted events
-select throws_ok(
-    format(
-        'select sync_event_cohosts(%L::uuid, %L::uuid, %L::uuid, array[]::uuid[], 0)',
-        :'actorUserID', :'groupID', :'deletedEventID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Should reject deleted events'
 );
 
 -- Should reject events owned by another group

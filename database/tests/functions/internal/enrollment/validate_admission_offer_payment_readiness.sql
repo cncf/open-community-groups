@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(7);
 \set eventCategoryID 'f30b0000-0000-0000-0000-000000000002'
 \set externalFreeEventID 'f30b0000-0000-0000-0000-000000000003'
 \set externalPaidEventID 'f30b0000-0000-0000-0000-000000000004'
+\set externalStripeEventID 'f30b0000-0000-0000-0000-00000000000d'
 \set externalUnreadyEventID 'f30b0000-0000-0000-0000-000000000005'
 \set groupCategoryID 'f30b0000-0000-0000-0000-000000000006'
 \set nonExternalFreeEventID 'f30b0000-0000-0000-0000-000000000007'
@@ -75,6 +76,20 @@ select fx_event(:'externalFreeEventID', :'unreadyGroupID', :'eventCategoryID', j
 -- External event whose group is eligible for paid external payments
 select fx_event(:'externalPaidEventID', :'readyGroupID', :'eventCategoryID', jsonb_build_object(
     'external_payment_url', 'https://pay.example.test/validate-admission-offer-ready'
+));
+
+-- External event on a Stripe-ready group that is not eligible for external payments
+select fx_event(:'externalStripeEventID', :'stripeGroupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'external_payment_url', 'https://pay.example.test/validate-admission-offer-stripe',
+    'manual_tax_rate_ids', '{}'::text[],
+    'payment_currency_code', 'USD',
+    'tax_calculation_mode', 'automatic',
+    'venue_address', '1 Fallback Way',
+    'venue_city', 'Fallback City',
+    'venue_country_code', 'US',
+    'venue_name', 'Fallback Hall',
+    'venue_zip_code', '12345'
 ));
 
 -- External event whose group is not eligible for paid external payments
@@ -144,6 +159,18 @@ select lives_ok(
         :'stripeGroupID'
     ),
     'Should allow non-external paid offers with matching Stripe recipient'
+);
+
+-- Should reject external paid offers on Stripe-ready groups without falling back to Stripe
+select throws_ok(
+    format(
+        $$select validate_admission_offer_payment_readiness((select e from event e where e.event_id = %L::uuid), (select g from "group" g where g.group_id = %L::uuid), 1000, 'stripe')$$,
+        :'externalStripeEventID',
+        :'stripeGroupID'
+    ),
+    'OCG01',
+    'external payments are not available for this event',
+    'Should reject external paid offers on Stripe-ready groups without falling back to Stripe'
 );
 
 -- Should reject external paid offers when the group is ineligible

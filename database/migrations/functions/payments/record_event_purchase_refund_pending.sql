@@ -8,27 +8,20 @@ create or replace function record_event_purchase_refund_pending(
 returns jsonb as $$
 declare
     v_job payment_job;
+    v_lock record;
     v_refund event_purchase_refund;
 begin
-    -- Validate the provider attempt identifiers
-    perform validate_event_purchase_refund_result(p_expected_idempotency_key, p_provider_refund_id);
-
-    -- Lock the durable refund row before accepting the provider result
-    select epr.*
-    into v_refund
-    from event_purchase_refund epr
-    where epr.event_purchase_refund_id = p_event_purchase_refund_id
-    for update;
-
-    -- Lock the payment job that owns the worker claim
-    select pj.*
-    into v_job
-    from payment_job pj
-    where pj.payment_job_id = v_refund.payment_job_id
-    for update;
-
-    -- Reject unknown refunds and results from a worker that no longer owns the job
-    perform ensure_event_purchase_refund_claim(v_refund, v_job, p_expected_claim_id);
+    -- Validate the result and lock its rows for the current worker claim
+    select *
+    into v_lock
+    from lock_event_purchase_refund_result(
+        p_event_purchase_refund_id,
+        p_expected_idempotency_key,
+        p_provider_refund_id,
+        p_expected_claim_id
+    );
+    v_job := v_lock.job_row;
+    v_refund := v_lock.refund_row;
 
     -- Ignore stale attempts and avoid reviving completed or terminal refunds
     if v_job.idempotency_key = p_expected_idempotency_key then

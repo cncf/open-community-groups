@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(56);
+select plan(61);
 
 -- ============================================================================
 -- VARIABLES
@@ -43,6 +43,9 @@ select plan(56);
 \set eventRegistrationClosedApprovalID '3a010000-0000-0000-0000-000000000059'
 \set eventRegistrationNotYetOpenID '3a010000-0000-0000-0000-00000000005a'
 \set eventRegistrationOpenUntilStartID '3a010000-0000-0000-0000-000000000023'
+\set eventReissueExpiredHoldID '3a010000-0000-0000-0000-000000000081'
+\set eventReissueExternalHoldID '3a010000-0000-0000-0000-000000000086'
+\set eventReissueLapsedOfferID '3a010000-0000-0000-0000-00000000007c'
 \set eventReissueOfferBlockID '3a010000-0000-0000-0000-000000000039'
 \set eventReissuePurchaseBlockID '3a010000-0000-0000-0000-00000000003a'
 \set eventTicketSoldOutID '3a010000-0000-0000-0000-00000000002f'
@@ -91,6 +94,19 @@ select plan(56);
 \set registrationOpenUntilStartPriceWindowID '3a010000-0000-0000-0000-000000000076'
 \set registrationOpenUntilStartTicketTypeID '3a010000-0000-0000-0000-000000000077'
 \set registrationQuestionID '3a010000-0000-0000-0000-000000000017'
+\set reissueExpiredHoldPriceWindowID '3a010000-0000-0000-0000-000000000082'
+\set reissueExpiredHoldPurchaseID '3a010000-0000-0000-0000-000000000083'
+\set reissueExpiredHoldRequesterID '3a010000-0000-0000-0000-000000000084'
+\set reissueExpiredHoldTicketTypeID '3a010000-0000-0000-0000-000000000085'
+\set reissueExternalHoldOfferID '3a010000-0000-0000-0000-000000000087'
+\set reissueExternalHoldPriceWindowID '3a010000-0000-0000-0000-000000000088'
+\set reissueExternalHoldPurchaseID '3a010000-0000-0000-0000-000000000089'
+\set reissueExternalHoldRequesterID '3a010000-0000-0000-0000-00000000008a'
+\set reissueExternalHoldTicketTypeID '3a010000-0000-0000-0000-00000000008b'
+\set reissueLapsedOfferID '3a010000-0000-0000-0000-00000000007d'
+\set reissueLapsedOfferPriceWindowID '3a010000-0000-0000-0000-00000000007e'
+\set reissueLapsedOfferRequesterID '3a010000-0000-0000-0000-000000000080'
+\set reissueLapsedOfferTicketTypeID '3a010000-0000-0000-0000-00000000007f'
 \set reissueOfferBlockPriceWindowID '3a010000-0000-0000-0000-000000000042'
 \set reissueOfferBlockTicketTypeID '3a010000-0000-0000-0000-000000000043'
 \set reissuePurchaseBlockPriceWindowID '3a010000-0000-0000-0000-000000000044'
@@ -122,23 +138,10 @@ select plan(56);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and users
+-- Community owning the approval groups
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_user(:'closedAcceptRequesterID');
-select fx_user(:'closedReissueRequesterID');
-select fx_user(:'notYetOpenRequesterID');
-select fx_user(:'questionsAcceptedRequestUserID');
-select fx_user(:'queuePriorityRequesterID');
-select fx_user(:'queuePriorityWaitlistUserID');
-select fx_user(:'soldOutOccupantID');
-select fx_user(:'soldOutRequesterID');
-select fx_user(:'expiredReservationOfferUserOneID');
-select fx_user(:'expiredReservationOfferUserTwoID');
-select fx_user(:'expiredReservationRequesterID');
-select fx_user(:'expiredReservationWaitlistUserID');
 
--- Community
+-- Site theme rendered in approval notifications
 insert into site (description, site_id, theme, title)
 values (
     'Invitation request approval site',
@@ -147,14 +150,24 @@ values (
     'Invitation Request Approval Site'
 );
 
--- Event category
-select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
-
--- Users
+-- Requesters, offer holders, waitlisted users and the organizer actor
 select fx_user(:'actorID', jsonb_build_object('username', 'actor'));
-
+select fx_user(:'closedAcceptRequesterID');
+select fx_user(:'closedReissueRequesterID');
+select fx_user(:'expiredReservationOfferUserOneID');
+select fx_user(:'expiredReservationOfferUserTwoID');
+select fx_user(:'expiredReservationRequesterID');
+select fx_user(:'expiredReservationWaitlistUserID');
+select fx_user(:'notYetOpenRequesterID');
+select fx_user(:'questionsAcceptedRequestUserID');
+select fx_user(:'queuePriorityRequesterID');
+select fx_user(:'queuePriorityWaitlistUserID');
+select fx_user(:'reissueExpiredHoldRequesterID');
+select fx_user(:'reissueExternalHoldRequesterID');
+select fx_user(:'reissueLapsedOfferRequesterID');
+select fx_user(:'soldOutOccupantID');
+select fx_user(:'soldOutRequesterID');
 select fx_user(:'inProgressRequesterID', jsonb_build_object('username', 'in-progress'));
-
 select fx_user(:'requesterID', jsonb_build_object('username', 'requester'));
 select fx_user(:'requester2ID', jsonb_build_object('username', 'requester2'));
 select fx_user(:'requester3ID', jsonb_build_object('username', 'requester3'));
@@ -169,6 +182,12 @@ select fx_user(:'requester11ID', jsonb_build_object('username', 'requester11'));
 select fx_user(:'requester12ID', jsonb_build_object('username', 'requester12'));
 select fx_user(:'requester13ID', jsonb_build_object('username', 'requester13'));
 select fx_user(:'paidReadyRequesterID', jsonb_build_object('username', 'paid-ready'));
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
+
+-- Group category of the approval groups
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Groups
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
@@ -328,6 +347,57 @@ select fx_event(:'eventPaidReadyApprovalID', :'paidReadyGroupID', :'eventCategor
     'venue_zip_code', '97201'
 ));
 
+-- Approval event whose accepted request is blocked only by an expired checkout hold
+select fx_event(:'eventReissueExpiredHoldID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+
+-- Approval event whose accepted request is blocked only by a live external hold on a lapsed offer
+select fx_event(:'eventReissueExternalHoldID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+
+-- Approval event whose accepted request is blocked only by a lapsed pending offer
+select fx_event(:'eventReissueLapsedOfferID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+
+-- Existing canceled manual invitation row for attendee upsert reuse
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'eventID', :'requester2ID', false, 'invitation-canceled');
+
+-- Existing pending manual invitation row for attendee upsert reuse
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'eventPendingInvitationID', :'requester3ID', true, 'invitation-pending');
+
+-- Existing attendee rows that block accepting their pending requests
+insert into event_attendee (event_id, user_id, status)
+values
+    (:'eventAttendeeConflictID', :'requester4ID', 'confirmed'),
+    (:'eventAttendeeConflictID', :'requester5ID', 'invitation-rejected');
+
+-- Existing canceled attendance row reactivated by accepting a new request
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values (
+    current_timestamp,
+    :'requester7ID',
+    :'eventAttendanceCanceledID',
+    'attendance-canceled',
+    :'requester7ID'
+);
+
 -- Ticket tiers assigned or checked by the approval workflows
 select fx_event_ticket_type(:'inProgressTicketTypeID', :'eventInProgressApprovalID', jsonb_build_object('seats_total', 1));
 select fx_event_ticket_type(:'closedTicketTypeID', :'eventRegistrationClosedApprovalID', jsonb_build_object('seats_total', 2));
@@ -363,21 +433,6 @@ select fx_event_ticket_type(:'reissuePurchaseBlockTicketTypeID', :'eventReissueP
     'title', 'Reissue purchase admission'
 ));
 
--- Current free prices for every ticket approval tier
-select fx_event_ticket_price_window(:'closedPriceWindowID', :'closedTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'inProgressPriceWindowID', :'inProgressTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'notYetOpenPriceWindowID', :'notYetOpenTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'privateTicketPriceWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'paidTicketPriceWindowID', :'paidTicketTypeID', jsonb_build_object('amount_minor', 2500));
-select fx_event_ticket_price_window(:'paidReadyPriceWindowID', :'paidReadyTicketTypeID', jsonb_build_object('amount_minor', 2500));
-select fx_event_ticket_price_window(:'publicAlternateTicketPriceWindowID', :'publicAlternateTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'publicGenericTicketPriceWindowID', :'publicGenericTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'publicTicketPriceWindowID', :'publicTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'reissueOfferBlockPriceWindowID', :'reissueOfferBlockTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'reissuePurchaseBlockPriceWindowID', :'reissuePurchaseBlockTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'queuePriorityPriceWindowID', :'queuePriorityTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'soldOutPriceWindowID', :'soldOutTicketTypeID', jsonb_build_object('amount_minor', 0));
-
 -- Two-seat RSVP tiers for the capacity and expired-reservation events
 select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
     'seats_total', 2,
@@ -397,19 +452,155 @@ select fx_event_ticket_type(:'questionsTicketTypeID', :'eventQuestionsApprovalID
 select fx_event_ticket_type(:'registrationOpenUntilStartTicketTypeID', :'eventRegistrationOpenUntilStartID', jsonb_build_object('seats_total', 10, 'title', 'General Admission'));
 select fx_event_ticket_type(:'unpublishedTicketTypeID', :'eventUnpublishedID', jsonb_build_object('seats_total', 10, 'title', 'General Admission'));
 
--- Current free prices for the RSVP tiers
-select fx_event_ticket_price_window(:'approvalDisabledPriceWindowID', :'approvalDisabledTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'attendanceCanceledPriceWindowID', :'attendanceCanceledTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'attendeeConflictPriceWindowID', :'attendeeConflictTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'eventPriceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'expiredReservationPriceWindowID', :'expiredReservationTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'pendingInvitationPriceWindowID', :'pendingInvitationTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'questionsPriceWindowID', :'questionsTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'registrationOpenUntilStartPriceWindowID', :'registrationOpenUntilStartTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'unpublishedPriceWindowID', :'unpublishedTicketTypeID', jsonb_build_object('amount_minor', 0));
+-- Single-seat tiers of the stale reissue blocker events
+select fx_event_ticket_type(:'reissueExpiredHoldTicketTypeID', :'eventReissueExpiredHoldID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'reissueExternalHoldTicketTypeID', :'eventReissueExternalHoldID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'reissueLapsedOfferTicketTypeID', :'eventReissueLapsedOfferID', jsonb_build_object('seats_total', 1));
 
--- Current price on the inactive tier, so only its inactive state rejects acceptance
-select fx_event_ticket_price_window(:'unavailableTicketPriceWindowID', :'unavailableTicketTypeID', jsonb_build_object('amount_minor', 0));
+-- Active offer that blocks reissuing an accepted ticket request
+insert into admission_offer (
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values (
+    :'eventReissueOfferBlockID',
+    :'reissueOfferBlockTicketTypeID',
+    current_timestamp + interval '12 hours',
+    :'actorID',
+    'approval',
+    'pending',
+    :'requester11ID'
+);
+
+-- Expired RSVP offers that previously blocked capacity acceptance
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values
+    (
+        :'expiredReservationOfferOneID',
+        current_timestamp - interval '3 hours',
+        :'eventExpiredReservationID',
+        :'expiredReservationTicketTypeID',
+        current_timestamp - interval '2 hours',
+        'organizer_invitation',
+        'pending',
+        :'expiredReservationOfferUserOneID'
+    ),
+    (
+        :'expiredReservationOfferTwoID',
+        current_timestamp - interval '2 hours',
+        :'eventExpiredReservationID',
+        :'expiredReservationTicketTypeID',
+        current_timestamp - interval '1 hour',
+        'organizer_invitation',
+        'pending',
+        :'expiredReservationOfferUserTwoID'
+    );
+
+-- Active offer that occupies the only sold-out ticket
+insert into admission_offer (
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'eventTicketSoldOutID',
+    :'soldOutTicketTypeID',
+    current_timestamp + interval '12 hours',
+    'organizer_invitation',
+    'pending',
+    :'soldOutOccupantID'
+);
+
+-- Expired approval offer reissued after registration closes before start
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values (
+    :'closedExpiredOfferID',
+    current_timestamp - interval '2 hours',
+    :'eventRegistrationClosedApprovalID',
+    :'closedTicketTypeID',
+    current_timestamp - interval '30 minutes',
+    :'actorID',
+    'approval',
+    'expired',
+    :'closedReissueRequesterID'
+);
+
+-- Lapsed checkout offer still linked to a live external hold
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'reissueExternalHoldOfferID',
+    2500,
+    current_timestamp - interval '2 hours',
+    'USD',
+    0,
+    :'eventReissueExternalHoldID',
+    :'reissueExternalHoldTicketTypeID',
+    current_timestamp - interval '1 hour',
+    :'actorID',
+    'approval',
+    'checkout_pending',
+    'Fixture Ticket Type',
+    :'reissueExternalHoldRequesterID'
+);
+
+-- Pending offer whose deadline passed before the reissue
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values (
+    :'reissueLapsedOfferID',
+    current_timestamp - interval '2 hours',
+    :'eventReissueLapsedOfferID',
+    :'reissueLapsedOfferTicketTypeID',
+    current_timestamp - interval '1 hour',
+    :'actorID',
+    'approval',
+    'pending',
+    :'reissueLapsedOfferRequesterID'
+);
 
 -- Invitation requests
 insert into event_invitation_request (event_id, event_ticket_type_id, user_id)
@@ -487,23 +678,108 @@ insert into event_invitation_request (
     :'closedReissueRequesterID'
 );
 
--- Active offer that blocks reissuing an accepted ticket request
-insert into admission_offer (
+-- Invitation request with registration answers copied when accepted
+insert into event_invitation_request (
     event_id,
     event_ticket_type_id,
-    expires_at,
-    organizer_user_id,
-    source,
+    user_id,
+    registration_answers
+)
+values (
+    :'eventQuestionsApprovalID',
+    :'questionsTicketTypeID',
+    :'questionsAcceptedRequestUserID',
+    format(
+        '{"answers": [{"question_id": "%s", "value": "Accepted request answer"}]}',
+        :'registrationQuestionID'
+    )::jsonb
+);
+
+-- Accepted requests reissued once reconciliation settles their stale blockers
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    reviewed_at,
+    reviewed_by,
     status,
     user_id
+) values
+    (
+        :'eventReissueExpiredHoldID',
+        :'reissueExpiredHoldTicketTypeID',
+        current_timestamp,
+        :'actorID',
+        'accepted',
+        :'reissueExpiredHoldRequesterID'
+    ),
+    (
+        :'eventReissueExternalHoldID',
+        :'reissueExternalHoldTicketTypeID',
+        current_timestamp,
+        :'actorID',
+        'accepted',
+        :'reissueExternalHoldRequesterID'
+    ),
+    (
+        :'eventReissueLapsedOfferID',
+        :'reissueLapsedOfferTicketTypeID',
+        current_timestamp,
+        :'actorID',
+        'accepted',
+        :'reissueLapsedOfferRequesterID'
+    );
+
+-- Current free prices for every ticket approval tier
+select fx_event_ticket_price_window(:'closedPriceWindowID', :'closedTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'inProgressPriceWindowID', :'inProgressTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'notYetOpenPriceWindowID', :'notYetOpenTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'privateTicketPriceWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'paidTicketPriceWindowID', :'paidTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'paidReadyPriceWindowID', :'paidReadyTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'publicAlternateTicketPriceWindowID', :'publicAlternateTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'publicGenericTicketPriceWindowID', :'publicGenericTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'publicTicketPriceWindowID', :'publicTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'reissueOfferBlockPriceWindowID', :'reissueOfferBlockTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'reissuePurchaseBlockPriceWindowID', :'reissuePurchaseBlockTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'queuePriorityPriceWindowID', :'queuePriorityTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'soldOutPriceWindowID', :'soldOutTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free prices for the RSVP tiers
+select fx_event_ticket_price_window(:'approvalDisabledPriceWindowID', :'approvalDisabledTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'attendanceCanceledPriceWindowID', :'attendanceCanceledTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'attendeeConflictPriceWindowID', :'attendeeConflictTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventPriceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'expiredReservationPriceWindowID', :'expiredReservationTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'pendingInvitationPriceWindowID', :'pendingInvitationTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'questionsPriceWindowID', :'questionsTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'registrationOpenUntilStartPriceWindowID', :'registrationOpenUntilStartTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'unpublishedPriceWindowID', :'unpublishedTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current price on the inactive tier, so only its inactive state rejects acceptance
+select fx_event_ticket_price_window(:'unavailableTicketPriceWindowID', :'unavailableTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free prices for the stale reissue blocker tiers
+select fx_event_ticket_price_window(:'reissueExpiredHoldPriceWindowID', :'reissueExpiredHoldTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'reissueExternalHoldPriceWindowID', :'reissueExternalHoldTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'reissueLapsedOfferPriceWindowID', :'reissueLapsedOfferTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Waitlist head that must receive the only queue-priority ticket
+insert into event_waitlist (
+    event_id,
+    event_ticket_type_id,
+    user_id
 ) values (
-    :'eventReissueOfferBlockID',
-    :'reissueOfferBlockTicketTypeID',
-    current_timestamp + interval '12 hours',
-    :'actorID',
-    'approval',
-    'pending',
-    :'requester11ID'
+    :'eventQueuePriorityID',
+    :'queuePriorityTicketTypeID',
+    :'queuePriorityWaitlistUserID'
+);
+
+-- RSVP waitlist user promoted while expired reservations are swept
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'eventExpiredReservationID',
+    :'expiredReservationTicketTypeID',
+    :'expiredReservationWaitlistUserID'
 );
 
 -- Active purchase that blocks reissuing an accepted ticket request
@@ -524,128 +800,6 @@ insert into event_purchase (
     'Reissue purchase admission',
     :'requester12ID'
 );
-
--- Waitlist head that must receive the only queue-priority ticket
-insert into event_waitlist (
-    event_id,
-    event_ticket_type_id,
-    user_id
-) values (
-    :'eventQueuePriorityID',
-    :'queuePriorityTicketTypeID',
-    :'queuePriorityWaitlistUserID'
-);
-
--- Expired RSVP offers that previously blocked capacity acceptance
-insert into admission_offer (
-    admission_offer_id,
-    created_at,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    user_id
-) values
-    (
-        :'expiredReservationOfferOneID',
-        current_timestamp - interval '3 hours',
-        :'eventExpiredReservationID',
-        :'expiredReservationTicketTypeID',
-        current_timestamp - interval '2 hours',
-        'organizer_invitation',
-        'pending',
-        :'expiredReservationOfferUserOneID'
-    ),
-    (
-        :'expiredReservationOfferTwoID',
-        current_timestamp - interval '2 hours',
-        :'eventExpiredReservationID',
-        :'expiredReservationTicketTypeID',
-        current_timestamp - interval '1 hour',
-        'organizer_invitation',
-        'pending',
-        :'expiredReservationOfferUserTwoID'
-    );
-
--- RSVP waitlist user promoted while expired reservations are swept
-insert into event_waitlist (event_id, event_ticket_type_id, user_id)
-values (
-    :'eventExpiredReservationID',
-    :'expiredReservationTicketTypeID',
-    :'expiredReservationWaitlistUserID'
-);
-
--- Active offer that occupies the only sold-out ticket
-insert into admission_offer (
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    user_id
-) values (
-    :'eventTicketSoldOutID',
-    :'soldOutTicketTypeID',
-    current_timestamp + interval '12 hours',
-    'organizer_invitation',
-    'pending',
-    :'soldOutOccupantID'
-);
-
--- Expired approval offer reissued after registration closes before start
-insert into admission_offer (
-    admission_offer_id,
-    created_at,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    organizer_user_id,
-    source,
-    status,
-    user_id
-) values (
-    :'closedExpiredOfferID',
-    current_timestamp - interval '2 hours',
-    :'eventRegistrationClosedApprovalID',
-    :'closedTicketTypeID',
-    current_timestamp - interval '30 minutes',
-    :'actorID',
-    'approval',
-    'expired',
-    :'closedReissueRequesterID'
-);
-
--- Invitation request with registration answers copied when accepted
-insert into event_invitation_request (
-    event_id,
-    event_ticket_type_id,
-    user_id,
-    registration_answers
-)
-values (
-    :'eventQuestionsApprovalID',
-    :'questionsTicketTypeID',
-    :'questionsAcceptedRequestUserID',
-    format(
-        '{"answers": [{"question_id": "%s", "value": "Accepted request answer"}]}',
-        :'registrationQuestionID'
-    )::jsonb
-);
-
--- Existing canceled manual invitation row for attendee upsert reuse
-insert into event_attendee (event_id, user_id, manually_invited, status)
-values (:'eventID', :'requester2ID', false, 'invitation-canceled');
-
--- Existing pending manual invitation row for attendee upsert reuse
-insert into event_attendee (event_id, user_id, manually_invited, status)
-values (:'eventPendingInvitationID', :'requester3ID', true, 'invitation-pending');
-
--- Existing attendee rows that block accepting their pending requests
-insert into event_attendee (event_id, user_id, status)
-values
-    (:'eventAttendeeConflictID', :'requester4ID', 'confirmed'),
-    (:'eventAttendeeConflictID', :'requester5ID', 'invitation-rejected');
 
 -- Completed free purchase that owns the confirmed conflicting attendee's seat
 insert into event_purchase (
@@ -668,19 +822,54 @@ insert into event_purchase (
     :'requester4ID'
 );
 
--- Existing canceled attendance row reactivated by accepting a new request
-insert into event_attendee (
-    attendance_canceled_at,
-    attendance_canceled_by_user_id,
+-- Direct checkout hold that expired before the reissue
+insert into event_purchase (
+    amount_minor,
+    currency_code,
     event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
     status,
+    ticket_title,
     user_id
 ) values (
-    current_timestamp,
-    :'requester7ID',
-    :'eventAttendanceCanceledID',
-    'attendance-canceled',
-    :'requester7ID'
+    0,
+    'USD',
+    :'eventReissueExpiredHoldID',
+    :'reissueExpiredHoldPurchaseID',
+    :'reissueExpiredHoldTicketTypeID',
+    current_timestamp - interval '10 minutes',
+    'pending',
+    'Fixture Ticket Type',
+    :'reissueExpiredHoldRequesterID'
+);
+
+-- External hold still live although its admission offer lapsed
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'reissueExternalHoldOfferID',
+    2500,
+    'external',
+    'USD',
+    :'eventReissueExternalHoldID',
+    :'reissueExternalHoldPurchaseID',
+    :'reissueExternalHoldTicketTypeID',
+    current_timestamp + interval '1 day',
+    'pending',
+    'Fixture Ticket Type',
+    :'reissueExternalHoldRequesterID'
 );
 
 -- ============================================================================
@@ -884,6 +1073,112 @@ select throws_ok(
     'OCG01',
     'user already has an active purchase for this event',
     'Should reject reissuing when an active purchase already exists'
+);
+
+-- Should reissue an accepted request after its pending offer deadline passes
+select is(
+    accept_event_invitation_request(
+        :'actorID',
+        :'groupID',
+        :'eventReissueLapsedOfferID',
+        :'reissueLapsedOfferRequesterID',
+        null,
+        'stripe'
+    )->>'outcome',
+    'offer-created',
+    'Should reissue an accepted request after its pending offer deadline passes'
+);
+
+-- Should leave one new pending offer after reissuing a request whose pending offer deadline passed
+select is(
+    (
+        select jsonb_build_object(
+            'pending_offer_count', count(*) filter (where ao.status = 'pending'),
+            'previous_offer_statuses', coalesce(
+                jsonb_agg(ao.status order by ao.created_at) filter (where ao.status <> 'pending'),
+                '[]'::jsonb
+            )
+        )
+        from admission_offer ao
+        where ao.event_id = :'eventReissueLapsedOfferID'::uuid
+        and ao.user_id = :'reissueLapsedOfferRequesterID'::uuid
+    ),
+    '{"pending_offer_count":1,"previous_offer_statuses":["expired"]}'::jsonb,
+    'Should leave one new pending offer after reissuing a request whose pending offer deadline passed'
+);
+
+-- Should reissue an accepted request after its checkout hold expires
+select is(
+    accept_event_invitation_request(
+        :'actorID',
+        :'groupID',
+        :'eventReissueExpiredHoldID',
+        :'reissueExpiredHoldRequesterID',
+        null,
+        'stripe'
+    )->>'outcome',
+    'offer-created',
+    'Should reissue an accepted request after its checkout hold expires'
+);
+
+-- Should leave one new pending offer after reissuing a request whose checkout hold expired
+select is(
+    (
+        select jsonb_build_object(
+            'purchase_status', (
+                select ep.status
+                from event_purchase ep
+                where ep.event_purchase_id = :'reissueExpiredHoldPurchaseID'::uuid
+            ),
+            'pending_offer_count', count(*) filter (where ao.status = 'pending'),
+            'previous_offer_statuses', coalesce(
+                jsonb_agg(ao.status order by ao.created_at) filter (where ao.status <> 'pending'),
+                '[]'::jsonb
+            )
+        )
+        from admission_offer ao
+        where ao.event_id = :'eventReissueExpiredHoldID'::uuid
+        and ao.user_id = :'reissueExpiredHoldRequesterID'::uuid
+    ),
+    '{"purchase_status":"expired","pending_offer_count":1,"previous_offer_statuses":[]}'::jsonb,
+    'Should leave one new pending offer after reissuing a request whose checkout hold expired'
+);
+
+-- Should reissue an accepted request whose live external hold belongs to a lapsed offer
+select is(
+    accept_event_invitation_request(
+        :'actorID',
+        :'groupID',
+        :'eventReissueExternalHoldID',
+        :'reissueExternalHoldRequesterID',
+        null,
+        'stripe'
+    )->>'outcome',
+    'offer-created',
+    'Should reissue an accepted request whose live external hold belongs to a lapsed offer'
+);
+
+-- Should leave one new pending offer after reissuing a request whose external hold belongs to a lapsed offer
+select is(
+    (
+        select jsonb_build_object(
+            'purchase_status', (
+                select ep.status
+                from event_purchase ep
+                where ep.event_purchase_id = :'reissueExternalHoldPurchaseID'::uuid
+            ),
+            'pending_offer_count', count(*) filter (where ao.status = 'pending'),
+            'previous_offer_statuses', coalesce(
+                jsonb_agg(ao.status order by ao.created_at) filter (where ao.status <> 'pending'),
+                '[]'::jsonb
+            )
+        )
+        from admission_offer ao
+        where ao.event_id = :'eventReissueExternalHoldID'::uuid
+        and ao.user_id = :'reissueExternalHoldRequesterID'::uuid
+    ),
+    '{"purchase_status":"expired","pending_offer_count":1,"previous_offer_statuses":["expired"]}'::jsonb,
+    'Should leave one new pending offer after reissuing a request whose external hold belongs to a lapsed offer'
 );
 
 -- Should reject paid approval when the group payment recipient is missing
@@ -1260,36 +1555,6 @@ select ok(
         and status = 'pending'
     ),
     'Should create an approval offer without confirming attendance'
-);
-
--- Should persist a free issue-time price snapshot on the approval offer
-select results_eq(
-    format(
-        $$
-            select
-                ao.amount_minor,
-                ao.currency_code,
-                ao.discount_amount_minor,
-                ao.discount_code,
-                ao.event_discount_code_id,
-                ao.ticket_title
-            from admission_offer ao
-            where ao.event_id = %L::uuid
-            and ao.user_id = %L::uuid
-            and ao.status = 'pending'
-        $$,
-        :'eventID',
-        :'requesterID'
-    ),
-    $$ values (
-        0::bigint,
-        null::text,
-        0::bigint,
-        null::text,
-        null::uuid,
-        'General Admission'::text
-    ) $$,
-    'Should persist a free issue-time price snapshot on the approval offer'
 );
 
 -- Should accept a paid-ready invitation request

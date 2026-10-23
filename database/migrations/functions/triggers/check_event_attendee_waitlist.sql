@@ -3,7 +3,7 @@ create or replace function check_event_attendee_waitlist()
 returns trigger as $$
 begin
     -- Serialize writes for the same event-user pair across enrollment tables
-    perform pg_advisory_xact_lock(hashtext(new.event_id::text), hashtext(new.user_id::text));
+    perform lock_event_user(new.event_id, new.user_id);
 
     -- Reject attendees already waiting for a seat
     if exists (

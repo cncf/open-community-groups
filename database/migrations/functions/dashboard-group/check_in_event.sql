@@ -1,27 +1,27 @@
--- Checks in a confirmed event attendee and records the first transition.
+-- Checks in a confirmed attendee of an event in the selected group and records
+-- the first transition. Manual check-in is not limited to the scanner window.
 create or replace function check_in_event(
     p_actor_user_id uuid,
     p_community_id uuid,
     p_event_id uuid,
+    p_group_id uuid,
     p_user_id uuid
 )
 returns boolean as $$
 declare
-    v_checked_in boolean;
-    v_group_id uuid;
+    v_event_id uuid;
+    v_transitioned boolean;
 begin
-    -- Lock and validate the selected event scope
-    select e.group_id
-    into v_group_id
+    -- Lock the event and validate it is available in the selected group
+    select e.event_id
+    into v_event_id
     from event e
     join "group" g using (group_id)
     where e.event_id = p_event_id
+    and e.group_id = p_group_id
     and g.community_id = p_community_id
-    and g.active = true
-    and g.deleted = false
+    and is_event_public(e, g)
     and e.canceled = false
-    and e.deleted = false
-    and e.published = true
     for update of e;
 
     -- Reject unavailable events before attendee mutation
@@ -29,45 +29,18 @@ begin
         raise exception 'event unavailable for check-in' using errcode = 'OCG01';
     end if;
 
-    -- Lock the confirmed attendee and capture the current state
-    select ea.checked_in
-    into v_checked_in
-    from event_attendee ea
-    where ea.event_id = p_event_id
-    and ea.user_id = p_user_id
-    and ea.status = 'confirmed'
-    for update;
-
-    -- Reject users without confirmed attendance
-    if not found then
-        raise exception 'attendance is not confirmed' using errcode = 'OCG01';
-    end if;
-
-    -- Preserve the original timestamp and audit record on repeated check-ins
-    if v_checked_in then
-        return false;
-    end if;
-
-    -- Persist the first check-in transition
-    update event_attendee
-    set
-        checked_in = true,
-        checked_in_at = current_timestamp
-    where event_id = p_event_id
-    and user_id = p_user_id;
-
-    -- Record the organizer action after the state transition succeeds
-    perform insert_audit_log(
-        'event_attendee_checked_in',
+    -- Apply the shared atomic transition and audit behavior
+    select ci.transitioned
+    into v_transitioned
+    from check_in_event_attendee(
         p_actor_user_id,
-        'user',
-        p_user_id,
         p_community_id,
-        v_group_id,
-        p_event_id
-    );
+        p_group_id,
+        p_event_id,
+        p_user_id
+    ) ci;
 
-    -- Report that this call performed the transition
-    return true;
+    -- Report whether this call performed the transition
+    return v_transitioned;
 end;
 $$ language plpgsql;

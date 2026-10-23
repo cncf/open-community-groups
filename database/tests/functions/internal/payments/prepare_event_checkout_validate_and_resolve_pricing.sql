@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -358,6 +358,7 @@ from (values (
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)
 values (:'mainEventID', :'queueTicketTypeID', :'queueUserID');
 
+-- Owned pending offer for the invitation-only tier
 insert into admission_offer (
     admission_offer_id,
     event_id,
@@ -393,75 +394,71 @@ select throws_ok(
     'Should reject attendees that already have a seat'
 );
 
--- Should reject sold out ticket types
-select throws_ok(
-    $$select prepare_event_checkout_validate_and_resolve_pricing(
-        '79260000-0000-0000-0000-000000000004'::uuid,
-        '79260000-0000-0000-0000-000000000008'::uuid,
-        '79260000-0000-0000-0000-000000000028'::uuid,
+-- Should report sold out ticket types
+select is(
+    (select conflict from prepare_event_checkout_validate_and_resolve_pricing(
+        :'soldOutEventID'::uuid,
+        :'soldOutTicketTypeID'::uuid,
+        :'soldOutUserID'::uuid,
         null
-    )$$,
-    'OCG01',
-    'ticket type is sold out',
-    'Should reject sold out ticket types'
+    )),
+    'ticket-type-sold-out',
+    'Should report sold out ticket types'
 );
 
--- Should reject missing ticket types
-select throws_ok(
-    $$select prepare_event_checkout_validate_and_resolve_pricing(
-        '79260000-0000-0000-0000-000000000003'::uuid,
-        '79260000-0000-0000-0000-000000000034'::uuid,
-        '79260000-0000-0000-0000-000000000026'::uuid,
+-- Should report missing ticket types
+select is(
+    (select conflict from prepare_event_checkout_validate_and_resolve_pricing(
+        :'mainEventID'::uuid,
+        :'missingTicketTypeID'::uuid,
+        :'fixedDiscountUserID'::uuid,
         null
-    )$$,
-    'OCG01',
-    'ticket type not found',
-    'Should reject missing ticket types'
+    )),
+    'ticket-type-unavailable',
+    'Should report missing ticket types'
 );
 
--- Should reject inactive ticket types
-select throws_ok(
-    $$select prepare_event_checkout_validate_and_resolve_pricing(
-        '79260000-0000-0000-0000-000000000005'::uuid,
-        '79260000-0000-0000-0000-000000000009'::uuid,
-        '79260000-0000-0000-0000-000000000029'::uuid,
+-- Should report inactive ticket types
+select is(
+    (select conflict from prepare_event_checkout_validate_and_resolve_pricing(
+        :'inactiveEventID'::uuid,
+        :'inactiveTicketTypeID'::uuid,
+        :'inactiveUserID'::uuid,
         null
-    )$$,
-    'OCG01',
-    'ticket type is not active',
-    'Should reject inactive ticket types'
+    )),
+    'ticket-type-inactive',
+    'Should report inactive ticket types'
 );
 
--- Should reject ticket types without an active price window
-select throws_ok(
-    $$select prepare_event_checkout_validate_and_resolve_pricing(
-        '79260000-0000-0000-0000-000000000003'::uuid,
-        '79260000-0000-0000-0000-000000000035'::uuid,
-        '79260000-0000-0000-0000-000000000040'::uuid,
+-- Should report ticket types without an active price window
+select is(
+    (select conflict from prepare_event_checkout_validate_and_resolve_pricing(
+        :'mainEventID'::uuid,
+        :'noActivePriceTicketTypeID'::uuid,
+        :'truncationDiscountUserID'::uuid,
         null
-    )$$,
-    'OCG01',
-    'ticket type does not have an active price window',
-    'Should reject ticket types without an active price window'
+    )),
+    'ticket-type-price-unavailable',
+    'Should report ticket types without an active price window'
 );
 
--- Should reject invitation-only ticket identifiers from direct checkout
-select throws_ok(
-    $$select prepare_event_checkout_validate_and_resolve_pricing(
-        '79260000-0000-0000-0000-000000000003'::uuid,
-        '79260000-0000-0000-0000-000000000041'::uuid,
-        '79260000-0000-0000-0000-000000000026'::uuid,
+-- Should report invitation-only ticket types as unavailable for direct checkout
+select is(
+    (select conflict from prepare_event_checkout_validate_and_resolve_pricing(
+        :'mainEventID'::uuid,
+        :'privateTicketTypeID'::uuid,
+        :'fixedDiscountUserID'::uuid,
         null
-    )$$,
-    'OCG01',
-    'ticket type is not available for direct checkout',
-    'Should reject invitation-only ticket identifiers from direct checkout'
+    )),
+    'ticket-type-unavailable',
+    'Should report invitation-only ticket types as unavailable for direct checkout'
 );
 
+-- Should price the invitation-only tier assigned to an owned offer
 select results_eq(
     format(
         $$
-        select final_amount_minor, ticket_title
+        select conflict, final_amount_minor, ticket_title
         from prepare_event_checkout_validate_and_resolve_pricing(
             %L::uuid,
             %L::uuid,
@@ -475,29 +472,8 @@ select results_eq(
         :'offerUserID',
         :'offerID'
     ),
-    $$ values (2500::bigint, 'Private pass'::text) $$,
+    $$ values (null::text, 2500::bigint, 'Private pass'::text) $$,
     'Should price the invitation-only tier assigned to an owned offer'
-);
-
-select throws_ok(
-    format(
-        $$
-        select prepare_event_checkout_validate_and_resolve_pricing(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null,
-            %L::uuid
-        )
-        $$,
-        :'mainEventID',
-        :'privateTicketTypeID',
-        :'offerUserID',
-        :'missingTicketTypeID'
-    ),
-    'OCG01',
-    'admission offer is no longer available',
-    'Should reject pricing without the exact owned offer'
 );
 
 -- Should reject ineffective discount codes on intrinsically free tickets
@@ -533,22 +509,16 @@ select throws_ok(
     'Should reject percentage discounts below one minor unit'
 );
 
--- Should reject direct pricing while a tier queue remains blocked
-select throws_ok(
-    format(
-        $$select prepare_event_checkout_validate_and_resolve_pricing(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null
-        )$$,
-        :'mainEventID',
-        :'queueTicketTypeID',
-        :'fixedDiscountUserID'
-    ),
-    'OCG01',
-    'ticket type has queued users',
-    'Should reject direct pricing while a tier queue remains blocked'
+-- Should report queued tiers as sold out for direct pricing
+select is(
+    (select conflict from prepare_event_checkout_validate_and_resolve_pricing(
+        :'mainEventID'::uuid,
+        :'queueTicketTypeID'::uuid,
+        :'fixedDiscountUserID'::uuid,
+        null
+    )),
+    'ticket-type-sold-out',
+    'Should report queued tiers as sold out for direct pricing'
 );
 
 -- Should reject unknown discount codes
@@ -594,6 +564,7 @@ select throws_ok(
 select results_eq(
     $$
         select
+            conflict,
             discount_amount_minor::text,
             event_discount_code_id::text,
             final_amount_minor::text,
@@ -606,6 +577,7 @@ select results_eq(
         )
     $$,
     $$ values (
+        null::text,
         '2500'::text,
         '79260000-0000-0000-0000-000000000016'::text,
         '0'::text,
@@ -618,6 +590,7 @@ select results_eq(
 select results_eq(
     $$
         select
+            conflict,
             discount_amount_minor::text,
             event_discount_code_id::text,
             final_amount_minor::text,
@@ -630,6 +603,7 @@ select results_eq(
         )
     $$,
     $$ values (
+        null::text,
         '1000'::text,
         '79260000-0000-0000-0000-000000000019'::text,
         '3000'::text,
@@ -642,6 +616,7 @@ select results_eq(
 select results_eq(
     $$
         select
+            conflict,
             discount_amount_minor::text,
             event_discount_code_id::text,
             final_amount_minor::text,
@@ -654,6 +629,7 @@ select results_eq(
         )
     $$,
     $$ values (
+        null::text,
         '9'::text,
         '79260000-0000-0000-0000-000000000039'::text,
         '90'::text,

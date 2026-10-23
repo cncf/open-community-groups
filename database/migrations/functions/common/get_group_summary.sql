@@ -8,12 +8,7 @@ returns json as $$
     select json_strip_nulls(json_build_object(
         -- Include core summary fields
         'active', g.active,
-        'category', json_build_object(
-            'group_category_id', gc.group_category_id,
-            'name', gc.name,
-            'normalized_name', gc.normalized_name,
-            'order', gc.order
-        ),
+        'category', group_category_json(gc),
         'community_display_name', c.display_name,
         'community_name', c.name,
         'created_at', epoch_seconds(g.created_at),
@@ -32,14 +27,7 @@ returns json as $$
         'logo_url', coalesce(g.logo_url, c.logo_url),
         'longitude', st_x(g.location::geometry),
         'og_image_url', g.og_image_url,
-        'region', case when r.region_id is not null then
-            json_build_object(
-                'region_id', r.region_id,
-                'name', r.name,
-                'normalized_name', r.normalized_name,
-                'order', r.order
-            )
-        else null end,
+        'region', group_region_json(r),
         'slug_pretty', g.slug_pretty,
         'state', g.state
     )) as json_data
@@ -49,4 +37,4 @@ returns json as $$
     left join region r using (region_id)
     where g.group_id = p_group_id
     and g.community_id = p_community_id;
-$$ language sql;
+$$ language sql stable;

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -26,22 +26,28 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and groups
+-- Community
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Actor deleting the sponsors
+select fx_user(:'actorUserID', jsonb_build_object('username', 'delete-group-sponsor-actor'));
+
+-- Event category
 select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group owning the sponsors
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Group that does not own the sponsors
 select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
--- Actor deleting the sponsors
-select fx_user(:'actorUserID', jsonb_build_object('username', 'delete-group-sponsor-actor'));
-
 -- Event referencing the sponsor
 select fx_event(:'eventID', :'groupID', :'eventCategoryID');
 
--- Sponsor referenced by an event
+-- Sponsor referenced by an event and also targeted through a group that does not own it
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values (:'sponsorID', :'groupID', 'Kappa', 'https://ex.com/kappa.png', null);
 
@@ -86,6 +92,7 @@ select results_eq(
             actor_user_id,
             actor_username,
             community_id,
+            details,
             group_id,
             resource_type,
             resource_id
@@ -101,6 +108,7 @@ select results_eq(
             %L::uuid,
             'delete-group-sponsor-actor',
             %L::uuid,
+            '{"name": "Lambda"}'::jsonb,
             %L::uuid,
             'group_sponsor',
             %L::uuid
@@ -122,32 +130,26 @@ select throws_ok(
     'Should fail when sponsor is referenced by event'
 );
 
--- Should ignore a sponsor that belongs to another group
-select lives_ok(
+-- Should reject a sponsor that belongs to another group
+select throws_ok(
     format(
         $$select delete_group_sponsor(%L::uuid, %L::uuid, %L::uuid)$$,
         :'actorUserID', :'otherGroupID', :'sponsorWrongGroupID'
     ),
-    'Should ignore a sponsor that belongs to another group'
+    'OCG01',
+    'sponsor not found',
+    'Should reject a sponsor that belongs to another group'
 );
 
--- Should keep the sponsor that belongs to another group
-select is(
-    (select count(*) from group_sponsor where group_sponsor_id = :'sponsorWrongGroupID'::uuid),
-    1::bigint,
-    'Should keep the sponsor that belongs to another group'
-);
-
--- Should not audit a sponsor deletion that matched no row
-select is(
-    (
-        select count(*)
-        from audit_log
-        where action = 'group_sponsor_deleted'
-        and resource_id = :'sponsorWrongGroupID'::uuid
+-- Should reject an in-use sponsor that belongs to another group
+select throws_ok(
+    format(
+        $$select delete_group_sponsor(%L::uuid, %L::uuid, %L::uuid)$$,
+        :'actorUserID', :'otherGroupID', :'sponsorID'
     ),
-    0::bigint,
-    'Should not audit a sponsor deletion that matched no row'
+    'OCG01',
+    'sponsor not found',
+    'Should reject an in-use sponsor that belongs to another group'
 );
 
 -- ============================================================================

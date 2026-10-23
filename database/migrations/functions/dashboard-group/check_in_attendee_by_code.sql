@@ -9,28 +9,17 @@ create or replace function check_in_attendee_by_code(
 returns json as $$
 declare
     v_attendee record;
-    v_checked_in boolean;
+    v_checked_in_at timestamptz;
+    v_transitioned boolean;
 begin
-    -- Validate that the event is available in the selected group
+    -- Lock the event and validate its scanner window in the selected group
     perform 1
     from event e
     join "group" g using (group_id)
     where e.event_id = p_event_id
     and e.group_id = p_group_id
     and g.community_id = p_community_id
-    and g.active = true
-    and g.deleted = false
-    and e.canceled = false
-    and e.deleted = false
-    and e.published = true
-    and e.starts_at is not null
-    and current_timestamp < coalesce(
-        e.ends_at,
-        (
-            date_trunc('day', e.starts_at at time zone e.timezone)
-            + interval '1 day'
-        ) at time zone e.timezone
-    )
+    and is_event_check_in_open(e, g)
     for update of e;
 
     -- Reject unavailable events before resolving credentials
@@ -43,34 +32,12 @@ begin
         ea.status,
         u.name,
         u.photo_url,
-        coalesce(purchase.ticket_title, offer.ticket_title) as ticket_title,
+        event_attendee_ticket_title(ea.event_id, ea.user_id) as ticket_title,
         u.user_id,
         u.username
     into v_attendee
     from event_attendee ea
     join "user" u using (user_id)
-    left join lateral (
-        select ep.ticket_title
-        from event_purchase ep
-        where ep.event_id = ea.event_id
-        and ep.user_id = ea.user_id
-        and (
-            event_purchase_holds_seat(ep.status)
-            or ep.status = 'refunded'
-        )
-        order by ep.created_at desc, ep.event_purchase_id desc
-        limit 1
-    ) purchase on true
-    left join lateral (
-        select coalesce(ao.ticket_title, ett.title) as ticket_title
-        from admission_offer ao
-        left join event_ticket_type ett using (event_ticket_type_id)
-        where ao.event_id = ea.event_id
-        and ao.user_id = ea.user_id
-        and ao.status = 'completed'
-        order by ao.created_at desc, ao.admission_offer_id desc
-        limit 1
-    ) offer on true
     where ea.check_in_code = p_check_in_code
     and ea.event_id = p_event_id
     for update of ea;
@@ -86,12 +53,15 @@ begin
     end if;
 
     -- Apply the shared atomic transition and audit behavior
-    v_checked_in := check_in_event(
+    select ci.checked_in_at, ci.transitioned
+    into v_checked_in_at, v_transitioned
+    from check_in_event_attendee(
         p_actor_user_id,
         p_community_id,
+        p_group_id,
         p_event_id,
         v_attendee.user_id
-    );
+    ) ci;
 
     -- Return the stable scanner response
     return json_strip_nulls(json_build_object(
@@ -101,15 +71,10 @@ begin
             'name', v_attendee.name,
             'photo_url', v_attendee.photo_url
         ),
-        'checked_in_at', (
-            select epoch_seconds(ea.checked_in_at)
-            from event_attendee ea
-            where ea.event_id = p_event_id
-            and ea.user_id = v_attendee.user_id
-        ),
+        'checked_in_at', epoch_seconds(v_checked_in_at),
         'outcome', case
             -- Report whether this scan performed the transition
-            when v_checked_in then 'checked-in'
+            when v_transitioned then 'checked-in'
             -- Report an idempotent duplicate scan
             else 'already-checked-in'
         end,

@@ -1,13 +1,15 @@
 -- Looks up the cached automatic-tax provider resources of a connected seller
 -- for a checkout: the tax location matching the venue fingerprint and, when
--- one exists, the ticket product matching the location and ticket title.
+-- one exists, the ticket product matching the location, ticket title and tax
+-- code.
 -- Missing cache entries return null identifiers together with the fingerprints
 -- the server uses to create and cache them.
 create or replace function prepare_event_checkout_lookup_tax_cache(
     p_payment_provider_id text,
     p_connected_seller_id text,
     p_venue_snapshot jsonb,
-    p_ticket_title text
+    p_ticket_title text,
+    p_provider_tax_code text
 )
 returns table (
     performance_location_fingerprint text,
@@ -45,16 +47,18 @@ begin
 
     -- Reuse a cached ticket product for the resolved performance location
     if v_provider_tax_location_id is not null then
+        -- Fingerprint the ticket product for the location, title and tax code
         v_product_fingerprint := encode(
             digest(
                 convert_to(left(p_ticket_title, 250), 'UTF8') || decode('00', 'hex')
                 || convert_to(v_provider_tax_location_id, 'UTF8') || decode('00', 'hex')
-                || convert_to('txcd_50013001', 'UTF8') || decode('00', 'hex'),
+                || convert_to(p_provider_tax_code, 'UTF8') || decode('00', 'hex'),
                 'sha256'
             ),
             'hex'
         );
 
+        -- Reuse the cached ticket product of the seller for that fingerprint
         select pptp.provider_tax_product_id
         into v_provider_tax_product_id
         from payment_provider_tax_product pptp

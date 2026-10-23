@@ -290,7 +290,7 @@ pub(crate) async fn enqueue_event_published_notifications(
     // Fetch the event and the owner group audience concurrently
     let (event_full, owner_audience) = tokio::try_join!(
         db.get_event_full(community_id, group_id, event_id),
-        group_audience_ids(db, group_id)
+        db.list_group_audience_ids(group_id)
     )?;
 
     // Test events are reachable by direct link but should not broadcast publication
@@ -321,7 +321,8 @@ pub(crate) async fn enqueue_event_published_notifications(
         .sort_by(|left, right| left.name.cmp(&right.name).then(left.group_id.cmp(&right.group_id)));
     let mut cohost_recipients = Vec::new();
     for cohost in cohosts {
-        let recipients: Vec<Uuid> = group_audience_ids(db, cohost.group_id)
+        let recipients: Vec<Uuid> = db
+            .list_group_audience_ids(cohost.group_id)
             .await?
             .into_iter()
             .filter(|id| covered.insert(*id))
@@ -575,7 +576,6 @@ pub(crate) async fn enqueue_tracked_event_custom_notification(
         CustomNotificationTracking {
             body: input.content.body.clone(),
             created_by: input.actor_user_id,
-            recipient_count: input.recipients.len(),
             scope: CustomNotificationScope::Event {
                 community_id: input.community_id,
                 event_id: input.event_id,
@@ -598,7 +598,7 @@ pub(crate) async fn enqueue_tracked_group_custom_notification(
     input: &GroupCustomNotificationInput,
 ) -> Result<GroupCustomNotificationOutcome> {
     // Resolve the group audience before loading the notification context
-    let recipients = group_audience_ids(db, input.group_id).await?;
+    let recipients = db.list_group_audience_ids(input.group_id).await?;
     if recipients.is_empty() {
         return Ok(GroupCustomNotificationOutcome::NoRecipients);
     }
@@ -627,7 +627,6 @@ pub(crate) async fn enqueue_tracked_group_custom_notification(
         CustomNotificationTracking {
             body: input.content.body.clone(),
             created_by: input.actor_user_id,
-            recipient_count,
             scope: CustomNotificationScope::Group {
                 community_id: input.community_id,
                 group_id: input.group_id,
@@ -652,20 +651,6 @@ fn find_inbox_message(
         .iter()
         .find(|message| message.inbox_message_id == inbox_message_id)
         .ok_or_else(|| anyhow!("inbox message not found"))
-}
-
-/// Returns the members and accepted team members of a group, deduplicated.
-async fn group_audience_ids(db: &dyn DBOperations, group_id: Uuid) -> Result<Vec<Uuid>> {
-    let (member_ids, team_member_ids) = tokio::try_join!(
-        db.list_group_members_ids(group_id),
-        db.list_group_team_members_ids(group_id)
-    )?;
-    let mut audience = member_ids;
-    audience.extend(team_member_ids);
-    audience.sort();
-    audience.dedup();
-
-    Ok(audience)
 }
 
 /// Loads co-hosting notification content grouped by co-host group.

@@ -7,4 +7,4 @@ create or replace function update_user_provider(
     -- Shallow-merge top-level provider keys; nested provider objects are replaced.
     set provider = coalesce(provider, '{}'::jsonb) || p_provider
     where user_id = p_user_id;
-$$ language sql;
+$$ language sql volatile;

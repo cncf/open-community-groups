@@ -23,4 +23,4 @@ returns json as $$
         where ugm.group_id = g.group_id
         and ugm.user_id = p_user_id
     );
-$$ language sql;
+$$ language sql stable;

@@ -12,4 +12,4 @@ returns boolean as $$
         and g.external_payments_seller_display_name is not null
         and is_group_external_payments_selected(g.group_id)
     );
-$$ language sql;
+$$ language sql stable;

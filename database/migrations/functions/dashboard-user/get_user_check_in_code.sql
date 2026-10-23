@@ -8,4 +8,4 @@ create or replace function get_user_check_in_code(
     where ea.event_id = p_event_id
     and ea.user_id = p_user_id
     and ea.status = 'confirmed';
-$$ language sql;
+$$ language sql stable;

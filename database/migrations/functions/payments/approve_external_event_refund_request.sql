@@ -10,7 +10,6 @@ returns jsonb as $$
 declare
     v_charge_model text;
     v_community_id uuid;
-    v_event_discount_code_id uuid;
     v_event_id uuid;
     v_event_ticket_type_id uuid;
     v_refund_request_id uuid;
@@ -46,22 +45,16 @@ begin
     end if;
 
     -- Lock ticket tiers before serializing this attendee's enrollment state
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = v_event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
+    perform lock_event_ticket_types(v_event_id);
 
     -- Lock and load the purchase before its refund request
     select
         ep.charge_model,
-        ep.event_discount_code_id,
         ep.event_ticket_type_id,
         ep.status,
         ep.user_id
     into
         v_charge_model,
-        v_event_discount_code_id,
         v_event_ticket_type_id,
         v_status,
         v_user_id
@@ -107,7 +100,7 @@ begin
     end if;
 
     -- Serialize this attendee's enrollment transitions
-    perform pg_advisory_xact_lock(hashtext(v_event_id::text), hashtext(v_user_id::text));
+    perform lock_event_user(v_event_id, v_user_id);
 
     -- Lock the current refund request after its purchase
     select
@@ -152,37 +145,15 @@ begin
         raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
-    -- Mark the external purchase refunded without creating provider work
-    update event_purchase
-    set
-        refunded_at = current_timestamp,
-        status = 'refunded',
-        updated_at = current_timestamp
-    where event_purchase_id = p_event_purchase_id;
-
-    -- Release any reserved discount redemption after refunding the purchase
-    if v_event_discount_code_id is not null then
-        perform release_event_discount_code_availability(v_event_discount_code_id);
-    end if;
+    -- Mark the external purchase refunded locally and restore its discount
+    perform refund_event_purchase_locally(p_event_purchase_id, p_actor_user_id);
 
     -- Preserve the attendee row unless a replacement purchase still occupies the seat
-    update event_attendee
-    set
-        attendance_canceled_at = current_timestamp,
-        attendance_canceled_by_user_id = p_actor_user_id,
-        checked_in = false,
-        checked_in_at = null,
-        status = 'attendance-canceled'
-    where event_id = v_event_id
-    and user_id = v_user_id
-    and status in ('confirmed', 'registration-questions-pending')
-    and not exists (
-        select 1
-        from event_purchase replacement
-        where replacement.event_id = v_event_id
-        and replacement.event_purchase_id <> p_event_purchase_id
-        and replacement.status in ('completed', 'refund-requested')
-        and replacement.user_id = v_user_id
+    perform mark_event_attendance_canceled(
+        v_event_id,
+        v_user_id,
+        p_actor_user_id,
+        p_event_purchase_id
     );
 
     -- Reconcile the released ticket-tier capacity

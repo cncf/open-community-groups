@@ -1,4 +1,4 @@
--- Tests listing active communities that have at least one active group.
+-- Tests listing active communities that have at least one publicly visible group.
 
 -- ============================================================================
 -- SETUP

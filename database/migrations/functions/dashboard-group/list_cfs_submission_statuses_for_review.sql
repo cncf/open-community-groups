@@ -13,4 +13,4 @@ returns json as $$
     )
     from cfs_submission_status css
     where css.cfs_submission_status_id <> 'withdrawn';
-$$ language sql;
+$$ language sql stable;

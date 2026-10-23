@@ -10,32 +10,22 @@ returns uuid as $$
 declare
     v_event event;
     v_event_id uuid;
-    v_group_country_code text;
+    v_group "group";
     v_group_external_ready boolean;
     v_group_external_selected boolean;
     v_max_retries int := 10;
     v_payload record;
-    v_payment_recipient jsonb;
     v_retries int := 0;
     v_slug text;
 begin
     -- Validate registration questions before writing the event
     perform validate_questionnaire_questions_payload(coalesce(p_event->'registration_questions', '[]'::jsonb));
 
-    -- Lock group payment state through paid-capable ticket validation and insertion
-    select
-        g.country_code,
-        is_group_external_payments_ready(g.group_id),
-        is_group_external_payments_selected(g.group_id),
-        g.payment_recipient
-    into
-        v_group_country_code,
-        v_group_external_ready,
-        v_group_external_selected,
-        v_payment_recipient
-    from "group" g
-    where g.group_id = p_group_id
-    for update of g;
+    -- Lock the group payment state before the event so recipient changes and
+    -- paid ticket or publication updates cannot invalidate each other
+    v_group := lock_active_group(null, p_group_id);
+    v_group_external_ready := is_group_external_payments_ready(p_group_id);
+    v_group_external_selected := is_group_external_payments_selected(p_group_id);
 
     -- Resolve the event columns, ticket configuration and payment rail from the payload
     select *
@@ -54,35 +44,29 @@ begin
        and not v_payload.external_mode then
         perform validate_event_payment_validation(
             p_event,
-            v_payment_recipient,
+            v_group.payment_recipient,
             v_event.manual_tax_rate_ids,
             v_event.tax_behavior,
             v_event.tax_calculation_mode
         );
     end if;
 
-    -- Validate enrollment and ticketing payload rules
+    -- Validate enrollment payload rules
     perform validate_event_enrollment_payload(
         v_event.attendee_approval_required,
         v_event.waitlist_enabled
     );
 
+    -- Validate the ticketing payload against the resolved event row
     perform validate_event_ticketing_payload(
         p_configured_provider,
         v_payload.discount_codes,
-        v_event.payment_currency_code,
-        v_payment_recipient,
         v_payload.ticket_types,
-        true,
-        null,
-        p_event || jsonb_build_object(
-            'external_mode', v_payload.external_mode,
-            'external_payment_url', v_event.external_payment_url,
-            'external_payment_window_hours', v_event.external_payment_window_hours,
-            'group_country_code', v_group_country_code,
-            'manual_tax_rate_ids', to_jsonb(v_event.manual_tax_rate_ids),
-            'tax_calculation_mode', v_event.tax_calculation_mode
-        )
+        v_event,
+        v_group.payment_recipient,
+        v_payload.external_mode,
+        v_group.country_code,
+        true
     );
 
     -- Validate add-specific event and session date rules
@@ -280,7 +264,7 @@ begin
         p_actor_user_id,
         'event',
         v_event_id,
-        (select community_id from "group" where group_id = p_group_id),
+        v_group.community_id,
         p_group_id,
         v_event_id
     );

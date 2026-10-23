@@ -27,7 +27,7 @@ begin
     end if;
 
     -- Serialize direct purchase creation with offer allocation
-    perform pg_advisory_xact_lock(hashtext(new.event_id::text), hashtext(new.user_id::text));
+    perform lock_event_user(new.event_id, new.user_id);
 
     -- Reject direct purchases while the user holds an active offer
     if exists (

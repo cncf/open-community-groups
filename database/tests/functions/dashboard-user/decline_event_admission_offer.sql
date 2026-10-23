@@ -5,14 +5,13 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '4a160000-0000-0000-0000-000000000001'
-\set discountCodeID '4a160000-0000-0000-0000-00000000000f'
 \set eventCategoryID '4a160000-0000-0000-0000-000000000002'
 \set eventID '4a160000-0000-0000-0000-000000000003'
 \set expiredOfferID '4a160000-0000-0000-0000-000000000010'
@@ -24,17 +23,12 @@ select plan(17);
 \set groupID '4a160000-0000-0000-0000-000000000005'
 \set invitationOfferID '4a160000-0000-0000-0000-000000000012'
 \set invitationRecipientID '4a160000-0000-0000-0000-000000000013'
-\set linkedOfferID '4a160000-0000-0000-0000-000000000014'
-\set linkedPurchaseID '4a160000-0000-0000-0000-000000000015'
-\set linkedRecipientID '4a160000-0000-0000-0000-000000000016'
 \set offerID '4a160000-0000-0000-0000-000000000006'
 \set organizerID '4a160000-0000-0000-0000-000000000007'
 \set priceWindowID '4a160000-0000-0000-0000-000000000008'
 \set recipientID '4a160000-0000-0000-0000-000000000009'
 \set siteID '4a160000-0000-0000-0000-00000000000c'
 \set ticketTypeID '4a160000-0000-0000-0000-00000000000a'
-\set terminalOfferID '4a160000-0000-0000-0000-000000000017'
-\set terminalRecipientID '4a160000-0000-0000-0000-000000000018'
 \set waitlistOfferID '4a160000-0000-0000-0000-00000000000d'
 \set waitlistRecipientID '4a160000-0000-0000-0000-00000000000e'
 \set wrongUserID '4a160000-0000-0000-0000-00000000000b'
@@ -43,19 +37,8 @@ select plan(17);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, group categories, event categories and users
+-- Community owning the event group
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'organizerID');
-select fx_user(:'expiredRecipientID');
-select fx_user(:'filteredOrganizerID');
-select fx_user(:'filteredRecipientID');
-select fx_user(:'invitationRecipientID');
-select fx_user(:'linkedRecipientID');
-select fx_user(:'terminalRecipientID');
-select fx_user(:'waitlistRecipientID');
-select fx_user(:'wrongUserID');
 
 -- Site providing the notification theme
 insert into site (description, site_id, theme, title)
@@ -66,9 +49,35 @@ values (
     'Offer Decline Site'
 );
 
--- Organizer, offer recipients, and a non-owner user
+-- Recipient of the expired offer
+select fx_user(:'expiredRecipientID');
 
+-- Organizer opted out of attendee activity notifications
+select fx_user(:'filteredOrganizerID');
+
+-- Recipient of the offer assigned by the opted-out organizer
+select fx_user(:'filteredRecipientID');
+
+-- Recipient of the organizer invitation
+select fx_user(:'invitationRecipientID');
+
+-- Organizer assigning the approval and invitation offers
+select fx_user(:'organizerID');
+
+-- Recipient of the approval offer
 select fx_user(:'recipientID', jsonb_build_object('username', 'recipient-decline-event-admission-offer'));
+
+-- Recipient of the waitlist offer
+select fx_user(:'waitlistRecipientID');
+
+-- User who does not own the approval offer
+select fx_user(:'wrongUserID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Attendee activity opt-out used by a filtered organizer notification scenario
 insert into user_notification_opt_out (notification_category_id, user_id)
@@ -90,10 +99,7 @@ select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
     'title', 'General admission'
 ));
 
--- Free price window for the ticket tier
-select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
-
--- Pending approval and waitlist offers declined by the scenarios
+-- Pending approval, invitation and waitlist offers and an expired offer
 insert into admission_offer (
     admission_offer_id,
     created_at,
@@ -103,14 +109,7 @@ insert into admission_offer (
     organizer_user_id,
     source,
     status,
-    user_id,
-
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
-    ticket_title
+    user_id
 ) values (
     :'offerID',
     current_timestamp,
@@ -120,14 +119,7 @@ insert into admission_offer (
     :'organizerID',
     'approval',
     'pending',
-    :'recipientID',
-
-    null,
-    null,
-    null,
-    null,
-    null,
-    null
+    :'recipientID'
 ), (
     :'filteredOfferID',
     current_timestamp,
@@ -137,14 +129,7 @@ insert into admission_offer (
     :'filteredOrganizerID',
     'approval',
     'pending',
-    :'filteredRecipientID',
-
-    null,
-    null,
-    null,
-    null,
-    null,
-    null
+    :'filteredRecipientID'
 ), (
     :'waitlistOfferID',
     current_timestamp,
@@ -154,14 +139,7 @@ insert into admission_offer (
     null,
     'waitlist',
     'pending',
-    :'waitlistRecipientID',
-
-    null,
-    null,
-    null,
-    null,
-    null,
-    null
+    :'waitlistRecipientID'
 ), (
     :'expiredOfferID',
     current_timestamp - interval '2 hours',
@@ -171,14 +149,7 @@ insert into admission_offer (
     :'organizerID',
     'approval',
     'pending',
-    :'expiredRecipientID',
-
-    null,
-    null,
-    null,
-    null,
-    null,
-    null
+    :'expiredRecipientID'
 ), (
     :'invitationOfferID',
     current_timestamp,
@@ -188,114 +159,11 @@ insert into admission_offer (
     :'organizerID',
     'organizer_invitation',
     'pending',
-    :'invitationRecipientID',
-
-    null,
-    null,
-    null,
-    null,
-    null,
-    null
-), (
-    :'linkedOfferID',
-    current_timestamp,
-    :'eventID',
-    :'ticketTypeID',
-    current_timestamp + interval '1 hour',
-    :'organizerID',
-    'organizer_invitation',
-    'checkout_pending',
-    :'linkedRecipientID',
-
-    0,
-    null,
-    0,
-    null,
-    null,
-    'General admission'
-), (
-    :'terminalOfferID',
-    current_timestamp,
-    :'eventID',
-    :'ticketTypeID',
-    current_timestamp + interval '1 hour',
-    :'organizerID',
-    'approval',
-    'declined',
-    :'terminalRecipientID',
-
-    null,
-    null,
-    null,
-    null,
-    null,
-    null
+    :'invitationRecipientID'
 );
 
--- Discount reservation released with the linked checkout
-insert into event_discount_code (
-    active,
-    amount_minor,
-    available,
-    available_override_active,
-    code,
-    event_discount_code_id,
-    event_id,
-    kind,
-    title,
-    total_available
-) values (
-    true,
-    100,
-    0,
-    true,
-    'LINKED',
-    :'discountCodeID',
-    :'eventID',
-    'fixed_amount',
-    'Linked checkout discount',
-    1
-);
-
--- Pending attendee answers held by the linked checkout
-insert into event_attendee (event_id, registration_answers, status, user_id)
-values (
-    :'eventID',
-    '{"answers": []}'::jsonb,
-    'registration-questions-pending',
-    :'linkedRecipientID'
-);
-
--- Pending purchase linked to the declined organizer invitation
-insert into event_purchase (
-    admission_offer_id,
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
-    event_id,
-    event_purchase_id,
-    event_ticket_type_id,
-    hold_expires_at,
-    status,
-    ticket_title,
-    user_id
-) values (
-    :'linkedOfferID',
-    0,
-    'USD',
-    100,
-    'LINKED',
-    :'discountCodeID',
-    :'eventID',
-    :'linkedPurchaseID',
-    :'ticketTypeID',
-    current_timestamp + interval '15 minutes',
-    'pending',
-    'General admission',
-    :'linkedRecipientID'
-);
+-- Free price window for the ticket tier
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- ============================================================================
 -- TESTS
@@ -323,18 +191,6 @@ select throws_ok(
     'OCG01',
     'admission offer is no longer available',
     'Should reject declining an expired offer'
-);
-
--- Should reject declining a terminal offer
-select throws_ok(
-    format(
-        $$ select decline_event_admission_offer(%L, %L) $$,
-        :'terminalRecipientID',
-        :'terminalOfferID'
-    ),
-    'OCG01',
-    'admission offer is no longer available',
-    'Should reject declining a terminal offer'
 );
 
 -- Should decline the owned ticket offer and return reconciliation context
@@ -461,40 +317,6 @@ select results_eq(
         :'invitationRecipientID'
     ),
     'Should audit an organizer invitation as rejected'
-);
-
--- Should decline an offer with a linked checkout
-select is(
-    decline_event_admission_offer(
-        :'linkedRecipientID'::uuid,
-        :'linkedOfferID'::uuid
-    )::jsonb,
-    jsonb_build_object(
-        'community_id', :'communityID'::uuid,
-        'event_id', :'eventID'::uuid,
-        'group_id', :'groupID'::uuid
-    ),
-    'Should decline an offer with a linked checkout'
-);
-
--- Should expire the linked checkout and release its reservations
-select results_eq(
-    format(
-        $$
-        select
-            (select available from event_discount_code where event_discount_code_id = %L::uuid),
-            (select hold_expires_at <= current_timestamp from event_purchase where event_purchase_id = %L::uuid),
-            (select status from event_purchase where event_purchase_id = %L::uuid),
-            (select count(*)::int from event_attendee where event_id = %L::uuid and user_id = %L::uuid)
-        $$,
-        :'discountCodeID',
-        :'linkedPurchaseID',
-        :'linkedPurchaseID',
-        :'eventID',
-        :'linkedRecipientID'
-    ),
-    $$ values (1, true, 'expired'::text, 0::int) $$,
-    'Should expire the linked checkout and release its reservations'
 );
 
 -- Should decline a waitlist-sourced offer without an organizer

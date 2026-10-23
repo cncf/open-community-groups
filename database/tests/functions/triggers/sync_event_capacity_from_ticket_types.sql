@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,9 @@ select plan(8);
 \set otherEventID 'ab1c0000-0000-0000-0000-000000000006'
 \set otherTicketTypeID 'ab1c0000-0000-0000-0000-000000000007'
 \set secondTicketTypeID 'ab1c0000-0000-0000-0000-000000000008'
+\set shrinkEventID 'ab1c0000-0000-0000-0000-00000000000a'
+\set shrinkKeptTicketTypeID 'ab1c0000-0000-0000-0000-00000000000b'
+\set shrinkRemovedTicketTypeID 'ab1c0000-0000-0000-0000-00000000000c'
 \set ticketTypeID 'ab1c0000-0000-0000-0000-000000000009'
 
 -- ============================================================================
@@ -37,6 +40,9 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('
 -- Event receiving a moved ticket tier
 select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
+-- Event losing one of its ticket tiers
+select fx_event(:'shrinkEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+
 -- Ticket tier of the receiving event
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values (:'otherTicketTypeID', :'otherEventID', 1, 5, 'General admission');
@@ -44,6 +50,14 @@ values (:'otherTicketTypeID', :'otherEventID', 1, 5, 'General admission');
 -- First ticket tier of the synced event
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values (:'ticketTypeID', :'eventID', 1, 10, 'General admission');
+
+-- Ticket tier kept by the shrinking event
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values (:'shrinkKeptTicketTypeID', :'shrinkEventID', 1, 10, 'General admission');
+
+-- Ticket tier removed from the shrinking event
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values (:'shrinkRemovedTicketTypeID', :'shrinkEventID', 2, 5, 'VIP');
 
 -- ============================================================================
 -- TESTS
@@ -73,6 +87,18 @@ select is(
     (select capacity from event where event_id = :'eventID'),
     25,
     'Should persist the summed capacity after inserting a tier'
+);
+
+-- Should recompute capacity after deleting a tier
+select lives_ok(
+    format($$delete from event_ticket_type where event_ticket_type_id = %L::uuid$$, :'shrinkRemovedTicketTypeID'),
+    'Should recompute capacity after deleting a tier'
+);
+
+select is(
+    (select capacity from event where event_id = :'shrinkEventID'),
+    10,
+    'Should persist the summed capacity after deleting a tier'
 );
 
 -- Should recompute capacity after resizing a tier
