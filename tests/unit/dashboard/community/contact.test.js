@@ -90,6 +90,44 @@ describe("community contact", () => {
     expect(env.current.htmx.triggerCalls).to.deep.equal([[recipients, "contact-filters-changed"]]);
   });
 
+  it("shows the reset button only while a filter is selected", () => {
+    // Render and initialize the contact form without filters
+    const form = renderContactForm();
+    initializeCommunityContactForm(form);
+    expect(resetButton(form).classList.contains("hidden")).to.equal(true);
+
+    // Select a role
+    changeFilter(form, "roles", "filters[roles][]", "admin");
+
+    // Verify the reset button is shown
+    expect(resetButton(form).classList.contains("hidden")).to.equal(false);
+  });
+
+  it("resets every filter with a single preview refresh", async () => {
+    // Render pickers with selections that clear their hidden inputs on reset
+    const form = renderContactForm();
+    addFilterValue(form, "roles", "filters[roles][]", "admin");
+    addFilterValue(form, "groups", "filters[group_ids][]", GROUP_ID);
+    form.querySelectorAll("multi-select").forEach((picker) => {
+      picker.cleanSelected = () => picker.replaceChildren();
+      picker.updateComplete = Promise.resolve(true);
+    });
+    initializeCommunityContactForm(form);
+    expect(resetButton(form).classList.contains("hidden")).to.equal(false);
+
+    // Reset the filters
+    resetButton(form).click();
+    await waitForMicrotask();
+
+    // Verify the filters are empty, one preview is requested and focus moves to the title
+    const recipients = form.querySelector("#community-contact-recipients");
+    expect(form.querySelectorAll('input[name^="filters["]')).to.have.length(0);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[recipients, "contact-filters-changed"]]);
+    expect(submitButton(form).disabled).to.equal(true);
+    expect(resetButton(form).classList.contains("hidden")).to.equal(true);
+    expect(document.activeElement).to.equal(form.querySelector("#community-contact-recipients-title"));
+  });
+
   it("re-enables sending only after a summary for the current filters", () => {
     // Render, initialize and change the filters
     const form = renderContactForm();
@@ -104,24 +142,6 @@ describe("community contact", () => {
     swapSummary(form, { filtersKey: CATEGORY_KEY, peopleCount: 2 });
     expect(submitButton(form).disabled).to.equal(false);
     expect(form.querySelector("#community-contact-recipients").hasAttribute("aria-busy")).to.equal(false);
-  });
-
-  it("refreshes the preview when the selected groups change", () => {
-    // Render, initialize and select a group
-    const form = renderContactForm();
-    initializeCommunityContactForm(form);
-    changeFilter(form, "groups", "filters[group_ids][]", GROUP_ID);
-
-    // Verify sending is disabled while the preview is refreshed
-    const recipients = form.querySelector("#community-contact-recipients");
-    expect(submitButton(form).disabled).to.equal(true);
-    expect(recipients.getAttribute("aria-busy")).to.equal("true");
-    expect(env.current.htmx.triggerCalls).to.deep.equal([[recipients, "contact-filters-changed"]]);
-
-    // Swap in the summary for the selected group
-    swapSummary(form, { filtersKey: GROUP_KEY, peopleCount: 1 });
-    expect(submitButton(form).disabled).to.equal(false);
-    expect(recipients.hasAttribute("aria-busy")).to.equal(false);
   });
 
   it("keeps sending disabled for an empty current summary", () => {
@@ -461,11 +481,13 @@ const holdConfirmation = () => {
 const renderContactForm = ({ canSend = true, filtersKey = "", peopleCount = 2 } = {}) => {
   document.body.innerHTML = `
     <form id="community-contact-form" data-can-send="${canSend}">
+      <div id="community-contact-recipients-title" tabindex="-1">Recipients</div>
+      <button id="community-contact-reset-filters" type="button" class="hidden">Reset filters</button>
       <div id="community-contact-filters">
-        <div data-picker="categories"></div>
-        <div data-picker="regions"></div>
-        <div data-picker="roles"></div>
-        <div data-picker="groups"></div>
+        <multi-select data-picker="categories"></multi-select>
+        <multi-select data-picker="regions"></multi-select>
+        <multi-select data-picker="roles"></multi-select>
+        <multi-select data-picker="groups"></multi-select>
       </div>
       <div id="community-contact-recipients">
         ${summaryMarkup({ filtersKey, peopleCount })}
@@ -477,6 +499,13 @@ const renderContactForm = ({ canSend = true, filtersKey = "", peopleCount = 2 } 
   `;
   return document.getElementById("community-contact-form");
 };
+
+/**
+ * Returns the reset filters button of the contact form.
+ * @param {HTMLFormElement} form Contact form fixture.
+ * @returns {HTMLButtonElement} Reset filters button.
+ */
+const resetButton = (form) => form.querySelector("#community-contact-reset-filters");
 
 /**
  * Makes the HTMX mock start the send request synchronously, as HTMX does.

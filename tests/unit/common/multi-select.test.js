@@ -306,6 +306,26 @@ describe("multi-select", () => {
     expect(coloredChip.classList.contains("bg-stone-100")).to.equal(false);
   });
 
+  it("wraps long option names when wrap-names is set while chips stay truncated", async () => {
+    // Render one truncating and one wrapping component with an open dropdown.
+    const options = [{ value: "1", name: "Kubernetes Community Days · Meetups · Europe" }];
+    const truncating = await mountLitComponent("multi-select", { options, selected: ["1"] });
+    const wrapping = await mountLitComponent("multi-select", { options, selected: ["1"], wrapNames: true });
+    await openDropdown(truncating);
+    await openDropdown(wrapping);
+
+    // Verify option names only wrap with wrap-names and chip names always truncate.
+    const chipName = (element) => element.querySelector("[title] > span");
+    const optionName = (element) => element.querySelector('[role="option"] span.text-stone-800');
+    expect(truncating.hasAttribute("wrap-names")).to.equal(false);
+    expect(optionName(truncating).classList.contains("truncate")).to.equal(true);
+    expect(chipName(truncating).classList.contains("truncate")).to.equal(true);
+    expect(wrapping.hasAttribute("wrap-names")).to.equal(true);
+    expect(optionName(wrapping).classList.contains("truncate")).to.equal(false);
+    expect(optionName(wrapping).classList.contains("wrap-break-word")).to.equal(true);
+    expect(chipName(wrapping).classList.contains("truncate")).to.equal(true);
+  });
+
   it("cleans selections and the query without emitting events", async () => {
     // Render the component with a selection and a query.
     const element = await mountLitComponent("multi-select", {

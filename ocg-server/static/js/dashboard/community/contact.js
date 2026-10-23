@@ -11,6 +11,8 @@ const PREVIEW_ERROR_MESSAGE = "Something went wrong while loading the recipients
 const PREVIEW_RETRY_SELECTOR = "[data-contact-recipients-retry]";
 const RECIPIENTS_CHANGED_MESSAGE = "Recipients changed, please review the updated count.";
 const RECIPIENTS_ID = "community-contact-recipients";
+const RECIPIENTS_TITLE_ID = "community-contact-recipients-title";
+const RESET_ID = "community-contact-reset-filters";
 const SUBJECT_ID = "community-contact-subject";
 const SUBMIT_ID = "community-contact-submit";
 const SUCCESS_MESSAGE = "Email sent successfully.";
@@ -48,6 +50,7 @@ export const initializeCommunityContactForm = (form) => {
     return;
   }
 
+  const resetButton = form.querySelector(`#${RESET_ID}`);
   const state = { isBusy: false, isSending: false, isStale: false };
   const refreshSendState = () => updateSendState({ filters, form, recipients, state, submitButton });
 
@@ -55,7 +58,13 @@ export const initializeCommunityContactForm = (form) => {
   filters.addEventListener("change", () => {
     state.isStale = true;
     refreshSendState();
+    updateResetState(filters, resetButton);
     requestPreview(recipients);
+  });
+
+  // Clear every filter at once, refreshing the preview a single time
+  resetButton?.addEventListener("click", () => {
+    resetFilters({ filters, resetButton, title: form.querySelector(`#${RECIPIENTS_TITLE_ID}`) });
   });
 
   // Reload a failed preview, keeping focus in the summary while it is replaced
@@ -167,6 +176,7 @@ export const initializeCommunityContactForm = (form) => {
     refreshSendState();
   });
 
+  updateResetState(filters, resetButton);
   refreshSendState();
 };
 
@@ -271,6 +281,34 @@ const renderPreviewError = (recipients, message) => {
 const requestPreview = (recipients) => {
   recipients.setAttribute("aria-busy", "true");
   htmx.trigger(recipients, FILTERS_CHANGED_EVENT);
+};
+
+/**
+ * Clears every filter picker and notifies the filters once all of them have
+ * rendered, so the preview is requested a single time for the empty filters.
+ * @param {{filters: Element, resetButton: HTMLButtonElement, title: HTMLElement|null}} elements - Filters
+ * container, reset button and recipients title.
+ * @returns {Promise<void>}
+ */
+const resetFilters = async ({ filters, resetButton, title }) => {
+  // Move focus before hiding the button, which also blocks repeated resets
+  title?.focus();
+  resetButton.classList.add("hidden");
+
+  const pickers = [...filters.querySelectorAll("multi-select")];
+  pickers.forEach((picker) => picker.cleanSelected?.());
+  await Promise.all(pickers.map((picker) => picker.updateComplete));
+  filters.dispatchEvent(new Event("change"));
+};
+
+/**
+ * Shows the reset button only while a filter has a selected value.
+ * @param {Element} filters - Filters container.
+ * @param {HTMLButtonElement|null} resetButton - Reset button.
+ * @returns {void}
+ */
+const updateResetState = (filters, resetButton) => {
+  resetButton?.classList.toggle("hidden", !filters.querySelector(FILTER_INPUTS_SELECTOR));
 };
 
 /**

@@ -35,6 +35,9 @@ const DEFAULT_PLACEHOLDER = "Type to search";
  * @property {boolean} touchBrowse Whether a touch on the closed input opens the
  *   options without focusing it, so on-screen keyboards stay closed until a
  *   second touch focuses the input to search
+ * @property {boolean} wrapNames Whether long option names wrap in the dropdown
+ *   instead of being truncated, so names that only differ at the end stay
+ *   distinguishable; chips always keep one truncated line
  * @fires change Bubbling native event dispatched after a selection change renders
  */
 export class MultiSelect extends LitWrapper {
@@ -52,6 +55,7 @@ export class MultiSelect extends LitWrapper {
     placeholder: { type: String },
     selected: { type: Array },
     touchBrowse: { type: Boolean, attribute: "touch-browse", reflect: true },
+    wrapNames: { type: Boolean, attribute: "wrap-names", reflect: true },
   };
 
   constructor() {
@@ -69,6 +73,7 @@ export class MultiSelect extends LitWrapper {
     this.placeholder = DEFAULT_PLACEHOLDER;
     this.selected = [];
     this.touchBrowse = false;
+    this.wrapNames = false;
 
     this._filteredCache = { query: "", source: null, value: [] };
     this._generatedIdPrefix = "";
@@ -467,7 +472,11 @@ export class MultiSelect extends LitWrapper {
             }
             ${dropdown}
           </div>
-          ${legendText ? html`<p id=${this._legendId()} class="form-legend mt-2">${legendText}</p>` : nothing}
+          ${
+            legendText
+              ? html`<p id=${this._legendId()} class="form-legend mt-2 leading-5">${legendText}</p>`
+              : nothing
+          }
         </div>
         ${hasSelection ? html`<div class="flex flex-wrap gap-2">${chips}</div>` : nothing} ${hiddenInputs}
       </div>
@@ -475,7 +484,8 @@ export class MultiSelect extends LitWrapper {
   }
 
   /**
-   * Renders one option of the listbox.
+   * Renders one option of the listbox. Long names are truncated unless
+   * wrapNames is set.
    * @param {{value: string, name: string, color?: string}} option Option to render
    * @param {number} index Filtered option index
    * @returns {import("lit").TemplateResult}
@@ -508,7 +518,9 @@ export class MultiSelect extends LitWrapper {
                 ></span>`
               : nothing
           }
-          <span class="truncate text-stone-800">${option.name}</span>
+          <span class="${this.wrapNames ? "min-w-0 wrap-break-word" : "truncate"} text-stone-800"
+            >${option.name}</span
+          >
         </span>
         ${
           isSelected

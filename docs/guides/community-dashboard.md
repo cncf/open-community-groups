@@ -258,7 +258,8 @@ Choose the recipients with four filters:
   groups, the filter is disabled.
 
 An empty filter means all, so categories, regions, and groups added later are included
-automatically. Category and region options show how many active groups they hold.
+automatically. Category and region options show how many active groups they hold. `Reset filters`,
+next to the `Recipients` title, clears every filter at once.
 
 A person receives the email when at least one of their group team seats passes the four filters
 together. For example, selecting a category and the `Admin` role reaches admins of groups in that

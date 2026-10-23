@@ -132,7 +132,15 @@
                           <div class="text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">
                             {{ detail.key_label }}
                           </div>
-                          <div class="min-w-0 wrap-break-word text-sm/5 font-medium text-stone-900">{{ detail.value }}</div>
+                          {# Filter lists, like hundreds of selected groups, scroll on their own. -#}
+                          {% if detail.key_label == "Groups" || detail.key_label == "Group Categories" || detail.key_label == "Regions" || detail.key_label == "Roles" -%}
+                            <div class="scrollbar-visible max-h-40 min-w-0 wrap-break-word overscroll-contain pe-1 text-sm/5 font-medium text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                                 role="region"
+                                 tabindex="0"
+                                 aria-label="{{ detail.key_label }}">{{ detail.value }}</div>
+                          {% else -%}
+                            <div class="min-w-0 wrap-break-word text-sm/5 font-medium text-stone-900">{{ detail.value }}</div>
+                          {% endif -%}
                         </div>
                       {% endfor -%}
                     </div>

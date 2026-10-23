@@ -66,6 +66,38 @@ test.describe("community dashboard contact view", () => {
     );
   });
 
+  test("reset filters clears every picker with one preview refresh", async ({ adminCommunityPage }) => {
+    // Load the contact tab and check the reset button waits for a filter.
+    await navigateToPath(adminCommunityPage, CONTACT_PATH);
+    const resetButton = adminCommunityPage.getByRole("button", { name: "Reset filters" });
+    await expect(resetButton).toBeHidden();
+
+    // Select a role and a group.
+    await selectOption(adminCommunityPage, "Team roles", "Admin");
+    await selectGroups(adminCommunityPage, [GROUP_LABELS.alpha]);
+    await expect(resetButton).toBeVisible();
+
+    // Reset the filters and keep the single preview request.
+    const response = await waitForActionResponse(adminCommunityPage, () => resetButton.click(), {
+      method: "POST",
+      urlIncludes: RECIPIENTS_URL,
+    });
+
+    // Verify the preview was requested without filters and matches the whole audience.
+    const params = new URLSearchParams(response.request().postData() ?? "");
+    expect([...params.keys()]).toEqual([]);
+    await expect(
+      adminCommunityPage.locator('#community-contact-filters input[name^="filters["]'),
+    ).toHaveCount(0);
+    await expect(summary(adminCommunityPage)).toHaveAttribute(
+      "data-people-count",
+      String(expectedSummary({}).people_count),
+    );
+    await expect(resetButton).toBeHidden();
+    await expect(adminCommunityPage.locator("#community-contact-recipients-title")).toBeFocused();
+    await expect(adminCommunityPage.locator("#community-contact-submit")).toBeEnabled();
+  });
+
   test("no region option filters groups without a region", async ({ adminCommunityPage }) => {
     test.skip(countRegions() === 0, "the seeded community has no regions");
 
@@ -145,6 +177,9 @@ test.describe("community dashboard contact view", () => {
     // Load the contact tab and write a message the preview must not carry.
     await navigateToPath(adminCommunityPage, CONTACT_PATH);
     await adminCommunityPage.locator("#community-contact-body").fill("Not part of the preview");
+
+    // Verify long group labels wrap in the picker options.
+    await expect(adminCommunityPage.locator("#community-contact-groups")).toHaveAttribute("wrap-names", "");
 
     // Select one group and keep the preview request.
     const [request] = await selectGroups(adminCommunityPage, [GROUP_LABELS.gamma]);
@@ -335,7 +370,13 @@ test.describe("community dashboard contact view", () => {
       `#${await detailsButton.getAttribute("aria-controls")}`,
     );
     await expect(detailsPopover).toContainText(subject);
-    await expect(detailsPopover).toContainText(`${GROUP_LABELS.gamma}, ${GROUP_LABELS.alpha}`);
+
+    // Verify the filter lists scroll on their own while the subject does not.
+    const groupsDetail = detailsPopover.getByRole("region", { name: "Groups" });
+    await expect(groupsDetail).toHaveText(`${GROUP_LABELS.gamma}, ${GROUP_LABELS.alpha}`);
+    await expect(groupsDetail).toHaveAttribute("tabindex", "0");
+    await expect(detailsPopover.getByRole("region", { name: "Roles" })).toHaveText("Admin");
+    await expect(detailsPopover.getByRole("region", { name: "Subject" })).toHaveCount(0);
   });
 
   test("groups manager can send to group teams", async ({ adminCommunityPage, groupsManagerPage }) => {
