@@ -369,9 +369,11 @@ class EventSelector extends LitWrapper {
       try {
         await this._primaryFetchPromise;
       } finally {
-        this._loading = false;
+        if (this._query.trim() === "") {
+          this._loading = false;
+        }
       }
-      if (this._primaryResults.length > 0) {
+      if (this._primaryResults.length > 0 && this._query.trim() === "") {
         Object.assign(this, getLoadedPrimaryEventSearchState(this._primaryResults));
       }
       return;
@@ -403,7 +405,6 @@ class EventSelector extends LitWrapper {
 
         const primaryResults = buildPrimaryEventResults({ upcomingEvents, pastEvents });
         this._primaryResults = primaryResults;
-        Object.assign(this, getLoadedPrimaryEventSearchState(primaryResults));
 
         if (this.selectedEventId) {
           const match = findEventById(this._primaryResults, this.selectedEventId);
@@ -411,12 +412,22 @@ class EventSelector extends LitWrapper {
             this.selectedEvent = match;
           }
         }
+
+        // A search typed while the default list was loading owns the visible results.
+        if (this._query.trim() !== "") {
+          return;
+        }
+        Object.assign(this, getLoadedPrimaryEventSearchState(primaryResults));
       } catch (_error) {
-        this._error = "Unable to load events";
         this._primaryResults = [];
+        if (this._query.trim() === "") {
+          this._error = "Unable to load events";
+        }
         throw _error;
       } finally {
-        this._loading = false;
+        if (this._query.trim() === "") {
+          this._loading = false;
+        }
       }
     })();
     this._primaryFetchPromise = fetchPromise;
@@ -447,12 +458,18 @@ class EventSelector extends LitWrapper {
     this._loading = true;
     this._error = "";
 
+    // Responses can arrive out of order, so only the latest search may update the results.
+    const isCurrentSearch = () => this._query.trim() === trimmed;
+
     try {
       const events = await this._requestEvents({
         sortDirection: "desc",
         query: trimmed,
         dateFrom: this.dateFrom,
       });
+      if (!isCurrentSearch() || this.groupId !== groupId) {
+        return;
+      }
       Object.assign(this, getLoadedQueryEventSearchState(events));
       if (this.selectedEventId) {
         const match = findEventById(this._results, this.selectedEventId);
@@ -461,9 +478,13 @@ class EventSelector extends LitWrapper {
         }
       }
     } catch (_error) {
-      this._error = "Unable to load events";
+      if (isCurrentSearch()) {
+        this._error = "Unable to load events";
+      }
     } finally {
-      this._loading = false;
+      if (isCurrentSearch()) {
+        this._loading = false;
+      }
     }
   }
 

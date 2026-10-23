@@ -38,7 +38,6 @@ export const cleanupEventsByIds = (eventIds) => {
       delete from event_waitlist where event_id = any(v_event_ids);
       delete from event_attendee where event_id = any(v_event_ids);
       delete from event_invitation_request where event_id = any(v_event_ids);
-      delete from admission_offer where event_id = any(v_event_ids);
       delete from event_label where event_id = any(v_event_ids);
       delete from meeting where event_id = any(v_event_ids);
 
@@ -68,6 +67,8 @@ export const cleanupEventsByIds = (eventIds) => {
         select event_purchase_id from event_purchase where event_id = any(v_event_ids)
       );
       delete from event_purchase where event_id = any(v_event_ids);
+      -- Claimed offers are referenced by their purchase.
+      delete from admission_offer where event_id = any(v_event_ids);
 
       delete from event_ticket_price_window
       where event_ticket_type_id in (

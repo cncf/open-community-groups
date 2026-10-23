@@ -1,4 +1,5 @@
 import { expect, test } from "../../../fixtures.js";
+import { cleanupEventsByIds, setupTicketAllocationEvent } from "../../../data-graphs/events.js";
 import { queryE2eDatabase } from "../../../database.js";
 import {
   TEST_COMMUNITY_NAME,
@@ -16,6 +17,10 @@ import { openEventOfferActions } from "./helpers.js";
 const ENDED_PRICE_APPROVAL_OFFER_ID = "59555555-5555-5555-5555-555555555923";
 
 const ENDED_PRICE_WAITLIST_OFFER_ID = "59555555-5555-5555-6555-555555555923";
+
+const PAID_OFFER_CHECKOUT_ID = "59555555-5555-5555-5555-555555555916";
+
+const PAID_OFFER_TICKET_TYPE_ID = "56555555-5555-5555-5555-555555555916";
 
 test.describe("user dashboard invitations view — event offers", () => {
   test("paid offer claims normalize discounts and follow checkout redirects", async ({ pending1Page }) => {
@@ -158,60 +163,74 @@ test.describe("user dashboard invitations view — event offers", () => {
   test("checkout-started offers expose continue and cancel actions", async ({ pending2Page }) => {
     const event = TEST_TICKETING_EVENTS.paidOffers;
 
-    // Open the user dashboard for the offer whose provider checkout has started.
-    await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
-    const offerRow = pending2Page.locator("#dashboard-content tr", {
-      hasText: event.name,
-    });
-    await openEventOfferActions(offerRow);
-    await expect(offerRow.getByRole("menuitem", { name: "Continue to checkout" })).toHaveAttribute(
-      "href",
-      "https://example.test/checkout/paid-offer",
-    );
-    await offerRow.getByRole("menuitem", { name: "Cancel checkout" }).click();
-    await expect(pending2Page.locator(".swal2-popup")).toContainText(
-      "Are you sure you want to cancel this checkout? Your ticket hold will be released.",
-    );
+    try {
+      // Open the user dashboard for the offer whose provider checkout has started.
+      await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
+      const offerRow = pending2Page.locator("#dashboard-content tr", {
+        hasText: event.name,
+      });
+      await openEventOfferActions(offerRow);
+      await expect(offerRow.getByRole("menuitem", { name: "Continue to checkout" })).toHaveAttribute(
+        "href",
+        "https://example.test/checkout/paid-offer",
+      );
+      await offerRow.getByRole("menuitem", { name: "Cancel checkout" }).click();
+      await expect(pending2Page.locator(".swal2-popup")).toContainText(
+        "Are you sure you want to cancel this checkout? Your ticket hold will be released.",
+      );
 
-    // Canceling the hold keeps the underlying offer available to claim again.
-    await waitForActionResponse(
-      pending2Page,
-      () => pending2Page.getByRole("button", { name: "Yes" }).click(),
-      {
-        method: "DELETE",
-        urlIncludes: `/event/${event.id}/checkout`,
-      },
-    );
-    await expect(pending2Page.locator(".swal2-popup")).toContainText(
-      "Your checkout has been canceled. The offer is ready to claim again.",
-    );
-    await pending2Page.getByRole("button", { name: "OK" }).click();
-    await openEventOfferActions(offerRow);
-    await expect(offerRow.getByRole("menuitem", { name: "Claim offer" })).toBeVisible();
+      // Canceling the hold keeps the underlying offer available to claim again.
+      await waitForActionResponse(
+        pending2Page,
+        () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlIncludes: `/event/${event.id}/checkout`,
+        },
+      );
+      await expect(pending2Page.locator(".swal2-popup")).toContainText(
+        "Your checkout has been canceled. The offer is ready to claim again.",
+      );
+      await pending2Page.getByRole("button", { name: "OK" }).click();
+      await openEventOfferActions(offerRow);
+      await expect(offerRow.getByRole("menuitem", { name: "Claim offer" })).toBeVisible();
+    } finally {
+      // Restore the seeded checkout hold for later tests.
+      resetPaidOfferCheckout();
+    }
   });
 
   test("member can decline a waiting-list ticket offer", async ({ member1Page }) => {
     const event = TEST_TICKETING_EVENTS.paidOffers;
 
-    // Open the dedicated waiting-list offer row.
-    await openUserDashboardPath("/dashboard/user?tab=invitations", member1Page);
-    const offerRow = member1Page.locator("#dashboard-content tr", {
-      hasText: event.name,
-    });
-    await expect(offerRow).toContainText("Waiting list offer");
-    await openEventOfferActions(offerRow);
-    await offerRow.getByRole("menuitem", { name: "Decline offer", exact: true }).click();
-    await expect(member1Page.locator(".swal2-popup")).toContainText(
-      "Are you sure you would like to decline this offer?",
-    );
+    try {
+      // Open the dedicated waiting-list offer row.
+      await openUserDashboardPath("/dashboard/user?tab=invitations", member1Page);
+      const offerRow = member1Page.locator("#dashboard-content tr", {
+        hasText: event.name,
+      });
+      await expect(offerRow).toContainText("Waiting list offer");
+      await openEventOfferActions(offerRow);
+      await offerRow.getByRole("menuitem", { name: "Decline offer", exact: true }).click();
+      await expect(member1Page.locator(".swal2-popup")).toContainText(
+        "Are you sure you would like to decline this offer?",
+      );
 
-    // Confirming the decline removes the waiting-list offer from the dashboard.
-    await waitForActionResponse(member1Page, () => member1Page.getByRole("button", { name: "Yes" }).click(), {
-      method: "PUT",
-      urlEndsWith: "/decline",
-      urlIncludes: "/dashboard/user/invitations/event-offers/",
-    });
-    await expect(offerRow).toHaveCount(0);
+      // Confirming the decline removes the waiting-list offer from the dashboard.
+      await waitForActionResponse(
+        member1Page,
+        () => member1Page.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "PUT",
+          urlEndsWith: "/decline",
+          urlIncludes: "/dashboard/user/invitations/event-offers/",
+        },
+      );
+      await expect(offerRow).toHaveCount(0);
+    } finally {
+      // Restore the seeded waiting-list offer for later tests.
+      resetPaidOfferWaitlistOffer();
+    }
   });
 
   test("claiming an event invitation through checkout removes it from the user dashboard", async ({
@@ -280,17 +299,32 @@ test.describe("user dashboard invitations view — event offers", () => {
     member2Page,
     organizerGroupPage,
   }) => {
-    const eventId = TEST_EVENT_IDS.alpha.dashboardWaitlist;
+    // Own a one-seat event so the promotion never reorders a seeded waitlist.
+    const event = setupTicketAllocationEvent({
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      ticketTypes: [{ key: "general", seats: 1, title: "General admission" }],
+      waitlistEnabled: true,
+    });
+    const eventId = event.eventId;
 
     try {
-      // Free the only seat so reconciliation promotes the seeded waitlist entry.
+      // Fill the only seat and queue the member behind it.
+      for (const page of [organizerGroupPage, member2Page]) {
+        const attendResponse = await page.request.post(
+          buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
+          { form: {} },
+        );
+        expect(attendResponse.ok()).toBeTruthy();
+      }
+
+      // Free the only seat so reconciliation promotes the queued member.
       await clearEventAttendeeState(organizerGroupPage, eventId, TEST_USER_IDS.organizer1);
 
       // Open the promoted user's invitations and target the waitlist offer.
       await openUserDashboardPath("/dashboard/user?tab=invitations", member2Page);
       const dashboardContent = member2Page.locator("#dashboard-content");
       const offerRow = dashboardContent.locator("tr", {
-        hasText: "Dashboard Waitlist Table Lab",
+        hasText: event.name,
       });
       await expect(offerRow).toContainText("Waiting list offer");
 
@@ -311,18 +345,7 @@ test.describe("user dashboard invitations view — event offers", () => {
       );
       await expect(offerRow).toHaveCount(0);
     } finally {
-      // Restore the seeded full-event state for repeatable local runs.
-      await clearEventAttendeeState(organizerGroupPage, eventId, TEST_USER_IDS.member2);
-      const restoreResponse = await organizerGroupPage.request.post(
-        buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
-        { form: {} },
-      );
-      expect(restoreResponse.ok()).toBeTruthy();
-      const restoreWaitlistResponse = await member2Page.request.post(
-        buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
-        { form: {} },
-      );
-      expect(restoreWaitlistResponse.ok()).toBeTruthy();
+      cleanupEventsByIds([eventId]);
     }
   });
 
@@ -451,6 +474,53 @@ const resetEndedPriceOffers = () => {
       'pending',
       'Ended sales pass',
       '${TEST_USER_IDS.pending2}'
+    );
+  `);
+};
+
+const resetPaidOfferCheckout = () => {
+  // The lifecycle trigger allows pending -> checkout_pending, so the canceled hold can be reopened in place.
+  queryE2eDatabase(`
+    update admission_offer
+    set status = 'checkout_pending', updated_at = current_timestamp
+    where admission_offer_id = '${PAID_OFFER_CHECKOUT_ID}'
+    and status = 'pending';
+
+    update event_purchase
+    set
+      hold_expires_at = current_timestamp + interval '5 days',
+      status = 'pending',
+      updated_at = current_timestamp
+    where event_purchase_id = '${PAID_OFFER_CHECKOUT_ID}'
+    and status = 'expired';
+  `);
+};
+
+const resetPaidOfferWaitlistOffer = () => {
+  const eventId = TEST_TICKETING_EVENTS.paidOffers.id;
+
+  // Declined offers cannot become pending again, so replace the row with the seeded one.
+  queryE2eDatabase(`
+    delete from admission_offer
+    where event_id = '${eventId}'
+    and user_id = '${TEST_USER_IDS.member1}'
+    and source = 'waitlist'
+    and status = 'declined';
+
+    insert into admission_offer (event_id, event_ticket_type_id, expires_at, source, status, user_id)
+    select
+      '${eventId}',
+      '${PAID_OFFER_TICKET_TYPE_ID}',
+      current_timestamp + interval '7 days',
+      'waitlist',
+      'pending',
+      '${TEST_USER_IDS.member1}'
+    where not exists (
+      select 1
+      from admission_offer
+      where event_id = '${eventId}'
+      and user_id = '${TEST_USER_IDS.member1}'
+      and status in ('checkout_pending', 'pending')
     );
   `);
 };
