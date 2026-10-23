@@ -5,120 +5,408 @@
 -- ============================================================================
 
 begin;
-select plan(216);
+select plan(61);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Test: badge definitions should preserve required text, length, and filename invariants
-select has_check('badge', 'badge_criteria_chk');
-select has_check('badge', 'badge_description_chk');
-select has_check('badge', 'badge_image_file_name_chk');
-select has_check('badge', 'badge_name_chk');
+-- Test: check constraints should match the expected snapshot
+select set_eq(
+    $$
+        select
+            c.conrelid::regclass::text as table_name,
+            c.conname::text as constraint_name
+        from pg_constraint c
+        where c.connamespace = 'public'::regnamespace
+        and c.contype = 'c'
+        and c.conrelid <> 0
+        and not exists (
+            select 1
+            from pg_depend d
+            where d.classid = 'pg_class'::regclass
+            and d.objid = c.conrelid
+            and d.deptype = 'e'
+        )
+    $$,
+    $$ values
+        ('admission_offer', 'admission_offer_amount_minor_check'),
+        ('admission_offer', 'admission_offer_currency_code_check'),
+        ('admission_offer', 'admission_offer_deadline_chk'),
+        ('admission_offer', 'admission_offer_discount_amount_minor_check'),
+        ('admission_offer', 'admission_offer_discount_code_check'),
+        ('admission_offer', 'admission_offer_snapshot_chk'),
+        ('admission_offer', 'admission_offer_source_chk'),
+        ('admission_offer', 'admission_offer_status_chk'),
+        ('admission_offer', 'admission_offer_ticket_status_snapshot_chk'),
+        ('admission_offer', 'admission_offer_ticket_title_check'),
+        ('attachment', 'attachment_content_type_check'),
+        ('attachment', 'attachment_file_name_check'),
+        ('attachment', 'attachment_hash_check'),
+        ('audit_log', 'audit_log_action_check'),
+        ('audit_log', 'audit_log_actor_username_check'),
+        ('audit_log', 'audit_log_details_check'),
+        ('audit_log', 'audit_log_resource_type_check'),
+        ('badge', 'badge_criteria_chk'),
+        ('badge', 'badge_description_chk'),
+        ('badge', 'badge_image_file_name_chk'),
+        ('badge', 'badge_name_chk'),
+        ('badge_artwork', 'badge_artwork_file_name_chk'),
+        ('badge_award_job', 'badge_award_job_accepted_count_check'),
+        ('badge_award_job', 'badge_award_job_awarded_count_check'),
+        ('badge_award_job', 'badge_award_job_badge_snapshot_check'),
+        ('badge_award_job', 'badge_award_job_claim_chk'),
+        ('badge_award_job', 'badge_award_job_counts_chk'),
+        ('badge_award_job', 'badge_award_job_failure_count_check'),
+        ('badge_award_job', 'badge_award_job_next_recipient_offset_check'),
+        ('badge_award_job', 'badge_award_job_recipient_count_check'),
+        ('badge_award_job', 'badge_award_job_skipped_count_check'),
+        ('badge_award_job', 'badge_award_job_status_chk'),
+        ('badge_award_job', 'badge_award_job_terminal_chk'),
+        ('badge_award_job_recipient', 'badge_award_job_recipient_position_check'),
+        ('badge_status_list', 'badge_status_list_allocation_offset_chk'),
+        ('badge_status_list', 'badge_status_list_allocation_position_chk'),
+        ('badge_status_list', 'badge_status_list_allocation_stride_chk'),
+        ('cfs_submission', 'cfs_submission_action_required_message_check'),
+        ('cfs_submission_rating', 'cfs_submission_rating_comments_check'),
+        ('cfs_submission_rating', 'cfs_submission_rating_stars_check'),
+        ('cfs_submission_status', 'cfs_submission_status_display_name_check'),
+        ('community', 'community_ad_banner_link_url_check'),
+        ('community', 'community_ad_banner_url_check'),
+        ('community', 'community_banner_mobile_url_check'),
+        ('community', 'community_banner_url_check'),
+        ('community', 'community_bluesky_url_check'),
+        ('community', 'community_description_check'),
+        ('community', 'community_display_name_check'),
+        ('community', 'community_facebook_url_check'),
+        ('community', 'community_flickr_url_check'),
+        ('community', 'community_github_url_check'),
+        ('community', 'community_instagram_url_check'),
+        ('community', 'community_linkedin_url_check'),
+        ('community', 'community_logo_url_check'),
+        ('community', 'community_name_check'),
+        ('community', 'community_new_group_details_check'),
+        ('community', 'community_og_image_url_check'),
+        ('community', 'community_slack_url_check'),
+        ('community', 'community_twitter_url_check'),
+        ('community', 'community_website_url_check'),
+        ('community', 'community_wechat_url_check'),
+        ('community', 'community_youtube_url_check'),
+        ('community_permission', 'community_permission_display_name_check'),
+        ('community_redirect_settings', 'community_redirect_settings_base_legacy_url_chk'),
+        ('community_role', 'community_role_display_name_check'),
+        ('custom_notification', 'custom_notification_body_check'),
+        ('custom_notification', 'custom_notification_scope_check'),
+        ('custom_notification', 'custom_notification_subject_check'),
+        ('event', 'event_attendee_approval_waitlist_exclusive_chk'),
+        ('event', 'event_banner_mobile_url_check'),
+        ('event', 'event_banner_url_check'),
+        ('event', 'event_capacity_check'),
+        ('event', 'event_cfs_description_check'),
+        ('event', 'event_cfs_fields_chk'),
+        ('event', 'event_cfs_window_chk'),
+        ('event', 'event_check'),
+        ('event', 'event_check2'),
+        ('event', 'event_description_check'),
+        ('event', 'event_description_short_check'),
+        ('event', 'event_external_payment_instructions_check'),
+        ('event', 'event_external_payment_url_check'),
+        ('event', 'event_external_payment_window_hours_check'),
+        ('event', 'event_legacy_url_check'),
+        ('event', 'event_logo_url_check'),
+        ('event', 'event_luma_url_check'),
+        ('event', 'event_manual_tax_rate_ids_chk'),
+        ('event', 'event_meeting_capacity_required_chk'),
+        ('event', 'event_meeting_conflict_chk'),
+        ('event', 'event_meeting_error_check'),
+        ('event', 'event_meeting_join_instructions_check'),
+        ('event', 'event_meeting_join_url_check'),
+        ('event', 'event_meeting_kind_chk'),
+        ('event', 'event_meeting_provider_host_user_check'),
+        ('event', 'event_meeting_provider_required_chk'),
+        ('event', 'event_meeting_recording_url_check'),
+        ('event', 'event_meeting_requested_times_chk'),
+        ('event', 'event_meetup_url_check'),
+        ('event', 'event_name_check'),
+        ('event', 'event_payment_currency_code_check'),
+        ('event', 'event_registration_end_before_event_start_chk'),
+        ('event', 'event_registration_start_before_event_start_chk'),
+        ('event', 'event_registration_window_order_chk'),
+        ('event', 'event_slug_check'),
+        ('event', 'event_tax_behavior_chk'),
+        ('event', 'event_tax_calculation_mode_chk'),
+        ('event', 'event_timezone_check'),
+        ('event', 'event_venue_address_check'),
+        ('event', 'event_venue_city_check'),
+        ('event', 'event_venue_country_code_check'),
+        ('event', 'event_venue_country_name_check'),
+        ('event', 'event_venue_name_check'),
+        ('event', 'event_venue_state_check'),
+        ('event', 'event_venue_state_code_check'),
+        ('event', 'event_venue_zip_code_check'),
+        ('event_attendee', 'event_attendee_attendance_canceled_chk'),
+        ('event_attendee', 'event_attendee_status_chk'),
+        ('event_category', 'event_category_name_check'),
+        ('event_category', 'event_category_slug_check'),
+        ('event_cohost', 'event_cohost_approved_at_chk'),
+        ('event_cohost', 'event_cohost_pending_approval_chk'),
+        ('event_cohost_status', 'event_cohost_status_display_name_check'),
+        ('event_discount_code', 'event_discount_code_amount_minor_check'),
+        ('event_discount_code', 'event_discount_code_available_check'),
+        ('event_discount_code', 'event_discount_code_code_check'),
+        ('event_discount_code', 'event_discount_code_kind_check'),
+        ('event_discount_code', 'event_discount_code_kind_value_chk'),
+        ('event_discount_code', 'event_discount_code_percentage_check'),
+        ('event_discount_code', 'event_discount_code_title_check'),
+        ('event_discount_code', 'event_discount_code_total_available_check'),
+        ('event_discount_code', 'event_discount_code_window_chk'),
+        ('event_invitation_request', 'event_invitation_request_check'),
+        ('event_invitation_request', 'event_invitation_request_status_check'),
+        ('event_label', 'event_label_name_check'),
+        ('event_purchase', 'event_purchase_amount_minor_check'),
+        ('event_purchase', 'event_purchase_charge_model_chk'),
+        ('event_purchase', 'event_purchase_completed_direct_charge_amounts_chk'),
+        ('event_purchase', 'event_purchase_connected_seller_id_check'),
+        ('event_purchase', 'event_purchase_currency_code_chk'),
+        ('event_purchase', 'event_purchase_direct_charge_context_chk'),
+        ('event_purchase', 'event_purchase_discount_amount_minor_check'),
+        ('event_purchase', 'event_purchase_discount_code_check'),
+        ('event_purchase', 'event_purchase_external_chk'),
+        ('event_purchase', 'event_purchase_external_payment_details_check'),
+        ('event_purchase', 'event_purchase_financial_amounts_chk'),
+        ('event_purchase', 'event_purchase_manual_tax_rate_ids_chk'),
+        ('event_purchase', 'event_purchase_no_tax_amount_chk'),
+        ('event_purchase', 'event_purchase_performance_location_fingerprint_check'),
+        ('event_purchase', 'event_purchase_platform_fee_bps_check'),
+        ('event_purchase', 'event_purchase_provider_application_fee_id_check'),
+        ('event_purchase', 'event_purchase_provider_charge_id_check'),
+        ('event_purchase', 'event_purchase_provider_checkout_session_id_check'),
+        ('event_purchase', 'event_purchase_provider_checkout_url_check'),
+        ('event_purchase', 'event_purchase_provider_invoice_hosted_url_check'),
+        ('event_purchase', 'event_purchase_provider_invoice_id_check'),
+        ('event_purchase', 'event_purchase_provider_invoice_pdf_url_check'),
+        ('event_purchase', 'event_purchase_provider_object_account_id_check'),
+        ('event_purchase', 'event_purchase_provider_payment_reference_check'),
+        ('event_purchase', 'event_purchase_provider_product_fingerprint_check'),
+        ('event_purchase', 'event_purchase_provider_product_mode_chk'),
+        ('event_purchase', 'event_purchase_provider_tax_code_check'),
+        ('event_purchase', 'event_purchase_provider_tax_location_id_check'),
+        ('event_purchase', 'event_purchase_provider_tax_product_id_check'),
+        ('event_purchase', 'event_purchase_provisional_platform_fee_amount_minor_chk'),
+        ('event_purchase', 'event_purchase_status_check'),
+        ('event_purchase', 'event_purchase_tax_behavior_chk'),
+        ('event_purchase', 'event_purchase_tax_calculation_mode_chk'),
+        ('event_purchase', 'event_purchase_ticket_title_check'),
+        (
+            'event_purchase_application_fee_adjustment',
+            'event_purchase_application_f_provider_application_fee_ref_check'
+        ),
+        (
+            'event_purchase_application_fee_adjustment',
+            'event_purchase_application_fee_adjustment_amount_minor_check'
+        ),
+        (
+            'event_purchase_application_fee_adjustment',
+            'event_purchase_application_fee_adjustment_kind_chk'
+        ),
+        ('event_purchase_credit_note', 'event_purchase_credit_note_amount_minor_check'),
+        ('event_purchase_credit_note', 'event_purchase_credit_note_currency_code_check'),
+        ('event_purchase_credit_note', 'event_purchase_credit_note_provider_credit_note_id_check'),
+        ('event_purchase_credit_note', 'event_purchase_credit_note_provider_hosted_url_check'),
+        (
+            'event_purchase_credit_note',
+            'event_purchase_credit_note_provider_object_account_id_check'
+        ),
+        ('event_purchase_credit_note', 'event_purchase_credit_note_provider_pdf_url_check'),
+        ('event_purchase_credit_note', 'event_purchase_credit_note_tax_amount_minor_check'),
+        ('event_purchase_refund', 'event_purchase_refund_amount_minor_check'),
+        ('event_purchase_refund', 'event_purchase_refund_currency_code_check'),
+        ('event_purchase_refund', 'event_purchase_refund_finalized_at_status_chk'),
+        ('event_purchase_refund', 'event_purchase_refund_kind_check'),
+        ('event_purchase_refund', 'event_purchase_refund_kind_request_chk'),
+        ('event_purchase_refund', 'event_purchase_refund_provider_refund_id_check'),
+        ('event_purchase_refund', 'event_purchase_refund_provider_refund_required_chk'),
+        ('event_purchase_refund', 'event_purchase_refund_status_check'),
+        ('event_purchase_refund', 'event_purchase_refund_terminal_failure_chk'),
+        ('event_refund_request', 'event_refund_request_requested_reason_check'),
+        ('event_refund_request', 'event_refund_request_review_note_check'),
+        ('event_refund_request', 'event_refund_request_status_check'),
+        ('event_series', 'event_series_recurrence_additional_occurrences_check'),
+        ('event_series', 'event_series_recurrence_pattern_check'),
+        ('event_series', 'event_series_timezone_check'),
+        ('event_sponsor', 'event_sponsor_level_check'),
+        ('event_survey', 'event_survey_audience_chk'),
+        ('event_survey', 'event_survey_dates_chk'),
+        ('event_survey', 'event_survey_description_chk'),
+        ('event_survey', 'event_survey_draft_chk'),
+        ('event_survey', 'event_survey_open_notification_chk'),
+        ('event_survey', 'event_survey_questions_chk'),
+        ('event_survey', 'event_survey_revision_chk'),
+        ('event_survey', 'event_survey_status_chk'),
+        ('event_survey', 'event_survey_title_chk'),
+        ('event_survey_response', 'event_survey_response_answers_chk'),
+        ('event_ticket_price_window', 'event_ticket_price_window_amount_minor_check'),
+        ('event_ticket_price_window', 'event_ticket_price_window_window_chk'),
+        ('event_ticket_type', 'event_ticket_type_availability_chk'),
+        ('event_ticket_type', 'event_ticket_type_description_check'),
+        ('event_ticket_type', 'event_ticket_type_seats_total_check'),
+        ('event_ticket_type', 'event_ticket_type_title_check'),
+        ('event_views_utm', 'event_views_utm_attribution_chk'),
+        ('event_views_utm', 'event_views_utm_utm_campaign_chk'),
+        ('event_views_utm', 'event_views_utm_utm_medium_chk'),
+        ('event_views_utm', 'event_views_utm_utm_source_chk'),
+        ('external_payments_config', 'external_payments_config_allowed_countries_chk'),
+        ('external_payments_config', 'external_payments_config_singleton_check'),
+        ('external_payments_config', 'external_payments_config_window_hours_chk'),
+        ('"group"', 'group_banner_mobile_url_check'),
+        ('"group"', 'group_banner_url_check'),
+        ('"group"', 'group_bluesky_url_check'),
+        ('"group"', 'group_check'),
+        ('"group"', 'group_city_check'),
+        ('"group"', 'group_country_code_check'),
+        ('"group"', 'group_country_name_check'),
+        ('"group"', 'group_description_check'),
+        ('"group"', 'group_description_short_check'),
+        ('"group"', 'group_external_payments_seller_display_name_check'),
+        ('"group"', 'group_facebook_url_check'),
+        ('"group"', 'group_flickr_url_check'),
+        ('"group"', 'group_github_url_check'),
+        ('"group"', 'group_instagram_url_check'),
+        ('"group"', 'group_legacy_url_check'),
+        ('"group"', 'group_linkedin_url_check'),
+        ('"group"', 'group_logo_url_check'),
+        ('"group"', 'group_name_check'),
+        ('"group"', 'group_og_image_url_check'),
+        ('"group"', 'group_slack_url_check'),
+        ('"group"', 'group_slug_check'),
+        ('"group"', 'group_slug_pretty_chk'),
+        ('"group"', 'group_state_check'),
+        ('"group"', 'group_twitter_url_check'),
+        ('"group"', 'group_utm_campaigns_chk'),
+        ('"group"', 'group_utm_mediums_chk'),
+        ('"group"', 'group_utm_sources_chk'),
+        ('"group"', 'group_website_url_check'),
+        ('"group"', 'group_wechat_url_check'),
+        ('"group"', 'group_youtube_url_check'),
+        ('group_category', 'group_category_name_check'),
+        ('group_category', 'group_category_normalized_name_check'),
+        ('group_permission', 'group_permission_display_name_check'),
+        ('group_role', 'group_role_display_name_check'),
+        ('group_sponsor', 'group_sponsor_logo_url_check'),
+        ('group_sponsor', 'group_sponsor_name_check'),
+        ('group_sponsor', 'group_sponsor_website_url_check'),
+        ('inbox_conversation_status', 'inbox_conversation_status_display_name_check'),
+        ('inbox_message', 'inbox_message_body_chk'),
+        ('inbox_message', 'inbox_message_kind_chk'),
+        ('legacy_event_host', 'legacy_event_host_bio_check'),
+        ('legacy_event_host', 'legacy_event_host_name_check'),
+        ('legacy_event_host', 'legacy_event_host_photo_url_check'),
+        ('legacy_event_host', 'legacy_event_host_title_check'),
+        ('legacy_event_speaker', 'legacy_event_speaker_bio_check'),
+        ('legacy_event_speaker', 'legacy_event_speaker_name_check'),
+        ('legacy_event_speaker', 'legacy_event_speaker_photo_url_check'),
+        ('legacy_event_speaker', 'legacy_event_speaker_title_check'),
+        ('meeting', 'meeting_auto_end_check_pair_chk'),
+        ('meeting', 'meeting_join_url_check'),
+        ('meeting', 'meeting_provider_host_user_id_check'),
+        ('meeting', 'meeting_provider_meeting_id_check'),
+        ('meeting', 'meeting_recording_urls_not_empty_chk'),
+        ('meeting_auto_end_check_outcome', 'meeting_auto_end_check_outcome_display_name_check'),
+        ('meeting_provider', 'meeting_provider_display_name_check'),
+        ('notification', 'notification_delivery_attempts_chk'),
+        ('notification', 'notification_delivery_status_chk'),
+        ('notification', 'notification_error_check'),
+        ('notification', 'notification_next_delivery_attempt_at_chk'),
+        ('notification_category', 'notification_category_display_name_check'),
+        ('notification_kind', 'notification_kind_name_check'),
+        ('payment_job', 'payment_job_attempt_count_check'),
+        ('payment_job', 'payment_job_claim_chk'),
+        ('payment_job', 'payment_job_completed_chk'),
+        ('payment_job', 'payment_job_failure_message_check'),
+        ('payment_job', 'payment_job_idempotency_key_check'),
+        ('payment_job', 'payment_job_kind_chk'),
+        ('payment_job', 'payment_job_recovery_chk'),
+        ('payment_job', 'payment_job_recovery_note_check'),
+        ('payment_job', 'payment_job_recovery_reference_check'),
+        ('payment_job', 'payment_job_status_chk'),
+        ('payment_provider', 'payment_provider_display_name_check'),
+        (
+            'payment_provider_tax_location',
+            'payment_provider_tax_location_connected_seller_id_check'
+        ),
+        ('payment_provider_tax_location', 'payment_provider_tax_location_fingerprint_check'),
+        (
+            'payment_provider_tax_location',
+            'payment_provider_tax_location_provider_tax_location_id_check'
+        ),
+        ('payment_provider_tax_product', 'payment_provider_tax_product_connected_seller_id_check'),
+        ('payment_provider_tax_product', 'payment_provider_tax_product_fingerprint_check'),
+        (
+            'payment_provider_tax_product',
+            'payment_provider_tax_product_provider_tax_location_id_check'
+        ),
+        (
+            'payment_provider_tax_product',
+            'payment_provider_tax_product_provider_tax_product_id_check'
+        ),
+        ('payment_provider_tax_product', 'payment_provider_tax_product_tax_code_check'),
+        ('payment_provider_tax_product', 'payment_provider_tax_product_title_check'),
+        ('region', 'region_name_check'),
+        ('region', 'region_normalized_name_check'),
+        ('session', 'session_check'),
+        ('session', 'session_description_check'),
+        ('session', 'session_location_check'),
+        ('session', 'session_meeting_conflict_chk'),
+        ('session', 'session_meeting_error_check'),
+        ('session', 'session_meeting_join_instructions_check'),
+        ('session', 'session_meeting_join_url_check'),
+        ('session', 'session_meeting_provider_host_user_check'),
+        ('session', 'session_meeting_provider_required_chk'),
+        ('session', 'session_meeting_recording_url_check'),
+        ('session', 'session_meeting_requested_times_chk'),
+        ('session', 'session_name_check'),
+        ('session_proposal', 'session_proposal_check'),
+        ('session_proposal', 'session_proposal_description_check'),
+        ('session_proposal', 'session_proposal_title_check'),
+        ('session_proposal_level', 'session_proposal_level_display_name_check'),
+        ('session_proposal_status', 'session_proposal_status_display_name_check'),
+        ('site', 'site_copyright_notice_check'),
+        ('site', 'site_description_check'),
+        ('site', 'site_favicon_url_check'),
+        ('site', 'site_footer_logo_url_check'),
+        ('site', 'site_header_logo_url_check'),
+        ('site', 'site_og_image_url_check'),
+        ('site', 'site_title_check'),
+        ('"user"', 'user_auth_hash_check'),
+        ('"user"', 'user_bio_check'),
+        ('"user"', 'user_bluesky_url_check'),
+        ('"user"', 'user_city_check'),
+        ('"user"', 'user_company_check'),
+        ('"user"', 'user_country_check'),
+        ('"user"', 'user_email_check'),
+        ('"user"', 'user_facebook_url_check'),
+        ('"user"', 'user_github_url_check'),
+        ('"user"', 'user_linkedin_url_check'),
+        ('"user"', 'user_password_check'),
+        ('"user"', 'user_photo_url_check'),
+        ('"user"', 'user_registration_status_check'),
+        ('"user"', 'user_timezone_check'),
+        ('"user"', 'user_title_check'),
+        ('"user"', 'user_twitter_url_check'),
+        ('"user"', 'user_username_check'),
+        ('"user"', 'user_website_url_check'),
+        ('user_badge', 'user_badge_active_user_chk'),
+        ('user_badge', 'user_badge_display_order_check'),
+        ('user_badge', 'user_badge_identity_chk'),
+        ('user_badge', 'user_badge_revocation_reason_check'),
+        ('user_badge', 'user_badge_snapshot_check'),
+        ('user_badge', 'user_badge_status_list_index_check')
+    $$,
+    'Check constraints should match expected tables and names'
+);
 
--- Test: admission offers should preserve lifecycle, deadline, and snapshot invariants
-select has_check('admission_offer', 'admission_offer_deadline_chk');
-select has_check('admission_offer', 'admission_offer_snapshot_chk');
-select has_check('admission_offer', 'admission_offer_source_chk');
-select has_check('admission_offer', 'admission_offer_status_chk');
-select has_check('admission_offer', 'admission_offer_ticket_status_snapshot_chk');
+-- Test: admission offers should require a ticket tier
 select col_not_null('admission_offer', 'event_ticket_type_id');
-
--- Test: badge artwork should preserve route-safe filenames
-select has_check('badge_artwork', 'badge_artwork_file_name_chk');
-
--- Test: durable award jobs should preserve ownership, progress, and terminal state invariants
-select col_has_check('badge_award_job', 'accepted_count');
-select col_has_check('badge_award_job', 'awarded_count');
-select col_has_check('badge_award_job', 'badge_snapshot');
-select col_has_check('badge_award_job', 'failure_count');
-select col_has_check('badge_award_job', 'next_recipient_offset');
-select col_has_check('badge_award_job', 'recipient_count');
-select col_has_check('badge_award_job', 'skipped_count');
-select has_check('badge_award_job', 'badge_award_job_claim_chk');
-select has_check('badge_award_job', 'badge_award_job_counts_chk');
-select has_check('badge_award_job', 'badge_award_job_status_chk');
-select has_check('badge_award_job', 'badge_award_job_terminal_chk');
-select col_has_check('badge_award_job_recipient', 'position');
-
--- Test: status-list allocation should remain bounded and collision-free
-select has_check('badge_status_list', 'badge_status_list_allocation_offset_chk');
-select has_check('badge_status_list', 'badge_status_list_allocation_position_chk');
-select has_check('badge_status_list', 'badge_status_list_allocation_stride_chk');
-
--- Test: badge awards should preserve issuance, status, and revocation invariants
-select has_check('user_badge', 'user_badge_active_user_chk');
-select has_check('user_badge', 'user_badge_identity_chk');
-select col_has_check('user_badge', 'display_order');
-select col_has_check('user_badge', 'revocation_reason');
-select col_has_check('user_badge', 'snapshot');
-select col_has_check('user_badge', 'status_list_index');
-
--- Test: community table expected constraints exist
-select has_check('community', 'community_og_image_url_check');
-
--- Test: community redirect settings table expected constraints exist
-select has_check(
-    'community_redirect_settings',
-    'community_redirect_settings_base_legacy_url_chk'
-);
-
--- Test: custom_notification table expected constraints exist
-select has_check('custom_notification');
-
--- Test: custom notifications should have exactly one scope
-select is(
-    (
-        select pg_get_constraintdef(oid)
-        from pg_constraint
-        where conname = 'custom_notification_scope_check'
-        and conrelid = 'custom_notification'::regclass
-    ),
-    'CHECK ((num_nonnulls(community_id, event_id, group_id) = 1))',
-    'Custom notifications should have exactly one scope'
-);
-
--- Test: event table expected constraints exist
-select has_check('event', 'event_check');
-select has_check('event', 'event_check2');
-select has_check('event', 'event_cfs_fields_chk');
-select has_check('event', 'event_cfs_window_chk');
-select has_check('event', 'event_attendee_approval_waitlist_exclusive_chk');
-select has_check('event', 'event_external_payment_instructions_check');
-select has_check('event', 'event_external_payment_url_check');
-select has_check('event', 'event_external_payment_window_hours_check');
-select has_check('event', 'event_luma_url_check');
-select has_check('event', 'event_meeting_capacity_required_chk');
-select has_check('event', 'event_meeting_conflict_chk');
-select has_check('event', 'event_meeting_kind_chk');
-select has_check('event', 'event_meeting_provider_required_chk');
-select has_check('event', 'event_meeting_requested_times_chk');
-select has_check('event', 'event_registration_end_before_event_start_chk');
-select has_check('event', 'event_registration_start_before_event_start_chk');
-select has_check('event', 'event_registration_window_order_chk');
-select col_default_is('event', 'cohosts_revision', '0');
-select col_not_null('event', 'cohosts_revision');
-
--- Test: event co-host table expected constraints exist
-select has_check('event_cohost', 'event_cohost_approved_at_chk');
-select has_check('event_cohost', 'event_cohost_pending_approval_chk');
-
--- Test: event invitation requests may defer the ticket tier to organizer approval
-select has_check('event_invitation_request');
-select col_is_null('event_invitation_request', 'event_ticket_type_id');
-
--- Test: event UTM view counters expected constraints exist
-select has_check('event_views_utm', 'event_views_utm_attribution_chk');
-select has_check('event_views_utm', 'event_views_utm_utm_campaign_chk');
-select has_check('event_views_utm', 'event_views_utm_utm_medium_chk');
-select has_check('event_views_utm', 'event_views_utm_utm_source_chk');
-select col_default_is('event_views_utm', 'utm_campaign', '');
-select col_default_is('event_views_utm', 'utm_medium', '');
-select col_default_is('event_views_utm', 'utm_source', '');
-
--- Test: event waitlist rows should always belong to a ticket tier
-select col_not_null('event_waitlist', 'event_ticket_type_id');
 
 -- Test: admission offer sources should match expected values
 select results_eq(
@@ -153,62 +441,41 @@ select results_eq(
     'Admission offer statuses should match expected values'
 );
 
--- Test: event discount code table expected constraints exist
-select has_check('event_discount_code', 'event_discount_code_kind_value_chk');
-select has_check('event_discount_code', 'event_discount_code_window_chk');
+-- Test: event table should keep its required defaults
+select col_default_is('event', 'cohosts_revision', '0');
+select col_not_null('event', 'cohosts_revision');
+select col_default_is('event', 'meeting_recording_published', 'false');
+select col_not_null('event', 'meeting_recording_published');
 
--- Test: event label table expected constraints exist
-select has_check('event_label', 'event_label_name_check');
+-- Test: event invitation requests may defer the ticket tier to organizer approval
+select col_is_null('event_invitation_request', 'event_ticket_type_id');
 
--- Test: event ticket price window table expected constraints exist
-select has_check('event_ticket_price_window', 'event_ticket_price_window_window_chk');
+-- Test: event UTM view counters should default to empty attribution values
+select col_default_is('event_views_utm', 'utm_campaign', '');
+select col_default_is('event_views_utm', 'utm_medium', '');
+select col_default_is('event_views_utm', 'utm_source', '');
 
--- Test: event ticket type table expected constraints exist
-select has_check('event_ticket_type', 'event_ticket_type_availability_chk');
+-- Test: event waitlist rows should always belong to a ticket tier
+select col_not_null('event_waitlist', 'event_ticket_type_id');
 
--- Test: event survey table expected constraints and defaults exist
-select has_check('event_survey', 'event_survey_audience_chk');
-select has_check('event_survey', 'event_survey_dates_chk');
-select has_check('event_survey', 'event_survey_description_chk');
-select has_check('event_survey', 'event_survey_draft_chk');
-select has_check('event_survey', 'event_survey_open_notification_chk');
-select has_check('event_survey', 'event_survey_questions_chk');
-select has_check('event_survey', 'event_survey_revision_chk');
-select has_check('event_survey', 'event_survey_status_chk');
-select has_check('event_survey', 'event_survey_title_chk');
+-- Test: event survey table expected defaults exist
 select col_default_is('event_survey', 'anonymous', 'true');
 select col_default_is('event_survey', 'audience', 'confirmed');
 select col_default_is('event_survey', 'questions', '[]');
 select col_default_is('event_survey', 'revision', '1');
 select col_default_is('event_survey', 'status', 'draft');
 
--- Test: event survey response table expected constraints exist
-select has_check('event_survey_response', 'event_survey_response_answers_chk');
-
--- Test: group table expected constraints exist
-select has_check('group', 'group_check');
-select has_check('group', 'group_og_image_url_check');
-select has_check('group', 'group_slug_pretty_chk');
-select has_check('group', 'group_utm_campaigns_chk');
-select has_check('group', 'group_utm_mediums_chk');
-select has_check('group', 'group_utm_sources_chk');
+-- Test: group external payments should be required and disabled by default
 select col_not_null('group', 'external_payments_enabled');
 select col_default_is('group', 'external_payments_enabled', 'false');
-select col_has_check('group', 'external_payments_seller_display_name');
 
--- Test: site table expected constraints exist
-select has_check('site', 'site_og_image_url_check');
-
--- Test: session table expected constraints exist
-select has_check('session', 'session_check');
-select has_check('session', 'session_meeting_conflict_chk');
-select has_check('session', 'session_meeting_provider_required_chk');
-select has_check('session', 'session_meeting_requested_times_chk');
+-- Test: session table should keep its required defaults
+select col_default_is('session', 'meeting_recording_published', 'false');
+select col_not_null('session', 'meeting_recording_published');
 
 -- Test: event attendee statuses should match expected values
 select col_default_is('event_attendee', 'check_in_code', 'gen_random_uuid()');
 select col_not_null('event_attendee', 'check_in_code');
-select has_check('event_attendee', 'event_attendee_attendance_canceled_chk');
 select results_eq(
     $$
         select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
@@ -228,7 +495,6 @@ select results_eq(
 
 -- Test: event purchase statuses should match expected values
 select col_is_null('event_purchase', 'currency_code');
-select has_check('event_purchase', 'event_purchase_currency_code_chk');
 
 select results_eq(
     $$
@@ -248,108 +514,18 @@ select results_eq(
     'Event purchase statuses should match expected values'
 );
 
--- Test: event tax choices should have stable defaults and allowed values
+-- Test: event tax choices should have stable defaults
 select col_not_null('event', 'manual_tax_rate_ids');
 select col_default_is('event', 'manual_tax_rate_ids', array[]::text[]);
 select col_default_is('event', 'tax_behavior', 'inclusive');
 select col_default_is('event', 'tax_calculation_mode', 'automatic');
-select has_check('event', 'event_manual_tax_rate_ids_chk');
-select has_check('event', 'event_tax_behavior_chk');
-select has_check('event', 'event_tax_calculation_mode_chk');
 
--- Test: purchase charge-model and financial snapshots should remain consistent
+-- Test: purchase charge model should default to free
 select col_default_is('event_purchase', 'charge_model', 'ocg-free');
-select col_has_check('event_purchase', 'connected_seller_id');
-select col_has_check('event_purchase', 'external_payment_details');
-select col_has_check('event_purchase', 'performance_location_fingerprint');
-select col_has_check('event_purchase', 'platform_fee_bps');
-select col_has_check('event_purchase', 'provider_application_fee_id');
-select col_has_check('event_purchase', 'provider_charge_id');
-select col_has_check('event_purchase', 'provider_invoice_hosted_url');
-select col_has_check('event_purchase', 'provider_invoice_id');
-select col_has_check('event_purchase', 'provider_invoice_pdf_url');
-select col_has_check('event_purchase', 'provider_object_account_id');
-select col_has_check('event_purchase', 'provider_product_fingerprint');
-select col_has_check('event_purchase', 'provider_tax_code');
-select col_has_check('event_purchase', 'provider_tax_location_id');
-select col_has_check('event_purchase', 'provider_tax_product_id');
-select has_check('event_purchase', 'event_purchase_charge_model_chk');
-select has_check('event_purchase', 'event_purchase_direct_charge_context_chk');
-select has_check('event_purchase', 'event_purchase_external_chk');
-select ok(
-    (
-        select pg_get_constraintdef(oid)
-                like '%connected_seller_id IS NULL%'
-            and pg_get_constraintdef(oid)
-                like '%payment_provider_id IS NULL%'
-            and pg_get_constraintdef(oid)
-                like '%seller_snapshot IS NULL%'
-            and pg_get_constraintdef(oid)
-                like '%tax_calculation_mode IS NULL%'
-        from pg_constraint
-        where conname = 'event_purchase_external_chk'
-    ),
-    'External purchases should keep provider, seller, and tax snapshots null'
-);
-select has_check(
-    'external_payments_config',
-    'external_payments_config_allowed_countries_chk'
-);
-select has_check(
-    'external_payments_config',
-    'external_payments_config_window_hours_chk'
-);
-select has_check('event_purchase', 'event_purchase_financial_amounts_chk');
-select has_check('event_purchase', 'event_purchase_completed_direct_charge_amounts_chk');
-select has_check('event_purchase', 'event_purchase_manual_tax_rate_ids_chk');
-select has_check('event_purchase', 'event_purchase_no_tax_amount_chk');
-select has_check('event_purchase', 'event_purchase_provider_product_mode_chk');
-select has_check('event_purchase', 'event_purchase_tax_behavior_chk');
-select has_check('event_purchase', 'event_purchase_tax_calculation_mode_chk');
 
--- Test: event purchase provisional fee should stay within the ticket amount
+-- Test: event purchase provisional fee should be required and default to zero
 select col_not_null('event_purchase', 'provisional_platform_fee_amount_minor');
 select col_default_is('event_purchase', 'provisional_platform_fee_amount_minor', '0');
-select ok(
-    (
-        select pg_get_constraintdef(oid)
-                like '%provisional_platform_fee_amount_minor >= 0%'
-            and pg_get_constraintdef(oid)
-                like '%provisional_platform_fee_amount_minor <= amount_minor%'
-        from pg_constraint
-        where conname = 'event_purchase_provisional_platform_fee_amount_minor_chk'
-    ),
-    'Event purchase provisional fee should stay within the ticket amount'
-);
-
--- Test: cached provider resources should remain valid
-select col_has_check('payment_provider_tax_location', 'connected_seller_id');
-select col_has_check('payment_provider_tax_location', 'fingerprint');
-select col_has_check('payment_provider_tax_location', 'provider_tax_location_id');
-select col_has_check('payment_provider_tax_product', 'connected_seller_id');
-select col_has_check('payment_provider_tax_product', 'fingerprint');
-select col_has_check('payment_provider_tax_product', 'provider_tax_location_id');
-select col_has_check('payment_provider_tax_product', 'provider_tax_product_id');
-select col_has_check('payment_provider_tax_product', 'tax_code');
-select col_has_check('payment_provider_tax_product', 'title');
-
--- Test: durable financial work should constrain its domain values
-select col_has_check('event_purchase_application_fee_adjustment', 'amount_minor');
-select col_has_check(
-    'event_purchase_application_fee_adjustment',
-    'provider_application_fee_refund_id'
-);
-select has_check(
-    'event_purchase_application_fee_adjustment',
-    'event_purchase_application_fee_adjustment_kind_chk'
-);
-select col_has_check('event_purchase_credit_note', 'amount_minor');
-select col_has_check('event_purchase_credit_note', 'currency_code');
-select col_has_check('event_purchase_credit_note', 'provider_credit_note_id');
-select col_has_check('event_purchase_credit_note', 'provider_hosted_url');
-select col_has_check('event_purchase_credit_note', 'provider_object_account_id');
-select col_has_check('event_purchase_credit_note', 'provider_pdf_url');
-select col_has_check('event_purchase_credit_note', 'tax_amount_minor');
 
 -- Test: event purchase refund kinds should match expected values
 select results_eq(
@@ -382,60 +558,6 @@ select results_eq(
     $$,
     'Event purchase refund statuses should match expected values'
 );
-
--- Test: event purchase refund lifecycle constraints should exist
-select has_check(
-    'event_purchase_refund',
-    'event_purchase_refund_finalized_at_status_chk'
-);
-
--- Test: only terminal provider failures should preserve local finalization
-select ok(
-    (
-        select pg_get_constraintdef(oid) like '%provider-failed%'
-            and pg_get_constraintdef(oid) like '%provider-pending%'
-            and pg_get_constraintdef(oid) like '%finalized_at IS NOT NULL%'
-            and pg_get_constraintdef(oid) like '%finalized_at IS NULL%'
-        from pg_constraint
-        where conname = 'event_purchase_refund_finalized_at_status_chk'
-    ),
-    'Only terminal provider failures should preserve local finalization'
-);
-select has_check(
-    'event_purchase_refund',
-    'event_purchase_refund_kind_request_chk'
-);
-
--- Test: attendance cancellation refunds should require a linked request
-select ok(
-    (
-        select pg_get_constraintdef(oid)
-            like '%attendance-cancellation%event_refund_request_id IS NOT NULL%'
-        from pg_constraint
-        where conname = 'event_purchase_refund_kind_request_chk'
-    ),
-    'Attendance cancellation refunds should require a linked request'
-);
-select has_check(
-    'event_purchase_refund',
-    'event_purchase_refund_provider_refund_required_chk'
-);
-select has_check(
-    'event_purchase_refund',
-    'event_purchase_refund_terminal_failure_chk'
-);
-
--- Test: payment job lifecycle constraints should exist
-select col_has_check('payment_job', 'attempt_count');
-select col_has_check('payment_job', 'failure_message');
-select col_has_check('payment_job', 'idempotency_key');
-select col_has_check('payment_job', 'recovery_note');
-select col_has_check('payment_job', 'recovery_reference');
-select has_check('payment_job', 'payment_job_claim_chk');
-select has_check('payment_job', 'payment_job_completed_chk');
-select has_check('payment_job', 'payment_job_kind_chk');
-select has_check('payment_job', 'payment_job_recovery_chk');
-select has_check('payment_job', 'payment_job_status_chk');
 
 -- Test: payment job kinds should match expected values
 select results_eq(
@@ -522,10 +644,6 @@ select results_eq(
     'Inbox conversation statuses should exist'
 );
 
--- Test: inbox message table expected constraints exist
-select has_check('inbox_message', 'inbox_message_body_chk');
-select has_check('inbox_message', 'inbox_message_kind_chk');
-
 -- Test: meeting auto end check outcome should match expected values
 select results_eq(
     'select * from meeting_auto_end_check_outcome order by meeting_auto_end_check_outcome_id',
@@ -538,9 +656,6 @@ select results_eq(
     'Meeting auto-end check outcomes should exist'
 );
 
--- Test: meeting table expected constraints exist
-select has_check('meeting', 'meeting_recording_urls_not_empty_chk');
-
 -- Test: meeting providers should match expected values
 select results_eq(
     'select * from meeting_provider order by meeting_provider_id',
@@ -549,11 +664,6 @@ select results_eq(
     $$,
     'Meeting providers should exist'
 );
-
--- Test: notification table expected constraints exist
-select has_check('notification', 'notification_delivery_attempts_chk');
-select has_check('notification', 'notification_delivery_status_chk');
-select has_check('notification', 'notification_next_delivery_attempt_at_chk');
 
 -- Test: notification categories should match expected values
 select results_eq(

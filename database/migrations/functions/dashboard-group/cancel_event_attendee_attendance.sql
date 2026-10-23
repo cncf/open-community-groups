@@ -81,12 +81,6 @@ begin
             return json_build_object('cancellation_status', 'refund-queued');
         end if;
 
-        -- Validate the provider contract before creating durable work
-        if v_purchase.payment_provider_id is null
-           or v_purchase.provider_payment_reference is null then
-            raise exception 'paid purchase is not ready for refund' using errcode = 'OCG01';
-        end if;
-
         -- Attach a synthetic organizer decision or promote an existing request
         insert into event_refund_request (
             event_purchase_id,
@@ -133,6 +127,7 @@ begin
             raise exception 'event purchase refund already started' using errcode = 'OCG01';
         end if;
 
+        -- Record the attendee refund linked to the queued worker job
         insert into event_purchase_refund (
             amount_minor,
             currency_code,

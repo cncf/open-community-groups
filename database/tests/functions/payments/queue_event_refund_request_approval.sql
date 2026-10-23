@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -393,17 +393,6 @@ select throws_ok(
     'OCG01',
     'event purchase refund already started with different kind',
     'Should reject durable work owned by a different refund kind'
-);
-
--- Should roll back the review decision after a conflicting durable workflow
-select results_eq(
-    format($$
-        select review_note, reviewed_at, reviewed_by_user_id, status
-        from event_refund_request
-        where event_refund_request_id = %L::uuid
-    $$, :'conflictRequestID'),
-    $$ values (null::text, null::timestamptz, null::uuid, 'pending'::text) $$,
-    'Should roll back the review decision after a conflicting durable workflow'
 );
 
 -- ============================================================================

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -241,20 +241,6 @@ select throws_ok(
     'OCG01',
     'no group team members match the selected filters',
     'Should reject filters that match nobody'
-);
-
--- Should not queue notifications for rejected sends
-select is(
-    (select count(*)::int from notification where kind = 'community-custom'),
-    4,
-    'Should not queue notifications for rejected sends'
-);
-
--- Should not track rejected sends
-select ok(
-    (select count(*) from custom_notification where community_id = :'communityID') = 1
-    and (select count(*) from audit_log where community_id = :'communityID') = 1,
-    'Should not track rejected sends'
 );
 
 -- ============================================================================

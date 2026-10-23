@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(26);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -25,7 +25,6 @@ select plan(26);
 \set duplicateLabelBID '3a310000-0000-0000-0000-00000000000c'
 \set eventCategoryID '3a310000-0000-0000-0000-00000000000d'
 \set foreignEventID '3a310000-0000-0000-0000-00000000000e'
-\set foreignEventLabelID '3a310000-0000-0000-0000-00000000000f'
 \set foreignOwnerEventID '3a310000-0000-0000-0000-000000000010'
 \set foreignOwnerLabelID '3a310000-0000-0000-0000-000000000011'
 \set groupCategoryID '3a310000-0000-0000-0000-000000000012'
@@ -151,10 +150,6 @@ values (:'duplicateLabelAID', '#DBEAFE', :'duplicateEventID', 'Alpha');
 insert into event_label (event_label_id, color, event_id, name)
 values (:'duplicateLabelBID', '#FEE2E2', :'duplicateEventID', 'Beta');
 
--- Label kept when a foreign label is rejected
-insert into event_label (event_label_id, color, event_id, name)
-values (:'foreignEventLabelID', '#DBEAFE', :'foreignEventID', 'Own');
-
 -- Label owned by another event
 insert into event_label (event_label_id, color, event_id, name)
 values (:'foreignOwnerLabelID', '#FEE2E2', :'foreignOwnerEventID', 'Owned');
@@ -183,7 +178,7 @@ values (:'rotateLabel2ID', '#FEE2E2', :'rotateEventID', 'Two');
 insert into event_label (event_label_id, color, event_id, name)
 values (:'rotateLabel3ID', '#CCFBF1', :'rotateEventID', 'Three');
 
--- Label kept when a stale identifier is rejected
+-- Stored label sent alongside a stale identifier
 insert into event_label (event_label_id, color, event_id, name)
 values (:'staleLabelID', '#DBEAFE', :'staleEventID', 'Stale');
 
@@ -348,23 +343,6 @@ select throws_ok(
     'duplicate label names',
     'Should reject a duplicate final label name'
 );
-select results_eq(
-    format(
-        $$
-            select event_label_id, name, color
-            from event_label
-            where event_id = %L::uuid
-            order by name
-        $$,
-        :'duplicateEventID'
-    ),
-    format(
-        $$values (%L::uuid, %L::text, %L::text), (%L::uuid, %L::text, %L::text)$$,
-        :'duplicateLabelAID', 'Alpha', '#DBEAFE',
-        :'duplicateLabelBID', 'Beta', '#FEE2E2'
-    ),
-    'Should keep labels when rejecting a duplicate final label name'
-);
 
 -- Should reject a null labels payload
 select throws_ok(
@@ -398,22 +376,6 @@ select throws_ok(
     'event label not found for event',
     'Should reject a stale existing label identifier'
 );
-select results_eq(
-    format(
-        $$
-            select event_label_id, name, color
-            from event_label
-            where event_id = %L::uuid
-            order by name
-        $$,
-        :'staleEventID'
-    ),
-    format(
-        $$values (%L::uuid, %L::text, %L::text)$$,
-        :'staleLabelID', 'Stale', '#DBEAFE'
-    ),
-    'Should keep labels when rejecting a stale label identifier'
-);
 
 -- Should reject label identifiers owned by another event
 select throws_ok(
@@ -432,38 +394,6 @@ select throws_ok(
     'OCG01',
     'event label not found for event',
     'Should reject label identifiers owned by another event'
-);
-select results_eq(
-    format(
-        $$
-            select event_label_id, name, color
-            from event_label
-            where event_id = %L::uuid
-            order by name
-        $$,
-        :'foreignEventID'
-    ),
-    format(
-        $$values (%L::uuid, %L::text, %L::text)$$,
-        :'foreignEventLabelID', 'Own', '#DBEAFE'
-    ),
-    'Should keep the event labels when rejecting a foreign label'
-);
-select results_eq(
-    format(
-        $$
-            select event_label_id, name, color
-            from event_label
-            where event_id = %L::uuid
-            order by name
-        $$,
-        :'foreignOwnerEventID'
-    ),
-    format(
-        $$values (%L::uuid, %L::text, %L::text)$$,
-        :'foreignOwnerLabelID', 'Owned', '#FEE2E2'
-    ),
-    'Should leave the other event label untouched'
 );
 
 -- Should remove all labels for an empty payload

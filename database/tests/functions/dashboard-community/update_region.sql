@@ -1,3 +1,5 @@
+-- Tests updating dashboard community regions.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,10 +11,12 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c180000-0000-0000-0000-000000000006'
 \set communityID '2c180000-0000-0000-0000-000000000001'
+\set foreignRegionID '2c180000-0000-0000-0000-000000000004'
+\set otherCommunityID '2c180000-0000-0000-0000-000000000005'
 \set region1ID '2c180000-0000-0000-0000-000000000002'
 \set region2ID '2c180000-0000-0000-0000-000000000003'
-\set unknownRegionID '2c180000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
@@ -21,6 +25,7 @@ select plan(5);
 -- Baseline community
 select fx_community(:'communityID');
 
+-- Updated region and second region whose name the duplicate scenario reuses
 insert into region (
     region_id,
     community_id,
@@ -28,6 +33,14 @@ insert into region (
 ) values
     (:'region1ID', :'communityID', 'North America'),
     (:'region2ID', :'communityID', 'Europe');
+
+-- Other community with its own region
+select fx_community(:'otherCommunityID');
+insert into region (region_id, community_id, name)
+values (:'foreignRegionID', :'otherCommunityID', 'Asia');
+
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'update-region-audit-actor'));
 
 -- ============================================================================
 -- TESTS
@@ -37,11 +50,12 @@ insert into region (
 select lives_ok(
     format(
         $$ select update_region(
-        null::uuid,
+        %L::uuid,
         %L::uuid,
         %L::uuid,
         jsonb_build_object('name', 'Latin America')
     ) $$,
+        :'actorUserID',
         :'communityID',
         :'region1ID'
     ),
@@ -78,13 +92,14 @@ select results_eq(
         $$
         values (
             'region_updated',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'update-region-audit-actor',
             %L::uuid,
             'region',
             %L::uuid
         )
         $$,
+        :'actorUserID',
         :'communityID',
         :'region1ID'
     ),
@@ -108,7 +123,7 @@ select throws_ok(
     'Should reject duplicate region names'
 );
 
--- Should fail when target region does not exist
+-- Should fail when target region belongs to another community
 select throws_ok(
     format(
         $$ select update_region(
@@ -118,11 +133,11 @@ select throws_ok(
         jsonb_build_object('name', 'APAC')
     ) $$,
         :'communityID',
-        :'unknownRegionID'
+        :'foreignRegionID'
     ),
     'OCG01',
     'region not found',
-    'Should fail when updating a non-existing region'
+    'Should fail when updating a region from another community'
 );
 
 -- ============================================================================

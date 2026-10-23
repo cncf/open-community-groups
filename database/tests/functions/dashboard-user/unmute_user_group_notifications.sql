@@ -55,12 +55,9 @@ values
 select lives_ok(
     format(
         $$
-            do $do$
-            begin
-                perform unmute_user_group_notifications(%L::uuid, %L::uuid);
-                perform unmute_user_group_notifications(%L::uuid, %L::uuid);
-            end
-            $do$;
+            select
+                unmute_user_group_notifications(%L::uuid, %L::uuid),
+                unmute_user_group_notifications(%L::uuid, %L::uuid)
         $$,
         :'userID',
         :'disconnectedGroupID',
@@ -81,29 +78,18 @@ select is(
     'Should delete muted rows'
 );
 
--- Should audit only deleted rows and skip repeat unmutes
-select lives_ok(
-    format(
-        $$
-            do $do$
-            begin
-                perform unmute_user_group_notifications(%L::uuid, %L::uuid);
+-- Repeat the unmute for an already unmuted group
+select unmute_user_group_notifications(:'userID', :'unavailableGroupID');
 
-                if (
-                    select count(*)::int
-                    from audit_log
-                    where actor_user_id = %L::uuid
-                    and action = 'group_notifications_unmuted'
-                ) <> 2 then
-                    raise exception 'unexpected unmute audit count';
-                end if;
-            end
-            $do$;
-        $$,
-        :'userID',
-        :'unavailableGroupID',
-        :'userID'
+-- Should audit only deleted rows and skip repeat unmutes
+select is(
+    (
+        select count(*)::int
+        from audit_log
+        where actor_user_id = :'userID'
+        and action = 'group_notifications_unmuted'
     ),
+    2,
     'Should audit only deleted rows and skip repeat unmutes'
 );
 

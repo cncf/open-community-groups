@@ -1,3 +1,5 @@
+-- Tests detecting child group links of a group.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -38,19 +40,17 @@ select fx_group(:'inactiveOnlyParentID', :'communityID', :'groupCategoryID');
 select fx_group(:'otherCommunityParentID', :'otherCommunityID', :'otherCommunityGroupCategoryID');
 select fx_group(:'unrelatedGroupID', :'communityID', :'groupCategoryID');
 
+-- Child groups linked to each parent
 select fx_group(:'activeChildID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'activeParentID'));
--- group
 select fx_group(:'deletedChildID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', false,
     'deleted', true,
     'parent_group_id', :'deletedOnlyParentID'
 ));
--- group
 select fx_group(:'inactiveChildID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', false,
     'parent_group_id', :'inactiveOnlyParentID'
 ));
--- group
 select fx_group(:'otherCommunityChildID', :'otherCommunityID', :'otherCommunityGroupCategoryID', jsonb_build_object('parent_group_id', :'otherCommunityParentID'));
 
 -- ============================================================================

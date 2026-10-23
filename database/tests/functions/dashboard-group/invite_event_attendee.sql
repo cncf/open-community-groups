@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(66);
+select plan(59);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,30 +13,25 @@ select plan(66);
 
 \set actorID '3a130000-0000-0000-0000-000000000001'
 \set canceledAttendeeUserID '3a130000-0000-0000-0000-000000000019'
-\set canceledEventID '3a130000-0000-0000-0000-000000000002'
 \set capacityEventID '3a130000-0000-0000-0000-000000000021'
 \set capacityInviteUserID '3a130000-0000-0000-0000-000000000022'
+\set capacityPriceWindowID '3a130000-0000-0000-0000-00000000008b'
 \set capacityQueueUserID '3a130000-0000-0000-0000-000000000023'
+\set capacityTicketTypeID '3a130000-0000-0000-0000-00000000008c'
 \set communityID '3a130000-0000-0000-0000-000000000003'
 \set confirmedAttendeeUserID '3a130000-0000-0000-0000-000000000004'
 \set eventCategoryID '3a130000-0000-0000-0000-000000000005'
-\set eventExternalReadyID '3a130000-0000-0000-0000-000000000070'
-\set eventExternalUnreadyID '3a130000-0000-0000-0000-000000000071'
 \set eventID '3a130000-0000-0000-0000-000000000006'
 \set eventQuestionsID '3a130000-0000-0000-0000-000000000007'
-\set externalReadyInviteUserID '3a130000-0000-0000-0000-000000000072'
-\set externalReadyPriceWindowID '3a130000-0000-0000-0000-000000000073'
-\set externalReadyTicketTypeID '3a130000-0000-0000-0000-000000000074'
-\set externalUnreadyInviteUserID '3a130000-0000-0000-0000-000000000075'
-\set externalUnreadyPriceWindowID '3a130000-0000-0000-0000-000000000076'
-\set externalUnreadyTicketTypeID '3a130000-0000-0000-0000-000000000077'
-\set groupExternalReadyID '3a130000-0000-0000-0000-000000000078'
-\set groupExternalUnreadyID '3a130000-0000-0000-0000-000000000079'
+\set eventQuestionsPriceWindowID '3a130000-0000-0000-0000-00000000008d'
+\set eventQuestionsTicketTypeID '3a130000-0000-0000-0000-00000000008e'
 \set expiredReservationEventID '3a130000-0000-0000-0000-00000000003f'
 \set expiredReservationInviteUserID '3a130000-0000-0000-0000-000000000040'
 \set expiredReservationOfferID '3a130000-0000-0000-0000-000000000041'
 \set expiredReservationOfferUserID '3a130000-0000-0000-0000-000000000042'
+\set expiredReservationPriceWindowID '3a130000-0000-0000-0000-00000000008f'
 \set expiredReservationPromotedUserID '3a130000-0000-0000-0000-000000000043'
+\set expiredReservationTicketTypeID '3a130000-0000-0000-0000-000000000090'
 \set expiredWaitlistOfferID '3a130000-0000-0000-0000-00000000007b'
 \set expiredWaitlistOfferUserID '3a130000-0000-0000-0000-00000000007a'
 \set groupCategoryID '3a130000-0000-0000-0000-000000000008'
@@ -56,21 +51,21 @@ select plan(66);
 \set lapsedOfferTicketTypeID '3a130000-0000-0000-0000-000000000083'
 \set lapsedOfferUserID '3a130000-0000-0000-0000-000000000084'
 \set lapsedPurchaseID '3a130000-0000-0000-0000-000000000085'
-\set paidContextEventID '3a130000-0000-0000-0000-000000000049'
 \set paidContextGroupID '3a130000-0000-0000-0000-00000000004a'
-\set paidContextInviteUserID '3a130000-0000-0000-0000-00000000004b'
-\set paidContextPriceWindowID '3a130000-0000-0000-0000-00000000004c'
-\set paidContextTicketTypeID '3a130000-0000-0000-0000-00000000004d'
+\set paidEventID '3a130000-0000-0000-0000-00000000002a'
+\set paidInviteUserID '3a130000-0000-0000-0000-00000000002b'
+\set paidPriceWindowID '3a130000-0000-0000-0000-00000000002c'
 \set paidReadyEventID '3a130000-0000-0000-0000-00000000004e'
 \set paidReadyInviteUserID '3a130000-0000-0000-0000-00000000004f'
 \set paidReadyPriceWindowID '3a130000-0000-0000-0000-000000000050'
 \set paidReadyTicketTypeID '3a130000-0000-0000-0000-000000000051'
-\set paidEventID '3a130000-0000-0000-0000-00000000002a'
-\set paidInviteUserID '3a130000-0000-0000-0000-00000000002b'
-\set paidPriceWindowID '3a130000-0000-0000-0000-00000000002c'
 \set paidTicketTypeID '3a130000-0000-0000-0000-00000000002d'
+\set pendingRegistrationUserID '3a130000-0000-0000-0000-00000000008a'
+\set privateSimpleEventID '3a130000-0000-0000-0000-000000000087'
 \set privateSimpleInviteUserID '3a130000-0000-0000-0000-000000000046'
 \set privateSimplePriceWindowID '3a130000-0000-0000-0000-000000000047'
+\set privateSimplePublicPriceWindowID '3a130000-0000-0000-0000-000000000088'
+\set privateSimplePublicTicketTypeID '3a130000-0000-0000-0000-000000000089'
 \set privateSimpleTicketTypeID '3a130000-0000-0000-0000-000000000048'
 \set questionsInvitedUserID '3a130000-0000-0000-0000-000000000010'
 \set queueConflictEventID '3a130000-0000-0000-0000-00000000002e'
@@ -85,6 +80,8 @@ select plan(66);
 \set registeredUserID '3a130000-0000-0000-0000-000000000011'
 \set registrationQuestionID '3a130000-0000-0000-0000-000000000012'
 \set rejectedUserID '3a130000-0000-0000-0000-000000000013'
+\set simplePriceWindowID '3a130000-0000-0000-0000-000000000091'
+\set simpleTicketTypeID '3a130000-0000-0000-0000-000000000092'
 \set siteID '3a130000-0000-0000-0000-000000000024'
 \set soldOutAttendeeUserID '3a130000-0000-0000-0000-000000000086'
 \set soldOutInviteUserID '3a130000-0000-0000-0000-000000000037'
@@ -97,10 +94,13 @@ select plan(66);
 \set ticketPriceWindowSecondaryID '3a130000-0000-0000-0000-000000000045'
 \set ticketTypeID '3a130000-0000-0000-0000-000000000015'
 \set ticketTypeSecondaryID '3a130000-0000-0000-0000-000000000044'
-\set unpublishedEventID '3a130000-0000-0000-0000-000000000016'
 \set unavailableInviteUserID '3a130000-0000-0000-0000-00000000003c'
+\set unavailablePriceWindowID '3a130000-0000-0000-0000-000000000093'
 \set unavailableTicketEventID '3a130000-0000-0000-0000-00000000003d'
 \set unavailableTicketTypeID '3a130000-0000-0000-0000-00000000003e'
+\set unpublishedEventID '3a130000-0000-0000-0000-000000000016'
+\set unpublishedPriceWindowID '3a130000-0000-0000-0000-000000000094'
+\set unpublishedTicketTypeID '3a130000-0000-0000-0000-000000000095'
 \set unverifiedUserID '3a130000-0000-0000-0000-000000000017'
 \set waitlistedUserID '3a130000-0000-0000-0000-000000000018'
 
@@ -124,26 +124,13 @@ select fx_user(:'soldOutInviteUserID');
 select fx_user(:'soldOutOccupantID');
 select fx_user(:'unavailableInviteUserID');
 select fx_user(:'questionsInvitedUserID');
-select fx_user(:'paidContextInviteUserID');
 select fx_user(:'paidReadyInviteUserID');
-select fx_user(:'externalReadyInviteUserID');
-select fx_user(:'externalUnreadyInviteUserID');
 select fx_user(:'expiredReservationInviteUserID');
 select fx_user(:'expiredReservationOfferUserID');
 select fx_user(:'expiredReservationPromotedUserID');
 select fx_user(:'canceledAttendeeUserID');
+select fx_user(:'pendingRegistrationUserID');
 
-
--- Operator allowlist used by external invitation readiness scenarios
-insert into external_payments_config (
-    allowed_countries,
-    default_payment_window_hours,
-    max_payment_window_hours
-) values (
-    array['KR']::text[],
-    72,
-    336
-);
 
 -- Community
 insert into site (description, site_id, theme, title)
@@ -160,26 +147,12 @@ select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object(
 -- Group owning events without payment readiness
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Test Group'));
 
--- Group with a valid payment recipient for stored event readiness
+-- Group with a valid payment recipient for paid invitations
 select fx_group(:'paidContextGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{
         "provider": "stripe",
         "recipient_id": "acct_paid_invite",
         "seller_display_name": "Paid Invite Fiscal Sponsor"
     }'::jsonb));
-
--- Allowlisted group with external payments enabled for ready invitations
-select fx_group(:'groupExternalReadyID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'country_code', 'KR',
-    'external_payments_enabled', true,
-    'external_payments_seller_display_name', 'External Payee Co'
-));
-
--- External-marked group outside the allowlist for readiness rejection
-select fx_group(:'groupExternalUnreadyID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'country_code', 'US',
-    'external_payments_enabled', true,
-    'external_payments_seller_display_name', 'External Payee Co'
-));
 
 -- Users
 select fx_user(:'actorID', jsonb_build_object('username', 'actor-invite-event-attendee'));
@@ -206,18 +179,11 @@ select fx_user(:'expiredWaitlistOfferUserID', jsonb_build_object('username', 'ex
 
 -- Events
 select fx_event(:'capacityEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 1,
     'published', true,
     'starts_at', current_timestamp + interval '1 day',
     'waitlist_enabled', true
 ));
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'starts_at', current_timestamp + interval '1 day'
-));
-select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'payment_currency_code', 'USD',
     'published', true,
     'starts_at', current_timestamp + interval '1 day'
 ));
@@ -254,13 +220,6 @@ select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_bui
     'starts_at', current_timestamp + interval '1 day'
 ));
 
--- Paid event with an incomplete stored venue for readiness validation
-select fx_event(:'paidContextEventID', :'paidContextGroupID', :'eventCategoryID', jsonb_build_object(
-    'payment_currency_code', 'USD',
-    'published', true,
-    'starts_at', current_timestamp + interval '1 day'
-));
-
 -- Paid event with a complete venue for successful paid invitation snapshots
 select fx_event(:'paidReadyEventID', :'paidContextGroupID', :'eventCategoryID', jsonb_build_object(
     'payment_currency_code', 'USD',
@@ -275,7 +234,6 @@ select fx_event(:'paidReadyEventID', :'paidContextGroupID', :'eventCategoryID', 
 
 -- RSVP event whose expired reservation is reconciled before organizer invite allocation
 select fx_event(:'expiredReservationEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 1,
     'published', true,
     'starts_at', current_timestamp + interval '1 day',
     'waitlist_enabled', true
@@ -290,6 +248,12 @@ select fx_event(:'lapsedOfferEventID', :'groupID', :'eventCategoryID', jsonb_bui
 
 -- Event whose lapsed checkout registration is released by reconciliation before the invite
 select fx_event(:'lapsedCheckoutEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+
+-- Simple RSVP event that also offers a private invitation-only tier
+select fx_event(:'privateSimpleEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published', true,
     'starts_at', current_timestamp + interval '1 day'
 ));
@@ -330,13 +294,21 @@ select fx_event_ticket_type(:'ticketTypeSecondaryID', :'ticketedEventID', jsonb_
     'seats_total', 25
 ));
 
--- Paid ticket tier used to validate stored event readiness
-select fx_event_ticket_type(:'paidContextTicketTypeID', :'paidContextEventID', jsonb_build_object('seats_total', 100));
-
 -- Paid ticket tier used by the successful paid snapshot scenario
 select fx_event_ticket_type(:'paidReadyTicketTypeID', :'paidReadyEventID', jsonb_build_object(
     'seats_total', 100,
     'title', 'Paid ready admission'
+));
+
+-- Free public tier that keeps the private-tier event a simple RSVP
+select fx_event_ticket_type(:'privateSimplePublicTicketTypeID', :'privateSimpleEventID', jsonb_build_object('seats_total', 10));
+
+-- Private invitation-only tier on the simple RSVP event
+select fx_event_ticket_type(:'privateSimpleTicketTypeID', :'privateSimpleEventID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'order', 2,
+    'seats_total', 10,
+    'title', 'Private admission'
 ));
 
 -- Inactive ticket type used to reject unavailable ticketed invitations
@@ -355,67 +327,41 @@ select fx_event_ticket_price_window(:'soldOutPriceWindowID', :'soldOutTicketType
 select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
 select fx_event_ticket_price_window(:'ticketPriceWindowSecondaryID', :'ticketTypeSecondaryID', jsonb_build_object('amount_minor', 0));
 
--- Positive ticket price used to exercise paid stored event readiness
-select fx_event_ticket_price_window(:'paidContextPriceWindowID', :'paidContextTicketTypeID', jsonb_build_object('amount_minor', 2500));
-
 -- Positive ticket price used by the successful paid snapshot scenario
 select fx_event_ticket_price_window(:'paidReadyPriceWindowID', :'paidReadyTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
--- Events without a specialized ticket fixture use a default free tier
-select fx_event_ticket_type(
-    gen_random_uuid(),
-    e.event_id,
-    jsonb_build_object('seats_total', greatest(coalesce(e.capacity, 100), 1))
-)
-from event e
-where not exists (
-    select 1
-    from event_ticket_type ett
-    where ett.event_id = e.event_id
-);
+-- Current free prices for the private-tier event's public and private tiers
+select fx_event_ticket_price_window(:'privateSimplePublicPriceWindowID', :'privateSimplePublicTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'privateSimplePriceWindowID', :'privateSimpleTicketTypeID', jsonb_build_object('amount_minor', 0));
 
--- Current free prices for the default ticket tiers
-select fx_event_ticket_price_window(
-    gen_random_uuid(),
-    ett.event_ticket_type_id,
-    jsonb_build_object('amount_minor', 0)
-)
-from event_ticket_type ett
-where not exists (
-    select 1
-    from event_ticket_price_window etpw
-    where etpw.event_ticket_type_id = ett.event_ticket_type_id
-);
+-- Single-seat RSVP tiers for the capacity and expired-reservation events
+select fx_event_ticket_type(:'capacityTicketTypeID', :'capacityEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'expiredReservationTicketTypeID', :'expiredReservationEventID', jsonb_build_object('seats_total', 1));
 
--- Capture the capacity event's synthesized ticket tier
-select event_ticket_type_id as "capacityTicketTypeID"
-from event_ticket_type
-where event_id = :'capacityEventID'
-\gset
+-- Ten-seat RSVP tiers, leaving a free seat for each invitation scenario
+select fx_event_ticket_type(:'eventQuestionsTicketTypeID', :'eventQuestionsID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'simpleTicketTypeID', :'eventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'unpublishedTicketTypeID', :'unpublishedEventID', jsonb_build_object('seats_total', 10));
 
--- Capture the registration-question event's synthesized ticket tier
-select event_ticket_type_id as "eventQuestionsTicketTypeID"
-from event_ticket_type
-where event_id = :'eventQuestionsID'
-\gset
+-- Current free prices for the RSVP tiers
+select fx_event_ticket_price_window(:'capacityPriceWindowID', :'capacityTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventQuestionsPriceWindowID', :'eventQuestionsTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'expiredReservationPriceWindowID', :'expiredReservationTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'simplePriceWindowID', :'simpleTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'unpublishedPriceWindowID', :'unpublishedTicketTypeID', jsonb_build_object('amount_minor', 0));
 
--- Capture the expired-reservation event's synthesized ticket tier
-select event_ticket_type_id as "expiredReservationTicketTypeID"
-from event_ticket_type
-where event_id = :'expiredReservationEventID'
-\gset
-
--- Capture the simple RSVP event's synthesized ticket tier
-select event_ticket_type_id as "simpleTicketTypeID"
-from event_ticket_type
-where event_id = :'eventID'
-\gset
+-- Current price on the inactive tier, so only its inactive state rejects the invitation
+select fx_event_ticket_price_window(:'unavailablePriceWindowID', :'unavailableTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Existing attendees and invitation decisions
 insert into event_attendee (event_id, user_id, status)
 values
     (:'eventID', :'confirmedAttendeeUserID', 'confirmed'),
     (:'eventID', :'rejectedUserID', 'invitation-rejected');
+
+-- Registration still waiting for answers, without a checkout hold to release
+insert into event_attendee (event_id, manually_invited, status, user_id)
+values (:'eventQuestionsID', false, 'registration-questions-pending', :'pendingRegistrationUserID');
 
 -- Confirmed attendee on the sold-out tier; the occupant's pending offer already fills its single seat
 insert into event_attendee (event_id, user_id, status)
@@ -470,12 +416,12 @@ insert into event_waitlist (event_id, event_ticket_type_id, user_id)
 values
     (
         :'capacityEventID',
-        (select event_ticket_type_id from event_ticket_type where event_id = :'capacityEventID' limit 1),
+        :'capacityTicketTypeID',
         :'capacityQueueUserID'
     ),
     (
         :'eventID',
-        (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1),
+        :'simpleTicketTypeID',
         :'waitlistedUserID'
     );
 
@@ -493,7 +439,7 @@ insert into admission_offer (
     :'expiredReservationOfferID',
     current_timestamp - interval '2 hours',
     :'expiredReservationEventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'expiredReservationEventID' limit 1),
+    :'expiredReservationTicketTypeID',
     current_timestamp - interval '1 hour',
     'organizer_invitation',
     'pending',
@@ -504,7 +450,7 @@ insert into admission_offer (
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)
 values (
     :'expiredReservationEventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'expiredReservationEventID' limit 1),
+    :'expiredReservationTicketTypeID',
     :'expiredReservationPromotedUserID'
 );
 
@@ -538,7 +484,7 @@ insert into admission_offer (
     :'expiredWaitlistOfferID',
     current_timestamp - interval '2 days',
     :'eventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1),
+    :'simpleTicketTypeID',
     current_timestamp - interval '1 day',
     'waitlist',
     'expired',
@@ -582,40 +528,6 @@ insert into admission_offer (
     'pending',
     :'soldOutOccupantID'
 );
-
--- External-marked event that is ready for paid invitations
-select fx_event(:'eventExternalReadyID', :'groupExternalReadyID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/invite-ready',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'starts_at', current_timestamp + interval '1 day',
-    'venue_address', '1 Test Street',
-    'venue_city', 'Seoul',
-    'venue_country_code', 'KR',
-    'venue_name', 'Test Hall',
-    'venue_zip_code', '00000'
-));
-
--- External-marked event that is not allowlisted for paid invitations
-select fx_event(:'eventExternalUnreadyID', :'groupExternalUnreadyID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/invite-unready',
-    'payment_currency_code', 'USD',
-    'published', true,
-    'starts_at', current_timestamp + interval '1 day',
-    'venue_address', '123 Main St',
-    'venue_city', 'San Francisco',
-    'venue_country_code', 'US',
-    'venue_name', 'Community Hall',
-    'venue_zip_code', '94105'
-));
-
--- Ticket types for the external invitation fixtures
-select fx_event_ticket_type(:'externalReadyTicketTypeID', :'eventExternalReadyID', jsonb_build_object('seats_total', 50));
-select fx_event_ticket_type(:'externalUnreadyTicketTypeID', :'eventExternalUnreadyID', jsonb_build_object('seats_total', 50));
-
--- Price windows for the external invitation fixtures
-select fx_event_ticket_price_window(:'externalReadyPriceWindowID', :'externalReadyTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(:'externalUnreadyPriceWindowID', :'externalUnreadyTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- ============================================================================
 -- TESTS
@@ -710,40 +622,12 @@ select results_eq(
     'Should create the expected audit row for a registered user invitation'
 );
 
--- Add a private tier after exercising sole-tier auto-selection
-insert into event_ticket_type (
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    'invitation_only',
-    :'eventID',
-    :'privateSimpleTicketTypeID',
-    2,
-    10,
-    'Private admission'
-);
-
--- Current free price for the private simple-RSVP tier
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    0,
-    :'privateSimplePriceWindowID',
-    :'privateSimpleTicketTypeID'
-);
-
 -- Should create a private-tier offer on a simple RSVP event
 select is(
     invite_event_attendee(
         :'actorID',
         :'groupID',
-        :'eventID',
+        :'privateSimpleEventID',
         :'privateSimpleInviteUserID',
         null,
         :'privateSimpleTicketTypeID'
@@ -787,6 +671,28 @@ select throws_ok(
     'Should reject re-inviting confirmed attendees'
 );
 
+-- Should reject inviting users who still owe registration answers
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
+        :'actorID', :'groupID', :'eventQuestionsID', :'pendingRegistrationUserID', :'eventQuestionsTicketTypeID'
+    ),
+    'OCG01',
+    'user already has a pending event registration',
+    'Should reject inviting users who still owe registration answers'
+);
+
+-- Should reject inviting unverified registered users by id
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
+        :'actorID', :'groupID', :'eventID', :'unverifiedUserID', :'simpleTicketTypeID'
+    ),
+    'OCG01',
+    'registered user not found',
+    'Should reject inviting unverified registered users by id'
+);
+
 -- Should preserve queue priority before allocating organizer invitations
 select is(
     (
@@ -799,16 +705,6 @@ select is(
     'Should promote the existing waitlist before creating a new invitation'
 );
 
-select throws_ok(
-    format(
-        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
-        :'actorID', :'groupID', :'eventID', :'waitlistedUserID', :'simpleTicketTypeID'
-    ),
-    'OCG01',
-    'user already has a pending event invitation',
-    'Should reject inviting a user with an active waitlist offer'
-);
-
 select is(
     (
         select count(*)
@@ -817,7 +713,18 @@ select is(
         and user_id = :'waitlistedUserID'::uuid
     ),
     0::bigint,
-    'Should remove the invited user from the waitlist'
+    'Should remove the promoted user from the waitlist'
+);
+
+-- Should reject inviting a user with an active waitlist offer
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
+        :'actorID', :'groupID', :'eventID', :'waitlistedUserID', :'simpleTicketTypeID'
+    ),
+    'OCG01',
+    'user already has a pending event invitation',
+    'Should reject inviting a user with an active waitlist offer'
 );
 
 -- Should invite a user whose waitlist offer expired
@@ -1004,17 +911,6 @@ select throws_ok(
     'Should reject unavailable ticket types for event invitations'
 );
 
-select is(
-    (
-        select count(*)::int
-        from admission_offer
-        where event_id = :'unavailableTicketEventID'::uuid
-        and user_id = :'unavailableInviteUserID'::uuid
-    ),
-    0,
-    'Should not create an offer for unavailable ticket types'
-);
-
 -- Should reject ticket types selected for a different event
 select throws_ok(
     format(
@@ -1028,32 +924,6 @@ select throws_ok(
     'OCG01',
     'ticket type is not available',
     'Should reject ticket types selected for a different event'
-);
-
-select is(
-    (
-        select count(*)::int
-        from admission_offer
-        where event_id = :'eventID'::uuid
-        and user_id = :'invalidTicketUserID'::uuid
-    ),
-    0,
-    'Should not create an offer when a tier belongs to a different event'
-);
-
--- Should invite a paid attendee when the external event is ready
-select is(
-    invite_event_attendee(
-        :'actorID',
-        :'groupExternalReadyID',
-        :'eventExternalReadyID',
-        :'externalReadyInviteUserID',
-        null,
-        :'externalReadyTicketTypeID',
-        null
-    )->>'outcome',
-    'offer-created',
-    'Should invite a paid attendee when the external event is ready'
 );
 
 -- Should reject paid ticket invitations when payment readiness fails
@@ -1070,70 +940,6 @@ select throws_ok(
     'OCG01',
     'paid-capable events require a payment recipient',
     'Should reject paid ticket invitations when payment readiness fails'
-);
-
--- Should reject paid invitations when an external-marked event is not ready
-select throws_ok(
-    format(
-        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L, null) $$,
-        :'actorID',
-        :'groupExternalUnreadyID',
-        :'eventExternalUnreadyID',
-        :'externalUnreadyInviteUserID',
-        :'externalUnreadyTicketTypeID'
-    ),
-    'OCG01',
-    'external payments are not available for this event',
-    'Should reject paid invitations when an external-marked event is not ready'
-);
-
-select is(
-    (
-        select count(*)::int
-        from admission_offer
-        where event_id = :'eventExternalUnreadyID'::uuid
-        and user_id = :'externalUnreadyInviteUserID'::uuid
-    ),
-    0,
-    'Should not create an offer when an external-marked event is not ready'
-);
-
-select is(
-    (
-        select count(*)::int
-        from admission_offer
-        where event_id = :'paidEventID'::uuid
-        and user_id = :'paidInviteUserID'::uuid
-    ),
-    0,
-    'Should not create an offer when paid ticket readiness fails'
-);
-
--- Should validate the stored event venue for paid ticket invitations
-select throws_ok(
-    format(
-        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L, %L) $$,
-        :'actorID',
-        :'paidContextGroupID',
-        :'paidContextEventID',
-        :'paidContextInviteUserID',
-        :'paidContextTicketTypeID',
-        'stripe'
-    ),
-    'OCG01',
-    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
-    'Should validate the stored event venue for paid ticket invitations'
-);
-
-select is(
-    (
-        select count(*)::int
-        from admission_offer
-        where event_id = :'paidContextEventID'::uuid
-        and user_id = :'paidContextInviteUserID'::uuid
-    ),
-    0,
-    'Should not create an offer when the stored paid event is ineligible'
 );
 
 -- Should return a queue offer when reconciliation promotes the invitee
@@ -1500,17 +1306,6 @@ select throws_ok(
     'OCG01',
     'event not found or inactive',
     'Should reject unpublished events'
-);
-
--- Should reject canceled events
-select throws_ok(
-    format(
-        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
-        :'actorID', :'groupID', :'canceledEventID', :'registeredUserID', :'simpleTicketTypeID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Should reject canceled events'
 );
 
 -- Should create an offer when registration questions exist

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,7 @@ select plan(6);
 \set externalUnreadyEventID 'f30b0000-0000-0000-0000-000000000005'
 \set groupCategoryID 'f30b0000-0000-0000-0000-000000000006'
 \set nonExternalFreeEventID 'f30b0000-0000-0000-0000-000000000007'
+\set nonExternalNoVenueEventID 'f30b0000-0000-0000-0000-00000000000c'
 \set nonExternalPaidEventID 'f30b0000-0000-0000-0000-000000000008'
 \set readyGroupID 'f30b0000-0000-0000-0000-000000000009'
 \set stripeGroupID 'f30b0000-0000-0000-0000-00000000000a'
@@ -83,6 +84,12 @@ select fx_event(:'externalUnreadyEventID', :'unreadyGroupID', :'eventCategoryID'
 
 -- Non-external free event that does not need server payment configuration
 select fx_event(:'nonExternalFreeEventID', :'stripeGroupID', :'eventCategoryID');
+
+-- Non-external paid event whose stored venue is incomplete
+select fx_event(:'nonExternalNoVenueEventID', :'stripeGroupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'payment_currency_code', 'USD'
+));
 
 -- Non-external paid event with complete venue and currency context
 select fx_event(:'nonExternalPaidEventID', :'stripeGroupID', :'eventCategoryID', jsonb_build_object(
@@ -161,6 +168,18 @@ select throws_ok(
     'OCG01',
     'payments are not configured on this server',
     'Should reject non-external paid offers without server payments'
+);
+
+-- Should validate the stored event venue for non-external paid offers
+select throws_ok(
+    format(
+        $$select validate_admission_offer_payment_readiness((select e from event e where e.event_id = %L::uuid), (select g from "group" g where g.group_id = %L::uuid), 1000, 'stripe')$$,
+        :'nonExternalNoVenueEventID',
+        :'stripeGroupID'
+    ),
+    'OCG01',
+    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
+    'Should validate the stored event venue for non-external paid offers'
 );
 
 -- ============================================================================

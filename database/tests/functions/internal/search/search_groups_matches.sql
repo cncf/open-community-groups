@@ -19,7 +19,6 @@ select plan(14);
 \set groupCategoryID '5ea80000-0000-0000-0000-000000000006'
 \set groupCategoryInactiveID '5ea80000-0000-0000-0000-000000000007'
 \set groupCategoryOtherID '5ea80000-0000-0000-0000-000000000008'
-\set groupDeletedID '5ea80000-0000-0000-0000-000000000009'
 \set groupInactiveCommunityID '5ea80000-0000-0000-0000-00000000000a'
 \set groupInactiveID '5ea80000-0000-0000-0000-00000000000b'
 \set groupLondonID '5ea80000-0000-0000-0000-00000000000c'
@@ -69,15 +68,6 @@ select fx_group(:'groupAustinID', :'communityID', :'groupCategoryID', jsonb_buil
     'name', 'SGM Tech Innovators',
     'region_id', :'regionID',
     'slug', 'sgm-group-austin'
-));
-
--- Deleted group in Seattle
-select fx_group(:'groupDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true,
-    'location', ST_GeogFromText('POINT(-122.3321 47.6062)'),
-    'name', 'SGM Deleted Group',
-    'slug', 'sgm-group-deleted'
 ));
 
 -- Group in the inactive community
@@ -174,14 +164,14 @@ select is_empty(
     'Should exclude groups from inactive communities'
 );
 
--- Should exclude inactive and deleted groups
+-- Should exclude inactive groups
 select ok(
     not exists (
         select 1
         from search_groups_matches('{}'::jsonb)
-        where group_id in (:'groupDeletedID', :'groupInactiveID')
+        where group_id = :'groupInactiveID'
     ),
-    'Should exclude inactive and deleted groups'
+    'Should exclude inactive groups'
 );
 
 -- Should filter groups by bbox

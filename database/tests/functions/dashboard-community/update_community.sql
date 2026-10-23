@@ -1,3 +1,5 @@
+-- Tests updating dashboard communities.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,6 +11,7 @@ select plan(8);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c140000-0000-0000-0000-000000000003'
 \set communityID '2c140000-0000-0000-0000-000000000001'
 \set unknownCommunityID '2c140000-0000-0000-0000-000000000002'
 
@@ -40,6 +43,9 @@ select fx_community(:'communityID', jsonb_build_object(
     'youtube_url', 'https://youtube.com/original'
 ));
 
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'update-community-audit-actor'));
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -48,7 +54,7 @@ select fx_community(:'communityID', jsonb_build_object(
 select lives_ok(
     format(
         $$select update_community(
-        null::uuid,
+        %L::uuid,
         %L::uuid,
         '{
             "description": "Updated description for Seattle cloud native community",
@@ -56,6 +62,7 @@ select lives_ok(
             "logo_url": "https://updated.com/logo.png"
         }'::jsonb
     )$$,
+        :'actorUserID',
         :'communityID'
     ),
     'Should execute update with only required fields'
@@ -93,13 +100,14 @@ select results_eq(
         $$
         values (
             'community_updated',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'update-community-audit-actor',
             %L::uuid,
             'community',
             %L::uuid
         )
         $$,
+        :'actorUserID',
         :'communityID',
         :'communityID'
     ),

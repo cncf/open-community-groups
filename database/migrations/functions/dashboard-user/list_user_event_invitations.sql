@@ -28,20 +28,7 @@ returns json as $$
             e.timezone,
 
             display_price.amount_minor,
-            case
-                when display_price.amount_minor > 0
-                     or (
-                        (
-                            ao.status <> 'pending'
-                            or ao.discount_code is not null
-                        )
-                        and coalesce(ao.discount_amount_minor, 0) > 0
-                     )
-                    then coalesce(
-                        display_price.currency_code,
-                        e.payment_currency_code
-                    )
-            end as currency_code,
+            display_price.currency_code,
             case
                 when ao.source = 'approval'
                     then coalesce(
@@ -88,31 +75,7 @@ returns json as $$
             order by eir.created_at desc
             limit 1
         ) invitation_request on true
-        left join lateral (
-            select event_ticket_type_current_price(ao.event_ticket_type_id) as amount_minor
-        ) current_price on true
-        left join lateral (
-            select
-                case
-                    when ao.status = 'pending'
-                         and ao.discount_code is null
-                        then coalesce(
-                            current_price.amount_minor,
-                            case
-                                when ao.source in ('approval', 'organizer_invitation')
-                                    then ao.amount_minor
-                            end
-                        )
-                    else coalesce(ao.amount_minor, current_price.amount_minor)
-                end as amount_minor,
-                case
-                    when ao.status = 'pending'
-                         and ao.discount_code is null
-                         and current_price.amount_minor is not null
-                        then e.payment_currency_code
-                    else ao.currency_code
-                end as currency_code
-        ) display_price on true
+        cross join lateral admission_offer_display_price(ao, e) display_price
         left join lateral (
             select
                 ep.amount_minor,

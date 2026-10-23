@@ -1,3 +1,5 @@
+-- Tests leaving an active group of a community as a member.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -10,10 +12,12 @@ select plan(5);
 -- ============================================================================
 
 \set communityID '6a060000-0000-0000-0000-000000000001'
-\set deletedGroupID '6a060000-0000-0000-0000-000000000002'
 \set groupCategoryID '6a060000-0000-0000-0000-000000000003'
 \set groupID '6a060000-0000-0000-0000-000000000004'
 \set inactiveGroupID '6a060000-0000-0000-0000-000000000005'
+\set otherCommunityGroupCategoryID '6a060000-0000-0000-0000-000000000009'
+\set otherCommunityGroupID '6a060000-0000-0000-0000-000000000010'
+\set otherCommunityID '6a060000-0000-0000-0000-000000000008'
 \set user1ID '6a060000-0000-0000-0000-000000000006'
 \set user2ID '6a060000-0000-0000-0000-000000000007'
 
@@ -31,14 +35,12 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 -- Inactive group rejected by membership mutations
 select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
--- Deleted group rejected by membership mutations
-select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
+-- Active group of another community rejected by membership mutations
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'otherCommunityGroupCategoryID', :'otherCommunityID');
+select fx_group(:'otherCommunityGroupID', :'otherCommunityID', :'otherCommunityGroupCategoryID');
 
-
--- Group Member
+-- Membership of the first user in the active group
 insert into group_member (group_id, user_id)
 values (:'groupID', :'user1ID');
 
@@ -83,15 +85,15 @@ select throws_ok(
     'Should not allow user to leave an inactive group'
 );
 
--- Should error for deleted group
+-- Should error for group of another community
 select throws_ok(
     format(
         $$select leave_group(%L::uuid, %L::uuid, %L::uuid)$$,
-        :'communityID', :'deletedGroupID', :'user1ID'
+        :'communityID', :'otherCommunityGroupID', :'user1ID'
     ),
     'OCG01',
     'group not found or inactive',
-    'Should not allow user to leave a deleted group'
+    'Should not allow user to leave a group of another community'
 );
 
 -- ============================================================================

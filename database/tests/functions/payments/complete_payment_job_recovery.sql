@@ -176,6 +176,7 @@ select throws_ok(
         $$select complete_payment_job_recovery(null, %L::uuid, %L::uuid, 'fr_recovered_d4120000', 'case-d4120000', 'Verified Stripe activity')$$,
         :'groupID', :'feeJobID'
     ),
+    'P0001',
     'actor user id is required',
     'Should require an actor user id'
 );
@@ -186,6 +187,7 @@ select throws_ok(
         $$select complete_payment_job_recovery(%L::uuid, null, %L::uuid, 'fr_recovered_d4120000', 'case-d4120000', 'Verified Stripe activity')$$,
         :'actorID', :'feeJobID'
     ),
+    'P0001',
     'group id is required',
     'Should require a group id'
 );
@@ -251,6 +253,7 @@ select throws_ok(
         $$select complete_payment_job_recovery(%L::uuid, %L::uuid, %L::uuid, 're_recovered_d4120000', 'case-d4120000', 'Verified Stripe activity')$$,
         :'actorID', :'groupID', :'refundJobID'
     ),
+    'P0001',
     'payment job kind does not support provider object recovery',
     'Should reject a refund payment job'
 );

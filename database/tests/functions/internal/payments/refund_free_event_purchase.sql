@@ -238,6 +238,7 @@ select results_eq(
 -- Should reject non-free purchases
 select throws_ok(
     format($$select refund_free_event_purchase(%L::uuid)$$, :'paidPurchaseID'),
+    'P0001',
     'free purchase not found',
     'Should reject non-free purchases'
 );

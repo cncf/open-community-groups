@@ -5,100 +5,36 @@
 -- ============================================================================
 
 begin;
-select plan(96);
+select plan(26);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '1c020000-0000-0000-0000-000000000001'
-\set eventAutomaticTaxID '1c020000-0000-0000-0000-00000000001c'
-\set eventCategoryID '1c020000-0000-0000-0000-000000000002'
-\set eventDelistedID '1c020000-0000-0000-0000-000000000043'
-\set eventDelistedReplaceID '1c020000-0000-0000-0000-000000000050'
-\set eventDisablePastID '1c020000-0000-0000-0000-000000000044'
-\set eventDisableUnpublishedID '1c020000-0000-0000-0000-000000000045'
-\set eventEnableAbroadID '1c020000-0000-0000-0000-00000000003c'
-\set eventExternalPaidID '1c020000-0000-0000-0000-000000000038'
-\set eventFreeID '1c020000-0000-0000-0000-000000000014'
-\set eventID '1c020000-0000-0000-0000-000000000003'
-\set eventUnpublishedID '1c020000-0000-0000-0000-000000000004'
-\set eventVenueCountryID '1c020000-0000-0000-0000-00000000003b'
 \set group2ID '1c020000-0000-0000-0000-000000000005'
 \set group3ID '1c020000-0000-0000-0000-000000000006'
-\set group4ID '1c020000-0000-0000-0000-000000000007'
-\set group5ID '1c020000-0000-0000-0000-000000000008'
-\set group6ID '1c020000-0000-0000-0000-000000000015'
 \set groupAdminID '1c020000-0000-0000-0000-000000000010'
-\set groupAutomaticTaxID '1c020000-0000-0000-0000-00000000001d'
-\set groupBlockedFirstID '1c020000-0000-0000-0000-000000000051'
-\set groupBlockedReaddID '1c020000-0000-0000-0000-000000000052'
-\set groupBlockedReplaceID '1c020000-0000-0000-0000-000000000053'
 \set groupCategory1ID '1c020000-0000-0000-0000-000000000009'
 \set groupCategory2ID '1c020000-0000-0000-0000-00000000000a'
-\set groupDelistedID '1c020000-0000-0000-0000-000000000036'
-\set groupDisableID '1c020000-0000-0000-0000-000000000030'
-\set groupEnableAbroadID '1c020000-0000-0000-0000-00000000003e'
-\set groupEnableID '1c020000-0000-0000-0000-000000000031'
-\set groupExternalDelistedID '1c020000-0000-0000-0000-000000000054'
-\set groupExternalPaidID '1c020000-0000-0000-0000-000000000037'
-\set groupFinalCountryID '1c020000-0000-0000-0000-000000000032'
+\set groupClearParentID '1c020000-0000-0000-0000-000000000060'
 \set groupID '1c020000-0000-0000-0000-00000000000c'
-\set groupMoveCountryDisableID '1c020000-0000-0000-0000-000000000033'
-\set groupMoveCountryID '1c020000-0000-0000-0000-000000000034'
-\set groupMoveKeepRecipientID '1c020000-0000-0000-0000-000000000055'
-\set groupMoveOffAllowlistID '1c020000-0000-0000-0000-000000000056'
-\set groupMoveOntoAllowlistID '1c020000-0000-0000-0000-000000000057'
-\set groupNamelessEnableID '1c020000-0000-0000-0000-00000000005a'
-\set groupPayeeID '1c020000-0000-0000-0000-00000000005b'
-\set groupRejectEnableID '1c020000-0000-0000-0000-000000000035'
+\set groupParentUpdateID '1c020000-0000-0000-0000-000000000014'
+\set groupSlugClearID '1c020000-0000-0000-0000-000000000068'
 \set groupUtmApplyID '1c020000-0000-0000-0000-00000000005c'
 \set groupUtmClearID '1c020000-0000-0000-0000-00000000005d'
 \set groupUtmDefaultMediumID '1c020000-0000-0000-0000-00000000005e'
 \set groupUtmPreserveID '1c020000-0000-0000-0000-00000000005f'
-\set groupVenueCountryID '1c020000-0000-0000-0000-00000000003d'
 \set inactiveParentGroupID '1c020000-0000-0000-0000-00000000001a'
 \set inactiveParentedGroupID '1c020000-0000-0000-0000-00000000001b'
 \set nonExistentCommunityID '1c020000-0000-0000-0000-00000000000d'
 \set noPermissionUserID '1c020000-0000-0000-0000-000000000011'
 \set parentGroupID '1c020000-0000-0000-0000-000000000012'
-\set priceWindowAutomaticTaxID '1c020000-0000-0000-0000-00000000001e'
-\set priceWindowDelistedID '1c020000-0000-0000-0000-000000000046'
-\set priceWindowDelistedReplaceID '1c020000-0000-0000-0000-000000000058'
-\set priceWindowDisablePastID '1c020000-0000-0000-0000-000000000047'
-\set priceWindowDisableUnpublishedID '1c020000-0000-0000-0000-000000000048'
-\set priceWindowEnableAbroadID '1c020000-0000-0000-0000-000000000042'
-\set priceWindowExternalPaidID '1c020000-0000-0000-0000-00000000003a'
-\set priceWindowFreeID '1c020000-0000-0000-0000-000000000017'
-\set priceWindowID '1c020000-0000-0000-0000-000000000016'
-\set priceWindowUnpublishedID '1c020000-0000-0000-0000-000000000018'
-\set priceWindowVenueCountryID '1c020000-0000-0000-0000-000000000041'
-\set ticketTypeAutomaticTaxID '1c020000-0000-0000-0000-00000000001f'
-\set ticketTypeDelistedID '1c020000-0000-0000-0000-000000000049'
-\set ticketTypeDelistedReplaceID '1c020000-0000-0000-0000-000000000059'
-\set ticketTypeDisablePastID '1c020000-0000-0000-0000-00000000004a'
-\set ticketTypeDisableUnpublishedID '1c020000-0000-0000-0000-00000000004b'
-\set ticketTypeEnableAbroadID '1c020000-0000-0000-0000-000000000040'
-\set ticketTypeExternalPaidID '1c020000-0000-0000-0000-000000000039'
-\set ticketTypeFreeID '1c020000-0000-0000-0000-000000000019'
-\set ticketTypeID '1c020000-0000-0000-0000-00000000000e'
-\set ticketTypeUnpublishedID '1c020000-0000-0000-0000-00000000000f'
-\set ticketTypeVenueCountryID '1c020000-0000-0000-0000-00000000003f'
 \set unauthorizedParentGroupID '1c020000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
-
-insert into external_payments_config (
-    allowed_countries,
-    default_payment_window_hours,
-    max_payment_window_hours
-) values (
-    array['JP', 'KR']::text[],
-    72,
-    336
-);
 
 -- Community
 select fx_community(:'communityID', jsonb_build_object(
@@ -111,12 +47,11 @@ select fx_community(:'communityID', jsonb_build_object(
 
 -- Baseline categories, users and groups
 select fx_group_category(:'groupCategory1ID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'groupAdminID');
+select fx_user(:'groupAdminID', jsonb_build_object('username', 'update-group-audit-actor'));
 select fx_user(:'noPermissionUserID');
 select fx_group(:'inactiveParentGroupID', :'communityID', :'groupCategory1ID');
 
--- group category
+-- Category assigned by the update scenarios
 select fx_group_category(:'groupCategory2ID', :'communityID', jsonb_build_object('name', 'Business'));
 
 -- Group
@@ -125,14 +60,34 @@ select fx_group(:'groupID', :'communityID', :'groupCategory1ID', jsonb_build_obj
     'slug', 'abc1234'
 ));
 
--- Groups used for parent relationship updates
+-- Parent group the actor manages
 select fx_group(:'parentGroupID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-15 10:00:00+00'));
--- group
+
+-- Group whose stored parent is cleared without parent-side permission
+select fx_group(:'groupClearParentID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'name', 'Clear Parent Group',
+    'parent_group_id', :'parentGroupID'
+));
+
+-- Group whose parent is set by an actor that manages it
+select fx_group(:'groupParentUpdateID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'name', 'Parent Update Group'
+));
+
+-- Group whose stored pretty slug is cleared
+select fx_group(:'groupSlugClearID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'name', 'Slug Clear Group',
+    'slug_pretty', 'update-group-slug-clear'
+));
+
+-- Parent group the actor cannot manage
 select fx_group(:'unauthorizedParentGroupID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-15 10:00:00+00'));
--- group
+
+-- Group already linked to the parent that becomes inactive
 select fx_group(:'inactiveParentedGroupID', :'communityID', :'groupCategory1ID', jsonb_build_object('parent_group_id', :'inactiveParentGroupID'));
 
--- Inactivate the established parent without changing the existing relationship
+-- The parent trigger rejects inactive parents on insert, so inactivate the
+-- established parent after linking it
 update "group"
 set active = false
 where group_id = :'inactiveParentGroupID';
@@ -158,155 +113,6 @@ select fx_group(:'group2ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_bu
     'slug', 'pqr4jkl',
     'state', 'CA',
     'website_url', 'https://example.com'
-));
-
--- Group for payment recipient audit coverage
-select fx_group(:'group4ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'created_at', '2024-01-15 10:00:00+00',
-    'description', 'Payment recipient audit coverage',
-    'name', 'Group With Payment Recipient'
-));
-
--- Group with an unpublished ticketed event for payment recipient guards
-select fx_group(:'group5ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'created_at', '2024-01-15 10:00:00+00',
-    'description', 'Unpublished ticketed event coverage',
-    'name', 'Group With Unpublished Ticketed Event',
-    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_456", "seller_display_name": "Existing Fiscal Sponsor"}'::jsonb
-));
-
--- Published ticketed event used for payment recipient guards
-select fx_event(:'eventID'::uuid, :'group4ID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'manual_tax_rate_ids', array['txr_update_group']::text[],
-    'payment_currency_code', 'USD',
-    'published', true,
-    'tax_calculation_mode', 'manual',
-    'venue_address', '123 Main St',
-    'venue_city', 'Portland',
-    'venue_country_code', 'US',
-    'venue_name', 'Community Hall',
-    'venue_state_code', 'OR',
-    'venue_state_name', 'Oregon',
-    'venue_zip_code', '97201'
-));
-
--- Group with a published all-zero ticketed event
-select fx_group(:'group6ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'created_at', '2024-01-15 10:00:00+00',
-    'description', 'Free ticketed event coverage',
-    'name', 'Group With Free Ticketed Event',
-    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_free", "seller_display_name": "Free Event Fiscal Sponsor"}'::jsonb
-));
-
--- Group with a published automatic-tax event for validation freshness checks
-select fx_group(:'groupAutomaticTaxID'::uuid, :'communityID'::uuid, :'groupCategory1ID'::uuid, jsonb_build_object(
-    'description', 'Automatic-tax validation freshness coverage',
-    'name', 'Group With Automatic Tax Event',
-    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_automatic", "seller_display_name": "Existing Fiscal Sponsor"}'::jsonb
-));
-
--- Published all-zero ticketed event used for payment recipient guards
-select fx_event(:'eventFreeID'::uuid, :'group6ID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'event_kind_id', 'virtual',
-    'published', true
-));
-
--- Published automatic-tax event used to reject stale provider validation
-select fx_event(:'eventAutomaticTaxID'::uuid, :'groupAutomaticTaxID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'event_kind_id', 'virtual',
-    'name', 'Automatic Tax Event',
-    'payment_currency_code', 'USD',
-    'published', true
-));
-
--- Group whose only paid event is collected outside Stripe
-select fx_group(:'groupExternalPaidID'::uuid, :'communityID'::uuid, :'groupCategory1ID'::uuid, jsonb_build_object(
-    'country_code', 'KR',
-    'created_at', '2024-01-15 10:00:00+00',
-    'description', 'External paid event recipient coverage',
-    'external_payments_enabled', true,
-    'name', 'Group With External Paid Event',
-    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_external", "seller_display_name": "External Event Fiscal Sponsor"}'::jsonb
-));
-
--- Published external paid event that must not lock the Stripe recipient
-select fx_event(:'eventExternalPaidID'::uuid, :'groupExternalPaidID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/group',
-    'name', 'External Paid Event',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'starts_at', current_timestamp + interval '7 days',
-    'tax_calculation_mode', 'manual'
-));
-
--- Ticket type for the published automatic-tax event
-select fx_event_ticket_type(:'ticketTypeAutomaticTaxID'::uuid, :'eventAutomaticTaxID'::uuid, jsonb_build_object('seats_total', 50));
-
--- Ticket type for the published external paid event
-select fx_event_ticket_type(:'ticketTypeExternalPaidID'::uuid, :'eventExternalPaidID'::uuid, jsonb_build_object(
-    'seats_total', 50,
-    'title', 'External admission'
-));
-
--- Ticket type for the published all-zero ticketed event
-select fx_event_ticket_type(:'ticketTypeFreeID'::uuid, :'eventFreeID'::uuid, jsonb_build_object('seats_total', 50));
-
--- Ticket type for the published ticketed event
-select fx_event_ticket_type(:'ticketTypeID'::uuid, :'eventID'::uuid, jsonb_build_object(
-    'seats_total', 50,
-    'title', 'General admission'
-));
-
--- Unpublished ticketed event used for payment recipient guards
-select fx_event(:'eventUnpublishedID'::uuid, :'group5ID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'event_kind_id', 'virtual',
-    'manual_tax_rate_ids', array['txr_draft']::text[],
-    'payment_currency_code', 'USD',
-    'tax_calculation_mode', 'manual'
-));
-
--- Ticket type for the unpublished ticketed event
-select fx_event_ticket_type(:'ticketTypeUnpublishedID'::uuid, :'eventUnpublishedID'::uuid, jsonb_build_object(
-    'seats_total', 50,
-    'title', 'General admission'
-));
-
--- Ticket prices define the paid capability of each ticketed event
-select fx_event_ticket_price_window(:'priceWindowAutomaticTaxID', :'ticketTypeAutomaticTaxID', jsonb_build_object('amount_minor', 2500));
--- event ticket price window
-select fx_event_ticket_price_window(:'priceWindowExternalPaidID', :'ticketTypeExternalPaidID', jsonb_build_object('amount_minor', 5000));
--- event ticket price window
-select fx_event_ticket_price_window(:'priceWindowFreeID', :'ticketTypeFreeID', jsonb_build_object('amount_minor', 0));
--- event ticket price window
-select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 2500));
--- event ticket price window
-select fx_event_ticket_price_window(:'priceWindowUnpublishedID', :'ticketTypeUnpublishedID', jsonb_build_object('amount_minor', 2500));
-
--- Allowlisted group disabling external payments with only past or unpublished external events
-select fx_group(:'groupDisableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'external_payments_enabled', true,
-    'name', 'External Disable Group'
-));
-
--- Allowlisted group used by the successful enable scenario
-select fx_group(:'groupEnableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'name', 'External Enable Group'
-));
-
--- Allowlisted group rejected when enabling without the external payee legal name
-select fx_group(:'groupNamelessEnableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'name', 'External Nameless Enable Group'
-));
-
--- Allowlisted enabled group with a stored external payee legal name
-select fx_group(:'groupPayeeID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'external_payments_enabled', true,
-    'external_payments_seller_display_name', 'External Payee Co',
-    'name', 'External Payee Group'
 ));
 
 -- Group whose UTM values are replaced
@@ -340,231 +146,6 @@ select fx_group(:'groupUtmPreserveID', :'communityID', :'groupCategory1ID', json
     'utm_mediums', jsonb_build_array('podcast'),
     'utm_sources', jsonb_build_array('old-source')
 ));
-
--- Non-allowlisted group enabled by changing country in the same update
-select fx_group(:'groupFinalCountryID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'US',
-    'name', 'External Final Country Group'
-));
-
--- Allowlisted enabled group that disables while leaving the allowlist
-select fx_group(:'groupMoveCountryDisableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'external_payments_enabled', true,
-    'name', 'External Move Country Disable Group'
-));
-
--- Allowlisted enabled group rejected when moving country while staying enabled
-select fx_group(:'groupMoveCountryID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'external_payments_enabled', true,
-    'name', 'External Move Country Group'
-));
-
--- Non-allowlisted group rejected when enabling external payments
-select fx_group(:'groupRejectEnableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'US',
-    'name', 'External Reject Enable Group'
-));
-
--- Enabled group whose country is no longer allowlisted despite an upcoming external event
-select fx_group(:'groupDelistedID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'US',
-    'external_payments_enabled', true,
-    'name', 'External Delisted Group'
-));
-
--- Allowlisted group blocked from enabling external payments by an event venue abroad
-select fx_group(:'groupEnableAbroadID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'JP',
-    'name', 'External Enable Abroad Group'
-));
-
--- Allowlisted enabled group blocked from moving country by an upcoming external event
-select fx_group(:'groupVenueCountryID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'external_payments_enabled', true,
-    'name', 'External Venue Country Group'
-));
-
--- Published external paid event whose venue is outside its disabled group's country
-select fx_event(:'eventEnableAbroadID'::uuid, :'groupEnableAbroadID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/enable-abroad',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'starts_at', current_timestamp + interval '7 days',
-    'tax_calculation_mode', 'none',
-    'venue_address', '1 Test Street',
-    'venue_city', 'Seoul',
-    'venue_country_code', 'KR',
-    'venue_name', 'Test Hall',
-    'venue_zip_code', '00000'
-));
-
--- Published external paid event anchoring its group to the venue country
-select fx_event(:'eventVenueCountryID'::uuid, :'groupVenueCountryID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/venue-country',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'starts_at', current_timestamp + interval '7 days',
-    'tax_calculation_mode', 'none',
-    'venue_address', '1 Test Street',
-    'venue_city', 'Seoul',
-    'venue_country_code', 'KR',
-    'venue_name', 'Test Hall',
-    'venue_zip_code', '00000'
-));
-
--- Ticket types for the external venue-country events
-select fx_event_ticket_type(:'ticketTypeEnableAbroadID'::uuid, :'eventEnableAbroadID'::uuid, jsonb_build_object(
-    'seats_total', 50,
-    'title', 'External admission'
-));
--- event ticket type
-select fx_event_ticket_type(:'ticketTypeVenueCountryID'::uuid, :'eventVenueCountryID'::uuid, jsonb_build_object(
-    'seats_total', 50,
-    'title', 'External admission'
-));
-
--- Ticket prices making the external venue-country events paid
-select fx_event_ticket_price_window(:'priceWindowEnableAbroadID', :'ticketTypeEnableAbroadID', jsonb_build_object('amount_minor', 5000));
--- event ticket price window
-select fx_event_ticket_price_window(:'priceWindowVenueCountryID', :'ticketTypeVenueCountryID', jsonb_build_object('amount_minor', 5000));
-
--- Upcoming published external paid event in the delisted group
-select fx_event(:'eventDelistedID'::uuid, :'groupDelistedID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/delisted',
-    'payment_currency_code', 'USD',
-    'published', true,
-    'starts_at', current_timestamp + interval '7 days',
-    'tax_calculation_mode', 'none',
-    'venue_address', '1 Test Street',
-    'venue_city', 'Austin',
-    'venue_country_code', 'US',
-    'venue_name', 'Test Hall',
-    'venue_zip_code', '00000'
-));
-
--- Past published external paid event that must not block disabling the toggle
-select fx_event(:'eventDisablePastID'::uuid, :'groupDisableID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'ends_at', current_timestamp - interval '6 days',
-    'external_payment_url', 'https://pay.example.test/disable-past',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'starts_at', current_timestamp - interval '7 days',
-    'tax_calculation_mode', 'none',
-    'venue_address', '1 Test Street',
-    'venue_city', 'Seoul',
-    'venue_country_code', 'KR',
-    'venue_name', 'Test Hall',
-    'venue_zip_code', '00000'
-));
-
--- Unpublished upcoming external paid event that must not block disabling the toggle
-select fx_event(:'eventDisableUnpublishedID'::uuid, :'groupDisableID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/disable-draft',
-    'payment_currency_code', 'KRW',
-    'starts_at', current_timestamp + interval '7 days',
-    'tax_calculation_mode', 'none',
-    'venue_address', '1 Test Street',
-    'venue_city', 'Seoul',
-    'venue_country_code', 'KR',
-    'venue_name', 'Test Hall',
-    'venue_zip_code', '00000'
-));
-
--- Ticket types for the toggle-disable external events
-select fx_event_ticket_type(:'ticketTypeDelistedID'::uuid, :'eventDelistedID'::uuid, jsonb_build_object(
-    'seats_total', 50,
-    'title', 'External admission'
-));
--- event ticket type
-select fx_event_ticket_type(:'ticketTypeDisablePastID'::uuid, :'eventDisablePastID'::uuid, jsonb_build_object(
-    'seats_total', 50,
-    'title', 'External admission'
-));
--- event ticket type
-select fx_event_ticket_type(:'ticketTypeDisableUnpublishedID'::uuid, :'eventDisableUnpublishedID'::uuid, jsonb_build_object(
-    'seats_total', 50,
-    'title', 'External admission'
-));
-
--- Ticket prices making the toggle-disable external events paid
-select fx_event_ticket_price_window(:'priceWindowDelistedID', :'ticketTypeDelistedID', jsonb_build_object('amount_minor', 5000));
--- event ticket price window
-select fx_event_ticket_price_window(:'priceWindowDisablePastID', :'ticketTypeDisablePastID', jsonb_build_object('amount_minor', 5000));
--- event ticket price window
-select fx_event_ticket_price_window(:'priceWindowDisableUnpublishedID', :'ticketTypeDisableUnpublishedID', jsonb_build_object('amount_minor', 5000));
-
--- Allowlisted group without a recipient that cannot add a first Stripe account
-select fx_group(:'groupBlockedFirstID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'name', 'Blocked First Sponsor Group'
-));
-
--- Allowlisted group whose stored recipient is cleared and then re-added
-select fx_group(:'groupBlockedReaddID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'name', 'Blocked Re-add Sponsor Group',
-    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_blocked_readd", "seller_display_name": "Re-add Fiscal Sponsor"}'::jsonb
-));
-
--- Allowlisted group with the toggle off whose stored recipient cannot be replaced
-select fx_group(:'groupBlockedReplaceID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'name', 'Blocked Replace Sponsor Group',
-    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_blocked_current", "seller_display_name": "Current Blocked Fiscal Sponsor"}'::jsonb
-));
-
--- Enabled group in a delisted country that can still replace its recipient
-select fx_group(:'groupExternalDelistedID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'BR',
-    'external_payments_enabled', true,
-    'name', 'External Delisted Replace Group',
-    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_delisted", "seller_display_name": "Delisted Fiscal Sponsor"}'::jsonb
-));
-
--- Non-allowlisted group moving onto the allowlist while keeping its recipient
-select fx_group(:'groupMoveKeepRecipientID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'US',
-    'name', 'Move Keep Recipient Group',
-    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_move_keep", "seller_display_name": "Kept Fiscal Sponsor"}'::jsonb
-));
-
--- Allowlisted group adding a first Stripe account while leaving the allowlist
-select fx_group(:'groupMoveOffAllowlistID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'KR',
-    'name', 'Move Off Allowlist Group'
-));
-
--- Non-allowlisted group adding a first Stripe account while joining the allowlist
-select fx_group(:'groupMoveOntoAllowlistID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'country_code', 'US',
-    'name', 'Move Onto Allowlist Group'
-));
-
--- Upcoming published external paid event in the delisted replace group
-select fx_event(:'eventDelistedReplaceID'::uuid, :'groupExternalDelistedID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/delisted-replace',
-    'payment_currency_code', 'BRL',
-    'published', true,
-    'starts_at', current_timestamp + interval '7 days',
-    'tax_calculation_mode', 'none',
-    'venue_address', '1 Test Street',
-    'venue_city', 'Sao Paulo',
-    'venue_country_code', 'BR',
-    'venue_name', 'Test Hall',
-    'venue_zip_code', '00000'
-));
-
--- Ticket type for the delisted replace external event
-select fx_event_ticket_type(:'ticketTypeDelistedReplaceID'::uuid, :'eventDelistedReplaceID'::uuid, jsonb_build_object(
-    'seats_total', 50,
-    'title', 'External admission'
-));
-
--- Ticket price making the delisted replace external event paid
-select fx_event_ticket_price_window(:'priceWindowDelistedReplaceID', :'ticketTypeDelistedReplaceID', jsonb_build_object('amount_minor', 5000));
 
 -- ============================================================================
 -- TESTS
@@ -660,43 +241,26 @@ select lives_ok(
         %L::uuid,
         %L::uuid,
         '{
-            "name": "Updated Group",
+            "name": "Slug Clear Group",
             "category_id": "%s",
-            "description": "Updated description",
             "slug_pretty": ""
         }'::jsonb
     )$$,
         :'communityID',
-        :'groupID',
-        :'groupCategory2ID'
+        :'groupSlugClearID',
+        :'groupCategory1ID'
     ),
     'Should clear pretty slug when provided as an empty string'
 );
 
--- Should reject pretty slugs with invalid characters
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Updated Group",
-            "category_id": "%s",
-            "description": "Updated description",
-            "slug_pretty": "Updated Group"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupID',
-        :'groupCategory2ID'
-    ),
-    'OCG01',
-    'Pretty slug must use lowercase ASCII letters, numbers, and hyphens only',
-    'Should reject pretty slugs with invalid characters'
+-- Should store a null pretty slug after clearing it
+select is(
+    (select slug_pretty from "group" where group_id = :'groupSlugClearID'::uuid),
+    null::text,
+    'Should store a null pretty slug after clearing it'
 );
 
--- Should create the expected audit row
+-- Should create the expected audit rows
 select results_eq(
     $$
         select
@@ -708,6 +272,7 @@ select results_eq(
             resource_type,
             resource_id
         from audit_log
+        order by resource_id
     $$,
     format(
         $$
@@ -735,10 +300,33 @@ select results_eq(
         :'groupID',
         :'groupID',
         :'communityID',
-        :'groupID',
-        :'groupID'
+        :'groupSlugClearID',
+        :'groupSlugClearID'
     ),
     'Should create the expected audit rows'
+);
+
+-- Should reject pretty slugs with invalid characters
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Updated Group",
+            "category_id": "%s",
+            "description": "Updated description",
+            "slug_pretty": "Updated Group"
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupID',
+        :'groupCategory2ID'
+    ),
+    'OCG01',
+    'Pretty slug must use lowercase ASCII letters, numbers, and hyphens only',
+    'Should reject pretty slugs with invalid characters'
 );
 
 -- Should convert empty strings to null for nullable fields
@@ -845,384 +433,6 @@ select is(
     'Should handle explicit null values for array fields (tags, photos_urls)'
 );
 
--- Should create the payment recipient audit row when the recipient changes
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With Payment Recipient",
-            "category_id": "%s",
-            "description": "Payment recipient audit coverage",
-            "_payment_validation": {
-                "expected_payment_recipient": null,
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_123",
-                    "seller_display_name": "New Fiscal Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": " acct_123 ",
-                "seller_display_name": " New Fiscal Sponsor "
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'group4ID',
-        :'groupCategory1ID'
-    ),
-    'Should create the payment recipient audit row when the recipient changes'
-);
-
--- Should create both audit rows when the payment recipient changes
-select results_eq(
-    format(
-        $$
-        select
-            action,
-            actor_user_id,
-            actor_username,
-            community_id,
-            group_id,
-            resource_type,
-            resource_id
-        from audit_log
-        where group_id = %L::uuid
-        order by action asc
-    $$,
-        :'group4ID'
-    ),
-    format(
-        $$
-        values
-            (
-                'group_payment_recipient_updated',
-                null::uuid,
-                null::text,
-                %L::uuid,
-                %L::uuid,
-                'group',
-                %L::uuid
-            ),
-            (
-                'group_updated',
-                null::uuid,
-                null::text,
-                %L::uuid,
-                %L::uuid,
-                'group',
-                %L::uuid
-            )
-    $$,
-        :'communityID',
-        :'group4ID',
-        :'group4ID',
-        :'communityID',
-        :'group4ID',
-        :'group4ID'
-    ),
-    'Should create both audit rows when the payment recipient changes'
-);
-
--- Should persist the normalized payment recipient after the update
-select is(
-    (select get_group_full(:'communityID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
-    '{
-        "provider": "stripe",
-        "recipient_id": "acct_123",
-        "seller_display_name": "New Fiscal Sponsor"
-    }'::jsonb,
-    'Should persist the normalized payment recipient after the update'
-);
-
--- Should reject a sponsor swap that invalidates active manual-tax events
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With Payment Recipient",
-            "category_id": "%s",
-            "description": "Payment recipient validation coverage",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_123",
-                    "seller_display_name": "New Fiscal Sponsor"
-                },
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_replacement",
-                    "seller_display_name": "Replacement Fiscal Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_replacement",
-                "seller_display_name": "Replacement Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'group4ID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'fiscal sponsor cannot be replaced while published manual-tax events are upcoming',
-    'Should reject a sponsor swap that invalidates active manual-tax events'
-);
-
--- Should reject a sponsor change validated against stale recipient state
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With Unpublished Ticketed Event",
-            "category_id": "%s",
-            "description": "Unpublished ticketed event coverage",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_stale",
-                    "seller_display_name": "Stale Fiscal Sponsor"
-                },
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_new",
-                    "seller_display_name": "New Fiscal Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_new",
-                "seller_display_name": "New Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'group5ID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'payment configuration changed during provider validation',
-    'Should reject a sponsor change validated against stale recipient state'
-);
-
--- Should reject validation that missed a published automatic-tax event
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With Automatic Tax Event",
-            "category_id": "%s",
-            "description": "Automatic-tax validation freshness coverage",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_automatic",
-                    "seller_display_name": "Existing Fiscal Sponsor"
-                },
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_new",
-                    "seller_display_name": "New Fiscal Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_new",
-                "seller_display_name": "New Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupAutomaticTaxID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'payment configuration changed during provider validation',
-    'Should reject validation that missed a published automatic-tax event'
-);
-
--- Should reject a payment recipient without an attendee-visible seller name
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With Payment Recipient",
-            "category_id": "%s",
-            "description": "Payment recipient validation coverage",
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_missing_name"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'group4ID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'payment recipient account and seller name must be provided together',
-    'Should reject a payment recipient without an attendee-visible seller name'
-);
-
--- Should reject clearing payment recipient when published ticketed events exist
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With Payment Recipient",
-            "category_id": "%s",
-            "description": "Payment recipient audit coverage",
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "   "
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'group4ID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'paid-capable events require a payment recipient',
-    'Should reject clearing payment recipient when published paid-capable events exist'
-);
-
--- Should keep the stored payment recipient after rejecting the clear
-select is(
-    (select get_group_full(:'communityID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
-    '{
-        "provider": "stripe",
-        "recipient_id": "acct_123",
-        "seller_display_name": "New Fiscal Sponsor"
-    }'::jsonb,
-    'Should keep the stored payment recipient after rejecting the clear'
-);
-
--- Should allow clearing payment recipient for a published all-zero event
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With Free Ticketed Event",
-            "category_id": "%s",
-            "description": "Free ticketed event coverage",
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "   "
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'group6ID',
-        :'groupCategory1ID'
-    ),
-    'Should allow clearing payment recipient for a published all-zero event'
-);
-
--- Should clear the stored recipient for a published all-zero event
-select is(
-    (select get_group_full(:'communityID'::uuid, :'group6ID'::uuid)::jsonb->'payment_recipient'),
-    null::jsonb,
-    'Should clear the stored recipient for a published all-zero event'
-);
-
--- Should normalize whitespace-only payment recipient ids to null
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Updated Group",
-            "category_id": "%s",
-            "description": "Updated description",
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "   "
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupID',
-        :'groupCategory1ID'
-    ),
-    'Should normalize whitespace-only payment recipient ids to null'
-);
-
--- Should not persist a whitespace-only payment recipient id
-select is(
-    (select get_group_full(:'communityID'::uuid, :'groupID'::uuid)::jsonb->'payment_recipient'),
-    null::jsonb,
-    'Should not persist a whitespace-only payment recipient id'
-);
-
--- Should allow clearing payment recipient when only unpublished ticketed events exist
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With Unpublished Ticketed Event",
-            "category_id": "%s",
-            "description": "Unpublished ticketed event coverage",
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "   "
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'group5ID',
-        :'groupCategory1ID'
-    ),
-    'Should allow clearing payment recipient when only unpublished ticketed events exist'
-);
-
--- Should clear the stored payment recipient when only unpublished ticketed events exist
-select is(
-    (select get_group_full(:'communityID'::uuid, :'group5ID'::uuid)::jsonb->'payment_recipient'),
-    null::jsonb,
-    'Should clear the stored payment recipient when only unpublished ticketed events exist'
-);
-
--- Should clear draft manual-tax selections after the sponsor changes
-select is(
-    (select manual_tax_rate_ids from event where event_id = :'eventUnpublishedID'::uuid),
-    '{}'::text[],
-    'Should require draft manual-tax events to reselect rates after a sponsor change'
-);
-
 -- Should update parent when the actor can manage the selected parent
 select lives_ok(
     format(
@@ -1231,26 +441,47 @@ select lives_ok(
         %L::uuid,
         %L::uuid,
         '{
-            "name": "Updated Group",
+            "name": "Parent Update Group",
             "category_id": "%s",
-            "description": "Updated description",
             "parent_group_id_present": true,
             "parent_group_id": "%s"
         }'::jsonb
     )$$,
         :'groupAdminID',
         :'communityID',
-        :'groupID',
+        :'groupParentUpdateID',
         :'groupCategory1ID',
         :'parentGroupID'
     ),
     'Should update parent when the actor can manage the selected parent'
 );
 
+-- Should persist the selected parent group
 select is(
-    (select parent_group_id from "group" where group_id = :'groupID'::uuid),
+    (select parent_group_id from "group" where group_id = :'groupParentUpdateID'::uuid),
     :'parentGroupID'::uuid,
     'Should persist the selected parent group'
+);
+
+-- Should record the actor in the parent update audit row
+select results_eq(
+    format(
+        $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            details
+        from audit_log
+        where group_id = %L::uuid
+        $$,
+        :'groupParentUpdateID'
+    ),
+    format(
+        $$ values ('group_updated', %L::uuid, 'update-group-audit-actor'::text, '{}'::jsonb) $$,
+        :'groupAdminID'
+    ),
+    'Should record the actor in the parent update audit row'
 );
 
 -- Should allow unchanged parent values even when the current parent is inactive
@@ -1296,23 +527,23 @@ select lives_ok(
         %L::uuid,
         %L::uuid,
         '{
-            "name": "Updated Group With Cleared Parent",
+            "name": "Clear Parent Group",
             "category_id": "%s",
-            "description": "Updated description",
             "parent_group_id_present": true,
             "parent_group_id": ""
         }'::jsonb
     )$$,
         :'noPermissionUserID',
         :'communityID',
-        :'groupID',
+        :'groupClearParentID',
         :'groupCategory1ID'
     ),
     'Should allow clearing a parent without parent-side permission'
 );
 
+-- Should clear the selected parent group
 select is(
-    (select parent_group_id from "group" where group_id = :'groupID'::uuid),
+    (select parent_group_id from "group" where group_id = :'groupClearParentID'::uuid),
     null::uuid,
     'Should clear the selected parent group'
 );
@@ -1341,1091 +572,6 @@ select throws_ok(
     'OCG01',
     'you must be able to manage the selected parent group',
     'Should reject changing to a parent the actor cannot manage'
-);
-
--- Should allow disabling external payments when no upcoming published external events remain
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Disable Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "external_payments_enabled": false
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupDisableID',
-        :'groupCategory1ID'
-    ),
-    'Should allow disabling external payments when no upcoming published external events remain'
-);
-
--- Should persist the disabled external-payments toggle
-select is(
-    (
-        select external_payments_enabled
-        from "group"
-        where group_id = :'groupDisableID'::uuid
-    ),
-    false,
-    'Should persist the disabled external-payments toggle'
-);
-
--- Should allow enabling external payments when the final country is allowlisted
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Enable Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "external_payments_enabled": true,
-            "external_payments_seller_display_name": "External Payee Co"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupEnableID',
-        :'groupCategory1ID'
-    ),
-    'Should allow enabling external payments when the final country is allowlisted'
-);
-
--- Should persist the enabled external-payments toggle for an allowlisted country
-select is(
-    (
-        select external_payments_enabled
-        from "group"
-        where group_id = :'groupEnableID'::uuid
-    ),
-    true,
-    'Should persist the enabled external-payments toggle for an allowlisted country'
-);
-
--- Should create the external-payments audit row when the toggle changes
-select ok(
-    exists(
-        select 1
-        from audit_log
-        where action = 'group_external_payments_updated'
-        and group_id = :'groupEnableID'::uuid
-        and details = '{"external_payments_enabled": true, "external_payments_seller_display_name": "External Payee Co"}'::jsonb
-    ),
-    'Should create the external-payments audit row when the toggle changes'
-);
-
--- Should reject enabling external payments without the external payee legal name
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Nameless Enable Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "external_payments_enabled": true
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupNamelessEnableID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'external payments require the legal name of the organization collecting payments',
-    'Should reject enabling external payments without the external payee legal name'
-);
-
--- Should keep external payments disabled after rejecting the nameless enable
-select is(
-    (
-        select external_payments_enabled
-        from "group"
-        where group_id = :'groupNamelessEnableID'::uuid
-    ),
-    false,
-    'Should keep external payments disabled after rejecting the nameless enable'
-);
-
--- Should reject clearing the external payee legal name while external payments stay enabled
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Payee Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "external_payments_seller_display_name": "   "
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupPayeeID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'external payments require the legal name of the organization collecting payments',
-    'Should reject clearing the external payee legal name while external payments stay enabled'
-);
-
--- Should keep the stored external payee legal name after rejecting the clear
-select is(
-    (
-        select external_payments_seller_display_name
-        from "group"
-        where group_id = :'groupPayeeID'::uuid
-    ),
-    'External Payee Co',
-    'Should keep the stored external payee legal name after rejecting the clear'
-);
-
--- Should rename the external payee legal name while external payments stay enabled
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Payee Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "external_payments_enabled": true,
-            "external_payments_seller_display_name": "  Renamed Payee Ltd  "
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupPayeeID',
-        :'groupCategory1ID'
-    ),
-    'Should rename the external payee legal name while external payments stay enabled'
-);
-
--- Should persist the trimmed external payee legal name
-select is(
-    (
-        select external_payments_seller_display_name
-        from "group"
-        where group_id = :'groupPayeeID'::uuid
-    ),
-    'Renamed Payee Ltd',
-    'Should persist the trimmed external payee legal name'
-);
-
--- Should create the external-payments audit row when only the payee legal name changes
-select ok(
-    exists(
-        select 1
-        from audit_log
-        where action = 'group_external_payments_updated'
-        and group_id = :'groupPayeeID'::uuid
-        and details = '{"external_payments_enabled": true, "external_payments_seller_display_name": "Renamed Payee Ltd"}'::jsonb
-    ),
-    'Should create the external-payments audit row when only the payee legal name changes'
-);
-
--- Should accept a partial payload that omits the external payee legal name
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Payee Group Updated",
-            "category_id": "%s"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupPayeeID',
-        :'groupCategory1ID'
-    ),
-    'Should accept a partial payload that omits the external payee legal name'
-);
-
--- Should preserve the external payee legal name when a partial payload omits it
-select is(
-    (
-        select external_payments_seller_display_name
-        from "group"
-        where group_id = :'groupPayeeID'::uuid
-    ),
-    'Renamed Payee Ltd',
-    'Should preserve the external payee legal name when a partial payload omits it'
-);
-
--- Should clear the external payee legal name when disabling external payments
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Payee Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "external_payments_enabled": false,
-            "external_payments_seller_display_name": ""
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupPayeeID',
-        :'groupCategory1ID'
-    ),
-    'Should clear the external payee legal name when disabling external payments'
-);
-
--- Should persist the disabled toggle and cleared payee legal name together
-select is(
-    (
-        select jsonb_build_object(
-            'external_payments_enabled', external_payments_enabled,
-            'external_payments_seller_display_name', external_payments_seller_display_name
-        )
-        from "group"
-        where group_id = :'groupPayeeID'::uuid
-    ),
-    '{"external_payments_enabled": false, "external_payments_seller_display_name": null}'::jsonb,
-    'Should persist the disabled toggle and cleared payee legal name together'
-);
-
--- Should enable external payments when the same update moves onto the allowlist
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Final Country Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "country_name": "Korea",
-            "external_payments_enabled": true,
-            "external_payments_seller_display_name": "External Payee Co"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupFinalCountryID',
-        :'groupCategory1ID'
-    ),
-    'Should enable external payments when the same update moves onto the allowlist'
-);
-
--- Should persist the allowlisted country and enabled toggle together
-select is(
-    (
-        select jsonb_build_object(
-            'country_code', country_code,
-            'external_payments_enabled', external_payments_enabled
-        )
-        from "group"
-        where group_id = :'groupFinalCountryID'::uuid
-    ),
-    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
-    'Should persist the allowlisted country and enabled toggle together'
-);
-
--- Should allow leaving the allowlist when the same update disables external payments
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Move Country Disable Group",
-            "category_id": "%s",
-            "country_code": "US",
-            "country_name": "United States",
-            "external_payments_enabled": false
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupMoveCountryDisableID',
-        :'groupCategory1ID'
-    ),
-    'Should allow leaving the allowlist when the same update disables external payments'
-);
-
--- Should reject changing country off the allowlist while external payments stay enabled
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Move Country Group",
-            "category_id": "%s",
-            "country_code": "US",
-            "country_name": "United States"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupMoveCountryID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'external payments are not available for this group country',
-    'Should reject changing country off the allowlist while external payments stay enabled'
-);
-
--- Should keep the allowlisted country after rejecting the country move
-select is(
-    (
-        select jsonb_build_object(
-            'country_code', country_code,
-            'external_payments_enabled', external_payments_enabled
-        )
-        from "group"
-        where group_id = :'groupMoveCountryID'::uuid
-    ),
-    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
-    'Should keep the allowlisted country after rejecting the country move'
-);
-
--- Should accept a partial payload that omits country_code while the toggle stays on
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Move Country Group",
-            "category_id": "%s"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupMoveCountryID',
-        :'groupCategory1ID'
-    ),
-    'Should accept a partial payload that omits country_code while the toggle stays on'
-);
-
--- Should preserve country when a partial payload omits country_code while the toggle stays on
-select is(
-    (
-        select jsonb_build_object(
-            'country_code', country_code,
-            'external_payments_enabled', external_payments_enabled
-        )
-        from "group"
-        where group_id = :'groupMoveCountryID'::uuid
-    ),
-    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
-    'Should preserve country when a partial payload omits country_code while the toggle stays on'
-);
-
--- Should reject enabling external payments when the country is not allowlisted
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Reject Enable Group",
-            "category_id": "%s",
-            "country_code": "US",
-            "external_payments_enabled": true,
-            "external_payments_seller_display_name": "External Payee Co"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupRejectEnableID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'external payments are not available for this group country',
-    'Should reject enabling external payments when the country is not allowlisted'
-);
-
--- Should reject enabling external payments while published external events are held abroad
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Enable Abroad Group",
-            "category_id": "%s",
-            "country_code": "JP",
-            "external_payments_enabled": true,
-            "external_payments_seller_display_name": "External Payee Co"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupEnableAbroadID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'published external paid events require a venue in the group country',
-    'Should reject enabling external payments while published external events are held abroad'
-);
-
--- Should reject moving the group country away from upcoming external event venues
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Venue Country Group",
-            "category_id": "%s",
-            "country_code": "JP",
-            "country_name": "Japan"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupVenueCountryID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'published external paid events require a venue in the group country',
-    'Should reject moving the group country away from upcoming external event venues'
-);
-
--- Should keep the group country after rejecting the move away from event venues
-select is(
-    (
-        select jsonb_build_object(
-            'country_code', country_code,
-            'external_payments_enabled', external_payments_enabled
-        )
-        from "group"
-        where group_id = :'groupVenueCountryID'::uuid
-    ),
-    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
-    'Should keep the group country after rejecting the move away from event venues'
-);
-
--- Should reject disabling external payments while published external paid events are upcoming
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Venue Country Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "external_payments_enabled": false
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupVenueCountryID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'external payments cannot be disabled while published external paid events are upcoming',
-    'Should reject disabling external payments while published external paid events are upcoming'
-);
-
--- Should reject moving the group country away from event venues when the same update disables external payments
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Venue Country Group",
-            "category_id": "%s",
-            "country_code": "JP",
-            "country_name": "Japan",
-            "external_payments_enabled": false
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupVenueCountryID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'external payments cannot be disabled while published external paid events are upcoming',
-    'Should reject moving the group country away from event venues when the same update disables external payments'
-);
-
--- Should keep the country and enabled toggle after rejecting the disable
-select is(
-    (
-        select jsonb_build_object(
-            'country_code', country_code,
-            'external_payments_enabled', external_payments_enabled
-        )
-        from "group"
-        where group_id = :'groupVenueCountryID'::uuid
-    ),
-    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
-    'Should keep the country and enabled toggle after rejecting the disable'
-);
-
--- Should allow unrelated group updates after the country leaves the allowlist
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Delisted Group Updated",
-            "category_id": "%s",
-            "country_code": "US",
-            "country_name": "United States"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupDelistedID',
-        :'groupCategory1ID'
-    ),
-    'Should allow unrelated group updates after the country leaves the allowlist'
-);
-
--- Should keep the toggle enabled after an unrelated save on a delisted country
-select is(
-    (
-        select jsonb_build_object(
-            'external_payments_enabled', external_payments_enabled,
-            'name', name
-        )
-        from "group"
-        where group_id = :'groupDelistedID'::uuid
-    ),
-    '{"external_payments_enabled": true, "name": "External Delisted Group Updated"}'::jsonb,
-    'Should keep the toggle enabled after an unrelated save on a delisted country'
-);
-
--- Should allow disabling external payments on a delisted country despite upcoming external events
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Delisted Group Updated",
-            "category_id": "%s",
-            "country_code": "US",
-            "country_name": "United States",
-            "external_payments_enabled": false
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupDelistedID',
-        :'groupCategory1ID'
-    ),
-    'Should allow disabling external payments on a delisted country despite upcoming external events'
-);
-
--- Should persist the disabled toggle for the delisted country
-select is(
-    (
-        select external_payments_enabled
-        from "group"
-        where group_id = :'groupDelistedID'::uuid
-    ),
-    false,
-    'Should persist the disabled toggle for the delisted country'
-);
-
--- Should reject replacing the fiscal sponsor while the group country is allowlisted
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With External Paid Event",
-            "category_id": "%s",
-            "description": "External paid event recipient coverage",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_external",
-                    "seller_display_name": "External Event Fiscal Sponsor"
-                },
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_external_replacement",
-                    "seller_display_name": "Replacement External Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_external_replacement",
-                "seller_display_name": "Replacement External Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupExternalPaidID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'stripe connected account cannot be added or changed for this group country',
-    'Should reject replacing the fiscal sponsor while the group country is allowlisted'
-);
-
--- Should keep the stored fiscal sponsor after rejecting the allowlisted replacement
-select is(
-    (select get_group_full(:'communityID'::uuid, :'groupExternalPaidID'::uuid)::jsonb->'payment_recipient'),
-    '{
-        "provider": "stripe",
-        "recipient_id": "acct_external",
-        "seller_display_name": "External Event Fiscal Sponsor"
-    }'::jsonb,
-    'Should keep the stored fiscal sponsor after rejecting the allowlisted replacement'
-);
-
--- Should clear the fiscal sponsor when only external paid events are published
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Group With External Paid Event",
-            "category_id": "%s",
-            "description": "External paid event recipient coverage",
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "   "
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupExternalPaidID',
-        :'groupCategory1ID'
-    ),
-    'Should clear the fiscal sponsor when only external paid events are published'
-);
-
--- Should persist a cleared recipient for an external-only group
-select is(
-    (select get_group_full(:'communityID'::uuid, :'groupExternalPaidID'::uuid)::jsonb->'payment_recipient'),
-    null::jsonb,
-    'Should persist a cleared recipient for an external-only group'
-);
-
--- Should replace the fiscal sponsor when the enabled group country is delisted
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "External Delisted Replace Group",
-            "category_id": "%s",
-            "country_code": "BR",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_delisted",
-                    "seller_display_name": "Delisted Fiscal Sponsor"
-                },
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_delisted_replacement",
-                    "seller_display_name": "Replacement Delisted Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_delisted_replacement",
-                "seller_display_name": "Replacement Delisted Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupExternalDelistedID',
-        :'groupCategory1ID'
-    ),
-    'Should replace the fiscal sponsor when the enabled group country is delisted'
-);
-
--- Should persist the replaced fiscal sponsor for a delisted country
-select is(
-    (select get_group_full(:'communityID'::uuid, :'groupExternalDelistedID'::uuid)::jsonb->'payment_recipient'),
-    '{
-        "provider": "stripe",
-        "recipient_id": "acct_delisted_replacement",
-        "seller_display_name": "Replacement Delisted Sponsor"
-    }'::jsonb,
-    'Should persist the replaced fiscal sponsor for a delisted country'
-);
-
--- Should reject a first fiscal sponsor for an allowlisted country before checking the validation snapshot
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Blocked First Sponsor Group",
-            "category_id": "%s",
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_blocked_first",
-                "seller_display_name": "Blocked First Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupBlockedFirstID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'stripe connected account cannot be added or changed for this group country',
-    'Should reject a first fiscal sponsor for an allowlisted country before checking the validation snapshot'
-);
-
--- Should reject a first fiscal sponsor for an allowlisted country despite a valid validation snapshot
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Blocked First Sponsor Group",
-            "category_id": "%s",
-            "_payment_validation": {
-                "expected_payment_recipient": null,
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_blocked_first",
-                    "seller_display_name": "Blocked First Fiscal Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_blocked_first",
-                "seller_display_name": "Blocked First Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupBlockedFirstID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'stripe connected account cannot be added or changed for this group country',
-    'Should reject a first fiscal sponsor for an allowlisted country despite a valid validation snapshot'
-);
-
--- Should not record audit rows after rejecting a first fiscal sponsor
-select is(
-    (select count(*) from audit_log where group_id = :'groupBlockedFirstID'::uuid),
-    0::bigint,
-    'Should not record audit rows after rejecting a first fiscal sponsor'
-);
-
--- Should reject replacing the fiscal sponsor while the allowlisted group keeps external payments off
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Blocked Replace Sponsor Group",
-            "category_id": "%s",
-            "external_payments_enabled": false,
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_blocked_current",
-                    "seller_display_name": "Current Blocked Fiscal Sponsor"
-                },
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_blocked_replacement",
-                    "seller_display_name": "Replacement Blocked Fiscal Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_blocked_replacement",
-                "seller_display_name": "Replacement Blocked Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupBlockedReplaceID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'stripe connected account cannot be added or changed for this group country',
-    'Should reject replacing the fiscal sponsor while the allowlisted group keeps external payments off'
-);
-
--- Should allow renaming the stored fiscal sponsor for an allowlisted country without provider validation
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Blocked Replace Sponsor Group",
-            "category_id": "%s",
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_blocked_current",
-                "seller_display_name": "Renamed Blocked Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupBlockedReplaceID',
-        :'groupCategory1ID'
-    ),
-    'Should allow renaming the stored fiscal sponsor for an allowlisted country without provider validation'
-);
-
--- Should persist the renamed fiscal sponsor for an allowlisted country
-select is(
-    (select get_group_full(:'communityID'::uuid, :'groupBlockedReplaceID'::uuid)::jsonb->'payment_recipient'),
-    '{
-        "provider": "stripe",
-        "recipient_id": "acct_blocked_current",
-        "seller_display_name": "Renamed Blocked Fiscal Sponsor"
-    }'::jsonb,
-    'Should persist the renamed fiscal sponsor for an allowlisted country'
-);
-
--- Should record the payment recipient audit row after renaming the fiscal sponsor
-select ok(
-    exists(
-        select 1
-        from audit_log
-        where action = 'group_payment_recipient_updated'
-        and group_id = :'groupBlockedReplaceID'::uuid
-    ),
-    'Should record the payment recipient audit row after renaming the fiscal sponsor'
-);
-
--- Should allow clearing the stored fiscal sponsor for an allowlisted country
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Blocked Re-add Sponsor Group",
-            "category_id": "%s",
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "",
-                "seller_display_name": ""
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupBlockedReaddID',
-        :'groupCategory1ID'
-    ),
-    'Should allow clearing the stored fiscal sponsor for an allowlisted country'
-);
-
--- Should persist the cleared fiscal sponsor for an allowlisted country
-select is(
-    (select get_group_full(:'communityID'::uuid, :'groupBlockedReaddID'::uuid)::jsonb->'payment_recipient'),
-    null::jsonb,
-    'Should persist the cleared fiscal sponsor for an allowlisted country'
-);
-
--- Should reject re-adding the cleared fiscal sponsor while the country stays allowlisted
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Blocked Re-add Sponsor Group",
-            "category_id": "%s",
-            "_payment_validation": {
-                "expected_payment_recipient": null,
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_blocked_readd",
-                    "seller_display_name": "Re-add Fiscal Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_blocked_readd",
-                "seller_display_name": "Re-add Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupBlockedReaddID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'stripe connected account cannot be added or changed for this group country',
-    'Should reject re-adding the cleared fiscal sponsor while the country stays allowlisted'
-);
-
--- Should reject adding a fiscal sponsor when the same update moves the group onto the allowlist
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Move Onto Allowlist Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "country_name": "Korea",
-            "_payment_validation": {
-                "expected_payment_recipient": null,
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_move_onto",
-                    "seller_display_name": "Move Onto Fiscal Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_move_onto",
-                "seller_display_name": "Move Onto Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupMoveOntoAllowlistID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'stripe connected account cannot be added or changed for this group country',
-    'Should reject adding a fiscal sponsor when the same update moves the group onto the allowlist'
-);
-
--- Should allow adding a fiscal sponsor when the same update moves the group off the allowlist
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Move Off Allowlist Group",
-            "category_id": "%s",
-            "country_code": "US",
-            "country_name": "United States",
-            "_payment_validation": {
-                "expected_payment_recipient": null,
-                "require_automatic_tax": false,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_move_off",
-                    "seller_display_name": "Move Off Fiscal Sponsor"
-                }
-            },
-            "payment_recipient": {
-                "provider": "stripe",
-                "recipient_id": "acct_move_off",
-                "seller_display_name": "Move Off Fiscal Sponsor"
-            }
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupMoveOffAllowlistID',
-        :'groupCategory1ID'
-    ),
-    'Should allow adding a fiscal sponsor when the same update moves the group off the allowlist'
-);
-
--- Should persist the new country and fiscal sponsor together after leaving the allowlist
-select is(
-    (
-        select jsonb_build_object(
-            'country_code', country_code,
-            'payment_recipient', payment_recipient
-        )
-        from "group"
-        where group_id = :'groupMoveOffAllowlistID'::uuid
-    ),
-    '{
-        "country_code": "US",
-        "payment_recipient": {
-            "provider": "stripe",
-            "recipient_id": "acct_move_off",
-            "seller_display_name": "Move Off Fiscal Sponsor"
-        }
-    }'::jsonb,
-    'Should persist the new country and fiscal sponsor together after leaving the allowlist'
-);
-
--- Should allow moving the group onto the allowlist while keeping the stored fiscal sponsor
-select lives_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{
-            "name": "Move Keep Recipient Group",
-            "category_id": "%s",
-            "country_code": "KR",
-            "country_name": "Korea"
-        }'::jsonb
-    )$$,
-        :'communityID',
-        :'groupMoveKeepRecipientID',
-        :'groupCategory1ID'
-    ),
-    'Should allow moving the group onto the allowlist while keeping the stored fiscal sponsor'
-);
-
--- Should persist the allowlisted country and the kept fiscal sponsor together
-select is(
-    (
-        select jsonb_build_object(
-            'country_code', country_code,
-            'payment_recipient', payment_recipient
-        )
-        from "group"
-        where group_id = :'groupMoveKeepRecipientID'::uuid
-    ),
-    '{
-        "country_code": "KR",
-        "payment_recipient": {
-            "provider": "stripe",
-            "recipient_id": "acct_move_keep",
-            "seller_display_name": "Kept Fiscal Sponsor"
-        }
-    }'::jsonb,
-    'Should persist the allowlisted country and the kept fiscal sponsor together'
 );
 
 -- Should accept submitted UTM values
@@ -2533,25 +679,6 @@ select throws_ok(
     'Should reject extra mediums that are accepted by default'
 );
 
--- Should keep the UTM values after rejecting extra default mediums
-select is(
-    (
-        select jsonb_build_object(
-            'utm_campaigns', utm_campaigns,
-            'utm_mediums', utm_mediums,
-            'utm_sources', utm_sources
-        )
-        from "group"
-        where group_id = :'groupUtmDefaultMediumID'::uuid
-    ),
-    '{
-        "utm_campaigns": ["old-campaign"],
-        "utm_mediums": ["podcast"],
-        "utm_sources": ["old-source"]
-    }'::jsonb,
-    'Should keep the UTM values after rejecting extra default mediums'
-);
-
 -- Should accept a partial payload that does not address UTM values
 select lives_ok(
     format(
@@ -2589,7 +716,6 @@ select is(
     }'::jsonb,
     'Should preserve the UTM values when a partial payload does not address them'
 );
-
 
 -- ============================================================================
 -- CLEANUP

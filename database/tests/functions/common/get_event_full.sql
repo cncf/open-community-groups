@@ -184,26 +184,8 @@ select fx_group(:'groupExternalNamelessID', :'communityID', :'groupCategoryID', 
 -- Group (inactive)
 select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
--- Event Series
-insert into event_series (
-    event_series_id,
-    group_id,
-    recurrence_additional_occurrences,
-    recurrence_anchor_starts_at,
-    recurrence_pattern,
-    timezone,
-
-    created_by
-) values (
-    :'eventSeriesID',
-    :'groupID',
-    1,
-    '2024-06-15 08:00:00+00',
-    'weekly',
-    'America/New_York',
-
-    :'user2ID'
-);
+-- Event series linking the occurrences
+select fx_event_series(:'eventSeriesID', :'groupID');
 
 -- Event
 insert into event (
@@ -1328,21 +1310,19 @@ select is(
 
 -- Should include configured registration window timestamps in full event payloads
 select is(
-    jsonb_build_object(
-        'registration_ends_at', (
-            get_event_full(
+    (
+        with payload as (
+            select get_event_full(
                 :'communityID'::uuid,
                 :'groupID'::uuid,
                 :'eventUnpublishedID'::uuid
-            )::jsonb
-        )->'registration_ends_at',
-        'registration_starts_at', (
-            get_event_full(
-                :'communityID'::uuid,
-                :'groupID'::uuid,
-                :'eventUnpublishedID'::uuid
-            )::jsonb
-        )->'registration_starts_at'
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'registration_ends_at', event_json->'registration_ends_at',
+            'registration_starts_at', event_json->'registration_starts_at'
+        )
+        from payload
     ),
     jsonb_build_object(
         'registration_ends_at', floor(extract(epoch from '2024-07-14 09:00:00+00'::timestamptz)),
@@ -1353,28 +1333,20 @@ select is(
 
 -- Should include normalized ticketing fields in the full event payload
 select is(
-    jsonb_build_object(
-        'discount_codes', (
-            get_event_full(
+    (
+        with payload as (
+            select get_event_full(
                 :'communityID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
-            )::jsonb
-        )->'discount_codes',
-        'payment_currency_code', (
-            get_event_full(
-                :'communityID'::uuid,
-                :'groupID'::uuid,
-                :'eventPaidID'::uuid
-            )::jsonb
-        )->'payment_currency_code',
-        'ticket_types', (
-            get_event_full(
-                :'communityID'::uuid,
-                :'groupID'::uuid,
-                :'eventPaidID'::uuid
-            )::jsonb
-        )->'ticket_types'
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'discount_codes', event_json->'discount_codes',
+            'payment_currency_code', event_json->'payment_currency_code',
+            'ticket_types', event_json->'ticket_types'
+        )
+        from payload
     ),
     format(
         '{

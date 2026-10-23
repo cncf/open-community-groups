@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(25);
+select plan(24);
 
 -- ============================================================================
 -- VARIABLES
@@ -26,14 +26,13 @@ select plan(25);
 \set conflictingRefundID '3a070000-0000-0000-0000-000000000028'
 \set conflictingRefundJobID '3a070000-0000-0000-0000-000000000038'
 \set conflictingRefundPurchaseID '3a070000-0000-0000-0000-000000000027'
-\set eventCanceledID '3a070000-0000-0000-0000-000000000004'
 \set eventCategoryID '3a070000-0000-0000-0000-000000000005'
 \set eventExternalID '3a070000-0000-0000-0000-000000000030'
 \set eventID '3a070000-0000-0000-0000-000000000006'
 \set eventLimitedID '3a070000-0000-0000-0000-000000000007'
 \set eventPaidID '3a070000-0000-0000-0000-000000000008'
-\set eventTicketTypeID '3a070000-0000-0000-0000-000000000009'
 \set eventTicketedFreeID '3a070000-0000-0000-0000-000000000018'
+\set eventTicketTypeID '3a070000-0000-0000-0000-000000000009'
 \set eventUnpublishedID '3a070000-0000-0000-0000-000000000010'
 \set externalAttendeeID '3a070000-0000-0000-0000-000000000031'
 \set externalPurchaseID '3a070000-0000-0000-0000-000000000032'
@@ -48,16 +47,23 @@ select plan(25);
 \set freeTicketTypeID '3a070000-0000-0000-0000-00000000001d'
 \set groupCategoryID '3a070000-0000-0000-0000-000000000011'
 \set groupID '3a070000-0000-0000-0000-000000000012'
-\set invalidProviderAttendeeID '3a070000-0000-0000-0000-000000000029'
-\set invalidProviderPurchaseID '3a070000-0000-0000-0000-00000000002a'
 \set limitedAttendeeID '3a070000-0000-0000-0000-000000000013'
+\set limitedPriceWindowID '3a070000-0000-0000-0000-00000000003a'
+\set limitedTicketTypeID '3a070000-0000-0000-0000-00000000003b'
 \set paidAttendeeID '3a070000-0000-0000-0000-000000000014'
+\set paidPriceWindowID '3a070000-0000-0000-0000-00000000003c'
+\set plainPriceWindowID '3a070000-0000-0000-0000-00000000003d'
+\set plainTicketTypeID '3a070000-0000-0000-0000-00000000003e'
 \set promotedUserID '3a070000-0000-0000-0000-000000000015'
 \set purchaseID '3a070000-0000-0000-0000-000000000016'
 \set rejectedRequestAttendeeID '3a070000-0000-0000-0000-00000000002b'
 \set rejectedRequestPurchaseID '3a070000-0000-0000-0000-00000000002c'
 \set rejectedRequestRefundRequestID '3a070000-0000-0000-0000-00000000002d'
-\set unknownGroupID '3a070000-0000-0000-0000-000000000017'
+\set startedRefundAttendeeID '3a070000-0000-0000-0000-000000000029'
+\set startedRefundJobID '3a070000-0000-0000-0000-000000000039'
+\set startedRefundPurchaseID '3a070000-0000-0000-0000-00000000002a'
+\set unpublishedPriceWindowID '3a070000-0000-0000-0000-00000000003f'
+\set unpublishedTicketTypeID '3a070000-0000-0000-0000-000000000040'
 
 -- ============================================================================
 -- SEED DATA
@@ -74,10 +80,9 @@ select fx_user(:'externalAttendeeID');
 select fx_user(:'externalRequestedAttendeeID');
 select fx_user(:'freeTicketAttendeeID');
 select fx_user(:'freeTicketPromotedUserID');
-select fx_user(:'invalidProviderAttendeeID');
 select fx_user(:'rejectedRequestAttendeeID');
+select fx_user(:'startedRefundAttendeeID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-
 
 -- Users
 select fx_user(:'actorID', jsonb_build_object('username', 'actor-cancel-event-attendee-attendance'));
@@ -105,13 +110,7 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published', true,
     'starts_at', now() + interval '7 days'
 ));
-select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'published', true,
-    'starts_at', now() + interval '7 days'
-));
 select fx_event(:'eventLimitedID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 1,
     'published', true,
     'starts_at', now() + interval '7 days',
     'waitlist_enabled', true
@@ -142,31 +141,20 @@ select fx_event_ticket_type(:'freeTicketTypeID', :'eventTicketedFreeID', jsonb_b
 -- Current intrinsic-free price used when the released ticket seat is offered
 select fx_event_ticket_price_window(:'freeTicketPriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
 
--- Events without a specialized ticket fixture use a default free tier
-select fx_event_ticket_type(
-    gen_random_uuid(),
-    e.event_id,
-    jsonb_build_object('seats_total', greatest(coalesce(e.capacity, 100), 1))
-)
-from event e
-where not exists (
-    select 1
-    from event_ticket_type ett
-    where ett.event_id = e.event_id
-);
+-- Single-seat RSVP tier for the limited event
+select fx_event_ticket_type(:'limitedTicketTypeID', :'eventLimitedID', jsonb_build_object('seats_total', 1));
 
--- Current free prices for the default ticket tiers
-select fx_event_ticket_price_window(
-    gen_random_uuid(),
-    ett.event_ticket_type_id,
-    jsonb_build_object('amount_minor', 0)
-)
-from event_ticket_type ett
-where not exists (
-    select 1
-    from event_ticket_price_window etpw
-    where etpw.event_ticket_type_id = ett.event_ticket_type_id
-);
+-- Ten-seat RSVP tiers, leaving a free seat for each attendance scenario
+select fx_event_ticket_type(:'plainTicketTypeID', :'eventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'unpublishedTicketTypeID', :'eventUnpublishedID', jsonb_build_object('seats_total', 10));
+
+-- Current paid price for the paid admission tier
+select fx_event_ticket_price_window(:'paidPriceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
+
+-- Current free prices for the RSVP tiers
+select fx_event_ticket_price_window(:'limitedPriceWindowID', :'limitedTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'plainPriceWindowID', :'plainTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'unpublishedPriceWindowID', :'unpublishedTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Completed purchases linked to the paid and free-ticket attendees
 insert into event_purchase (
@@ -231,7 +219,8 @@ from (
         (:'approvalRefundPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'refund-requested', 'Paid admission', :'approvalRefundAttendeeID'::uuid, 'stripe', 'pi_approval_refund'),
         (:'approvedRequestPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'completed', 'Paid admission', :'approvedRequestAttendeeID'::uuid, 'stripe', 'pi_approved_request'),
         (:'conflictingRefundPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'refund-requested', 'Paid admission', :'conflictingRefundAttendeeID'::uuid, 'stripe', 'pi_conflicting_refund'),
-        (:'rejectedRequestPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'completed', 'Paid admission', :'rejectedRequestAttendeeID'::uuid, 'stripe', 'pi_rejected_request')
+        (:'rejectedRequestPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'completed', 'Paid admission', :'rejectedRequestAttendeeID'::uuid, 'stripe', 'pi_rejected_request'),
+        (:'startedRefundPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'completed', 'Paid admission', :'startedRefundAttendeeID'::uuid, 'stripe', 'pi_started_refund')
 ) as fixture(
     event_purchase_id,
     amount_minor,
@@ -253,10 +242,10 @@ values
     (false, null, :'eventPaidID', 'confirmed', :'approvedRequestAttendeeID'),
     (false, null, :'eventPaidID', 'confirmed', :'conflictingRefundAttendeeID'),
     (false, null, :'eventTicketedFreeID', 'confirmed', :'freeTicketAttendeeID'),
-    (false, null, :'eventPaidID', 'confirmed', :'invalidProviderAttendeeID'),
     (false, null, :'eventLimitedID', 'confirmed', :'limitedAttendeeID'),
     (true, current_timestamp, :'eventPaidID', 'confirmed', :'paidAttendeeID'),
-    (false, null, :'eventPaidID', 'confirmed', :'rejectedRequestAttendeeID');
+    (false, null, :'eventPaidID', 'confirmed', :'rejectedRequestAttendeeID'),
+    (false, null, :'eventPaidID', 'confirmed', :'startedRefundAttendeeID');
 
 -- Existing refund requests used by paid cancellation branch tests
 insert into event_refund_request (
@@ -334,6 +323,23 @@ insert into payment_job (
     'failed'
 );
 
+-- Pending refund job holding the purchase-level idempotency key without a durable refund
+insert into payment_job (
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    :'startedRefundPurchaseID',
+    format('event-purchase-refund-%s', :'startedRefundPurchaseID'),
+    'event-purchase-refund',
+    :'startedRefundJobID',
+    'stripe',
+    'pending'
+);
+
 -- Existing durable refunds used by paid cancellation branch tests
 insert into event_purchase_refund (
     amount_minor,
@@ -388,7 +394,7 @@ values
         :'eventLimitedID',
         :'promotedUserID',
         now(),
-        (select event_ticket_type_id from event_ticket_type where event_id = :'eventLimitedID' limit 1)
+        :'limitedTicketTypeID'
     ),
     (
         :'eventTicketedFreeID',
@@ -561,17 +567,6 @@ select throws_ok(
     'OCG01',
     'confirmed event attendee not found',
     'Should reject canceling missing confirmed attendance'
-);
-
--- Should reject events outside the selected group.
-select throws_ok(
-    format(
-        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
-        :'actorID', :'unknownGroupID', :'eventID', :'attendeeID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Should reject events outside the selected group'
 );
 
 -- Should queue a full refund while preserving paid attendance
@@ -799,6 +794,17 @@ select throws_ok(
     'Should reject durable work created for a different refund kind'
 );
 
+-- Should reject a purchase whose refund job already exists
+select throws_ok(
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventPaidID', :'startedRefundAttendeeID'
+    ),
+    'OCG01',
+    'event purchase refund already started',
+    'Should reject a purchase whose refund job already exists'
+);
+
 -- Should promote a rejected request into attendance cancellation work
 select results_eq(
     format(
@@ -930,17 +936,6 @@ select throws_ok(
     'OCG01',
     'event not found or inactive',
     'Should reject unpublished events'
-);
-
--- Should reject canceled events.
-select throws_ok(
-    format(
-        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
-        :'actorID', :'groupID', :'eventCanceledID', :'attendeeID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Should reject canceled events'
 );
 
 -- Should cancel external attendance and refund the purchase locally

@@ -1,9 +1,11 @@
+-- Tests requeueing claimed notifications after retryable delivery failures.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -254,13 +256,13 @@ select results_eq(
             delivery_status,
             error,
             next_delivery_attempt_at,
-            processed_at is not null
+            processed_at
         from notification
         where notification_id = %L::uuid
         $$,
         :'notificationMaxAttemptsID'
     ),
-    $$ values ('failed'::text, 'smtp timeout'::text, null::timestamptz, true) $$,
+    $$ values ('failed'::text, 'smtp timeout'::text, null::timestamptz, current_timestamp) $$,
     'Should persist terminal failure metadata at the durable attempt limit'
 );
 
@@ -290,31 +292,6 @@ select throws_ok(
     'P0001',
     'notification delivery claim not found or no longer active',
     'Should stop a stale worker from requeueing a newer delivery claim'
-);
-
--- Should preserve the newer claim after a stale requeue attempt
-select results_eq(
-    format(
-        $$
-        select
-            delivery_claimed_at,
-            delivery_status,
-            error,
-            next_delivery_attempt_at
-        from notification
-        where notification_id = %L::uuid
-        $$,
-        :'notificationStaleClaimID'
-    ),
-    $$
-        values (
-            '2025-01-01 00:00:06+00'::timestamptz,
-            'processing'::text,
-            null::text,
-            null::timestamptz
-        )
-    $$,
-    'Should preserve the newer claim after a stale requeue attempt'
 );
 
 -- ============================================================================

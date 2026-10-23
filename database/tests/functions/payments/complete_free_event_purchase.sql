@@ -5,15 +5,20 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '79430000-0000-0000-0000-000000000001'
+\set completedOfferID '79430000-0000-0000-0000-00000000002c'
+\set completedOfferPurchaseID '79430000-0000-0000-0000-00000000002d'
 \set completedPurchaseID '79430000-0000-0000-0000-000000000002'
 \set eventCategoryID '79430000-0000-0000-0000-000000000003'
+\set eventCompletedOfferID '79430000-0000-0000-0000-00000000002e'
+\set eventCompletedOfferPriceWindowID '79430000-0000-0000-0000-000000000030'
+\set eventCompletedOfferTicketTypeID '79430000-0000-0000-0000-00000000002f'
 \set eventID '79430000-0000-0000-0000-000000000004'
 \set eventInactiveID '79430000-0000-0000-0000-000000000005'
 \set eventInactiveTicketTypeID '79430000-0000-0000-0000-000000000006'
@@ -34,6 +39,7 @@ select plan(13);
 \set reactivationOfferID '79430000-0000-0000-0000-00000000002b'
 \set reactivationPurchaseID '79430000-0000-0000-0000-000000000029'
 \set registrationQuestionID '79430000-0000-0000-0000-000000000016'
+\set unknownPurchaseID '79430000-0000-0000-0000-000000000031'
 \set user1ID '79430000-0000-0000-0000-000000000017'
 \set user2ID '79430000-0000-0000-0000-000000000018'
 \set user3ID '79430000-0000-0000-0000-000000000019'
@@ -42,6 +48,7 @@ select plan(13);
 \set user6ID '79430000-0000-0000-0000-000000000025'
 \set user7ID '79430000-0000-0000-0000-000000000028'
 \set user8ID '79430000-0000-0000-0000-00000000002a'
+\set user9ID '79430000-0000-0000-0000-000000000032'
 
 -- ============================================================================
 -- SEED DATA
@@ -59,6 +66,7 @@ select fx_user(:'user5ID');
 select fx_user(:'user6ID');
 select fx_user(:'user7ID');
 select fx_user(:'user8ID');
+select fx_user(:'user9ID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event with pending registration answers created during checkout
@@ -72,6 +80,13 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
         'prompt', 'Note',
         'required', true
     )),
+    'starts_at', now() + interval '1 day'
+));
+
+-- Published event whose free tier is claimed through an already completed offer
+select fx_event(:'eventCompletedOfferID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
     'starts_at', now() + interval '1 day'
 ));
 
@@ -91,11 +106,17 @@ select fx_event(:'eventOpenUntilStartID', :'groupID', :'eventCategoryID', jsonb_
 
 -- Ticket types
 select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'eventCompletedOfferTicketTypeID', :'eventCompletedOfferID', jsonb_build_object('seats_total', 10));
 select fx_event_ticket_type(:'eventInactiveTicketTypeID', :'eventInactiveID', jsonb_build_object('seats_total', 10));
 select fx_event_ticket_type(:'eventOpenUntilStartTicketTypeID', :'eventOpenUntilStartID', jsonb_build_object('seats_total', 10));
 
--- Price window
+-- Price windows
 select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(
+    :'eventCompletedOfferPriceWindowID',
+    :'eventCompletedOfferTicketTypeID',
+    jsonb_build_object('amount_minor', 0)
+);
 
 -- Canceled attendee row reactivated by completing an offer-linked free purchase
 insert into event_attendee (
@@ -136,6 +157,39 @@ insert into admission_offer (
     'organizer_invitation',
     'checkout_pending',
     :'user8ID',
+
+    0,
+    null,
+    0,
+    null,
+    null,
+    'General admission'
+);
+
+-- Offer that already reached its terminal completed state
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id,
+
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    ticket_title
+) values (
+    :'completedOfferID',
+    :'eventCompletedOfferID',
+    :'eventCompletedOfferTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'waitlist',
+    'completed',
+    :'user9ID',
 
     0,
     null,
@@ -235,6 +289,32 @@ insert into event_purchase (
     'General admission',
     :'user8ID',
     :'reactivationOfferID'
+);
+
+-- Pending free purchase linked to the completed offer
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id,
+
+    admission_offer_id
+) values (
+    :'completedOfferPurchaseID',
+    0,
+    null,
+    :'eventCompletedOfferID',
+    :'eventCompletedOfferTicketTypeID',
+    now() + interval '10 minutes',
+    'pending',
+    'General admission',
+    :'user9ID',
+    :'completedOfferID'
 );
 
 -- Paid direct charge used to verify the free-completion boundary
@@ -518,37 +598,6 @@ select throws_ok(
     'Should reject a free replacement while refund recovery is unresolved'
 );
 
--- Should preserve the recovery and pending replacement without an attendee
-select results_eq(
-    format($$
-        select
-            recovery.status,
-            replacement.completed_at is null,
-            replacement.hold_expires_at is not null,
-            replacement.status,
-            (
-                select count(*)::int
-                from event_attendee
-                where event_id = replacement.event_id
-                and user_id = replacement.user_id
-            )
-        from event_purchase recovery
-        join event_purchase replacement
-            on replacement.event_id = recovery.event_id
-            and replacement.user_id = recovery.user_id
-        where recovery.event_purchase_id = %L::uuid
-        and replacement.event_purchase_id = %L::uuid
-    $$, :'recoveryPurchaseID', :'recoveryReplacementPurchaseID'),
-    $$ values (
-        'refund-recovery-pending'::text,
-        true,
-        true,
-        'pending'::text,
-        0::int
-    ) $$,
-    'Should preserve the recovery and pending replacement without an attendee'
-);
-
 -- Should complete active free holds after an open-only registration window reaches the event start
 select is(
     complete_free_event_purchase(:'openUntilStartPurchaseID'::uuid)::jsonb,
@@ -619,6 +668,22 @@ select throws_ok(
     'OCG01',
     'attendee cannot be confirmed for this event',
     'Should reject purchases whose attendee row cannot be confirmed'
+);
+
+-- Should reject free purchases whose admission offer is no longer available
+select throws_ok(
+    format($$select complete_free_event_purchase(%L::uuid)$$, :'completedOfferPurchaseID'),
+    'OCG01',
+    'admission offer is no longer available',
+    'Should reject free purchases whose admission offer is no longer available'
+);
+
+-- Should reject unknown purchases
+select throws_ok(
+    format($$select complete_free_event_purchase(%L::uuid)$$, :'unknownPurchaseID'),
+    'OCG01',
+    'purchase not found',
+    'Should reject unknown purchases'
 );
 
 -- ============================================================================

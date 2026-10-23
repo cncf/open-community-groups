@@ -5,19 +5,23 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set communityID 'b3040000-0000-0000-0000-000000000001'
-\set groupCategoryID 'b3040000-0000-0000-0000-000000000002'
-\set groupID 'b3040000-0000-0000-0000-000000000003'
-\set retryClaimID 'b3040000-0000-0000-0000-000000000004'
-\set retryJobID 'b3040000-0000-0000-0000-000000000005'
-\set terminalClaimID 'b3040000-0000-0000-0000-000000000006'
-\set terminalJobID 'b3040000-0000-0000-0000-000000000007'
+\set blankErrorClaimID 'b3040000-0000-0000-0000-000000000001'
+\set blankErrorJobID 'b3040000-0000-0000-0000-000000000002'
+\set cappedClaimID 'b3040000-0000-0000-0000-000000000003'
+\set cappedJobID 'b3040000-0000-0000-0000-000000000004'
+\set communityID 'b3040000-0000-0000-0000-000000000005'
+\set groupCategoryID 'b3040000-0000-0000-0000-000000000006'
+\set groupID 'b3040000-0000-0000-0000-000000000007'
+\set retryClaimID 'b3040000-0000-0000-0000-000000000008'
+\set retryJobID 'b3040000-0000-0000-0000-000000000009'
+\set terminalClaimID 'b3040000-0000-0000-0000-00000000000a'
+\set terminalJobID 'b3040000-0000-0000-0000-00000000000b'
 
 -- ============================================================================
 -- SEED DATA
@@ -28,7 +32,7 @@ select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Processing jobs used by retry and terminal failure scenarios
+-- Processing jobs used by blank error, capped backoff, retry and terminal failure scenarios
 insert into badge_award_job (
     badge_award_job_id,
     accepted_count,
@@ -37,14 +41,17 @@ insert into badge_award_job (
     community_id,
     failure_count,
     group_id,
+    next_attempt_at,
     recipient_count,
     status,
 
     claim_id,
     claimed_at
 ) values
-    (:'retryJobID', 1, 'failure-admin', '{"name":"Retry"}', :'communityID', 0, :'groupID', 1, 'processing', :'retryClaimID', current_timestamp),
-    (:'terminalJobID', 1, 'failure-admin', '{"name":"Terminal"}', :'communityID', 1, :'groupID', 1, 'processing', :'terminalClaimID', current_timestamp);
+    (:'blankErrorJobID', 1, 'failure-admin', '{"name":"Blank"}', :'communityID', 0, :'groupID', '2026-01-01 00:00:00+00', 1, 'processing', :'blankErrorClaimID', current_timestamp),
+    (:'cappedJobID', 1, 'failure-admin', '{"name":"Capped"}', :'communityID', 5, :'groupID', '2026-01-01 00:00:00+00', 1, 'processing', :'cappedClaimID', current_timestamp),
+    (:'retryJobID', 1, 'failure-admin', '{"name":"Retry"}', :'communityID', 0, :'groupID', '2026-01-01 00:00:00+00', 1, 'processing', :'retryClaimID', current_timestamp),
+    (:'terminalJobID', 1, 'failure-admin', '{"name":"Terminal"}', :'communityID', 1, :'groupID', '2026-01-01 00:00:00+00', 1, 'processing', :'terminalClaimID', current_timestamp);
 
 -- ============================================================================
 -- TESTS
@@ -56,6 +63,7 @@ select throws_ok(
         $$select record_badge_award_job_failure(%L::uuid, %L::uuid, 'bad limit', 0)$$,
         :'retryJobID', :'retryClaimID'
     ),
+    'P0001',
     'badge award job failure limit must be positive',
     'Should reject a non-positive failure limit'
 );
@@ -66,6 +74,7 @@ select throws_ok(
         $$select record_badge_award_job_failure(%L::uuid, gen_random_uuid(), 'missing claim', 10)$$,
         :'retryJobID'
     ),
+    'P0001',
     'badge award job claim not found',
     'Should reject a missing processing claim'
 );
@@ -78,19 +87,59 @@ select is(
 );
 
 -- Should persist retry failure state with backoff
-select ok(
-    (
-        select status = 'pending'
-            and claim_id is null
-            and claimed_at is null
-            and completed_at is null
-            and error = 'retry failure'
-            and failure_count = 1
-            and next_attempt_at > current_timestamp
-        from badge_award_job
-        where badge_award_job_id = :'retryJobID'
+select results_eq(
+    format(
+        $$
+            select claim_id, claimed_at, completed_at, error, failure_count, next_attempt_at, status
+            from badge_award_job
+            where badge_award_job_id = %L::uuid
+        $$,
+        :'retryJobID'
     ),
+    $$ values (null::uuid, null::timestamptz, null::timestamptz, 'retry failure', 1, current_timestamp + interval '60 seconds', 'pending') $$,
     'Should persist retry failure state with backoff'
+);
+
+-- Should schedule a retry for a blank failure message
+select is(
+    record_badge_award_job_failure(:'blankErrorJobID', :'blankErrorClaimID', ' ', 10),
+    false,
+    'Should schedule a retry for a blank failure message'
+);
+
+-- Should store the default error for a blank failure message
+select results_eq(
+    format(
+        $$
+            select error, failure_count, next_attempt_at, status
+            from badge_award_job
+            where badge_award_job_id = %L::uuid
+        $$,
+        :'blankErrorJobID'
+    ),
+    $$ values ('badge award processing failed', 1, current_timestamp + interval '60 seconds', 'pending') $$,
+    'Should store the default error for a blank failure message'
+);
+
+-- Should schedule a retry after repeated failures
+select is(
+    record_badge_award_job_failure(:'cappedJobID', :'cappedClaimID', 'capped failure', 10),
+    false,
+    'Should schedule a retry after repeated failures'
+);
+
+-- Should cap the retry backoff at thirty minutes
+select results_eq(
+    format(
+        $$
+            select error, failure_count, next_attempt_at, status
+            from badge_award_job
+            where badge_award_job_id = %L::uuid
+        $$,
+        :'cappedJobID'
+    ),
+    $$ values ('capped failure', 6, current_timestamp + interval '1800 seconds', 'pending') $$,
+    'Should cap the retry backoff at thirty minutes'
 );
 
 -- Should terminally fail after the failure limit
@@ -100,19 +149,18 @@ select is(
     'Should terminally fail after the failure limit'
 );
 
--- Should persist terminal failure state and error text
-select ok(
-    (
-        select status = 'failed'
-            and claim_id is null
-            and claimed_at is null
-            and completed_at is not null
-            and error = 'terminal failure'
-            and failure_count = 2
-        from badge_award_job
-        where badge_award_job_id = :'terminalJobID'
+-- Should persist terminal failure state and keep the scheduled attempt
+select results_eq(
+    format(
+        $$
+            select claim_id, claimed_at, completed_at, error, failure_count, next_attempt_at, status
+            from badge_award_job
+            where badge_award_job_id = %L::uuid
+        $$,
+        :'terminalJobID'
     ),
-    'Should persist terminal failure state and error text'
+    $$ values (null::uuid, null::timestamptz, current_timestamp, 'terminal failure', 2, '2026-01-01 00:00:00+00'::timestamptz, 'failed') $$,
+    'Should persist terminal failure state and keep the scheduled attempt'
 );
 
 -- ============================================================================

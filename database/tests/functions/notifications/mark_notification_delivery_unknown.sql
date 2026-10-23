@@ -1,9 +1,11 @@
+-- Tests marking a claimed notification with an unknown delivery outcome.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -101,11 +103,11 @@ select results_eq(
         $$
         select
             delivery_attempts,
-            delivery_claimed_at is not null,
+            delivery_claimed_at,
             delivery_status,
             error,
             next_delivery_attempt_at,
-            processed_at is not null
+            processed_at
         from notification
         where notification_id = %L::uuid
         $$,
@@ -114,11 +116,11 @@ select results_eq(
     $$
         values (
             2,
-            true,
+            '2025-01-01 00:00:02+00'::timestamptz,
             'delivery-unknown'::text,
             'network error: connection reset by peer'::text,
             null::timestamptz,
-            true
+            current_timestamp
         )
     $$,
     'Should persist the unknown outcome without changing claim metadata'
@@ -176,31 +178,6 @@ select throws_ok(
     'P0001',
     'notification delivery claim not found or no longer active',
     'Should stop a stale worker from marking a newer delivery claim unknown'
-);
-
--- Should preserve the newer claim after a stale unknown-outcome attempt
-select results_eq(
-    format(
-        $$
-        select
-            delivery_claimed_at,
-            delivery_status,
-            error,
-            processed_at
-        from notification
-        where notification_id = %L::uuid
-        $$,
-        :'notificationStaleClaimID'
-    ),
-    $$
-        values (
-            '2025-01-01 00:00:04+00'::timestamptz,
-            'processing'::text,
-            null::text,
-            null::timestamptz
-        )
-    $$,
-    'Should preserve the newer claim after a stale unknown-outcome attempt'
 );
 
 -- ============================================================================

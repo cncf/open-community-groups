@@ -1,3 +1,5 @@
+-- Tests resubmitting CFS submissions.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -135,7 +137,7 @@ insert into cfs_submission (
         null
     );
 
--- Linked session
+-- Session linked to the fourth submission
 insert into session (
     session_id,
     cfs_submission_id,
@@ -151,6 +153,14 @@ insert into session (
     'in-person',
     current_timestamp + interval '7 days'
 );
+
+-- Move the linked submission into a resubmittable status after linking,
+-- because the session trigger only accepts links to approved submissions
+update cfs_submission
+set
+    action_required_message = 'Need final info',
+    status_id = 'information-requested'
+where cfs_submission_id = :'submission4ID'::uuid;
 
 -- ============================================================================
 -- TESTS
@@ -168,7 +178,7 @@ select throws_ok(
     'Should reject resubmitting another user''s submission'
 );
 
--- Resubmit submission
+-- Should execute resubmit_cfs_submission successfully
 select lives_ok(
     format(
         $$
@@ -232,13 +242,6 @@ select throws_ok(
     'submission not found or cannot be resubmitted',
     'Should reject resubmitting approved submission'
 );
-
--- Move the linked submission into a resubmittable state to exercise the session guard
-update cfs_submission
-set
-    action_required_message = 'Need final info',
-    status_id = 'information-requested'
-where cfs_submission_id = :'submission4ID'::uuid;
 
 -- Should reject resubmitting submission linked to a session
 select throws_ok(

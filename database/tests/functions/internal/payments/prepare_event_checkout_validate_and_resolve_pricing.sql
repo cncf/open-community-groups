@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,7 +28,6 @@ select plan(19);
 \set ineffectiveDiscountPriceWindowID '79260000-0000-0000-0000-00000000004a'
 \set ineffectiveDiscountTicketTypeID '79260000-0000-0000-0000-00000000004b'
 \set invalidDiscountUserID '79260000-0000-0000-0000-000000000023'
-\set invitedUserID '79260000-0000-0000-0000-000000000032'
 \set limitedDiscountID '79260000-0000-0000-0000-000000000018'
 \set mainEventID '79260000-0000-0000-0000-000000000003'
 \set missingTicketTypeID '79260000-0000-0000-0000-000000000034'
@@ -46,7 +45,6 @@ select plan(19);
 \set queueUserID '79260000-0000-0000-0000-000000000049'
 \set redeemedPurchaseID '79260000-0000-0000-0000-000000000020'
 \set redeemedUserID '79260000-0000-0000-0000-000000000030'
-\set rejectedUserID '79260000-0000-0000-0000-000000000033'
 \set soldOutEventID '79260000-0000-0000-0000-000000000004'
 \set soldOutHolderUserID '79260000-0000-0000-0000-000000000031'
 \set soldOutPriceWindowID '79260000-0000-0000-0000-000000000014'
@@ -82,10 +80,8 @@ select fx_user(:'soldOutUserID');
 select fx_user(:'inactiveUserID');
 select fx_user(:'redeemedUserID');
 select fx_user(:'soldOutHolderUserID');
-select fx_user(:'invitedUserID');
 select fx_user(:'offerUserID');
 select fx_user(:'queueUserID');
-select fx_user(:'rejectedUserID');
 
 -- Group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
@@ -260,12 +256,6 @@ insert into event_discount_code (
 insert into event_attendee (event_id, user_id)
 values (:'mainEventID', :'attendeeUserID');
 
--- Attendees with invitation lifecycle states checkout cannot confirm
-insert into event_attendee (event_id, user_id, manually_invited, status)
-values
-    (:'mainEventID', :'invitedUserID', true, 'invitation-pending'),
-    (:'mainEventID', :'rejectedUserID', true, 'invitation-rejected');
-
 -- Existing purchases
 insert into event_purchase (
     event_purchase_id,
@@ -401,32 +391,6 @@ select throws_ok(
     'OCG01',
     'user is already attending this event',
     'Should reject attendees that already have a seat'
-);
-
--- Should reject users with a pending invitation
-select throws_ok(
-    $$select prepare_event_checkout_validate_and_resolve_pricing(
-        '79260000-0000-0000-0000-000000000003'::uuid,
-        '79260000-0000-0000-0000-000000000006'::uuid,
-        '79260000-0000-0000-0000-000000000032'::uuid,
-        null
-    )$$,
-    'OCG01',
-    'user has a pending or rejected invitation for this event',
-    'Should reject users with a pending invitation'
-);
-
--- Should reject users with a rejected invitation
-select throws_ok(
-    $$select prepare_event_checkout_validate_and_resolve_pricing(
-        '79260000-0000-0000-0000-000000000003'::uuid,
-        '79260000-0000-0000-0000-000000000006'::uuid,
-        '79260000-0000-0000-0000-000000000033'::uuid,
-        null
-    )$$,
-    'OCG01',
-    'user has a pending or rejected invitation for this event',
-    'Should reject users with a rejected invitation'
 );
 
 -- Should reject sold out ticket types

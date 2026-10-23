@@ -5,12 +5,13 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set cohostGroupID '3a360000-0000-0000-0000-000000000016'
 \set communityID '3a360000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a360000-0000-0000-0000-000000000002'
 \set eventID '3a360000-0000-0000-0000-000000000003'
@@ -39,6 +40,9 @@ select fx_user(:'offerUserID');
 select fx_user(:'waitlistUserID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
+-- Co-host group that approved its invitation
+select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID');
+
 -- Users covering publication and enrollment state
 select fx_user(:'userID', jsonb_build_object('username', 'user-unpublish-event'));
 
@@ -65,6 +69,10 @@ select fx_event(:'eventNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build
     'published_by', :'userID',
     'starts_at', '2025-06-02 10:00:00+00'
 ));
+
+-- Approved co-host invitation preserved through unpublish
+insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_id)
+values ('2025-01-01 00:00:00+00', 'approved', :'eventID', :'cohostGroupID');
 
 -- Session with meeting_requested=true (should be marked as out of sync)
 insert into session (
@@ -264,6 +272,16 @@ select results_eq(
     ),
     $$ values ('canceled'::text, 0::bigint) $$,
     'Should cancel active offers and clear queues when unpublishing'
+);
+
+-- Should preserve co-host status and approval evidence
+select results_eq(
+    format(
+        $$select event_cohost_status_id, approved_at from event_cohost where event_id = %L::uuid$$,
+        :'eventID'
+    ),
+    $$values ('approved', '2025-01-01 00:00:00+00'::timestamptz)$$,
+    'Should preserve co-host status and approval evidence'
 );
 
 -- Should set event meeting_in_sync to false

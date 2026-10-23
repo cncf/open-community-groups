@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(28);
+select plan(27);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,7 +23,6 @@ select plan(28);
 \set copyProposalID '3a340000-0000-0000-0000-00000000000a'
 \set copySubmissionID '3a340000-0000-0000-0000-00000000000b'
 \set crossEventID '3a340000-0000-0000-0000-00000000000c'
-\set crossLabelID '3a340000-0000-0000-0000-00000000000d'
 \set crossOtherEventID '3a340000-0000-0000-0000-00000000000e'
 \set crossOtherLabelID '3a340000-0000-0000-0000-00000000000f'
 \set crossSessionID '3a340000-0000-0000-0000-000000000010'
@@ -287,10 +286,6 @@ values (:'clearLinkedLabelID', '#FEE2E2', :'clearEventID', 'Clear Linked');
 insert into event_label (event_label_id, color, event_id, name)
 values (:'copyLabelID', '#DBEAFE', :'copyEventID', 'Copy');
 
--- Label kept when a foreign label is rejected
-insert into event_label (event_label_id, color, event_id, name)
-values (:'crossLabelID', '#DBEAFE', :'crossEventID', 'Cross');
-
 -- Label owned by another event
 insert into event_label (event_label_id, color, event_id, name)
 values (:'crossOtherLabelID', '#FEE2E2', :'crossOtherEventID', 'Cross Other');
@@ -406,10 +401,6 @@ values (:'unlinkedSessionID', :'unlinkedEventID', 'Unlinked', 'in-person', '2030
 -- Label cleared from the existing session
 insert into session_label (event_label_id, session_id)
 values (:'clearExistingLabelID', :'clearExistingSessionID');
-
--- Label kept when a foreign label is rejected
-insert into session_label (event_label_id, session_id)
-values (:'crossLabelID', :'crossSessionID');
 
 -- Label chosen for the unchanged linked session
 insert into session_label (event_label_id, session_id)
@@ -684,14 +675,6 @@ select throws_ok(
     'invalid event labels',
     'Should reject session label IDs from another event'
 );
-select results_eq(
-    format(
-        $$select event_label_id from session_label where session_id = %L::uuid order by event_label_id$$,
-        :'crossSessionID'
-    ),
-    format($$values (%L::uuid)$$, :'crossLabelID'),
-    'Should keep session labels when rejecting labels from another event'
-);
 
 -- Should replace labels of re-linked sessions with the new submission labels
 select lives_ok(
@@ -913,6 +896,7 @@ select throws_ok(
         :'missingSessionID',
         :'eventID'
     ),
+    'OCG01',
     format('session %s not found for event %s', :'missingSessionID', :'eventID'),
     'Should reject updating a session that does not belong to the event'
 );

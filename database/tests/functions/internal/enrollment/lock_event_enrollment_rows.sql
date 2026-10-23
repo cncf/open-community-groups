@@ -145,6 +145,7 @@ select lives_ok(
 -- Should reject a scoped ticket tier owned by another event
 select throws_ok(
     format($$select lock_event_enrollment_rows(%L::uuid, %L::uuid, null)$$, :'eventID', :'otherTicketTypeID'),
+    'P0001',
     'ticket type not found',
     'Should reject a scoped ticket tier owned by another event'
 );

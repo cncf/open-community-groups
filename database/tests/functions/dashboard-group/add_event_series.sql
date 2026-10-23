@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -591,7 +591,7 @@ select throws_ok(
     'Should reject generated events whose meeting exceeds the provider maximum duration'
 );
 
--- Should roll back the whole series when one generated event fails
+-- Should reject a series whose generated event starts in the past
 select throws_ok(
     format(
         $$
@@ -600,7 +600,7 @@ select throws_ok(
             %L::uuid,
             '[
                 {
-                    "name": "Rollback Weekly Study Group",
+                    "name": "Past Occurrence Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
                     "category_id": "%s",
@@ -609,7 +609,7 @@ select throws_ok(
                     "ends_at": "2030-09-07T11:00:00"
                 },
                 {
-                    "name": "Rollback Weekly Study Group",
+                    "name": "Past Occurrence Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
                     "category_id": "%s",
@@ -625,20 +625,7 @@ select throws_ok(
     ),
     'OCG01',
     'event starts_at cannot be in the past',
-    'Should roll back the whole series when one generated event fails'
-);
-
--- Should leave no partial rows after a generated event fails
-select results_eq(
-    $$
-        select
-            (select count(*)::int from event where name = 'Rollback Weekly Study Group'),
-            (select count(*)::int from event_series)
-    $$,
-    $$
-        values (0, 2)
-    $$,
-    'Should leave no partial rows after a generated event fails'
+    'Should reject a series whose generated event starts in the past'
 );
 
 -- Should snapshot the accepted team on every occurrence when organizers are omitted

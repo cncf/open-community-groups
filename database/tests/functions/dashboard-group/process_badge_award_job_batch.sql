@@ -23,12 +23,12 @@ select plan(11);
 \set duplicateJobID 'b3030000-0000-0000-0000-000000000010'
 \set duplicateUserBadgeID 'b3030000-0000-0000-0000-000000000011'
 \set duplicateUserID 'b3030000-0000-0000-0000-000000000012'
-\set groupCategoryID 'b3030000-0000-0000-0000-000000000013'
-\set groupID 'b3030000-0000-0000-0000-000000000014'
 \set filteredClaimID 'b3030000-0000-0000-0000-000000000025'
 \set filteredJobID 'b3030000-0000-0000-0000-000000000026'
 \set filteredMutedUserID 'b3030000-0000-0000-0000-000000000027'
 \set filteredOptOutUserID 'b3030000-0000-0000-0000-000000000028'
+\set groupCategoryID 'b3030000-0000-0000-0000-000000000013'
+\set groupID 'b3030000-0000-0000-0000-000000000014'
 \set partialClaimID 'b3030000-0000-0000-0000-000000000015'
 \set partialJobID 'b3030000-0000-0000-0000-000000000016'
 \set rateClaimID 'b3030000-0000-0000-0000-000000000017'
@@ -142,6 +142,7 @@ select throws_ok(
         $$select process_badge_award_job_batch(%L::uuid, gen_random_uuid(), 25, 1000000)$$,
         :'wrongJobID'
     ),
+    'P0001',
     'badge award job claim not found',
     'Should reject a mismatched processing claim'
 );
@@ -158,20 +159,28 @@ select is(
 );
 
 -- Should persist rate-limited release state
-select ok(
-    (
-        select status = 'pending'
-            and claim_id is null
-            and claimed_at is null
-            and next_recipient_offset = 0
-            and exists (
-                select 1
-                from badge_award_job_recipient bajr
-                where bajr.badge_award_job_id = badge_award_job.badge_award_job_id
-            )
-        from badge_award_job
-        where badge_award_job_id = :'rateJobID'
+select results_eq(
+    format(
+        $$
+            select
+                baj.awarded_count,
+                baj.claim_id,
+                baj.claimed_at,
+                baj.failure_count,
+                baj.next_attempt_at,
+                baj.next_recipient_offset,
+                (
+                    select count(*)::integer
+                    from badge_award_job_recipient bajr
+                    where bajr.badge_award_job_id = baj.badge_award_job_id
+                ) as recipient_count,
+                baj.status
+            from badge_award_job baj
+            where baj.badge_award_job_id = %L::uuid
+        $$,
+        :'rateJobID'
     ),
+    $$ values (0, null::uuid, null::timestamptz, 0, current_timestamp + interval '5 seconds', 0, 1, 'pending') $$,
     'Should persist rate-limited release state'
 );
 
@@ -187,21 +196,28 @@ select is(
 );
 
 -- Should persist partial batch progress
-select ok(
-    (
-        select status = 'pending'
-            and awarded_count = 1
-            and claim_id is null
-            and claimed_at is null
-            and next_recipient_offset = 1
-            and (
-                select count(*)::integer
-                from badge_award_job_recipient bajr
-                where bajr.badge_award_job_id = badge_award_job.badge_award_job_id
-            ) = 2
-        from badge_award_job
-        where badge_award_job_id = :'partialJobID'
+select results_eq(
+    format(
+        $$
+            select
+                baj.awarded_count,
+                baj.claim_id,
+                baj.claimed_at,
+                baj.completed_at,
+                baj.next_attempt_at,
+                baj.next_recipient_offset,
+                (
+                    select count(*)::integer
+                    from badge_award_job_recipient bajr
+                    where bajr.badge_award_job_id = baj.badge_award_job_id
+                ) as recipient_count,
+                baj.status
+            from badge_award_job baj
+            where baj.badge_award_job_id = %L::uuid
+        $$,
+        :'partialJobID'
     ),
+    $$ values (1, null::uuid, null::timestamptz, null::timestamptz, current_timestamp + interval '1 second', 1, 2, 'pending') $$,
     'Should persist partial batch progress'
 );
 
@@ -217,23 +233,30 @@ select is(
 );
 
 -- Should persist duplicate skip without inserting another credential
-select ok(
-    (
-        select status = 'completed'
-            and awarded_count = 0
-            and completed_at is not null
-            and next_recipient_offset = 1
-            and skipped_count = 1
-            and (
-                select count(*)::integer
-                from user_badge ub
-                where ub.badge_id = :'badgeID'
-                and ub.revoked_at is null
-                and ub.user_id = :'duplicateUserID'
-            ) = 1
-        from badge_award_job
-        where badge_award_job_id = :'duplicateJobID'
+select results_eq(
+    format(
+        $$
+            select
+                (
+                    select count(*)::integer
+                    from user_badge ub
+                    where ub.badge_id = %L::uuid
+                    and ub.revoked_at is null
+                    and ub.user_id = %L::uuid
+                ) as active_credential_count,
+                baj.awarded_count,
+                baj.completed_at,
+                baj.next_recipient_offset,
+                baj.skipped_count,
+                baj.status
+            from badge_award_job baj
+            where baj.badge_award_job_id = %L::uuid
+        $$,
+        :'badgeID',
+        :'duplicateUserID',
+        :'duplicateJobID'
     ),
+    $$ values (1, 0, current_timestamp, 1, 1, 'completed') $$,
     'Should persist duplicate skip without inserting another credential'
 );
 
@@ -248,29 +271,43 @@ select is(
     'Should complete new credential issuance'
 );
 
--- Should persist completion and remove recipient rows
-select ok(
-    (
-        select status = 'completed'
-            and awarded_count = 1
-            and completed_at is not null
-            and next_recipient_offset = 1
-            and not exists (
-                select 1
-                from badge_award_job_recipient bajr
-                where bajr.badge_award_job_id = badge_award_job.badge_award_job_id
-            )
-            and exists (
-                select 1
-                from user_badge ub
-                where ub.badge_id = :'badgeID'
-                and ub.revoked_at is null
-                and ub.user_id = :'completeUserID'
-            )
-        from badge_award_job
-        where badge_award_job_id = :'completeJobID'
+-- Should persist completion, notify the recipient and remove recipient rows
+select results_eq(
+    format(
+        $$
+            select
+                (
+                    select count(*)::integer
+                    from user_badge ub
+                    where ub.badge_id = %1$L::uuid
+                    and ub.revoked_at is null
+                    and ub.user_id = %2$L::uuid
+                ) as active_credential_count,
+                baj.awarded_count,
+                baj.completed_at,
+                baj.next_recipient_offset,
+                (
+                    select count(*)::integer
+                    from notification n
+                    where n.kind = 'badge-awarded'
+                    and n.user_id = %2$L::uuid
+                ) as notification_count,
+                (
+                    select count(*)::integer
+                    from badge_award_job_recipient bajr
+                    where bajr.badge_award_job_id = baj.badge_award_job_id
+                ) as recipient_count,
+                baj.skipped_count,
+                baj.status
+            from badge_award_job baj
+            where baj.badge_award_job_id = %3$L::uuid
+        $$,
+        :'badgeID',
+        :'completeUserID',
+        :'completeJobID'
     ),
-    'Should persist completion and remove recipient rows'
+    $$ values (1, 1, current_timestamp, 1, 1, 0, 0, 'completed') $$,
+    'Should persist completion, notify the recipient and remove recipient rows'
 );
 
 -- Should complete badge issuance when every notification recipient is filtered
@@ -285,34 +322,36 @@ select is(
 );
 
 -- Should award badges and record progress without notifications for filtered recipients
-select ok(
-    (
-        select status = 'completed'
-            and awarded_count = 2
-            and completed_at is not null
-            and next_recipient_offset = 2
-            and (
-                select count(*)::integer
-                from user_badge ub
-                where ub.badge_id = :'badgeID'
-                and ub.revoked_at is null
-                and ub.user_id in (:'filteredMutedUserID', :'filteredOptOutUserID')
-            ) = 2
-            and not exists (
-                select 1
-                from notification n
-                where n.kind = 'badge-awarded'
-                and n.user_id in (:'filteredMutedUserID', :'filteredOptOutUserID')
-            )
-            and exists (
-                select 1
-                from notification n
-                where n.kind = 'badge-awarded'
-                and n.user_id = :'completeUserID'
-            )
-        from badge_award_job
-        where badge_award_job_id = :'filteredJobID'
+select results_eq(
+    format(
+        $$
+            select
+                (
+                    select count(*)::integer
+                    from user_badge ub
+                    where ub.badge_id = %1$L::uuid
+                    and ub.revoked_at is null
+                    and ub.user_id in (%2$L::uuid, %3$L::uuid)
+                ) as active_credential_count,
+                baj.awarded_count,
+                baj.completed_at,
+                baj.next_recipient_offset,
+                (
+                    select count(*)::integer
+                    from notification n
+                    where n.kind = 'badge-awarded'
+                    and n.user_id in (%2$L::uuid, %3$L::uuid)
+                ) as notification_count,
+                baj.status
+            from badge_award_job baj
+            where baj.badge_award_job_id = %4$L::uuid
+        $$,
+        :'badgeID',
+        :'filteredMutedUserID',
+        :'filteredOptOutUserID',
+        :'filteredJobID'
     ),
+    $$ values (2, 2, current_timestamp, 2, 0, 'completed') $$,
     'Should award badges and record progress without notifications for filtered recipients'
 );
 

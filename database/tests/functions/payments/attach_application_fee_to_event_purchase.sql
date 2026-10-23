@@ -106,6 +106,7 @@ select throws_ok(
     $$ select attach_application_fee_to_event_purchase(
         'stripe', 'acct_application_fee', 'ch_application_fee', ' ', 62
     ) $$,
+    'P0001',
     'application fee is missing provider context',
     'Should reject a blank application-fee identifier'
 );
@@ -115,6 +116,7 @@ select throws_ok(
     $$ select attach_application_fee_to_event_purchase(
         'stripe', ' ', 'ch_application_fee', 'fee_application_fee', 62
     ) $$,
+    'P0001',
     'application fee is missing provider context',
     'Should reject a blank connected seller'
 );
@@ -124,6 +126,7 @@ select throws_ok(
     $$ select attach_application_fee_to_event_purchase(
         'stripe', 'acct_application_fee', ' ', 'fee_application_fee', 62
     ) $$,
+    'P0001',
     'application fee is missing provider context',
     'Should reject a blank provider charge'
 );
@@ -134,6 +137,7 @@ select throws_ok(
         'stripe', 'acct_application_fee', 'ch_application_fee',
         'fee_application_fee', 61
     ) $$,
+    'P0001',
     'application fee amount does not match the purchase',
     'Should reject an amount that does not match the purchase snapshot'
 );
@@ -144,6 +148,7 @@ select throws_ok(
         'stripe', 'acct_application_fee', 'ch_application_fee',
         'fee_application_fee', null
     ) $$,
+    'P0001',
     'application fee amount must be positive',
     'Should reject a missing application-fee amount'
 );
@@ -154,6 +159,7 @@ select throws_ok(
         'stripe', 'acct_application_fee', 'ch_application_fee',
         'fee_application_fee', 0
     ) $$,
+    'P0001',
     'application fee amount must be positive',
     'Should reject a non-positive application-fee amount'
 );
@@ -163,6 +169,7 @@ select throws_ok(
     $$ select attach_application_fee_to_event_purchase(
         'stripe', 'acct_other', 'ch_application_fee', 'fee_application_fee', 62
     ) $$,
+    'P0001',
     'direct-charge purchase not found for application fee',
     'Should reject the wrong connected seller scope'
 );
@@ -172,6 +179,7 @@ select throws_ok(
     $$ select attach_application_fee_to_event_purchase(
         'stripe', 'acct_application_fee', 'ch_other', 'fee_application_fee', 62
     ) $$,
+    'P0001',
     'direct-charge purchase not found for application fee',
     'Should reject the wrong provider charge scope'
 );
@@ -182,6 +190,7 @@ select throws_ok(
         'other', 'acct_application_fee', 'ch_application_fee',
         'fee_application_fee', 62
     ) $$,
+    'P0001',
     'direct-charge purchase not found for application fee',
     'Should reject the wrong provider scope'
 );
@@ -221,6 +230,7 @@ select throws_ok(
         'stripe', 'acct_application_fee', 'ch_application_fee',
         'fee_conflict', 62
     ) $$,
+    'P0001',
     'purchase has a different provider application fee',
     'Should reject a conflicting second application fee'
 );

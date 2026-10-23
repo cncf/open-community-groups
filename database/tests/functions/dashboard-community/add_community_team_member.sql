@@ -1,3 +1,5 @@
+-- Tests adding dashboard community team members.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,18 +11,20 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c020000-0000-0000-0000-000000000003'
 \set communityID '2c020000-0000-0000-0000-000000000001'
 \set user1ID '2c020000-0000-0000-0000-000000000002'
-\set user2ID '2c020000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community and users
+-- Baseline community and user added to the team
 select fx_community(:'communityID');
 select fx_user(:'user1ID');
-select fx_user(:'user2ID');
+
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'add-community-team-member-audit-actor'));
 
 -- ============================================================================
 -- TESTS
@@ -29,7 +33,8 @@ select fx_user(:'user2ID');
 -- Adding a user should create membership
 select lives_ok(
     format(
-        $$ select add_community_team_member(null::uuid, %L::uuid, %L::uuid, 'admin') $$,
+        $$ select add_community_team_member(%L::uuid, %L::uuid, %L::uuid, 'admin') $$,
+        :'actorUserID',
         :'communityID',
         :'user1ID'
     ),
@@ -69,14 +74,15 @@ select results_eq(
         $$
         values (
             'community_team_member_added',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'add-community-team-member-audit-actor',
             %L::uuid,
             'user',
             %L::uuid,
             jsonb_build_object('role', 'admin')
         )
         $$,
+        :'actorUserID',
         :'communityID',
         :'user1ID'
     ),

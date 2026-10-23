@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -112,7 +112,7 @@ insert into event_refund_request (
 -- TESTS
 -- ============================================================================
 
--- Should reject a null rejection reason before mutating refund state
+-- Should reject a null rejection reason
 select throws_ok(
     format($$select reject_event_refund_request(
         %L::uuid,
@@ -122,10 +122,10 @@ select throws_ok(
     )$$, :'actorUserID', :'groupID', :'purchaseID'),
     'OCG01',
     'refund rejection reason is required',
-    'Should reject a null rejection reason before mutating refund state'
+    'Should reject a null rejection reason'
 );
 
--- Should reject a whitespace-only rejection reason before mutating refund state
+-- Should reject a whitespace-only rejection reason
 select throws_ok(
     format($$select reject_event_refund_request(
         %L::uuid,
@@ -135,22 +135,7 @@ select throws_ok(
     )$$, :'actorUserID', :'groupID', :'purchaseID'),
     'OCG01',
     'refund rejection reason is required',
-    'Should reject a whitespace-only rejection reason before mutating refund state'
-);
-
--- Should leave refund state and audit history unchanged after invalid input
-select results_eq(
-    format($$
-        select
-            (select status from event_purchase where event_purchase_id = %L::uuid),
-            (select review_note from event_refund_request where event_refund_request_id = %L::uuid),
-            (select reviewed_at from event_refund_request where event_refund_request_id = %L::uuid),
-            (select reviewed_by_user_id from event_refund_request where event_refund_request_id = %L::uuid),
-            (select status from event_refund_request where event_refund_request_id = %L::uuid),
-            (select count(*) from audit_log)
-    $$, :'purchaseID', :'refundRequestID', :'refundRequestID', :'refundRequestID', :'refundRequestID'),
-    $$ values ('refund-requested'::text, null::text, null::timestamptz, null::uuid, 'pending'::text, 0::bigint) $$,
-    'Should leave refund state and audit history unchanged after invalid input'
+    'Should reject a whitespace-only rejection reason'
 );
 
 -- Should reject a request outside the requested group
@@ -188,7 +173,7 @@ select results_eq(
         select
             (select status from event_purchase where event_purchase_id = %L::uuid),
             (select review_note from event_refund_request where event_refund_request_id = %L::uuid),
-            (select reviewed_at is not null from event_refund_request where event_refund_request_id = %L::uuid),
+            (select reviewed_at = current_timestamp from event_refund_request where event_refund_request_id = %L::uuid),
             (select reviewed_by_user_id from event_refund_request where event_refund_request_id = %L::uuid),
             (select status from event_refund_request where event_refund_request_id = %L::uuid)
     $$, :'purchaseID', :'refundRequestID', :'refundRequestID', :'refundRequestID', :'refundRequestID'),

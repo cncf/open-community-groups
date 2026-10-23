@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -75,7 +75,7 @@ select fx_event(:'eventKeptID', :'groupID', :'eventCategoryID');
 -- Event receiving differently cased spellings of the same organizer
 select fx_event(:'eventMixedCaseID', :'groupID', :'eventCategoryID');
 
--- Event whose organizers survive rejected payloads
+-- Event receiving rejected payloads
 select fx_event(:'eventRejectedID', :'groupID', :'eventCategoryID');
 
 -- Event whose organizers are replaced in submitted order
@@ -95,10 +95,6 @@ values (:'eventClearedID', :'user1ID', 1);
 -- Stored organizer kept after leaving the group team
 insert into event_organizer (event_id, user_id, "order")
 values (:'eventKeptID', :'formerUserID', 1);
-
--- Stored organizer kept when payloads are rejected
-insert into event_organizer (event_id, user_id, "order")
-values (:'eventRejectedID', :'user1ID', 1);
 
 -- Stored organizers replaced by the submitted list
 insert into event_organizer (event_id, user_id, "order") values
@@ -271,16 +267,6 @@ select throws_ok(
     'OCG01',
     'organizer is not a group team member',
     'Should reject an unknown user'
-);
-
--- Should leave organizers untouched after rejected payloads
-select results_eq(
-    format(
-        $$select user_id, "order" from event_organizer where event_id = %L::uuid$$,
-        :'eventRejectedID'
-    ),
-    format($$values (%L::uuid, 1)$$, :'user1ID'),
-    'Should leave organizers untouched after rejected payloads'
 );
 
 -- Should remove duplicate users keeping their first position

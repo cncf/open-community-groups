@@ -241,6 +241,7 @@ select throws_ok(
         $$select complete_payment_job(%L::uuid, %L::uuid)$$,
         :'staleJobID', :'wrongClaimID'
     ),
+    'P0001',
     'payment job claim is stale',
     'Should reject completion from a stale claim'
 );
@@ -251,6 +252,7 @@ select throws_ok(
         $$select complete_payment_job(%L::uuid, null::uuid)$$,
         :'missingOutcomeJobID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject completion before the domain outcome is recorded'
 );

@@ -53,24 +53,27 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 -- Group muted after the event notification has been queued
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Users
+-- Verified user eligible for every notification kind
 select fx_user(:'userVerifiedID', jsonb_build_object(
     'email', 'verified-claim-pending-notification@example.com',
     'username', 'verified'
 ));
--- user
+
+-- Unverified user eligible only for email verification
 select fx_user(:'userUnverifiedID', jsonb_build_object(
     'email_verified', false,
     'username', 'unverified-claim-pending-notification'
 ));
--- user
+
+-- Pre-registered user eligible for invitation, admission offer and email verification notifications
 select fx_user(:'userPreRegisteredID', jsonb_build_object(
     'email', 'invited-claim-pending-notification@example.com',
     'email_verified', false,
     'registration_status', 'pre-registered',
     'username', 'invited'
 ));
--- user
+
+-- Pre-registered user with a verified email
 select fx_user(:'userPreRegisteredVerifiedID', jsonb_build_object('registration_status', 'pre-registered'));
 
 -- Notification templates
@@ -292,6 +295,7 @@ insert into notification_attachment (attachment_id, notification_id) values
 -- Should reject non-positive delivery rate limits
 select throws_ok(
     $$ select * from claim_pending_notification(0, 60) $$,
+    'P0001',
     'delivery rate limit must be positive',
     'Should reject non-positive delivery rate limits'
 );
@@ -299,6 +303,7 @@ select throws_ok(
 -- Should reject non-positive delivery rate limit windows
 select throws_ok(
     $$ select * from claim_pending_notification(1, 0) $$,
+    'P0001',
     'delivery rate limit window must be positive',
     'Should reject non-positive delivery rate limit windows'
 );
@@ -342,14 +347,14 @@ select results_eq(
         $$
         select
             delivery_attempts,
-            delivery_claimed_at is not null,
+            delivery_claimed_at,
             delivery_status
         from notification
         where notification_id = %L::uuid
         $$,
         :'notificationEmailVerificationID'
     ),
-    $$ values (1, true, 'processing'::text) $$,
+    $$ values (1, current_timestamp, 'processing'::text) $$,
     'Should store claim state on the claimed notification'
 );
 

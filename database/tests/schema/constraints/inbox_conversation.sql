@@ -98,7 +98,7 @@ select throws_ok(
         :'crossGroupEventID'
     ),
     '23503',
-    null,
+    'insert or update on table "inbox_conversation" violates foreign key constraint "inbox_conversation_event_id_group_id_fkey"',
     'Should reject a conversation event owned by another group'
 );
 

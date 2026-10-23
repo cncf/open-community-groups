@@ -1,9 +1,11 @@
+-- Tests reserving Zoom host users for claimed meeting syncs.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(23);
 
 -- ============================================================================
 -- VARIABLES
@@ -319,6 +321,96 @@ select is(
     'Returns null when end time is not after start time'
 );
 
+-- Should return null when no event or session is provided
+select is(
+    assign_zoom_host_user(
+        null,
+        null,
+        null,
+        array['idle-host@example.com'],
+        1,
+        '2099-06-01 09:00:00-04'::timestamptz,
+        '2099-06-01 09:30:00-04'::timestamptz
+    ),
+    null,
+    'Should return null when no event or session is provided'
+);
+
+-- Should return null when the end time is missing
+select is(
+    assign_zoom_host_user(
+        :'eventSelectionID',
+        null,
+        null,
+        array['idle-host@example.com'],
+        1,
+        '2099-06-01 09:00:00-04'::timestamptz,
+        null
+    ),
+    null,
+    'Should return null when the end time is missing'
+);
+
+-- Should return null when the host pool is empty
+select is(
+    assign_zoom_host_user(
+        :'eventSelectionID',
+        null,
+        null,
+        array[]::text[],
+        1,
+        '2099-06-01 09:00:00-04'::timestamptz,
+        '2099-06-01 09:30:00-04'::timestamptz
+    ),
+    null,
+    'Should return null when the host pool is empty'
+);
+
+-- Should return null when the host pool has only blank users
+select is(
+    assign_zoom_host_user(
+        :'eventSelectionID',
+        null,
+        null,
+        array['', '   '],
+        1,
+        '2099-06-01 09:00:00-04'::timestamptz,
+        '2099-06-01 09:30:00-04'::timestamptz
+    ),
+    null,
+    'Should return null when the host pool has only blank users'
+);
+
+-- Should return null when the maximum simultaneous meetings is below one
+select is(
+    assign_zoom_host_user(
+        :'eventSelectionID',
+        null,
+        null,
+        array['idle-host@example.com'],
+        0,
+        '2099-06-01 09:00:00-04'::timestamptz,
+        '2099-06-01 09:30:00-04'::timestamptz
+    ),
+    null,
+    'Should return null when the maximum simultaneous meetings is below one'
+);
+
+-- Should return null when the start time is missing
+select is(
+    assign_zoom_host_user(
+        :'eventSelectionID',
+        null,
+        null,
+        array['idle-host@example.com'],
+        1,
+        null,
+        '2099-06-01 09:30:00-04'::timestamptz
+    ),
+    null,
+    'Should return null when the start time is missing'
+);
+
 -- Should reserve a Zoom host on the claimed event
 select is(
     assign_zoom_host_user(
@@ -356,11 +448,13 @@ select is(
     null,
     'Should not store event host reservation for stale claim'
 );
+
+-- Should count event host reservations when checking capacity
 select is(
     assign_zoom_host_user(
-        :'eventClaimedID',
+        :'eventSelectionID',
         null,
-        (select meeting_sync_claimed_at from event where event_id = :'eventClaimedID'),
+        null,
         array['host@example.com'],
         1,
         '2026-06-01 10:00:00+00',

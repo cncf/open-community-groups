@@ -1,3 +1,5 @@
+-- Tests validating the selected event ids of an event series action.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -21,50 +23,22 @@ select plan(7);
 \set otherEventID '3a450000-0000-0000-0000-000000000010'
 \set otherEventSeriesID '3a450000-0000-0000-0000-000000000011'
 \set standaloneEventID '3a450000-0000-0000-0000-000000000012'
-\set userID '3a450000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories, users and groups
+-- Baseline communities, group categories, event categories and groups
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'userID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Event Series
-insert into event_series (
-    event_series_id,
-    group_id,
-    recurrence_additional_occurrences,
-    recurrence_anchor_starts_at,
-    recurrence_pattern,
-    timezone,
+-- Event series under validation
+select fx_event_series(:'eventSeriesID', :'groupID');
 
-    created_by
-) values
-    (
-        :'eventSeriesID',
-        :'groupID',
-        3,
-        '2030-01-07 10:00:00+00',
-        'weekly',
-        'UTC',
-
-        :'userID'
-    ),
-    (
-        :'otherEventSeriesID',
-        :'groupID',
-        1,
-        '2030-01-07 10:00:00+00',
-        'weekly',
-        'UTC',
-
-        :'userID'
-    );
+-- Other event series of the same group
+select fx_event_series(:'otherEventSeriesID', :'groupID');
 
 -- Events
 select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(

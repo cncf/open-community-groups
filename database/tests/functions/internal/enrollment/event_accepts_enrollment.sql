@@ -77,7 +77,7 @@ select is(
         jsonb_populate_record(null::event, jsonb_build_object(
             'canceled', false,
             'deleted', true,
-            'published', false,
+            'published', true,
             'starts_at', current_timestamp + interval '1 hour'
         )),
         jsonb_populate_record(null::"group", jsonb_build_object('active', true))

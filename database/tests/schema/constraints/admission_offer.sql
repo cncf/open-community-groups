@@ -227,7 +227,7 @@ select throws_ok(
         :'userID'
     ),
     '23514',
-    null,
+    'new row for relation "admission_offer" violates check constraint "admission_offer_deadline_chk"',
     'Should reject null deadlines for every admission offer'
 );
 
@@ -258,7 +258,7 @@ select throws_ok(
         :'userID'
     ),
     '23514',
-    null,
+    'new row for relation "admission_offer" violates check constraint "admission_offer_deadline_chk"',
     'Should require deadlines after offer creation'
 );
 
@@ -289,7 +289,7 @@ select throws_ok(
         :'userID'
     ),
     '23514',
-    null,
+    'new row for relation "admission_offer" violates check constraint "admission_offer_snapshot_chk"',
     'Should reject partial ticket snapshots'
 );
 
@@ -326,7 +326,7 @@ select throws_ok(
         :'userID'
     ),
     '23514',
-    null,
+    'new row for relation "admission_offer" violates check constraint "admission_offer_snapshot_chk"',
     'Should reject currency on intrinsic-free snapshots'
 );
 
@@ -368,7 +368,7 @@ select throws_ok(
         :'userID'
     ),
     '23514',
-    null,
+    'new row for relation "admission_offer" violates check constraint "admission_offer_snapshot_chk"',
     'Should require currency for discounted-to-zero snapshots'
 );
 
@@ -410,7 +410,7 @@ select throws_ok(
         :'userID'
     ),
     '23514',
-    null,
+    'new row for relation "admission_offer" violates check constraint "admission_offer_snapshot_chk"',
     'Should reject discount identity without a positive discount amount'
 );
 
@@ -434,7 +434,7 @@ select throws_ok(
         :'userID'
     ),
     '23514',
-    null,
+    'new row for relation "admission_offer" violates check constraint "admission_offer_ticket_status_snapshot_chk"',
     'Should require a snapshot before checkout begins'
 );
 

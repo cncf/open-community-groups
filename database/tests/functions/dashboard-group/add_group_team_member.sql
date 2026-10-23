@@ -1,3 +1,5 @@
+-- Tests adding group team members.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,6 +11,7 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '3a050000-0000-0000-0000-000000000006'
 \set communityID '3a050000-0000-0000-0000-000000000001'
 \set groupCategoryID '3a050000-0000-0000-0000-000000000002'
 \set groupID '3a050000-0000-0000-0000-000000000003'
@@ -22,6 +25,7 @@ select plan(5);
 -- Baseline community, categories, users and groups
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'actorUserID', jsonb_build_object('username', 'add-group-team-member-actor'));
 select fx_user(:'user1ID');
 select fx_user(:'user2ID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
@@ -33,8 +37,8 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 -- Should create pending membership
 select lives_ok(
     format(
-        $$select add_group_team_member(null::uuid, %L::uuid, %L::uuid, 'admin')$$,
-        :'groupID', :'user1ID'
+        $$select add_group_team_member(%L::uuid, %L::uuid, %L::uuid, 'admin')$$,
+        :'actorUserID', :'groupID', :'user1ID'
     ),
     'Should succeed for valid user'
 );
@@ -70,8 +74,8 @@ select results_eq(
         $$
         values (
             'group_team_member_added',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'add-group-team-member-actor',
             %L::uuid,
             %L::uuid,
             'user',
@@ -79,7 +83,7 @@ select results_eq(
             jsonb_build_object('role', 'admin')
         )
         $$,
-        :'communityID', :'groupID', :'user1ID'
+        :'actorUserID', :'communityID', :'groupID', :'user1ID'
     ),
     'Should create the expected audit row'
 );
@@ -91,7 +95,7 @@ select throws_ok(
         :'groupID', :'user2ID'
     ),
     '23503',
-    null,
+    'insert or update on table "group_team" violates foreign key constraint "group_team_role_fkey"',
     'Should not allow adding membership with invalid role'
 );
 

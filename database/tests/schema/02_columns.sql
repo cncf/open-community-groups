@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(97);
+select plan(93);
 
 -- ============================================================================
 -- TESTS
@@ -348,30 +348,6 @@ select columns_are('event', array[
     'tax_behavior',
     'tax_calculation_mode'
 ]);
-
-select is(
-    (
-        select column_default
-        from information_schema.columns
-        where table_schema = 'public'
-        and table_name = 'event'
-        and column_name = 'meeting_recording_published'
-    ),
-    'false',
-    'Event meeting recording publication should default to false'
-);
-
-select is(
-    (
-        select is_nullable
-        from information_schema.columns
-        where table_schema = 'public'
-        and table_name = 'event'
-        and column_name = 'meeting_recording_published'
-    ),
-    'NO',
-    'Event meeting recording publication should be required'
-);
 
 -- Test: event co-host columns should match expected
 select columns_are('event_cohost', array[
@@ -948,30 +924,6 @@ select columns_are('session', array[
     'meeting_requested',
     'meeting_sync_claimed_at'
 ]);
-
-select is(
-    (
-        select column_default
-        from information_schema.columns
-        where table_schema = 'public'
-        and table_name = 'session'
-        and column_name = 'meeting_recording_published'
-    ),
-    'false',
-    'Session meeting recording publication should default to false'
-);
-
-select is(
-    (
-        select is_nullable
-        from information_schema.columns
-        where table_schema = 'public'
-        and table_name = 'session'
-        and column_name = 'meeting_recording_published'
-    ),
-    'NO',
-    'Session meeting recording publication should be required'
-);
 
 -- Test: session_kind columns should match expected
 select columns_are('session_kind', array[

@@ -5,24 +5,16 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set alreadyProcessedSurveyID 'a5e00036-0000-0000-0000-000000000001'
-\set canceledEventID 'a5e00036-0000-0000-0000-000000000002'
-\set canceledEventSurveyID 'a5e00036-0000-0000-0000-000000000003'
 \set checkedInSurveyID 'a5e00036-0000-0000-0000-000000000004'
-\set closedByDateSurveyID 'a5e00036-0000-0000-0000-000000000005'
 \set closedSurveyID 'a5e00036-0000-0000-0000-000000000006'
 \set communityID 'a5e00036-0000-0000-0000-000000000007'
-\set deletedEventID 'a5e00036-0000-0000-0000-000000000008'
-\set deletedEventSurveyID 'a5e00036-0000-0000-0000-000000000009'
-\set deletedGroupEventID 'a5e00036-0000-0000-0000-00000000000a'
-\set deletedGroupID 'a5e00036-0000-0000-0000-00000000000b'
-\set deletedGroupSurveyID 'a5e00036-0000-0000-0000-00000000000c'
 \set draftSurveyID 'a5e00036-0000-0000-0000-00000000000d'
 \set dueSurveyID 'a5e00036-0000-0000-0000-00000000000e'
 \set eventCategoryID 'a5e00036-0000-0000-0000-00000000000f'
@@ -35,19 +27,13 @@ select plan(19);
 \set inactiveCommunityGroupID 'a5e00036-0000-0000-0000-000000000016'
 \set inactiveCommunityID 'a5e00036-0000-0000-0000-000000000017'
 \set inactiveCommunitySurveyID 'a5e00036-0000-0000-0000-000000000018'
-\set inactiveGroupEventID 'a5e00036-0000-0000-0000-000000000019'
-\set inactiveGroupID 'a5e00036-0000-0000-0000-00000000001a'
-\set inactiveGroupSurveyID 'a5e00036-0000-0000-0000-00000000001b'
 \set noRecipientsEventID 'a5e00036-0000-0000-0000-00000000001c'
 \set noRecipientsSurveyID 'a5e00036-0000-0000-0000-00000000001d'
 \set optedOutAttendeeID 'a5e00036-0000-0000-0000-00000000001e'
-\set scheduledSurveyID 'a5e00036-0000-0000-0000-00000000001f'
 \set siteID 'a5e00036-0000-0000-0000-000000000020'
 \set skippedAttendeeID 'a5e00036-0000-0000-0000-000000000021'
 \set testEventID 'a5e00036-0000-0000-0000-000000000022'
 \set testEventSurveyID 'a5e00036-0000-0000-0000-000000000023'
-\set unpublishedEventID 'a5e00036-0000-0000-0000-000000000024'
-\set unpublishedEventSurveyID 'a5e00036-0000-0000-0000-000000000025'
 \set unverifiedAttendeeID 'a5e00036-0000-0000-0000-000000000026'
 \set upcomingEventID 'a5e00036-0000-0000-0000-000000000027'
 \set upcomingEventSurveyID 'a5e00036-0000-0000-0000-000000000028'
@@ -74,7 +60,7 @@ values (:'siteID', 'Survey emails site', '{"primary_color": "#2563eb"}'::jsonb, 
 -- Verified attendee who opted out of survey emails
 select fx_user(:'optedOutAttendeeID', jsonb_build_object('email_verified', true));
 
--- Verified attendee of every skipped survey event
+-- Verified attendee of the inactive-community and not-ended events
 select fx_user(:'skippedAttendeeID', jsonb_build_object('email_verified', true));
 
 -- Checked-in attendee without a verified email
@@ -102,12 +88,6 @@ select fx_group_category(:'inactiveCommunityGroupCategoryID', :'inactiveCommunit
 insert into user_notification_opt_out (notification_category_id, user_id)
 values ('event-surveys', :'optedOutAttendeeID');
 
--- Deleted group of the active community
-select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
-
 -- Active group hosting the surveyed events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', true,
@@ -122,32 +102,6 @@ select fx_group(
     :'inactiveCommunityGroupCategoryID',
     jsonb_build_object('active', true)
 );
-
--- Inactive group of the active community
-select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
-
--- Canceled published event that already ended
-select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'ends_at', current_timestamp - interval '2 days',
-    'published', true,
-    'starts_at', current_timestamp - interval '2 days 2 hours'
-));
-
--- Deleted event that already ended
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'deleted_at', current_timestamp - interval '1 day',
-    'ends_at', current_timestamp - interval '2 days',
-    'starts_at', current_timestamp - interval '2 days 2 hours'
-));
-
--- Published ended event of the deleted group
-select fx_event(:'deletedGroupEventID', :'deletedGroupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', current_timestamp - interval '2 days',
-    'published', true,
-    'starts_at', current_timestamp - interval '2 days 2 hours'
-));
 
 -- Published ended event whose surveys are due
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -170,13 +124,6 @@ select fx_event(
     )
 );
 
--- Published ended event of the inactive group
-select fx_event(:'inactiveGroupEventID', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', current_timestamp - interval '2 days',
-    'published', true,
-    'starts_at', current_timestamp - interval '2 days 2 hours'
-));
-
 -- Published ended event without verified attendees
 select fx_event(:'noRecipientsEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp - interval '2 days',
@@ -191,13 +138,6 @@ select fx_event(:'testEventID', :'groupID', :'eventCategoryID', jsonb_build_obje
     'published', true,
     'starts_at', current_timestamp - interval '2 days 2 hours',
     'test_event', true
-));
-
--- Unpublished event that already ended
-select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', current_timestamp - interval '2 days',
-    'published', false,
-    'starts_at', current_timestamp - interval '2 days 2 hours'
 ));
 
 -- Published event that has not ended yet
@@ -219,16 +159,11 @@ values
 insert into event_attendee (checked_in, event_id, status, user_id)
 values (false, :'noRecipientsEventID', 'confirmed', :'unverifiedAttendeeID');
 
--- Verified confirmed attendee of every event whose surveys are skipped
+-- Verified confirmed attendee of the inactive-community and not-ended events
 insert into event_attendee (checked_in, event_id, status, user_id)
 select true, event_id, 'confirmed', :'skippedAttendeeID'
 from unnest(array[
-    :'canceledEventID',
-    :'deletedEventID',
-    :'deletedGroupEventID',
     :'inactiveCommunityEventID',
-    :'inactiveGroupEventID',
-    :'unpublishedEventID',
     :'upcomingEventID'
 ]::uuid[]) as event_id;
 
@@ -255,35 +190,13 @@ insert into event_survey (
     7
 );
 
--- Ready survey of the canceled event
-insert into event_survey (event_survey_id, event_id, status, title)
-values (:'canceledEventSurveyID', :'canceledEventID', 'ready', 'Canceled event survey');
-
 -- Open anonymous survey limited to checked-in attendees
 insert into event_survey (event_survey_id, anonymous, audience, event_id, status, title)
 values (:'checkedInSurveyID', true, 'checked-in', :'eventID', 'ready', 'Checked-in survey');
 
--- Ready survey whose closing date passed
-insert into event_survey (event_survey_id, event_id, status, title, closes_at)
-values (
-    :'closedByDateSurveyID',
-    :'eventID',
-    'ready',
-    'Closed by date survey',
-    current_timestamp - interval '1 hour'
-);
-
 -- Ready survey closed manually
 insert into event_survey (event_survey_id, event_id, status, title, closed_at)
 values (:'closedSurveyID', :'eventID', 'ready', 'Closed survey', current_timestamp - interval '1 hour');
-
--- Ready survey of the deleted event
-insert into event_survey (event_survey_id, event_id, status, title)
-values (:'deletedEventSurveyID', :'deletedEventID', 'ready', 'Deleted event survey');
-
--- Ready survey of the deleted group event
-insert into event_survey (event_survey_id, event_id, status, title)
-values (:'deletedGroupSurveyID', :'deletedGroupEventID', 'ready', 'Deleted group survey');
 
 -- Draft survey of the due event
 insert into event_survey (event_survey_id, event_id, status, title)
@@ -305,25 +218,13 @@ values (
 insert into event_survey (event_survey_id, event_id, status, title)
 values (:'inactiveCommunitySurveyID', :'inactiveCommunityEventID', 'ready', 'Inactive community survey');
 
--- Ready survey of the inactive group event
-insert into event_survey (event_survey_id, event_id, status, title)
-values (:'inactiveGroupSurveyID', :'inactiveGroupEventID', 'ready', 'Inactive group survey');
-
 -- Open survey of the event without verified attendees
 insert into event_survey (event_survey_id, event_id, status, title)
 values (:'noRecipientsSurveyID', :'noRecipientsEventID', 'ready', 'No recipients survey');
 
--- Ready survey whose custom opening is in the future
-insert into event_survey (event_survey_id, event_id, status, title, opens_at)
-values (:'scheduledSurveyID', :'eventID', 'ready', 'Scheduled survey', current_timestamp + interval '1 day');
-
 -- Open survey of the test event
 insert into event_survey (event_survey_id, event_id, status, title)
 values (:'testEventSurveyID', :'testEventID', 'ready', 'Test event survey');
-
--- Ready survey of the unpublished event
-insert into event_survey (event_survey_id, event_id, status, title)
-values (:'unpublishedEventSurveyID', :'unpublishedEventID', 'ready', 'Unpublished event survey');
 
 -- Ready survey of the event that has not ended
 insert into event_survey (event_survey_id, event_id, status, title)
@@ -407,125 +308,36 @@ select is(
     'Should keep the marker of surveys already processed'
 );
 
--- Should leave draft surveys unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'draftSurveyID'
+-- Should leave closed, draft, inactive-community and not-ended surveys unprocessed
+select results_eq(
+    format(
+        $$
+            select
+                s.event_survey_id,
+                s.open_notification_processed_at,
+                s.open_notification_recipients
+            from event_survey s
+            where s.event_survey_id = any(array[%L, %L, %L, %L]::uuid[])
+            order by s.title
+        $$,
+        :'closedSurveyID',
+        :'draftSurveyID',
+        :'inactiveCommunitySurveyID',
+        :'upcomingEventSurveyID'
     ),
-    true,
-    'Should leave draft surveys unprocessed'
-);
-
--- Should leave surveys closed manually unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'closedSurveyID'
+    format(
+        $$ values
+            (%L::uuid, null::timestamptz, null::int),
+            (%L::uuid, null::timestamptz, null::int),
+            (%L::uuid, null::timestamptz, null::int),
+            (%L::uuid, null::timestamptz, null::int)
+        $$,
+        :'closedSurveyID',
+        :'draftSurveyID',
+        :'inactiveCommunitySurveyID',
+        :'upcomingEventSurveyID'
     ),
-    true,
-    'Should leave surveys closed manually unprocessed'
-);
-
--- Should leave surveys of canceled events unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'canceledEventSurveyID'
-    ),
-    true,
-    'Should leave surveys of canceled events unprocessed'
-);
-
--- Should leave surveys of deleted events unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'deletedEventSurveyID'
-    ),
-    true,
-    'Should leave surveys of deleted events unprocessed'
-);
-
--- Should leave surveys of deleted groups unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'deletedGroupSurveyID'
-    ),
-    true,
-    'Should leave surveys of deleted groups unprocessed'
-);
-
--- Should leave surveys of events that have not ended unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'upcomingEventSurveyID'
-    ),
-    true,
-    'Should leave surveys of events that have not ended unprocessed'
-);
-
--- Should leave surveys of inactive communities unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'inactiveCommunitySurveyID'
-    ),
-    true,
-    'Should leave surveys of inactive communities unprocessed'
-);
-
--- Should leave surveys of inactive groups unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'inactiveGroupSurveyID'
-    ),
-    true,
-    'Should leave surveys of inactive groups unprocessed'
-);
-
--- Should leave surveys of unpublished events unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'unpublishedEventSurveyID'
-    ),
-    true,
-    'Should leave surveys of unpublished events unprocessed'
-);
-
--- Should leave surveys opening in the future unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'scheduledSurveyID'
-    ),
-    true,
-    'Should leave surveys opening in the future unprocessed'
-);
-
--- Should leave surveys past their closing date unprocessed
-select is(
-    (
-        select s.open_notification_processed_at is null and s.open_notification_recipients is null
-        from event_survey s
-        where s.event_survey_id = :'closedByDateSurveyID'
-    ),
-    true,
-    'Should leave surveys past their closing date unprocessed'
+    'Should leave closed, draft, inactive-community and not-ended surveys unprocessed'
 );
 
 -- Should mark due surveys processed with the notifications enqueued

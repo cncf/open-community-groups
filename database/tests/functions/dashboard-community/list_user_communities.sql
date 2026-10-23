@@ -1,3 +1,5 @@
+-- Tests listing the communities where a user is an accepted team member.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -20,13 +22,22 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community and users
-select fx_community(:'community1ID');
-select fx_community(:'community2ID');
+-- Communities whose names sort opposite to their identifiers
+select fx_community(:'community1ID', jsonb_build_object(
+    'display_name', 'Zeta User Communities',
+    'name', 'zeta-user-communities'
+));
+select fx_community(:'community2ID', jsonb_build_object(
+    'display_name', 'Alpha User Communities',
+    'name', 'alpha-user-communities'
+));
+
+-- Baseline users
 select fx_user(:'user1ID');
 select fx_user(:'user2ID');
 select fx_user(:'user3ID');
 
+-- Accepted and pending community team memberships
 insert into community_team (community_id, user_id, accepted, role) values
     (:'community1ID', :'user1ID', true, 'admin'),
     (:'community2ID', :'user1ID', true, 'admin'),
@@ -37,10 +48,13 @@ insert into community_team (community_id, user_id, accepted, role) values
 -- TESTS
 -- ============================================================================
 
--- Should return communities for user who is team member of multiple communities
+-- Should return communities in alphabetical order for user in multiple communities
 select is(
     list_user_communities(:'user1ID'::uuid)::jsonb,
-    (select json_agg(get_community_summary(community_id) order by name) from community)::jsonb,
+    json_build_array(
+        get_community_summary(:'community2ID'::uuid),
+        get_community_summary(:'community1ID'::uuid)
+    )::jsonb,
     'Should return communities in alphabetical order for user in multiple communities'
 );
 

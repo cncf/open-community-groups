@@ -289,6 +289,7 @@ select throws_ok(
         $$update payment_job set completed_at = current_timestamp, status = 'completed' where payment_job_id = %L::uuid$$,
         :'applicationMissingJobID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject application-fee completion without an outcome'
 );
@@ -299,6 +300,7 @@ select throws_ok(
         $$update payment_job set completed_at = current_timestamp, status = 'completed' where payment_job_id = %L::uuid$$,
         :'creditMissingJobID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject credit-note completion without an outcome'
 );
@@ -309,6 +311,7 @@ select throws_ok(
         $$update payment_job set completed_at = current_timestamp, status = 'completed' where payment_job_id = %L::uuid$$,
         :'refundMissingJobID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject refund completion without an outcome'
 );
@@ -324,6 +327,7 @@ select throws_ok(
         :'refundMissingPurchaseID',
         :'insertedJobID'
     ),
+    'P0001',
     'payment job completed without its provider outcome',
     'Should reject inserting a completed job before its domain row exists'
 );

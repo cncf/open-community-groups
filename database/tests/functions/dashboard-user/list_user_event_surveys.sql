@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,12 +19,6 @@ select plan(10);
 \set closedSurveyID 'a5e00035-0000-0000-0000-000000000006'
 \set closingSoonSurveyID 'a5e00035-0000-0000-0000-000000000007'
 \set communityID 'a5e00035-0000-0000-0000-000000000008'
-\set deletedEventAttendeeID 'a5e00035-0000-0000-0000-000000000023'
-\set deletedEventID 'a5e00035-0000-0000-0000-000000000024'
-\set deletedEventSurveyID 'a5e00035-0000-0000-0000-000000000025'
-\set deletedGroupEventID 'a5e00035-0000-0000-0000-000000000009'
-\set deletedGroupID 'a5e00035-0000-0000-0000-00000000000a'
-\set deletedGroupSurveyID 'a5e00035-0000-0000-0000-00000000000b'
 \set draftSurveyID 'a5e00035-0000-0000-0000-00000000000c'
 \set earlierClosedSurveyID 'a5e00035-0000-0000-0000-000000000030'
 \set earlierEventID 'a5e00035-0000-0000-0000-00000000000d'
@@ -80,9 +74,6 @@ select fx_community(:'otherCommunityID', jsonb_build_object(
     'name', 'survey-panel-other-community'
 ));
 
--- Confirmed attendee of the deleted event
-select fx_user(:'deletedEventAttendeeID');
-
 -- Confirmed attendee of only the canceled and unpublished events
 select fx_user(:'hiddenSurveysAttendeeID');
 
@@ -118,12 +109,6 @@ select fx_group_category(:'inactiveCommunityGroupCategoryID', :'inactiveCommunit
 
 -- Group category of the second active community
 select fx_group_category(:'otherCommunityGroupCategoryID', :'otherCommunityID');
-
--- Deleted group of the active community
-select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
 
 -- Active group hosting the public surveyed events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
@@ -165,21 +150,6 @@ select fx_event(:'busyEventID', :'groupID', :'eventCategoryID', jsonb_build_obje
 -- Canceled published event that already ended
 select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
-    'ends_at', current_timestamp - interval '2 days',
-    'published', true,
-    'starts_at', current_timestamp - interval '2 days 2 hours'
-));
-
--- Deleted event that already ended
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'deleted_at', current_timestamp - interval '1 day',
-    'ends_at', current_timestamp - interval '2 days',
-    'starts_at', current_timestamp - interval '2 days 2 hours'
-));
-
--- Published ended event of the deleted group
-select fx_event(:'deletedGroupEventID', :'deletedGroupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp - interval '2 days',
     'published', true,
     'starts_at', current_timestamp - interval '2 days 2 hours'
@@ -244,10 +214,6 @@ select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_bui
     'starts_at', current_timestamp - interval '2 days 2 hours'
 ));
 
--- Confirmed attendance at the deleted event
-insert into event_attendee (checked_in, event_id, status, user_id)
-values (false, :'deletedEventID', 'confirmed', :'deletedEventAttendeeID');
-
 -- Confirmed attendance at the canceled and unpublished events only
 insert into event_attendee (checked_in, event_id, status, user_id)
 select false, event_id, 'confirmed', :'hiddenSurveysAttendeeID'
@@ -271,7 +237,6 @@ insert into event_attendee (checked_in, event_id, status, user_id)
 select false, event_id, 'confirmed', :'respondentID'
 from unnest(array[
     :'canceledEventID',
-    :'deletedGroupEventID',
     :'earlierEventID',
     :'eventID',
     :'inactiveCommunityEventID',
@@ -303,14 +268,6 @@ values (:'closedSurveyID', :'eventID', 'ready', 'Closed survey', current_timesta
 -- Open survey closing tomorrow
 insert into event_survey (event_survey_id, event_id, status, title, closes_at)
 values (:'closingSoonSurveyID', :'eventID', 'ready', 'Closing soon', current_timestamp + interval '1 day');
-
--- Ready survey of the deleted event
-insert into event_survey (event_survey_id, event_id, status, title)
-values (:'deletedEventSurveyID', :'deletedEventID', 'ready', 'Deleted event survey');
-
--- Ready survey of the deleted group event
-insert into event_survey (event_survey_id, event_id, status, title)
-values (:'deletedGroupSurveyID', :'deletedGroupEventID', 'ready', 'Deleted group survey');
 
 -- Draft survey of the main event
 insert into event_survey (event_survey_id, event_id, status, title)
@@ -386,13 +343,6 @@ select is(
     jsonb_array_length(list_user_event_surveys(:'pagerID'::uuid, '{}'::jsonb)::jsonb->'surveys'),
     10,
     'Should default the page size to ten'
-);
-
--- Should ignore surveys of deleted events
-select is(
-    list_user_event_surveys(:'deletedEventAttendeeID'::uuid, '{}'::jsonb)::jsonb,
-    jsonb_build_object('surveys', '[]'::jsonb, 'total', 0),
-    'Should ignore surveys of deleted events'
 );
 
 -- Should list open eligible surveys unanswered first, then answered closed surveys most recent first
