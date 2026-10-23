@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(61);
+select plan(71);
 
 -- ============================================================================
 -- VARIABLES
@@ -49,6 +49,10 @@ select plan(61);
 \set eventLabelRemovedID '3a390000-0000-0000-0000-0000000000a5'
 \set eventLabelStaleID '3a390000-0000-0000-0000-0000000000a6'
 \set eventManualTaxID '3a390000-0000-0000-0000-000000000041'
+\set eventOrganizersKeptID '3a390000-0000-0000-0000-0000000000b0'
+\set eventOrganizersRejectedID '3a390000-0000-0000-0000-0000000000b1'
+\set eventOrganizersReplacedID '3a390000-0000-0000-0000-0000000000b2'
+\set eventOrganizersTeamID '3a390000-0000-0000-0000-0000000000b3'
 \set eventPaidToFreeID '3a390000-0000-0000-0000-000000000024'
 \set eventPaidToFreePriceWindowID '3a390000-0000-0000-0000-000000000028'
 \set eventPaidToFreeTicketTypeID '3a390000-0000-0000-0000-000000000029'
@@ -80,6 +84,7 @@ select plan(61);
 \set sessionLabelRenameID '3a390000-0000-0000-0000-0000000000a8'
 \set sponsorNewID '3a390000-0000-0000-0000-000000000015'
 \set sponsorOrigID '3a390000-0000-0000-0000-000000000016'
+\set teamMemberID '3a390000-0000-0000-0000-0000000000b4'
 \set user1ID '3a390000-0000-0000-0000-000000000009'
 \set user2ID '3a390000-0000-0000-0000-000000000017'
 \set user3ID '3a390000-0000-0000-0000-000000000018'
@@ -125,6 +130,9 @@ select fx_user(:'user3ID', jsonb_build_object(
     'username', 'speaker1-update-event'
 ));
 select fx_user(:'waitlistUserID', jsonb_build_object('username', 'waitlist'));
+
+-- Accepted team member who joined after the team event organizers were stored
+select fx_user(:'teamMemberID', jsonb_build_object('username', 'team-member-update-event'));
 
 -- Group
 select fx_group(:'group1ID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_update_event", "seller_display_name": "Update Event Fiscal Sponsor"}'::jsonb));
@@ -190,6 +198,30 @@ select fx_event(:'eventTestPaidToTestID', :'group1ID', :'category1ID', jsonb_bui
     'name', 'Test Paid To Test',
     'payment_currency_code', 'USD',
     'test_event', true
+));
+
+-- Event whose stored organizers are kept when the payload omits them
+select fx_event(:'eventOrganizersKeptID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Event seeded for kept organizers tests',
+    'name', 'Event With Kept Organizers'
+));
+
+-- Event whose stored organizers survive a rejected organizers payload
+select fx_event(:'eventOrganizersRejectedID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Event seeded for rejected organizers tests',
+    'name', 'Event With Rejected Organizers'
+));
+
+-- Event whose stored organizers are replaced by the payload
+select fx_event(:'eventOrganizersReplacedID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Event seeded for replaced organizers tests',
+    'name', 'Event With Replaced Organizers'
+));
+
+-- Event whose stored organizers differ from the current group team
+select fx_event(:'eventOrganizersTeamID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'Event seeded for team change organizers tests',
+    'name', 'Event With Team Organizers'
 ));
 
 -- Free manual-tax event with a selection that can be explicitly cleared
@@ -354,6 +386,27 @@ values (:'eventWaitlistWindowID', :'user2ID');
 
 -- Initial host of the session hosts event
 insert into event_host (event_id, user_id) values (:'eventSessionHostsID', :'user1ID');
+
+-- Stored organizers kept when the payload omits them
+insert into event_organizer (event_id, user_id, "order") values
+    (:'eventOrganizersKeptID', :'user3ID', 1),
+    (:'eventOrganizersKeptID', :'user2ID', 2);
+
+-- Stored organizer kept when an invalid organizers payload is rejected
+insert into event_organizer (event_id, user_id, "order")
+values (:'eventOrganizersRejectedID', :'user1ID', 1);
+
+-- Stored organizer outside the group team, kept by the submitted organizers
+insert into event_organizer (event_id, user_id, "order")
+values (:'eventOrganizersReplacedID', :'user1ID', 1);
+
+-- Stored organizer who has since left the group team
+insert into event_organizer (event_id, user_id, "order")
+values (:'eventOrganizersTeamID', :'user1ID', 1);
+
+-- Current accepted group team, which no longer includes the stored organizer
+insert into group_team (accepted, group_id, role, user_id)
+values (true, :'group1ID', 'viewer', :'teamMemberID');
 
 -- Every update fixture uses the unified ticket inventory
 select fx_event_ticket_type(
@@ -1671,6 +1724,171 @@ select is(
         'session_labels', 1
     ),
     'Should leave the event unchanged when a removed label is still referenced'
+);
+
+-- Should keep organizers when the payload omits them
+select lives_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'eventOrganizersKeptID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Event seeded for kept organizers tests',
+            'kind_id', 'in-person',
+            'name', 'Event With Kept Organizers',
+            'timezone', 'UTC'
+        )
+    ),
+    'Should keep organizers when the payload omits them'
+);
+select results_eq(
+    format(
+        $$
+            select user_id, "order"
+            from event_organizer
+            where event_id = %L::uuid
+            order by "order"
+        $$,
+        :'eventOrganizersKeptID'
+    ),
+    format(
+        $$values (%L::uuid, 1), (%L::uuid, 2)$$,
+        :'user3ID',
+        :'user2ID'
+    ),
+    'Should leave organizers untouched when the payload omits them'
+);
+
+-- Should keep organizers independent of later team changes
+select lives_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'eventOrganizersTeamID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Event seeded for team change organizers tests',
+            'kind_id', 'in-person',
+            'name', 'Event With Team Organizers',
+            'timezone', 'UTC'
+        )
+    ),
+    'Should keep organizers independent of later team changes'
+);
+select results_eq(
+    format(
+        $$
+            select user_id, "order"
+            from event_organizer
+            where event_id = %L::uuid
+            order by "order"
+        $$,
+        :'eventOrganizersTeamID'
+    ),
+    format($$values (%L::uuid, 1)$$, :'user1ID'),
+    'Should keep stored organizers instead of the current group team'
+);
+
+-- Should reject an invalid organizers payload
+select throws_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'eventOrganizersRejectedID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Event seeded for rejected organizers tests',
+            'kind_id', 'in-person',
+            'name', 'Event With Rejected Organizers',
+            'organizers', jsonb_build_object('user_id', :'user2ID'),
+            'timezone', 'UTC'
+        )
+    ),
+    'OCG01',
+    'invalid organizers payload',
+    'Should reject an invalid organizers payload'
+);
+select results_eq(
+    format(
+        $$
+            select user_id, "order"
+            from event_organizer
+            where event_id = %L::uuid
+            order by "order"
+        $$,
+        :'eventOrganizersRejectedID'
+    ),
+    format($$values (%L::uuid, 1)$$, :'user1ID'),
+    'Should keep organizers when rejecting an invalid organizers payload'
+);
+
+-- Should reject an organizer outside the group team
+select throws_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'eventOrganizersRejectedID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Event seeded for rejected organizers tests',
+            'kind_id', 'in-person',
+            'name', 'Event With Rejected Organizers',
+            'organizers', jsonb_build_array(:'user1ID', :'user2ID'),
+            'timezone', 'UTC'
+        )
+    ),
+    'OCG01',
+    'organizer is not a group team member',
+    'Should reject an organizer outside the group team'
+);
+select results_eq(
+    format(
+        $$
+            select user_id, "order"
+            from event_organizer
+            where event_id = %L::uuid
+            order by "order"
+        $$,
+        :'eventOrganizersRejectedID'
+    ),
+    format($$values (%L::uuid, 1)$$, :'user1ID'),
+    'Should keep organizers when rejecting an organizer outside the group team'
+);
+
+-- Should replace organizers when submitted
+select lives_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'eventOrganizersReplacedID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Event seeded for replaced organizers tests',
+            'kind_id', 'in-person',
+            'name', 'Event With Replaced Organizers',
+            'organizers', jsonb_build_array(:'teamMemberID', :'user1ID'),
+            'timezone', 'UTC'
+        )
+    ),
+    'Should replace organizers when submitted'
+);
+select results_eq(
+    format(
+        $$
+            select user_id, "order"
+            from event_organizer
+            where event_id = %L::uuid
+            order by "order"
+        $$,
+        :'eventOrganizersReplacedID'
+    ),
+    format(
+        $$values (%L::uuid, 1), (%L::uuid, 2)$$,
+        :'teamMemberID',
+        :'user1ID'
+    ),
+    'Should store submitted organizers in submitted order'
 );
 
 -- Should throw error when group_id does not match

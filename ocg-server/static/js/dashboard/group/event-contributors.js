@@ -3,7 +3,8 @@ import { normalizeSpeakers } from "/static/js/dashboard/event/sessions/speaker-u
 import "/static/js/dashboard/group/session-speakers-table.js";
 
 /**
- * Coordinates contributor tables, bulk speaker recipients, and save-first award state.
+ * Coordinates contributor tables (speakers, hosts, and organizers), bulk speaker
+ * recipients, and save-first award state.
  * @param {Document|Element} pageRoot Event page root.
  * @returns {void}
  */
@@ -13,10 +14,17 @@ export const initializeEventContributors = (pageRoot) => {
   }
 
   const hostsSelector = pageRoot.querySelector("#event-hosts-selector");
+  const organizersSelector = pageRoot.querySelector("#event-organizers-selector");
   const speakersSelector = pageRoot.querySelector("#event-speakers-selector");
   const sessionSpeakersTable = pageRoot.querySelector("#session-speakers-table");
   const sessionsSection = pageRoot.querySelector("sessions-section");
-  if (!hostsSelector || !speakersSelector || !sessionSpeakersTable || !sessionsSection) {
+  if (
+    !hostsSelector ||
+    !organizersSelector ||
+    !speakersSelector ||
+    !sessionSpeakersTable ||
+    !sessionsSection
+  ) {
     return;
   }
 
@@ -24,6 +32,7 @@ export const initializeEventContributors = (pageRoot) => {
 
   const setAwardsDisabled = () => {
     hostsSelector.awardsDisabled = contributorChangesPending;
+    organizersSelector.awardsDisabled = contributorChangesPending;
     speakersSelector.awardsDisabled = contributorChangesPending;
     sessionSpeakersTable.awardsDisabled = contributorChangesPending;
   };
@@ -42,6 +51,7 @@ export const initializeEventContributors = (pageRoot) => {
   };
 
   hostsSelector.addEventListener("users-changed", markContributorChangesPending);
+  organizersSelector.addEventListener("users-changed", markContributorChangesPending);
   speakersSelector.addEventListener("speakers-changed", markContributorChangesPending);
   sessionsSection.addEventListener("sessions-changed", () => {
     markContributorChangesPending();

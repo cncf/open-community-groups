@@ -422,7 +422,7 @@ describe("dashboard group event add template", () => {
     );
     expect(template).to.include("Session-level speakers");
     expect(template).to.include(
-      '<div class="mt-8 border-t border-stone-200 pt-8"> <h3 class="form-label m-0">Session-level speakers</h3> <p class="mt-4 text-sm text-stone-500">',
+      '<div class="mt-8 border-t border-stone-200 pt-8"> <h3 class="form-label m-0">Session-level speakers</h3> <p class="mt-2 text-sm text-stone-500">',
     );
     expect(template).not.to.include(">Event Speakers<");
     expect(template).to.include(
@@ -436,8 +436,8 @@ describe("dashboard group event add template", () => {
     // Load and isolate the contributor form before checking section spacing.
     const template = normalizeWhitespace(await loadTemplate());
     const contributorForm = template.slice(
-      template.indexOf('<form id="hosts-sponsors-form" data-event-form>'),
-      template.indexOf("{# End Hosts & Speakers Tab -#}"),
+      template.indexOf('<form id="contributors-form" data-event-form>'),
+      template.indexOf("{# End Contributors Tab -#}"),
     );
 
     // Keep the large section rhythm without rendering divider borders.
@@ -445,6 +445,49 @@ describe("dashboard group event add template", () => {
     expect(contributorForm.match(/class="pb-12"/gu)).to.have.length(1);
     expect(contributorForm).not.to.include("border-b");
     expect(contributorForm).not.to.include("border-stone-900/10");
+  });
+
+  it("orders contributor sections and defaults organizers to the group team", async () => {
+    // Load and isolate the contributors tab before checking its sections.
+    const template = normalizeWhitespace(await loadTemplate());
+    const contributorsTab = template.slice(
+      template.indexOf("{# Contributors Tab -#}"),
+      template.indexOf("{# End Contributors Tab -#}"),
+    );
+
+    // Verify the tab uses the contributors identifiers.
+    expect(contributorsTab).to.include('<div data-content="contributors" class="hidden">');
+    expect(contributorsTab).to.include('<form id="contributors-form" data-event-form>');
+    expect(template).not.to.include("hosts-sponsors");
+    expect(template).not.to.include("Hosts & Speakers");
+
+    // Verify the hint about people without a full name tops the tab.
+    expect(contributorsTab).to.include(
+      '<form id="contributors-form" data-event-form> <p class="mb-8 text-sm text-stone-500"> People without a full name in their profile aren\'t listed on the public event page. </p>',
+    );
+
+    // Verify sections follow the public event page order.
+    const speakersIndex = contributorsTab.indexOf('id="event-speakers-selector"');
+    const hostsIndex = contributorsTab.indexOf('id="event-hosts-selector"');
+    const organizersIndex = contributorsTab.indexOf('id="event-organizers-selector"');
+    const sponsorsIndex = contributorsTab.indexOf("<sponsors-section");
+    expect(speakersIndex).to.be.greaterThan(-1);
+    expect(hostsIndex).to.be.greaterThan(speakersIndex);
+    expect(organizersIndex).to.be.greaterThan(hostsIndex);
+    expect(sponsorsIndex).to.be.greaterThan(organizersIndex);
+
+    // Verify hosts and organizers use role-specific search copy.
+    expect(contributorsTab).to.include('label="host" legend="Search for event hosts by their username"');
+    expect(contributorsTab).to.include(
+      '<div class="text-xl lg:text-2xl font-medium text-stone-900">Event Organizers</div> <p class="mt-2 text-sm text-stone-500"> Organizers are listed on the public event page. Only accepted group team members can be added, and new events start with the whole team. People who leave the team stay listed until removed. Contact messages still go to the group team. </p>',
+    );
+
+    // Verify organizers start with the team, only search the team, and always submit the selection.
+    expect(contributorsTab).to.include(
+      '<user-search-selector id="event-organizers-selector" selected-users="{{ team_members|json }}" available-users="{{ team_members|json }}" field-name="organizers" dashboard-type="group" display-mode="table" label="organizer" legend="Search group team members by name or username"></user-search-selector>',
+    );
+    expect(contributorsTab).to.include('<input type="hidden" name="organizers_present" value="true">');
+    expect(contributorsTab).not.to.include("event-organizers-award-button");
   });
 
   it("explains registration windows, required questions, and request review", async () => {

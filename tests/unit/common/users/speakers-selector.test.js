@@ -137,6 +137,36 @@ describe("speakers-selector", () => {
     expect(element.selectedSpeakers).to.deep.equal([]);
   });
 
+  it("hides the actions column on read-only tables without badge awards", async () => {
+    // Render one read-only table with awards and one without.
+    const readOnly = await mountLitComponent("speakers-selector", {
+      disabled: true,
+      displayMode: "table",
+      selectedSpeakers: [{ user_id: "21", username: "grace" }],
+    });
+    const readOnlyWithAwards = await mountLitComponent("speakers-selector", {
+      canAwardBadges: true,
+      disabled: true,
+      displayMode: "table",
+      eventId: "event-1",
+      selectedSpeakers: [{ user_id: "21", username: "grace" }],
+    });
+
+    // Only the table with an available action keeps the actions column.
+    expect([...readOnly.querySelectorAll("th")].map((header) => header.textContent.trim())).to.deep.equal([
+      "Name",
+      "Featured",
+    ]);
+    expect(readOnly.querySelector("[data-actions-menu]")).to.equal(null);
+    expect(readOnlyWithAwards.querySelectorAll("th")).to.have.length(3);
+    expect(readOnlyWithAwards.querySelector("[data-actions-menu]")).to.not.equal(null);
+
+    // The empty state spans the remaining columns.
+    readOnly.selectedSpeakers = [];
+    await readOnly.updateComplete;
+    expect(readOnly.querySelector("tbody td").getAttribute("colspan")).to.equal("2");
+  });
+
   it("keeps non-featured speaker cells visually empty", async () => {
     const element = await mountLitComponent("speakers-selector", {
       displayMode: "table",

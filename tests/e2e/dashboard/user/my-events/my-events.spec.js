@@ -1,8 +1,11 @@
 import { expect, test } from "../../../fixtures.js";
 import { queryE2eDatabase } from "../../../database.js";
+import { cleanupEventsByIds, setupOrganizerEvent } from "../../../data-graphs/events.js";
+import { openEventUpdateFormByName, waitForEventEditorAfterSave } from "../../group/events/helpers.js";
 import {
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
+  TEST_GROUP_IDS,
   TEST_GROUP_SLUGS,
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
@@ -17,6 +20,9 @@ import {
   waitForActionResponse,
 } from "../../../utils.js";
 import { getAttendButton, getLeaveButton, waitForAttendanceState } from "../../../site/event/helpers.js";
+
+// Lists every upcoming event on one page so owned events are found regardless of seeded rows.
+const MY_EVENTS_ALL_PATH = "/dashboard/user?tab=events&limit=100";
 
 test.describe("user dashboard my events view", () => {
   test("empty state explains when the user has no upcoming events", async ({ emptyUserPage }) => {
@@ -209,6 +215,102 @@ test.describe("user dashboard my events view", () => {
         hasText: TEST_REGISTRATION_QUESTIONS_EVENT.name,
       }),
     ).toHaveCount(0);
+  });
+
+  test("attendee who also organizes can cancel attendance and keeps the organizer role", async ({
+    member2Page,
+  }) => {
+    // Create an event where Member Two attends and is listed as an organizer.
+    const event = setupOrganizerEvent({
+      attendeeUserIds: [TEST_USER_IDS.member2],
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      organizerUserIds: [TEST_USER_IDS.member2],
+    });
+
+    try {
+      // Load My Events and verify both roles are listed.
+      await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
+      const dashboardContent = member2Page.locator("#dashboard-content");
+      const eventRow = dashboardContent.locator("tr", { hasText: event.name });
+      await expect(eventRow).toContainText("Attendee");
+      await expect(eventRow).toContainText("Organizer");
+
+      // Cancel attendance from the row actions.
+      await openEventActions(eventRow);
+      await eventRow.getByRole("menuitem", { name: "Cancel attendance" }).click();
+      await expect(member2Page.locator(".swal2-popup")).toContainText(
+        "Are you sure you want to cancel your attendance?",
+      );
+      await waitForActionResponse(
+        member2Page,
+        () => member2Page.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlIncludes: `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${event.eventId}/attendance`,
+        },
+      );
+
+      // Reload My Events and verify only the organizer role remains.
+      await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
+      const reloadedRow = dashboardContent.locator("tr", { hasText: event.name });
+      await expect(reloadedRow).toContainText("Organizer");
+      await expect(reloadedRow.getByText("Attendee", { exact: true })).toHaveCount(0);
+      await openEventActions(reloadedRow);
+      await expect(reloadedRow.getByRole("menuitem", { name: "Cancel attendance" })).toBeDisabled();
+    } finally {
+      // Delete the event used for the organizer attendance checks.
+      cleanupEventsByIds([event.eventId]);
+    }
+  });
+
+  test("organizer-only participation disappears after an editor removes the organizer", async ({
+    member2Page,
+    organizerGroupPage,
+  }) => {
+    // Create an event where Member Two is only listed as an organizer.
+    const event = setupOrganizerEvent({
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      organizerUserIds: [TEST_USER_IDS.organizer1, TEST_USER_IDS.member2],
+    });
+
+    try {
+      // Load My Events and verify the organizer-only row.
+      await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
+      const dashboardContent = member2Page.locator("#dashboard-content");
+      const eventRow = dashboardContent.locator("tr", { hasText: event.name });
+      await expect(eventRow).toContainText("Organizer");
+      await expect(eventRow.getByText("Attendee", { exact: true })).toHaveCount(0);
+
+      // Remove Member Two, who is not on the group team, and save the event.
+      await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
+      const organizerRow = organizerGroupPage.locator("#event-organizers-selector tr", {
+        hasText: "E2E Member Two",
+      });
+      await organizerRow.locator('summary[aria-label="Open organizer actions for E2E Member Two"]').click();
+      await organizerRow.getByRole("menuitem", { name: "Delete" }).click();
+      const confirmAlert = organizerGroupPage.locator(".swal2-popup");
+      await expect(confirmAlert).toContainText("E2E Member Two is no longer on the group team");
+      await confirmAlert.getByRole("button", { name: "Remove" }).click();
+      await expect(organizerRow).toHaveCount(0);
+      const visibleSaveButton = organizerGroupPage.locator(
+        "#pending-changes-alert:not(.hidden) #update-event-button",
+      );
+      await expect(visibleSaveButton).toBeVisible();
+      await waitForEventEditorAfterSave(organizerGroupPage, () => visibleSaveButton.click(), {
+        eventId: event.eventId,
+        method: "PUT",
+        urlIncludes: `/dashboard/group/events/${event.eventId}/update`,
+      });
+
+      // Reload My Events and verify the event is no longer listed.
+      await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
+      await expect(dashboardContent.getByText("My Events", { exact: true })).toBeVisible();
+      await expect(dashboardContent.locator("tr", { hasText: event.name })).toHaveCount(0);
+    } finally {
+      // Delete the event used for the organizer removal checks.
+      cleanupEventsByIds([event.eventId]);
+    }
   });
 
   test("my events exposes offers and active checkout actions after registration closes", async ({

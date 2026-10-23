@@ -321,6 +321,12 @@ pub(crate) struct EventInput {
     /// Meetup.com URL.
     #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub meetup_url: Option<String>,
+    /// User IDs of event organizers, in display order.
+    #[garde(skip)]
+    pub organizers: Option<Vec<Uuid>>,
+    /// Whether the organizers selection was submitted.
+    #[garde(skip)]
+    pub organizers_present: Option<bool>,
     /// Currency used for ticket purchases.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub payment_currency_code: Option<String>,
@@ -548,6 +554,17 @@ impl EventInput {
             "ticket_types",
             self.ticket_types_present.is_some(),
             ticket_types,
+        )?;
+
+        // Include organizers only when submitted, so omitted sections never
+        // clear or replace them
+        payload.remove("organizers");
+        payload.remove("organizers_present");
+        Self::insert_optional_field(
+            &mut payload,
+            "organizers",
+            self.organizers_present.is_some() || self.organizers.is_some(),
+            Some(self.organizers.clone().unwrap_or_default()),
         )?;
 
         // Include event and session labels only when the form submitted them

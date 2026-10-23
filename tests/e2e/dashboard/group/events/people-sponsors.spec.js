@@ -1,6 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
-import { cleanupEventsByIds } from "../../../data-graphs/events.js";
-import { TEST_USER_IDS } from "../../../seed.js";
+import { queryE2eDatabase } from "../../../database.js";
+import { cleanupEventsByIds, setupOrganizerEvent } from "../../../data-graphs/events.js";
+import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
 import {
   futureDate,
   navigateToPath,
@@ -15,6 +16,13 @@ import {
   scrollToViewportBottom,
   waitForEventEditorAfterSave,
 } from "./helpers.js";
+
+const DEFAULT_ORGANIZERS = [
+  { name: "E2E Check-In Manager One", userId: TEST_USER_IDS.checkInManager1 },
+  { name: "E2E Events Manager One", userId: TEST_USER_IDS.eventsManager1 },
+  { name: "E2E Group Viewer One", userId: TEST_USER_IDS.groupViewer1 },
+  { name: "E2E Organizer One", userId: TEST_USER_IDS.organizer1 },
+];
 
 const HIDDEN_SPONSOR_ID = "66666666-6666-6666-6666-666666666602";
 
@@ -33,7 +41,7 @@ test.describe("group dashboard event contributors", () => {
     try {
       // Create an event and configure people and sponsors through the editor.
       await fillEventDetails(organizerGroupPage, eventName);
-      await organizerGroupPage.locator('button[data-section="hosts-sponsors"]').click();
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
       await addEventHost(organizerGroupPage, {
         name: "E2E Organizer One",
         userId: TEST_USER_IDS.organizer1,
@@ -43,6 +51,10 @@ test.describe("group dashboard event contributors", () => {
         name: "E2E Member One",
         userId: TEST_USER_IDS.member1,
         username: "e2e-member-1",
+      });
+      await expectSearchResultDisabled(organizerGroupPage, "#event-hosts-selector", {
+        name: "E2E Organizer One",
+        username: "e2e-organizer-1",
       });
       await addEventSpeaker(organizerGroupPage, {
         featured: true,
@@ -92,7 +104,7 @@ test.describe("group dashboard event contributors", () => {
       // Reopen the editor and verify the saved selections are restored.
       await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
       await openEventUpdateFormByName(organizerGroupPage, eventName, eventId);
-      await organizerGroupPage.locator('button[data-section="hosts-sponsors"]').click();
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
       await assertEditorContributors(organizerGroupPage, {
         hiddenSponsorVisible: true,
         memberTwoVisible: true,
@@ -118,7 +130,7 @@ test.describe("group dashboard event contributors", () => {
       await saveCurrentEvent(organizerGroupPage, eventId);
 
       // Verify both the reopened editor and public event page reflect the removals.
-      await organizerGroupPage.locator('button[data-section="hosts-sponsors"]').click();
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
       await expect(
         organizerGroupPage.locator("#event-hosts-selector").getByText("E2E Organizer One"),
       ).toHaveCount(0);
@@ -140,6 +152,156 @@ test.describe("group dashboard event contributors", () => {
     }
   });
 
+  test("add page starts with the group team as organizers and previews them", async ({
+    organizerGroupPage,
+  }) => {
+    // Open the add form with enough details for the preview request.
+    await fillEventDetails(organizerGroupPage, uniqueName("Event Organizers Preview"));
+    await organizerGroupPage.locator('button[data-section="contributors"]').click();
+
+    // Verify the accepted group team is pre-filled in team order.
+    const organizersSelector = organizerGroupPage.locator("#event-organizers-selector");
+    await expect(organizersSelector.getByRole("table", { name: "Event organizers" })).toBeVisible();
+    await expectEditorOrganizers(organizerGroupPage, DEFAULT_ORGANIZERS);
+    await expect(organizerGroupPage.locator('input[name="organizers_present"]')).toHaveValue("true");
+
+    // Open the preview and verify the organizers block lists the pre-filled team.
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.locator("#event-preview-button").click(),
+      {
+        method: "POST",
+        urlIncludes: "/dashboard/group/events/preview",
+      },
+    );
+    const previewModal = organizerGroupPage.locator("#event-preview-modal");
+    await expect(previewModal).toBeVisible();
+    await expect(previewModal.getByText("Organizers", { exact: true })).toBeVisible();
+    for (const organizer of DEFAULT_ORGANIZERS) {
+      await expect(previewModal.locator("user-chip", { hasText: organizer.name })).toHaveCount(1);
+    }
+
+    // Close the modal before leaving the form.
+    await previewModal.getByRole("button", { name: "Close modal" }).click();
+    await expect(previewModal).toHaveCount(0);
+  });
+
+  test("organizer can edit, persist, and clear event organizers", async ({ organizerGroupPage }) => {
+    test.setTimeout(120_000);
+
+    const eventName = uniqueName("Event Organizers");
+    const editedOrganizers = [
+      DEFAULT_ORGANIZERS[0],
+      DEFAULT_ORGANIZERS[1],
+      DEFAULT_ORGANIZERS[3],
+      DEFAULT_ORGANIZERS[2],
+    ];
+    let eventId = "";
+
+    try {
+      // Verify the organizer search only lists group team members.
+      await fillEventDetails(organizerGroupPage, eventName);
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
+      const organizersSelector = organizerGroupPage.locator("#event-organizers-selector");
+      await organizersSelector.locator("[data-user-search-input]").fill("e2e-member-2");
+      await expect(organizersSelector.getByText('No organizer found for "e2e-member-2"')).toBeVisible();
+      await organizersSelector.locator("[data-user-search-input]").fill("");
+
+      // Remove one team member and add them back at the end of the list.
+      await removeEventOrganizer(organizerGroupPage, DEFAULT_ORGANIZERS[2].name);
+      await addEventOrganizer(organizerGroupPage, {
+        name: DEFAULT_ORGANIZERS[2].name,
+        userId: DEFAULT_ORGANIZERS[2].userId,
+        username: "e2e-group-viewer-1",
+      });
+      await expectEditorOrganizers(organizerGroupPage, editedOrganizers);
+      await expectSearchResultDisabled(organizerGroupPage, "#event-organizers-selector", {
+        name: "E2E Organizer One",
+        username: "e2e-organizer-1",
+      });
+
+      // Create the event with the edited organizers.
+      const visibleAddEventButton = organizerGroupPage.locator(
+        "#pending-changes-alert:not(.hidden) #add-event-button",
+      );
+      await expect(visibleAddEventButton).toBeVisible();
+      await waitForActionResponse(organizerGroupPage, () => visibleAddEventButton.click(), {
+        method: "POST",
+        status: 201,
+        urlIncludes: "/dashboard/group/events/add",
+      });
+      eventId = await waitForEventEditorAfterSave(organizerGroupPage);
+
+      // Reopen the editor and verify the submitted order is kept.
+      await openEventUpdateFormByName(organizerGroupPage, eventName, eventId);
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
+      await expectEditorOrganizers(organizerGroupPage, editedOrganizers);
+      await expect(organizerGroupPage.locator("#event-organizers-award-button")).toBeEnabled();
+
+      // Remove every organizer and save the event.
+      for (const organizer of editedOrganizers) {
+        await removeEventOrganizer(organizerGroupPage, organizer.name);
+      }
+      await saveCurrentEvent(organizerGroupPage, eventId);
+
+      // Reopen the editor and verify the list stays empty.
+      await openEventUpdateFormByName(organizerGroupPage, eventName, eventId);
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
+      await expectEditorOrganizers(organizerGroupPage, []);
+      await expect(
+        organizerGroupPage.locator("#event-organizers-selector").getByText("No organizers added yet."),
+      ).toBeVisible();
+      await expect(organizerGroupPage.locator("#event-organizers-award-button")).toBeDisabled();
+    } finally {
+      // Delete the event used for organizer persistence checks.
+      cleanupEventsByIds(eventId ? [eventId] : []);
+    }
+  });
+
+  test("canceled event lists contributors without row actions", async ({ organizerGroupPage }) => {
+    // Create an event with one organizer, host, and speaker, then cancel it.
+    const event = setupOrganizerEvent({
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      organizerUserIds: [TEST_USER_IDS.organizer1],
+    });
+
+    try {
+      queryE2eDatabase(`
+        insert into event_host (event_id, user_id)
+        values ('${event.eventId}', '${TEST_USER_IDS.member1}');
+
+        insert into event_speaker (event_id, user_id, featured)
+        values ('${event.eventId}', '${TEST_USER_IDS.member2}', false);
+
+        update event set canceled = true where event_id = '${event.eventId}';
+      `);
+
+      // Open the contributors section of the canceled event.
+      await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
+      await organizerGroupPage.locator('button[data-section="contributors"]').click();
+
+      // Verify each contributor table lists its person without an actions column or menu.
+      const contributorTables = [
+        { name: "E2E Member Two", selectorId: "#event-speakers-selector", tableName: "Event speakers" },
+        { name: "E2E Member One", selectorId: "#event-hosts-selector", tableName: "Event hosts" },
+        {
+          name: "E2E Organizer One",
+          selectorId: "#event-organizers-selector",
+          tableName: "Event organizers",
+        },
+      ];
+      for (const { name, selectorId, tableName } of contributorTables) {
+        const table = organizerGroupPage.locator(selectorId).getByRole("table", { name: tableName });
+        await expect(table).toContainText(name);
+        await expect(table.getByRole("columnheader", { name: "Actions" })).toHaveCount(0);
+        await expect(table.locator("summary")).toHaveCount(0);
+      }
+    } finally {
+      // Delete the canceled event and its contributors.
+      cleanupEventsByIds([event.eventId]);
+    }
+  });
+
   test("contributor search dropdowns stay inside the viewport near its bottom", async ({
     organizerGroupPage,
   }) => {
@@ -148,7 +310,7 @@ test.describe("group dashboard event contributors", () => {
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await organizerGroupPage.locator("#dashboard-content").getByRole("button", { name: "Add Event" }).click();
     await expect(organizerGroupPage.locator("#name")).toBeVisible();
-    await organizerGroupPage.locator('button[data-section="hosts-sponsors"]').click();
+    await organizerGroupPage.locator('button[data-section="contributors"]').click();
 
     // Search hosts with the input as low in the viewport as the page allows.
     const hostsSelector = organizerGroupPage.locator("#event-hosts-selector");
@@ -184,6 +346,17 @@ const addEventHost = async (page, { name, userId, username }) => {
   await expect(hostsSelector.getByText(name, { exact: true })).toBeVisible();
   await hostsSelector.getByText(name, { exact: true }).click();
   await expect(hostsSelector.locator(`input[name="hosts[]"][value="${userId}"]`)).toHaveCount(1);
+};
+
+/** Adds an event organizer through the user selector and asserts its hidden input. */
+const addEventOrganizer = async (page, { name, userId, username }) => {
+  const organizersSelector = page.locator("#event-organizers-selector");
+  const searchInput = organizersSelector.locator("[data-user-search-input]");
+
+  await searchInput.fill(username);
+  await expect(organizersSelector.getByText(name, { exact: true })).toBeVisible();
+  await organizersSelector.getByText(name, { exact: true }).click();
+  await expect(organizersSelector.locator(`input[name="organizers[]"][value="${userId}"]`)).toHaveCount(1);
 };
 
 /** Adds an event speaker through the modal and asserts its hidden input. */
@@ -287,6 +460,40 @@ const assertPublicContributors = async (
   await expect(page.getByText("Hidden Sponsor", { exact: true })).toHaveCount(hiddenSponsorVisible ? 1 : 0);
 };
 
+/** Asserts the organizers submitted by the editor, in display order. */
+const expectEditorOrganizers = async (page, organizers) => {
+  const organizersSelector = page.locator("#event-organizers-selector");
+  const organizerInputs = organizersSelector.locator('input[name="organizers[]"]');
+
+  await expect(organizerInputs).toHaveCount(organizers.length);
+  expect(await organizerInputs.evaluateAll((inputs) => inputs.map((input) => input.value))).toEqual(
+    organizers.map((organizer) => organizer.userId),
+  );
+  if (organizers.length === 0) {
+    return;
+  }
+
+  const organizerRows = organizersSelector
+    .getByRole("table", { name: "Event organizers" })
+    .locator("tbody tr");
+  await expect(organizerRows).toHaveCount(organizers.length);
+  for (const [index, organizer] of organizers.entries()) {
+    await expect(organizerRows.nth(index)).toContainText(organizer.name);
+  }
+};
+
+/** Asserts an already selected user is listed but disabled in a selector search. */
+const expectSearchResultDisabled = async (page, selectorId, { name, username }) => {
+  const selector = page.locator(selectorId);
+  const searchInput = selector.locator("[data-user-search-input]");
+
+  await searchInput.fill(username);
+  await expect(
+    selector.locator('[data-user-search-dropdown] [aria-disabled="true"]', { hasText: name }),
+  ).toBeVisible();
+  await searchInput.fill("");
+};
+
 /** Fills the event form with contributor coverage details. */
 const fillEventDetails = async (page, eventName) => {
   await navigateToPath(page, "/dashboard/group?tab=events");
@@ -318,6 +525,15 @@ const publishCurrentEvent = async (page, eventId) => {
     method: "PUT",
     urlIncludes: `/dashboard/group/events/${eventId}/publish`,
   });
+};
+
+/** Removes an event organizer through its row actions menu. */
+const removeEventOrganizer = async (page, name) => {
+  const organizerRow = page.locator("#event-organizers-selector tr", { hasText: name });
+
+  await organizerRow.locator(`summary[aria-label="Open organizer actions for ${name}"]`).click();
+  await organizerRow.getByRole("menuitem", { name: "Delete" }).click();
+  await expect(page.locator("#event-organizers-selector tr", { hasText: name })).toHaveCount(0);
 };
 
 /** Saves the current event and waits for the editor update response. */

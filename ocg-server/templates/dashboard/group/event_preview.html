@@ -372,21 +372,6 @@
               {# People and sponsors section -#}
               {% if event.has_people_or_sponsors() -%}
                 <section class="space-y-8 lg:space-y-12">
-                  {# Hosts section -#}
-                  {% if !event.hosts.is_empty() -%}
-                    <div class="hidden has-[user-chip]:block">
-                      <div class="pb-8 text-lg font-bold uppercase leading-10 tracking-wide text-stone-900 lg:pb-14 lg:pt-2 lg:text-2xl">
-                        Hosts
-                      </div>
-                      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {% for host in event.hosts -%}
-                          <user-chip user='{{ host|json }}' data-preview-name="{{ host.display_name() }}" {% if let Some(subtitle) = host.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}></user-chip>
-                        {% endfor -%}
-                      </div>
-                    </div>
-                  {% endif -%}
-                  {# End hosts section -#}
-
                   {# Event speakers section -#}
                   {% if !event.speakers.is_empty() -%}
                     <div class="featured-speakers-section hidden has-[user-chip]:block">
@@ -422,6 +407,36 @@
                     </div>
                   {% endif -%}
                   {# End event speakers section -#}
+
+                  {# Hosts section -#}
+                  {% if !event.hosts.is_empty() -%}
+                    <div class="hidden has-[user-chip]:block">
+                      <div class="pb-8 text-lg font-bold uppercase leading-10 tracking-wide text-stone-900 lg:pb-14 lg:pt-2 lg:text-2xl">
+                        Hosts
+                      </div>
+                      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {% for host in event.hosts -%}
+                          <user-chip user='{{ host|json }}' data-preview-name="{{ host.display_name() }}" {% if let Some(subtitle) = host.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}></user-chip>
+                        {% endfor -%}
+                      </div>
+                    </div>
+                  {% endif -%}
+                  {# End hosts section -#}
+
+                  {# Organizers section -#}
+                  {% if !event.organizers.is_empty() -%}
+                    <div class="hidden has-[user-chip]:block">
+                      <div class="pb-8 text-lg font-bold uppercase leading-10 tracking-wide text-stone-900 lg:pb-14 lg:pt-2 lg:text-2xl">
+                        Organizers
+                      </div>
+                      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {% for organizer in event.organizers -%}
+                          <user-chip user='{{ organizer|json }}' data-preview-name="{{ organizer.display_name() }}" {% if let Some(subtitle) = organizer.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}></user-chip>
+                        {% endfor -%}
+                      </div>
+                    </div>
+                  {% endif -%}
+                  {# End organizers section -#}
 
                   {# Sponsors section -#}
                   {% if !event.sponsors.is_empty() -%}

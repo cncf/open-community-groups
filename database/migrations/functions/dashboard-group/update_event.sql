@@ -314,6 +314,12 @@ begin
     -- Synchronize event hosts, speakers, and sponsors
     perform sync_event_hosts_speakers_sponsors(p_event_id, p_event);
 
+    -- Replace event organizers only when the payload submitted them, so omitted
+    -- sections preserve the stored attribution
+    if p_event ? 'organizers' then
+        perform sync_event_organizers(p_event_id, p_event->'organizers');
+    end if;
+
     -- Track the updated event
     perform insert_audit_log(
         'event_updated',

@@ -56,6 +56,60 @@ fn from_event_builds_weekly_series_payloads_and_metadata() {
 }
 
 #[test]
+fn from_event_carries_empty_organizers_to_every_occurrence() {
+    // Setup a recurring event whose organizers selection was cleared
+    let event = EventInput {
+        organizers_present: Some(true),
+        ..sample_event(
+            EventRecurrencePattern::Weekly,
+            Some(2),
+            Some(at(2030, 1, 7)),
+            "UTC",
+        )
+    };
+
+    // Build recurring payloads and check every occurrence clears organizers
+    assert_eq!(recurring_organizers(&event), vec![Some(json!([])); 3]);
+}
+
+#[test]
+fn from_event_carries_organizers_to_every_occurrence() {
+    // Setup a recurring event with organizers in submitted order
+    let first_organizer_id = Uuid::new_v4();
+    let second_organizer_id = Uuid::new_v4();
+    let event = EventInput {
+        organizers: Some(vec![second_organizer_id, first_organizer_id]),
+        organizers_present: Some(true),
+        ..sample_event(
+            EventRecurrencePattern::Weekly,
+            Some(2),
+            Some(at(2030, 1, 7)),
+            "UTC",
+        )
+    };
+
+    // Build recurring payloads and check every occurrence keeps the order
+    assert_eq!(
+        recurring_organizers(&event),
+        vec![Some(json!([second_organizer_id, first_organizer_id])); 3]
+    );
+}
+
+#[test]
+fn from_event_omits_organizers_from_every_occurrence_when_missing() {
+    // Setup a recurring event without an organizers selection
+    let event = sample_event(
+        EventRecurrencePattern::Weekly,
+        Some(2),
+        Some(at(2030, 1, 7)),
+        "UTC",
+    );
+
+    // Build recurring payloads and check no occurrence submits organizers
+    assert_eq!(recurring_organizers(&event), vec![None; 3]);
+}
+
+#[test]
 fn from_event_rejects_invalid_recurrence_settings() {
     // Setup shared recurring event inputs
     let base_starts_at = at(2030, 1, 7);
@@ -507,6 +561,19 @@ fn at(year: i32, month: u32, day: u32) -> NaiveDateTime {
     NaiveDate::from_ymd_opt(year, month, day)
         .unwrap()
         .and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap())
+}
+
+/// Returns the organizers submitted in each recurring payload built from the event.
+fn recurring_organizers(event: &EventInput) -> Vec<Option<Value>> {
+    let base_payload = event.to_db_payload().unwrap();
+
+    RecurringEventPayloads::from_event(event, &base_payload)
+        .unwrap()
+        .unwrap()
+        .events
+        .iter()
+        .map(|payload| payload.get("organizers").cloned())
+        .collect()
 }
 
 /// Builds a test event with recurrence fields populated.

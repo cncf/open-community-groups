@@ -7,6 +7,9 @@ use serde_with::skip_serializing_none;
 
 use crate::{templates::filters, validation::EVENT_LABEL_COLORS};
 
+#[cfg(test)]
+mod tests;
+
 /// Preview status of a co-host that approved the invitation.
 const COHOST_STATUS_APPROVED: &str = "approved";
 
@@ -46,6 +49,8 @@ pub(crate) struct Event {
     pub logo_url: Option<String>,
     /// Missing or incomplete fields to highlight.
     pub missing_fields: Vec<String>,
+    /// Event organizers with a full name, in submitted order.
+    pub organizers: Vec<ContextPerson>,
     /// Event photo URLs.
     pub photos: Vec<String>,
     /// Event sessions.
@@ -113,9 +118,12 @@ impl Event {
         )
     }
 
-    /// Returns true when the event has configured speakers, hosts, or sponsors.
+    /// Returns true when the event has speakers, hosts, organizers, or sponsors to show.
     pub(crate) fn has_people_or_sponsors(&self) -> bool {
-        !self.hosts.is_empty() || !self.speakers.is_empty() || !self.sponsors.is_empty()
+        !self.hosts.is_empty()
+            || !self.organizers.is_empty()
+            || !self.speakers.is_empty()
+            || !self.sponsors.is_empty()
     }
 
     /// Returns whether the event includes an in-person venue component.
@@ -202,8 +210,10 @@ impl From<Input> for Event {
                 .and_then(|community| community.logo_url.as_deref()),
         ]);
 
-        // Normalize submitted collections for rendering
+        // Normalize submitted collections, keeping only people the public page lists
         let cohosts = build_cohosts(&context.cohosts);
+        let hosts = named_people(&context.hosts);
+        let organizers = named_people(&context.organizers);
         let photos = input
             .photos_urls
             .clone()
@@ -216,6 +226,7 @@ impl From<Input> for Event {
             context.sessions.as_slice(),
             input.timezone.as_deref(),
         );
+        let speakers = named_people(&context.speakers);
 
         // Derive location and missing-field display state
         let venue_label = build_location(&input);
@@ -227,14 +238,15 @@ impl From<Input> for Event {
             cohosts,
             community_display_name,
             description: normalize_text(input.description.clone()),
-            hosts: context.hosts.clone(),
+            hosts,
             input,
             kind_label,
             logo_url,
             missing_fields,
+            organizers,
             photos,
             sessions,
-            speakers: context.speakers.clone(),
+            speakers,
             sponsors: context.sponsors.clone(),
             venue_label,
         }
@@ -416,6 +428,9 @@ pub(crate) struct Context {
     pub hosts: Vec<ContextPerson>,
     /// Event type display label selected in the editor.
     pub kind_label: Option<String>,
+    /// Event organizers selected in the editor.
+    #[serde(default)]
+    pub organizers: Vec<ContextPerson>,
     /// Event sessions with display-only speaker data.
     #[serde(default)]
     pub sessions: Vec<ContextSession>,
@@ -745,7 +760,7 @@ fn build_sessions(
                 location: normalize_text(input.location),
                 name: first_text([input.name.as_deref(), context.name.as_deref()]),
                 online_label,
-                speakers: context.speakers,
+                speakers: named_people(&context.speakers),
                 time_label: session_time_label(
                     input.starts_at.as_deref(),
                     input.ends_at.as_deref(),
@@ -763,6 +778,15 @@ where
     T: AsRef<str>,
 {
     values.into_iter().find_map(normalize_text)
+}
+
+/// Keeps the people with a full name, matching the public event page.
+fn named_people(people: &[ContextPerson]) -> Vec<ContextPerson> {
+    people
+        .iter()
+        .filter(|person| normalize_text(person.name.as_deref()).is_some())
+        .cloned()
+        .collect()
 }
 
 /// Normalizes optional text by trimming whitespace and dropping empty strings.
@@ -845,83 +869,5 @@ fn session_time_label(
         }
         (Some(starts_at), None) => format!("{} {}", starts_at.format("%-I:%M %p"), timezone),
         (None, _) => "Missing start time".to_string(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{Event, Input};
-
-    #[test]
-    fn context_defaults_cohosts_when_key_is_missing() {
-        let input = Input {
-            preview_context: Some(r#"{"kind_label":"Virtual"}"#.to_string()),
-            ..Input::default()
-        };
-
-        assert!(input.context().cohosts.is_empty());
-        assert!(Event::from(input).cohosts.is_empty());
-    }
-
-    #[test]
-    fn context_keeps_empty_cohosts_list() {
-        let input = Input {
-            preview_context: Some(r#"{"cohosts":[]}"#.to_string()),
-            ..Input::default()
-        };
-
-        assert!(Event::from(input).cohosts.is_empty());
-    }
-
-    #[test]
-    fn event_keeps_named_session_labels_with_palette_colors() {
-        let input = Input {
-            preview_context: Some(
-                r##"{"sessions":[{"name":"Keynote","labels":[
-                    {"color":"#FFD866","name":" Cloud "},
-                    {"color":"#000000","name":"Unknown color"},
-                    {"color":"#FC9867","name":"  "},
-                    {"name":"Missing color"}
-                ]}]}"##
-                    .to_string(),
-            ),
-            ..Input::default()
-        };
-
-        let sessions = Event::from(input).sessions;
-
-        assert_eq!(sessions.len(), 1);
-        assert_eq!(sessions[0].labels.len(), 1);
-        assert_eq!(sessions[0].labels[0].color, "#FFD866");
-        assert_eq!(sessions[0].labels[0].name, "Cloud");
-    }
-
-    #[test]
-    fn event_normalizes_cohost_entries() {
-        let input = Input {
-            preview_context: Some(
-                r#"{"cohosts":[
-                    {"name":" Alpha ","status":"Approved","logo_url":"https://example.test/a.png"},
-                    {"name":"Beta","status":"pending","logo_url":" "},
-                    {"name":"Gamma","status":"rejected"},
-                    {"name":"  ","status":"pending"}
-                ]}"#
-                .to_string(),
-            ),
-            ..Input::default()
-        };
-
-        let cohosts = Event::from(input).cohosts;
-
-        assert_eq!(cohosts.len(), 2);
-        assert_eq!(cohosts[0].name_label(), "Alpha");
-        assert!(cohosts[0].is_approved());
-        assert_eq!(
-            cohosts[0].logo_url.as_deref(),
-            Some("https://example.test/a.png")
-        );
-        assert_eq!(cohosts[1].name_label(), "Beta");
-        assert!(!cohosts[1].is_approved());
-        assert!(cohosts[1].logo_url.is_none());
     }
 }

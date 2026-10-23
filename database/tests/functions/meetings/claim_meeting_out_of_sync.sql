@@ -78,7 +78,7 @@ select fx_user(:'userSessionSpeakerID', jsonb_build_object(
 ));
 
 -- Event candidates and exclusions
--- Delete-focused rows that could interfere start in sync and are reopened later
+-- Update and delete-focused rows that could interfere start in sync and are reopened later
 select fx_event(:'eventCreateID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', current_timestamp + interval '1 day 1 hour',
@@ -95,7 +95,7 @@ select fx_event(:'eventUpdateID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'capacity', 100,
     'ends_at', current_timestamp + interval '2 days 2 hours',
     'event_kind_id', 'virtual',
-    'meeting_in_sync', false,
+    'meeting_in_sync', true,
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
     'name', 'Event Update Test',
@@ -211,7 +211,7 @@ select fx_event(:'eventOrphanCascadeID', :'groupID', :'eventCategoryID', jsonb_b
 ));
 
 -- Session candidates
--- Delete-focused rows start in sync so event and session create/update priority is stable
+-- Update and delete-focused rows start in sync so event and session create/update priority is stable
 insert into session (
     ends_at,
     event_id,
@@ -240,7 +240,7 @@ insert into session (
     current_timestamp + interval '3 days 1 hour 30 minutes',
     :'eventWithSessionsID',
     null,
-    false,
+    true,
     'zoom',
     true,
     'Session Update Test',
@@ -524,6 +524,11 @@ select isnt(
 -- Mark claimed event as synced to advance to the next queue item
 update event set meeting_in_sync = true where event_id = :'eventCreateID';
 
+-- Reopen updated event now that the event create has been claimed
+update event
+set meeting_in_sync = false
+where event_id = :'eventUpdateID';
+
 -- Event update - returns event with delete=false and existing provider fields
 select is(
     claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
@@ -573,6 +578,11 @@ select is(
 
 -- Mark claimed session as synced to advance to the next queue item
 update session set meeting_in_sync = true where session_id = :'sessionCreateID';
+
+-- Reopen updated session now that the session create has been claimed
+update session
+set meeting_in_sync = false
+where session_id = :'sessionUpdateID';
 
 -- Session update - returns session with delete=false and existing provider fields
 -- Hosts include parent event_host emails only

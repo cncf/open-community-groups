@@ -70,14 +70,20 @@ pub(crate) struct UserEvent {
 
 impl UserEvent {
     /// Returns true when attendance can be canceled from the user dashboard.
+    ///
+    /// The organizer role is attribution only, so it may accompany the
+    /// attendee role without blocking the cancellation.
     pub(crate) fn can_cancel_attendance(&self) -> bool {
         let has_cancelable_enrollment = matches!(
             self.enrollment_status.as_ref(),
             Some(EventEnrollmentStatus::Attendee)
         );
-        has_cancelable_enrollment
-            && self.roles.as_slice() == [UserEventRole::Attendee]
-            && !self.has_paid_purchase
+        let has_cancelable_roles = self.roles.contains(&UserEventRole::Attendee)
+            && self
+                .roles
+                .iter()
+                .all(|role| matches!(role, UserEventRole::Attendee | UserEventRole::Organizer));
+        has_cancelable_enrollment && has_cancelable_roles && !self.has_paid_purchase
     }
 
     /// Returns true when an active checkout can be canceled from the user dashboard.
@@ -170,6 +176,8 @@ pub(crate) enum UserEventRole {
     Host,
     /// User owns an active admission offer.
     Offer,
+    /// User is listed as an event organizer.
+    Organizer,
     /// User speaks at the event or one of its sessions.
     Speaker,
 }
@@ -181,6 +189,7 @@ impl UserEventRole {
             Self::Attendee => "Attendee",
             Self::Host => "Host",
             Self::Offer => "Event offer",
+            Self::Organizer => "Organizer",
             Self::Speaker => "Speaker",
         }
     }
@@ -214,6 +223,7 @@ pub(crate) struct UserEventsOutput {
 #[cfg(test)]
 mod tests {
     use chrono::{Duration, Utc};
+    use serde_json::json;
     use uuid::Uuid;
 
     use crate::types::{
@@ -229,6 +239,45 @@ mod tests {
         let user_event = sample_user_event();
 
         assert!(user_event.can_cancel_attendance());
+    }
+
+    #[test]
+    fn can_cancel_attendance_allows_attendee_organizer() {
+        let mut user_event = sample_user_event();
+        user_event.roles = vec![UserEventRole::Attendee, UserEventRole::Organizer];
+
+        assert!(user_event.can_cancel_attendance());
+    }
+
+    #[test]
+    fn can_cancel_attendance_rejects_attendee_organizer_with_paid_purchase() {
+        let mut user_event = sample_user_event();
+        user_event.has_paid_purchase = true;
+        user_event.roles = vec![UserEventRole::Attendee, UserEventRole::Organizer];
+
+        assert!(!user_event.can_cancel_attendance());
+    }
+
+    #[test]
+    fn can_cancel_attendance_rejects_attendee_with_contributor_or_offer_roles() {
+        for role in [
+            UserEventRole::Host,
+            UserEventRole::Offer,
+            UserEventRole::Speaker,
+        ] {
+            let mut user_event = sample_user_event();
+            user_event.roles = vec![UserEventRole::Attendee, role];
+
+            assert!(!user_event.can_cancel_attendance(), "role: {role}");
+        }
+    }
+
+    #[test]
+    fn can_cancel_attendance_rejects_organizer_without_attendee_role() {
+        let mut user_event = sample_user_event();
+        user_event.roles = vec![UserEventRole::Organizer];
+
+        assert!(!user_event.can_cancel_attendance());
     }
 
     #[test]
@@ -301,6 +350,14 @@ mod tests {
         user_event.roles = vec![UserEventRole::Offer];
 
         assert!(user_event.has_active_offer());
+    }
+
+    #[test]
+    fn user_event_role_parses_organizer_with_label() {
+        let role: UserEventRole = serde_json::from_value(json!("organizer")).unwrap();
+
+        assert_eq!(role, UserEventRole::Organizer);
+        assert_eq!(role.label(), "Organizer");
     }
 
     // Helpers.

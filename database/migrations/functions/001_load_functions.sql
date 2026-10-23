@@ -46,6 +46,7 @@
 {{ template "internal/events/sync_cfs_submission_labels.sql" }}
 {{ template "internal/events/sync_event_hosts_speakers_sponsors.sql" }}
 {{ template "internal/events/sync_event_labels.sql" }}
+{{ template "internal/events/sync_event_organizers.sql" }}
 {{ template "internal/events/sync_event_sessions.sql" }}
 {{ template "internal/events/sync_session_labels.sql" }}
 {{ template "internal/events/validate_add_event_dates.sql" }}
@@ -222,6 +223,7 @@
 {{ template "common/get_event_full.sql" }}
 {{ template "internal/events/get_public_event_full.sql" }} -- Depends on get_event_full
 {{ template "common/get_event_summary.sql" }}
+{{ template "common/list_group_organizers.sql" }} -- Dependency for get_group_full
 {{ template "common/get_group_full.sql" }}
 {{ template "common/get_public_user_badge.sql" }}
 {{ template "common/get_worker_queue_health.sql" }}

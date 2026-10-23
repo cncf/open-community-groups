@@ -28,6 +28,7 @@ const EVENT_PREVIEW_CLIENT_RENDERED_FIELDS = new Set([
   "cohosts_revision",
   "luma_url",
   "meetup_url",
+  "organizers_present",
 ]);
 const EVENT_PREVIEW_SOCIAL_LINKS = [
   {
@@ -173,6 +174,9 @@ const collectEventPreviewContext = (pageRoot) => {
         pageRoot.querySelector?.('user-search-selector[field-name="hosts"]')?.selectedUsers,
       ),
       kind_label: selectedOptionLabel(kindSelect),
+      organizers: collectPeople(
+        pageRoot.querySelector?.('user-search-selector[field-name="organizers"]')?.selectedUsers,
+      ),
       sessions: collectSessionContexts(sessionsSection),
       speakers: collectPeople(
         pageRoot.querySelector?.('speakers-selector[field-name-prefix="speakers"]')?.selectedSpeakers,

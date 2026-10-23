@@ -9,11 +9,8 @@ use super::{
 
 #[test]
 fn test_event_form_section_renders_content_identifiers() {
+    assert_eq!(EventFormSection::Contributors.to_string(), "contributors");
     assert_eq!(EventFormSection::DateVenue.to_string(), "date-venue");
-    assert_eq!(
-        EventFormSection::HostsSponsors.to_string(),
-        "hosts-sponsors"
-    );
     assert_eq!(
         EventFormSection::InvitationRequests.to_string(),
         "invitation-requests"
@@ -70,7 +67,7 @@ fn test_form_tab_groups_add_page_shows_authoring_subset() {
     assert_eq!(
         group_summaries(&groups),
         vec![
-            "Event: details, date-venue, cohosts, hosts-sponsors",
+            "Event: details, date-venue, cohosts, contributors",
             "Registration: payments, questions",
             "Program: labels, cfs, sessions",
         ]
@@ -97,7 +94,7 @@ fn test_form_tab_groups_hides_flagged_update_tabs() {
     assert_eq!(
         group_summaries(&groups),
         vec![
-            "Event: details, date-venue, cohosts, hosts-sponsors",
+            "Event: details, date-venue, cohosts, contributors",
             "Registration: payments, questions",
             "Program: labels, cfs, submissions, sessions",
             "People: attendees",
@@ -205,7 +202,7 @@ fn test_form_tab_groups_update_page_shows_every_visible_tab() {
     assert_eq!(
         group_summaries(&groups),
         vec![
-            "Event: details, date-venue, cohosts, hosts-sponsors",
+            "Event: details, date-venue, cohosts, contributors",
             "Registration: payments, questions",
             "Program: labels, cfs, submissions, sessions",
             "People: attendees, invitation-requests, waitlist",

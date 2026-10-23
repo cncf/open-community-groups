@@ -260,7 +260,7 @@ describe("dashboard group event update template", () => {
 
     // Assert the loader lives after the waitlist tab, outside the inert form wrapper.
     const inertFormIndex = template.indexOf('<div class="inert-form"');
-    const formEndIndex = template.indexOf("{# End Hosts & Speakers Tab -#} </div> </div>");
+    const formEndIndex = template.indexOf("{# End Contributors Tab -#} </div> </div>");
     const analyticsIndex = template.indexOf('<div data-content="analytics"');
     expect(inertFormIndex).to.be.greaterThan(-1);
     expect(formEndIndex).to.be.greaterThan(inertFormIndex);
@@ -284,7 +284,7 @@ describe("dashboard group event update template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert the surveys tab sits after the waitlist tab, outside the inert form wrapper.
-    const formEndIndex = template.indexOf("{# End Hosts & Speakers Tab -#} </div> </div>");
+    const formEndIndex = template.indexOf("{# End Contributors Tab -#} </div> </div>");
     const surveysIndex = template.indexOf('<div data-content="surveys"');
     expect(surveysIndex).to.be.greaterThan(formEndIndex);
     expect(surveysIndex).to.be.greaterThan(template.indexOf("{# End Waitlist Tab -#}"));
@@ -633,7 +633,7 @@ describe("dashboard group event update template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include(
-      '<user-search-selector id="event-hosts-selector" selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}" {% if can_manage_events && !event.canceled %}can-award-badges award-button-id="event-hosts-award-button"{% endif %}',
+      '<user-search-selector id="event-hosts-selector" selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" {% if event_read_only %}disabled{% endif %} display-mode="table" event-id="{{ event.event_id }}" {% if can_manage_events && !event.canceled %}can-award-badges award-button-id="event-hosts-award-button"{% endif %}',
     );
     expect(template).to.include(
       '<div class="flex flex-wrap items-center justify-between gap-3"> <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>',
@@ -642,12 +642,12 @@ describe("dashboard group event update template", () => {
       '<button id="event-hosts-award-button" type="button" class="btn-primary-outline" data-badge-award-open disabled>Award badge</button>',
     );
     expect(template).to.include(
-      '<speakers-selector id="event-speakers-selector" selected-speakers="{{ event.speakers|json }}" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}"',
+      '<speakers-selector id="event-speakers-selector" selected-speakers="{{ event.speakers|json }}" dashboard-type="group" {% if event_read_only %}disabled{% endif %} display-mode="table" event-id="{{ event.event_id }}"',
     );
     expect(template).to.include("can-award-badges show-award-all");
     expect(template).to.include("Session-level speakers");
     expect(template).to.include(
-      '<div class="mt-8"> <h3 class="form-label m-0">Session-level speakers</h3> <p class="mt-4 text-sm text-stone-500">',
+      '<div class="mt-8"> <h3 class="form-label m-0">Session-level speakers</h3> <p class="mt-2 text-sm text-stone-500">',
     );
     expect(template).not.to.include(">Event Speakers<");
     expect(template).not.to.include(
@@ -673,8 +673,8 @@ describe("dashboard group event update template", () => {
     // Load and isolate the contributor form before checking section spacing.
     const template = normalizeWhitespace(await loadTemplate());
     const contributorForm = template.slice(
-      template.indexOf('<form id="hosts-sponsors-form" data-event-form>'),
-      template.indexOf("{# End Hosts & Speakers Tab -#}"),
+      template.indexOf('<form id="contributors-form" data-event-form>'),
+      template.indexOf("{# End Contributors Tab -#}"),
     );
 
     // Keep the large section rhythm without rendering divider borders.
@@ -682,6 +682,59 @@ describe("dashboard group event update template", () => {
     expect(contributorForm.match(/class="pb-12"/gu)).to.have.length(1);
     expect(contributorForm).not.to.include("border-b");
     expect(contributorForm).not.to.include("border-stone-900/10");
+  });
+
+  it("orders contributor sections and wires organizer badge awards", async () => {
+    // Load and isolate the contributors tab before checking its sections.
+    const template = normalizeWhitespace(await loadTemplate());
+    const contributorsTab = template.slice(
+      template.indexOf("{# Contributors Tab -#}"),
+      template.indexOf("{# End Contributors Tab -#}"),
+    );
+
+    // Verify the tab uses the contributors identifiers.
+    expect(contributorsTab).to.include('<div data-content="contributors" class="hidden">');
+    expect(contributorsTab).to.include('<form id="contributors-form" data-event-form>');
+    expect(template).not.to.include("hosts-sponsors");
+    expect(template).not.to.include("Hosts & Speakers");
+
+    // Verify the hint about people without a full name tops the tab.
+    expect(contributorsTab).to.include(
+      '<form id="contributors-form" data-event-form> <p class="mb-8 text-sm text-stone-500"> People without a full name in their profile aren\'t listed on the public event page. </p>',
+    );
+
+    // Verify sections follow the public event page order.
+    const speakersIndex = contributorsTab.indexOf('id="event-speakers-selector"');
+    const hostsIndex = contributorsTab.indexOf('id="event-hosts-selector"');
+    const organizersIndex = contributorsTab.indexOf('id="event-organizers-selector"');
+    const sponsorsIndex = contributorsTab.indexOf("<sponsors-section");
+    expect(speakersIndex).to.be.greaterThan(-1);
+    expect(hostsIndex).to.be.greaterThan(speakersIndex);
+    expect(organizersIndex).to.be.greaterThan(hostsIndex);
+    expect(sponsorsIndex).to.be.greaterThan(organizersIndex);
+
+    // Verify hosts and organizers use role-specific search copy.
+    expect(contributorsTab).to.include('label="host" legend="Search for event hosts by their username"');
+    expect(contributorsTab).to.include(
+      '<p class="mt-2 text-sm text-stone-500"> Organizers are listed on the public event page. Only accepted group team members can be added, and new events start with the whole team. People who leave the team stay listed until removed. Contact messages still go to the group team. </p>',
+    );
+
+    // Verify stored organizers load with team-only search and save-first badge award wiring.
+    expect(contributorsTab).to.include(
+      '<div class="flex flex-wrap items-center justify-between gap-3"> <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Organizers</div> {% if can_manage_events && !event.canceled -%} <button id="event-organizers-award-button" type="button" class="btn-primary-outline" data-badge-award-open disabled>Award badge</button> {% endif -%} </div>',
+    );
+    expect(contributorsTab).to.include(
+      '<user-search-selector id="event-organizers-selector" selected-users="{{ event.organizers|json }}" available-users="{{ team_members|json }}" field-name="organizers" dashboard-type="group" {% if event_read_only %}disabled{% endif %} display-mode="table" event-id="{{ event.event_id }}" {% if can_manage_events && !event.canceled %}can-award-badges award-button-id="event-organizers-award-button"{% endif %} label="organizer" legend="Search group team members by name or username"></user-search-selector>',
+    );
+    expect(contributorsTab).to.include('<input type="hidden" name="organizers_present" value="true">');
+
+    // Verify the organizers selector stays inside the read-only form wrapper.
+    const inertFormIndex = template.indexOf('<div class="inert-form"');
+    const organizersSelectorIndex = template.indexOf('id="event-organizers-selector"');
+    const formEndIndex = template.indexOf("{# End Contributors Tab -#} </div> </div>");
+    expect(inertFormIndex).to.be.greaterThan(-1);
+    expect(organizersSelectorIndex).to.be.greaterThan(inertFormIndex);
+    expect(formEndIndex).to.be.greaterThan(organizersSelectorIndex);
   });
 
   it("keeps the labels editor in its own form outside CFS", async () => {

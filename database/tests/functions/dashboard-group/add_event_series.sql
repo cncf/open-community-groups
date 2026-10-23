@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,18 +17,40 @@ select plan(18);
 \set groupID '3a030000-0000-0000-0000-000000000004'
 \set labelOccurrence1ID '3a030000-0000-0000-0000-000000000006'
 \set labelOccurrence2ID '3a030000-0000-0000-0000-000000000007'
+\set secondTeamMemberID '3a030000-0000-0000-0000-000000000008'
+\set teamMemberID '3a030000-0000-0000-0000-000000000009'
 \set userID '3a030000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories, users and groups
+-- Community owning the series group
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Second accepted group team member snapshotted as an organizer
+select fx_user(:'secondTeamMemberID');
+
+-- First accepted group team member snapshotted as an organizer
+select fx_user(:'teamMemberID');
+
+-- Actor creating the series
 select fx_user(:'userID');
+
+-- Event category used by the series events
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category used by the series group
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group owning the series
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Accepted group team used as the default organizers
+insert into group_team (accepted, group_id, role, user_id, "order")
+values
+    (true, :'groupID', 'viewer', :'secondTeamMemberID', 2),
+    (true, :'groupID', 'viewer', :'teamMemberID', 1);
 
 -- ============================================================================
 -- TESTS
@@ -617,6 +639,116 @@ select results_eq(
         values (0, 2)
     $$,
     'Should leave no partial rows after a generated event fails'
+);
+
+-- Should snapshot the accepted team on every occurrence when organizers are omitted
+select lives_ok(
+    format(
+        $$select add_event_series(%L::uuid, %L::uuid, %L::jsonb, %L::jsonb)$$,
+        :'userID',
+        :'groupID',
+        jsonb_build_array(
+            jsonb_build_object(
+                'category_id', :'eventCategoryID',
+                'description', 'Base event',
+                'ends_at', '2030-10-07T11:00:00',
+                'kind_id', 'virtual',
+                'name', 'Team Organizers Study Group',
+                'starts_at', '2030-10-07T10:00:00',
+                'timezone', 'UTC'
+            ),
+            jsonb_build_object(
+                'category_id', :'eventCategoryID',
+                'description', 'Base event',
+                'ends_at', '2030-10-14T11:00:00',
+                'kind_id', 'virtual',
+                'name', 'Team Organizers Study Group',
+                'starts_at', '2030-10-14T10:00:00',
+                'timezone', 'UTC'
+            )
+        ),
+        '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb
+    ),
+    'Should snapshot the accepted team on every occurrence when organizers are omitted'
+);
+select results_eq(
+    $$
+        select e.starts_at, eo.user_id, eo."order"
+        from event e
+        join event_organizer eo using (event_id)
+        where e.name = 'Team Organizers Study Group'
+        order by e.starts_at, eo."order"
+    $$,
+    format(
+        $$
+            values
+                ('2030-10-07 10:00:00+00'::timestamptz, %L::uuid, 1),
+                ('2030-10-07 10:00:00+00'::timestamptz, %L::uuid, 2),
+                ('2030-10-14 10:00:00+00'::timestamptz, %L::uuid, 1),
+                ('2030-10-14 10:00:00+00'::timestamptz, %L::uuid, 2)
+        $$,
+        :'teamMemberID',
+        :'secondTeamMemberID',
+        :'teamMemberID',
+        :'secondTeamMemberID'
+    ),
+    'Should store the accepted team as organizers of every occurrence'
+);
+
+-- Should store submitted organizers on every occurrence
+select lives_ok(
+    format(
+        $$select add_event_series(%L::uuid, %L::uuid, %L::jsonb, %L::jsonb)$$,
+        :'userID',
+        :'groupID',
+        jsonb_build_array(
+            jsonb_build_object(
+                'category_id', :'eventCategoryID',
+                'description', 'Base event',
+                'ends_at', '2030-11-07T11:00:00',
+                'kind_id', 'virtual',
+                'name', 'Submitted Organizers Study Group',
+                'organizers', jsonb_build_array(:'secondTeamMemberID', :'teamMemberID'),
+                'starts_at', '2030-11-07T10:00:00',
+                'timezone', 'UTC'
+            ),
+            jsonb_build_object(
+                'category_id', :'eventCategoryID',
+                'description', 'Base event',
+                'ends_at', '2030-11-14T11:00:00',
+                'kind_id', 'virtual',
+                'name', 'Submitted Organizers Study Group',
+                'organizers', jsonb_build_array(:'secondTeamMemberID', :'teamMemberID'),
+                'starts_at', '2030-11-14T10:00:00',
+                'timezone', 'UTC'
+            )
+        ),
+        '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb
+    ),
+    'Should store submitted organizers on every occurrence'
+);
+select results_eq(
+    $$
+        select e.starts_at, eo.user_id, eo."order"
+        from event e
+        join event_organizer eo using (event_id)
+        where e.name = 'Submitted Organizers Study Group'
+        order by e.starts_at, eo."order"
+    $$,
+    format(
+        $$
+            values
+                ('2030-11-07 10:00:00+00'::timestamptz, %L::uuid, 1),
+                ('2030-11-07 10:00:00+00'::timestamptz, %L::uuid, 2),
+                ('2030-11-14 10:00:00+00'::timestamptz, %L::uuid, 1),
+                ('2030-11-14 10:00:00+00'::timestamptz, %L::uuid, 2)
+        $$,
+        :'secondTeamMemberID',
+        :'teamMemberID',
+        :'secondTeamMemberID',
+        :'teamMemberID'
+    ),
+    'Should store submitted organizers in order on every occurrence'
 );
 
 -- ============================================================================

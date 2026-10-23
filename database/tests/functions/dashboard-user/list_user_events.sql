@@ -5,12 +5,13 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set attendeeOrganizerUserID '4a0c0000-0000-0000-0000-000000000053'
 \set bouncedDiscountCodeID '4a0c0000-0000-0000-0000-000000000049'
 \set bouncedDiscountOfferID '4a0c0000-0000-0000-0000-000000000045'
 \set bouncedDiscountUserID '4a0c0000-0000-0000-0000-000000000046'
@@ -35,6 +36,7 @@ select plan(18);
 \set eventDeletedID '4a0c0000-0000-0000-0000-000000000008'
 \set eventInactiveGroupID '4a0c0000-0000-0000-0000-000000000009'
 \set eventNoStartsAtID '4a0c0000-0000-0000-0000-000000000010'
+\set eventOrganizersRemovedID '4a0c0000-0000-0000-0000-000000000054'
 \set eventPaidID '4a0c0000-0000-0000-0000-000000000011'
 \set eventPaidPriceWindowID '4a0c0000-0000-0000-0000-000000000012'
 \set eventPaidPurchaseID '4a0c0000-0000-0000-0000-000000000013'
@@ -53,6 +55,7 @@ select plan(18);
 \set groupInactiveID '4a0c0000-0000-0000-0000-000000000023'
 \set livePriceOfferID '4a0c0000-0000-0000-0000-000000000047'
 \set livePriceUserID '4a0c0000-0000-0000-0000-000000000048'
+\set organizerOnlyUserID '4a0c0000-0000-0000-0000-000000000055'
 \set pendingInvitationOfferID '4a0c0000-0000-0000-0000-000000000036'
 \set questionsAttendeeUserID '4a0c0000-0000-0000-0000-000000000024'
 \set questionsCheckoutExpiredPurchaseID '4a0c0000-0000-0000-0000-000000000025'
@@ -64,8 +67,10 @@ select plan(18);
 \set questionsRefundPendingOfferID '4a0c0000-0000-0000-0000-000000000038'
 \set questionsRefundPendingUserID '4a0c0000-0000-0000-0000-000000000039'
 \set registrationQuestionID '4a0c0000-0000-0000-0000-000000000030'
+\set removedOrganizerUserID '4a0c0000-0000-0000-0000-000000000056'
 \set sessionAID '4a0c0000-0000-0000-0000-000000000031'
 \set sessionCID '4a0c0000-0000-0000-0000-000000000032'
+\set teamMemberUserID '4a0c0000-0000-0000-0000-000000000057'
 \set userEmptyID '4a0c0000-0000-0000-0000-000000000033'
 \set userID '4a0c0000-0000-0000-0000-000000000034'
 \set userPaidID '4a0c0000-0000-0000-0000-000000000035'
@@ -92,6 +97,20 @@ select fx_user(:'questionsCheckoutUserID');
 select fx_user(:'questionsCheckoutExpiredUserID');
 select fx_user(:'questionsInvitedUserID');
 select fx_user(:'questionsRefundPendingUserID');
+
+-- User who attends and organizes the same event
+select fx_user(:'attendeeOrganizerUserID');
+
+-- User listed only as an event organizer
+select fx_user(:'organizerOnlyUserID');
+
+-- User whose only organizer role is removed
+select fx_user(:'removedOrganizerUserID');
+
+-- Accepted team member who is not stored as an event organizer
+select fx_user(:'teamMemberUserID');
+
+-- Group owning the listed events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Groups
@@ -189,6 +208,17 @@ select fx_event(:'eventQuestionsID', :'groupID', :'eventCategoryID', jsonb_build
     'starts_at', now() + interval '1 day'
 ));
 
+-- Event whose only organizer is removed before listing
+select fx_event(:'eventOrganizersRemovedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2099-01-20 10:00:00+00'
+));
+
+-- Accepted team member joining after the group events were created
+insert into group_team (accepted, group_id, role, user_id)
+values (true, :'groupID', 'viewer', :'teamMemberUserID');
+
 -- Sessions for speaker role tests
 insert into session (session_id, event_id, name, session_kind_id, starts_at) values
     (:'sessionAID', :'eventAID', 'Session A', 'virtual', '2099-01-10 11:00:00+00'),
@@ -284,6 +314,10 @@ insert into event_attendee (event_id, user_id, status) values
     (:'eventPastID', :'userID', 'confirmed'),
     (:'eventPaidID', :'userPaidID', 'confirmed'),
     (:'eventUnpublishedID', :'userID', 'confirmed');
+
+-- Attendance of the user who also organizes the event
+insert into event_attendee (event_id, user_id, status)
+values (:'eventBID', :'attendeeOrganizerUserID', 'confirmed');
 
 -- Organizer invitation offers included in the user's event list
 insert into admission_offer (
@@ -457,6 +491,18 @@ values
 -- User roles for role aggregation
 insert into event_host (event_id, user_id) values
     (:'eventAID', :'userID');
+
+-- Organizer relationship of the user who also attends the event
+insert into event_organizer (event_id, user_id, "order")
+values (:'eventBID', :'attendeeOrganizerUserID', 1);
+
+-- Organizer-only relationship included in the user's event list
+insert into event_organizer (event_id, user_id, "order")
+values (:'eventCID', :'organizerOnlyUserID', 1);
+
+-- Organizer relationship removed before listing
+insert into event_organizer (event_id, user_id, "order")
+values (:'eventOrganizersRemovedID', :'removedOrganizerUserID', 1);
 
 -- Event speaker relationship included in the user's event list
 insert into event_speaker (event_id, user_id, featured) values
@@ -892,6 +938,62 @@ select is(
         0
     ),
     'Should return empty result for users without events'
+);
+
+-- Should list attendee and organizer roles for an attendee organizer
+select is(
+    list_user_events(:'attendeeOrganizerUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
+        -> 'events'
+        -> 0
+        -> 'roles',
+    jsonb_build_array('attendee', 'organizer'),
+    'Should list attendee and organizer roles for an attendee organizer'
+);
+
+-- Should list an organizer-only event with the organizer role
+select is(
+    (
+        select jsonb_build_object(
+            'event_id', listed->'events'->0->'event'->>'event_id',
+            'roles', listed->'events'->0->'roles',
+            'total', listed->'total'
+        )
+        from (
+            select list_user_events(:'organizerOnlyUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb as listed
+        ) result
+    ),
+    jsonb_build_object(
+        'event_id', :'eventCID',
+        'roles', jsonb_build_array('organizer'),
+        'total', 1
+    ),
+    'Should list an organizer-only event with the organizer role'
+);
+
+-- Should not list an event after the organizer is removed
+-- Remove the only organizer through the organizer synchronization
+select sync_event_organizers(:'eventOrganizersRemovedID'::uuid, '[]'::jsonb);
+select is(
+    list_user_events(:'removedOrganizerUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
+    jsonb_build_object(
+        'events',
+        '[]'::jsonb,
+        'total',
+        0
+    ),
+    'Should not list an event after the organizer is removed'
+);
+
+-- Should not list existing events for a team member who is not a stored organizer
+select is(
+    list_user_events(:'teamMemberUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
+    jsonb_build_object(
+        'events',
+        '[]'::jsonb,
+        'total',
+        0
+    ),
+    'Should not list existing events for a team member who is not a stored organizer'
 );
 
 -- Should include manually invited pending registration events in the user dashboard

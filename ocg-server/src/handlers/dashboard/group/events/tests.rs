@@ -39,6 +39,7 @@ use crate::{
             TicketTaxBehavior, TicketTaxRate,
         },
         permissions::GroupPermission,
+        user::User,
     },
 };
 
@@ -127,6 +128,10 @@ async fn test_add_page_renders_external_ticketing_without_payment_recipient() {
                 seller_display_name: Some("External Payee Co".to_string()),
             })
         });
+    db.expect_list_group_organizers()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(|_| Ok(vec![]));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -180,6 +185,8 @@ async fn test_add_page_success() {
     let session_kind = sample_session_kind_summary();
     let sponsor = sample_group_sponsor();
     let timezones = vec!["UTC".to_string()];
+    let team_members = sample_team_members();
+
     // Setup database mock
     let mut db = MockDB::new();
     expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
@@ -250,6 +257,10 @@ async fn test_add_page_success() {
                 seller_display_name: None,
             })
         });
+    db.expect_list_group_organizers()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(move |_| Ok(team_members.clone()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -297,6 +308,29 @@ async fn test_add_page_success() {
     assert!(!body.contains("<optgroup label=\"PEOPLE\">"));
     assert!(!body.contains("<optgroup label=\"FOLLOW-UP\">"));
     assert!(!body.contains("data-section=\"attendees\""));
+
+    // Check the contributors tab selects organizers from the group team
+    assert!(body.contains("data-section=\"contributors\""));
+    assert!(body.contains("<form id=\"contributors-form\" data-event-form>"));
+    let team_attribute = users_attribute(&sample_team_members());
+    let organizers_selector = selector_tag(&body, "id=\"event-organizers-selector\"");
+    assert!(organizers_selector.contains(&format!("selected-users=\"{team_attribute}\"")));
+    assert!(organizers_selector.contains(&format!("available-users=\"{team_attribute}\"")));
+    assert!(organizers_selector.contains("field-name=\"organizers\""));
+    assert!(!organizers_selector.contains("can-award-badges"));
+    assert!(body.contains("<input type=\"hidden\" name=\"organizers_present\" value=\"true\">"));
+    assert!(!body.contains("event-organizers-award-button"));
+
+    // Check the contributor sections follow the public page order
+    assert!(appear_in_order(
+        &body,
+        &[
+            "id=\"event-speakers-selector\"",
+            "id=\"event-hosts-selector\"",
+            "id=\"event-organizers-selector\"",
+            "<sponsors-section",
+        ],
+    ));
 }
 
 #[tokio::test]
@@ -436,6 +470,104 @@ async fn test_list_page_waits_for_pending_cohosts_before_publishing() {
         .expect("publish action to be rendered");
     assert!(publish_button.contains("disabled title=\"Waiting for 2 co-host(s) to respond.\""));
     assert!(publish_button.contains("cursor-not-allowed"));
+}
+
+#[tokio::test]
+async fn test_update_page_hides_contributor_awards_for_canceled_events() {
+    // Setup identifiers and a canceled event
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event_full = EventFull {
+        canceled: true,
+        ..sample_event_full(community_id, event_id, group_id)
+    };
+
+    // Setup database expectations for an events manager
+    let mut db = MockDB::new();
+    expect_update_page_context(
+        &mut db,
+        session_id,
+        community_id,
+        group_id,
+        user_id,
+        event_full,
+        EventCohostsEditor::default(),
+    );
+    expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
+    expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
+
+    // Run the request
+    let response = send_update_page_request(db, session_id, event_id).await;
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check organizers render without award wiring
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let organizers_selector = selector_tag(&body, "id=\"event-organizers-selector\"");
+    assert!(!organizers_selector.contains("can-award-badges"));
+    assert!(!organizers_selector.contains("award-button-id="));
+    assert!(!body.contains("event-organizers-award-button"));
+    assert!(!body.contains("event-hosts-award-button"));
+    assert!(!body.contains("can-award-badges"));
+}
+
+#[tokio::test]
+async fn test_update_page_hides_contributor_awards_for_read_only_users() {
+    // Setup identifiers and an active event
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event_full = sample_event_full(community_id, event_id, group_id);
+
+    // Setup database expectations for a user who cannot manage events
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && *permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(false));
+    expect_update_page_reads(
+        &mut db,
+        community_id,
+        group_id,
+        event_full,
+        EventCohostsEditor::default(),
+    );
+    expect_invitation_requests_tab_search(&mut db, group_id, event_id, 0);
+    expect_waitlist_tab_search(&mut db, group_id, event_id, 0);
+
+    // Run the request
+    let response = send_update_page_request(db, session_id, event_id).await;
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check organizers render without award wiring
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let organizers_selector = selector_tag(&body, "id=\"event-organizers-selector\"");
+    assert!(!organizers_selector.contains("can-award-badges"));
+    assert!(!organizers_selector.contains("award-button-id="));
+    assert!(!body.contains("event-organizers-award-button"));
+    assert!(!body.contains("event-hosts-award-button"));
+    assert!(!body.contains("can-award-badges"));
 }
 
 #[tokio::test]
@@ -672,6 +804,7 @@ async fn test_update_page_success() {
     let user_id = Uuid::new_v4();
     let mut event_full = sample_event_full(community_id, event_id, group_id);
     event_full.payment_currency_code = Some("USD".to_string());
+    let organizers = event_full.organizers.clone();
 
     // Setup database expectations without enrollment rows
     let mut db = MockDB::new();
@@ -715,7 +848,7 @@ async fn test_update_page_success() {
             "data-section=\"details\"",
             "data-section=\"date-venue\"",
             "data-section=\"cohosts\"",
-            "data-section=\"hosts-sponsors\"",
+            "data-section=\"contributors\"",
             "data-section=\"payments\"",
             "data-section=\"questions\"",
             "data-section=\"labels\"",
@@ -742,6 +875,29 @@ async fn test_update_page_success() {
     assert!(!body.contains("<option value=\"waitlist\""));
     assert!(!body.contains("data-section=\"waitlist\""));
     assert!(!body.contains("data-content=\"waitlist\""));
+
+    // Check the stored organizers render with team search and award wiring for managers
+    let organizers_attribute = users_attribute(&organizers);
+    let team_attribute = users_attribute(&sample_team_members());
+    assert!(body.contains("<form id=\"contributors-form\" data-event-form>"));
+    let organizers_selector = selector_tag(&body, "id=\"event-organizers-selector\"");
+    assert!(organizers_selector.contains(&format!("selected-users=\"{organizers_attribute}\"")));
+    assert!(organizers_selector.contains(&format!("available-users=\"{team_attribute}\"")));
+    assert!(organizers_selector.contains("can-award-badges"));
+    assert!(organizers_selector.contains("award-button-id=\"event-organizers-award-button\""));
+    assert!(body.contains("<button id=\"event-organizers-award-button\""));
+    assert!(body.contains("<input type=\"hidden\" name=\"organizers_present\" value=\"true\">"));
+
+    // Check the contributor sections follow the public page order
+    assert!(appear_in_order(
+        &body,
+        &[
+            "id=\"event-speakers-selector\"",
+            "id=\"event-hosts-selector\"",
+            "id=\"event-organizers-selector\"",
+            "<sponsors-section",
+        ],
+    ));
 }
 
 #[tokio::test]
@@ -1097,6 +1253,68 @@ async fn test_details_success() {
         &HeaderValue::from_static("application/json"),
     );
     assert_eq!(to_value(payload).unwrap(), to_value(event_full).unwrap());
+}
+
+#[tokio::test]
+async fn test_preview_renders_named_organizers_after_hosts() {
+    // Setup identifiers and a preview with contributors for every role
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let preview_context = json!({
+        "hosts": [{"name": "Host Name", "username": "host"}],
+        "organizers": [
+            {"name": "Organizer Name", "username": "organizer"},
+            {"username": "organizer-without-name"}
+        ],
+        "speakers": [{"name": "Speaker Name", "username": "speaker"}]
+    });
+    let body =
+        serde_urlencoded::to_string([("preview_context", preview_context.to_string())]).unwrap();
+
+    // Setup database mock for session and permission middleware only
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/events/preview")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the people sections follow the public page order
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(appear_in_order(
+        &body,
+        &[
+            "data-preview-name=\"Speaker Name\"",
+            "Hosts",
+            "data-preview-name=\"Host Name\"",
+            "Organizers",
+            "data-preview-name=\"Organizer Name\"",
+        ],
+    ));
+
+    // Check organizers without a full name are left out
+    assert!(!body.contains("organizer-without-name"));
 }
 
 #[tokio::test]
@@ -2306,6 +2524,17 @@ fn expect_update_page_context(
     );
 
     // Load the event and editor options
+    expect_update_page_reads(db, community_id, group_id, event_full, cohosts);
+}
+
+/// Registers the event and editor option reads every update page performs.
+fn expect_update_page_reads(
+    db: &mut MockDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    event_full: EventFull,
+    cohosts: EventCohostsEditor,
+) {
     let event_id = event_full.event_id;
     db.expect_get_event_full()
         .times(1)
@@ -2373,6 +2602,10 @@ fn expect_update_page_context(
                 seller_display_name: None,
             })
         });
+    db.expect_list_group_organizers()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(|_| Ok(sample_team_members()));
 }
 
 /// Registers the waitlist lookup used to decide the tab visibility.
@@ -2392,6 +2625,25 @@ fn expect_waitlist_tab_search(db: &mut MockDB, group_id: Uuid, event_id: Uuid, t
                 waitlist: vec![],
             })
         });
+}
+
+/// Returns the group team members listed as available organizers.
+fn sample_team_members() -> Vec<User> {
+    vec![User {
+        user_id: Uuid::from_u128(0x7ea0),
+        username: "team-organizer".to_string(),
+
+        name: Some("Team Organizer".to_string()),
+        ..Default::default()
+    }]
+}
+
+/// Returns the opening tag that contains the given attribute.
+fn selector_tag<'a>(body: &'a str, attribute: &str) -> &'a str {
+    let attribute_index = body.find(attribute).expect("attribute should be rendered");
+    let start = body[..attribute_index].rfind('<').expect("tag start should exist");
+    let end = attribute_index + body[attribute_index..].find('>').expect("tag end should exist");
+    &body[start..=end]
 }
 
 /// Sends an authenticated event editor page request.
@@ -2421,4 +2673,9 @@ async fn send_update_page_request(
         .unwrap();
 
     router.oneshot(request).await.unwrap()
+}
+
+/// Returns the users JSON as Askama renders it in a double-quoted attribute.
+fn users_attribute(users: &[User]) -> String {
+    serde_json::to_string(users).unwrap().replace('"', "&#34;")
 }

@@ -84,7 +84,8 @@ begin
             raise exception 'event not found' using errcode = 'OCG01';
         end if;
 
-        -- Count the requested recipients who are verified event participants
+        -- Count the requested recipients who are verified event attendees,
+        -- hosts, organizers, or speakers
         select count(*)
         into v_eligible_recipient_count
         from "user" u
@@ -103,6 +104,12 @@ begin
                 from event_host eh
                 where eh.event_id = p_event_id
                 and eh.user_id = u.user_id
+            )
+            or exists (
+                select 1
+                from event_organizer eo
+                where eo.event_id = p_event_id
+                and eo.user_id = u.user_id
             )
             or exists (
                 select 1

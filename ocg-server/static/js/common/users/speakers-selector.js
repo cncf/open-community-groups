@@ -179,6 +179,7 @@ export class SpeakersSelector extends LitWrapper {
 
   /** Renders event-level speakers as a simple editable table. */
   _renderSpeakerTable(speakers) {
+    const hasActions = !this.disabled || Boolean(this.canAwardBadges && this.eventId);
     return html`
       <div class="mt-4 overflow-visible">
         <table class="w-full text-left text-sm text-stone-600" aria-label="Event speakers">
@@ -186,14 +187,20 @@ export class SpeakersSelector extends LitWrapper {
             <tr>
               <th scope="col" class="px-4 py-3">Name</th>
               <th scope="col" class="w-40 px-4 py-3 text-center">Featured</th>
-              <th scope="col" class="w-[72px] px-4 py-3"><span class="sr-only">Actions</span></th>
+              ${
+                hasActions
+                  ? html`<th scope="col" class="w-[72px] px-4 py-3">
+                      <span class="sr-only">Actions</span>
+                    </th>`
+                  : ""
+              }
             </tr>
           </thead>
           <tbody>
             ${
               speakers.length === 0
                 ? html`<tr class="border-b border-stone-200 bg-white">
-                    <td class="px-8 py-12 text-center text-stone-500" colspan="3">
+                    <td class="px-8 py-12 text-center text-stone-500" colspan=${hasActions ? 3 : 2}>
                       No event speakers added yet.
                     </td>
                   </tr>`
@@ -207,17 +214,21 @@ export class SpeakersSelector extends LitWrapper {
                           <td class="w-40 px-4 py-3 text-center">
                             ${renderFeaturedContributorState(speaker.featured)}
                           </td>
-                          <td class="px-4 py-3 text-right">
-                            ${renderContributorActions({
-                              actionLabel: "speaker",
-                              awardsDisabled: this.awardsDisabled,
-                              canAwardBadges: this.canAwardBadges,
-                              contributor: speaker,
-                              deleteDisabled: this.disabled,
-                              eventId: this.eventId,
-                              onDelete: () => this._removeSpeaker(speaker),
-                            })}
-                          </td>
+                          ${
+                            hasActions
+                              ? html`<td class="px-4 py-3 text-right">
+                                  ${renderContributorActions({
+                                    actionLabel: "speaker",
+                                    awardsDisabled: this.awardsDisabled,
+                                    canAwardBadges: this.canAwardBadges,
+                                    contributor: speaker,
+                                    deleteDisabled: this.disabled,
+                                    eventId: this.eventId,
+                                    onDelete: () => this._removeSpeaker(speaker),
+                                  })}
+                                </td>`
+                              : ""
+                          }
                         </tr>
                       `;
                     },
@@ -304,7 +315,13 @@ export class SpeakersSelector extends LitWrapper {
           }
         </div>
 
-        ${this.helpText ? html`<p class="text-sm text-stone-500 mt-1">${this.helpText}</p>` : ""}
+        ${
+          this.helpText
+            ? html`<p class="text-sm text-stone-500 ${this.displayMode === "table" ? "mt-2" : "mt-1"}">
+                ${this.helpText}
+              </p>`
+            : ""
+        }
         ${
           this.displayMode === "table"
             ? this._renderSpeakerTable(speakers)

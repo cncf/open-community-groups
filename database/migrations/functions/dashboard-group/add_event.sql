@@ -246,12 +246,18 @@ begin
         end;
     end loop;
 
-    -- Snapshot current accepted group organizers for historical attribution
-    insert into event_organizer (event_id, user_id, "order")
-    select v_event_id, gt.user_id, gt."order"
-    from group_team gt
-    where gt.group_id = p_group_id
-    and gt.accepted = true;
+    -- Store organizers from the submitted selection when the payload includes them
+    if p_event ? 'organizers' then
+        perform sync_event_organizers(v_event_id, p_event->'organizers');
+
+    -- Otherwise snapshot the accepted group team for historical attribution
+    else
+        insert into event_organizer (event_id, user_id, "order")
+        select v_event_id, gt.user_id, gt."order"
+        from group_team gt
+        where gt.group_id = p_group_id
+        and gt.accepted = true;
+    end if;
 
     -- Insert ticketing data after creating the event row
     perform sync_event_discount_codes(v_event_id, v_payload.discount_codes);

@@ -53,9 +53,12 @@ const mountPreviewPage = ({ testEvent = false } = {}) => {
           <input name="cohost_group_ids_present" value="true" />
           <input name="cohosts_revision" value="2" />
         </form>
-        <form id="hosts-sponsors-form" data-event-form>
-          <user-search-selector field-name="hosts"></user-search-selector>
+        <form id="contributors-form" data-event-form>
           <speakers-selector field-name-prefix="speakers"></speakers-selector>
+          <user-search-selector field-name="hosts"></user-search-selector>
+          <user-search-selector field-name="organizers"></user-search-selector>
+          <input type="hidden" name="organizers[]" value="organizer-1" />
+          <input type="hidden" name="organizers_present" value="true" />
           <sponsors-section></sponsors-section>
         </form>
         <form id="payments-form" data-event-form>
@@ -72,13 +75,25 @@ const mountPreviewPage = ({ testEvent = false } = {}) => {
   `;
 
   const pageRoot = document.querySelector('[data-event-page="add"]');
-  pageRoot.querySelector("user-search-selector").selectedUsers = [
+  pageRoot.querySelector('user-search-selector[field-name="hosts"]').selectedUsers = [
     {
       company: "Example",
       name: "Host User",
       photo_url: "/host.png",
       title: "Organizer",
       username: "host-user",
+    },
+  ];
+  pageRoot.querySelector('user-search-selector[field-name="organizers"]').selectedUsers = [
+    {
+      name: "Organizer User",
+      photo_url: "/organizer.png",
+      user_id: "organizer-1",
+      username: "organizer-user",
+    },
+    {
+      user_id: "organizer-2",
+      username: "username-only",
     },
   ];
   pageRoot.querySelector("speakers-selector").selectedSpeakers = [
@@ -141,6 +156,7 @@ describe("event preview", () => {
     expect(payload.get("cohost_group_ids[0]")).to.equal(null);
     expect(payload.get("cohost_group_ids_present")).to.equal(null);
     expect(payload.get("cohosts_revision")).to.equal(null);
+    expect(payload.get("organizers_present")).to.equal(null);
     expect(payload.get("ticket_types[0][title]")).to.equal(null);
     expect(payload.get("ticket_types[0][price_windows][0][price]")).to.equal(
       null,
@@ -162,6 +178,10 @@ describe("event preview", () => {
       },
     ]);
     expect(context.hosts[0].name).to.equal("Host User");
+    expect(context.organizers).to.deep.equal([
+      { name: "Organizer User", photo_url: "/organizer.png", username: "organizer-user" },
+      { username: "username-only" },
+    ]);
     expect(context.speakers[0].featured).to.equal(true);
     expect(context.sponsors[0].name).to.equal("Sponsor Co");
     expect(context.sessions[0].kind_label).to.equal("Talk");
