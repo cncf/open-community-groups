@@ -93,6 +93,53 @@ describe("event-selector", () => {
     expect(element._results.map((event) => event.event_id)).to.deep.equal(["event-1", "event-2"]);
   });
 
+  it("keeps search results when the primary events resolve later", async () => {
+    // Render the selector with a primary request that resolves on demand.
+    const element = await renderSelector();
+    let resolvePrimary;
+    const primaryRequest = new Promise((resolve) => {
+      resolvePrimary = resolve;
+    });
+    element._requestEvents = async (config) =>
+      config.query ? [{ event_id: "match-1", name: "Match 1" }] : primaryRequest;
+
+    // Start the primary load, then search before it resolves.
+    const primaryFetch = element._fetchEvents();
+    element._query = "match";
+    await element._fetchEvents();
+    resolvePrimary([{ event_id: "primary-1", name: "Primary 1" }]);
+    await primaryFetch;
+
+    // The late primary events are cached without replacing the search results.
+    expect(element._results.map((event) => event.event_id)).to.deep.equal(["match-1"]);
+    expect(element._primaryResults.map((event) => event.event_id)).to.deep.equal(["primary-1"]);
+    expect(element._loading).to.equal(false);
+  });
+
+  it("ignores search results for a query that is no longer current", async () => {
+    // Render the selector with search requests that resolve on demand.
+    const element = await renderSelector();
+    const pendingRequests = new Map();
+    element._requestEvents = (config) =>
+      new Promise((resolve) => {
+        pendingRequests.set(config.query, resolve);
+      });
+
+    // Search twice, then resolve the newer query before the older one.
+    element._query = "ma";
+    const staleFetch = element._fetchEvents();
+    element._query = "match";
+    const currentFetch = element._fetchEvents();
+    pendingRequests.get("match")([{ event_id: "match-1", name: "Match 1" }]);
+    await currentFetch;
+    pendingRequests.get("ma")([{ event_id: "stale-1", name: "Stale 1" }]);
+    await staleFetch;
+
+    // Only the current query updates the visible results.
+    expect(element._results.map((event) => event.event_id)).to.deep.equal(["match-1"]);
+    expect(element._loading).to.equal(false);
+  });
+
   it("updates active navigation and closes the dropdown on escape", async () => {
     // Render the selector fixture.
     const element = await renderSelector();

@@ -20,10 +20,10 @@ test.describe("community dashboard logs view", () => {
   });
 
   test("admin can move between community log result pages", async ({ adminCommunityPage }) => {
-    // Paginate the seeded audit-log rows with one result per page.
+    // Sort oldest first so the first pages hold distinct seeded rows, not rows added by other tests.
     await expectPaginationNavigation(
       adminCommunityPage,
-      `${COMMUNITY_LOGS_PATH}&limit=1&offset=0`,
+      `${COMMUNITY_LOGS_PATH}&sort=created-asc&limit=1&offset=0`,
       "#dashboard-content tr.audit-log-row",
     );
   });

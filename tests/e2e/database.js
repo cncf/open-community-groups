@@ -10,9 +10,12 @@ const REQUIRED_ENV_VARS = ["OCG_E2E_DB_HOST", "OCG_E2E_DB_NAME", "OCG_E2E_DB_POR
 /**
  * Runs a SQL statement through `psql` and returns the raw unaligned output.
  * @param {string} sql - Statement to execute.
+ * @param {string} [database] - E2E database to query instead of `OCG_E2E_DB_NAME`.
  * @returns {string} Trimmed output with one row per line and `|`-separated columns.
  */
-export const queryE2eDatabase = (sql) => {
+export const queryE2eDatabase = (sql, database = e2eDbConfig.database) => {
+  assertE2eDatabaseName(database);
+
   return execFileSync(
     getPsqlPath(),
     [
@@ -26,7 +29,7 @@ export const queryE2eDatabase = (sql) => {
       "-U",
       e2eDbConfig.user,
       "-d",
-      e2eDbConfig.database,
+      database,
       // Suppress headers, alignment, and command status so callers receive only values.
       "-qtA",
       "-c",
@@ -72,11 +75,7 @@ const getDbConfig = () => {
   }
 
   const database = process.env.OCG_E2E_DB_NAME;
-
-  // Refuse to touch anything that is not clearly an e2e database.
-  if (!database.endsWith(E2E_DB_NAME_SUFFIX)) {
-    throw new Error(`OCG_E2E_DB_NAME must end in "${E2E_DB_NAME_SUFFIX}" (got "${database}")`);
-  }
+  assertE2eDatabaseName(database);
 
   return {
     database,
@@ -85,6 +84,16 @@ const getDbConfig = () => {
     port: process.env.OCG_E2E_DB_PORT,
     user: process.env.OCG_E2E_DB_USER,
   };
+};
+
+/**
+ * Refuses to touch anything that is not clearly an e2e database.
+ * @param {string} database - Database name to check.
+ */
+const assertE2eDatabaseName = (database) => {
+  if (!database.endsWith(E2E_DB_NAME_SUFFIX)) {
+    throw new Error(`E2E database name must end in "${E2E_DB_NAME_SUFFIX}" (got "${database}")`);
+  }
 };
 
 /**

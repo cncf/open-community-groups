@@ -8,30 +8,23 @@ const USER_LOGS_PATH = "/dashboard/user?tab=logs";
 
 test.describe("user dashboard logs view", () => {
   test("member can move between user log result pages", async ({ member1Page }) => {
-    // Paginate the seeded audit-log rows with one result per page.
+    // Sort oldest first so the first pages hold distinct seeded rows, not rows added by other tests.
     await expectPaginationNavigation(
       member1Page,
-      `${USER_LOGS_PATH}&limit=1&offset=0`,
+      `${USER_LOGS_PATH}&sort=created-asc&limit=1&offset=0`,
       "#dashboard-content tr.audit-log-row",
     );
   });
 
   test("member can view the seeded user logs list and active filters", async ({ member1Page }) => {
-    // Load the unfiltered user logs URL before applying active filters.
-    await navigateToPath(member1Page, USER_LOGS_PATH);
+    // Load the unfiltered user logs oldest first so rows added by other tests come after the seeded ones.
+    await navigateToPath(member1Page, `${USER_LOGS_PATH}&sort=created-asc`);
     let dashboardContent = member1Page.locator("#dashboard-content");
 
-    // Verify the full seeded user logs list is present.
-    await expect(
-      dashboardContent.locator("tr.audit-log-row").filter({
-        hasText: "User details updated",
-      }),
-    ).toHaveCount(1);
-    await expect(
-      dashboardContent.locator("tr.audit-log-row").filter({
-        hasText: "Session proposal added",
-      }),
-    ).toHaveCount(1);
+    // Verify the seeded user logs lead the list.
+    const auditLogRows = dashboardContent.locator("tr.audit-log-row");
+    await expect(auditLogRows.nth(0)).toContainText("User details updated");
+    await expect(auditLogRows.nth(1)).toContainText("Session proposal added");
 
     // Load the filtered user logs URL.
     await navigateToPath(member1Page, FILTERED_USER_LOGS_PATH);
@@ -116,9 +109,12 @@ test.describe("user dashboard logs view", () => {
     // Assert that the browser lands on the right URL.
     await expect(member1Page).toHaveURL(/\/dashboard\/user\?tab=logs(?:&|$)/);
     await expect(
-      dashboardContent.locator("tr.audit-log-row").filter({
-        hasText: "User details updated",
-      }),
-    ).toHaveCount(1);
+      dashboardContent
+        .locator("tr.audit-log-row")
+        .filter({
+          hasText: "User details updated",
+        })
+        .first(),
+    ).toBeVisible();
   });
 });

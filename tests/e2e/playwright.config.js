@@ -2,7 +2,13 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
+import { bindWorkerToStack, getE2eStacks } from "./stacks.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Isolated stacks for parallel runs; must be bound before the contract below is read.
+const stacks = getE2eStacks();
+bindWorkerToStack(stacks);
 
 // Base URL used by browser contexts and the optional web server health check.
 const baseURL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
@@ -53,7 +59,8 @@ export default defineConfig({
   testDir: __dirname,
   globalSetup: preflightPath,
   fullyParallel: false,
-  workers: 1,
+  // Tests share their stack's database, so each worker needs a stack of its own.
+  workers: Math.max(stacks.length, 1),
   retries: 0,
   expect: {
     toHaveScreenshot: { maxDiffPixelRatio: 0.03 },
