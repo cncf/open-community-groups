@@ -1,3 +1,5 @@
+-- Tests resolving a unique username with numeric suffixes.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -73,6 +75,7 @@ select is(
 -- Should reject usernames when all generated variants are taken
 select throws_ok(
     $$ select resolve_unique_username('exhausted') $$,
+    'P0001',
     'unable to generate unique username: all variants from exhausted to exhausted99 are taken',
     'Should reject usernames when all generated variants are taken'
 );

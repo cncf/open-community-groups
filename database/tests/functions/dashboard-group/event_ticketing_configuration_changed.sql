@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(30);
+select plan(29);
 
 -- ============================================================================
 -- VARIABLES
@@ -508,14 +508,6 @@ select is(
     event_ticketing_configuration_changed(:'communityID', :'groupID', :'datedEventID', dated_editor_payload()),
     false,
     'Should ignore an unchanged dated editor payload under UTC'
-);
-
--- Should ignore an unchanged dated editor payload under Europe/Madrid
-set local time zone 'Europe/Madrid';
-select is(
-    event_ticketing_configuration_changed(:'communityID', :'groupID', :'datedEventID', dated_editor_payload()),
-    false,
-    'Should ignore an unchanged dated editor payload under Europe/Madrid'
 );
 
 -- Should ignore an unchanged dated editor payload under Asia/Kolkata

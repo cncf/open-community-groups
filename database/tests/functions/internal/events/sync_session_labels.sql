@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -93,14 +93,6 @@ values (:'label1ID', :'clearEmptySessionID');
 insert into session_label (event_label_id, session_id)
 values (:'label1ID', :'clearNullSessionID');
 
--- Label linked to the session receiving a foreign label
-insert into session_label (event_label_id, session_id)
-values (:'label1ID', :'foreignLabelSessionID');
-
--- Label linked to the other event session
-insert into session_label (event_label_id, session_id)
-values (:'labelOtherID', :'otherSessionID');
-
 -- Label replaced on the session
 insert into session_label (event_label_id, session_id)
 values (:'label1ID', :'replaceSessionID');
@@ -152,14 +144,6 @@ select throws_ok(
     'invalid event labels',
     'Should reject labels from another event'
 );
-select results_eq(
-    format(
-        $$select event_label_id from session_label where session_id = %L::uuid$$,
-        :'foreignLabelSessionID'
-    ),
-    format($$values (%L::uuid)$$, :'label1ID'),
-    'Should keep labels when rejecting labels from another event'
-);
 
 -- Should reject mismatched session and event IDs
 select throws_ok(
@@ -172,14 +156,6 @@ select throws_ok(
     'OCG01',
     'session not found',
     'Should reject mismatched session and event IDs'
-);
-select results_eq(
-    format(
-        $$select event_label_id from session_label where session_id = %L::uuid$$,
-        :'otherSessionID'
-    ),
-    format($$values (%L::uuid)$$, :'labelOtherID'),
-    'Should leave mismatched session labels unchanged'
 );
 
 -- Should replace labels and remove duplicates

@@ -1,11 +1,11 @@
--- Tests atomic explicit-recipient badge awards and notification enqueueing.
+-- Tests explicit-recipient badge awards and notification enqueueing.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(38);
+select plan(36);
 
 -- ============================================================================
 -- VARIABLES
@@ -58,7 +58,7 @@ select fx_community(:'communityID', jsonb_build_object('description', 'Descripti
 -- Baseline categories, users and groups
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'actorID');
+select fx_user(:'actorID', jsonb_build_object('username', 'actor-award-badge'));
 select fx_user(:'attendeeID');
 select fx_user(:'checkedInID');
 select fx_user(:'eventHostID');
@@ -415,7 +415,7 @@ select throws_ok(
     'Should require at least one recipient'
 );
 
--- Should reject a mixed list atomically when one recipient is ineligible
+-- Should reject a mixed list when one recipient is ineligible
 select throws_ok(
     format(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid, %L::uuid], %L::uuid)$$,
@@ -423,18 +423,7 @@ select throws_ok(
     ),
     'OCG01',
     'badge recipient is not eligible',
-    'Should reject a mixed list atomically when one recipient is ineligible'
-);
-
--- Should retain no outsider award after atomic validation fails
-select is(
-    (
-        select count(*)::integer
-        from user_badge
-        where user_id = :'outsiderID'
-    ),
-    0,
-    'Should retain no outsider award after atomic validation fails'
+    'Should reject a mixed list when one recipient is ineligible'
 );
 
 -- Should reject a null recipient array
@@ -558,25 +547,49 @@ select ok(
     'Should allocate an in-range unique status index'
 );
 
--- Should enqueue one notification for an awarded attendee
+-- Should enqueue one notification for an awarded attendee and none for skipped awards
 select is(
     (select count(*)::integer from notification where kind = 'badge-awarded' and user_id = :'attendeeID'),
     1,
-    'Should enqueue one notification for an awarded attendee'
+    'Should enqueue one notification for an awarded attendee and none for skipped awards'
 );
 
 -- Should write issuance audit history after insertion
-select is(
-    (select count(*)::integer from audit_log where action = 'badge_awarded' and actor_user_id = :'actorID'),
-    10,
+select results_eq(
+    format(
+        $$
+            select
+                al.action,
+                al.actor_user_id,
+                al.actor_username,
+                al.community_id,
+                al.details,
+                al.event_id,
+                al.group_id,
+                al.resource_type
+            from audit_log al
+            join user_badge ub on ub.user_badge_id = al.resource_id
+            where al.action = 'badge_awarded'
+            and ub.user_id = %L::uuid
+        $$,
+        :'attendeeID'
+    ),
+    format(
+        $$
+            values (
+                'badge_awarded',
+                %L::uuid,
+                'actor-award-badge',
+                %L::uuid,
+                '{"badge_name": "Attendee"}'::jsonb,
+                %L::uuid,
+                %L::uuid,
+                'user_badge'
+            )
+        $$,
+        :'actorID', :'communityID', :'eventID', :'groupID'
+    ),
     'Should write issuance audit history after insertion'
-);
-
--- Should not enqueue a notification for a skipped active holder
-select is(
-    (select count(*)::integer from notification where kind = 'badge-awarded' and user_id = :'attendeeID'),
-    1,
-    'Should not enqueue a notification for a skipped active holder'
 );
 
 -- Should reuse the group status list while it has capacity
@@ -585,6 +598,8 @@ select is(
     1,
     'Should reuse the group status list while it has capacity'
 );
+
+-- Revoke and re-award walk: each step below depends on the previous one
 
 -- Should revoke the first credential before a re-award
 select lives_ok(

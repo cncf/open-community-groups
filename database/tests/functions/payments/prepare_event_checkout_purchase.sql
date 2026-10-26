@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(80);
+select plan(59);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,10 +20,10 @@ select plan(80);
 \set closedWindowMismatchedPurchaseID '79100000-0000-0000-0000-000000000044'
 \set closedWindowMismatchedUserID '79100000-0000-0000-0000-000000000045'
 \set closedWindowNewUserID '79100000-0000-0000-0000-000000000046'
-\set closedWindowTicketTypeAID '79100000-0000-0000-0000-000000000047'
-\set closedWindowTicketTypeBID '79100000-0000-0000-0000-000000000048'
 \set closedWindowPriceWindowAID '79100000-0000-0000-0000-000000000049'
 \set closedWindowPriceWindowBID '79100000-0000-0000-0000-00000000004a'
+\set closedWindowTicketTypeAID '79100000-0000-0000-0000-000000000047'
+\set closedWindowTicketTypeBID '79100000-0000-0000-0000-000000000048'
 \set communityID '79100000-0000-0000-0000-000000000001'
 \set completedPurchaseID '79100000-0000-0000-0000-000000000019'
 \set completedUserID '79100000-0000-0000-0000-000000000024'
@@ -57,6 +57,14 @@ select plan(80);
 \set invalidDiscountUserID '79100000-0000-0000-0000-000000000025'
 \set invitedPendingPurchaseID '79100000-0000-0000-0000-000000000040'
 \set invitedUserID '79100000-0000-0000-0000-000000000039'
+\set limitedDiscountID '79100000-0000-0000-0000-000000000018'
+\set liveSnapshotOfferID '79100000-0000-0000-0000-00000000007b'
+\set liveSnapshotUserID '79100000-0000-0000-0000-00000000007c'
+\set mainEventID '79100000-0000-0000-0000-000000000003'
+\set manualTaxEventID '79100000-0000-0000-0000-0000000000a3'
+\set manualTaxPriceWindowID '79100000-0000-0000-0000-0000000000a4'
+\set manualTaxTicketTypeID '79100000-0000-0000-0000-0000000000a5'
+\set manualTaxUserID '79100000-0000-0000-0000-000000000074'
 \set offerDiscountID '79100000-0000-0000-0000-00000000005a'
 \set offerDiscountUserID '79100000-0000-0000-0000-00000000005b'
 \set offerFreeID '79100000-0000-0000-0000-00000000005c'
@@ -72,17 +80,16 @@ select plan(80);
 \set paymentSetupUnavailableUserID '79100000-0000-0000-0000-000000000067'
 \set platformFeeMaxUserID '79100000-0000-0000-0000-000000000072'
 \set platformFeeUserID '79100000-0000-0000-0000-000000000071'
-\set limitedDiscountID '79100000-0000-0000-0000-000000000018'
-\set liveSnapshotOfferID '79100000-0000-0000-0000-00000000007b'
-\set liveSnapshotUserID '79100000-0000-0000-0000-00000000007c'
-\set mainEventID '79100000-0000-0000-0000-000000000003'
-\set manualTaxUserID '79100000-0000-0000-0000-000000000074'
 \set priceUnavailableEventID '79100000-0000-0000-0000-000000000068'
 \set priceUnavailablePriceWindowID '79100000-0000-0000-0000-000000000069'
 \set priceUnavailableTicketTypeID '79100000-0000-0000-0000-00000000006a'
 \set priceUnavailableUserID '79100000-0000-0000-0000-00000000006b'
 \set priceWindowAID '79100000-0000-0000-0000-000000000012'
 \set priceWindowBID '79100000-0000-0000-0000-000000000013'
+\set questionsEventID '79100000-0000-0000-0000-000000000035'
+\set questionsPriceWindowID '79100000-0000-0000-0000-000000000036'
+\set questionsTicketTypeID '79100000-0000-0000-0000-000000000037'
+\set questionsUserID '79100000-0000-0000-0000-000000000038'
 \set queueCheckoutUserID '79100000-0000-0000-0000-000000000052'
 \set queueDiscountID '79100000-0000-0000-0000-000000000063'
 \set queueEventID '79100000-0000-0000-0000-000000000053'
@@ -91,13 +98,13 @@ select plan(80);
 \set queuePriceWindowID '79100000-0000-0000-0000-000000000056'
 \set queueTicketTypeID '79100000-0000-0000-0000-000000000057'
 \set queueUserID '79100000-0000-0000-0000-000000000058'
-\set questionsEventID '79100000-0000-0000-0000-000000000035'
-\set questionsPriceWindowID '79100000-0000-0000-0000-000000000036'
-\set questionsTicketTypeID '79100000-0000-0000-0000-000000000037'
-\set questionsUserID '79100000-0000-0000-0000-000000000038'
 \set redeemedPurchaseID '79100000-0000-0000-0000-000000000020'
 \set redeemedUserID '79100000-0000-0000-0000-000000000031'
 \set registrationQuestionID '79100000-0000-0000-0000-000000000101'
+\set replacePendingPurchaseID '79100000-0000-0000-0000-0000000000a6'
+\set replaceUserID '79100000-0000-0000-0000-0000000000a7'
+\set reusePendingPurchaseID '79100000-0000-0000-0000-0000000000a8'
+\set reuseUserID '79100000-0000-0000-0000-0000000000a9'
 \set soldOutEventID '79100000-0000-0000-0000-000000000004'
 \set soldOutHolderUserID '79100000-0000-0000-0000-000000000032'
 \set soldOutPendingPurchaseID '79100000-0000-0000-0000-00000000004b'
@@ -112,63 +119,11 @@ select plan(80);
 \set unavailableDiscountUserID '79100000-0000-0000-0000-000000000026'
 \set underMinimumDiscountID '79100000-0000-0000-0000-000000000034'
 \set underMinimumUserID '79100000-0000-0000-0000-000000000033'
-\set externalClosedRegEventID '79100000-0000-0000-0000-00000000009c'
-\set externalClosedRegOfferID '79100000-0000-0000-0000-00000000009d'
-\set externalClosedRegPriceWindowID '79100000-0000-0000-0000-00000000009e'
-\set externalClosedRegTicketTypeID '79100000-0000-0000-0000-00000000009f'
-\set externalClosedRegUserID '79100000-0000-0000-0000-0000000000a0'
-\set externalCapEventID '79100000-0000-0000-0000-000000000084'
-\set externalCapPriceWindowID '79100000-0000-0000-0000-00000000008e'
-\set externalCapTicketTypeID '79100000-0000-0000-0000-000000000089'
-\set externalCapUserID '79100000-0000-0000-0000-000000000093'
-\set externalEventID '79100000-0000-0000-0000-000000000083'
-\set externalMaxEventID '79100000-0000-0000-0000-000000000085'
-\set externalMaxPriceWindowID '79100000-0000-0000-0000-00000000008f'
-\set externalMaxTicketTypeID '79100000-0000-0000-0000-00000000008a'
-\set externalMaxUserID '79100000-0000-0000-0000-000000000094'
-\set externalOfferID '79100000-0000-0000-0000-000000000098'
-\set externalOfferUserID '79100000-0000-0000-0000-000000000097'
-\set externalRetryOfferID '79100000-0000-0000-0000-00000000009a'
-\set externalRetryUserID '79100000-0000-0000-0000-00000000009b'
-\set externalPriceWindowID '79100000-0000-0000-0000-00000000008d'
-\set externalReadyGroupID '79100000-0000-0000-0000-000000000081'
-\set externalTicketTypeID '79100000-0000-0000-0000-000000000088'
-\set externalUnreadyEventID '79100000-0000-0000-0000-000000000087'
-\set externalUnreadyGroupID '79100000-0000-0000-0000-000000000082'
-\set externalUnreadyPriceWindowID '79100000-0000-0000-0000-000000000091'
-\set externalUnreadyTicketTypeID '79100000-0000-0000-0000-00000000008c'
-\set externalUnreadyUserID '79100000-0000-0000-0000-000000000096'
-\set externalUserID '79100000-0000-0000-0000-000000000092'
-\set externalWindowEventID '79100000-0000-0000-0000-000000000086'
-\set externalWindowOfferID '79100000-0000-0000-0000-000000000099'
-\set externalWindowPriceWindowID '79100000-0000-0000-0000-000000000090'
-\set externalWindowTicketTypeID '79100000-0000-0000-0000-00000000008b'
-\set externalWindowUserID '79100000-0000-0000-0000-000000000095'
-\set siteID '79100000-0000-0000-0000-000000000080'
+\set unpublishedEventID '79100000-0000-0000-0000-0000000000a2'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
-
--- Site theme used by external pending-payment notifications
-insert into site (description, site_id, theme, title)
-values (
-    'Prepare checkout site',
-    :'siteID',
-    '{"primary_color": "#2563eb"}'::jsonb,
-    'Prepare Checkout Site'
-);
-
--- Operator allowlist and payment window limits for external checkout
-insert into external_payments_config (
-    allowed_countries,
-    default_payment_window_hours,
-    max_payment_window_hours
-) values (
-    array['KR']::text[],
-    72,
-    336
-);
 
 -- Community
 select fx_community(:'communityID', jsonb_build_object('name', 'prepare-community'));
@@ -188,14 +143,6 @@ select fx_user(:'endedWindowDiscountUserID');
 select fx_user(:'endedWindowUserID');
 select fx_user(:'endedWindowWaitlistUserID');
 select fx_user(:'exhaustedDiscountUserID');
-select fx_user(:'externalCapUserID');
-select fx_user(:'externalClosedRegUserID');
-select fx_user(:'externalMaxUserID');
-select fx_user(:'externalOfferUserID');
-select fx_user(:'externalRetryUserID');
-select fx_user(:'externalUnreadyUserID');
-select fx_user(:'externalUserID');
-select fx_user(:'externalWindowUserID');
 select fx_user(:'freeUserID');
 select fx_user(:'inactiveUserID');
 select fx_user(:'ineffectiveDiscountUserID');
@@ -216,6 +163,8 @@ select fx_user(:'queueCheckoutUserID');
 select fx_user(:'queueHolderUserID');
 select fx_user(:'queueUserID');
 select fx_user(:'redeemedUserID');
+select fx_user(:'replaceUserID');
+select fx_user(:'reuseUserID');
 select fx_user(:'soldOutHolderUserID');
 select fx_user(:'soldOutPendingUserID');
 select fx_user(:'soldOutUserID');
@@ -233,23 +182,6 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
         ),
     'slug', 'prepare-group',
     'slug_pretty', 'prepare-group-pretty'
-));
-
--- Allowlisted group with external payments enabled for ready checkout
-select fx_group(:'externalReadyGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'country_code', 'KR',
-    'external_payments_enabled', true,
-    'external_payments_seller_display_name', 'External Payee Co'
-));
-
--- Stripe-ready group with external payments disabled for no-fallback conflicts
-select fx_group(:'externalUnreadyGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'country_code', 'KR',
-    'payment_recipient', jsonb_build_object(
-        'provider', 'stripe',
-        'recipient_id', 'acct_external_unready',
-        'seller_display_name', 'External Unready Fiscal Sponsor'
-    )
 ));
 
 -- Events
@@ -376,63 +308,21 @@ select fx_event(:'priceUnavailableEventID', :'groupID', :'eventCategoryID', json
     'venue_zip_code', '97201'
 ));
 
--- External-ready event with a 48-hour payment window
-select fx_event(:'externalEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_instructions', 'Wire to account 123',
-    'external_payment_url', 'https://pay.example.test/prepare',
-    'external_payment_window_hours', 48,
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'published_at', now(),
-    'starts_at', now() + interval '7 days'
+-- Unpublished paid event used by the event validation rejection
+select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', false,
+    'starts_at', now() + interval '2 days'
 ));
 
--- External-ready event whose hold is capped by a near starts_at
-select fx_event(:'externalCapEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/prepare-cap',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'published_at', now(),
-    'starts_at', now() + interval '2 hours'
-));
-
--- External-ready event whose window hours exceed the configured max
-select fx_event(:'externalMaxEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/prepare-max',
-    'external_payment_window_hours', 500,
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'published_at', now(),
-    'starts_at', now() + interval '60 days'
-));
-
--- Started event whose external hold would expire immediately on offer claim
-select fx_event(:'externalWindowEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', now() + interval '90 minutes',
-    'external_payment_url', 'https://pay.example.test/prepare-window',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'published_at', now(),
-    'starts_at', now() - interval '30 minutes'
-));
-
--- External-ready event whose public registration window has already closed
-select fx_event(:'externalClosedRegEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/prepare-closed-reg',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'published_at', now(),
-    'registration_ends_at', now() - interval '1 hour',
-    'starts_at', now() + interval '7 days'
-));
-
--- External-marked event on a Stripe-ready group that is not externally eligible
-select fx_event(:'externalUnreadyEventID', :'externalUnreadyGroupID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/prepare-unready',
+-- Manual-tax event whose Tax Rate identifiers are snapshotted on checkout
+select fx_event(:'manualTaxEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'manual_tax_rate_ids', array['txr_state', 'txr_local']::text[],
     'payment_currency_code', 'USD',
     'published', true,
     'published_at', now(),
     'starts_at', now() + interval '2 days',
+    'tax_calculation_mode', 'manual',
     'venue_address', '1 Main St',
     'venue_city', 'Portland',
     'venue_country_code', 'US',
@@ -484,21 +374,12 @@ select fx_event_ticket_type(:'questionsTicketTypeID', :'questionsEventID', jsonb
     'seats_total', 10,
     'title', 'General admission'
 ));
-select fx_event_ticket_type(:'externalTicketTypeID', :'externalEventID', jsonb_build_object(
+
+-- Ticket type sold by the manual-tax event
+select fx_event_ticket_type(:'manualTaxTicketTypeID', :'manualTaxEventID', jsonb_build_object(
     'seats_total', 10,
-    'title', 'External admission'
+    'title', 'General admission'
 ));
-select fx_event_ticket_type(:'externalCapTicketTypeID', :'externalCapEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type(:'externalMaxTicketTypeID', :'externalMaxEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type(:'externalWindowTicketTypeID', :'externalWindowEventID', jsonb_build_object(
-    'seats_total', 10,
-    'title', 'External window admission'
-));
-select fx_event_ticket_type(:'externalClosedRegTicketTypeID', :'externalClosedRegEventID', jsonb_build_object(
-    'seats_total', 10,
-    'title', 'External closed registration admission'
-));
-select fx_event_ticket_type(:'externalUnreadyTicketTypeID', :'externalUnreadyEventID', jsonb_build_object('seats_total', 10));
 
 -- Ticket types dedicated to mutable configuration conflict scenarios
 select fx_event_ticket_type(:'paymentSetupUnavailableTicketTypeID', :'paymentSetupUnavailableEventID', jsonb_build_object('seats_total', 10));
@@ -520,6 +401,9 @@ select fx_event_ticket_price_window(:'inactivePriceWindowID', :'inactiveTicketTy
 select fx_event_ticket_price_window(:'offerPrivatePriceWindowID', :'offerPrivateTicketTypeID', jsonb_build_object('amount_minor', 3000));
 select fx_event_ticket_price_window(:'questionsPriceWindowID', :'questionsTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
+-- Current paid price window for the manual-tax event
+select fx_event_ticket_price_window(:'manualTaxPriceWindowID', :'manualTaxTicketTypeID', jsonb_build_object('amount_minor', 2500));
+
 -- Current paid price window used by the payment readiness conflict
 select fx_event_ticket_price_window(:'paymentSetupUnavailablePriceWindowID', :'paymentSetupUnavailableTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
@@ -529,122 +413,6 @@ select fx_event_ticket_price_window(:'priceUnavailablePriceWindowID', :'priceUna
     'ends_at', current_timestamp - interval '1 minute',
     'starts_at', current_timestamp - interval '2 days'
 ));
-
--- Positive price windows for external checkout scenarios
-select fx_event_ticket_price_window(:'externalPriceWindowID', :'externalTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(:'externalCapPriceWindowID', :'externalCapTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(:'externalMaxPriceWindowID', :'externalMaxTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(:'externalWindowPriceWindowID', :'externalWindowTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(:'externalClosedRegPriceWindowID', :'externalClosedRegTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(:'externalUnreadyPriceWindowID', :'externalUnreadyTicketTypeID', jsonb_build_object('amount_minor', 2500));
-
--- Pending offer claimed into a longer external payment window
-insert into admission_offer (
-    admission_offer_id,
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    ticket_title,
-    user_id
-) values (
-    :'externalOfferID',
-    5000,
-    'KRW',
-    0,
-    :'externalEventID',
-    :'externalTicketTypeID',
-    current_timestamp + interval '1 hour',
-    'organizer_invitation',
-    'pending',
-    'External admission',
-    :'externalOfferUserID'
-);
-
--- Checkout-pending offer retried into a longer external hold
-insert into admission_offer (
-    admission_offer_id,
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    ticket_title,
-    user_id
-) values (
-    :'externalRetryOfferID',
-    5000,
-    'KRW',
-    0,
-    :'externalEventID',
-    :'externalTicketTypeID',
-    current_timestamp + interval '1 hour',
-    'organizer_invitation',
-    'checkout_pending',
-    'External admission',
-    :'externalRetryUserID'
-);
-
--- Pending offer used to claim after the event start has passed
-insert into admission_offer (
-    admission_offer_id,
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    ticket_title,
-    user_id
-) values (
-    :'externalWindowOfferID',
-    5000,
-    'KRW',
-    0,
-    :'externalWindowEventID',
-    :'externalWindowTicketTypeID',
-    current_timestamp + interval '1 hour',
-    'organizer_invitation',
-    'pending',
-    'External window admission',
-    :'externalWindowUserID'
-);
-
--- Pending invitation used to claim after the public registration window closed
-insert into admission_offer (
-    admission_offer_id,
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    ticket_title,
-    user_id
-) values (
-    :'externalClosedRegOfferID',
-    5000,
-    'KRW',
-    0,
-    :'externalClosedRegEventID',
-    :'externalClosedRegTicketTypeID',
-    current_timestamp + interval '2 days',
-    'organizer_invitation',
-    'pending',
-    'External closed registration admission',
-    :'externalClosedRegUserID'
-);
 
 -- Discount codes
 insert into event_discount_code (
@@ -788,6 +556,69 @@ insert into event_purchase (
     'professional-event-admission',
     'General admission',
     :'invitedUserID',
+    '{}'::jsonb
+);
+
+-- Pending purchases used by the equivalent reuse and mismatched replacement scenarios
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    charge_model,
+    connected_seller_id,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_object_account_id,
+    seller_snapshot,
+    status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
+) values (
+    :'replacePendingPurchaseID',
+    2500,
+    'direct-charge',
+    'acct_prepare',
+    'USD',
+    0,
+    :'mainEventID',
+    :'ticketTypeAID',
+    now() + interval '15 minutes',
+    'stripe',
+    'acct_prepare',
+    '{"connected_account_id":"acct_prepare","display_name":"Prepare Group","provider":"stripe"}'::jsonb,
+    'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'General admission',
+    :'replaceUserID',
+    '{}'::jsonb
+), (
+    :'reusePendingPurchaseID',
+    2500,
+    'direct-charge',
+    'acct_prepare',
+    'USD',
+    0,
+    :'mainEventID',
+    :'ticketTypeAID',
+    now() + interval '15 minutes',
+    'stripe',
+    'acct_prepare',
+    '{"connected_account_id":"acct_prepare","display_name":"Prepare Group","provider":"stripe"}'::jsonb,
+    'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'General admission',
+    :'reuseUserID',
     '{}'::jsonb
 );
 
@@ -1207,108 +1038,133 @@ values (
 -- TESTS
 -- ============================================================================
 
--- Should prepare intrinsic zero-price checkout without provider or recipient setup
+-- Should prepare intrinsic zero-price checkout without payment setup
 select results_eq(
-    $$
-        with prepared_checkout as (
-            select prepare_event_checkout_purchase(
-                '79100000-0000-0000-0000-000000000001'::uuid,
-                '79100000-0000-0000-0000-00000000004e'::uuid,
-                '79100000-0000-0000-0000-00000000004f'::uuid,
-                '79100000-0000-0000-0000-000000000051'::uuid,
-                null,
-                null,
-                null,
-                null,
-                250
-            ) as checkout
-        )
-        select
-            checkout->>'amount_minor',
-            checkout ? 'currency_code',
-            checkout->>'provisional_platform_fee_amount_minor',
-            checkout ? 'seller'
-        from prepared_checkout
-    $$,
+    format(
+        $$
+            with prepared_checkout as (
+                select prepare_event_checkout_purchase(
+                    %L::uuid,
+                    %L::uuid,
+                    %L::uuid,
+                    %L::uuid,
+                    null,
+                    null,
+                    null,
+                    null,
+                    250
+                ) as checkout
+            )
+            select
+                checkout->>'amount_minor',
+                checkout ? 'currency_code',
+                checkout->>'provisional_platform_fee_amount_minor',
+                checkout ? 'seller'
+            from prepared_checkout
+        $$,
+        :'communityID',
+        :'freeEventID',
+        :'freeTicketTypeID',
+        :'freeUserID'
+    ),
     $$ values ('0'::text, false, '0'::text, false) $$,
     'Should prepare intrinsic zero-price checkout without payment setup'
 );
 
 -- Should create a pending checkout purchase
 select lives_ok(
-    $$select prepare_event_checkout_purchase(
-        '79100000-0000-0000-0000-000000000001'::uuid,
-        '79100000-0000-0000-0000-000000000003'::uuid,
-        '79100000-0000-0000-0000-000000000006'::uuid,
-        '79100000-0000-0000-0000-000000000023'::uuid,
-        null,
-        'stripe'
-    )$$,
+    format(
+        $$select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe'
+        )$$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'checkoutUserID'
+    ),
     'Should create a pending checkout purchase'
 );
 
--- Should snapshot paid hybrid admission for the selected ticket type
+-- Should snapshot paid hybrid admission and its complete physical venue
 select results_eq(
-    $$
-        select
-            e.event_kind_id,
-            ep.amount_minor,
-            ep.event_ticket_type_id,
-            ep.provider_tax_code,
-            ep.provisional_platform_fee_amount_minor,
-            ep.status,
-            ep.tax_classification,
-            ep.venue_snapshot
-        from event_purchase ep
-        join event e using (event_id)
-        where ep.event_id = '79100000-0000-0000-0000-000000000003'::uuid
-        and ep.user_id = '79100000-0000-0000-0000-000000000023'::uuid
-        and ep.status = 'pending'
-    $$,
-    $$
-        values (
-            'hybrid'::text,
-            2500::bigint,
-            '79100000-0000-0000-0000-000000000006'::uuid,
-            'txcd_50013001'::text,
-            0::bigint,
-            'pending'::text,
-            'professional-event-admission'::text,
-            '{
-                "address": "1 Main St",
-                "city": "Portland",
-                "country_code": "US",
-                "name": "Venue",
-                "state_code": null,
-                "state_name": null,
-                "zip_code": "97201"
-            }'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select
+                e.event_kind_id,
+                ep.amount_minor,
+                ep.event_ticket_type_id,
+                ep.provider_tax_code,
+                ep.provisional_platform_fee_amount_minor,
+                ep.status,
+                ep.tax_classification,
+                ep.venue_snapshot
+            from event_purchase ep
+            join event e using (event_id)
+            where ep.event_id = %L::uuid
+            and ep.user_id = %L::uuid
+            and ep.status = 'pending'
+        $$,
+        :'mainEventID',
+        :'checkoutUserID'
+    ),
+    format(
+        $$
+            values (
+                'hybrid'::text,
+                2500::bigint,
+                %L::uuid,
+                'txcd_50013001'::text,
+                0::bigint,
+                'pending'::text,
+                'professional-event-admission'::text,
+                '{
+                    "address": "1 Main St",
+                    "city": "Portland",
+                    "country_code": "US",
+                    "name": "Venue",
+                    "state_code": null,
+                    "state_name": null,
+                    "zip_code": "97201"
+                }'::jsonb
+            )
+        $$,
+        :'ticketTypeAID'
+    ),
     'Should snapshot paid hybrid admission and its complete physical venue'
 );
 
 -- Should return the checkout route and recipient context alongside the purchase
 select results_eq(
-    $$
-        with prepared_checkout as (
-            select prepare_event_checkout_purchase(
-                '79100000-0000-0000-0000-000000000001'::uuid,
-                '79100000-0000-0000-0000-000000000003'::uuid,
-                '79100000-0000-0000-0000-000000000006'::uuid,
-                '79100000-0000-0000-0000-000000000023'::uuid,
-                null,
-                'stripe'
-            ) as checkout
-        )
-        select
-            checkout->>'community_name',
-            checkout->>'event_slug',
-            checkout->>'group_slug',
-            checkout->>'group_slug_pretty',
-            checkout->'seller'->>'connected_account_id'
-        from prepared_checkout
-    $$,
+    format(
+        $$
+            with prepared_checkout as (
+                select prepare_event_checkout_purchase(
+                    %L::uuid,
+                    %L::uuid,
+                    %L::uuid,
+                    %L::uuid,
+                    null,
+                    'stripe'
+                ) as checkout
+            )
+            select
+                checkout->>'community_name',
+                checkout->>'event_slug',
+                checkout->>'group_slug',
+                checkout->>'group_slug_pretty',
+                checkout->'seller'->>'connected_account_id'
+            from prepared_checkout
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'checkoutUserID'
+    ),
     $$ values ('prepare-community'::text, 'main-event'::text, 'prepare-group'::text, 'prepare-group-pretty'::text, 'acct_prepare'::text) $$,
     'Should return the checkout route and recipient context alongside the purchase'
 );
@@ -1317,66 +1173,66 @@ select results_eq(
 select is(
     (
         select prepare_event_checkout_purchase(
-            '79100000-0000-0000-0000-000000000001'::uuid,
-            '79100000-0000-0000-0000-000000000003'::uuid,
-            '79100000-0000-0000-0000-000000000006'::uuid,
-            '79100000-0000-0000-0000-000000000023'::uuid,
+            :'communityID'::uuid,
+            :'mainEventID'::uuid,
+            :'ticketTypeAID'::uuid,
+            :'reuseUserID'::uuid,
             null,
             'stripe'
         )::jsonb->>'event_purchase_id'
     ),
-    (
-        select event_purchase_id::text
-        from event_purchase
-        where event_id = '79100000-0000-0000-0000-000000000003'::uuid
-        and user_id = '79100000-0000-0000-0000-000000000023'::uuid
-        and status = 'pending'
-    ),
+    :'reusePendingPurchaseID',
     'Should reuse an equivalent pending purchase'
 );
 
 -- Should replace a mismatched pending purchase
 select lives_ok(
-    $$
-        select prepare_event_checkout_purchase(
-            '79100000-0000-0000-0000-000000000001'::uuid,
-            '79100000-0000-0000-0000-000000000003'::uuid,
-            '79100000-0000-0000-0000-000000000007'::uuid,
-            '79100000-0000-0000-0000-000000000023'::uuid,
-            null,
-            'stripe'
-        )
-    $$,
+    format(
+        $$
+            select prepare_event_checkout_purchase(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                null,
+                'stripe'
+            )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeBID',
+        :'replaceUserID'
+    ),
     'Should replace a mismatched pending purchase'
 );
 
 -- Should create the requested pending purchase and expire the previous one
 select results_eq(
-    $$
-        select
-            (
-                select event_ticket_type_id::text
-                from event_purchase
-                where event_id = '79100000-0000-0000-0000-000000000003'::uuid
-                and user_id = '79100000-0000-0000-0000-000000000023'::uuid
-                and status = 'pending'
-            ),
-            (
-                select count(*)::int
-                from event_purchase
-                where event_id = '79100000-0000-0000-0000-000000000003'::uuid
-                and user_id = '79100000-0000-0000-0000-000000000023'::uuid
-                and status = 'expired'
-            ),
-            (
-                select hold_expires_at <= current_timestamp
-                from event_purchase
-                where event_id = '79100000-0000-0000-0000-000000000003'::uuid
-                and user_id = '79100000-0000-0000-0000-000000000023'::uuid
-                and status = 'expired'
-            )
-    $$,
-    $$ values ('79100000-0000-0000-0000-000000000007'::text, 1::int, true) $$,
+    format(
+        $$
+            select
+                event_purchase_id = %3$L::uuid,
+                event_ticket_type_id,
+                hold_expires_at,
+                status
+            from event_purchase
+            where event_id = %1$L::uuid
+            and user_id = %2$L::uuid
+            order by status
+        $$,
+        :'mainEventID',
+        :'replaceUserID',
+        :'replacePendingPurchaseID'
+    ),
+    format(
+        $$
+            values
+                (true, %L::uuid, current_timestamp, 'expired'::text),
+                (false, %L::uuid, current_timestamp + interval '15 minutes', 'pending'::text)
+        $$,
+        :'ticketTypeAID',
+        :'ticketTypeBID'
+    ),
     'Should create the requested pending purchase and expire the previous one'
 );
 
@@ -1481,33 +1337,9 @@ select throws_ok(
         :'ticketTypeAID',
         :'platformFeeMaxUserID'
     ),
+    'P0001',
     'platform fee basis points must be between 0 and 9999',
     'Should reject a platform fee that consumes the full amount'
-);
-
--- Should reject platform fee basis points above the maximum
-select throws_ok(
-    format(
-        $$
-        select prepare_event_checkout_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null,
-            'stripe',
-            null,
-            null,
-            10001
-        )
-        $$,
-        :'communityID',
-        :'mainEventID',
-        :'ticketTypeAID',
-        :'platformFeeUserID'
-    ),
-    'platform fee basis points must be between 0 and 9999',
-    'Should reject platform fee basis points above the maximum'
 );
 
 -- Should reject negative platform fee basis points
@@ -1531,8 +1363,32 @@ select throws_ok(
         :'ticketTypeAID',
         :'platformFeeUserID'
     ),
+    'P0001',
     'platform fee basis points must be between 0 and 9999',
     'Should reject negative platform fee basis points'
+);
+
+-- Should reject checkout for an unpublished event
+select throws_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe'
+        )
+        $$,
+        :'communityID',
+        :'unpublishedEventID',
+        :'ticketTypeAID',
+        :'checkoutUserID'
+    ),
+    'OCG01',
+    'event not found or inactive',
+    'Should reject checkout for an unpublished event'
 );
 
 -- Should reuse an equivalent pending purchase after registration closes
@@ -1569,19 +1425,6 @@ select throws_ok(
     'OCG01',
     'event registration is not open',
     'Should reject replacing a pending purchase after registration closes'
-);
-
--- Should keep rejected replacement holds active
-select results_eq(
-    $$
-        select
-            status,
-            hold_expires_at > current_timestamp
-        from event_purchase
-        where event_purchase_id = '79100000-0000-0000-0000-000000000044'::uuid
-    $$,
-    $$ values ('pending'::text, true) $$,
-    'Should keep rejected replacement holds active'
 );
 
 -- Should reject creating a checkout purchase after registration closes
@@ -1648,7 +1491,7 @@ select is(
     'Should preserve FIFO queue priority over direct checkout'
 );
 
--- Should commit queue promotion and stale-hold expiry with the typed conflict
+-- Should persist reconciliation before rejecting direct checkout
 select is(
     (
         select jsonb_build_object(
@@ -1674,7 +1517,7 @@ select is(
     'Should persist reconciliation before rejecting direct checkout'
 );
 
--- Should reject attempts to claim another user's offer
+-- Should reject claiming an offer owned by another user
 select is(
     prepare_event_checkout_purchase(
             :'communityID'::uuid,
@@ -1690,7 +1533,7 @@ select is(
     'Should reject claiming an offer owned by another user'
 );
 
--- Should prepare a paid checkout for an invitation-only offer
+-- Should prepare paid checkout for an invitation-only offer
 select lives_ok(
     format(
         $$
@@ -1728,6 +1571,7 @@ select is(
     'Should require the offer checkout path while its linked hold remains active'
 );
 
+-- Should snapshot and link the paid offer checkout
 select results_eq(
     format(
         $$
@@ -1766,6 +1610,7 @@ select results_eq(
     'Should snapshot and link the paid offer checkout'
 );
 
+-- Should reuse the pending checkout for the same offer
 select is(
     (
         select prepare_event_checkout_purchase(
@@ -1787,7 +1632,7 @@ select is(
     'Should reuse the pending checkout for the same offer'
 );
 
--- Should retain the first claim snapshot across canceled checkout retries
+-- Should cancel the first offer-linked checkout
 select lives_ok(
     format(
         $$ select cancel_event_checkout(%L, %L, %L, 'stripe') $$,
@@ -1798,84 +1643,12 @@ select lives_ok(
     'Should cancel the first offer-linked checkout'
 );
 
-select lives_ok(
-    format(
-        $$
-        select sync_event_ticket_types(
-            %L::uuid,
-            '[
-                {
-                    "active": true,
-                    "availability": "public",
-                    "event_ticket_type_id": "%s",
-                    "order": 1,
-                    "price_windows": [
-                        {
-                            "amount_minor": 2500,
-                            "event_ticket_price_window_id": "%s"
-                        }
-                    ],
-                    "seats_total": 10,
-                    "title": "General admission"
-                },
-                {
-                    "active": true,
-                    "availability": "public",
-                    "event_ticket_type_id": "%s",
-                    "order": 2,
-                    "price_windows": [
-                        {
-                            "amount_minor": 4000,
-                            "event_ticket_price_window_id": "%s"
-                        }
-                    ],
-                    "seats_total": 10,
-                    "title": "VIP"
-                },
-                {
-                    "active": true,
-                    "availability": "invitation_only",
-                    "event_ticket_type_id": "%s",
-                    "order": 3,
-                    "price_windows": [
-                        {
-                            "amount_minor": 5000,
-                            "event_ticket_price_window_id": "%s"
-                        }
-                    ],
-                    "seats_total": 10,
-                    "title": "Invitation admission"
-                },
-                {
-                    "active": true,
-                    "availability": "public",
-                    "event_ticket_type_id": "%s",
-                    "order": 4,
-                    "price_windows": [
-                        {
-                            "amount_minor": 1,
-                            "event_ticket_price_window_id": "%s"
-                        }
-                    ],
-                    "seats_total": 10,
-                    "title": "Minor-unit admission"
-                }
-            ]'::jsonb
-        )
-        $$,
-        :'mainEventID',
-        :'ticketTypeAID',
-        :'priceWindowAID',
-        :'ticketTypeBID',
-        :'priceWindowBID',
-        :'offerPrivateTicketTypeID',
-        :'offerPrivatePriceWindowID',
-        :'ineffectiveDiscountTicketTypeID',
-        :'ineffectiveDiscountPriceWindowID'
-    ),
-    'Should change the tier price after the first offer claim'
-);
+-- Raise the invitation tier price between the first offer claim and its retry
+update event_ticket_price_window
+set amount_minor = 5000
+where event_ticket_price_window_id = :'offerPrivatePriceWindowID'::uuid;
 
+-- Should retry checkout through the same offer
 select lives_ok(
     format(
         $$
@@ -1899,6 +1672,7 @@ select lives_ok(
     'Should retry checkout through the same offer'
 );
 
+-- Should copy the immutable first claim snapshot into every retry purchase
 select results_eq(
     format(
         $$
@@ -1922,6 +1696,7 @@ select results_eq(
     'Should copy the immutable first claim snapshot into every retry purchase'
 );
 
+-- Should reject changing the offer discount selection on retry
 select is(
     prepare_event_checkout_purchase(
         :'communityID'::uuid,
@@ -1963,33 +1738,7 @@ select throws_ok(
     'Should reject offer discounts below one minor unit'
 );
 
-select results_eq(
-    format(
-        $$
-            select
-                ao.amount_minor is null,
-                ao.status,
-                (
-                    select count(*)::int
-                    from event_purchase ep
-                    where ep.admission_offer_id = ao.admission_offer_id
-                ),
-                (
-                    select available
-                    from event_discount_code edc
-                    where edc.event_discount_code_id = %L::uuid
-                )
-            from admission_offer ao
-            where ao.admission_offer_id = %L::uuid
-        $$,
-        :'ineffectiveDiscountID',
-        :'ineffectiveDiscountOfferID'
-    ),
-    $$ values (true, 'pending'::text, 0::int, 5::int) $$,
-    'Should leave rejected offer discount state unchanged'
-);
-
--- Should prepare and snapshot a discounted-to-zero offer claim
+-- Should prepare a discounted-to-zero offer claim
 select lives_ok(
     format(
         $$
@@ -2013,6 +1762,7 @@ select lives_ok(
     'Should prepare a discounted-to-zero offer claim'
 );
 
+-- Should retain discounted-to-zero offer price snapshots
 select results_eq(
     format(
         $$
@@ -2042,7 +1792,7 @@ select results_eq(
     'Should retain discounted-to-zero offer price snapshots'
 );
 
--- Should cancel the discounted-to-zero offer checkout before retry
+-- Should cancel the discounted-to-zero offer checkout
 select lives_ok(
     format(
         $$ select cancel_event_checkout(%L, %L, %L, null) $$,
@@ -2096,7 +1846,7 @@ select results_eq(
     'Should reuse the discounted-to-zero offer snapshot for its retry purchase'
 );
 
--- Should prepare an intrinsic-free offer without payment configuration
+-- Should prepare an intrinsic-free offer claim
 select lives_ok(
     format(
         $$
@@ -2120,6 +1870,7 @@ select lives_ok(
     'Should prepare an intrinsic-free offer claim'
 );
 
+-- Should retain intrinsic-free offer price snapshots
 select results_eq(
     format(
         $$
@@ -2147,68 +1898,85 @@ select results_eq(
     'Should retain intrinsic-free offer price snapshots'
 );
 
--- Should apply a valid discount and decrement its availability
+-- Should apply a valid discount
 select lives_ok(
-    $$
-        select prepare_event_checkout_purchase(
-            '79100000-0000-0000-0000-000000000001'::uuid,
-            '79100000-0000-0000-0000-000000000003'::uuid,
-            '79100000-0000-0000-0000-000000000006'::uuid,
-            '79100000-0000-0000-0000-000000000028'::uuid,
-            'freepass',
-            null
-        )
-    $$,
+    format(
+        $$
+            select prepare_event_checkout_purchase(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                'freepass',
+                null
+            )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'discountUserID'
+    ),
     'Should apply a valid discount'
 );
 
--- Should persist the discounted amount and decrement its availability
+-- Should persist discounted-to-zero snapshots and decrement availability
 select results_eq(
-    $$
-        select
-            (
-                select amount_minor::text
-                from event_purchase
-                where event_id = '79100000-0000-0000-0000-000000000003'::uuid
-                and user_id = '79100000-0000-0000-0000-000000000028'::uuid
-                and status = 'pending'
-            ),
-            (
-                select currency_code
-                from event_purchase
-                where event_id = '79100000-0000-0000-0000-000000000003'::uuid
-                and user_id = '79100000-0000-0000-0000-000000000028'::uuid
-                and status = 'pending'
-            ),
-            (
-                select discount_amount_minor::text
-                from event_purchase
-                where event_id = '79100000-0000-0000-0000-000000000003'::uuid
-                and user_id = '79100000-0000-0000-0000-000000000028'::uuid
-                and status = 'pending'
-            ),
-            (
-                select available::text
-                from event_discount_code
-                where event_discount_code_id = '79100000-0000-0000-0000-000000000016'::uuid
-            )
-    $$,
+    format(
+        $$
+            select
+                (
+                    select amount_minor::text
+                    from event_purchase
+                    where event_id = %1$L::uuid
+                    and user_id = %2$L::uuid
+                    and status = 'pending'
+                ),
+                (
+                    select currency_code
+                    from event_purchase
+                    where event_id = %1$L::uuid
+                    and user_id = %2$L::uuid
+                    and status = 'pending'
+                ),
+                (
+                    select discount_amount_minor::text
+                    from event_purchase
+                    where event_id = %1$L::uuid
+                    and user_id = %2$L::uuid
+                    and status = 'pending'
+                ),
+                (
+                    select available::text
+                    from event_discount_code
+                    where event_discount_code_id = %3$L::uuid
+                )
+        $$,
+        :'mainEventID',
+        :'discountUserID',
+        :'freeDiscountID'
+    ),
     $$ values ('0'::text, 'USD'::text, '2500'::text, '1'::text) $$,
     'Should persist discounted-to-zero snapshots and decrement availability'
 );
 
--- Should reject discounted checkout amounts below minimums
+-- Should reject discounted checkout amounts below Stripe minimums
 select throws_ok(
-    $$
-        select prepare_event_checkout_purchase(
-            '79100000-0000-0000-0000-000000000001'::uuid,
-            '79100000-0000-0000-0000-000000000003'::uuid,
-            '79100000-0000-0000-0000-000000000006'::uuid,
-            '79100000-0000-0000-0000-000000000033'::uuid,
-            'UNDERMIN',
-            'stripe'
-        )
-    $$,
+    format(
+        $$
+            select prepare_event_checkout_purchase(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                'UNDERMIN',
+                'stripe'
+            )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'underMinimumUserID'
+    ),
     'OCG01',
     'payment amount must be zero or at least Stripe minimum charge amount',
     'Should reject discounted checkout amounts below Stripe minimums'
@@ -2216,16 +1984,22 @@ select throws_ok(
 
 -- Should require answers before preparing checkout for events with questions
 select throws_ok(
-    $$
-        select prepare_event_checkout_purchase(
-            '79100000-0000-0000-0000-000000000001'::uuid,
-            '79100000-0000-0000-0000-000000000035'::uuid,
-            '79100000-0000-0000-0000-000000000037'::uuid,
-            '79100000-0000-0000-0000-000000000038'::uuid,
-            null,
-            'stripe'
-        )
-    $$,
+    format(
+        $$
+            select prepare_event_checkout_purchase(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                null,
+                'stripe'
+            )
+        $$,
+        :'communityID',
+        :'questionsEventID',
+        :'questionsTicketTypeID',
+        :'questionsUserID'
+    ),
     'OCG01',
     'questionnaire answers are required',
     'Should require answers before preparing checkout for events with questions'
@@ -2233,44 +2007,70 @@ select throws_ok(
 
 -- Should prepare checkout when registration answers are provided
 select lives_ok(
-    $$
-        select prepare_event_checkout_purchase(
-            '79100000-0000-0000-0000-000000000001'::uuid,
-            '79100000-0000-0000-0000-000000000035'::uuid,
-            '79100000-0000-0000-0000-000000000037'::uuid,
-            '79100000-0000-0000-0000-000000000038'::uuid,
-            null,
-            'stripe',
-            '{"answers": [{"question_id": "79100000-0000-0000-0000-000000000101", "value": "Checkout answer"}]}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select prepare_event_checkout_purchase(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                null,
+                'stripe',
+                %L::jsonb
+            )
+        $$,
+        :'communityID',
+        :'questionsEventID',
+        :'questionsTicketTypeID',
+        :'questionsUserID',
+        jsonb_build_object('answers', jsonb_build_array(jsonb_build_object(
+            'question_id', :'registrationQuestionID',
+            'value', 'Checkout answer'
+        )))
+    ),
     'Should prepare checkout when registration answers are provided'
 );
 
 -- Should store checkout registration answers in a pending attendee row
 select results_eq(
-    $$
-        select status, registration_answers
-        from event_attendee
-        where event_id = '79100000-0000-0000-0000-000000000035'::uuid
-        and user_id = '79100000-0000-0000-0000-000000000038'::uuid
-    $$,
-    $$ values ('registration-questions-pending'::text, '{"answers": [{"question_id": "79100000-0000-0000-0000-000000000101", "value": "Checkout answer"}]}'::jsonb) $$,
+    format(
+        $$
+            select status, registration_answers
+            from event_attendee
+            where event_id = %L::uuid
+            and user_id = %L::uuid
+        $$,
+        :'questionsEventID',
+        :'questionsUserID'
+    ),
+    format(
+        $$ values ('registration-questions-pending'::text, %L::jsonb) $$,
+        jsonb_build_object('answers', jsonb_build_array(jsonb_build_object(
+            'question_id', :'registrationQuestionID',
+            'value', 'Checkout answer'
+        )))
+    ),
     'Should store checkout registration answers in a pending attendee row'
 );
 
 -- Should reject reusing a pending purchase when an invitation is pending
 select throws_ok(
-    $$
-        select prepare_event_checkout_purchase(
-            '79100000-0000-0000-0000-000000000001'::uuid,
-            '79100000-0000-0000-0000-000000000003'::uuid,
-            '79100000-0000-0000-0000-000000000006'::uuid,
-            '79100000-0000-0000-0000-000000000039'::uuid,
-            null,
-            'stripe'
-        )
-    $$,
+    format(
+        $$
+            select prepare_event_checkout_purchase(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                null,
+                'stripe'
+            )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'invitedUserID'
+    ),
     'OCG01',
     'user has a pending or rejected invitation for this event',
     'Should reject reusing a pending purchase when an invitation is pending'
@@ -2349,9 +2149,9 @@ select results_eq(
     format($$
         with prepared as (
             select prepare_event_checkout_purchase(
-                '79100000-0000-0000-0000-000000000001'::uuid,
-                '79100000-0000-0000-0000-000000000003'::uuid,
-                '79100000-0000-0000-0000-000000000006'::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
                 %L::uuid,
                 null,
                 'stripe'
@@ -2371,18 +2171,12 @@ select results_eq(
                 where provider_tax_product_id = 'prod_cached'
             )
         from prepared
-    $$, :'cacheUserID'),
+    $$, :'communityID', :'mainEventID', :'ticketTypeAID', :'cacheUserID'),
     $$ values ('loc_cached'::text, 'prod_cached'::text, true, true) $$,
     'Should return matching immutable account-scoped automatic-tax resources'
 );
 
--- Switch the main event to manual tax after automatic-tax cache coverage
-update event
-set manual_tax_rate_ids = array['txr_state', 'txr_local']::text[],
-    tax_calculation_mode = 'manual'
-where event_id = :'mainEventID'::uuid;
-
--- Should prepare a manual-tax purchase after the event mode changes
+-- Should prepare a manual-tax purchase
 select lives_ok(
     format($$select prepare_event_checkout_purchase(
         %L::uuid,
@@ -2393,11 +2187,11 @@ select lives_ok(
         'stripe'
     )$$,
         :'communityID',
-        :'mainEventID',
-        :'ticketTypeAID',
+        :'manualTaxEventID',
+        :'manualTaxTicketTypeID',
         :'manualTaxUserID'
     ),
-    'Should prepare a manual-tax purchase after the event mode changes'
+    'Should prepare a manual-tax purchase'
 );
 
 -- Should snapshot every event-level manual Tax Rate identifier
@@ -2410,7 +2204,7 @@ select results_eq(
         where event_id = %L::uuid
         and user_id = %L::uuid
         and status = 'pending'
-    $$, :'mainEventID', :'manualTaxUserID'),
+    $$, :'manualTaxEventID', :'manualTaxUserID'),
     $$ values (array['txr_state', 'txr_local']::text[], 'manual'::text) $$,
     'Should snapshot every event-level manual Tax Rate identifier'
 );
@@ -2542,323 +2336,6 @@ select is(
     ),
     '{"conflict":"ticket-type-price-unavailable"}'::jsonb,
     'Should require a live price window for waitlist claims after sales end'
-);
-
--- Should prepare an external paid checkout with zero fees
-select lives_ok(
-    format(
-        $$select prepare_event_checkout_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null,
-            'stripe',
-            null,
-            null,
-            250
-        )$$,
-        :'communityID',
-        :'externalEventID',
-        :'externalTicketTypeID',
-        :'externalUserID'
-    ),
-    'Should prepare an external paid checkout with zero fees'
-);
-
--- Should persist an external charge model without a provider or fee snapshot
-select results_eq(
-    format(
-        $$
-            select
-                charge_model,
-                payment_provider_id,
-                platform_fee_bps,
-                provisional_platform_fee_amount_minor,
-                seller_snapshot
-            from event_purchase
-            where event_id = %L::uuid
-            and user_id = %L::uuid
-            and status = 'pending'
-        $$,
-        :'externalEventID',
-        :'externalUserID'
-    ),
-    $$
-        values (
-            'external'::text,
-            null::text,
-            0,
-            0::bigint,
-            null::jsonb
-        )
-    $$,
-    'Should persist an external charge model without a provider or fee snapshot'
-);
-
--- Should cap the external hold by the event payment window hours
-select ok(
-    (
-        select
-            hold_expires_at > current_timestamp + interval '47 hours 50 minutes'
-            and hold_expires_at <= current_timestamp + interval '48 hours'
-        from event_purchase
-        where event_id = :'externalEventID'::uuid
-        and user_id = :'externalUserID'::uuid
-        and status = 'pending'
-    ),
-    'Should cap the external hold by the event payment window hours'
-);
-
--- Should enqueue one external pending-payment notification for a new hold
-select is(
-    (
-        select count(*)::int
-        from notification n
-        join notification_template_data ntd using (notification_template_data_id)
-        where n.kind = 'event-external-payment-pending'
-        and n.user_id = :'externalUserID'
-        and (ntd.data->>'event_id')::uuid = :'externalEventID'::uuid
-    ),
-    1,
-    'Should enqueue one external pending-payment notification for a new hold'
-);
-
--- Should reuse an equivalent external hold
-select lives_ok(
-    format(
-        $$select prepare_event_checkout_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null,
-            'stripe'
-        )$$,
-        :'communityID',
-        :'externalEventID',
-        :'externalTicketTypeID',
-        :'externalUserID'
-    ),
-    'Should reuse an equivalent external hold'
-);
-
--- Should keep a single external pending-payment notification after reuse
-select is(
-    (
-        select count(*)::int
-        from notification n
-        join notification_template_data ntd using (notification_template_data_id)
-        where n.kind = 'event-external-payment-pending'
-        and n.user_id = :'externalUserID'
-        and (ntd.data->>'event_id')::uuid = :'externalEventID'::uuid
-    ),
-    1,
-    'Should keep a single external pending-payment notification after reuse'
-);
-
--- Should claim an offer into an external checkout hold
-select lives_ok(
-    format(
-        $$select prepare_event_checkout_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null,
-            'stripe',
-            null,
-            %L::uuid
-        )$$,
-        :'communityID',
-        :'externalEventID',
-        :'externalTicketTypeID',
-        :'externalOfferUserID',
-        :'externalOfferID'
-    ),
-    'Should claim an offer into an external checkout hold'
-);
-
--- Should persist the raised offer deadline with the external hold
-select ok(
-    (
-        select ao.expires_at = ep.hold_expires_at
-        from admission_offer ao
-        join event_purchase ep on ep.admission_offer_id = ao.admission_offer_id
-        where ao.admission_offer_id = :'externalOfferID'::uuid
-        and ep.status = 'pending'
-        and ao.expires_at > current_timestamp + interval '47 hours'
-    ),
-    'Should persist the raised offer deadline with the external hold'
-);
-
--- Should prepare an external checkout capped by event start
-select lives_ok(
-    format(
-        $$select prepare_event_checkout_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null,
-            'stripe'
-        )$$,
-        :'communityID',
-        :'externalCapEventID',
-        :'externalCapTicketTypeID',
-        :'externalCapUserID'
-    ),
-    'Should prepare an external checkout capped by event start'
-);
-
--- Should set hold expiry to the event start for a near-term external event
-select results_eq(
-    format(
-        $$
-            select ep.hold_expires_at = e.starts_at
-            from event_purchase ep
-            join event e using (event_id)
-            where ep.event_id = %L::uuid
-            and ep.user_id = %L::uuid
-            and ep.status = 'pending'
-        $$,
-        :'externalCapEventID',
-        :'externalCapUserID'
-    ),
-    $$ values (true) $$,
-    'Should set hold expiry to the event start for a near-term external event'
-);
-
--- Should prepare an external checkout with an oversized event window
-select lives_ok(
-    format(
-        $$select prepare_event_checkout_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null,
-            'stripe'
-        )$$,
-        :'communityID',
-        :'externalMaxEventID',
-        :'externalMaxTicketTypeID',
-        :'externalMaxUserID'
-    ),
-    'Should prepare an external checkout with an oversized event window'
-);
-
--- Should persist a hold capped at the maximum payment window
-select ok(
-    (
-        select
-            hold_expires_at > current_timestamp + interval '335 hours 50 minutes'
-            and hold_expires_at <= current_timestamp + interval '336 hours'
-        from event_purchase
-        where event_id = :'externalMaxEventID'::uuid
-        and user_id = :'externalMaxUserID'::uuid
-        and status = 'pending'
-    ),
-    'Should persist a hold capped at the maximum payment window'
-);
-
--- Should reject external checkout when eligibility is lost without Stripe fallback
-select is(
-    prepare_event_checkout_purchase(
-        :'communityID'::uuid,
-        :'externalUnreadyEventID'::uuid,
-        :'externalUnreadyTicketTypeID'::uuid,
-        :'externalUnreadyUserID'::uuid,
-        null,
-        'stripe'
-    ),
-    '{"conflict":"payment-setup-unavailable"}'::jsonb,
-    'Should reject external checkout when eligibility is lost without Stripe fallback'
-);
-
--- Should reject an external hold that would expire immediately
-select is(
-    prepare_event_checkout_purchase(
-        :'communityID'::uuid,
-        :'externalWindowEventID'::uuid,
-        :'externalWindowTicketTypeID'::uuid,
-        :'externalWindowUserID'::uuid,
-        null,
-        'stripe',
-        null,
-        :'externalWindowOfferID'::uuid
-    ),
-    '{"conflict":"payment-window-unavailable"}'::jsonb,
-    'Should reject an external hold that would expire immediately'
-);
-
--- Should create an external hold for an invitation after registration has closed
-select lives_ok(
-    format(
-        $$select prepare_event_checkout_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null,
-            'stripe',
-            null,
-            %L::uuid
-        )$$,
-        :'communityID',
-        :'externalClosedRegEventID',
-        :'externalClosedRegTicketTypeID',
-        :'externalClosedRegUserID',
-        :'externalClosedRegOfferID'
-    ),
-    'Should create an external hold for an invitation after registration has closed'
-);
-
--- Should keep an invitation hold open after the public registration window closes
-select ok(
-    (
-        select hold_expires_at > current_timestamp + interval '71 hours'
-        from event_purchase
-        where event_id = :'externalClosedRegEventID'::uuid
-        and user_id = :'externalClosedRegUserID'::uuid
-        and status = 'pending'
-    ),
-    'Should keep an invitation hold open after the public registration window closes'
-);
-
--- Should raise a checkout-pending offer deadline on external hold retry
-select lives_ok(
-    format(
-        $$select prepare_event_checkout_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            null,
-            'stripe',
-            null,
-            %L::uuid
-        )$$,
-        :'communityID',
-        :'externalEventID',
-        :'externalTicketTypeID',
-        :'externalRetryUserID',
-        :'externalRetryOfferID'
-    ),
-    'Should raise a checkout-pending offer deadline on external hold retry'
-);
-
--- Should persist the retry deadline with the new external hold
-select ok(
-    (
-        select ao.expires_at = ep.hold_expires_at
-        from admission_offer ao
-        join event_purchase ep on ep.admission_offer_id = ao.admission_offer_id
-        where ao.admission_offer_id = :'externalRetryOfferID'::uuid
-        and ep.status = 'pending'
-        and ao.expires_at > current_timestamp + interval '47 hours'
-    ),
-    'Should persist the retry deadline with the new external hold'
 );
 
 -- ============================================================================

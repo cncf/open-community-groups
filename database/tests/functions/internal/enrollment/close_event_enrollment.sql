@@ -28,6 +28,7 @@ select plan(11);
 \set externalUserID '5e030000-0000-0000-0000-00000000001a'
 \set groupCategoryID '5e030000-0000-0000-0000-00000000000a'
 \set groupID '5e030000-0000-0000-0000-00000000000b'
+\set missingEventID '5e030000-0000-0000-0000-000000000099'
 \set offerID '5e030000-0000-0000-0000-00000000000c'
 \set offerUserID '5e030000-0000-0000-0000-00000000000d'
 \set priceWindowID '5e030000-0000-0000-0000-00000000000e'
@@ -466,10 +467,12 @@ select is(
 
 -- Should reject a missing event
 select throws_ok(
-    $$select close_event_enrollment(
-        '5e030000-0000-0000-0000-000000000001'::uuid,
-        '5e030000-0000-0000-0000-000000000099'::uuid
-    )$$,
+    format(
+        $$select close_event_enrollment(%L::uuid, %L::uuid)$$,
+        :'actorUserID',
+        :'missingEventID'
+    ),
+    'P0001',
     'event not found',
     'Should reject a missing event'
 );

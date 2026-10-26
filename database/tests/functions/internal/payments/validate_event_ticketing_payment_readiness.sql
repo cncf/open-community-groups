@@ -5,11 +5,41 @@
 -- ============================================================================
 
 begin;
-select plan(31);
+select plan(36);
+
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '79550000-0000-0000-0000-000000000001'
+\set eventCategoryID '79550000-0000-0000-0000-000000000002'
+\set eventID '79550000-0000-0000-0000-000000000003'
+\set groupCategoryID '79550000-0000-0000-0000-000000000004'
+\set groupID '79550000-0000-0000-0000-000000000005'
+\set missingEventID '79550000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Baseline community, categories and group
+select fx_community(:'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Stored in-person event with a complete venue and automatic tax
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'manual_tax_rate_ids', array[]::text[],
+    'tax_behavior', 'inclusive',
+    'tax_calculation_mode', 'automatic',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_name', 'Community Hall',
+    'venue_zip_code', '94105'
+));
 
 -- Operator allowlist and window limits used by external-mode readiness scenarios
 insert into external_payments_config (
@@ -67,6 +97,55 @@ select lives_ok(
         }'::jsonb
     )$$,
     'Should accept paid-capable hybrid events with a complete physical venue'
+);
+
+-- Should accept a stored in-person event with a complete venue
+select lives_ok(
+    format(
+        $$select validate_event_ticketing_payment_readiness(
+            'stripe',
+            true,
+            'USD',
+            '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+            %L::uuid,
+            null
+        )$$,
+        :'eventID'
+    ),
+    'Should accept a stored in-person event with a complete venue'
+);
+
+-- Should reject a missing stored event
+select throws_ok(
+    format(
+        $$select validate_event_ticketing_payment_readiness(
+            'stripe',
+            true,
+            'USD',
+            '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+            %L::uuid,
+            null
+        )$$,
+        :'missingEventID'
+    ),
+    'OCG01',
+    'event not found or inactive',
+    'Should reject a missing stored event'
+);
+
+-- Should reject paid-capable readiness without event context
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        null,
+        null
+    )$$,
+    'P0001',
+    'paid-capable event readiness requires event context',
+    'Should reject paid-capable readiness without event context'
 );
 
 -- Should allow provider-free configuration for all-zero events
@@ -240,6 +319,29 @@ select throws_ok(
     'OCG01',
     'events that do not collect tax require inclusive display and no Tax Rates',
     'Should reject exclusive display for no-tax events'
+);
+
+-- Should reject an unsupported tax calculation mode
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        null,
+        '{
+            "kind_id": "in-person",
+            "tax_calculation_mode": "bogus",
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_zip_code": "94105"
+        }'::jsonb
+    )$$,
+    'P0001',
+    'unsupported ticket tax calculation mode',
+    'Should reject an unsupported tax calculation mode'
 );
 
 -- Should reject paid-capable hybrid events with an incomplete physical venue
@@ -556,6 +658,31 @@ select throws_ok(
     'OCG01',
     'external payment window exceeds the configured maximum',
     'Should reject an external payment window above the configured maximum'
+);
+
+-- Should reject an external payment window below one hour
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        true,
+        'KRW',
+        null,
+        null,
+        '{
+            "kind_id": "in-person",
+            "venue_address": "1 Test Street",
+            "venue_city": "Seoul",
+            "venue_country_code": "KR",
+            "venue_name": "Test Hall",
+            "venue_zip_code": "00000"
+        }'::jsonb,
+        true,
+        'https://pay.example.test/window',
+        0
+    )$$,
+    'OCG01',
+    'external payment window exceeds the configured maximum',
+    'Should reject an external payment window below one hour'
 );
 
 -- Should reject paid external virtual events even with a complete venue

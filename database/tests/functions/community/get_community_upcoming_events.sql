@@ -20,7 +20,6 @@ select plan(6);
 \set event6ID '0d050000-0000-0000-0000-000000000007'
 \set event7ID '0d050000-0000-0000-0000-000000000008'
 \set eventCategoryID '0d050000-0000-0000-0000-000000000009'
-\set eventDeletedID '0d050000-0000-0000-0000-000000000014'
 \set group1ID '0d050000-0000-0000-0000-000000000010'
 \set group2ID '0d050000-0000-0000-0000-000000000011'
 \set groupCategoryID '0d050000-0000-0000-0000-000000000012'
@@ -87,15 +86,6 @@ select fx_event(:'event6ID', :'group1ID', :'eventCategoryID', jsonb_build_object
     'event_kind_id', 'virtual',
     'published', true,
     'starts_at', now() + interval '1 month'
-));
-
--- Deleted future event excluded from upcoming events
-select fx_event(:'eventDeletedID', :'group1ID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'ends_at', now() + interval '2 weeks' + interval '2 hours',
-    'event_kind_id', 'virtual',
-    'published', false,
-    'starts_at', now() + interval '2 weeks'
 ));
 
 -- Nine distant future hybrid events exceeding the upcoming events limit

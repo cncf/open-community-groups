@@ -1,9 +1,11 @@
+-- Tests hashing event meeting sync inputs.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -133,6 +135,65 @@ select isnt(
     get_event_meeting_sync_state_hash(:'eventID'),
     :'hashBefore',
     'Should change hash when event hosts change'
+);
+
+-- Should change the hash when event speakers change
+select get_event_meeting_sync_state_hash(:'eventID') as "hashBefore" \gset
+
+-- Remove a related speaker included in the hash
+delete from event_speaker
+where event_id = :'eventID';
+
+select isnt(
+    get_event_meeting_sync_state_hash(:'eventID'),
+    :'hashBefore',
+    'Should change hash when event speakers change'
+);
+
+-- Should keep the hash when explicit meeting hosts are reordered
+update event
+set meeting_hosts = array['first@example.com', 'second@example.com']
+where event_id = :'eventID';
+
+select get_event_meeting_sync_state_hash(:'eventID') as "hashBefore" \gset
+
+-- Store the same explicit meeting hosts in reverse order
+update event
+set meeting_hosts = array['second@example.com', 'first@example.com']
+where event_id = :'eventID';
+
+select is(
+    get_event_meeting_sync_state_hash(:'eventID'),
+    :'hashBefore',
+    'Should keep same hash when explicit meeting hosts are reordered'
+);
+
+-- Should change the hash when the event start changes
+select get_event_meeting_sync_state_hash(:'eventID') as "hashBefore" \gset
+
+-- Move the event start included in the provider payload
+update event
+set starts_at = '2026-06-01 10:30:00+00'
+where event_id = :'eventID';
+
+select isnt(
+    get_event_meeting_sync_state_hash(:'eventID'),
+    :'hashBefore',
+    'Should change hash when event start changes'
+);
+
+-- Should change the hash when the event is canceled
+select get_event_meeting_sync_state_hash(:'eventID') as "hashBefore" \gset
+
+-- Cancel the event, a lifecycle input included in the hash
+update event
+set canceled = true
+where event_id = :'eventID';
+
+select isnt(
+    get_event_meeting_sync_state_hash(:'eventID'),
+    :'hashBefore',
+    'Should change hash when event is canceled'
 );
 
 -- ============================================================================

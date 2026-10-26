@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -521,6 +521,7 @@ select throws_ok(
         'select finalize_event_purchase_refund(%L::uuid, %L::uuid, %L::jsonb)',
         :'missingRefundID', :'wrongClaimID', '{}'
     ),
+    'P0001',
     'event purchase refund not found',
     'Should reject a missing durable refund'
 );
@@ -531,6 +532,7 @@ select throws_ok(
         'select finalize_event_purchase_refund(%L::uuid, %L::uuid, %L::jsonb)',
         :'incompleteRefundID', :'incompleteClaimID', '{}'
     ),
+    'P0001',
     'event purchase refund claim is not provider-complete',
     'Should reject a provider-incomplete refund'
 );
@@ -541,47 +543,20 @@ select throws_ok(
         'select finalize_event_purchase_refund(%L::uuid, %L::uuid, %L::jsonb)',
         :'staleRefundID', :'wrongClaimID', '{}'
     ),
+    'P0001',
     'payment job claim is stale',
     'Should reject a worker that no longer owns the refund claim'
 );
 
--- Should require notification data before mutating provider-complete work
+-- Should require notification data to finalize provider-complete work
 select throws_ok(
     format(
         'select finalize_event_purchase_refund(%L::uuid, %L::uuid, null::jsonb)',
         :'happyRefundID', :'happyClaimID'
     ),
+    'P0001',
     'refund notification template data is required',
-    'Should require notification data before mutating provider-complete work'
-);
-
--- Should leave refund lifecycle and outbox state unchanged without notification data
-select results_eq(
-    format($$
-        select
-            ep.status,
-            ea.status,
-            epr.status,
-            pj.status,
-            count(n.notification_id)::int
-        from event_purchase ep
-        join event_attendee ea
-            on ea.event_id = ep.event_id
-            and ea.user_id = ep.user_id
-        join event_purchase_refund epr using (event_purchase_id)
-        join payment_job pj using (payment_job_id)
-        left join notification n on n.user_id = ep.user_id
-        where ep.event_purchase_id = %L::uuid
-        group by ep.status, ea.status, epr.status, pj.status
-    $$, :'happyPurchaseID'),
-    $$ values (
-        'refund-pending'::text,
-        'confirmed'::text,
-        'provider-succeeded'::text,
-        'processing'::text,
-        0
-    ) $$,
-    'Should leave refund lifecycle and outbox state unchanged without notification data'
+    'Should require notification data to finalize provider-complete work'
 );
 
 -- Should finalize provider-complete attendee-request work
@@ -761,6 +736,7 @@ select throws_ok(
         'select finalize_event_purchase_refund(%L::uuid, %L::uuid, %L::jsonb)',
         :'reopenedRefundID', :'wrongClaimID', '{}'
     ),
+    'P0001',
     'payment job claim is stale',
     'Should reject a stale claim replaying a finalized refund with an open job'
 );

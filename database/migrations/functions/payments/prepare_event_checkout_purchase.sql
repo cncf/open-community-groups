@@ -31,7 +31,7 @@ declare
     v_is_external_paid boolean := false;
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
     v_offer_pricing record;
-    v_purchase_id uuid;
+    v_purchase event_purchase;
     v_recipient jsonb;
     v_route_summary jsonb;
     v_seller_snapshot jsonb;
@@ -171,6 +171,7 @@ begin
             -- Reject attendee states that checkout completion cannot confirm
             perform prepare_event_checkout_validate_attendee_state(p_event_id, p_user_id);
 
+            -- Persist refreshed questionnaire answers on the reused hold
             perform upsert_pending_registration_answers(
                 p_event_id,
                 p_user_id,
@@ -248,6 +249,7 @@ begin
                         return jsonb_build_object('conflict', 'admission-offer-price-locked');
                     end if;
 
+                    -- Use the stored offer snapshot pricing
                     v_currency_code := v_offer_pricing.currency_code;
                     v_discount_amount_minor := v_offer_pricing.discount_amount_minor;
                     v_event_discount_code_id := v_offer_pricing.event_discount_code_id;
@@ -282,6 +284,7 @@ begin
                 return jsonb_build_object('conflict', 'payment-setup-unavailable');
             end if;
 
+            -- Mark the purchase as an external hold and validate its amount
             v_is_external_paid := true;
             v_charge_model := 'external';
             perform validate_payment_amount(v_currency_code, v_final_amount_minor);
@@ -300,6 +303,7 @@ begin
                 return jsonb_build_object('conflict', 'payment-setup-unavailable');
             end if;
 
+            -- Cap the hold by the payment window, public registration close and event start
             v_hold_expires_at := least(
                 current_timestamp + make_interval(hours => v_window_hours),
                 case
@@ -332,6 +336,8 @@ begin
                 when sqlstate 'OCG01' then
                     return jsonb_build_object('conflict', 'payment-setup-unavailable');
             end;
+
+            -- Validate the Stripe amount and record the direct-charge model
             perform validate_payment_amount(v_currency_code, v_final_amount_minor);
             v_charge_model := 'direct-charge';
         end if;
@@ -551,39 +557,27 @@ begin
             when v_charge_model = 'direct-charge' then v_venue_snapshot
         end
     )
-    returning event_purchase_id into v_purchase_id;
+    returning * into v_purchase;
 
     -- Enqueue pending-payment instructions only when a new external hold is created
     if v_is_external_paid then
+        -- Load the site theme used by the notification template
         select s.theme
         into v_theme
         from site s
         limit 1;
 
+        -- Notify the buyer with the instructions built from the stored hold
         perform enqueue_notification(
             'event-external-payment-pending',
-            jsonb_strip_nulls(jsonb_build_object(
-                'amount_minor', v_final_amount_minor,
-                'currency_code', v_currency_code,
-                'dashboard_url', '/dashboard/user?tab=events',
-                'deadline', epoch_seconds(v_hold_expires_at),
-                'event_id', p_event_id,
-                'event_name', v_event.name,
-                'event_purchase_id', v_purchase_id,
-                'external_payment_instructions', v_event.external_payment_instructions,
-                'external_payment_url', v_event.external_payment_url,
-                'group_name', v_group.name,
-                'theme', v_theme,
-                'ticket_title', v_ticket_title,
-                'timezone', v_event.timezone
-            )),
+            external_payment_notification_payload(v_event, v_group, v_purchase, v_theme),
             '[]'::jsonb,
             array[p_user_id]
         );
     end if;
 
     -- Return the pending purchase summary used by the checkout flow
-    return prepare_event_checkout_get_purchase_summary(v_purchase_id)
+    return prepare_event_checkout_get_purchase_summary(v_purchase.event_purchase_id)
         || v_route_summary
         || jsonb_strip_nulls(jsonb_build_object(
             'cached_performance_location_fingerprint', v_cached_performance_location_fingerprint,

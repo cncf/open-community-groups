@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(3);
 \set groupCategoryID 'b2030000-0000-0000-0000-000000000002'
 \set groupID 'b2030000-0000-0000-0000-000000000003'
 \set otherUserID 'b2030000-0000-0000-0000-000000000004'
+\set revokedBadgeID 'b2030000-0000-0000-0000-000000000008'
 \set statusListID 'b2030000-0000-0000-0000-000000000005'
 \set userBadgeID 'b2030000-0000-0000-0000-000000000006'
 \set userID 'b2030000-0000-0000-0000-000000000007'
@@ -30,15 +31,61 @@ select fx_user(:'otherUserID');
 select fx_user(:'userID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Status list containing the active award
+-- Status list containing the active and revoked awards
 insert into badge_status_list (badge_status_list_id, group_id)
 values (:'statusListID', :'groupID');
 
 -- Active listed award updated by the test
 insert into user_badge (
-    user_badge_id, badge_status_list_id, display_order, group_id, snapshot, status_list_index,
+    user_badge_id,
+    badge_status_list_id,
+    display_order,
+    group_id,
+    is_listed,
+    snapshot,
+    status_list_index,
+
     user_id
-) values (:'userBadgeID', :'statusListID', 0, :'groupID', '{"name":"Badge"}', 1, :'userID');
+) values (
+    :'userBadgeID',
+    :'statusListID',
+    0,
+    :'groupID',
+    true,
+    '{"name":"Badge"}',
+    1,
+
+    :'userID'
+);
+
+-- Revoked unlisted award still owned by the user
+insert into user_badge (
+    user_badge_id,
+    badge_status_list_id,
+    display_order,
+    group_id,
+    is_listed,
+    snapshot,
+    status_list_index,
+
+    revocation_reason,
+    revoked_at,
+    revoked_by_user_id,
+    user_id
+) values (
+    :'revokedBadgeID',
+    :'statusListID',
+    1,
+    :'groupID',
+    false,
+    '{"name":"Revoked badge"}',
+    2,
+
+    'Awarded by mistake',
+    '2026-01-01 10:00:00+00',
+    :'otherUserID',
+    :'userID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -59,6 +106,14 @@ select throws_ok(
     'OCG01',
     'active awarded badge not found',
     'Should reject a badge owned by another user'
+);
+
+-- Should reject a revoked badge
+select throws_ok(
+    format($$select update_user_badge_listing(%L::uuid, %L::uuid, true)$$, :'userID', :'revokedBadgeID'),
+    'OCG01',
+    'active awarded badge not found',
+    'Should reject a revoked badge'
 );
 
 -- ============================================================================

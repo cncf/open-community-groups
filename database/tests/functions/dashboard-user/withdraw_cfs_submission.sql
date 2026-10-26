@@ -1,9 +1,11 @@
+-- Tests withdrawing CFS submissions.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,8 +18,11 @@ select plan(5);
 \set groupID '4a170000-0000-0000-0000-000000000005'
 \set proposal1ID '4a170000-0000-0000-0000-000000000006'
 \set proposal2ID '4a170000-0000-0000-0000-000000000007'
+\set proposal3ID '4a170000-0000-0000-0000-000000000012'
+\set sessionID '4a170000-0000-0000-0000-000000000013'
 \set submission1ID '4a170000-0000-0000-0000-000000000008'
 \set submission2ID '4a170000-0000-0000-0000-000000000009'
+\set submission3ID '4a170000-0000-0000-0000-000000000014'
 \set user1ID '4a170000-0000-0000-0000-000000000010'
 \set user2ID '4a170000-0000-0000-0000-000000000011'
 
@@ -62,6 +67,15 @@ insert into session_proposal (
         'intermediate',
         'Go Intro',
         :'user1ID'
+    ),
+    (
+        :'proposal3ID',
+        '2024-01-04 00:00:00+00',
+        'Talk about Databases',
+        make_interval(mins => 30),
+        'beginner',
+        'Database Intro',
+        :'user1ID'
     );
 
 -- Event
@@ -83,7 +97,33 @@ insert into cfs_submission (
     status_id
 ) values
     (:'submission1ID', :'eventID', :'proposal1ID', 'not-reviewed'),
-    (:'submission2ID', :'eventID', :'proposal2ID', 'approved');
+    (:'submission2ID', :'eventID', :'proposal2ID', 'approved'),
+    (:'submission3ID', :'eventID', :'proposal3ID', 'approved');
+
+-- Session linked to the third submission
+insert into session (
+    session_id,
+    cfs_submission_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at
+) values (
+    :'sessionID',
+    :'submission3ID',
+    :'eventID',
+    'Linked Session',
+    'in-person',
+    current_timestamp + interval '7 days'
+);
+
+-- Move the linked submission into a withdrawable status after linking, because
+-- the session trigger only accepts links to approved submissions
+update cfs_submission
+set
+    action_required_message = 'Need final info',
+    status_id = 'information-requested'
+where cfs_submission_id = :'submission3ID'::uuid;
 
 -- ============================================================================
 -- TESTS
@@ -101,7 +141,7 @@ select throws_ok(
     'Should reject withdrawing another user''s submission'
 );
 
--- Withdraw submission
+-- Should execute withdraw_cfs_submission successfully
 select lives_ok(
     format(
         $$
@@ -157,6 +197,18 @@ select throws_ok(
     'OCG01',
     'submission not found or cannot be withdrawn',
     'Should reject withdrawing approved submission'
+);
+
+-- Should reject withdrawing submission linked to a session
+select throws_ok(
+    format(
+        'select withdraw_cfs_submission(%L::uuid, %L::uuid)',
+        :'user1ID',
+        :'submission3ID'
+    ),
+    'OCG01',
+    'submission not found or cannot be withdrawn',
+    'Should reject withdrawing submission linked to a session'
 );
 
 -- ============================================================================

@@ -1,6 +1,7 @@
 -- Tests updating group payment recipients without operator external-payments config.
--- Split from update_group.sql because that file seeds the singleton
--- external_payments_config row this scenario requires to be absent.
+-- Split from update_group.sql because its payments sibling,
+-- update_group_payments.sql, seeds the singleton external_payments_config row
+-- this scenario requires to be absent.
 
 -- ============================================================================
 -- SETUP

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,8 @@ select plan(9);
 \set eventCanceledTicketTypeID '79470000-0000-0000-0000-000000000006'
 \set eventCategoryID '79470000-0000-0000-0000-000000000007'
 \set eventCategoryNoReviewID '79470000-0000-0000-0000-000000000008'
+\set eventDeletedID '79470000-0000-0000-0000-000000000036'
+\set eventDeletedTicketTypeID '79470000-0000-0000-0000-000000000037'
 \set eventID '79470000-0000-0000-0000-000000000009'
 \set eventNoTeamID '79470000-0000-0000-0000-000000000010'
 \set eventNoTeamTicketTypeID '79470000-0000-0000-0000-000000000011'
@@ -27,16 +29,20 @@ select plan(9);
 \set eventTicketTypeID '79470000-0000-0000-0000-000000000014'
 \set eventUnpublishedID '79470000-0000-0000-0000-000000000015'
 \set eventUnpublishedTicketTypeID '79470000-0000-0000-0000-000000000016'
+\set freePurchaseID '79470000-0000-0000-0000-000000000038'
+\set freeRequesterID '79470000-0000-0000-0000-000000000039'
 \set groupCategoryID '79470000-0000-0000-0000-000000000017'
 \set groupCategoryNoReviewID '79470000-0000-0000-0000-000000000018'
 \set groupID '79470000-0000-0000-0000-000000000019'
 \set groupNoTeamID '79470000-0000-0000-0000-000000000020'
 \set priceWindowCanceledID '79470000-0000-0000-0000-000000000021'
+\set priceWindowDeletedID '79470000-0000-0000-0000-000000000040'
 \set priceWindowID '79470000-0000-0000-0000-000000000022'
 \set priceWindowNoTeamID '79470000-0000-0000-0000-000000000023'
 \set priceWindowStartedID '79470000-0000-0000-0000-000000000024'
 \set priceWindowUnpublishedID '79470000-0000-0000-0000-000000000025'
 \set purchaseCanceledID '79470000-0000-0000-0000-000000000026'
+\set purchaseDeletedID '79470000-0000-0000-0000-000000000041'
 \set purchaseExpiredID '79470000-0000-0000-0000-000000000027'
 \set purchaseID '79470000-0000-0000-0000-000000000028'
 \set purchaseNoTeamID '79470000-0000-0000-0000-000000000029'
@@ -59,6 +65,7 @@ select fx_group_category(:'groupCategoryNoReviewID', :'communityNoReviewID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryNoReviewID', :'communityNoReviewID');
 select fx_user(:'communityViewerID');
+select fx_user(:'freeRequesterID');
 select fx_user(:'requesterID');
 select fx_user(:'teamUser2ID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
@@ -102,6 +109,7 @@ select fx_event(:'eventStartedID', :'groupID', :'eventCategoryID', jsonb_build_o
     'starts_at', now() - interval '1 hour'
 ));
 select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
     'published', true,
     'published_at', now(),
     'starts_at', now() + interval '2 days'
@@ -112,13 +120,24 @@ select fx_event(:'eventNoTeamID', :'groupNoTeamID', :'eventCategoryNoReviewID', 
     'starts_at', now() + interval '2 days'
 ));
 select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'published_at', now(),
+    'published', false,
+    'starts_at', now() + interval '2 days'
+));
+
+-- Deleted upcoming event, filtered on its deleted flag alone
+select fx_event(:'eventDeletedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'deleted_at', now(),
+    'published', false,
     'starts_at', now() + interval '2 days'
 ));
 
 -- Ticket type and price window
 select fx_event_ticket_type(:'eventCanceledTicketTypeID', :'eventCanceledID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'eventDeletedTicketTypeID', :'eventDeletedID', jsonb_build_object(
     'seats_total', 10,
     'title', 'General admission'
 ));
@@ -141,6 +160,7 @@ select fx_event_ticket_type(:'eventUnpublishedTicketTypeID', :'eventUnpublishedI
 
 -- Price window that supplies the refundable purchase amount
 select fx_event_ticket_price_window(:'priceWindowCanceledID', :'eventCanceledTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowDeletedID', :'eventDeletedTicketTypeID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'priceWindowNoTeamID', :'eventNoTeamTicketTypeID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'priceWindowStartedID', :'eventStartedTicketTypeID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
@@ -191,14 +211,14 @@ select
 
     'direct-charge',
     'acct_refunds',
-    case when fixtures.status = 'completed' then 0 end,
-    case when fixtures.status = 'completed' then 'ch_' || fixtures.event_purchase_id end,
-    case when fixtures.status = 'completed' then 'cs_' || fixtures.event_purchase_id end,
+    case when fixtures.status in ('completed', 'refund-pending') then 0 end,
+    case when fixtures.status in ('completed', 'refund-pending') then 'ch_' || fixtures.event_purchase_id end,
+    case when fixtures.status in ('completed', 'refund-pending') then 'cs_' || fixtures.event_purchase_id end,
     'acct_refunds',
-    case when fixtures.status = 'completed' then fixtures.amount_minor end,
+    case when fixtures.status in ('completed', 'refund-pending') then fixtures.amount_minor end,
     '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
-    case when fixtures.status = 'completed' then fixtures.amount_minor end,
-    case when fixtures.status = 'completed' then 0 end,
+    case when fixtures.status in ('completed', 'refund-pending') then fixtures.amount_minor end,
+    case when fixtures.status in ('completed', 'refund-pending') then 0 end,
     'inclusive',
     'manual',
     'professional-event-admission',
@@ -210,11 +230,23 @@ from (values (
     'USD',
     :'eventCanceledID',
     :'eventCanceledTicketTypeID',
-    'completed',
+    'refund-pending',
     'General admission',
     :'requesterID',
     'stripe',
     'pi_canceled'
+), (
+    :'purchaseDeletedID',
+    2500,
+    now(),
+    'USD',
+    :'eventDeletedID',
+    :'eventDeletedTicketTypeID',
+    'completed',
+    'General admission',
+    :'requesterID',
+    null,
+    null
 ), (
     :'purchaseStartedID',
     2500,
@@ -289,9 +321,46 @@ from (values (
     provider_payment_reference
 );
 
+-- Completed free purchase that cannot enter the refund-request flow
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    'ocg-free',
+    'USD',
+    :'eventID',
+    :'freePurchaseID',
+    :'eventTicketTypeID',
+    'completed',
+    'General admission',
+    :'freeRequesterID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reject a refund request for an event outside the community
+select throws_ok(
+    format($$select request_event_refund(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        null,
+        '{"scenario":"request-event-refund"}'::jsonb
+    )$$, :'communityNoReviewID', :'eventID', :'requesterID'),
+    'OCG01',
+    'purchase not found or not refundable',
+    'Should reject a refund request for an event outside the community'
+);
 
 -- Should create a refund request and enqueue organizer notifications
 select lives_ok(
@@ -362,9 +431,7 @@ select results_eq(
     'Should enqueue refund request notifications despite opt-outs and mutes'
 );
 
--- Should reject a refund request after cancellation queues the automatic refund
-select cancel_event(:'teamUser1ID', :'groupID', :'eventCanceledID');
-
+-- Should reject a refund request while the cancellation refund is pending
 select throws_ok(
     format($$select request_event_refund(
         %L::uuid,
@@ -375,14 +442,10 @@ select throws_ok(
     )$$, :'communityID', :'eventCanceledID', :'requesterID'),
     'OCG01',
     'purchase not found or not refundable',
-    'Should reject a redundant request after automatic cancellation refund starts'
+    'Should reject a refund request while the cancellation refund is pending'
 );
 
 -- Should allow refund requests after the event is unpublished
-update event
-set published = false
-where event_id = :'eventUnpublishedID'::uuid;
-
 select lives_ok(
     format($$select request_event_refund(
         %L::uuid,
@@ -392,6 +455,21 @@ select lives_ok(
         '{"scenario":"request-event-refund"}'::jsonb
     )$$, :'communityID', :'eventUnpublishedID', :'requesterID'),
     'Should allow refund requests after the event is unpublished'
+);
+
+-- Should persist the refund request created after the event is unpublished
+select results_eq(
+    format($$
+        select ep.status, err.requested_by_user_id, err.requested_reason, err.status
+        from event_purchase ep
+        join event_refund_request err using (event_purchase_id)
+        where ep.event_purchase_id = %L::uuid
+    $$, :'purchaseUnpublishedID'),
+    format(
+        $$ values ('refund-requested'::text, %L::uuid, null::text, 'pending'::text) $$,
+        :'requesterID'
+    ),
+    'Should persist the refund request created after the event is unpublished'
 );
 
 -- Should reject refund requests after the event has started
@@ -406,6 +484,34 @@ select throws_ok(
     'OCG01',
     'purchase not found or not refundable',
     'Should reject refund requests after the event has started'
+);
+
+-- Should reject refund requests for a deleted event
+select throws_ok(
+    format($$select request_event_refund(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        null,
+        '{"scenario":"request-event-refund"}'::jsonb
+    )$$, :'communityID', :'eventDeletedID', :'requesterID'),
+    'OCG01',
+    'purchase not found or not refundable',
+    'Should reject refund requests for a deleted event'
+);
+
+-- Should reject refund requests for a free purchase
+select throws_ok(
+    format($$select request_event_refund(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        null,
+        '{"scenario":"request-event-refund"}'::jsonb
+    )$$, :'communityID', :'eventID', :'freeRequesterID'),
+    'OCG01',
+    'purchase not found or not refundable',
+    'Should reject refund requests for a free purchase'
 );
 
 -- Should reject duplicate refund requests
@@ -431,6 +537,7 @@ select throws_ok(
         null,
         '{"scenario":"request-event-refund"}'::jsonb
     )$$, :'communityNoReviewID', :'eventNoTeamID', :'requesterID'),
+    'P0001',
     'refund request notification has no recipients',
     'Should reject refund requests when no organizer recipients exist'
 );

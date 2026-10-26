@@ -186,6 +186,7 @@ select throws_ok(
         $$,
         :'pendingOfferID'
     ),
+    'P0001',
     'admission offer price snapshot is immutable',
     'Should reject snapshot repricing'
 );
@@ -213,6 +214,7 @@ select throws_ok(
         $$,
         :'pendingOfferID'
     ),
+    'P0001',
     'invalid admission offer status transition: declined -> pending',
     'Should reject reviving a declined offer'
 );
@@ -228,6 +230,7 @@ select throws_ok(
         :'replacementUserID',
         :'pendingOfferID'
     ),
+    'P0001',
     'admission offer ownership and deadline fields are immutable',
     'Should reject transferring an offer'
 );
@@ -257,6 +260,7 @@ select throws_ok(
         $$,
         :'checkoutOfferID'
     ),
+    'P0001',
     'admission offer ownership and deadline fields are immutable',
     'Should reject shortening a checkout-pending offer deadline'
 );
@@ -271,6 +275,7 @@ select throws_ok(
         $$,
         :'checkoutOfferID'
     ),
+    'P0001',
     'admission offer price snapshot is immutable',
     'Should reject snapshot repricing after checkout has started'
 );

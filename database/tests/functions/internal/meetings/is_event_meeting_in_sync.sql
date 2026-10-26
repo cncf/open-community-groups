@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,9 +16,51 @@ select plan(18);
 \set groupCategoryID '3a140000-0000-0000-0000-000000000005'
 \set groupID '3a140000-0000-0000-0000-000000000006'
 \set hostedEventID '3a140000-0000-0000-0000-000000000007'
+\set localFormat 'YYYY-MM-DD"T"HH24:MI:SS'
 \set spokenEventID '3a140000-0000-0000-0000-000000000008'
 \set user1ID '3a140000-0000-0000-0000-000000000001'
 \set user2ID '3a140000-0000-0000-0000-000000000002'
+
+-- Future whole-second schedule, so the started guard never applies to the base row
+select
+    date_trunc('day', current_timestamp) + interval '30 days 11 hours' as "endsAt",
+    date_trunc('day', current_timestamp) + interval '30 days 10 hours' as "startsAt"
+\gset
+
+-- Synced meeting row and the matching update payload that scenarios patch
+select
+    jsonb_build_object(
+        'ends_at', :'endsAt'::timestamptz,
+        'meeting_in_sync', true,
+        'meeting_provider_id', 'zoom',
+        'meeting_recording_requested', true,
+        'meeting_requested', true,
+        'name', 'Sync Event',
+        'starts_at', :'startsAt'::timestamptz,
+        'timezone', 'America/New_York'
+    ) as "baseBefore",
+    jsonb_build_object(
+        'ends_at', to_char(:'endsAt'::timestamptz at time zone 'America/New_York', :'localFormat'),
+        'meeting_provider_id', 'zoom',
+        'meeting_recording_requested', true,
+        'meeting_requested', true,
+        'name', 'Sync Event',
+        'starts_at', to_char(:'startsAt'::timestamptz at time zone 'America/New_York', :'localFormat'),
+        'timezone', 'America/New_York'
+    ) as "baseAfter"
+\gset
+
+-- Synced meeting row that already started and the matching update payload
+select
+    :'baseBefore'::jsonb || jsonb_build_object(
+        'ends_at', current_timestamp - interval '1 hour',
+        'starts_at', current_timestamp - interval '2 hours'
+    ) as "startedBefore",
+    :'baseAfter'::jsonb || jsonb_build_object(
+        'ends_at', to_char((current_timestamp - interval '1 hour') at time zone 'America/New_York', :'localFormat'),
+        'starts_at', to_char((current_timestamp - interval '2 hours') at time zone 'America/New_York', :'localFormat')
+    ) as "startedAfter"
+\gset
 
 -- ============================================================================
 -- SEED DATA
@@ -33,28 +75,20 @@ select fx_user(:'user1ID');
 select fx_user(:'user2ID');
 
 -- Synced meeting event whose host rows are compared with the payload
-select fx_event(:'hostedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 100,
-    'ends_at', '2025-06-01 11:00:00-04',
-    'event_kind_id', 'virtual',
-    'meeting_provider_id', 'zoom',
-    'meeting_requested', true,
-    'name', 'Sync Event',
-    'starts_at', '2025-06-01 10:00:00-04',
-    'timezone', 'America/New_York'
-));
+select fx_event(
+    :'hostedEventID',
+    :'groupID',
+    :'eventCategoryID',
+    :'baseBefore'::jsonb || '{"capacity": 100, "event_kind_id": "virtual"}'::jsonb
+);
 
 -- Synced meeting event whose speaker rows are compared with the payload
-select fx_event(:'spokenEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 100,
-    'ends_at', '2025-06-01 11:00:00-04',
-    'event_kind_id', 'virtual',
-    'meeting_provider_id', 'zoom',
-    'meeting_requested', true,
-    'name', 'Sync Event',
-    'starts_at', '2025-06-01 10:00:00-04',
-    'timezone', 'America/New_York'
-));
+select fx_event(
+    :'spokenEventID',
+    :'groupID',
+    :'eventCategoryID',
+    :'baseBefore'::jsonb || '{"capacity": 100, "event_kind_id": "virtual"}'::jsonb
+);
 
 -- Host of the hosted event
 insert into event_host (event_id, user_id)
@@ -68,423 +102,238 @@ values (:'spokenEventID', :'user1ID', false);
 -- TESTS
 -- ============================================================================
 
--- All fields remain in sync so meeting_in_sync stays true
+-- Should desync when the end time changes
 select is(
     is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_requested": true
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true
-        }'::jsonb
-    ),
-    true,
-    'Event all fields in sync returns true'
-);
-
--- Sub-second precision in the stored row does not desync a payload with whole seconds
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00.250-04:00",
-            "ends_at": "2025-06-01T11:00:00.750-04:00",
-            "meeting_requested": true
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true
-        }'::jsonb
-    ),
-    true,
-    'Event stored sub-second precision keeps sync'
-);
-
--- Meeting disabled after being enabled returns false to trigger deletion
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_requested": true
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": false
-        }'::jsonb
-    ),
-    false,
-    'Event meeting disabled after being enabled returns false'
-);
-
--- Re-enabling meeting after it was disabled desyncs meeting_in_sync
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_requested": false
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true
-        }'::jsonb
-    ),
-    false,
-    'Event meeting re-enabled after disable desyncs meeting'
-);
-
--- Missing meeting_requested with previously enabled meeting returns false
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_requested": true
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00"
-        }'::jsonb
-    ),
-    false,
-    'Event meeting requested missing with previous enabled returns false'
-);
-
--- Missing meeting_requested without a previous meeting returns null
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00"
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00"
-        }'::jsonb
-    ),
-    null::boolean,
-    'Event without a meeting before or after returns null'
-);
-
--- Name change causes meeting to be out of sync
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_requested": true
-        }'::jsonb),
-        '{
-            "name": "Renamed Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true
-        }'::jsonb
-    ),
-    false,
-    'Event name change desyncs meeting'
-);
-
--- Schedule change (start or end) desyncs meeting
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_requested": true
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:30:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true
-        }'::jsonb
-    ),
-    false,
-    'Event schedule change desyncs meeting'
-);
-
--- Timezone change desyncs meeting
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_requested": true
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "Europe/Madrid",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T16:00:00",
-            "ends_at": "2025-06-01T17:00:00",
-            "meeting_requested": true
-        }'::jsonb
-    ),
-    false,
-    'Event timezone change desyncs meeting'
-);
-
--- Started synced event changes stay archived instead of creating provider update work
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, jsonb_build_object(
-            'ends_at', current_timestamp - interval '1 hour',
-            'meeting_in_sync', true,
-            'meeting_recording_requested', true,
-            'meeting_requested', true,
-            'name', 'Started Event',
-            'starts_at', current_timestamp - interval '2 hours',
-            'timezone', 'UTC'
-        )),
-        jsonb_build_object(
-            'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'kind_id', 'virtual',
-            'meeting_recording_requested', false,
-            'meeting_requested', true,
-            'name', 'Started Event Updated',
-            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'timezone', 'UTC'
-        )
-    ),
-    true,
-    'Started synced event meeting changes stay in sync'
-);
-
--- Started event meeting disabled after being enabled still triggers deletion
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, jsonb_build_object(
-            'ends_at', current_timestamp - interval '1 hour',
-            'meeting_in_sync', true,
-            'meeting_requested', true,
-            'name', 'Started Event',
-            'starts_at', current_timestamp - interval '2 hours',
-            'timezone', 'UTC'
-        )),
-        jsonb_build_object(
-            'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'kind_id', 'virtual',
-            'meeting_requested', false,
-            'name', 'Started Event',
-            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'timezone', 'UTC'
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb),
+        :'baseAfter'::jsonb || jsonb_build_object(
+            'ends_at', to_char((:'endsAt'::timestamptz + interval '30 minutes') at time zone 'America/New_York', :'localFormat')
         )
     ),
     false,
-    'Started event meeting disabled after being enabled returns false'
+    'Should desync when the end time changes'
 );
 
--- Started pending event remains out of sync
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, jsonb_build_object(
-            'ends_at', current_timestamp - interval '1 hour',
-            'meeting_in_sync', false,
-            'meeting_requested', true,
-            'name', 'Started Pending Event',
-            'starts_at', current_timestamp - interval '2 hours',
-            'timezone', 'UTC'
-        )),
-        jsonb_build_object(
-            'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'kind_id', 'virtual',
-            'meeting_requested', true,
-            'name', 'Started Pending Event Updated',
-            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
-            'timezone', 'UTC'
-        )
-    ),
-    false,
-    'Started pending event meeting stays out of sync'
-);
-
--- Recording preference change desyncs meeting
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_recording_requested": true,
-            "meeting_requested": true
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_recording_requested": false,
-            "meeting_requested": true
-        }'::jsonb
-    ),
-    false,
-    'Event recording preference change desyncs meeting'
-);
-
--- meeting_hosts unchanged keeps sync
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_requested": true,
-            "meeting_hosts": ["host1@example.com", "host2@example.com"]
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true,
-            "meeting_hosts": ["host1@example.com", "host2@example.com"]
-        }'::jsonb
-    ),
-    true,
-    'Event meeting_hosts unchanged keeps sync'
-);
-
--- meeting_hosts change desyncs meeting
-select is(
-    is_event_meeting_in_sync(
-        jsonb_populate_record(null::event, '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "starts_at": "2025-06-01T10:00:00-04:00",
-            "ends_at": "2025-06-01T11:00:00-04:00",
-            "meeting_requested": true,
-            "meeting_hosts": ["host1@example.com"]
-        }'::jsonb),
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true,
-            "meeting_hosts": ["host1@example.com", "host2@example.com"]
-        }'::jsonb
-    ),
-    false,
-    'Event meeting_hosts change desyncs meeting'
-);
-
--- Event hosts unchanged keeps sync
+-- Should desync when the hosts change
 select is(
     is_event_meeting_in_sync(
         (select e from event e where e.event_id = :'hostedEventID'),
-        format(
-            '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_provider_id": "zoom",
-            "meeting_requested": true,
-            "hosts": ["%s"]
-        }',
-            :'user1ID'
-        )::jsonb
-    ),
-    true,
-    'Event hosts unchanged keeps sync'
-);
-
--- Event hosts change desyncs meeting
-select is(
-    is_event_meeting_in_sync(
-        (select e from event e where e.event_id = :'hostedEventID'),
-        format(
-            '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_provider_id": "zoom",
-            "meeting_requested": true,
-            "hosts": ["%s"]
-        }',
-            :'user2ID'
-        )::jsonb
+        :'baseAfter'::jsonb || jsonb_build_object('hosts', jsonb_build_array(:'user2ID'))
     ),
     false,
-    'Event hosts change desyncs meeting'
+    'Should desync when the hosts change'
 );
 
--- Event speakers change desyncs meeting
+-- Should desync when the meeting is re-enabled
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(
+            null::event,
+            :'baseBefore'::jsonb || '{"meeting_in_sync": null, "meeting_requested": false}'::jsonb
+        ),
+        :'baseAfter'::jsonb
+    ),
+    false,
+    'Should desync when the meeting is re-enabled'
+);
+
+-- Should desync when the meeting provider changes
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb),
+        :'baseAfter'::jsonb || '{"meeting_provider_id": null}'::jsonb
+    ),
+    false,
+    'Should desync when the meeting provider changes'
+);
+
+-- Should desync when the meeting_hosts change
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(
+            null::event,
+            :'baseBefore'::jsonb || '{"meeting_hosts": ["host1@example.com"]}'::jsonb
+        ),
+        :'baseAfter'::jsonb || '{"meeting_hosts": ["host1@example.com", "host2@example.com"]}'::jsonb
+    ),
+    false,
+    'Should desync when the meeting_hosts change'
+);
+
+-- Should desync when the name changes
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb),
+        :'baseAfter'::jsonb || '{"name": "Renamed Event"}'::jsonb
+    ),
+    false,
+    'Should desync when the name changes'
+);
+
+-- Should desync when the recording preference changes
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb),
+        :'baseAfter'::jsonb || '{"meeting_recording_requested": false}'::jsonb
+    ),
+    false,
+    'Should desync when the recording preference changes'
+);
+
+-- Should desync when the speakers change
 select is(
     is_event_meeting_in_sync(
         (select e from event e where e.event_id = :'spokenEventID'),
-        format(
-            '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_provider_id": "zoom",
-            "meeting_requested": true,
-            "speakers": [{"user_id": "%s", "featured": false}]
-        }',
-            :'user2ID'
-        )::jsonb
+        :'baseAfter'::jsonb || jsonb_build_object(
+            'speakers', jsonb_build_array(jsonb_build_object('featured', false, 'user_id', :'user2ID'))
+        )
     ),
     false,
-    'Event speakers change desyncs meeting'
+    'Should desync when the speakers change'
+);
+
+-- Should desync when the start time changes
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb),
+        :'baseAfter'::jsonb || jsonb_build_object(
+            'starts_at', to_char((:'startsAt'::timestamptz + interval '30 minutes') at time zone 'America/New_York', :'localFormat')
+        )
+    ),
+    false,
+    'Should desync when the start time changes'
+);
+
+-- Should desync when the timezone changes
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb),
+        :'baseAfter'::jsonb || jsonb_build_object(
+            'ends_at', to_char(:'endsAt'::timestamptz at time zone 'Europe/Madrid', :'localFormat'),
+            'starts_at', to_char(:'startsAt'::timestamptz at time zone 'Europe/Madrid', :'localFormat'),
+            'timezone', 'Europe/Madrid'
+        )
+    ),
+    false,
+    'Should desync when the timezone changes'
+);
+
+-- Should keep a started pending meeting out of sync
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'startedBefore'::jsonb || '{"meeting_in_sync": false}'::jsonb),
+        :'startedAfter'::jsonb
+    ),
+    false,
+    'Should keep a started pending meeting out of sync'
+);
+
+-- Should keep a started synced meeting in sync when its fields change
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'startedBefore'::jsonb),
+        :'startedAfter'::jsonb || '{"meeting_recording_requested": false, "name": "Renamed Event"}'::jsonb
+    ),
+    true,
+    'Should keep a started synced meeting in sync when its fields change'
+);
+
+-- Should keep sync when every field is unchanged
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb),
+        :'baseAfter'::jsonb
+    ),
+    true,
+    'Should keep sync when every field is unchanged'
+);
+
+-- Should keep sync when the hosts are unchanged
+select is(
+    is_event_meeting_in_sync(
+        (select e from event e where e.event_id = :'hostedEventID'),
+        :'baseAfter'::jsonb || jsonb_build_object('hosts', jsonb_build_array(:'user1ID'))
+    ),
+    true,
+    'Should keep sync when the hosts are unchanged'
+);
+
+-- Should keep sync when the meeting_hosts are unchanged
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(
+            null::event,
+            :'baseBefore'::jsonb || '{"meeting_hosts": ["host1@example.com", "host2@example.com"]}'::jsonb
+        ),
+        :'baseAfter'::jsonb || '{"meeting_hosts": ["host1@example.com", "host2@example.com"]}'::jsonb
+    ),
+    true,
+    'Should keep sync when the meeting_hosts are unchanged'
+);
+
+-- Should keep sync when the speakers are unchanged
+select is(
+    is_event_meeting_in_sync(
+        (select e from event e where e.event_id = :'spokenEventID'),
+        :'baseAfter'::jsonb || jsonb_build_object(
+            'speakers', jsonb_build_array(jsonb_build_object('featured', false, 'user_id', :'user1ID'))
+        )
+    ),
+    true,
+    'Should keep sync when the speakers are unchanged'
+);
+
+-- Should keep sync when the stored times carry sub-second precision
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb || jsonb_build_object(
+            'ends_at', :'endsAt'::timestamptz + interval '750 milliseconds',
+            'starts_at', :'startsAt'::timestamptz + interval '250 milliseconds'
+        )),
+        :'baseAfter'::jsonb
+    ),
+    true,
+    'Should keep sync when the stored times carry sub-second precision'
+);
+
+-- Should return false when a requested meeting is no longer requested
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb),
+        :'baseAfter'::jsonb || '{"meeting_requested": false}'::jsonb
+    ),
+    false,
+    'Should return false when a requested meeting is no longer requested'
+);
+
+-- Should return false when a started meeting is no longer requested
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'startedBefore'::jsonb),
+        :'startedAfter'::jsonb || '{"meeting_requested": false}'::jsonb
+    ),
+    false,
+    'Should return false when a started meeting is no longer requested'
+);
+
+-- Should return false when meeting_requested is missing after a requested meeting
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb),
+        :'baseAfter'::jsonb - 'meeting_requested'
+    ),
+    false,
+    'Should return false when meeting_requested is missing after a requested meeting'
+);
+
+-- Should return null when no meeting is requested before or after
+select is(
+    is_event_meeting_in_sync(
+        jsonb_populate_record(null::event, :'baseBefore'::jsonb - 'meeting_in_sync' - 'meeting_requested'),
+        :'baseAfter'::jsonb - 'meeting_requested'
+    ),
+    null::boolean,
+    'Should return null when no meeting is requested before or after'
 );
 
 -- ============================================================================

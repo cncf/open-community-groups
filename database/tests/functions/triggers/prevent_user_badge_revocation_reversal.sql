@@ -78,6 +78,7 @@ select lives_ok(
 -- Should reject changing the active award timestamp
 select throws_ok(
     format($$update user_badge set awarded_at = '2026-01-02 00:00:00+00' where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject changing an active award timestamp'
 );
@@ -85,6 +86,7 @@ select throws_ok(
 -- Should reject replacing the active badge definition association
 select throws_ok(
     format($$update user_badge set badge_id = gen_random_uuid() where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject replacing an active badge definition association'
 );
@@ -92,6 +94,7 @@ select throws_ok(
 -- Should reject replacing the active event association
 select throws_ok(
     format($$update user_badge set event_id = gen_random_uuid() where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject replacing an active event association'
 );
@@ -99,6 +102,7 @@ select throws_ok(
 -- Should reject replacing the active recipient association
 select throws_ok(
     format($$update user_badge set user_id = gen_random_uuid() where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject replacing an active recipient association'
 );
@@ -106,6 +110,7 @@ select throws_ok(
 -- Should reject changing the active award status list
 select throws_ok(
     format($$update user_badge set badge_status_list_id = gen_random_uuid() where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject changing an active award status list'
 );
@@ -113,6 +118,7 @@ select throws_ok(
 -- Should reject changing the active award issuer group
 select throws_ok(
     format($$update user_badge set group_id = gen_random_uuid() where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject changing an active award issuer group'
 );
@@ -120,6 +126,7 @@ select throws_ok(
 -- Should reject changing the active award snapshot
 select throws_ok(
     format($$update user_badge set snapshot = '{"name":"Changed"}' where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject changing an active award snapshot'
 );
@@ -127,6 +134,7 @@ select throws_ok(
 -- Should reject changing the active award status index
 select throws_ok(
     format($$update user_badge set status_list_index = 8 where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject changing an active award status index'
 );
@@ -134,6 +142,7 @@ select throws_ok(
 -- Should reject changing the active award identifier
 select throws_ok(
     format($$update user_badge set user_badge_id = gen_random_uuid() where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject changing an active award identifier'
 );
@@ -158,6 +167,7 @@ select lives_ok(
 -- Should reject clearing an existing revocation timestamp
 select throws_ok(
     format($$update user_badge set revoked_at = null where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge revocation cannot be changed',
     'Should reject clearing a revocation'
 );
@@ -165,6 +175,7 @@ select throws_ok(
 -- Should reject replacing an existing revocation timestamp
 select throws_ok(
     format($$update user_badge set revoked_at = '2026-01-02 00:00:00+00' where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge revocation cannot be changed',
     'Should reject changing a revocation timestamp'
 );
@@ -172,6 +183,7 @@ select throws_ok(
 -- Should reject listing a revoked award
 select throws_ok(
     format($$update user_badge set is_listed = true where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'revoked badge cannot be listed',
     'Should reject listing a revoked award'
 );
@@ -179,6 +191,7 @@ select throws_ok(
 -- Should reject changing a recorded revocation reason
 select throws_ok(
     format($$update user_badge set revocation_reason = 'changed' where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge revocation metadata cannot be changed',
     'Should reject changing a recorded revocation reason'
 );
@@ -186,6 +199,7 @@ select throws_ok(
 -- Should reject replacing a recorded revocation actor
 select throws_ok(
     format($$update user_badge set revoked_by_user_id = gen_random_uuid() where user_badge_id = %L::uuid$$, :'userBadgeID'),
+    'P0001',
     'badge revocation metadata cannot be changed',
     'Should reject replacing a recorded revocation actor'
 );
@@ -199,6 +213,7 @@ select lives_ok(
 -- Should reject replacing a cleared revocation actor
 select throws_ok(
     format($$update user_badge set revoked_by_user_id = %L::uuid where user_badge_id = %L::uuid$$, :'userID', :'userBadgeID'),
+    'P0001',
     'badge revocation metadata cannot be changed',
     'Should reject replacing a cleared revocation actor'
 );
@@ -219,6 +234,7 @@ select lives_ok(
 -- Should reject reattaching a cleared badge definition association
 select throws_ok(
     format($$update user_badge set badge_id = %L::uuid where user_badge_id = %L::uuid$$, :'badgeID', :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject reattaching a cleared badge definition association'
 );
@@ -226,6 +242,7 @@ select throws_ok(
 -- Should reject reattaching a cleared event association
 select throws_ok(
     format($$update user_badge set event_id = %L::uuid where user_badge_id = %L::uuid$$, :'eventID', :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject reattaching a cleared event association'
 );
@@ -233,6 +250,7 @@ select throws_ok(
 -- Should reject reattaching a cleared recipient association
 select throws_ok(
     format($$update user_badge set user_id = %L::uuid where user_badge_id = %L::uuid$$, :'userID', :'userBadgeID'),
+    'P0001',
     'badge issuance fields cannot be changed',
     'Should reject reattaching a cleared recipient association'
 );

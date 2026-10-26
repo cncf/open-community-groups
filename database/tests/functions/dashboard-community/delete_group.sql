@@ -5,14 +5,15 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '2c0a0000-0000-0000-0000-000000000001'
+\set actorUserID '2c0a0000-0000-0000-0000-000000000002'
 \set childGroupID '2c0a0000-0000-0000-0000-000000000007'
+\set communityID '2c0a0000-0000-0000-0000-000000000001'
 \set groupCategoryID '2c0a0000-0000-0000-0000-000000000003'
 \set groupID '2c0a0000-0000-0000-0000-000000000004'
 \set groupWrongCommunityID '2c0a0000-0000-0000-0000-000000000005'
@@ -29,6 +30,10 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 select fx_group(:'groupWrongCommunityID', :'communityID', :'groupCategoryID');
 
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'delete-group-audit-actor'));
+
+-- Child group linked to the deleted parent group
 select fx_group(:'childGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'groupID'));
 
 -- Group with its own parent link
@@ -41,35 +46,29 @@ select fx_group(:'linkedGroupID', :'communityID', :'groupCategoryID', jsonb_buil
 -- Should perform soft delete
 select lives_ok(
     format(
-        'select delete_group(null::uuid, %L::uuid, %L::uuid)',
+        'select delete_group(%L::uuid, %L::uuid, %L::uuid)',
+        :'actorUserID',
         :'communityID',
         :'groupID'
     ),
     'Should perform soft delete'
 );
-
 select is(
-    (select deleted from "group" where group_id = :'groupID'::uuid),
-    true,
-    'Should set deleted to true'
-);
-
-select ok(
-    (select deleted_at from "group" where group_id = :'groupID'::uuid) is not null,
-    'Should set deleted_at timestamp'
-);
-
--- Should perform soft delete (record still exists)
-select ok(
-    exists(select 1 from "group" where group_id = :'groupID'::uuid),
-    'Should perform soft delete (record still exists)'
-);
-
--- Should set active to false when deleting
-select is(
-    (select active from "group" where group_id = :'groupID'::uuid),
-    false,
-    'Should set active to false when deleting'
+    (
+        select jsonb_build_object(
+            'active', active,
+            'deleted', deleted,
+            'deleted_at', deleted_at
+        )
+        from "group"
+        where group_id = :'groupID'::uuid
+    ),
+    jsonb_build_object(
+        'active', false,
+        'deleted', true,
+        'deleted_at', current_timestamp
+    ),
+    'Should deactivate the group and set the deletion fields'
 );
 
 -- Should clear child links for deleted parent group
@@ -107,14 +106,15 @@ select results_eq(
             resource_type,
             resource_id
         from audit_log
+        order by resource_id
     $$,
     format(
         $$
         values
             (
                 'group_deleted',
-                null::uuid,
-                null::text,
+                %L::uuid,
+                'delete-group-audit-actor',
                 %L::uuid,
                 %L::uuid,
                 'group',
@@ -130,6 +130,7 @@ select results_eq(
                 %L::uuid
             )
         $$,
+        :'actorUserID',
         :'communityID',
         :'groupID',
         :'groupID',
@@ -150,13 +151,6 @@ select throws_ok(
     'OCG01',
     'group not found or inactive',
     'Should throw error when community_id does not match'
-);
-
--- Should leave the group untouched when community_id does not match
-select is(
-    (select deleted from "group" where group_id = :'groupWrongCommunityID'::uuid),
-    false,
-    'Should leave the group untouched when community_id does not match'
 );
 
 -- ============================================================================

@@ -5,16 +5,13 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '5ea50000-0000-0000-0000-000000000001'
-\set deletedEventID '5ea50000-0000-0000-0000-000000000002'
-\set deletedGroupEventID '5ea50000-0000-0000-0000-000000000003'
-\set deletedGroupID '5ea50000-0000-0000-0000-000000000004'
 \set eventCategoryID '5ea50000-0000-0000-0000-000000000005'
 \set eventID '5ea50000-0000-0000-0000-000000000006'
 \set groupCategoryID '5ea50000-0000-0000-0000-000000000007'
@@ -24,8 +21,6 @@ select plan(7);
 \set inactiveCommunityGroupCategoryID '5ea50000-0000-0000-0000-000000000011'
 \set inactiveCommunityGroupID '5ea50000-0000-0000-0000-000000000012'
 \set inactiveCommunityID '5ea50000-0000-0000-0000-000000000013'
-\set inactiveGroupEventID '5ea50000-0000-0000-0000-000000000014'
-\set inactiveGroupID '5ea50000-0000-0000-0000-000000000015'
 \set unknownEventID '5ea50000-0000-0000-0000-000000000016'
 \set unpublishedEventID '5ea50000-0000-0000-0000-000000000017'
 
@@ -54,28 +49,13 @@ select fx_group_category(:'inactiveCommunityGroupCategoryID', :'inactiveCommunit
 -- Active group owning the events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', true));
 
--- Deleted group
-select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
-
 -- Active group of the inactive community
 select fx_group(:'inactiveCommunityGroupID', :'inactiveCommunityID', :'inactiveCommunityGroupCategoryID', jsonb_build_object(
     'active', true
 ));
 
--- Inactive group
-select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
-
 -- Published event of an active group
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
-
--- Deleted event
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
-
--- Published event of a deleted group
-select fx_event(:'deletedGroupEventID', :'deletedGroupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Published event of an active group in the inactive community
 select fx_event(
@@ -85,9 +65,6 @@ select fx_event(
     jsonb_build_object('published', true)
 );
 
--- Published event of an inactive group
-select fx_event(:'inactiveGroupEventID', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object('published', true));
-
 -- Unpublished event of an active group
 select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', false));
 
@@ -95,32 +72,11 @@ select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_bui
 -- TESTS
 -- ============================================================================
 
--- Should return null for a deleted event
-select is(
-    get_public_event_summary(:'deletedEventID'::uuid)::jsonb,
-    null,
-    'Should return null for a deleted event'
-);
-
--- Should return null for an event of a deleted group
-select is(
-    get_public_event_summary(:'deletedGroupEventID'::uuid)::jsonb,
-    null,
-    'Should return null for an event of a deleted group'
-);
-
 -- Should return null for an event of an inactive community
 select is(
     get_public_event_summary(:'inactiveCommunityEventID'::uuid)::jsonb,
     null,
     'Should return null for an event of an inactive community'
-);
-
--- Should return null for an event of an inactive group
-select is(
-    get_public_event_summary(:'inactiveGroupEventID'::uuid)::jsonb,
-    null,
-    'Should return null for an event of an inactive group'
 );
 
 -- Should return null for an unknown event

@@ -5,862 +5,571 @@
 -- ============================================================================
 
 begin;
-select plan(599);
-
--- ============================================================================
--- VARIABLES
--- ============================================================================
-
-\set communityID 'f0050000-0000-0000-0000-000000000001'
-\set discountCodeID 'f0050000-0000-0000-0000-000000000002'
-\set eventCategoryID 'f0050000-0000-0000-0000-000000000003'
-\set eventID 'f0050000-0000-0000-0000-000000000004'
-\set groupCategoryID 'f0050000-0000-0000-0000-000000000005'
-\set groupID 'f0050000-0000-0000-0000-000000000006'
-\set ticketTypeID 'f0050000-0000-0000-0000-000000000007'
-\set userID 'f0050000-0000-0000-0000-000000000008'
-
--- ============================================================================
--- SEED DATA
--- ============================================================================
-
--- User
-insert into "user" (user_id, auth_hash, email, username)
-values (:'userID', 'hash', 'schema-functions@example.com', 'schema-functions-user');
-
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'schema-functions-community',
-    'Schema Functions Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conferences');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
-
--- Event
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    timezone
-) values (
-    :'eventID',
-    'Test Event',
-    'test-event',
-    'A test event',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'UTC'
-);
+select plan(36);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Test: check expected functions exist
-select has_function('accept_community_team_invitation', array['uuid', 'uuid']::name[]);
-select has_function(
-    'accept_event_invitation_request',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]
-);
-select has_function('accept_group_team_invitation', array['uuid', 'uuid']::name[]);
-select has_function('accept_session_proposal_co_speaker_invitation', array['uuid', 'uuid']::name[]);
-select has_function('activate_group', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('activate_pre_registered_user_email_password', array['jsonb', 'uuid', 'jsonb']::name[]);
-select has_function('activate_pre_registered_user_external_provider', array['uuid', 'jsonb']::name[]);
-select has_function('add_badge', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function('add_badge_artwork', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('add_cfs_submission', array['uuid', 'uuid', 'uuid', 'uuid', 'uuid[]']::name[]);
-select has_function('add_community_team_member', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('add_event', array['uuid', 'uuid', 'jsonb', 'jsonb', 'text']::name[]);
-select has_function('add_event_category', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function(
-    'add_event_series',
-    array['uuid', 'uuid', 'jsonb', 'jsonb', 'jsonb', 'text']::name[]
-);
-select has_function('add_event_survey', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function('add_group', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('add_group_category', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('add_group_sponsor', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('add_group_team_member', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('add_inbox_group_reply', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('add_inbox_user_message', array['uuid', 'uuid', 'text']::name[]);
-select has_function('add_meeting', array['text', 'text', 'text', 'text', 'text', 'uuid', 'uuid', 'timestamp with time zone', 'text']::name[]);
-select has_function('add_region', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('add_session_proposal', array['uuid', 'jsonb']::name[]);
-select has_function('append_inbox_message', array['inbox_conversation', 'uuid', 'text', 'text', 'timestamp with time zone']::name[]);
-select hasnt_function(
-    'approve_external_event_refund_request',
-    array['uuid', 'uuid', 'uuid', 'text']::name[]
-);
-select has_function(
-    'approve_external_event_refund_request',
-    array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]
-);
-select has_function('admission_offer_is_active', array['text']::name[]);
-select has_function('append_meeting_recording_url', array['text', 'text', 'text']::name[]);
-select has_function(
-    'apply_event_purchase_application_fee_adjustment_outcome',
-    array['event_purchase_application_fee_adjustment', 'text']::name[]
-);
-select has_function(
-    'apply_event_purchase_credit_note_outcome',
-    array['event_purchase_credit_note', 'text', 'text', 'text']::name[]
-);
-select has_function('assign_zoom_host_user', array['uuid', 'uuid', 'timestamp with time zone', 'text[]', 'integer', 'timestamp with time zone', 'timestamp with time zone']::name[]);
-select has_function(
-    'attach_application_fee_to_event_purchase',
-    array['text', 'text', 'text', 'text', 'bigint']::name[]
-);
-select has_function(
-    'attach_checkout_session_to_event_purchase',
-    array['uuid', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'text']::name[]
-);
-select has_function(
-    'attach_invoice_to_event_purchase',
-    array['uuid', 'text', 'text', 'text', 'text']::name[]
-);
-select has_function('attend_event', array['uuid', 'uuid', 'uuid', 'jsonb', 'uuid']::name[]);
-select has_function('audit_log_resource_name', array['text', 'uuid']::name[]);
-select has_function(
-    'award_badge',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'uuid[]', 'uuid']::name[]
-);
-select has_function('approve_event_cohost', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('cancel_event', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('cancel_event_cohost', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function(
-    'cancel_event_admission_offer',
-    array['uuid', 'uuid', 'uuid', 'text']::name[]
-);
-select has_function(
-    'cancel_event_attendee_attendance',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]
-);
-select has_function('cancel_event_checkout', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('cancel_event_series_events', array['uuid', 'uuid', 'uuid[]']::name[]);
-select has_function(
-    'change_event_survey_status',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'bigint', 'timestamp with time zone', 'text']::name[]
-);
-select has_function(
-    'check_in_attendee_by_code',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'uuid']::name[]
-);
-select has_function('check_in_event', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
-select hasnt_function('check_in_event', array['uuid', 'uuid', 'uuid', 'boolean']::name[]);
-select has_function('claim_badge_award_job', '{}'::name[]);
-select hasnt_function('claim_event_purchase_application_fee_adjustment', array['text']::name[]);
-select hasnt_function('claim_event_purchase_credit_note', array['text']::name[]);
-select hasnt_function('claim_event_purchase_refund', array['text']::name[]);
-select has_function('claim_meeting_for_auto_end', '{}'::name[]);
-select has_function('claim_meeting_out_of_sync', '{}'::name[]);
-select has_function('claim_payment_job', array['text', 'text']::name[]);
-select has_function('claim_pending_notification', array['integer', 'integer']::name[]);
-select has_function('cleanup_badge_award_jobs', array['bigint']::name[]);
-select has_function('close_event_cohosts', array['uuid', 'uuid', 'text']::name[]);
-select has_function('close_event_enrollment', array['uuid', 'uuid']::name[]);
-select has_function('close_inbox_conversation', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('community_contact_filter_values', array['jsonb']::name[]);
-select has_function('community_contact_group_labels', array['uuid']::name[]);
-select has_function('community_contact_groups', array['uuid']::name[]);
-select has_function('community_contact_team_seats', array['uuid', 'jsonb']::name[]);
-select hasnt_function(
-    'complete_event_purchase_application_fee_adjustment_recovery',
-    array['uuid', 'uuid', 'uuid', 'text', 'text', 'text']::name[]
-);
-select hasnt_function(
-    'complete_event_purchase_credit_note_recovery',
-    array['uuid', 'uuid', 'uuid', 'text', 'text', 'text']::name[]
-);
-select has_function(
-    'complete_event_purchase_refund_recovery',
-    array['uuid', 'uuid', 'uuid', 'text', 'text', 'jsonb', 'text']::name[]
-);
-select hasnt_function(
-    'complete_external_event_purchase',
-    array['uuid', 'uuid', 'uuid', 'text']::name[]
-);
-select has_function(
-    'complete_external_event_purchase',
-    array['uuid', 'uuid', 'uuid', 'text', 'jsonb', 'jsonb']::name[]
-);
-select has_function('complete_free_event_purchase', array['uuid']::name[]);
-select has_function('complete_payment_job', array['uuid', 'uuid']::name[]);
-select has_function(
-    'complete_payment_job_recovery',
-    array['uuid', 'uuid', 'uuid', 'text', 'text', 'text']::name[]
-);
-select has_function('count_group_open_inbox_conversations', array['uuid']::name[]);
-select has_function('count_user_unanswered_event_surveys', array['uuid']::name[]);
-select has_function('deactivate_group', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function(
-    'decline_event_admission_offer',
-    array['uuid', 'uuid', 'text']::name[]
-);
-select has_function('delete_badge', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_badge_artwork', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_community_team_member', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_event', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_event_category', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_event_series_events', array['uuid', 'uuid', 'uuid[]']::name[]);
-select has_function('delete_event_survey', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_group', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_group_category', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_group_sponsor', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_group_team_member', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_meeting', array['uuid', 'uuid', 'uuid', 'timestamp with time zone', 'text']::name[]);
-select has_function('delete_region', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('delete_session_proposal', array['uuid', 'uuid']::name[]);
-select has_function('describe_community_contact_filters', array['uuid', 'jsonb']::name[]);
-select has_function('enqueue_due_event_reminders', array['text']::name[]);
-select has_function('enqueue_due_event_survey_notifications', array[]::name[]);
-select hasnt_function('enqueue_notification', array['text', 'jsonb', 'jsonb', 'uuid[]']::name[]);
-select has_function(
-    'enqueue_notification',
-    array['text', 'jsonb', 'jsonb', 'uuid[]', 'uuid[]']::name[]
-);
-select has_function('enqueue_payment_job', array['text', 'text', 'uuid', 'text']::name[]);
-select has_function(
-    'enqueue_tracked_community_custom_notification',
-    array['uuid', 'uuid', 'jsonb', 'jsonb', 'text', 'text']::name[]
-);
-select has_function(
-    'enqueue_tracked_custom_notification',
-    array['text', 'jsonb', 'jsonb', 'uuid[]', 'uuid', 'uuid', 'uuid', 'uuid', 'integer', 'text', 'text', 'jsonb']::name[]
-);
-select hasnt_function(
-    'enqueue_tracked_custom_notification',
-    array['text', 'jsonb', 'jsonb', 'uuid[]', 'uuid', 'uuid', 'uuid', 'integer', 'text', 'text']::name[]
-);
-select has_function('ensure_event_is_active', array['uuid', 'uuid']::name[]);
-select has_function('epoch_seconds', array['timestamp with time zone']::name[]);
-select has_function('escape_ilike_pattern', array['text']::name[]);
-select has_function('event_cohosts_json', array['uuid']::name[]);
-select has_function('event_discount_codes_configuration', array['jsonb', 'jsonb']::name[]);
-select has_function('event_effective_ends_at', array['event']::name[]);
-select has_function('event_has_pending_cohosts', array['uuid']::name[]);
-select has_function('event_has_pending_refund_recovery', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('event_labels_json', array['uuid[]']::name[]);
-select has_function('event_public_path', array['text', 'text', 'text', 'text']::name[]);
-select has_function('event_purchase_holds_seat', array['text']::name[]);
-select hasnt_function('event_purchase_refund_to_json', array['event_purchase_refund']::name[]);
-select has_function(
-    'event_purchase_refund_to_json',
-    array['event_purchase_refund', 'payment_job']::name[]
-);
-select has_function('event_survey_effective_opens_at', array['event_survey', 'event']::name[]);
-select has_function('event_survey_eligible_users', array['uuid', 'text']::name[]);
-select has_function('event_survey_matching_respondents', array['uuid', 'jsonb']::name[]);
-select has_function('event_survey_response_details', array['uuid', 'uuid']::name[]);
-select has_function('event_survey_state', array['event_survey', 'event']::name[]);
-select has_function('event_survey_summary_json', array['event_survey', 'event']::name[]);
-select has_function('event_survey_text_answers', array['uuid']::name[]);
-select has_function('event_ticket_type_current_price', array['uuid']::name[]);
-select has_function('event_ticket_types_configuration', array['jsonb']::name[]);
-select has_function('event_ticketing_configuration_changed', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function(
-    'expire_event_purchase_for_checkout_session',
-    array['text', 'text', 'text']::name[]
-);
-select has_function(
-    'finalize_event_purchase_refund',
-    array['uuid', 'uuid', 'jsonb', 'text']::name[]
-);
-select has_function('event_user_enrollment', array['uuid', 'uuid']::name[]);
-select has_function('event_user_enrollment_conflict', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('event_venue_snapshot', array['event']::name[]);
-select has_function('expire_event_checkout_holds', array['event', '"group"', 'jsonb']::name[]);
-select has_function('external_payment_notification_payload', array['event', '"group"', 'event_purchase', 'jsonb']::name[]);
-select has_function('filter_notification_recipient_ids', array['text', 'uuid[]', 'uuid[]']::name[]);
-select has_function('generate_slug', array['integer']::name[]);
-select has_function('generate_slug_from_source', array['text', 'integer']::name[]);
-select has_function('get_auth_session', array['text']::name[]);
-select has_function('get_badge_status_list', array['uuid']::name[]);
-select has_function('get_cfs_submission_notification_data', array['uuid', 'uuid']::name[]);
-select has_function('get_community_contact_recipients_summary', array['uuid', 'jsonb']::name[]);
-select has_function('get_community_full', array['uuid']::name[]);
-select has_function('get_community_id_by_name', array['text']::name[]);
-select hasnt_function('get_community_name_by_id', array['uuid']::name[]);
-select has_function('get_community_recently_added_groups', array['uuid']::name[]);
-select has_function('get_community_site_stats', array['uuid']::name[]);
-select has_function('get_community_stats', array['uuid']::name[]);
-select has_function('get_community_summary', array['uuid']::name[]);
-select has_function('get_community_upcoming_events', array['uuid', 'text[]']::name[]);
-select has_function('get_event_analytics', array['uuid', 'uuid']::name[]);
-select has_function('get_event_cohost_notification_data', array['jsonb']::name[]);
-select has_function('get_event_delete_eligibility', array['uuid', 'uuid']::name[]);
-select has_function('get_event_enrollment', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('get_event_full', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('get_event_full_by_slug', array['uuid', 'text', 'text']::name[]);
-select has_function('get_event_meeting_sync_state_hash', array['uuid']::name[]);
-select has_function('get_event_occupied_seat_count', array['uuid']::name[]);
-select has_function('get_event_purchase_notification_context', array['uuid', 'uuid']::name[]);
-select has_function('get_event_purchase_refund', array['uuid']::name[]);
-select has_function('get_event_purchase_refund_recovery_context', array['uuid', 'uuid']::name[]);
-select has_function('get_event_registration_questions', array['uuid', 'uuid']::name[]);
-select has_function('get_event_summary', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('get_event_summary_by_id', array['uuid', 'uuid']::name[]);
-select has_function('get_event_summary_dashboard', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('get_event_survey', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function(
-    'get_event_survey_export',
-    array['uuid', 'uuid', 'uuid', 'integer', 'bigint']::name[]
-);
-select has_function(
-    'get_event_survey_response',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'jsonb']::name[]
-);
-select has_function('get_event_survey_results', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('get_event_ticket_capacity', array['jsonb']::name[]);
-select has_function('get_event_ticket_type_allocated_seat_count', array['uuid', 'uuid']::name[]);
-select has_function('get_event_utm_allowlist', array['uuid']::name[]);
-select has_function('get_filters_options', array['text', 'text']::name[]);
-select has_function('get_group_external_payments_context', array['uuid', 'uuid']::name[]);
-select has_function('get_group_external_payments_eligibility', array['uuid', 'uuid', 'text']::name[]);
-select has_function('get_group_full', array['uuid', 'uuid']::name[]);
-select has_function('get_group_full_by_slug', array['uuid', 'text']::name[]);
-select has_function('get_group_inbox_conversation', array['uuid', 'uuid']::name[]);
-select has_function('get_group_past_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
-select has_function('get_group_sponsor', array['uuid', 'uuid']::name[]);
-select has_function('get_group_stats', array['uuid', 'uuid', 'boolean']::name[]);
-select has_function('get_group_summary', array['uuid', 'uuid']::name[]);
-select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
-select has_function('get_group_utm_settings', array['uuid', 'uuid']::name[]);
-select has_function('get_inbox_contact_context', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('get_public_event_full', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('get_public_event_summary', array['uuid']::name[]);
-select has_function('get_public_group_summary', array['uuid']::name[]);
-select has_function('get_public_user_badge', array['uuid']::name[]);
-select has_function('get_public_user_provider', array['jsonb']::name[]);
-select has_function('get_user_inbox_conversation', array['uuid', 'uuid']::name[]);
-select has_function('get_worker_queue_health', '{}'::name[]);
-select has_function('group_belongs_to_community', array['uuid', 'uuid']::name[]);
-select has_function('group_has_active_subgroups', array['uuid', 'uuid']::name[]);
-select has_function('group_has_child_links', array['uuid', 'uuid']::name[]);
-select has_function('group_has_event', array['uuid', 'uuid']::name[]);
-select has_function('group_requires_automatic_tax_readiness', array['uuid', 'uuid']::name[]);
-select has_function('get_session_meeting_sync_state_hash', array['uuid']::name[]);
-select has_function('get_site_home_stats', '{}'::name[]);
-select has_function('get_site_recently_added_groups', '{}'::name[]);
-select has_function('get_site_settings', '{}'::name[]);
-select has_function('get_site_stats', '{}'::name[]);
-select has_function('get_site_upcoming_events', array['text[]']::name[]);
-select has_function('get_user_badge', array['uuid', 'uuid']::name[]);
-select has_function('get_user_by_email', array['text']::name[]);
-select has_function('get_user_by_email_for_external_auth', array['text']::name[]);
-select has_function('get_user_by_id', array['uuid', 'boolean']::name[]);
-select has_function('get_user_by_id_verified', array['uuid']::name[]);
-select has_function(
-    'get_user_by_linuxfoundation_identity_for_external_auth',
-    array['text', 'text']::name[]
-);
-select has_function('get_user_by_username', array['text']::name[]);
-select has_function('get_user_check_in_code', array['uuid', 'uuid']::name[]);
-select has_function('get_user_event_survey', array['uuid', 'uuid']::name[]);
-select has_function('get_user_notification_preferences', array['uuid']::name[]);
-select has_function(
-    'get_user_purchase_document_context',
-    array['uuid', 'uuid', 'uuid']::name[]
-);
-select has_function('i_array_to_string', array['text[]', 'text']::name[]);
-select has_function('inbox_conversation_json', array['uuid']::name[]);
-select has_function('inbox_user_rate_limits', array['uuid', 'timestamp with time zone']::name[]);
-select has_function('insert_audit_log', array['text', 'uuid', 'text', 'uuid', 'uuid', 'uuid', 'uuid', 'jsonb', 'timestamptz']::name[]);
-select has_function(
-    'insert_event_cohost_audit',
-    array['text', 'uuid', 'uuid', 'uuid', 'uuid', 'uuid', 'text', 'text']::name[]
-);
-select has_function(
-    'invite_event_attendee',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'text', 'uuid', 'text']::name[]
-);
-select has_function('is_badge_image', array['text']::name[]);
-select has_function('is_country_external_payments_allowlisted', array['text']::name[]);
-select hasnt_function('is_event_check_in_window_open', array['uuid', 'uuid']::name[]);
-select has_function('is_event_enrollment_superseded', array['uuid', 'uuid', 'text', 'timestamp with time zone']::name[]);
-select has_function('is_event_external_payments_ready', array['uuid']::name[]);
-select has_function('is_event_meeting_in_sync', array['event', 'jsonb']::name[]);
-select has_function('is_event_paid_capable', array['uuid']::name[]);
-select has_function('is_event_public', array['event', '"group"']::name[]);
-select has_function('is_event_simple_rsvp', array['uuid']::name[]);
-select has_function(
-    'is_event_survey_public',
-    array['event_survey', 'event', '"group"', 'community']::name[]
-);
-select has_function('is_event_ticketing_payload_paid_capable', array['jsonb']::name[]);
-select has_function('is_group_external_payments_ready', array['uuid']::name[]);
-select has_function('is_group_external_payments_selected', array['uuid']::name[]);
-select has_function('is_group_member', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('is_group_public', array['"group"']::name[]);
-select hasnt_function('is_inbox_event_public', array['event', '"group"']::name[]);
-select has_function('is_inbox_user_blocked', array['uuid', 'uuid']::name[]);
-select has_function('is_open_graph_image', array['text']::name[]);
-select has_function(
-    'is_registration_window_open',
-    array['timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone']::name[]
-);
-select has_function('is_session_meeting_in_sync', array['session', 'jsonb', 'event', 'jsonb']::name[]);
-select has_function('is_valid_utm_value_list', array['text[]']::name[]);
-select has_function('join_group', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('jsonb_geography_point', array['jsonb']::name[]);
-select has_function('jsonb_text_array', array['jsonb']::name[]);
-select has_function('leave_event', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('leave_group', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('list_awarded_badges', array['uuid', 'jsonb']::name[]);
-select has_function('list_badge_artwork', array['uuid']::name[]);
-select has_function('list_badges', array['uuid', 'jsonb']::name[]);
-select has_function('list_cfs_submission_statuses_for_review', '{}'::name[]);
-select has_function('list_cohost_group_options', array['uuid', 'uuid']::name[]);
-select has_function('list_communities', '{}'::name[]);
-select has_function('list_community_admin_ids', array['uuid']::name[]);
-select has_function('list_community_audit_logs', array['uuid', 'jsonb']::name[]);
-select has_function('list_community_contact_filter_options', array['uuid']::name[]);
-select has_function('list_community_groups', array['uuid', 'jsonb']::name[]);
-select has_function('list_community_roles', '{}'::name[]);
-select has_function('list_community_team_members', array['uuid', 'jsonb']::name[]);
-select has_function('list_event_approved_cfs_submissions', array['uuid']::name[]);
-select has_function('list_event_attendees_ids', array['uuid', 'uuid', 'boolean']::name[]);
-select has_function('list_event_categories', array['uuid']::name[]);
-select has_function('list_event_cohosts', array['uuid', 'uuid']::name[]);
-select has_function('list_event_cfs_submissions', array['uuid', 'jsonb']::name[]);
-select has_function('list_event_discount_codes', array['uuid']::name[]);
-select has_function('list_event_kinds', '{}'::name[]);
-select has_function('list_event_labels', array['uuid']::name[]);
-select has_function('list_event_series_cancelable_event_ids', array['uuid', 'uuid']::name[]);
-select has_function('list_event_series_event_ids', array['uuid', 'uuid']::name[]);
-select has_function('list_event_series_publishable_event_ids', array['uuid', 'uuid']::name[]);
-select has_function(
-    'list_event_survey_responses',
-    array['uuid', 'uuid', 'uuid', 'jsonb']::name[]
-);
-select has_function(
-    'list_event_survey_text_answers',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'jsonb']::name[]
-);
-select has_function('list_event_surveys', array['uuid', 'uuid']::name[]);
-select has_function('list_event_ticket_types', array['uuid']::name[]);
-select has_function('list_event_waitlist_ids', array['uuid', 'uuid']::name[]);
-select has_function('list_group_audit_logs', array['uuid', 'jsonb']::name[]);
-select has_function('list_group_automatic_tax_readiness_event_ids', array['uuid', 'uuid']::name[]);
-select has_function('list_group_admin_ids', array['uuid']::name[]);
-select has_function('list_group_categories', array['uuid']::name[]);
-select has_function('list_group_check_in_events', array['uuid']::name[]);
-select has_function(
-    'list_group_cohosted_events',
-    array['uuid', 'jsonb']::name[]
-);
-select has_function('list_group_events', array['uuid', 'jsonb']::name[]);
-select has_function('list_group_inbox_conversations', array['uuid', 'jsonb']::name[]);
-select has_function('list_group_members', array['uuid', 'jsonb']::name[]);
-select has_function('list_group_members_ids', array['uuid']::name[]);
-select has_function('list_group_organizers', array['uuid']::name[]);
-select has_function('list_group_parent_options', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('list_group_refunds', array['uuid', 'jsonb']::name[]);
-select has_function('list_group_roles', '{}'::name[]);
-select has_function('list_group_sponsors', array['uuid', 'jsonb', 'boolean']::name[]);
-select has_function('list_group_team_members', array['uuid', 'jsonb']::name[]);
-select has_function('list_group_team_members_ids', array['uuid']::name[]);
-select has_function('list_inbox_recipient_ids', array['uuid']::name[]);
-select has_function('list_public_event_ticket_types', array['uuid']::name[]);
-select has_function('list_payment_currency_codes', '{}'::name[]);
-select has_function('list_redirect_communities', '{}'::name[]);
-select has_function('list_redirects', '{}'::name[]);
-select has_function('list_regions', array['uuid']::name[]);
-select has_function('list_session_kinds', '{}'::name[]);
-select has_function('list_session_proposal_levels', '{}'::name[]);
-select has_function('list_user_audit_logs', array['uuid', 'jsonb']::name[]);
-select has_function('list_user_badges', array['uuid']::name[]);
-select has_function('list_user_cfs_submissions', array['uuid', 'jsonb']::name[]);
-select has_function('list_user_check_in_events', array['uuid']::name[]);
-select has_function('list_user_communities', array['uuid']::name[]);
-select has_function('list_user_community_team_invitations', array['uuid']::name[]);
-select has_function('list_user_dashboard_groups', array['uuid', 'jsonb']::name[]);
-select has_function('list_user_event_invitations', array['uuid']::name[]);
-select has_function('list_user_event_surveys', array['uuid', 'jsonb']::name[]);
-select has_function('list_user_events', array['uuid', 'jsonb']::name[]);
-select has_function('list_user_inbox_conversations', array['uuid', 'jsonb']::name[]);
-select has_function('list_user_purchase_documents', array['uuid', 'jsonb']::name[]);
-select has_function('list_user_group_team_invitations', array['uuid']::name[]);
-select has_function('list_user_groups', array['uuid']::name[]);
-select has_function('list_user_notification_group_ids', array['uuid']::name[]);
-select has_function('list_user_notification_group_options', array['uuid']::name[]);
-select has_function('list_user_pending_session_proposal_co_speaker_invitations', array['uuid']::name[]);
-select has_function('list_user_public_badges', array['text', 'integer', 'integer']::name[]);
-select has_function('list_user_session_proposals', array['uuid', 'jsonb']::name[]);
-select has_function('list_user_session_proposals_for_cfs_event', array['uuid', 'uuid']::name[]);
-select has_function(
-    'list_group_page_events',
-    array['uuid', 'text', 'text[]']::name[]
-);
-select has_function('load_checkout_context', array['uuid']::name[]);
-select has_function('lock_active_event', array['uuid', 'uuid', 'uuid', 'boolean']::name[]);
-select has_function('lock_active_group', array['uuid', 'uuid']::name[]);
-select has_function('lock_event_for_surveys', array['uuid', 'uuid']::name[]);
-select has_function('lock_event_survey', array['uuid', 'uuid']::name[]);
-select has_function('lock_event_enrollment_rows', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('lock_event_cohost_groups', array['uuid', 'uuid[]']::name[]);
-select has_function('lock_events_for_cancellation', array['uuid', 'uuid[]']::name[]);
-select has_function('lock_group_events', array['uuid', 'uuid[]']::name[]);
-select hasnt_function('manual_check_in_event', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
-select has_function('manual_requeue_notifications', array['uuid[]', 'text']::name[]);
-select has_function('mark_inbox_conversation_as_spam', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function(
-    'mark_notification_delivery_unknown',
-    array['uuid', 'text', 'timestamp with time zone']::name[]
-);
-select has_function('mark_stale_meeting_auto_end_checks_unknown', array['bigint']::name[]);
-select has_function('mark_stale_meeting_syncs_unknown', array['bigint']::name[]);
-select has_function('mark_stale_processing_notifications_unknown', array['bigint']::name[]);
-select has_function('normalize_ticketing_schedule', array['jsonb']::name[]);
-select has_function('mute_user_group_notifications', array['uuid', 'uuid']::name[]);
-select has_function('parse_search_filters', array['jsonb']::name[]);
-select has_function('opt_out_user_from_optional_notifications', array['text', 'text']::name[]);
-select has_function('payment_job_is_exhausted', array['payment_job']::name[]);
-select has_function('payment_job_is_ready', array['payment_job']::name[]);
-select has_function('payment_job_max_attempts', '{}'::name[]);
-select has_function('payment_job_payload', array['payment_job']::name[]);
-select has_function('payment_job_retry_delay', array['integer']::name[]);
-select has_function('payment_job_to_json', array['payment_job']::name[]);
-select has_function('prefix_tsquery', array['regconfig', 'text']::name[]);
-select has_function('prepare_event_checkout_expire_previous_hold', array['uuid']::name[]);
-select has_function(
-    'prepare_event_checkout_find_existing_purchase',
-    array['uuid', 'uuid', 'uuid', 'text', 'uuid']::name[]
-);
-select has_function('prepare_event_checkout_get_purchase_summary', array['uuid']::name[]);
-select has_function('prepare_event_checkout_lookup_tax_cache', array['text', 'text', 'jsonb', 'text']::name[]);
-select has_function(
-    'prepare_event_checkout_purchase',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'text', 'text', 'jsonb', 'uuid', 'integer']::name[]
-);
-select has_function('prepare_event_checkout_reserve_discount_code_availability', array['uuid']::name[]);
-select has_function('prepare_event_checkout_resolve_offer_pricing', array['admission_offer', 'text']::name[]);
-select has_function(
-    'prepare_event_checkout_validate_and_resolve_pricing',
-    array['uuid', 'uuid', 'uuid', 'text', 'uuid']::name[]
-);
-select has_function('prepare_event_checkout_validate_attendee_state', array['uuid', 'uuid']::name[]);
-select has_function('prepare_event_checkout_validate_event', array['uuid', 'uuid']::name[]);
-select has_function('promote_event_waitlist_entries', array['event', '"group"', 'uuid', 'text', 'jsonb']::name[]);
-select has_function(
-    'process_badge_award_job_batch',
-    array['uuid', 'uuid', 'integer', 'integer']::name[]
-);
-select has_function('public_user_summary', array['"user"']::name[]);
-select has_function('publish_event', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
-select has_function(
-    'publish_event_series_events',
-    array['uuid', 'uuid', 'uuid[]', 'text', 'jsonb']::name[]
-);
-select hasnt_function('publish_event', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select hasnt_function(
-    'publish_event_series_events',
-    array['uuid', 'uuid', 'uuid[]', 'text']::name[]
-);
-select has_function('questionnaire_answer_entries', array['jsonb']::name[]);
-select has_function('questionnaire_answer_has_value', array['jsonb']::name[]);
-select has_function('questionnaire_answer_selections', array['jsonb']::name[]);
-select has_function('questionnaire_answers_exist_for_event', array['uuid']::name[]);
-select has_function('questionnaire_option_breakdowns', array['jsonb', 'jsonb']::name[]);
-select has_function(
-    'queue_event_refund_request_approval',
-    array['uuid', 'uuid', 'uuid', 'text']::name[]
-);
-select has_function('reconcile_event_admission_offers', array['event', '"group"']::name[]);
-select has_function(
-    'reconcile_event_enrollment',
-    array['uuid', 'uuid', 'text']::name[]
-);
-select has_function(
-    'reconcile_event_purchase_for_checkout_session',
-    array['text', 'text', 'text', 'text', 'text', 'bigint', 'bigint', 'text']::name[]
-);
-select has_function('reconcile_next_event_enrollment', array['text']::name[]);
-select has_function(
-    'record_badge_award_job_failure',
-    array['uuid', 'uuid', 'text', 'integer']::name[]
-);
-select hasnt_function(
-    'record_event_purchase_application_fee_adjustment_failure',
-    array['uuid', 'uuid', 'text']::name[]
-);
-select has_function(
-    'record_event_purchase_application_fee_adjustment_succeeded',
-    array['uuid', 'uuid', 'text']::name[]
-);
-select hasnt_function(
-    'record_event_purchase_credit_note_failure',
-    array['uuid', 'uuid', 'text']::name[]
-);
-select has_function(
-    'record_event_purchase_credit_note_succeeded',
-    array['uuid', 'uuid', 'text', 'text', 'text']::name[]
-);
-select has_function(
-    'record_event_purchase_refund_pending',
-    array['uuid', 'text', 'text', 'uuid']::name[]
-);
-select hasnt_function(
-    'record_event_purchase_refund_retryable_failure',
-    array['uuid', 'uuid', 'text']::name[]
-);
-select has_function(
-    'record_event_purchase_refund_succeeded',
-    array['uuid', 'text', 'text', 'uuid']::name[]
-);
-select has_function(
-    'record_event_purchase_refund_terminal_failed',
-    array['uuid', 'text', 'text', 'text', 'uuid']::name[]
-);
-select has_function('record_payment_job_failure', array['uuid', 'uuid', 'text']::name[]);
-select has_function('record_payment_job_recovery', array['uuid', 'uuid', 'text', 'text']::name[]);
-select has_function('recover_stale_badge_award_jobs', array['bigint', 'integer']::name[]);
-select has_function('refresh_user_badge_identity', array['uuid', 'uuid']::name[]);
-select has_function('refund_free_event_purchase', array['uuid']::name[]);
-select has_function(
-    'registration_window_closes_at',
-    array['timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone']::name[]
-);
-select has_function('reject_community_team_invitation', array['uuid', 'uuid']::name[]);
-select has_function('reject_event_cohost', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('reject_event_invitation_request', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
-select has_function('reject_event_refund_request', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('reject_group_team_invitation', array['uuid', 'uuid']::name[]);
-select has_function('reject_session_proposal_co_speaker_invitation', array['uuid', 'uuid']::name[]);
-select has_function('release_event_checkout_attendee_hold', array['uuid', 'uuid']::name[]);
-select has_function('release_event_discount_code_availability', array['uuid', 'integer']::name[]);
-select has_function('remind_event_external_payment_holds', array['event', '"group"', 'jsonb']::name[]);
-select has_function('release_meeting_auto_end_check_claim', array['timestamp with time zone', 'uuid']::name[]);
-select has_function('release_meeting_sync', array['uuid', 'uuid', 'timestamp with time zone', 'text', 'text']::name[]);
-select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
-select has_function('release_notification', array['uuid', 'timestamp with time zone']::name[]);
-select has_function('request_event_refund', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
-select has_function('requeue_badge_award_job', array['uuid']::name[]);
-select hasnt_function(
-    'requeue_event_purchase_application_fee_adjustment',
-    array['uuid', 'uuid']::name[]
-);
-select hasnt_function(
-    'requeue_event_purchase_credit_note',
-    array['uuid', 'uuid']::name[]
-);
-select hasnt_function('requeue_event_purchase_refund', array['uuid', 'uuid']::name[]);
-select has_function(
-    'requeue_notification',
-    array['uuid', 'text', 'bigint', 'bigint', 'integer', 'timestamp with time zone']::name[]
-);
-select has_function('requeue_payment_job', array['uuid', 'uuid']::name[]);
-select hasnt_function(
-    'requeue_stale_event_purchase_application_fee_adjustment_claims',
-    '{}'::name[]
-);
-select hasnt_function('requeue_stale_event_purchase_credit_note_claims', '{}'::name[]);
-select hasnt_function('requeue_stale_event_purchase_refund_claims', '{}'::name[]);
-select has_function('requeue_stale_payment_job_claims', '{}'::name[]);
-select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
-select has_function('resolve_event_discount_code_available_override', array['jsonb', 'boolean']::name[]);
-select has_function('resolve_event_payload', array['jsonb', 'event', 'boolean', 'boolean']::name[]);
-select has_function('resolve_event_payment_rail', array['event', 'jsonb', 'boolean', 'boolean']::name[]);
-select hasnt_function('resolve_event_payload', array['jsonb', 'event', 'boolean']::name[]);
-select hasnt_function('resolve_event_payment_rail', array['event', 'jsonb', 'boolean']::name[]);
-select has_function('resolve_inbox_contact_event', array['uuid', 'uuid']::name[]);
-select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
-select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);
-select has_function('revoke_group_user_badge', array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('revoke_user_badge', array['uuid', 'uuid']::name[]);
-select has_function('search_bbox_envelope', array['jsonb']::name[]);
-select has_function('search_bbox_json', array['geometry']::name[]);
-select has_function('search_event_attendees', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('search_event_invitation_requests', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('search_event_waitlist', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('search_events', array['jsonb']::name[]);
-select has_function('search_events_matches', array['jsonb']::name[]);
-select has_function('search_events_minimal', array['jsonb', 'integer']::name[]);
-select has_function('search_groups', array['jsonb']::name[]);
-select has_function('search_groups_matches', array['jsonb']::name[]);
-select has_function('search_groups_minimal', array['jsonb', 'integer']::name[]);
-select has_function('search_inbox_conversations', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('search_user', array['text']::name[]);
-select has_function('set_meeting_auto_end_check_outcome', array['timestamp with time zone', 'uuid', 'text']::name[]);
-select has_function('set_meeting_error', array['text', 'uuid', 'uuid', 'uuid', 'timestamp with time zone', 'text']::name[]);
-select has_function('sign_up_user', array['jsonb', 'boolean', 'uuid', 'jsonb']::name[]);
-select has_function('site_theme', array[]::name[]);
-select has_function('start_inbox_conversation', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('stats_day_count_series', array['date', 'date', 'jsonb']::name[]);
-select has_function('stats_event_audience', array['event']::name[]);
-select has_function('stats_event_check_ins', array['event']::name[]);
-select has_function('stats_event_enrollment', array['event']::name[]);
-select has_function('stats_event_surveys', array['event']::name[]);
-select has_function('stats_event_tickets', array['event']::name[]);
-select has_function('stats_event_traffic', array['event', 'date', 'date']::name[]);
-select has_function('stats_event_utm', array['event']::name[]);
-select has_function('stats_label_count_series', array['jsonb']::name[]);
-select has_function('stats_label_count_series_by_name', array['jsonb']::name[]);
-select has_function('stats_running_total_series', array['jsonb']::name[]);
-select has_function('stats_running_total_series_by_name', array['jsonb']::name[]);
-select has_function('submit_event_registration_answers', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function('submit_event_survey_response', array['uuid', 'uuid', 'bigint', 'jsonb']::name[]);
-select has_function('sync_cfs_submission_labels', array['uuid', 'uuid', 'uuid[]']::name[]);
-select has_function('sync_event_cohosts', array['uuid', 'uuid', 'uuid', 'uuid[]', 'integer']::name[]);
-select has_function('sync_event_discount_codes', array['uuid', 'jsonb']::name[]);
-select has_function('sync_event_hosts_speakers_sponsors', array['uuid', 'jsonb']::name[]);
-select has_function('sync_event_labels', array['uuid', 'jsonb']::name[]);
-select has_function('sync_event_organizers', array['uuid', 'jsonb']::name[]);
-select has_function('sync_event_sessions', array['uuid', 'jsonb', 'event']::name[]);
-select has_function('sync_event_ticket_types', array['uuid', 'jsonb']::name[]);
-select has_function(
-    'sync_external_payments_config',
-    array['text[]', 'integer', 'integer']::name[]
-);
-select has_function('sync_session_labels', array['uuid', 'uuid', 'uuid[]']::name[]);
-select has_function(
-    'track_custom_notification',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'integer', 'text', 'text', 'jsonb']::name[]
-);
-select hasnt_function('track_custom_notification', array['uuid', 'uuid', 'uuid', 'integer', 'text', 'text']::name[]);
-select has_function('unmark_inbox_conversation_as_spam', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('unmute_user_group_notifications', array['uuid', 'uuid']::name[]);
-select has_function('unpublish_event', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('unpublish_event_series_events', array['uuid', 'uuid', 'uuid[]']::name[]);
-select has_function('update_badge', array['uuid', 'uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function('update_cfs_submission', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function('update_community', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('update_community_team_member_role', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('update_community_views', array['jsonb']::name[]);
-select has_function(
-    'update_event',
-    array['uuid', 'uuid', 'uuid', 'jsonb', 'jsonb', 'text']::name[]
-);
+-- Test: public functions should match the expected signature snapshot
+select set_eq(
+    $$
+        select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')'
+        from pg_proc p
+        where p.pronamespace = 'public'::regnamespace
+        and p.proname not like 'fx\_%'
+        and not exists (
+            select 1
+            from pg_depend d
+            where d.classid = 'pg_proc'::regclass
+            and d.objid = p.oid
+            and d.deptype = 'e'
+        )
+    $$,
+    $$ values
+        ('accept_community_team_invitation(p_actor_user_id uuid, p_community_id uuid)'),
+        ('accept_event_invitation_request(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_user_id uuid, p_event_ticket_type_id uuid, p_configured_provider text)'),
+        ('accept_group_team_invitation(p_actor_user_id uuid, p_group_id uuid)'),
+        ('accept_session_proposal_co_speaker_invitation(p_actor_user_id uuid, p_session_proposal_id uuid)'),
+        ('activate_group(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid)'),
+        ('activate_pre_registered_user_email_password(p_user jsonb, p_verification_code uuid, p_verification_template_data jsonb)'),
+        ('activate_pre_registered_user_external_provider(p_user_id uuid, p_user jsonb)'),
+        ('add_badge(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid, p_badge jsonb)'),
+        ('add_badge_artwork(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid, p_file_name text)'),
+        ('add_cfs_submission(p_community_id uuid, p_event_id uuid, p_user_id uuid, p_session_proposal_id uuid, p_label_ids uuid[])'),
+        ('add_community_team_member(p_actor_user_id uuid, p_community_id uuid, p_user_id uuid, p_role text)'),
+        ('add_event(p_actor_user_id uuid, p_group_id uuid, p_event jsonb, p_cfg_meeting_limits jsonb, p_configured_provider text)'),
+        ('add_event_category(p_actor_user_id uuid, p_community_id uuid, p_event_category jsonb)'),
+        ('add_event_series(p_actor_user_id uuid, p_group_id uuid, p_events jsonb, p_recurrence jsonb, p_cfg_meeting_limits jsonb, p_configured_provider text)'),
+        ('add_event_survey(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_payload jsonb)'),
+        ('add_group(p_actor_user_id uuid, p_community_id uuid, p_group jsonb)'),
+        ('add_group_category(p_actor_user_id uuid, p_community_id uuid, p_group_category jsonb)'),
+        ('add_group_sponsor(p_actor_user_id uuid, p_group_id uuid, p_sponsor jsonb)'),
+        ('add_group_team_member(p_actor_user_id uuid, p_group_id uuid, p_user_id uuid, p_role text)'),
+        ('add_inbox_group_reply(p_actor_user_id uuid, p_group_id uuid, p_inbox_conversation_id uuid, p_body text)'),
+        ('add_inbox_user_message(p_actor_user_id uuid, p_inbox_conversation_id uuid, p_body text)'),
+        ('add_meeting(p_meeting_provider_id text, p_provider_meeting_id text, p_provider_host_user_id text, p_url text, p_password text, p_event_id uuid, p_session_id uuid, p_sync_claimed_at timestamp with time zone, p_sync_state_hash text)'),
+        ('add_region(p_actor_user_id uuid, p_community_id uuid, p_region jsonb)'),
+        ('add_session_proposal(p_actor_user_id uuid, p_session_proposal jsonb)'),
+        ('admission_offer_capacity_conflict(p_ticket_type event_ticket_type, p_promoted_user_ids uuid[])'),
+        ('admission_offer_display_price(p_admission_offer admission_offer, p_event event)'),
+        ('admission_offer_is_active(p_status text)'),
+        ('append_inbox_message(p_conversation inbox_conversation, p_author_user_id uuid, p_body text, p_kind text, p_now timestamp with time zone)'),
+        ('append_meeting_recording_url(p_meeting_provider_id text, p_provider_meeting_id text, p_recording_url text)'),
+        ('apply_event_purchase_application_fee_adjustment_outcome(p_adjustment event_purchase_application_fee_adjustment, p_provider_application_fee_refund_id text)'),
+        ('apply_event_purchase_credit_note_outcome(p_credit_note event_purchase_credit_note, p_provider_credit_note_id text, p_provider_hosted_url text, p_provider_pdf_url text)'),
+        ('approve_event_cohost(p_actor_user_id uuid, p_cohost_group_id uuid, p_invitation_id uuid)'),
+        ('approve_external_event_refund_request(p_actor_user_id uuid, p_group_id uuid, p_event_purchase_id uuid, p_review_note text, p_notification_template_data jsonb)'),
+        ('assign_zoom_host_user(p_event_id uuid, p_session_id uuid, p_sync_claimed_at timestamp with time zone, p_pool_users text[], p_max_simultaneous_meetings_per_user integer, p_starts_at timestamp with time zone, p_ends_at timestamp with time zone)'),
+        ('attach_application_fee_to_event_purchase(p_provider text, p_connected_seller_id text, p_provider_charge_id text, p_provider_application_fee_id text, p_amount_minor bigint)'),
+        ('attach_checkout_session_to_event_purchase(p_event_purchase_id uuid, p_provider text, p_provider_object_account_id text, p_provider_checkout_session_id text, p_provider_checkout_url text, p_provider_tax_location_id text, p_performance_location_fingerprint text, p_provider_tax_product_id text, p_provider_product_fingerprint text)'),
+        ('attach_invoice_to_event_purchase(p_event_purchase_id uuid, p_connected_seller_id text, p_provider_invoice_id text, p_provider_invoice_hosted_url text, p_provider_invoice_pdf_url text)'),
+        ('attend_event(p_community_id uuid, p_event_id uuid, p_user_id uuid, p_registration_answers jsonb, p_event_ticket_type_id uuid)'),
+        ('audit_log_resource_name(p_resource_type text, p_resource_id uuid)'),
+        ('award_badge(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid, p_badge_id uuid, p_user_ids uuid[], p_event_id uuid)'),
+        ('cancel_event(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid)'),
+        ('cancel_event_admission_offer(p_actor_user_id uuid, p_group_id uuid, p_admission_offer_id uuid, p_configured_provider text)'),
+        ('cancel_event_attendee_attendance(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_user_id uuid, p_configured_provider text)'),
+        ('cancel_event_checkout(p_community_id uuid, p_event_id uuid, p_user_id uuid, p_configured_provider text)'),
+        ('cancel_event_cohost(p_actor_user_id uuid, p_cohost_group_id uuid, p_invitation_id uuid)'),
+        ('cancel_event_series_events(p_actor_user_id uuid, p_group_id uuid, p_event_ids uuid[])'),
+        ('change_event_survey_status(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_event_survey_id uuid, p_expected_revision bigint, p_expected_effective_opens_at timestamp with time zone, p_action text)'),
+        ('check_admission_offer_enrollment_state()'),
+        ('check_admission_offer_lifecycle()'),
+        ('check_event_attendee_waitlist()'),
+        ('check_event_category_community()'),
+        ('check_event_cohost_group()'),
+        ('check_event_external_payment_url()'),
+        ('check_event_has_ticket_type()'),
+        ('check_event_purchase_admission_offer()'),
+        ('check_event_sponsor_group()'),
+        ('check_event_ticketing_consistency()'),
+        ('check_event_waitlist_attendee()'),
+        ('check_group_category_community()'),
+        ('check_group_parent_relationship()'),
+        ('check_group_region_community()'),
+        ('check_in_attendee_by_code(p_actor_user_id uuid, p_check_in_code uuid, p_community_id uuid, p_event_id uuid, p_group_id uuid)'),
+        ('check_in_event(p_actor_user_id uuid, p_community_id uuid, p_event_id uuid, p_user_id uuid)'),
+        ('check_payment_job_completion_outcome()'),
+        ('check_payment_job_domain_outcome()'),
+        ('check_session_cfs_submission_approved()'),
+        ('check_session_within_event_bounds()'),
+        ('claim_badge_award_job()'),
+        ('claim_meeting_for_auto_end()'),
+        ('claim_meeting_out_of_sync()'),
+        ('claim_payment_job(p_kind text, p_payment_provider_id text)'),
+        ('claim_pending_notification(p_delivery_rate_limit integer, p_delivery_rate_limit_window_seconds integer)'),
+        ('cleanup_badge_award_jobs(p_retention_seconds bigint)'),
+        ('close_event_cohosts(p_actor_user_id uuid, p_event_id uuid, p_status text)'),
+        ('close_event_enrollment(p_actor_user_id uuid, p_event_id uuid)'),
+        ('close_inbox_conversation(p_actor_user_id uuid, p_group_id uuid, p_inbox_conversation_id uuid)'),
+        ('community_contact_filter_values(p_filters jsonb)'),
+        ('community_contact_group_labels(p_community_id uuid)'),
+        ('community_contact_groups(p_community_id uuid)'),
+        ('community_contact_team_seats(p_community_id uuid, p_filters jsonb)'),
+        ('complete_event_purchase_admission_offer(p_admission_offer_id uuid)'),
+        ('complete_event_purchase_refund_recovery(p_actor_user_id uuid, p_group_id uuid, p_event_purchase_refund_id uuid, p_recovery_reference text, p_recovery_note text, p_notification_template_data jsonb, p_configured_provider text)'),
+        ('complete_external_event_purchase(p_actor_user_id uuid, p_group_id uuid, p_event_purchase_id uuid, p_details text, p_notification_attachments jsonb, p_notification_template_data jsonb)'),
+        ('complete_free_event_purchase(p_event_purchase_id uuid)'),
+        ('complete_payment_job(p_payment_job_id uuid, p_claim_id uuid)'),
+        ('complete_payment_job_recovery(p_actor_user_id uuid, p_group_id uuid, p_payment_job_id uuid, p_provider_object_id text, p_recovery_reference text, p_recovery_note text)'),
+        ('confirm_event_purchase_attendee(p_event_id uuid, p_user_id uuid, p_manually_invited boolean)'),
+        ('count_group_open_inbox_conversations(p_group_id uuid)'),
+        ('count_user_unanswered_event_surveys(p_user_id uuid)'),
+        ('deactivate_group(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid)'),
+        ('decline_event_admission_offer(p_actor_user_id uuid, p_admission_offer_id uuid, p_configured_provider text)'),
+        ('delete_badge(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid, p_badge_id uuid)'),
+        ('delete_badge_artwork(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid, p_badge_artwork_id uuid)'),
+        ('delete_community_team_member(p_actor_user_id uuid, p_community_id uuid, p_user_id uuid)'),
+        ('delete_event(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid)'),
+        ('delete_event_category(p_actor_user_id uuid, p_community_id uuid, p_event_category_id uuid)'),
+        ('delete_event_series_events(p_actor_user_id uuid, p_group_id uuid, p_event_ids uuid[])'),
+        ('delete_event_survey(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_event_survey_id uuid)'),
+        ('delete_group(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid)'),
+        ('delete_group_category(p_actor_user_id uuid, p_community_id uuid, p_group_category_id uuid)'),
+        ('delete_group_sponsor(p_actor_user_id uuid, p_group_id uuid, p_group_sponsor_id uuid)'),
+        ('delete_group_team_member(p_actor_user_id uuid, p_group_id uuid, p_user_id uuid)'),
+        ('delete_meeting(p_meeting_id uuid, p_event_id uuid, p_session_id uuid, p_sync_claimed_at timestamp with time zone, p_sync_state_hash text)'),
+        ('delete_region(p_actor_user_id uuid, p_community_id uuid, p_region_id uuid)'),
+        ('delete_session_proposal(p_actor_user_id uuid, p_session_proposal_id uuid)'),
+        ('describe_community_contact_filters(p_community_id uuid, p_filters jsonb)'),
+        ('enqueue_due_event_reminders(p_base_url text)'),
+        ('enqueue_due_event_survey_notifications()'),
+        ('enqueue_notification(p_kind text, p_template_data jsonb, p_attachments jsonb, p_recipients uuid[], p_group_ids uuid[])'),
+        ('enqueue_payment_job(p_kind text, p_payment_provider_id text, p_event_purchase_id uuid, p_idempotency_key text)'),
+        ('enqueue_tracked_community_custom_notification(p_community_id uuid, p_created_by uuid, p_filters jsonb, p_template_data jsonb, p_subject text, p_body text)'),
+        ('enqueue_tracked_custom_notification(p_kind text, p_template_data jsonb, p_attachments jsonb, p_recipients uuid[], p_created_by uuid, p_community_id uuid, p_event_id uuid, p_group_id uuid, p_recipient_count integer, p_subject text, p_body text, p_recipient_filters jsonb)'),
+        ('ensure_event_is_active(p_community_id uuid, p_event_id uuid)'),
+        ('ensure_event_purchase_refund_claim(p_refund event_purchase_refund, p_job payment_job, p_expected_claim_id uuid)'),
+        ('epoch_seconds(p_timestamp timestamp with time zone)'),
+        ('escape_ilike_pattern(p_value text)'),
+        ('event_accepts_enrollment(p_event event, p_group "group")'),
+        ('event_cohosts_json(p_event_id uuid)'),
+        ('event_discount_codes_configuration(p_discount_codes jsonb, p_stored_discount_codes jsonb)'),
+        ('event_effective_ends_at(p_event event)'),
+        ('event_has_pending_cohosts(p_event_id uuid)'),
+        ('event_has_pending_refund_recovery(p_event_id uuid, p_user_id uuid, p_excluded_event_purchase_id uuid)'),
+        ('event_labels_json(p_event_label_ids uuid[])'),
+        ('event_public_path(p_community_name text, p_group_slug text, p_group_slug_pretty text, p_event_slug text)'),
+        ('event_purchase_holds_seat(p_status text)'),
+        ('event_purchase_refund_to_json(p_refund event_purchase_refund, p_job payment_job)'),
+        ('event_survey_effective_opens_at(p_event_survey event_survey, p_event event)'),
+        ('event_survey_eligible_users(p_event_id uuid, p_audience text)'),
+        ('event_survey_matching_respondents(p_event_survey_id uuid, p_filters jsonb)'),
+        ('event_survey_response_details(p_event_survey_id uuid, p_user_id uuid)'),
+        ('event_survey_state(p_event_survey event_survey, p_event event)'),
+        ('event_survey_summary_json(p_event_survey event_survey, p_event event)'),
+        ('event_survey_text_answers(p_event_survey_id uuid)'),
+        ('event_ticket_type_current_price(p_event_ticket_type_id uuid)'),
+        ('event_ticket_types_configuration(p_ticket_types jsonb)'),
+        ('event_ticketing_configuration_changed(p_community_id uuid, p_group_id uuid, p_event_id uuid, p_event jsonb)'),
+        ('event_user_enrollment(p_event_id uuid, p_user_id uuid)'),
+        ('event_user_enrollment_conflict(p_event_id uuid, p_user_id uuid, p_admission_offer_id uuid)'),
+        ('event_venue_snapshot(p_event event)'),
+        ('expire_event_checkout_holds(p_event event, p_group "group", p_theme jsonb)'),
+        ('expire_event_purchase_for_checkout_session(p_provider text, p_provider_object_account_id text, p_provider_session_id text)'),
+        ('external_payment_notification_payload(p_event event, p_group "group", p_purchase event_purchase, p_theme jsonb)'),
+        ('filter_notification_recipient_ids(p_kind text, p_recipients uuid[], p_group_ids uuid[])'),
+        ('finalize_event_purchase_refund(p_event_purchase_refund_id uuid, p_claim_id uuid, p_notification_template_data jsonb, p_configured_provider text)'),
+        ('generate_slug(p_length integer)'),
+        ('generate_slug_from_source(p_source text, p_length integer)'),
+        ('get_auth_session(p_auth_session_id text)'),
+        ('get_badge_status_list(p_badge_status_list_id uuid)'),
+        ('get_cfs_submission_notification_data(p_event_id uuid, p_cfs_submission_id uuid)'),
+        ('get_community_contact_recipients_summary(p_community_id uuid, p_filters jsonb)'),
+        ('get_community_full(p_community_id uuid)'),
+        ('get_community_id_by_name(p_name text)'),
+        ('get_community_recently_added_groups(p_community_id uuid)'),
+        ('get_community_site_stats(p_community_id uuid)'),
+        ('get_community_stats(p_community_id uuid)'),
+        ('get_community_summary(p_community_id uuid)'),
+        ('get_community_upcoming_events(p_community_id uuid, p_event_kind_ids text[])'),
+        ('get_event_analytics(p_group_id uuid, p_event_id uuid)'),
+        ('get_event_cohost_notification_data(p_items jsonb)'),
+        ('get_event_delete_eligibility(p_group_id uuid, p_event_id uuid)'),
+        ('get_event_enrollment(p_community_id uuid, p_event_id uuid, p_user_id uuid)'),
+        ('get_event_full(p_community_id uuid, p_group_id uuid, p_event_id uuid)'),
+        ('get_event_full_by_slug(p_community_id uuid, p_group_slug text, p_event_slug text)'),
+        ('get_event_meeting_sync_state_hash(p_event_id uuid)'),
+        ('get_event_occupied_seat_count(p_event_id uuid)'),
+        ('get_event_purchase_notification_context(p_group_id uuid, p_event_purchase_id uuid)'),
+        ('get_event_purchase_refund(p_event_purchase_id uuid)'),
+        ('get_event_purchase_refund_recovery_context(p_group_id uuid, p_event_purchase_id uuid)'),
+        ('get_event_registration_questions(p_community_id uuid, p_event_id uuid)'),
+        ('get_event_summary(p_community_id uuid, p_group_id uuid, p_event_id uuid)'),
+        ('get_event_summary_by_id(p_community_id uuid, p_event_id uuid)'),
+        ('get_event_summary_dashboard(p_community_id uuid, p_group_id uuid, p_event_id uuid)'),
+        ('get_event_survey(p_group_id uuid, p_event_id uuid, p_event_survey_id uuid)'),
+        ('get_event_survey_export(p_group_id uuid, p_event_id uuid, p_event_survey_id uuid, p_max_rows integer, p_max_bytes bigint)'),
+        ('get_event_survey_response(p_group_id uuid, p_event_id uuid, p_event_survey_id uuid, p_user_id uuid, p_filters jsonb)'),
+        ('get_event_survey_results(p_group_id uuid, p_event_id uuid, p_event_survey_id uuid)'),
+        ('get_event_ticket_capacity(p_ticket_types jsonb)'),
+        ('get_event_ticket_type_allocated_seat_count(p_event_id uuid, p_event_ticket_type_id uuid)'),
+        ('get_event_utm_allowlist(p_event_id uuid)'),
+        ('get_filters_options(p_community_name text, p_entity_kind text)'),
+        ('get_group_external_payments_context(p_community_id uuid, p_group_id uuid)'),
+        ('get_group_external_payments_eligibility(p_community_id uuid, p_group_id uuid, p_country_code text)'),
+        ('get_group_full(p_community_id uuid, p_group_id uuid)'),
+        ('get_group_full_by_slug(p_community_id uuid, p_group_slug text)'),
+        ('get_group_inbox_conversation(p_group_id uuid, p_inbox_conversation_id uuid)'),
+        ('get_group_past_events(p_community_id uuid, p_group_slug text, p_event_kind_ids text[], p_limit integer)'),
+        ('get_group_sponsor(p_group_sponsor_id uuid, p_group_id uuid)'),
+        ('get_group_stats(p_community_id uuid, p_group_id uuid, p_include_subgroups boolean)'),
+        ('get_group_summary(p_community_id uuid, p_group_id uuid)'),
+        ('get_group_upcoming_events(p_community_id uuid, p_group_slug text, p_event_kind_ids text[], p_limit integer)'),
+        ('get_group_utm_settings(p_community_id uuid, p_group_id uuid)'),
+        ('get_inbox_contact_context(p_community_id uuid, p_event_id uuid, p_user_id uuid)'),
+        ('get_public_event_full(p_community_id uuid, p_group_id uuid, p_event_id uuid)'),
+        ('get_public_event_summary(p_event_id uuid)'),
+        ('get_public_group_summary(p_group_id uuid)'),
+        ('get_public_user_badge(p_user_badge_id uuid)'),
+        ('get_public_user_provider(p_provider jsonb)'),
+        ('get_session_meeting_sync_state_hash(p_session_id uuid)'),
+        ('get_site_home_stats()'),
+        ('get_site_recently_added_groups()'),
+        ('get_site_settings()'),
+        ('get_site_stats()'),
+        ('get_site_upcoming_events(p_event_kind_ids text[])'),
+        ('get_user_badge(p_user_id uuid, p_user_badge_id uuid)'),
+        ('get_user_by_email(p_email text)'),
+        ('get_user_by_email_for_external_auth(p_email text)'),
+        ('get_user_by_id(p_user_id uuid, p_include_password boolean)'),
+        ('get_user_by_id_verified(p_user_id uuid)'),
+        ('get_user_by_linuxfoundation_identity_for_external_auth(p_issuer text, p_subject text)'),
+        ('get_user_by_username(p_username text)'),
+        ('get_user_check_in_code(p_event_id uuid, p_user_id uuid)'),
+        ('get_user_event_survey(p_event_survey_id uuid, p_user_id uuid)'),
+        ('get_user_inbox_conversation(p_user_id uuid, p_inbox_conversation_id uuid)'),
+        ('get_user_notification_preferences(p_user_id uuid)'),
+        ('get_user_purchase_document_context(p_user_id uuid, p_event_purchase_id uuid, p_event_purchase_credit_note_id uuid)'),
+        ('get_worker_queue_health()'),
+        ('group_belongs_to_community(p_community_id uuid, p_group_id uuid)'),
+        ('group_has_active_subgroups(p_community_id uuid, p_group_id uuid)'),
+        ('group_has_child_links(p_community_id uuid, p_group_id uuid)'),
+        ('group_has_event(p_group_id uuid, p_event_id uuid)'),
+        ('group_requires_automatic_tax_readiness(p_community_id uuid, p_group_id uuid)'),
+        ('i_array_to_string(text[], text)'),
+        ('inbox_conversation_json(p_inbox_conversation_id uuid)'),
+        ('inbox_user_rate_limits(p_user_id uuid, p_now timestamp with time zone)'),
+        ('insert_audit_log(p_action text, p_actor_user_id uuid, p_resource_type text, p_resource_id uuid, p_community_id uuid, p_group_id uuid, p_event_id uuid, p_details jsonb, p_created_at timestamp with time zone)'),
+        ('insert_event_cohost_audit(p_action text, p_actor_user_id uuid, p_event_id uuid, p_owner_group_id uuid, p_cohost_group_id uuid, p_invitation_id uuid, p_from_status text, p_to_status text)'),
+        ('invite_event_attendee(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_user_id uuid, p_email text, p_event_ticket_type_id uuid, p_configured_provider text)'),
+        ('is_badge_image(p_file_name text)'),
+        ('is_country_external_payments_allowlisted(p_country_code text)'),
+        ('is_event_enrollment_superseded(p_event_id uuid, p_user_id uuid, p_source text, p_since timestamp with time zone)'),
+        ('is_event_external_payments_ready(p_event_id uuid)'),
+        ('is_event_meeting_in_sync(p_before event, p_after jsonb)'),
+        ('is_event_paid_capable(p_event_id uuid)'),
+        ('is_event_public(p_event event, p_group "group")'),
+        ('is_event_simple_rsvp(p_event_id uuid)'),
+        ('is_event_survey_public(p_event_survey event_survey, p_event event, p_group "group", p_community community)'),
+        ('is_event_ticketing_payload_paid_capable(p_ticket_types jsonb)'),
+        ('is_group_external_payments_ready(p_group_id uuid)'),
+        ('is_group_external_payments_selected(p_group_id uuid)'),
+        ('is_group_member(p_community_id uuid, p_group_id uuid, p_user_id uuid)'),
+        ('is_group_public(p_group "group")'),
+        ('is_inbox_user_blocked(p_group_id uuid, p_user_id uuid)'),
+        ('is_open_graph_image(p_image_url text)'),
+        ('is_registration_window_open(p_registration_starts_at timestamp with time zone, p_registration_ends_at timestamp with time zone, p_event_starts_at timestamp with time zone)'),
+        ('is_session_meeting_in_sync(p_before_session session, p_after_session jsonb, p_before_event event, p_after_event jsonb)'),
+        ('is_valid_utm_value_list(p_values text[])'),
+        ('join_group(p_community_id uuid, p_group_id uuid, p_user_id uuid)'),
+        ('jsonb_geography_point(p_value jsonb)'),
+        ('jsonb_text_array(p_value jsonb)'),
+        ('leave_event(p_community_id uuid, p_event_id uuid, p_user_id uuid, p_configured_provider text)'),
+        ('leave_group(p_community_id uuid, p_group_id uuid, p_user_id uuid)'),
+        ('list_awarded_badges(p_group_id uuid, p_filters jsonb)'),
+        ('list_badge_artwork(p_group_id uuid)'),
+        ('list_badges(p_group_id uuid, p_filters jsonb)'),
+        ('list_cfs_submission_statuses_for_review()'),
+        ('list_cohost_group_options(p_community_id uuid, p_exclude_group_id uuid)'),
+        ('list_communities()'),
+        ('list_community_admin_ids(p_community_id uuid)'),
+        ('list_community_audit_logs(p_community_id uuid, p_filters jsonb)'),
+        ('list_community_contact_filter_options(p_community_id uuid)'),
+        ('list_community_groups(p_community_id uuid, p_filters jsonb)'),
+        ('list_community_roles()'),
+        ('list_community_team_members(p_community_id uuid, p_filters jsonb)'),
+        ('list_event_approved_cfs_submissions(p_event_id uuid)'),
+        ('list_event_attendees_ids(p_group_id uuid, p_event_id uuid, p_checked_in_only boolean)'),
+        ('list_event_categories(p_community_id uuid)'),
+        ('list_event_cfs_submissions(p_event_id uuid, p_filters jsonb)'),
+        ('list_event_cohosts(p_group_id uuid, p_event_id uuid)'),
+        ('list_event_discount_codes(p_event_id uuid)'),
+        ('list_event_kinds()'),
+        ('list_event_labels(p_event_id uuid)'),
+        ('list_event_series_cancelable_event_ids(p_group_id uuid, p_event_id uuid)'),
+        ('list_event_series_event_ids(p_group_id uuid, p_event_id uuid)'),
+        ('list_event_series_publishable_event_ids(p_group_id uuid, p_event_id uuid)'),
+        ('list_event_survey_responses(p_group_id uuid, p_event_id uuid, p_event_survey_id uuid, p_filters jsonb)'),
+        ('list_event_survey_text_answers(p_group_id uuid, p_event_id uuid, p_event_survey_id uuid, p_question_id uuid, p_filters jsonb)'),
+        ('list_event_surveys(p_group_id uuid, p_event_id uuid)'),
+        ('list_event_ticket_types(p_event_id uuid)'),
+        ('list_event_waitlist_ids(p_group_id uuid, p_event_id uuid)'),
+        ('list_group_admin_ids(p_group_id uuid)'),
+        ('list_group_audit_logs(p_group_id uuid, p_filters jsonb)'),
+        ('list_group_automatic_tax_readiness_event_ids(p_community_id uuid, p_group_id uuid)'),
+        ('list_group_categories(p_community_id uuid)'),
+        ('list_group_check_in_events(p_group_id uuid)'),
+        ('list_group_cohosted_events(p_group_id uuid, p_filters jsonb)'),
+        ('list_group_events(p_group_id uuid, p_filters jsonb)'),
+        ('list_group_inbox_conversations(p_group_id uuid, p_filters jsonb)'),
+        ('list_group_members(p_group_id uuid, p_filters jsonb)'),
+        ('list_group_members_ids(p_group_id uuid)'),
+        ('list_group_organizers(p_group_id uuid)'),
+        ('list_group_page_events(p_community_id uuid, p_group_slug text, p_event_kind_ids text[])'),
+        ('list_group_parent_options(p_community_id uuid, p_user_id uuid, p_group_id uuid)'),
+        ('list_group_refunds(p_group_id uuid, p_filters jsonb)'),
+        ('list_group_roles()'),
+        ('list_group_sponsors(p_group_id uuid, p_filters jsonb, p_full_list boolean)'),
+        ('list_group_team_members(p_group_id uuid, p_filters jsonb)'),
+        ('list_group_team_members_ids(p_group_id uuid)'),
+        ('list_inbox_recipient_ids(p_group_id uuid)'),
+        ('list_payment_currency_codes()'),
+        ('list_public_event_ticket_types(p_event_id uuid)'),
+        ('list_redirect_communities()'),
+        ('list_redirects()'),
+        ('list_regions(p_community_id uuid)'),
+        ('list_session_kinds()'),
+        ('list_session_proposal_levels()'),
+        ('list_user_audit_logs(p_actor_user_id uuid, p_filters jsonb)'),
+        ('list_user_badges(p_user_id uuid)'),
+        ('list_user_cfs_submissions(p_user_id uuid, p_filters jsonb)'),
+        ('list_user_check_in_events(p_user_id uuid)'),
+        ('list_user_communities(p_user_id uuid)'),
+        ('list_user_community_team_invitations(p_user_id uuid)'),
+        ('list_user_dashboard_groups(p_user_id uuid, p_filters jsonb)'),
+        ('list_user_event_invitations(p_user_id uuid)'),
+        ('list_user_event_surveys(p_user_id uuid, p_filters jsonb)'),
+        ('list_user_events(p_user_id uuid, p_filters jsonb)'),
+        ('list_user_group_team_invitations(p_user_id uuid)'),
+        ('list_user_groups(p_user_id uuid)'),
+        ('list_user_inbox_conversations(p_user_id uuid, p_filters jsonb)'),
+        ('list_user_notification_group_ids(p_user_id uuid)'),
+        ('list_user_notification_group_options(p_user_id uuid)'),
+        ('list_user_pending_session_proposal_co_speaker_invitations(p_user_id uuid)'),
+        ('list_user_public_badges(p_username text, p_limit integer, p_offset integer)'),
+        ('list_user_purchase_documents(p_user_id uuid, p_filters jsonb)'),
+        ('list_user_session_proposals(p_user_id uuid, p_filters jsonb)'),
+        ('list_user_session_proposals_for_cfs_event(p_user_id uuid, p_event_id uuid)'),
+        ('load_checkout_context(p_event_id uuid)'),
+        ('lock_active_event(p_community_id uuid, p_group_id uuid, p_event_id uuid, p_require_published boolean)'),
+        ('lock_active_group(p_community_id uuid, p_group_id uuid)'),
+        ('lock_event_cohost_groups(p_group_id uuid, p_cohost_group_ids uuid[])'),
+        ('lock_event_enrollment_rows(p_event_id uuid, p_event_ticket_type_id uuid, p_user_id uuid)'),
+        ('lock_event_for_surveys(p_group_id uuid, p_event_id uuid)'),
+        ('lock_event_survey(p_event_id uuid, p_event_survey_id uuid)'),
+        ('lock_events_for_cancellation(p_group_id uuid, p_event_ids uuid[])'),
+        ('lock_group_events(p_group_id uuid, p_event_ids uuid[])'),
+        ('manual_requeue_notifications(p_notification_ids uuid[], p_reason text)'),
+        ('mark_event_purchase_refund_pending(p_purchase event_purchase, p_provider_payment_reference text)'),
+        ('mark_inbox_conversation_as_spam(p_actor_user_id uuid, p_group_id uuid, p_inbox_conversation_id uuid)'),
+        ('mark_notification_delivery_unknown(p_notification_id uuid, p_error text, p_delivery_claimed_at timestamp with time zone)'),
+        ('mark_stale_meeting_auto_end_checks_unknown(p_processing_timeout_seconds bigint)'),
+        ('mark_stale_meeting_syncs_unknown(p_processing_timeout_seconds bigint)'),
+        ('mark_stale_processing_notifications_unknown(p_processing_timeout_seconds bigint)'),
+        ('mute_user_group_notifications(p_actor_user_id uuid, p_group_id uuid)'),
+        ('normalize_ticketing_schedule(p_schedule jsonb)'),
+        ('opt_out_user_from_optional_notifications(p_email text, p_reason text)'),
+        ('parse_search_filters(p_filters jsonb)'),
+        ('payment_job_is_exhausted(p_job payment_job)'),
+        ('payment_job_is_ready(p_job payment_job)'),
+        ('payment_job_max_attempts()'),
+        ('payment_job_payload(p_job payment_job)'),
+        ('payment_job_retry_delay(p_attempt_count integer)'),
+        ('payment_job_to_json(p_job payment_job)'),
+        ('prefix_tsquery(p_config regconfig, p_query text)'),
+        ('prepare_event_checkout_expire_previous_hold(p_event_purchase_id uuid)'),
+        ('prepare_event_checkout_find_existing_purchase(p_event_id uuid, p_event_ticket_type_id uuid, p_user_id uuid, p_discount_code text, p_admission_offer_id uuid)'),
+        ('prepare_event_checkout_get_purchase_summary(p_event_purchase_id uuid)'),
+        ('prepare_event_checkout_lookup_tax_cache(p_payment_provider_id text, p_connected_seller_id text, p_venue_snapshot jsonb, p_ticket_title text)'),
+        ('prepare_event_checkout_purchase(p_community_id uuid, p_event_id uuid, p_event_ticket_type_id uuid, p_user_id uuid, p_discount_code text, p_configured_provider text, p_registration_answers jsonb, p_admission_offer_id uuid, p_platform_fee_bps integer)'),
+        ('prepare_event_checkout_reserve_discount_code_availability(p_event_discount_code_id uuid)'),
+        ('prepare_event_checkout_resolve_offer_pricing(p_admission_offer admission_offer, p_discount_code text)'),
+        ('prepare_event_checkout_validate_and_resolve_pricing(p_event_id uuid, p_event_ticket_type_id uuid, p_user_id uuid, p_discount_code text, p_admission_offer_id uuid)'),
+        ('prepare_event_checkout_validate_attendee_state(p_event_id uuid, p_user_id uuid)'),
+        ('prepare_event_checkout_validate_event(p_community_id uuid, p_event_id uuid)'),
+        ('prevent_audit_log_mutation()'),
+        ('prevent_user_badge_revocation_reversal()'),
+        ('process_badge_award_job_batch(p_badge_award_job_id uuid, p_claim_id uuid, p_batch_size integer, p_rate_limit integer)'),
+        ('promote_event_waitlist_entries(p_event event, p_group "group", p_event_ticket_type_id uuid, p_configured_provider text, p_theme jsonb)'),
+        ('public_user_summary(p_user "user")'),
+        ('publish_event(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_configured_provider text, p_payment_validation jsonb)'),
+        ('publish_event_series_events(p_actor_user_id uuid, p_group_id uuid, p_event_ids uuid[], p_configured_provider text, p_payment_validation jsonb)'),
+        ('questionnaire_answer_entries(p_answers jsonb)'),
+        ('questionnaire_answer_has_value(p_value jsonb)'),
+        ('questionnaire_answer_selections(p_answers jsonb)'),
+        ('questionnaire_answers_exist_for_event(p_event_id uuid)'),
+        ('questionnaire_option_breakdowns(p_questions jsonb, p_selections jsonb)'),
+        ('queue_event_refund_request_approval(p_actor_user_id uuid, p_group_id uuid, p_event_purchase_id uuid, p_review_note text)'),
+        ('reconcile_event_admission_offers(p_event event, p_group "group")'),
+        ('reconcile_event_enrollment(p_event_id uuid, p_event_ticket_type_id uuid, p_configured_provider text)'),
+        ('reconcile_event_purchase_for_checkout_session(p_provider text, p_provider_object_account_id text, p_provider_session_id text, p_provider_payment_reference text, p_provider_charge_id text, p_provider_total_minor bigint, p_tax_amount_minor bigint, p_provider_application_fee_id text)'),
+        ('reconcile_next_event_enrollment(p_configured_provider text)'),
+        ('record_badge_award_job_failure(p_badge_award_job_id uuid, p_claim_id uuid, p_error text, p_max_failures integer)'),
+        ('record_direct_charge_checkout_amounts(p_purchase event_purchase, p_provider_charge_id text, p_provider_application_fee_id text, p_provider_total_minor bigint, p_tax_amount_minor bigint)'),
+        ('record_event_purchase_application_fee_adjustment_succeeded(p_adjustment_id uuid, p_claim_id uuid, p_provider_application_fee_refund_id text)'),
+        ('record_event_purchase_credit_note_succeeded(p_credit_note_id uuid, p_claim_id uuid, p_provider_credit_note_id text, p_provider_hosted_url text, p_provider_pdf_url text)'),
+        ('record_event_purchase_refund_pending(p_event_purchase_refund_id uuid, p_expected_idempotency_key text, p_provider_refund_id text, p_expected_claim_id uuid)'),
+        ('record_event_purchase_refund_succeeded(p_event_purchase_refund_id uuid, p_expected_idempotency_key text, p_provider_refund_id text, p_expected_claim_id uuid)'),
+        ('record_event_purchase_refund_terminal_failed(p_event_purchase_refund_id uuid, p_expected_idempotency_key text, p_provider_refund_id text, p_failure_message text, p_expected_claim_id uuid)'),
+        ('record_payment_job_failure(p_payment_job_id uuid, p_claim_id uuid, p_failure_message text)'),
+        ('record_payment_job_recovery(p_payment_job_id uuid, p_actor_user_id uuid, p_recovery_reference text, p_recovery_note text)'),
+        ('recover_stale_badge_award_jobs(p_processing_timeout_seconds bigint, p_max_failures integer)'),
+        ('refresh_user_badge_identity(p_user_id uuid, p_user_badge_id uuid)'),
+        ('refund_free_event_purchase(p_event_purchase_id uuid)'),
+        ('registration_window_closes_at(p_registration_starts_at timestamp with time zone, p_registration_ends_at timestamp with time zone, p_event_starts_at timestamp with time zone)'),
+        ('reject_community_team_invitation(p_actor_user_id uuid, p_community_id uuid)'),
+        ('reject_event_cohost(p_actor_user_id uuid, p_cohost_group_id uuid, p_invitation_id uuid)'),
+        ('reject_event_invitation_request(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_user_id uuid)'),
+        ('reject_event_refund_request(p_actor_user_id uuid, p_group_id uuid, p_event_purchase_id uuid, p_review_note text)'),
+        ('reject_group_team_invitation(p_actor_user_id uuid, p_group_id uuid)'),
+        ('reject_session_proposal_co_speaker_invitation(p_actor_user_id uuid, p_session_proposal_id uuid)'),
+        ('release_event_checkout_attendee_hold(p_event_id uuid, p_user_id uuid)'),
+        ('release_event_discount_code_availability(p_event_discount_code_id uuid, p_quantity integer)'),
+        ('release_meeting_auto_end_check_claim(p_claimed_at timestamp with time zone, p_meeting_id uuid)'),
+        ('release_meeting_sync(p_event_id uuid, p_session_id uuid, p_sync_claimed_at timestamp with time zone, p_sync_state_hash text, p_error text)'),
+        ('release_meeting_sync_claim(p_event_id uuid, p_meeting_id uuid, p_session_id uuid, p_sync_claimed_at timestamp with time zone)'),
+        ('release_notification(p_notification_id uuid, p_delivery_claimed_at timestamp with time zone)'),
+        ('remind_event_external_payment_holds(p_event event, p_group "group", p_theme jsonb)'),
+        ('request_event_refund(p_community_id uuid, p_event_id uuid, p_user_id uuid, p_requested_reason text, p_notification_template_data jsonb)'),
+        ('requeue_badge_award_job(p_badge_award_job_id uuid)'),
+        ('requeue_notification(p_notification_id uuid, p_error text, p_base_retry_after_seconds bigint, p_max_retry_after_seconds bigint, p_max_delivery_attempts integer, p_delivery_claimed_at timestamp with time zone)'),
+        ('requeue_payment_job(p_group_id uuid, p_payment_job_id uuid)'),
+        ('requeue_stale_payment_job_claims()'),
+        ('resolve_event_custom_notification_recipient_ids(p_group_id uuid, p_event_id uuid, p_recipient_scope text, p_requested_user_ids uuid[])'),
+        ('resolve_event_discount_code_available_override(p_discount_code jsonb, p_previous_override_active boolean)'),
+        ('resolve_event_payload(p_event jsonb, p_before event, p_group_external_selected boolean, p_group_external_ready boolean)'),
+        ('resolve_event_payment_rail(p_resolved event, p_ticket_types jsonb, p_group_external_selected boolean, p_group_external_ready boolean)'),
+        ('resolve_inbox_contact_event(p_community_id uuid, p_event_id uuid)'),
+        ('resolve_organizer_offer_expiry(p_event event)'),
+        ('resolve_unique_username(p_base_username text, p_excluded_user_id uuid)'),
+        ('resubmit_cfs_submission(p_actor_user_id uuid, p_cfs_submission_id uuid)'),
+        ('revoke_group_user_badge(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid, p_user_badge_id uuid, p_reason text)'),
+        ('revoke_user_badge(p_actor_user_id uuid, p_user_badge_id uuid)'),
+        ('revoke_user_badges_on_user_delete()'),
+        ('rotate_event_attendee_check_in_code()'),
+        ('search_bbox_envelope(p_filters jsonb)'),
+        ('search_bbox_json(p_extent geometry)'),
+        ('search_event_attendees(p_group_id uuid, p_event_id uuid, p_filters jsonb)'),
+        ('search_event_invitation_requests(p_group_id uuid, p_event_id uuid, p_filters jsonb)'),
+        ('search_event_waitlist(p_group_id uuid, p_event_id uuid, p_filters jsonb)'),
+        ('search_events(p_filters jsonb)'),
+        ('search_events_matches(p_filters jsonb)'),
+        ('search_events_minimal(p_filters jsonb, p_limit integer)'),
+        ('search_groups(p_filters jsonb)'),
+        ('search_groups_matches(p_filters jsonb)'),
+        ('search_groups_minimal(p_filters jsonb, p_limit integer)'),
+        ('search_inbox_conversations(p_group_id uuid, p_user_id uuid, p_filters jsonb)'),
+        ('search_user(p_query text)'),
+        ('set_meeting_auto_end_check_outcome(p_claimed_at timestamp with time zone, p_meeting_id uuid, p_outcome text)'),
+        ('set_meeting_error(p_error text, p_event_id uuid, p_meeting_id uuid, p_session_id uuid, p_sync_claimed_at timestamp with time zone, p_sync_state_hash text)'),
+        ('sign_up_user(p_user jsonb, p_email_verified boolean, p_verification_code uuid, p_verification_template_data jsonb)'),
+        ('site_theme()'),
+        ('start_inbox_conversation(p_actor_user_id uuid, p_community_id uuid, p_event_id uuid, p_body text)'),
+        ('stats_day_count_series(p_start_day date, p_end_day date, p_counts jsonb)'),
+        ('stats_event_audience(p_event event)'),
+        ('stats_event_check_ins(p_event event)'),
+        ('stats_event_enrollment(p_event event)'),
+        ('stats_event_surveys(p_event event)'),
+        ('stats_event_tickets(p_event event)'),
+        ('stats_event_traffic(p_event event, p_start_day date, p_end_day date)'),
+        ('stats_event_utm(p_event event)'),
+        ('stats_label_count_series(p_counts jsonb)'),
+        ('stats_label_count_series_by_name(p_counts jsonb)'),
+        ('stats_running_total_series(p_counts jsonb)'),
+        ('stats_running_total_series_by_name(p_counts jsonb)'),
+        ('submit_event_registration_answers(p_actor_user_id uuid, p_community_id uuid, p_event_id uuid, p_registration_answers jsonb)'),
+        ('submit_event_survey_response(p_event_survey_id uuid, p_user_id uuid, p_expected_revision bigint, p_answers jsonb)'),
+        ('sync_cfs_submission_labels(p_cfs_submission_id uuid, p_event_id uuid, p_label_ids uuid[])'),
+        ('sync_event_capacity_from_ticket_types()'),
+        ('sync_event_cohosts(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_cohost_group_ids uuid[], p_expected_revision integer)'),
+        ('sync_event_discount_codes(p_event_id uuid, p_discount_codes jsonb)'),
+        ('sync_event_hosts_speakers_sponsors(p_event_id uuid, p_event jsonb)'),
+        ('sync_event_labels(p_event_id uuid, p_labels jsonb)'),
+        ('sync_event_organizers(p_event_id uuid, p_organizers jsonb)'),
+        ('sync_event_sessions(p_event_id uuid, p_event jsonb, p_before event)'),
+        ('sync_event_ticket_types(p_event_id uuid, p_ticket_types jsonb)'),
+        ('sync_external_payments_config(p_allowed_countries text[], p_default_payment_window_hours integer, p_max_payment_window_hours integer)'),
+        ('sync_session_labels(p_session_id uuid, p_event_id uuid, p_label_ids uuid[])'),
+        ('track_custom_notification(p_created_by uuid, p_community_id uuid, p_event_id uuid, p_group_id uuid, p_recipient_count integer, p_subject text, p_body text, p_recipient_filters jsonb)'),
+        ('unmark_inbox_conversation_as_spam(p_actor_user_id uuid, p_group_id uuid, p_inbox_conversation_id uuid)'),
+        ('unmute_user_group_notifications(p_actor_user_id uuid, p_group_id uuid)'),
+        ('unpublish_event(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid)'),
+        ('unpublish_event_series_events(p_actor_user_id uuid, p_group_id uuid, p_event_ids uuid[])'),
+        ('update_badge(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid, p_badge_id uuid, p_badge jsonb)'),
+        ('update_cfs_submission(p_reviewer_id uuid, p_event_id uuid, p_cfs_submission_id uuid, p_submission jsonb)'),
+        ('update_community(p_actor_user_id uuid, p_community_id uuid, p_data jsonb)'),
+        ('update_community_team_member_role(p_actor_user_id uuid, p_community_id uuid, p_user_id uuid, p_role text)'),
+        ('update_community_views(p_data jsonb)'),
+        ('update_event(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_event jsonb, p_cfg_meeting_limits jsonb, p_configured_provider text)'),
+        ('update_event_category(p_actor_user_id uuid, p_community_id uuid, p_event_category_id uuid, p_event_category jsonb)'),
+        ('update_event_survey(p_actor_user_id uuid, p_group_id uuid, p_event_id uuid, p_event_survey_id uuid, p_expected_revision bigint, p_payload jsonb)'),
+        ('update_event_views(p_data jsonb)'),
+        ('update_event_views_utm(p_data jsonb)'),
+        ('update_group(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid, p_group jsonb)'),
+        ('update_group_category(p_actor_user_id uuid, p_community_id uuid, p_group_category_id uuid, p_group_category jsonb)'),
+        ('update_group_sponsor(p_actor_user_id uuid, p_group_id uuid, p_group_sponsor_id uuid, p_sponsor jsonb)'),
+        ('update_group_sponsor_featured(p_actor_user_id uuid, p_group_id uuid, p_group_sponsor_id uuid, p_featured boolean)'),
+        ('update_group_team_member_role(p_actor_user_id uuid, p_group_id uuid, p_user_id uuid, p_role text)'),
+        ('update_group_views(p_data jsonb)'),
+        ('update_meeting(p_meeting_id uuid, p_provider_meeting_id text, p_url text, p_password text, p_event_id uuid, p_session_id uuid, p_sync_claimed_at timestamp with time zone, p_sync_state_hash text)'),
+        ('update_notification(p_notification_id uuid, p_error text, p_delivery_claimed_at timestamp with time zone)'),
+        ('update_region(p_actor_user_id uuid, p_community_id uuid, p_region_id uuid, p_region jsonb)'),
+        ('update_session_proposal(p_actor_user_id uuid, p_session_proposal_id uuid, p_session_proposal jsonb)'),
+        ('update_user_badge_listing(p_actor_user_id uuid, p_user_badge_id uuid, p_is_listed boolean)'),
+        ('update_user_badges_order(p_actor_user_id uuid, p_user_badge_ids uuid[])'),
+        ('update_user_details(p_actor_user_id uuid, p_user jsonb)'),
+        ('update_user_external_auth(p_user_id uuid, p_user jsonb)'),
+        ('update_user_notification_preferences(p_actor_user_id uuid, p_preferences jsonb)'),
+        ('update_user_password(p_actor_user_id uuid, p_password text)'),
+        ('update_user_provider(p_user_id uuid, p_provider jsonb)'),
+        ('upsert_payment_provider_tax_location(p_payment_provider_id text, p_connected_seller_id text, p_fingerprint text, p_provider_tax_location_id text, p_venue_snapshot jsonb)'),
+        ('upsert_pending_registration_answers(p_event_id uuid, p_user_id uuid, p_registration_questions jsonb, p_registration_answers jsonb)'),
+        ('user_dashboard_event_surveys(p_user_id uuid)'),
+        ('user_has_community_permission(p_community_id uuid, p_user_id uuid, p_permission text)'),
+        ('user_has_group_permission(p_community_id uuid, p_group_id uuid, p_user_id uuid, p_permission text)'),
+        ('user_is_group_team_member(p_group_id uuid, p_user_id uuid)'),
+        ('users_accepting_notification(p_kind text, p_user_ids uuid[], p_group_ids uuid[])'),
+        ('validate_add_event_dates(p_event jsonb)'),
+        ('validate_admission_offer_payment_readiness(p_event event, p_group "group", p_amount_minor bigint, p_configured_provider text)'),
+        ('validate_community_contact_filters(p_community_id uuid, p_filters jsonb)'),
+        ('validate_direct_charge_checkout_amounts(p_purchase event_purchase, p_provider_total_minor bigint, p_tax_amount_minor bigint, p_provider_application_fee_id text)'),
+        ('validate_event_capacity(p_event jsonb, p_cfg_meeting_limits jsonb, p_existing_event_id uuid, p_effective_capacity integer)'),
+        ('validate_event_discount_codes_payload(p_discount_codes jsonb)'),
+        ('validate_event_enrollment_payload(p_attendee_approval_required boolean, p_waitlist_enabled boolean)'),
+        ('validate_event_label_ids(p_event_id uuid, p_label_ids uuid[])'),
+        ('validate_event_labels_payload(p_labels jsonb)'),
+        ('validate_event_meeting_durations(p_event jsonb, p_cfg_meeting_limits jsonb)'),
+        ('validate_event_payment_validation(p_event jsonb, p_payment_recipient jsonb, p_manual_tax_rate_ids text[], p_tax_behavior text, p_tax_calculation_mode text)'),
+        ('validate_event_purchase_refund_result(p_expected_idempotency_key text, p_provider_refund_id text)'),
+        ('validate_event_registration_window(p_registration_starts_at timestamp with time zone, p_registration_ends_at timestamp with time zone, p_event_starts_at timestamp with time zone)'),
+        ('validate_event_series_action_event_ids(p_group_id uuid, p_event_ids uuid[], p_require_not_canceled boolean)'),
+        ('validate_event_survey_payload(p_event event, p_payload jsonb)'),
+        ('validate_event_survey_revision(p_event_survey event_survey, p_expected_revision bigint)'),
+        ('validate_event_survey_schedule(p_event_survey event_survey, p_event event)'),
+        ('validate_event_ticket_types_payload(p_ticket_types jsonb)'),
+        ('validate_event_ticketing_payload(p_configured_provider text, p_discount_codes jsonb, p_payment_currency_code text, p_payment_recipient jsonb, p_ticket_types jsonb, p_validate_payment_configuration boolean, p_event_id uuid, p_event_payload jsonb)'),
+        ('validate_event_ticketing_payment_readiness(p_configured_provider text, p_paid_capable boolean, p_payment_currency_code text, p_payment_recipient jsonb, p_event_id uuid, p_event_payload jsonb, p_external_mode boolean, p_external_payment_url text, p_external_window_hours integer, p_group_country_code text)'),
+        ('validate_group_slug_pretty()'),
+        ('validate_payment_amount(p_payment_currency_code text, p_amount_minor bigint)'),
+        ('validate_payment_currency_code(p_payment_currency_code text)'),
+        ('validate_questionnaire_answers_payload(p_questions jsonb, p_answers jsonb)'),
+        ('validate_questionnaire_questions_payload(p_questions jsonb)'),
+        ('validate_update_event_dates(p_event jsonb, p_before event)'),
+        ('verify_email(p_code uuid)'),
+        ('withdraw_cfs_submission(p_actor_user_id uuid, p_cfs_submission_id uuid)')
+    $$,
+    'Public functions should match the expected signatures'
+);
+
+-- Test: update_event should return a boolean
 select function_returns(
     'update_event',
     array['uuid', 'uuid', 'uuid', 'jsonb', 'jsonb', 'text']::name[],
-    'boolean'
+    'boolean',
+    'Update event should return a boolean'
 );
-select has_function('update_event_category', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function(
-    'update_event_survey',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'bigint', 'jsonb']::name[]
-);
-select has_function('update_event_views', array['jsonb']::name[]);
-select has_function('update_event_views_utm', array['jsonb']::name[]);
-select has_function('update_group', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function('update_group_category', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function('update_group_sponsor', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function('update_group_sponsor_featured', array['uuid', 'uuid', 'uuid', 'boolean']::name[]);
-select has_function('update_group_team_member_role', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('update_group_views', array['jsonb']::name[]);
-select has_function('update_meeting', array['uuid', 'text', 'text', 'text', 'uuid', 'uuid', 'timestamp with time zone', 'text']::name[]);
-select has_function(
-    'update_notification',
-    array['uuid', 'text', 'timestamp with time zone']::name[]
-);
-select has_function('update_region', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
-select has_function('update_session_proposal', array['uuid', 'uuid', 'jsonb']::name[]);
-select has_function('update_user_badge_listing', array['uuid', 'uuid', 'boolean']::name[]);
-select has_function('update_user_badges_order', array['uuid', 'uuid[]']::name[]);
-select has_function('update_user_details', array['uuid', 'jsonb']::name[]);
-select has_function('update_user_external_auth', array['uuid', 'jsonb']::name[]);
-select has_function('update_user_notification_preferences', array['uuid', 'jsonb']::name[]);
-select has_function('update_user_password', array['uuid', 'text']::name[]);
-select has_function('update_user_provider', array['uuid', 'jsonb']::name[]);
-select has_function('upsert_payment_provider_tax_location', array['text', 'text', 'text', 'text', 'jsonb']::name[]);
-select has_function('upsert_pending_registration_answers', array['uuid', 'uuid', 'jsonb', 'jsonb']::name[]);
-select has_function('user_dashboard_event_surveys', array['uuid']::name[]);
-select has_function('user_has_community_permission', array['uuid', 'uuid', 'text']::name[]);
-select has_function('user_has_group_permission', array['uuid', 'uuid', 'uuid', 'text']::name[]);
-select has_function('user_is_group_team_member', array['uuid', 'uuid']::name[]);
-select has_function('users_accepting_notification', array['text', 'uuid[]', 'uuid[]']::name[]);
-select has_function('validate_add_event_dates', array['jsonb']::name[]);
-select has_function('validate_community_contact_filters', array['uuid', 'jsonb']::name[]);
-select has_function('validate_event_capacity', array['jsonb', 'jsonb', 'uuid', 'integer']::name[]);
-select has_function('validate_event_discount_codes_payload', array['jsonb']::name[]);
-select has_function('validate_event_enrollment_payload', array['boolean', 'boolean']::name[]);
-select has_function('validate_event_label_ids', array['uuid', 'uuid[]']::name[]);
-select has_function('validate_event_labels_payload', array['jsonb']::name[]);
-select has_function('validate_event_meeting_durations', array['jsonb', 'jsonb']::name[]);
-select has_function('validate_event_payment_validation', array['jsonb', 'jsonb', 'text[]', 'text', 'text']::name[]);
-select has_function('validate_event_series_action_event_ids', array['uuid', 'uuid[]', 'boolean']::name[]);
-select has_function('validate_event_survey_payload', array['event', 'jsonb']::name[]);
-select has_function('validate_event_survey_revision', array['event_survey', 'bigint']::name[]);
-select has_function('validate_event_survey_schedule', array['event_survey', 'event']::name[]);
-select has_function('validate_event_ticket_types_payload', array['jsonb']::name[]);
-select has_function(
-    'validate_event_ticketing_payload',
-    array['text', 'jsonb', 'text', 'jsonb', 'jsonb', 'boolean', 'uuid', 'jsonb']::name[]
-);
-select hasnt_function(
-    'validate_event_ticketing_payment_readiness',
-    array['text', 'boolean', 'text', 'jsonb', 'uuid', 'jsonb']::name[]
-);
-select has_function(
-    'validate_event_ticketing_payment_readiness',
-    array['text', 'boolean', 'text', 'jsonb', 'uuid', 'jsonb', 'boolean', 'text', 'integer', 'text']::name[]
-);
-select has_function('validate_payment_amount', array['text', 'bigint']::name[]);
-select has_function('validate_payment_currency_code', array['text']::name[]);
-select has_function('validate_questionnaire_answers_payload', array['jsonb', 'jsonb']::name[]);
-select has_function('validate_questionnaire_questions_payload', array['jsonb']::name[]);
-select has_function('validate_update_event_dates', array['jsonb', 'event']::name[]);
-select has_function('verify_email', array['uuid']::name[]);
-select has_function('withdraw_cfs_submission', array['uuid', 'uuid']::name[]);
-
--- Test: check expected trigger functions exist
-select hasnt_function(
-    'complete_non_ticketed_event_admission_offer',
-    array['uuid', 'uuid', 'uuid', 'jsonb', 'uuid']::name[]
-);
-select has_function('check_admission_offer_enrollment_state', '{}'::name[]);
-select has_function('check_admission_offer_lifecycle', '{}'::name[]);
-select has_function('check_event_attendee_waitlist', '{}'::name[]);
-select has_function('check_event_category_community', '{}'::name[]);
-select has_function('check_event_cohost_group', '{}'::name[]);
-select has_function('check_event_external_payment_url', '{}'::name[]);
-select has_function('check_event_has_ticket_type', '{}'::name[]);
-select has_function('check_event_sponsor_group', '{}'::name[]);
-select has_function('check_event_ticketing_consistency', '{}'::name[]);
-select has_function('check_event_purchase_admission_offer', '{}'::name[]);
-select has_function('check_event_waitlist_attendee', '{}'::name[]);
-select has_function('check_group_category_community', '{}'::name[]);
-select has_function('check_group_parent_relationship', '{}'::name[]);
-select has_function('check_group_region_community', '{}'::name[]);
-select has_function('check_payment_job_completion_outcome', '{}'::name[]);
-select has_function('check_payment_job_domain_outcome', '{}'::name[]);
-select has_function('check_session_cfs_submission_approved', '{}'::name[]);
-select has_function('check_session_within_event_bounds', '{}'::name[]);
-select has_function('prevent_audit_log_mutation', '{}'::name[]);
-select has_function('prevent_user_badge_revocation_reversal', '{}'::name[]);
-select has_function('revoke_user_badges_on_user_delete', '{}'::name[]);
-select has_function('rotate_event_attendee_check_in_code', '{}'::name[]);
-select has_function('sync_event_capacity_from_ticket_types', '{}'::name[]);
-select has_function('validate_group_slug_pretty', '{}'::name[]);
 
 -- Test: check expected triggers exist
 select has_trigger('admission_offer', 'admission_offer_enrollment_state_check');
@@ -909,206 +618,6 @@ select volatility_is(
     array['uuid', 'uuid', 'uuid', 'integer', 'bigint']::name[],
     'stable',
     'Survey export should read one snapshot for its size check and rows'
-);
-
--- Test: event ticketing consistency triggers should enforce the ticketing shape
--- Check the deferred constraint triggers at the end of each statement
-set constraints
-    event_ticketing_consistency_on_event,
-    event_ticketing_consistency_on_event_discount_code,
-    event_ticketing_consistency_on_event_ticket_price_window,
-    event_ticketing_consistency_on_event_ticket_type
-    immediate;
-
--- Should accept an all-zero ticket type without payment configuration.
-select lives_ok(
-    format($$
-        with ticket_type as (
-            insert into event_ticket_type (
-                event_ticket_type_id,
-                event_id,
-                "order",
-                seats_total,
-                title
-            ) values (%L, %L, 1, 10, 'General')
-        )
-        insert into event_ticket_price_window (
-            event_ticket_price_window_id,
-            amount_minor,
-            event_ticket_type_id
-        ) values (gen_random_uuid(), 0, %L)
-    $$, :'ticketTypeID', :'eventID', :'ticketTypeID'),
-    'All-zero ticket types should not require payment configuration'
-);
-
--- Should synchronize event capacity after inserting a ticket tier
-select is(
-    (select capacity from event where event_id = :'eventID'),
-    10,
-    'Inserting a ticket tier should synchronize event capacity'
-);
-
--- Should allow a ticket tier to have zero seats
-select lives_ok(
-    format($$
-        update event_ticket_type
-        set seats_total = 0
-        where event_ticket_type_id = %L
-    $$, :'ticketTypeID'),
-    'A ticket tier should allow zero seats'
-);
-
--- Should synchronize event capacity after resizing a ticket tier
-select is(
-    (select capacity from event where event_id = :'eventID'),
-    0,
-    'Resizing a ticket tier should synchronize event capacity'
-);
-
--- Check the deferred ticket-ownership constraints after each statement
-set constraints
-    event_has_ticket_type_on_event,
-    event_has_ticket_type_on_event_ticket_type
-    immediate;
-
--- Should reject deleting an event's last ticket tier
-select throws_ok(
-    format($$
-        delete from event_ticket_type
-        where event_ticket_type_id = %L
-    $$, :'ticketTypeID'),
-    'events require at least one ticket type',
-    'Deleting an event last ticket tier should be rejected'
-);
-
--- Should reject persisting an event without a ticket tier
-select throws_ok(
-    format($$
-        insert into event (
-            event_id,
-            name,
-            slug,
-            description,
-            event_category_id,
-            event_kind_id,
-            group_id,
-            timezone
-        ) values (
-            gen_random_uuid(),
-            'Tierless Event',
-            'tierless-event',
-            'An invalid event without a ticket tier',
-            %L,
-            'in-person',
-            %L,
-            'UTC'
-        )
-    $$, :'eventCategoryID', :'groupID'),
-    'events require at least one ticket type',
-    'Persisting an event without a ticket tier should be rejected'
-);
-
--- Should reject discount codes when the event has no positive ticket pricing.
-select throws_ok(
-    format($$
-        insert into event_discount_code (event_discount_code_id, event_id, code, kind, title, amount_minor)
-        values (%L, %L, 'SAVE10', 'fixed_amount', 'Launch', 500)
-    $$, :'discountCodeID', :'eventID'),
-    'discount_codes require positive ticket pricing',
-    'Discount codes should require positive ticket pricing'
-);
-
--- Should reject a payment currency when the event has no positive ticket pricing.
-select throws_ok(
-    format($$
-        update event
-        set payment_currency_code = 'USD'
-        where event_id = %L
-    $$, :'eventID'),
-    'payment_currency_code requires positive ticket pricing',
-    'Payment currency should require positive ticket pricing'
-);
-
--- Should accept positive pricing and a payment currency written together.
-select lives_ok(
-    format($$
-        with currency as (
-            update event
-            set payment_currency_code = 'USD'
-            where event_id = %L
-        ),
-        price_window as (
-            update event_ticket_price_window
-            set amount_minor = 2000
-            where event_ticket_type_id = %L
-        )
-        select 1
-    $$, :'eventID', :'ticketTypeID'),
-    'Positive ticket pricing and its payment currency should be accepted'
-);
-
--- Should reject removing the last positive price while the payment currency remains.
-select throws_ok(
-    format($$
-        update event_ticket_price_window
-        set amount_minor = 0
-        where event_ticket_type_id = %L
-    $$, :'ticketTypeID'),
-    'payment_currency_code requires positive ticket pricing',
-    'Removing the last positive price should be rejected while the payment currency remains'
-);
-
--- Should accept discount codes once positive pricing exists.
-select lives_ok(
-    format($$
-        insert into event_discount_code (event_discount_code_id, event_id, code, kind, title, amount_minor)
-        values (%L, %L, 'SAVE10', 'fixed_amount', 'Launch', 500)
-    $$, :'discountCodeID', :'eventID'),
-    'Discount codes should be accepted once positive ticket pricing exists'
-);
-
--- Should reject removing the last positive price while discounts remain.
-select throws_ok(
-    format($$
-        with currency as (
-            update event
-            set payment_currency_code = null
-            where event_id = %L
-        )
-        update event_ticket_price_window
-        set amount_minor = 0
-        where event_ticket_type_id = %L
-    $$, :'eventID', :'ticketTypeID'),
-    'discount_codes require positive ticket pricing',
-    'Removing the last positive price should be rejected while discounts remain'
-);
-
--- Should accept clearing all payment-only configuration together.
-select lives_ok(
-    format($$
-        with discounts as (
-            delete from event_discount_code
-            where event_id = %L
-        ),
-        currency as (
-            update event
-            set payment_currency_code = null
-            where event_id = %L
-        )
-        update event_ticket_price_window
-        set amount_minor = 0
-        where event_ticket_type_id = %L
-    $$, :'eventID', :'eventID', :'ticketTypeID'),
-    'All-zero ticketing should accept removing currency and discounts together'
-);
-
--- Should accept deleting an event along with its ticketing rows
-select lives_ok(
-    format($$
-        delete from event
-        where event_id = %L
-    $$, :'eventID'),
-    'Deleting an event along with its ticketing rows should be accepted'
 );
 
 -- ============================================================================

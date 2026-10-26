@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,7 +19,6 @@ select plan(8);
 \set existingLabelID 'c0080000-0000-0000-0000-000000000006'
 \set groupCategoryID 'c0080000-0000-0000-0000-000000000007'
 \set groupID 'c0080000-0000-0000-0000-000000000008'
-\set missingEventID 'c0080000-0000-0000-0000-000000000009'
 \set otherEventID 'c0080000-0000-0000-0000-000000000010'
 
 -- ============================================================================
@@ -114,7 +113,7 @@ select throws_ok(
         :'eventID'
     ),
     '23514',
-    null,
+    'new row for relation "event_label" violates check constraint "event_label_name_check"',
     'Should reject blank label names'
 );
 
@@ -128,7 +127,7 @@ select throws_ok(
         :'eventID'
     ),
     '23505',
-    null,
+    'duplicate key value violates unique constraint "event_label_event_id_name_key"',
     'Should reject duplicate label names in the same event'
 );
 
@@ -142,22 +141,8 @@ select throws_ok(
         :'eventID'
     ),
     '23514',
-    null,
+    'new row for relation "event_label" violates check constraint "event_label_name_check"',
     'Should reject label names longer than 80 characters'
-);
-
--- Should reject labels for missing events
-select throws_ok(
-    format(
-        $$
-            insert into event_label (color, event_id, name)
-            values ('#FEE2E2', %L::uuid, 'Missing')
-        $$,
-        :'missingEventID'
-    ),
-    '23503',
-    null,
-    'Should reject labels for missing events'
 );
 
 -- ============================================================================

@@ -5,15 +5,31 @@
 -- ============================================================================
 
 begin;
-select plan(71);
+select plan(67);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
+
 \set category1ID '3a390000-0000-0000-0000-000000000001'
 \set category2ID '3a390000-0000-0000-0000-000000000002'
 \set community1ID '3a390000-0000-0000-0000-000000000003'
 \set event1ID '3a390000-0000-0000-0000-000000000004'
+\set event1PriceWindowID '3a390000-0000-0000-0000-0000000000da'
+\set event1TicketTypeID '3a390000-0000-0000-0000-0000000000db'
+\set event4ID '3a390000-0000-0000-0000-000000000005'
+\set event10ID '3a390000-0000-0000-0000-000000000006'
+\set event10PriceWindowID '3a390000-0000-0000-0000-0000000000e0'
+\set event10TicketTypeID '3a390000-0000-0000-0000-0000000000e1'
+\set event11ID '3a390000-0000-0000-0000-000000000007'
+\set event11PriceWindowID '3a390000-0000-0000-0000-0000000000e2'
+\set event11TicketTypeID '3a390000-0000-0000-0000-0000000000e3'
+\set event12ID '3a390000-0000-0000-0000-000000000008'
+\set event12PriceWindowID '3a390000-0000-0000-0000-0000000000e4'
+\set event12TicketTypeID '3a390000-0000-0000-0000-0000000000e5'
+\set event18ID '3a390000-0000-0000-0000-0000000000c1'
+\set event18PriceWindowID '3a390000-0000-0000-0000-0000000000e6'
+\set event18TicketTypeID '3a390000-0000-0000-0000-0000000000e7'
 \set eventExternalClearID '3a390000-0000-0000-0000-000000000050'
 \set eventExternalClearPriceWindowID '3a390000-0000-0000-0000-000000000051'
 \set eventExternalClearPurchaseID '3a390000-0000-0000-0000-000000000062'
@@ -35,24 +51,30 @@ select plan(71);
 \set eventExternalStripeID '3a390000-0000-0000-0000-000000000056'
 \set eventExternalStripePriceWindowID '3a390000-0000-0000-0000-000000000057'
 \set eventExternalStripeTicketTypeID '3a390000-0000-0000-0000-000000000058'
-\set groupDelistedID '3a390000-0000-0000-0000-00000000005d'
-\set groupExternalID '3a390000-0000-0000-0000-000000000059'
-\set groupExternalNamelessID '3a390000-0000-0000-0000-000000000069'
-\set event4ID '3a390000-0000-0000-0000-000000000005'
-\set event10ID '3a390000-0000-0000-0000-000000000006'
-\set event11ID '3a390000-0000-0000-0000-000000000007'
-\set event12ID '3a390000-0000-0000-0000-000000000008'
-\set event18ID '3a390000-0000-0000-0000-000000000009'
 \set eventFreeToPaidID '3a390000-0000-0000-0000-000000000023'
 \set eventFreeToPaidPriceWindowID '3a390000-0000-0000-0000-000000000026'
 \set eventFreeToPaidTicketTypeID '3a390000-0000-0000-0000-000000000027'
 \set eventLabelRemovedID '3a390000-0000-0000-0000-0000000000a5'
+\set eventLabelRemovedPriceWindowID '3a390000-0000-0000-0000-0000000000e8'
+\set eventLabelRemovedTicketTypeID '3a390000-0000-0000-0000-0000000000e9'
 \set eventLabelStaleID '3a390000-0000-0000-0000-0000000000a6'
+\set eventLabelStalePriceWindowID '3a390000-0000-0000-0000-0000000000ea'
+\set eventLabelStaleTicketTypeID '3a390000-0000-0000-0000-0000000000eb'
 \set eventManualTaxID '3a390000-0000-0000-0000-000000000041'
+\set eventManualTaxPriceWindowID '3a390000-0000-0000-0000-0000000000d8'
+\set eventManualTaxTicketTypeID '3a390000-0000-0000-0000-0000000000d9'
 \set eventOrganizersKeptID '3a390000-0000-0000-0000-0000000000b0'
+\set eventOrganizersKeptPriceWindowID '3a390000-0000-0000-0000-0000000000d0'
+\set eventOrganizersKeptTicketTypeID '3a390000-0000-0000-0000-0000000000d1'
 \set eventOrganizersRejectedID '3a390000-0000-0000-0000-0000000000b1'
+\set eventOrganizersRejectedPriceWindowID '3a390000-0000-0000-0000-0000000000d2'
+\set eventOrganizersRejectedTicketTypeID '3a390000-0000-0000-0000-0000000000d3'
 \set eventOrganizersReplacedID '3a390000-0000-0000-0000-0000000000b2'
+\set eventOrganizersReplacedPriceWindowID '3a390000-0000-0000-0000-0000000000d4'
+\set eventOrganizersReplacedTicketTypeID '3a390000-0000-0000-0000-0000000000d5'
 \set eventOrganizersTeamID '3a390000-0000-0000-0000-0000000000b3'
+\set eventOrganizersTeamPriceWindowID '3a390000-0000-0000-0000-0000000000d6'
+\set eventOrganizersTeamTicketTypeID '3a390000-0000-0000-0000-0000000000d7'
 \set eventPaidToFreeID '3a390000-0000-0000-0000-000000000024'
 \set eventPaidToFreePriceWindowID '3a390000-0000-0000-0000-000000000028'
 \set eventPaidToFreeTicketTypeID '3a390000-0000-0000-0000-000000000029'
@@ -60,6 +82,8 @@ select plan(71);
 \set eventPaidToPaidPriceWindowID '3a390000-0000-0000-0000-000000000030'
 \set eventPaidToPaidTicketTypeID '3a390000-0000-0000-0000-000000000031'
 \set eventSessionHostsID '3a390000-0000-0000-0000-000000000064'
+\set eventSessionHostsPriceWindowID '3a390000-0000-0000-0000-0000000000de'
+\set eventSessionHostsTicketTypeID '3a390000-0000-0000-0000-0000000000df'
 \set eventTestFreeToPaidID '3a390000-0000-0000-0000-000000000032'
 \set eventTestFreeToPaidPriceWindowID '3a390000-0000-0000-0000-000000000033'
 \set eventTestFreeToPaidTicketTypeID '3a390000-0000-0000-0000-000000000034'
@@ -70,7 +94,13 @@ select plan(71);
 \set eventTestPaidToTestPriceWindowID '3a390000-0000-0000-0000-000000000039'
 \set eventTestPaidToTestTicketTypeID '3a390000-0000-0000-0000-000000000040'
 \set eventWaitlistWindowID '3a390000-0000-0000-0000-000000000021'
+\set eventWaitlistWindowPriceWindowID '3a390000-0000-0000-0000-0000000000ec'
+\set eventWaitlistWindowTicketTypeID '3a390000-0000-0000-0000-0000000000ed'
 \set group1ID '3a390000-0000-0000-0000-000000000010'
+\set groupCategoryID '3a390000-0000-0000-0000-0000000000c0'
+\set groupDelistedID '3a390000-0000-0000-0000-00000000005d'
+\set groupExternalID '3a390000-0000-0000-0000-000000000059'
+\set groupExternalNamelessID '3a390000-0000-0000-0000-000000000069'
 \set label1ID '3a390000-0000-0000-0000-000000000011'
 \set label2ID '3a390000-0000-0000-0000-000000000012'
 \set label3ID '3a390000-0000-0000-0000-000000000013'
@@ -79,6 +109,8 @@ select plan(71);
 \set labelRemovedID '3a390000-0000-0000-0000-0000000000a2'
 \set labelStaleID '3a390000-0000-0000-0000-0000000000a3'
 \set labelStaleMissingID '3a390000-0000-0000-0000-0000000000a4'
+\set missingGroupID '3a390000-0000-0000-0000-000000000019'
+\set missingUserID '3a390000-0000-0000-0000-000000000020'
 \set sessionHostsID '3a390000-0000-0000-0000-000000000065'
 \set sessionLabelRemovedID '3a390000-0000-0000-0000-0000000000a7'
 \set sessionLabelRenameID '3a390000-0000-0000-0000-0000000000a8'
@@ -98,7 +130,7 @@ select plan(71);
 select fx_community(:'community1ID', jsonb_build_object('logo_url', 'https://example.com/logo.png'));
 
 -- Baseline group category
-select fx_group_category('3a390000-0000-0000-0000-000000000006', :'community1ID');
+select fx_group_category(:'groupCategoryID', :'community1ID');
 
 -- Event categories
 select fx_event_category(:'category1ID', :'community1ID', jsonb_build_object('name', 'Conference'));
@@ -135,24 +167,24 @@ select fx_user(:'waitlistUserID', jsonb_build_object('username', 'waitlist'));
 select fx_user(:'teamMemberID', jsonb_build_object('username', 'team-member-update-event'));
 
 -- Group
-select fx_group(:'group1ID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_update_event", "seller_display_name": "Update Event Fiscal Sponsor"}'::jsonb));
+select fx_group(:'group1ID', :'community1ID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_update_event", "seller_display_name": "Update Event Fiscal Sponsor"}'::jsonb));
 
 -- Allowlisted group with external payments enabled for external update scenarios
-select fx_group(:'groupExternalID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object(
+select fx_group(:'groupExternalID', :'community1ID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
     'external_payments_enabled', true,
     'external_payments_seller_display_name', 'External Payee Co'
 ));
 
 -- Allowlisted enabled group that kept a Stripe sponsor but never named the external payee
-select fx_group(:'groupExternalNamelessID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object(
+select fx_group(:'groupExternalNamelessID', :'community1ID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
     'external_payments_enabled', true,
     'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_nameless_update", "seller_display_name": "Retained Fiscal Sponsor"}'::jsonb
 ));
 
 -- Delisted-country group used to reject a preserved external URL
-select fx_group(:'groupDelistedID', :'community1ID', '3a390000-0000-0000-0000-000000000006', jsonb_build_object(
+select fx_group(:'groupDelistedID', :'community1ID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'US',
     'external_payments_enabled', true,
     'external_payments_seller_display_name', 'External Payee Co'
@@ -348,7 +380,6 @@ select fx_event(:'eventLabelStaleID', :'group1ID', :'category1ID', jsonb_build_o
 
 -- Live event used for update-driven waitlist promotion checks
 select fx_event(:'eventWaitlistWindowID', :'group1ID', :'category1ID', jsonb_build_object(
-    'capacity', 1,
     'description', 'Event seeded for registration window waitlist update tests',
     'ends_at', date_trunc('second', current_timestamp + interval '1 hour'),
     'name', 'Open Only Waitlist Event',
@@ -408,67 +439,194 @@ values (:'eventOrganizersTeamID', :'user1ID', 1);
 insert into group_team (accepted, group_id, role, user_id)
 values (true, :'group1ID', 'viewer', :'teamMemberID');
 
--- Every update fixture uses the unified ticket inventory
-select fx_event_ticket_type(
-    case e.event_id
-        when :'eventFreeToPaidID'::uuid then :'eventFreeToPaidTicketTypeID'::uuid
-        when :'eventPaidToFreeID'::uuid then :'eventPaidToFreeTicketTypeID'::uuid
-        when :'eventPaidToPaidID'::uuid then :'eventPaidToPaidTicketTypeID'::uuid
-        when :'eventTestFreeToPaidID'::uuid then :'eventTestFreeToPaidTicketTypeID'::uuid
-        when :'eventTestPaidToLiveID'::uuid then :'eventTestPaidToLiveTicketTypeID'::uuid
-        when :'eventTestPaidToTestID'::uuid then :'eventTestPaidToTestTicketTypeID'::uuid
-        else gen_random_uuid()
-    end,
-    e.event_id,
-    jsonb_build_object(
-        'seats_total', coalesce(e.capacity, 100),
-        'title', 'General Admission'
-    )
-)
-from event e
-where e.group_id = :'group1ID';
+-- Free ticket tier for the free to paid transition event
+select fx_event_ticket_type(:'eventFreeToPaidTicketTypeID', :'eventFreeToPaidID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
 
--- Price windows defining free and paid update scenarios
-select fx_event_ticket_price_window(
-    case e.event_id
-        when :'eventFreeToPaidID'::uuid then :'eventFreeToPaidPriceWindowID'::uuid
-        when :'eventPaidToFreeID'::uuid then :'eventPaidToFreePriceWindowID'::uuid
-        when :'eventPaidToPaidID'::uuid then :'eventPaidToPaidPriceWindowID'::uuid
-        when :'eventTestFreeToPaidID'::uuid then :'eventTestFreeToPaidPriceWindowID'::uuid
-        when :'eventTestPaidToLiveID'::uuid then :'eventTestPaidToLivePriceWindowID'::uuid
-        when :'eventTestPaidToTestID'::uuid then :'eventTestPaidToTestPriceWindowID'::uuid
-        else gen_random_uuid()
-    end,
-    ett.event_ticket_type_id,
-    jsonb_build_object(
-        'amount_minor', case
-            when e.event_id in (
-                :'eventPaidToFreeID'::uuid,
-                :'eventPaidToPaidID'::uuid,
-                :'eventTestPaidToLiveID'::uuid,
-                :'eventTestPaidToTestID'::uuid
-            ) then 1200
-            else 0
-        end
-    )
-)
-from event_ticket_type ett
-join event e using (event_id)
-where e.group_id = :'group1ID';
+-- Paid ticket tier for the paid to free transition event
+select fx_event_ticket_type(:'eventPaidToFreeTicketTypeID', :'eventPaidToFreeID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Paid ticket tier for the paid edit event
+select fx_event_ticket_type(:'eventPaidToPaidTicketTypeID', :'eventPaidToPaidID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the free test event promoted with paid tickets
+select fx_event_ticket_type(:'eventTestFreeToPaidTicketTypeID', :'eventTestFreeToPaidID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Paid ticket tier for the paid test event promoted without ticket changes
+select fx_event_ticket_type(:'eventTestPaidToLiveTicketTypeID', :'eventTestPaidToLiveID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Paid ticket tier for the paid test event that remains a test event
+select fx_event_ticket_type(:'eventTestPaidToTestTicketTypeID', :'eventTestPaidToTestID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the kept organizers event
+select fx_event_ticket_type(:'eventOrganizersKeptTicketTypeID', :'eventOrganizersKeptID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the rejected organizers event
+select fx_event_ticket_type(:'eventOrganizersRejectedTicketTypeID', :'eventOrganizersRejectedID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the replaced organizers event
+select fx_event_ticket_type(:'eventOrganizersReplacedTicketTypeID', :'eventOrganizersReplacedID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the team organizers event
+select fx_event_ticket_type(:'eventOrganizersTeamTicketTypeID', :'eventOrganizersTeamID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the manual-tax selection event
+select fx_event_ticket_type(:'eventManualTaxTicketTypeID', :'eventManualTaxID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the base update event
+select fx_event_ticket_type(:'event1TicketTypeID', :'event1ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the session hosts event
+select fx_event_ticket_type(:'eventSessionHostsTicketTypeID', :'eventSessionHostsID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the reminder event
+select fx_event_ticket_type(:'event10TicketTypeID', :'event10ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the soon-starting reminder event
+select fx_event_ticket_type(:'event11TicketTypeID', :'event11ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the kept labels event
+select fx_event_ticket_type(:'event12TicketTypeID', :'event12ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the labels upsert event
+select fx_event_ticket_type(:'event18TicketTypeID', :'event18ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the removed label event
+select fx_event_ticket_type(:'eventLabelRemovedTicketTypeID', :'eventLabelRemovedID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the stale label event
+select fx_event_ticket_type(:'eventLabelStaleTicketTypeID', :'eventLabelStaleID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+));
+
+-- Free ticket tier for the waitlist promotion event
+select fx_event_ticket_type(:'eventWaitlistWindowTicketTypeID', :'eventWaitlistWindowID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'General Admission'
+));
+
+-- Current free price for the free to paid transition event tier
+select fx_event_ticket_price_window(:'eventFreeToPaidPriceWindowID', :'eventFreeToPaidTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current paid price for the paid to free transition event tier
+select fx_event_ticket_price_window(:'eventPaidToFreePriceWindowID', :'eventPaidToFreeTicketTypeID', jsonb_build_object('amount_minor', 1200));
+
+-- Current paid price for the paid edit event tier
+select fx_event_ticket_price_window(:'eventPaidToPaidPriceWindowID', :'eventPaidToPaidTicketTypeID', jsonb_build_object('amount_minor', 1200));
+
+-- Current free price for the free test event promoted with paid tickets tier
+select fx_event_ticket_price_window(:'eventTestFreeToPaidPriceWindowID', :'eventTestFreeToPaidTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current paid price for the paid test event promoted without ticket changes tier
+select fx_event_ticket_price_window(:'eventTestPaidToLivePriceWindowID', :'eventTestPaidToLiveTicketTypeID', jsonb_build_object('amount_minor', 1200));
+
+-- Current paid price for the paid test event that remains a test event tier
+select fx_event_ticket_price_window(:'eventTestPaidToTestPriceWindowID', :'eventTestPaidToTestTicketTypeID', jsonb_build_object('amount_minor', 1200));
+
+-- Current free price for the kept organizers event tier
+select fx_event_ticket_price_window(:'eventOrganizersKeptPriceWindowID', :'eventOrganizersKeptTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the rejected organizers event tier
+select fx_event_ticket_price_window(:'eventOrganizersRejectedPriceWindowID', :'eventOrganizersRejectedTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the replaced organizers event tier
+select fx_event_ticket_price_window(:'eventOrganizersReplacedPriceWindowID', :'eventOrganizersReplacedTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the team organizers event tier
+select fx_event_ticket_price_window(:'eventOrganizersTeamPriceWindowID', :'eventOrganizersTeamTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the manual-tax selection event tier
+select fx_event_ticket_price_window(:'eventManualTaxPriceWindowID', :'eventManualTaxTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the base update event tier
+select fx_event_ticket_price_window(:'event1PriceWindowID', :'event1TicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the session hosts event tier
+select fx_event_ticket_price_window(:'eventSessionHostsPriceWindowID', :'eventSessionHostsTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the reminder event tier
+select fx_event_ticket_price_window(:'event10PriceWindowID', :'event10TicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the soon-starting reminder event tier
+select fx_event_ticket_price_window(:'event11PriceWindowID', :'event11TicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the kept labels event tier
+select fx_event_ticket_price_window(:'event12PriceWindowID', :'event12TicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the labels upsert event tier
+select fx_event_ticket_price_window(:'event18PriceWindowID', :'event18TicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the removed label event tier
+select fx_event_ticket_price_window(:'eventLabelRemovedPriceWindowID', :'eventLabelRemovedTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the stale label event tier
+select fx_event_ticket_price_window(:'eventLabelStalePriceWindowID', :'eventLabelStaleTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Current free price for the waitlist promotion event tier
+select fx_event_ticket_price_window(:'eventWaitlistWindowPriceWindowID', :'eventWaitlistWindowTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Waitlisted user eligible for promotion after the event update
 insert into event_waitlist (event_id, event_ticket_type_id, user_id, created_at)
-select
+values (
     :'eventWaitlistWindowID',
-    (
-        select ett.event_ticket_type_id
-        from event_ticket_type ett
-        where ett.event_id = :'eventWaitlistWindowID'
-        order by ett."order", ett.event_ticket_type_id
-        limit 1
-    ),
+    :'eventWaitlistWindowTicketTypeID',
     :'waitlistUserID',
-    current_timestamp - interval '30 minutes';
+    current_timestamp - interval '30 minutes'
+);
 
 -- Session whose provider meeting is in sync with the initial host
 insert into session (
@@ -720,21 +878,21 @@ insert into event_purchase (
 -- Should report no paid notification transition for a free-to-free update
 select is(
     (select update_event(
-        null::uuid,
-        '3a390000-0000-0000-0000-000000000010'::uuid,
-        '3a390000-0000-0000-0000-000000000004'::uuid,
-        '{
-            "name": "Updated Event Name",
-            "description": "Updated description",
-            "timezone": "America/Los_Angeles",
-            "category_id": "3a390000-0000-0000-0000-000000000002",
-            "kind_id": "virtual",
-            "capacity": 100,
-            "starts_at": "2030-02-01T14:00:00",
-            "ends_at": "2030-02-01T16:00:00",
-            "meeting_provider_id": "zoom",
-            "meeting_requested": true
-        }'::jsonb
+        :'user1ID'::uuid,
+        :'group1ID'::uuid,
+        :'event1ID'::uuid,
+        jsonb_build_object(
+            'capacity', 100,
+            'category_id', :'category2ID',
+            'description', 'Updated description',
+            'ends_at', '2030-02-01T16:00:00',
+            'kind_id', 'virtual',
+            'meeting_provider_id', 'zoom',
+            'meeting_requested', true,
+            'name', 'Updated Event Name',
+            'starts_at', '2030-02-01T14:00:00',
+            'timezone', 'America/Los_Angeles'
+        )
     )),
     false,
     'Should report no paid notification transition for a free-to-free update'
@@ -807,18 +965,25 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
-        values (
-            'event_updated',
-            null::uuid,
-            null::text,
-            '3a390000-0000-0000-0000-000000000003'::uuid,
-            '3a390000-0000-0000-0000-000000000010'::uuid,
-            '3a390000-0000-0000-0000-000000000004'::uuid,
-            'event',
-            '3a390000-0000-0000-0000-000000000004'::uuid
-        )
-    $$,
+    format(
+        $$
+            values (
+                'event_updated',
+                %L::uuid,
+                'host1-update-event',
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                'event',
+                %L::uuid
+            )
+        $$,
+        :'user1ID',
+        :'community1ID',
+        :'group1ID',
+        :'event1ID',
+        :'event1ID'
+    ),
     'Should create the expected audit row'
 );
 
@@ -828,16 +993,16 @@ select is(
         null::uuid,
         :'group1ID'::uuid,
         :'eventManualTaxID'::uuid,
-        '{
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "description": "Free manual-tax event used for selection clearing checks",
-            "kind_id": "virtual",
-            "manual_tax_rate_ids": [],
-            "name": "Manual Tax Selection",
-            "tax_behavior": "inclusive",
-            "tax_calculation_mode": "manual",
-            "timezone": "UTC"
-        }'::jsonb
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Free manual-tax event used for selection clearing checks',
+            'kind_id', 'virtual',
+            'manual_tax_rate_ids', '[]'::jsonb,
+            'name', 'Manual Tax Selection',
+            'tax_behavior', 'inclusive',
+            'tax_calculation_mode', 'manual',
+            'timezone', 'UTC'
+        )
     ),
     false,
     'Should clear explicitly submitted manual Tax Rate selections on a free event'
@@ -860,49 +1025,49 @@ select is(
         null::uuid,
         :'group1ID'::uuid,
         :'eventFreeToPaidID'::uuid,
-        '{
-            "name": "Free To Paid",
-            "description": "Free event used for paid transition checks",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                },
-                "require_automatic_tax": true,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                }
-            },
-            "timezone": "UTC",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "payment_currency_code": "USD",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state": "California",
-            "venue_zip_code": "94105",
-            "ticket_types": [
-                {
-                    "active": true,
-                    "availability": "invitation_only",
-                    "event_ticket_type_id": "3a390000-0000-0000-0000-000000000027",
-                    "order": 1,
-                    "price_windows": [
-                        {
-                            "amount_minor": 1500,
-                            "event_ticket_price_window_id": "3a390000-0000-0000-0000-000000000026"
-                        }
-                    ],
-                    "seats_total": 100,
-                    "title": "Private Admission"
-                }
-            ]
-        }'::jsonb,
+        jsonb_build_object(
+            '_payment_validation', jsonb_build_object(
+                'expected_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                ),
+                'require_automatic_tax', true,
+                'validated_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                )
+            ),
+            'category_id', :'category1ID',
+            'description', 'Free event used for paid transition checks',
+            'kind_id', 'in-person',
+            'name', 'Free To Paid',
+            'payment_currency_code', 'USD',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'invitation_only',
+                    'event_ticket_type_id', :'eventFreeToPaidTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 1500,
+                            'event_ticket_price_window_id', :'eventFreeToPaidPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 100,
+                    'title', 'Private Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_state', 'California',
+            'venue_zip_code', '94105'
+        ),
         null::jsonb,
         'stripe'
     ),
@@ -926,41 +1091,39 @@ select is(
 
 -- Should reject a paid update validated against a stale sponsor
 select throws_ok(
-    $$select update_event(
-        null::uuid,
-        '3a390000-0000-0000-0000-000000000010'::uuid,
-        '3a390000-0000-0000-0000-000000000023'::uuid,
-        '{
-            "name": "Free To Paid",
-            "description": "Free event used for paid transition checks",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_stale",
-                    "seller_display_name": "Stale Sponsor"
-                },
-                "require_automatic_tax": true,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_stale",
-                    "seller_display_name": "Stale Sponsor"
-                }
-            },
-            "timezone": "UTC",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "payment_currency_code": "USD",
-            "venue_address": "456 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_state_name": "California",
-            "venue_zip_code": "94105"
-        }'::jsonb,
-        null::jsonb,
-        'stripe'
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, 'stripe')$$,
+        :'group1ID',
+        :'eventFreeToPaidID',
+        jsonb_build_object(
+            '_payment_validation', jsonb_build_object(
+                'expected_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_stale',
+                    'seller_display_name', 'Stale Sponsor'
+                ),
+                'require_automatic_tax', true,
+                'validated_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_stale',
+                    'seller_display_name', 'Stale Sponsor'
+                )
+            ),
+            'category_id', :'category1ID',
+            'description', 'Free event used for paid transition checks',
+            'kind_id', 'in-person',
+            'name', 'Free To Paid',
+            'payment_currency_code', 'USD',
+            'timezone', 'UTC',
+            'venue_address', '456 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_state_code', 'CA',
+            'venue_state_name', 'California',
+            'venue_zip_code', '94105'
+        )
+    ),
     'OCG01',
     'payment configuration changed during provider validation',
     'Should reject a paid update validated against a stale sponsor'
@@ -972,29 +1135,29 @@ select is(
         null::uuid,
         :'group1ID'::uuid,
         :'eventPaidToFreeID'::uuid,
-        '{
-            "name": "Paid To Free",
-            "description": "Paid event used for free transition checks",
-            "timezone": "UTC",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "ticket_types": [
-                {
-                    "active": true,
-                    "availability": "public",
-                    "event_ticket_type_id": "3a390000-0000-0000-0000-000000000029",
-                    "order": 1,
-                    "price_windows": [
-                        {
-                            "amount_minor": 0,
-                            "event_ticket_price_window_id": "3a390000-0000-0000-0000-000000000028"
-                        }
-                    ],
-                    "seats_total": 100,
-                    "title": "General Admission"
-                }
-            ]
-        }'::jsonb,
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Paid event used for free transition checks',
+            'kind_id', 'virtual',
+            'name', 'Paid To Free',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventPaidToFreeTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 0,
+                            'event_ticket_price_window_id', :'eventPaidToFreePriceWindowID'
+                        )
+                    ),
+                    'seats_total', 100,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC'
+        ),
         null::jsonb,
         'stripe'
     ),
@@ -1015,50 +1178,50 @@ select is(
         null::uuid,
         :'group1ID'::uuid,
         :'eventPaidToPaidID'::uuid,
-        '{
-            "name": "Paid To Paid",
-            "description": "Paid event used for paid edit checks",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                },
-                "require_automatic_tax": true,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                }
-            },
-            "timezone": "UTC",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "payment_currency_code": "USD",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_state_name": "California",
-            "venue_zip_code": "94105",
-            "ticket_types": [
-                {
-                    "active": true,
-                    "availability": "public",
-                    "event_ticket_type_id": "3a390000-0000-0000-0000-000000000031",
-                    "order": 1,
-                    "price_windows": [
-                        {
-                            "amount_minor": 1800,
-                            "event_ticket_price_window_id": "3a390000-0000-0000-0000-000000000030"
-                        }
-                    ],
-                    "seats_total": 100,
-                    "title": "General Admission"
-                }
-            ]
-        }'::jsonb,
+        jsonb_build_object(
+            '_payment_validation', jsonb_build_object(
+                'expected_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                ),
+                'require_automatic_tax', true,
+                'validated_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                )
+            ),
+            'category_id', :'category1ID',
+            'description', 'Paid event used for paid edit checks',
+            'kind_id', 'in-person',
+            'name', 'Paid To Paid',
+            'payment_currency_code', 'USD',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventPaidToPaidTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 1800,
+                            'event_ticket_price_window_id', :'eventPaidToPaidPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 100,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_state_code', 'CA',
+            'venue_state_name', 'California',
+            'venue_zip_code', '94105'
+        ),
         null::jsonb,
         'stripe'
     ),
@@ -1079,51 +1242,51 @@ select is(
         null::uuid,
         :'group1ID'::uuid,
         :'eventTestFreeToPaidID'::uuid,
-        '{
-            "name": "Test Free To Paid",
-            "description": "Free test event promoted while adding paid tickets",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                },
-                "require_automatic_tax": true,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                }
-            },
-            "timezone": "UTC",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "payment_currency_code": "USD",
-            "test_event": false,
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_state_name": "California",
-            "venue_zip_code": "94105",
-            "ticket_types": [
-                {
-                    "active": true,
-                    "availability": "public",
-                    "event_ticket_type_id": "3a390000-0000-0000-0000-000000000034",
-                    "order": 1,
-                    "price_windows": [
-                        {
-                            "amount_minor": 1500,
-                            "event_ticket_price_window_id": "3a390000-0000-0000-0000-000000000033"
-                        }
-                    ],
-                    "seats_total": 100,
-                    "title": "General Admission"
-                }
-            ]
-        }'::jsonb,
+        jsonb_build_object(
+            '_payment_validation', jsonb_build_object(
+                'expected_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                ),
+                'require_automatic_tax', true,
+                'validated_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                )
+            ),
+            'category_id', :'category1ID',
+            'description', 'Free test event promoted while adding paid tickets',
+            'kind_id', 'in-person',
+            'name', 'Test Free To Paid',
+            'payment_currency_code', 'USD',
+            'test_event', false,
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventTestFreeToPaidTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 1500,
+                            'event_ticket_price_window_id', :'eventTestFreeToPaidPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 100,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_state_code', 'CA',
+            'venue_state_name', 'California',
+            'venue_zip_code', '94105'
+        ),
         null::jsonb,
         'stripe'
     ),
@@ -1151,34 +1314,34 @@ select is(
         null::uuid,
         :'group1ID'::uuid,
         :'eventTestPaidToLiveID'::uuid,
-        '{
-            "name": "Test Paid To Live",
-            "description": "Paid test event promoted without changing tickets",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                },
-                "require_automatic_tax": true,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                }
-            },
-            "timezone": "UTC",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "test_event": false,
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_state_name": "California",
-            "venue_zip_code": "94105"
-        }'::jsonb,
+        jsonb_build_object(
+            '_payment_validation', jsonb_build_object(
+                'expected_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                ),
+                'require_automatic_tax', true,
+                'validated_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                )
+            ),
+            'category_id', :'category1ID',
+            'description', 'Paid test event promoted without changing tickets',
+            'kind_id', 'in-person',
+            'name', 'Test Paid To Live',
+            'test_event', false,
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_state_code', 'CA',
+            'venue_state_name', 'California',
+            'venue_zip_code', '94105'
+        ),
         null::jsonb,
         'stripe'
     ),
@@ -1206,34 +1369,34 @@ select is(
         null::uuid,
         :'group1ID'::uuid,
         :'eventTestPaidToTestID'::uuid,
-        '{
-            "name": "Test Paid To Test",
-            "description": "Paid test event that remains a test event",
-            "_payment_validation": {
-                "expected_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                },
-                "require_automatic_tax": true,
-                "validated_payment_recipient": {
-                    "provider": "stripe",
-                    "recipient_id": "acct_update_event",
-                    "seller_display_name": "Update Event Fiscal Sponsor"
-                }
-            },
-            "timezone": "UTC",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "test_event": true,
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_state_name": "California",
-            "venue_zip_code": "94105"
-        }'::jsonb,
+        jsonb_build_object(
+            '_payment_validation', jsonb_build_object(
+                'expected_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                ),
+                'require_automatic_tax', true,
+                'validated_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                )
+            ),
+            'category_id', :'category1ID',
+            'description', 'Paid test event that remains a test event',
+            'kind_id', 'in-person',
+            'name', 'Test Paid To Test',
+            'test_event', true,
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_state_code', 'CA',
+            'venue_state_name', 'California',
+            'venue_zip_code', '94105'
+        ),
         null::jsonb,
         'stripe'
     ),
@@ -1274,61 +1437,80 @@ select is(
 
 -- Should update all fields (excluding sessions) with full payload
 select lives_ok(
-    $$select update_event(
-        null::uuid,
-        '3a390000-0000-0000-0000-000000000010'::uuid,
-        '3a390000-0000-0000-0000-000000000004'::uuid,
-        '{
-            "name": "Fully Updated Event",
-            "description": "Fully updated description",
-            "timezone": "Asia/Tokyo",
-            "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "hybrid",
-            "meeting_requested": false,
-            "banner_url": "https://example.com/new-banner.jpg",
-            "capacity": 200,
-            "description_short": "Updated short description",
-            "starts_at": "2030-02-01T14:00:00",
-            "ends_at": "2030-02-01T16:00:00",
-            "logo_url": "https://example.com/new-logo.png",
-            "luma_url": "https://luma.com/new-event",
-            "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
-            "meeting_join_instructions": "Use the event ticket name when joining.",
-            "meeting_join_url": "https://youtube.com/new-live",
-            "meeting_recording_url": "https://youtube.com/new-recording",
-            "meetup_url": "https://meetup.com/new-event",
-            "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
-            "tags": ["updated", "event", "tags"],
-            "test_event": true,
-            "venue_address": " 456 New St ",
-            "venue_city": " Tokyo ",
-            "venue_country_code": " JP ",
-            "venue_country_name": " Japan ",
-            "venue_name": " New Venue ",
-            "venue_state_code": " tk ",
-            "venue_state_name": " Tokyo ",
-            "venue_zip_code": " 100-0001 ",
-            "hosts": ["3a390000-0000-0000-0000-000000000017", "3a390000-0000-0000-0000-000000000018"],
-            "speakers": [
-                {"user_id": "3a390000-0000-0000-0000-000000000017", "featured": true},
-                {"user_id": "3a390000-0000-0000-0000-000000000018", "featured": false}
-            ],
-            "sponsors": [{"group_sponsor_id": "3a390000-0000-0000-0000-000000000015", "level": "Platinum"}],
-            "sessions": [
-                {
-                    "name": "Updated Session",
-                    "description": "This is an updated session",
-                    "starts_at": "2030-02-01T14:30:00",
-                    "ends_at": "2030-02-01T15:30:00",
-                    "kind": "virtual",
-                    "meeting_hosts": ["session-althost@example.com"],
-                    "meeting_provider_id": "zoom",
-                    "meeting_requested": true,
-                    "speakers": [{"user_id": "3a390000-0000-0000-0000-000000000017", "featured": true}]
-                }
-            ]
-        }'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event1ID',
+        jsonb_build_object(
+            'banner_url', 'https://example.com/new-banner.jpg',
+            'capacity', 200,
+            'category_id', :'category1ID',
+            'description', 'Fully updated description',
+            'description_short', 'Updated short description',
+            'ends_at', '2030-02-01T16:00:00',
+            'hosts', jsonb_build_array(:'user2ID', :'user3ID'),
+            'kind_id', 'hybrid',
+            'logo_url', 'https://example.com/new-logo.png',
+            'luma_url', 'https://luma.com/new-event',
+            'meeting_hosts', jsonb_build_array('althost1@example.com', 'althost2@example.com'),
+            'meeting_join_instructions', 'Use the event ticket name when joining.',
+            'meeting_join_url', 'https://youtube.com/new-live',
+            'meeting_recording_url', 'https://youtube.com/new-recording',
+            'meeting_requested', false,
+            'meetup_url', 'https://meetup.com/new-event',
+            'name', 'Fully Updated Event',
+            'photos_urls', jsonb_build_array(
+                'https://example.com/new-photo1.jpg',
+                'https://example.com/new-photo2.jpg'
+            ),
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'description', 'This is an updated session',
+                    'ends_at', '2030-02-01T15:30:00',
+                    'kind', 'virtual',
+                    'meeting_hosts', jsonb_build_array('session-althost@example.com'),
+                    'meeting_provider_id', 'zoom',
+                    'meeting_requested', true,
+                    'name', 'Updated Session',
+                    'speakers', jsonb_build_array(
+                        jsonb_build_object(
+                            'featured', true,
+                            'user_id', :'user2ID'
+                        )
+                    ),
+                    'starts_at', '2030-02-01T14:30:00'
+                )
+            ),
+            'speakers', jsonb_build_array(
+                jsonb_build_object(
+                    'featured', true,
+                    'user_id', :'user2ID'
+                ),
+                jsonb_build_object(
+                    'featured', false,
+                    'user_id', :'user3ID'
+                )
+            ),
+            'sponsors', jsonb_build_array(
+                jsonb_build_object(
+                    'group_sponsor_id', :'sponsorNewID',
+                    'level', 'Platinum'
+                )
+            ),
+            'starts_at', '2030-02-01T14:00:00',
+            'tags', jsonb_build_array('updated', 'event', 'tags'),
+            'test_event', true,
+            'timezone', 'Asia/Tokyo',
+            'venue_address', ' 456 New St ',
+            'venue_city', ' Tokyo ',
+            'venue_country_code', ' JP ',
+            'venue_country_name', ' Japan ',
+            'venue_name', ' New Venue ',
+            'venue_state_code', ' tk ',
+            'venue_state_name', ' Tokyo ',
+            'venue_zip_code', ' 100-0001 '
+        )
+    ),
     'Should update all fields (excluding sessions) with full payload'
 );
 
@@ -1346,14 +1528,6 @@ select is(
         "canceled": false,
         "category_name": "Conference",
         "description": "Fully updated description",
-        "hosts": [
-            {"name": "Host Two", "user_id": "3a390000-0000-0000-0000-000000000017", "username": "host2-update-event"},
-            {"name": "Speaker One", "user_id": "3a390000-0000-0000-0000-000000000018", "username": "speaker1-update-event"}
-        ],
-        "speakers": [
-            {"name": "Host Two", "user_id": "3a390000-0000-0000-0000-000000000017", "username": "host2-update-event", "featured": true},
-            {"name": "Speaker One", "user_id": "3a390000-0000-0000-0000-000000000018", "username": "speaker1-update-event", "featured": false}
-        ],
         "kind": "hybrid",
         "labels": [],
         "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
@@ -1400,11 +1574,26 @@ select is(
         "venue_state_name": "Tokyo",
         "venue_zip_code": "100-0001",
         "waitlist_count": 0,
-        "waitlist_enabled": false,
-        "sponsors": [
-            {"group_sponsor_id": "3a390000-0000-0000-0000-000000000015", "level": "Platinum", "logo_url": "https://example.com/newsponsor.png", "name": "NewSponsor Inc", "website_url": "https://newsponsor.com"}
-        ]
-    }'::jsonb,
+        "waitlist_enabled": false
+    }'::jsonb || jsonb_build_object(
+        'hosts', jsonb_build_array(
+            jsonb_build_object('name', 'Host Two', 'user_id', :'user2ID', 'username', 'host2-update-event'),
+            jsonb_build_object('name', 'Speaker One', 'user_id', :'user3ID', 'username', 'speaker1-update-event')
+        ),
+        'speakers', jsonb_build_array(
+            jsonb_build_object('featured', true, 'name', 'Host Two', 'user_id', :'user2ID', 'username', 'host2-update-event'),
+            jsonb_build_object('featured', false, 'name', 'Speaker One', 'user_id', :'user3ID', 'username', 'speaker1-update-event')
+        ),
+        'sponsors', jsonb_build_array(
+            jsonb_build_object(
+                'group_sponsor_id', :'sponsorNewID',
+                'level', 'Platinum',
+                'logo_url', 'https://example.com/newsponsor.png',
+                'name', 'NewSponsor Inc',
+                'website_url', 'https://newsponsor.com'
+            )
+        )
+    ),
     'Should update all fields (excluding sessions)'
 );
 
@@ -1417,21 +1606,26 @@ select ok(
             :'event1ID'::uuid
         )::jsonb->'sessions'->'2030-02-01'
     ) @>
-        '[
-            {
-                "name": "Updated Session",
-                "description": "This is an updated session",
-                "starts_at": 1896154200,
-                "ends_at": 1896157800,
-                "kind": "virtual",
-                "meeting_hosts": ["session-althost@example.com"],
-                "meeting_provider": "zoom",
-                "meeting_requested": true,
-                "speakers": [
-                    {"name": "Host Two", "user_id": "3a390000-0000-0000-0000-000000000017", "username": "host2-update-event", "featured": true}
-                ]
-            }
-        ]'::jsonb
+        jsonb_build_array(
+            jsonb_build_object(
+                'description', 'This is an updated session',
+                'ends_at', 1896157800,
+                'kind', 'virtual',
+                'meeting_hosts', jsonb_build_array('session-althost@example.com'),
+                'meeting_provider', 'zoom',
+                'meeting_requested', true,
+                'name', 'Updated Session',
+                'speakers', jsonb_build_array(
+                    jsonb_build_object(
+                        'featured', true,
+                        'name', 'Host Two',
+                        'user_id', :'user2ID',
+                        'username', 'host2-update-event'
+                    )
+                ),
+                'starts_at', 1896154200
+            )
+        )
     ),
     'Sessions contain expected rows (ignoring session_id)'
 );
@@ -1472,36 +1666,31 @@ select is(
 -- Should desync a session meeting when only the event hosts change
 select lives_ok(
     format(
-        $$select update_event(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            jsonb_build_object(
-                'category_id', %L,
-                'description', 'Session hosts event',
-                'ends_at', '2030-03-01T12:00:00',
-                'hosts', jsonb_build_array(%L),
-                'kind_id', 'virtual',
-                'name', 'Session Hosts Event',
-                'sessions', jsonb_build_array(jsonb_build_object(
+        $$select update_event(%L::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'user1ID',
+        :'group1ID',
+        :'eventSessionHostsID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Session hosts event',
+            'ends_at', '2030-03-01T12:00:00',
+            'hosts', jsonb_build_array(:'user2ID'),
+            'kind_id', 'virtual',
+            'name', 'Session Hosts Event',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
                     'ends_at', '2030-03-01T11:00:00',
                     'kind', 'virtual',
                     'meeting_provider_id', 'zoom',
                     'meeting_requested', true,
                     'name', 'Hosted Session',
-                    'session_id', %L,
+                    'session_id', :'sessionHostsID',
                     'starts_at', '2030-03-01T10:30:00'
-                )),
-                'starts_at', '2030-03-01T10:00:00',
-                'timezone', 'UTC'
-            )
-        )$$,
-        :'user1ID',
-        :'group1ID',
-        :'eventSessionHostsID',
-        :'category1ID',
-        :'user2ID',
-        :'sessionHostsID'
+                )
+            ),
+            'starts_at', '2030-03-01T10:00:00',
+            'timezone', 'UTC'
+        )
     ),
     'Should desync a session meeting when only the event hosts change'
 );
@@ -1671,14 +1860,6 @@ select throws_ok(
     'event label not found for event',
     'Should reject a stale label identifier'
 );
-select results_eq(
-    format(
-        $$select event_label_id, name from event_label where event_id = %L::uuid$$,
-        :'eventLabelStaleID'
-    ),
-    format($$values (%L::uuid, %L::text)$$, :'labelStaleID', 'track / stale'),
-    'Should keep labels when rejecting a stale label identifier'
-);
 
 -- Should reject removing a label still referenced by a session
 select throws_ok(
@@ -1709,21 +1890,6 @@ select throws_ok(
     'OCG01',
     'invalid event labels',
     'Should reject removing a label still referenced by a session'
-);
-select is(
-    (
-        select jsonb_build_object(
-            'event_name', (select name from event where event_id = :'eventLabelRemovedID'::uuid),
-            'labels', (select count(*)::int from event_label where event_label_id = :'labelRemovedID'::uuid),
-            'session_labels', (select count(*)::int from session_label where session_id = :'sessionLabelRemovedID'::uuid)
-        )
-    ),
-    jsonb_build_object(
-        'event_name', 'Event With Removed Label',
-        'labels', 1,
-        'session_labels', 1
-    ),
-    'Should leave the event unchanged when a removed label is still referenced'
 );
 
 -- Should keep organizers when the payload omits them
@@ -1809,19 +1975,6 @@ select throws_ok(
     'invalid organizers payload',
     'Should reject an invalid organizers payload'
 );
-select results_eq(
-    format(
-        $$
-            select user_id, "order"
-            from event_organizer
-            where event_id = %L::uuid
-            order by "order"
-        $$,
-        :'eventOrganizersRejectedID'
-    ),
-    format($$values (%L::uuid, 1)$$, :'user1ID'),
-    'Should keep organizers when rejecting an invalid organizers payload'
-);
 
 -- Should reject an organizer outside the group team
 select throws_ok(
@@ -1841,19 +1994,6 @@ select throws_ok(
     'OCG01',
     'organizer is not a group team member',
     'Should reject an organizer outside the group team'
-);
-select results_eq(
-    format(
-        $$
-            select user_id, "order"
-            from event_organizer
-            where event_id = %L::uuid
-            order by "order"
-        $$,
-        :'eventOrganizersRejectedID'
-    ),
-    format($$values (%L::uuid, 1)$$, :'user1ID'),
-    'Should keep organizers when rejecting an organizer outside the group team'
 );
 
 -- Should replace organizers when submitted
@@ -1893,25 +2033,56 @@ select results_eq(
 
 -- Should throw error when group_id does not match
 select throws_ok(
-    $$select update_event(
-        null::uuid,
-        '3a390000-0000-0000-0000-000000000019'::uuid,
-        '3a390000-0000-0000-0000-000000000004'::uuid,
-        '{"name": "Won''t Work", "description": "This should fail", "timezone": "UTC", "category_id": "3a390000-0000-0000-0000-000000000001", "kind_id": "in-person"}'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'groupExternalID',
+        :'event1ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'This should fail',
+            'kind_id', 'in-person',
+            'name', 'Won''t Work',
+            'timezone', 'UTC'
+        )
+    ),
     'OCG01',
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );
 
+-- Should throw error when the group does not exist
+select throws_ok(
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'missingGroupID',
+        :'event1ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'This should fail',
+            'kind_id', 'in-person',
+            'name', 'Won''t Work',
+            'timezone', 'UTC'
+        )
+    ),
+    'OCG01',
+    'event not found or inactive',
+    'Should throw error when the group does not exist'
+);
+
 -- Should throw error when updating cancelled event
 select throws_ok(
-    $$select update_event(
-        null::uuid,
-        '3a390000-0000-0000-0000-000000000010'::uuid,
-        '3a390000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Try to Update Canceled", "description": "This should fail", "timezone": "UTC", "category_id": "3a390000-0000-0000-0000-000000000001", "kind_id": "in-person"}'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event4ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'This should fail',
+            'kind_id', 'in-person',
+            'name', 'Try to Update Canceled',
+            'timezone', 'UTC'
+        )
+    ),
     'OCG01',
     'event not found or inactive',
     'Should throw error when event is canceled'
@@ -1919,12 +2090,19 @@ select throws_ok(
 
 -- Should throw error for invalid host user_id (FK violation)
 select throws_ok(
-    $$select update_event(
-        null::uuid,
-        '3a390000-0000-0000-0000-000000000010'::uuid,
-        '3a390000-0000-0000-0000-000000000004'::uuid,
-        '{"name": "Event with Invalid Host", "description": "Test", "timezone": "UTC", "category_id": "3a390000-0000-0000-0000-000000000001", "kind_id": "in-person", "hosts": ["3a390000-0000-0000-0000-000000000020"]}'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event1ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Test',
+            'hosts', jsonb_build_array(:'missingUserID'),
+            'kind_id', 'in-person',
+            'name', 'Event with Invalid Host',
+            'timezone', 'UTC'
+        )
+    ),
     '23503',
     null,
     'Should throw error when host user_id does not exist'
@@ -1932,12 +2110,24 @@ select throws_ok(
 
 -- Should throw error for invalid speaker user_id (FK violation)
 select throws_ok(
-    $$select update_event(
-        null::uuid,
-        '3a390000-0000-0000-0000-000000000010'::uuid,
-        '3a390000-0000-0000-0000-000000000004'::uuid,
-        '{"name": "Event with Invalid Speaker", "description": "Test", "timezone": "UTC", "category_id": "3a390000-0000-0000-0000-000000000001", "kind_id": "in-person", "speakers": [{"user_id": "3a390000-0000-0000-0000-000000000020", "featured": false}]}'::jsonb
-    )$$,
+    format(
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event1ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Test',
+            'kind_id', 'in-person',
+            'name', 'Event with Invalid Speaker',
+            'speakers', jsonb_build_array(
+                jsonb_build_object(
+                    'featured', false,
+                    'user_id', :'missingUserID'
+                )
+            ),
+            'timezone', 'UTC'
+        )
+    ),
     '23503',
     null,
     'Should throw error when speaker user_id does not exist'
@@ -1946,22 +2136,19 @@ select throws_ok(
 -- Should evaluate reminder immediately when published event starts within 24 hours
 select lives_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            '%s'::uuid,
-            '%s'::uuid,
-            jsonb_build_object(
-                'name', 'Reminder Event Updated',
-                'description', 'Reminder evaluation check',
-                'timezone', 'UTC',
-                'category_id', '%s',
-                'kind_id', 'virtual',
-                'event_reminder_enabled', true,
-                'starts_at', to_char(current_timestamp + interval '12 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
-                'ends_at', to_char(current_timestamp + interval '14 hours', 'YYYY-MM-DD"T"HH24:MI:SS')
-            )
-        )$$,
-        :'group1ID', :'event10ID', :'category1ID'
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event10ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Reminder evaluation check',
+            'ends_at', to_char(current_timestamp + interval '14 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'event_reminder_enabled', true,
+            'kind_id', 'virtual',
+            'name', 'Reminder Event Updated',
+            'starts_at', to_char(current_timestamp + interval '12 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        )
     ),
     'Should evaluate reminder immediately when published event starts within 24 hours'
 );
@@ -1976,22 +2163,25 @@ select is(
 -- Should not evaluate reminder when starts_at remains unchanged inside 24 hours
 select lives_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            '%s'::uuid,
-            '%s'::uuid,
-            jsonb_build_object(
-                'name', 'Reminder Event Soon Updated',
-                'description', 'Reminder regression check',
-                'timezone', 'UTC',
-                'category_id', '%s',
-                'kind_id', 'virtual',
-                'event_reminder_enabled', true,
-                'starts_at', to_char((select starts_at from event where event_id = '%s'::uuid) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS'),
-                'ends_at', to_char((select ends_at from event where event_id = '%s'::uuid) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS')
-            )
-        )$$,
-        :'group1ID', :'event11ID', :'category1ID', :'event11ID', :'event11ID'
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb)$$,
+        :'group1ID',
+        :'event11ID',
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Reminder regression check',
+            'ends_at', to_char(
+                (select ends_at from event where event_id = :'event11ID'::uuid) at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ),
+            'event_reminder_enabled', true,
+            'kind_id', 'virtual',
+            'name', 'Reminder Event Soon Updated',
+            'starts_at', to_char(
+                (select starts_at from event where event_id = :'event11ID'::uuid) at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ),
+            'timezone', 'UTC'
+        )
     ),
     'Should not evaluate reminder when starts_at remains unchanged inside 24 hours'
 );
@@ -2055,56 +2245,47 @@ select is(
         from event_waitlist
         where event_id = :'eventWaitlistWindowID'::uuid
     ),
-    format('["%s"]', :'waitlistUserID')::jsonb,
+    jsonb_build_array(:'waitlistUserID'),
     'Should keep waitlist entries queued after an open-only registration window reaches the event start'
 );
 
 -- Should reject a persisted external URL when the group toggle is off
 select throws_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            '{
-                "name": "External Clear Event",
-                "description": "Paid event that still carries leftover external fields",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "external_payment_url": "https://pay.example.test/leftover",
-                "external_payment_window_hours": 48,
-                "payment_currency_code": "USD",
-                "venue_address": "123 Main St",
-                "venue_city": "San Francisco",
-                "venue_country_code": "US",
-                "venue_name": "Community Hall",
-                "venue_zip_code": "94105",
-                "ticket_types": [
-                    {
-                        "active": true,
-                        "availability": "public",
-                        "event_ticket_type_id": "%s",
-                        "order": 1,
-                        "price_windows": [
-                            {
-                                "amount_minor": 2500,
-                                "event_ticket_price_window_id": "%s"
-                            }
-                        ],
-                        "seats_total": 50,
-                        "title": "General Admission"
-                    }
-                ]
-            }'::jsonb,
-            null::jsonb,
-            'stripe'
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, 'stripe')$$,
         :'group1ID',
         :'eventExternalClearID',
-        :'category1ID',
-        :'eventExternalClearTicketTypeID',
-        :'eventExternalClearPriceWindowID'
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Paid event that still carries leftover external fields',
+            'external_payment_url', 'https://pay.example.test/leftover',
+            'external_payment_window_hours', 48,
+            'kind_id', 'in-person',
+            'name', 'External Clear Event',
+            'payment_currency_code', 'USD',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalClearTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 2500,
+                            'event_ticket_price_window_id', :'eventExternalClearPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_zip_code', '94105'
+        )
     ),
     'OCG01',
     'external payments are not available for this event',
@@ -2114,49 +2295,40 @@ select throws_ok(
 -- Should reject a persisted external URL when the group country is delisted
 select throws_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            '{
-                "name": "External Delisted Event",
-                "description": "Paid event whose group country is no longer allowlisted",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "external_payment_url": "https://pay.example.test/delisted",
-                "external_payment_window_hours": 48,
-                "payment_currency_code": "USD",
-                "venue_address": "123 Main St",
-                "venue_city": "San Francisco",
-                "venue_country_code": "US",
-                "venue_name": "Community Hall",
-                "venue_zip_code": "94105",
-                "ticket_types": [
-                    {
-                        "active": true,
-                        "availability": "public",
-                        "event_ticket_type_id": "%s",
-                        "order": 1,
-                        "price_windows": [
-                            {
-                                "amount_minor": 2500,
-                                "event_ticket_price_window_id": "%s"
-                            }
-                        ],
-                        "seats_total": 50,
-                        "title": "General Admission"
-                    }
-                ]
-            }'::jsonb,
-            null::jsonb,
-            'stripe'
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, 'stripe')$$,
         :'groupDelistedID',
         :'eventExternalDelistedID',
-        :'category1ID',
-        :'eventExternalDelistedTicketTypeID',
-        :'eventExternalDelistedPriceWindowID'
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Paid event whose group country is no longer allowlisted',
+            'external_payment_url', 'https://pay.example.test/delisted',
+            'external_payment_window_hours', 48,
+            'kind_id', 'in-person',
+            'name', 'External Delisted Event',
+            'payment_currency_code', 'USD',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalDelistedTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 2500,
+                            'event_ticket_price_window_id', :'eventExternalDelistedPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_zip_code', '94105'
+        )
     ),
     'OCG01',
     'external payments are not available for this event',
@@ -2166,63 +2338,54 @@ select throws_ok(
 -- Should clear a persisted external URL onto Stripe when a recipient is ready
 select lives_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            '{
-                "_payment_validation": {
-                    "expected_payment_recipient": {
-                        "provider": "stripe",
-                        "recipient_id": "acct_update_event",
-                        "seller_display_name": "Update Event Fiscal Sponsor"
-                    },
-                    "require_automatic_tax": true,
-                    "validated_payment_recipient": {
-                        "provider": "stripe",
-                        "recipient_id": "acct_update_event",
-                        "seller_display_name": "Update Event Fiscal Sponsor"
-                    }
-                },
-                "name": "External Clear Event",
-                "description": "Paid event that still carries leftover external fields",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "external_payment_url": "",
-                "external_payment_instructions": "",
-                "external_payment_window_hours": "",
-                "payment_currency_code": "USD",
-                "venue_address": "123 Main St",
-                "venue_city": "San Francisco",
-                "venue_country_code": "US",
-                "venue_name": "Community Hall",
-                "venue_zip_code": "94105",
-                "ticket_types": [
-                    {
-                        "active": true,
-                        "availability": "public",
-                        "event_ticket_type_id": "%s",
-                        "order": 1,
-                        "price_windows": [
-                            {
-                                "amount_minor": 2500,
-                                "event_ticket_price_window_id": "%s"
-                            }
-                        ],
-                        "seats_total": 50,
-                        "title": "General Admission"
-                    }
-                ]
-            }'::jsonb,
-            null::jsonb,
-            'stripe'
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, 'stripe')$$,
         :'group1ID',
         :'eventExternalClearID',
-        :'category1ID',
-        :'eventExternalClearTicketTypeID',
-        :'eventExternalClearPriceWindowID'
+        jsonb_build_object(
+            '_payment_validation', jsonb_build_object(
+                'expected_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                ),
+                'require_automatic_tax', true,
+                'validated_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                )
+            ),
+            'category_id', :'category1ID',
+            'description', 'Paid event that still carries leftover external fields',
+            'external_payment_instructions', '',
+            'external_payment_url', '',
+            'external_payment_window_hours', '',
+            'kind_id', 'in-person',
+            'name', 'External Clear Event',
+            'payment_currency_code', 'USD',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalClearTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 2500,
+                            'event_ticket_price_window_id', :'eventExternalClearPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_zip_code', '94105'
+        )
     ),
     'Should clear a persisted external URL onto Stripe when a recipient is ready'
 );
@@ -2248,63 +2411,54 @@ select is(
 -- Should reject clearing an external payment URL while a pending external purchase exists
 select throws_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            '{
-                "_payment_validation": {
-                    "expected_payment_recipient": {
-                        "provider": "stripe",
-                        "recipient_id": "acct_update_event",
-                        "seller_display_name": "Update Event Fiscal Sponsor"
-                    },
-                    "require_automatic_tax": true,
-                    "validated_payment_recipient": {
-                        "provider": "stripe",
-                        "recipient_id": "acct_update_event",
-                        "seller_display_name": "Update Event Fiscal Sponsor"
-                    }
-                },
-                "name": "External Pending Clear Event",
-                "description": "Paid event whose pending external hold keeps the live URL",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "external_payment_url": "",
-                "external_payment_instructions": "",
-                "external_payment_window_hours": "",
-                "payment_currency_code": "USD",
-                "venue_address": "123 Main St",
-                "venue_city": "San Francisco",
-                "venue_country_code": "US",
-                "venue_name": "Community Hall",
-                "venue_zip_code": "94105",
-                "ticket_types": [
-                    {
-                        "active": true,
-                        "availability": "public",
-                        "event_ticket_type_id": "%s",
-                        "order": 1,
-                        "price_windows": [
-                            {
-                                "amount_minor": 2500,
-                                "event_ticket_price_window_id": "%s"
-                            }
-                        ],
-                        "seats_total": 50,
-                        "title": "General Admission"
-                    }
-                ]
-            }'::jsonb,
-            null::jsonb,
-            'stripe'
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, 'stripe')$$,
         :'group1ID',
         :'eventExternalPendingClearID',
-        :'category1ID',
-        :'eventExternalPendingClearTicketTypeID',
-        :'eventExternalPendingClearPriceWindowID'
+        jsonb_build_object(
+            '_payment_validation', jsonb_build_object(
+                'expected_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                ),
+                'require_automatic_tax', true,
+                'validated_payment_recipient', jsonb_build_object(
+                    'provider', 'stripe',
+                    'recipient_id', 'acct_update_event',
+                    'seller_display_name', 'Update Event Fiscal Sponsor'
+                )
+            ),
+            'category_id', :'category1ID',
+            'description', 'Paid event whose pending external hold keeps the live URL',
+            'external_payment_instructions', '',
+            'external_payment_url', '',
+            'external_payment_window_hours', '',
+            'kind_id', 'in-person',
+            'name', 'External Pending Clear Event',
+            'payment_currency_code', 'USD',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalPendingClearTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 2500,
+                            'event_ticket_price_window_id', :'eventExternalPendingClearPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_zip_code', '94105'
+        )
     ),
     'OCG01',
     'external payment url cannot be cleared while pending external purchases exist',
@@ -2314,48 +2468,39 @@ select throws_ok(
 -- Should reject clearing an external URL when Stripe is not ready
 select throws_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            '{
-                "name": "External Delisted Event",
-                "description": "Paid event whose group country is no longer allowlisted",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "external_payment_url": "",
-                "payment_currency_code": "USD",
-                "venue_address": "123 Main St",
-                "venue_city": "San Francisco",
-                "venue_country_code": "US",
-                "venue_name": "Community Hall",
-                "venue_zip_code": "94105",
-                "ticket_types": [
-                    {
-                        "active": true,
-                        "availability": "public",
-                        "event_ticket_type_id": "%s",
-                        "order": 1,
-                        "price_windows": [
-                            {
-                                "amount_minor": 2500,
-                                "event_ticket_price_window_id": "%s"
-                            }
-                        ],
-                        "seats_total": 50,
-                        "title": "General Admission"
-                    }
-                ]
-            }'::jsonb,
-            null::jsonb,
-            'stripe'
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, 'stripe')$$,
         :'groupDelistedID',
         :'eventExternalDelistedID',
-        :'category1ID',
-        :'eventExternalDelistedTicketTypeID',
-        :'eventExternalDelistedPriceWindowID'
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Paid event whose group country is no longer allowlisted',
+            'external_payment_url', '',
+            'kind_id', 'in-person',
+            'name', 'External Delisted Event',
+            'payment_currency_code', 'USD',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalDelistedTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 2500,
+                            'event_ticket_price_window_id', :'eventExternalDelistedPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '123 Main St',
+            'venue_city', 'San Francisco',
+            'venue_country_code', 'US',
+            'venue_name', 'Community Hall',
+            'venue_zip_code', '94105'
+        )
     ),
     'OCG01',
     'payment configuration changed during provider validation',
@@ -2365,52 +2510,42 @@ select throws_ok(
 -- Should reject updating a paid external event without a payment URL
 select throws_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            jsonb_build_object(
-                'name', 'External Stripe Event',
-                'description', 'Published Stripe event waiting for an external URL',
-                'timezone', 'UTC',
-                'category_id', %L::uuid,
-                'kind_id', 'in-person',
-                'payment_currency_code', 'KRW',
-                'starts_at', to_char(
-                    (
-                        select starts_at
-                        from event
-                        where event_id = %L::uuid
-                    ) at time zone 'UTC',
-                    'YYYY-MM-DD"T"HH24:MI:SS'
-                ),
-                'venue_address', '1 Test Street',
-                'venue_city', 'Seoul',
-                'venue_country_code', 'KR',
-                'venue_name', 'Test Hall',
-                'venue_zip_code', '00000',
-                'ticket_types', jsonb_build_array(jsonb_build_object(
-                    'active', true,
-                    'availability', 'public',
-                    'event_ticket_type_id', %L::uuid,
-                    'order', 1,
-                    'price_windows', jsonb_build_array(jsonb_build_object(
-                        'amount_minor', 5500,
-                        'event_ticket_price_window_id', %L::uuid
-                    )),
-                    'seats_total', 50,
-                    'title', 'General Admission'
-                ))
-            ),
-            null::jsonb,
-            'stripe'
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, 'stripe')$$,
         :'groupExternalID',
         :'eventExternalStripeID',
-        :'category1ID',
-        :'eventExternalStripeID',
-        :'eventExternalStripeTicketTypeID',
-        :'eventExternalStripePriceWindowID'
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Published Stripe event waiting for an external URL',
+            'kind_id', 'in-person',
+            'name', 'External Stripe Event',
+            'payment_currency_code', 'KRW',
+            'starts_at', to_char(
+                (select starts_at from event where event_id = :'eventExternalStripeID'::uuid) at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ),
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalStripeTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 5500,
+                            'event_ticket_price_window_id', :'eventExternalStripePriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '1 Test Street',
+            'venue_city', 'Seoul',
+            'venue_country_code', 'KR',
+            'venue_name', 'Test Hall',
+            'venue_zip_code', '00000'
+        )
     ),
     'OCG01',
     'paid-capable events require a valid external payment url',
@@ -2420,122 +2555,91 @@ select throws_ok(
 -- Should reject a paid update on Stripe while the selected external rail lacks its payee name
 select throws_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            jsonb_build_object(
-                'name', 'Nameless External Group Event',
-                'description', 'Free event in a nameless external group',
-                'timezone', 'UTC',
-                'category_id', %L::uuid,
-                'kind_id', 'in-person',
-                'payment_currency_code', 'KRW',
-                'starts_at', to_char(
-                    (
-                        select starts_at
-                        from event
-                        where event_id = %L::uuid
-                    ) at time zone 'UTC',
-                    'YYYY-MM-DD"T"HH24:MI:SS'
-                ),
-                'venue_address', '1 Test Street',
-                'venue_city', 'Seoul',
-                'venue_country_code', 'KR',
-                'venue_name', 'Test Hall',
-                'venue_zip_code', '00000',
-                'ticket_types', jsonb_build_array(jsonb_build_object(
-                    'active', true,
-                    'availability', 'public',
-                    'event_ticket_type_id', %L::uuid,
-                    'order', 1,
-                    'price_windows', jsonb_build_array(jsonb_build_object(
-                        'amount_minor', 5500,
-                        'event_ticket_price_window_id', %L::uuid
-                    )),
-                    'seats_total', 50,
-                    'title', 'General Admission'
-                ))
-            ),
-            null::jsonb,
-            'stripe'
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, 'stripe')$$,
         :'groupExternalNamelessID',
         :'eventExternalNamelessID',
-        :'category1ID',
-        :'eventExternalNamelessID',
-        :'eventExternalNamelessTicketTypeID',
-        :'eventExternalNamelessPriceWindowID'
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Free event in a nameless external group',
+            'kind_id', 'in-person',
+            'name', 'Nameless External Group Event',
+            'payment_currency_code', 'KRW',
+            'starts_at', to_char(
+                (select starts_at from event where event_id = :'eventExternalNamelessID'::uuid) at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ),
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalNamelessTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 5500,
+                            'event_ticket_price_window_id', :'eventExternalNamelessPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '1 Test Street',
+            'venue_city', 'Seoul',
+            'venue_country_code', 'KR',
+            'venue_name', 'Test Hall',
+            'venue_zip_code', '00000'
+        )
     ),
     'OCG01',
     'external payments require the legal name of the organization collecting payments',
     'Should reject a paid update on Stripe while the selected external rail lacks its payee name'
 );
 
--- Should keep the nameless external group event free after the rejected update
-select is(
-    (
-        select etpw.amount_minor
-        from event_ticket_price_window etpw
-        where etpw.event_ticket_price_window_id = :'eventExternalNamelessPriceWindowID'::uuid
-    ),
-    0::bigint,
-    'Should keep the nameless external group event free after the rejected update'
-);
-
 -- Should mark a published Stripe event external when this update sets a payment URL
 select lives_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            jsonb_build_object(
-                'name', 'External Stripe Event',
-                'description', 'Published Stripe event waiting for an external URL',
-                'timezone', 'UTC',
-                'category_id', %L::uuid,
-                'kind_id', 'in-person',
-                'external_payment_url', 'https://pay.example.test/converted',
-                'external_payment_window_hours', 120,
-                'payment_currency_code', 'KRW',
-                'tax_behavior', 'exclusive',
-                'tax_calculation_mode', 'automatic',
-                'starts_at', to_char(
-                    (
-                        select starts_at
-                        from event
-                        where event_id = %L::uuid
-                    ) at time zone 'UTC',
-                    'YYYY-MM-DD"T"HH24:MI:SS'
-                ),
-                'venue_address', '1 Test Street',
-                'venue_city', 'Seoul',
-                'venue_country_code', 'KR',
-                'venue_name', 'Test Hall',
-                'venue_zip_code', '00000',
-                'ticket_types', jsonb_build_array(jsonb_build_object(
-                    'active', true,
-                    'availability', 'public',
-                    'event_ticket_type_id', %L::uuid,
-                    'order', 1,
-                    'price_windows', jsonb_build_array(jsonb_build_object(
-                        'amount_minor', 5000,
-                        'event_ticket_price_window_id', %L::uuid
-                    )),
-                    'seats_total', 50,
-                    'title', 'General Admission'
-                ))
-            ),
-            null::jsonb,
-            null
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, null)$$,
         :'groupExternalID',
         :'eventExternalStripeID',
-        :'category1ID',
-        :'eventExternalStripeID',
-        :'eventExternalStripeTicketTypeID',
-        :'eventExternalStripePriceWindowID'
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'Published Stripe event waiting for an external URL',
+            'external_payment_url', 'https://pay.example.test/converted',
+            'external_payment_window_hours', 120,
+            'kind_id', 'in-person',
+            'name', 'External Stripe Event',
+            'payment_currency_code', 'KRW',
+            'starts_at', to_char(
+                (select starts_at from event where event_id = :'eventExternalStripeID'::uuid) at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ),
+            'tax_behavior', 'exclusive',
+            'tax_calculation_mode', 'automatic',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalStripeTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 5000,
+                            'event_ticket_price_window_id', :'eventExternalStripePriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '1 Test Street',
+            'venue_city', 'Seoul',
+            'venue_country_code', 'KR',
+            'venue_name', 'Test Hall',
+            'venue_zip_code', '00000'
+        )
     ),
     'Should mark a published Stripe event external when this update sets a payment URL'
 );
@@ -2563,51 +2667,42 @@ select is(
 -- Should normalize tax and accept an overridden window on an external paid update
 select lives_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            '{
-                "name": "External Paid Event",
-                "description": "External event updated for window and tax normalization",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "external_payment_url": "https://pay.example.test/update",
-                "external_payment_window_hours": 96,
-                "payment_currency_code": "KRW",
-                "tax_behavior": "exclusive",
-                "tax_calculation_mode": "automatic",
-                "venue_address": "1 Test Street",
-                "venue_city": "Seoul",
-                "venue_country_code": "KR",
-                "venue_name": "Test Hall",
-                "venue_zip_code": "00000",
-                "ticket_types": [
-                    {
-                        "active": true,
-                        "availability": "public",
-                        "event_ticket_type_id": "%s",
-                        "order": 1,
-                        "price_windows": [
-                            {
-                                "amount_minor": 5000,
-                                "event_ticket_price_window_id": "%s"
-                            }
-                        ],
-                        "seats_total": 50,
-                        "title": "General Admission"
-                    }
-                ]
-            }'::jsonb,
-            null::jsonb,
-            null
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, null)$$,
         :'groupExternalID',
         :'eventExternalPaidID',
-        :'category1ID',
-        :'eventExternalPaidTicketTypeID',
-        :'eventExternalPaidPriceWindowID'
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'External event updated for window and tax normalization',
+            'external_payment_url', 'https://pay.example.test/update',
+            'external_payment_window_hours', 96,
+            'kind_id', 'in-person',
+            'name', 'External Paid Event',
+            'payment_currency_code', 'KRW',
+            'tax_behavior', 'exclusive',
+            'tax_calculation_mode', 'automatic',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalPaidTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 5000,
+                            'event_ticket_price_window_id', :'eventExternalPaidPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '1 Test Street',
+            'venue_city', 'Seoul',
+            'venue_country_code', 'KR',
+            'venue_name', 'Test Hall',
+            'venue_zip_code', '00000'
+        )
     ),
     'Should normalize tax and accept an overridden window on an external paid update'
 );
@@ -2633,49 +2728,40 @@ select is(
 -- Should reject an external payment window above the configured maximum on update
 select throws_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            '{
-                "name": "External Paid Event",
-                "description": "External event updated for window and tax normalization",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "external_payment_url": "https://pay.example.test/update",
-                "external_payment_window_hours": 337,
-                "payment_currency_code": "KRW",
-                "venue_address": "1 Test Street",
-                "venue_city": "Seoul",
-                "venue_country_code": "KR",
-                "venue_name": "Test Hall",
-                "venue_zip_code": "00000",
-                "ticket_types": [
-                    {
-                        "active": true,
-                        "availability": "public",
-                        "event_ticket_type_id": "%s",
-                        "order": 1,
-                        "price_windows": [
-                            {
-                                "amount_minor": 5000,
-                                "event_ticket_price_window_id": "%s"
-                            }
-                        ],
-                        "seats_total": 50,
-                        "title": "General Admission"
-                    }
-                ]
-            }'::jsonb,
-            null::jsonb,
-            null
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, null)$$,
         :'groupExternalID',
         :'eventExternalPaidID',
-        :'category1ID',
-        :'eventExternalPaidTicketTypeID',
-        :'eventExternalPaidPriceWindowID'
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'External event updated for window and tax normalization',
+            'external_payment_url', 'https://pay.example.test/update',
+            'external_payment_window_hours', 337,
+            'kind_id', 'in-person',
+            'name', 'External Paid Event',
+            'payment_currency_code', 'KRW',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalPaidTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 5000,
+                            'event_ticket_price_window_id', :'eventExternalPaidPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '1 Test Street',
+            'venue_city', 'Seoul',
+            'venue_country_code', 'KR',
+            'venue_name', 'Test Hall',
+            'venue_zip_code', '00000'
+        )
     ),
     'OCG01',
     'external payment window exceeds the configured maximum',
@@ -2685,48 +2771,39 @@ select throws_ok(
 -- Should reject moving a paid external event venue outside the group country
 select throws_ok(
     format(
-        $$select update_event(
-            null::uuid,
-            %L::uuid,
-            %L::uuid,
-            '{
-                "name": "External Paid Event",
-                "description": "External event updated for window and tax normalization",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "external_payment_url": "https://pay.example.test/update",
-                "payment_currency_code": "KRW",
-                "venue_address": "1 Test Street",
-                "venue_city": "Tokyo",
-                "venue_country_code": "JP",
-                "venue_name": "Test Hall",
-                "venue_zip_code": "100-0001",
-                "ticket_types": [
-                    {
-                        "active": true,
-                        "availability": "public",
-                        "event_ticket_type_id": "%s",
-                        "order": 1,
-                        "price_windows": [
-                            {
-                                "amount_minor": 5000,
-                                "event_ticket_price_window_id": "%s"
-                            }
-                        ],
-                        "seats_total": 50,
-                        "title": "General Admission"
-                    }
-                ]
-            }'::jsonb,
-            null::jsonb,
-            null
-        )$$,
+        $$select update_event(null::uuid, %L::uuid, %L::uuid, %L::jsonb, null::jsonb, null)$$,
         :'groupExternalID',
         :'eventExternalPaidID',
-        :'category1ID',
-        :'eventExternalPaidTicketTypeID',
-        :'eventExternalPaidPriceWindowID'
+        jsonb_build_object(
+            'category_id', :'category1ID',
+            'description', 'External event updated for window and tax normalization',
+            'external_payment_url', 'https://pay.example.test/update',
+            'kind_id', 'in-person',
+            'name', 'External Paid Event',
+            'payment_currency_code', 'KRW',
+            'ticket_types', jsonb_build_array(
+                jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', :'eventExternalPaidTicketTypeID',
+                    'order', 1,
+                    'price_windows', jsonb_build_array(
+                        jsonb_build_object(
+                            'amount_minor', 5000,
+                            'event_ticket_price_window_id', :'eventExternalPaidPriceWindowID'
+                        )
+                    ),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                )
+            ),
+            'timezone', 'UTC',
+            'venue_address', '1 Test Street',
+            'venue_city', 'Tokyo',
+            'venue_country_code', 'JP',
+            'venue_name', 'Test Hall',
+            'venue_zip_code', '100-0001'
+        )
     ),
     'OCG01',
     'external paid events require a venue in the group country',

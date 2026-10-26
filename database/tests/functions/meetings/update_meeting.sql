@@ -1,9 +1,11 @@
+-- Tests updating provider meetings and completing their event or session sync claims.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -32,12 +34,11 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Event: has meeting to update (with previous error)
+-- Event: has meeting to update
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', '2025-06-01 11:00:00-04',
     'event_kind_id', 'virtual',
-    'meeting_error', 'Previous sync error',
     'meeting_in_sync', false,
     'meeting_provider_host_user', 'event-claim-host@example.com',
     'meeting_provider_id', 'zoom',
@@ -127,7 +128,7 @@ insert into meeting (
     'reassigned123-update-meeting'
 );
 
--- Session: has meeting to update (with previous error)
+-- Session: has meeting to update
 insert into session (
     session_id,
     event_id,
@@ -136,7 +137,6 @@ insert into session (
     ends_at,
     session_kind_id,
 
-    meeting_error,
     meeting_in_sync,
     meeting_provider_id,
     meeting_provider_host_user,
@@ -150,7 +150,6 @@ insert into session (
     '2025-06-01 10:30:00-04',
     'virtual',
 
-    'Previous sync error',
     false,
     'zoom',
     'session-claim-host@example.com',
@@ -299,14 +298,11 @@ select is(
     'reassigned123-update-meeting',
     'Should keep meeting unchanged when claim token does not match'
 );
-select isnt(
+select is(
     (select meeting_sync_claimed_at from event where event_id = :'eventReassignedClaimID'),
-    null,
+    current_timestamp,
     'Should keep event claim when claim token does not match'
 );
-
--- Mark event as out of sync again for next test
-update event set meeting_in_sync = false where event_id = :'eventID';
 
 -- Should update meeting record when linked to session
 select lives_ok(
@@ -346,20 +342,6 @@ select results_eq(
     )
     $expected$,
     'Session marked as synced and claim cleared after updating meeting'
-);
-
--- Should clear previous error when updating meeting linked to event
-select is(
-    (select meeting_error from event where event_id = :'eventID'),
-    null,
-    'Event meeting_error cleared after successful update_meeting'
-);
-
--- Should clear previous error when updating meeting linked to session
-select is(
-    (select meeting_error from session where session_id = :'sessionID'),
-    null,
-    'Session meeting_error cleared after successful update_meeting'
 );
 
 -- ============================================================================

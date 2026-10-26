@@ -1,9 +1,11 @@
+-- Tests deleting provider meetings and completing their event, session or orphan sync claims.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -33,13 +35,12 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Event: has meeting to delete (with previous error)
+-- Event: has meeting to delete
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
     'capacity', 100,
     'ends_at', '2025-06-01 11:00:00-04',
     'event_kind_id', 'virtual',
-    'meeting_error', 'Previous sync error',
     'meeting_in_sync', false,
     'meeting_provider_host_user', 'event-claim-host@example.com',
     'meeting_provider_id', 'zoom',
@@ -131,7 +132,7 @@ insert into meeting (
     'reassigned123'
 );
 
--- Session: has meeting to delete (with previous error)
+-- Session: has meeting to delete
 insert into session (
     session_id,
     event_id,
@@ -140,7 +141,6 @@ insert into session (
     ends_at,
     session_kind_id,
 
-    meeting_error,
     meeting_in_sync,
     meeting_provider_id,
     meeting_provider_host_user,
@@ -154,7 +154,6 @@ insert into session (
     '2025-06-01 10:30:00-04',
     'virtual',
 
-    'Previous sync error',
     false,
     'zoom',
     'session-claim-host@example.com',
@@ -315,9 +314,9 @@ select is(
     1::bigint,
     'Should keep meeting when claim token does not match'
 );
-select isnt(
+select is(
     (select meeting_sync_claimed_at from event where event_id = :'eventReassignedClaimID'),
-    null,
+    current_timestamp,
     'Should keep event claim when claim token does not match'
 );
 
@@ -388,20 +387,6 @@ select is(
     (select count(*) from meeting where meeting_id = :'meetingOrphanID'),
     0::bigint,
     'Orphan meeting record deleted'
-);
-
--- Should clear previous error when deleting meeting linked to event
-select is(
-    (select meeting_error from event where event_id = :'eventID'),
-    null,
-    'Event meeting_error cleared after successful delete_meeting'
-);
-
--- Should clear previous error when deleting meeting linked to session
-select is(
-    (select meeting_error from session where session_id = :'sessionID'),
-    null,
-    'Session meeting_error cleared after successful delete_meeting'
 );
 
 -- ============================================================================

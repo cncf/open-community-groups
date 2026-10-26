@@ -5,15 +5,20 @@
 -- ============================================================================
 
 begin;
-select plan(38);
+select plan(25);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set canceledEventID '5e000000-0000-0000-0000-000000000042'
+\set canceledPriceWindowID '5e000000-0000-0000-0000-000000000047'
+\set canceledTicketTypeID '5e000000-0000-0000-0000-000000000043'
+\set canceledUserID '5e000000-0000-0000-0000-000000000044'
 \set closedEventID '5e000000-0000-0000-0000-000000000027'
 \set closedExpiredOfferID '5e000000-0000-0000-0000-000000000028'
 \set closedExpiredUserID '5e000000-0000-0000-0000-000000000029'
+\set closedPriceWindowID '5e000000-0000-0000-0000-000000000048'
 \set closedQueueUserID '5e000000-0000-0000-0000-00000000002a'
 \set closedTicketTypeID '5e000000-0000-0000-0000-00000000002b'
 \set communityID '5e000000-0000-0000-0000-000000000001'
@@ -21,28 +26,13 @@ select plan(38);
 \set dueDiscountCodeID '5e000000-0000-0000-0000-000000000023'
 \set dueEventID '5e000000-0000-0000-0000-000000000003'
 \set dueOfferID '5e000000-0000-0000-0000-000000000004'
+\set duePriceWindowID '5e000000-0000-0000-0000-000000000049'
 \set duePurchaseID '5e000000-0000-0000-0000-000000000005'
 \set dueTicketTypeID '5e000000-0000-0000-0000-000000000006'
 \set dueUserID '5e000000-0000-0000-0000-000000000007'
 \set eventCategoryID '5e000000-0000-0000-0000-000000000008'
-\set externalExpiredEventID '5e000000-0000-0000-0000-000000000031'
-\set externalExpiredPurchaseID '5e000000-0000-0000-0000-000000000032'
-\set externalExpiredTicketTypeID '5e000000-0000-0000-0000-000000000033'
-\set externalExpiredUserID '5e000000-0000-0000-0000-000000000034'
-\set externalGroupID '5e000000-0000-0000-0000-000000000035'
-\set externalReadyEventID '5e000000-0000-0000-0000-000000000036'
-\set externalReadyTicketTypeID '5e000000-0000-0000-0000-000000000037'
-\set externalReadyUserID '5e000000-0000-0000-0000-000000000038'
-\set externalReminderEventID '5e000000-0000-0000-0000-000000000039'
-\set externalReminderPurchaseID '5e000000-0000-0000-0000-00000000003a'
-\set externalReminderTicketTypeID '5e000000-0000-0000-0000-00000000003b'
-\set externalReminderUserID '5e000000-0000-0000-0000-00000000003c'
-\set externalShortPurchaseID '5e000000-0000-0000-0000-000000000040'
-\set externalShortUserID '5e000000-0000-0000-0000-000000000041'
-\set externalUnreadyEventID '5e000000-0000-0000-0000-00000000003d'
-\set externalUnreadyTicketTypeID '5e000000-0000-0000-0000-00000000003e'
-\set externalUnreadyUserID '5e000000-0000-0000-0000-00000000003f'
 \set freeEventID '5e000000-0000-0000-0000-000000000009'
+\set freePriceWindowID '5e000000-0000-0000-0000-00000000004a'
 \set freeTicketTypeID '5e000000-0000-0000-0000-00000000000a'
 \set freeUser1ID '5e000000-0000-0000-0000-00000000000b'
 \set freeUser2ID '5e000000-0000-0000-0000-00000000000c'
@@ -54,6 +44,7 @@ select plan(38);
 \set noPriceUser1ID '5e000000-0000-0000-0000-000000000012'
 \set noPriceUser2ID '5e000000-0000-0000-0000-000000000013'
 \set paidEventID '5e000000-0000-0000-0000-000000000014'
+\set paidPriceWindowID '5e000000-0000-0000-0000-00000000004b'
 \set paidTicketTypeID '5e000000-0000-0000-0000-000000000015'
 \set paidUserID '5e000000-0000-0000-0000-000000000016'
 \set refundPendingEventID '5e000000-0000-0000-0000-00000000002c'
@@ -64,15 +55,20 @@ select plan(38);
 \set replacementEventID '5e000000-0000-0000-0000-000000000017'
 \set replacementExpiredOfferID '5e000000-0000-0000-0000-000000000018'
 \set replacementExpiredUserID '5e000000-0000-0000-0000-000000000019'
+\set replacementPriceWindowID '5e000000-0000-0000-0000-00000000004c'
 \set replacementTicketTypeID '5e000000-0000-0000-0000-00000000001a'
 \set replacementUserID '5e000000-0000-0000-0000-00000000001b'
 \set retryEventID '5e000000-0000-0000-0000-00000000001c'
 \set retryOfferID '5e000000-0000-0000-0000-00000000001d'
+\set retryPriceWindowID '5e000000-0000-0000-0000-00000000004d'
 \set retryPurchaseID '5e000000-0000-0000-0000-00000000001e'
 \set retryTicketTypeID '5e000000-0000-0000-0000-00000000001f'
 \set retryUserID '5e000000-0000-0000-0000-000000000020'
 \set rsvpEventID '5e000000-0000-0000-0000-000000000021'
+\set rsvpPriceWindowID '5e000000-0000-0000-0000-000000000045'
+\set rsvpTicketTypeID '5e000000-0000-0000-0000-000000000046'
 \set rsvpUserID '5e000000-0000-0000-0000-000000000022'
+\set scopedPriceWindowID '5e000000-0000-0000-0000-00000000004e'
 \set scopedTicketTypeID '5e000000-0000-0000-0000-000000000024'
 \set scopedUserID '5e000000-0000-0000-0000-000000000025'
 \set siteID '5e000000-0000-0000-0000-000000000026'
@@ -85,6 +81,7 @@ select plan(38);
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'canceledUserID');
 select fx_user(:'dueUserID');
 select fx_user(:'freeUser1ID');
 select fx_user(:'freeUser2ID');
@@ -100,13 +97,8 @@ select fx_user(:'rsvpUserID');
 select fx_user(:'scopedUserID');
 select fx_user(:'closedExpiredUserID');
 select fx_user(:'closedQueueUserID');
-select fx_user(:'externalExpiredUserID');
-select fx_user(:'externalReadyUserID');
-select fx_user(:'externalReminderUserID');
-select fx_user(:'externalShortUserID');
-select fx_user(:'externalUnreadyUserID');
 
--- Community
+-- Site theme passed to enrollment notifications
 insert into site (description, site_id, theme, title)
 values (
     'Enrollment reconciliation site',
@@ -115,31 +107,11 @@ values (
     'Enrollment Reconciliation Site'
 );
 
--- Operator allowlist used by external-ready promotion and hold lifecycle
-insert into external_payments_config (
-    allowed_countries,
-    default_payment_window_hours,
-    max_payment_window_hours
-) values (
-    array['KR']::text[],
-    72,
-    336
-);
-
 -- Payment-ready group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_reconciliation", "seller_display_name": "Reconciliation Fiscal Sponsor"}'::jsonb));
 
--- Allowlisted group with external payments enabled for ready-event promotion
-select fx_group(:'externalGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'country_code', 'KR',
-    'external_payments_enabled', true,
-    'external_payments_seller_display_name', 'External Payee Co',
-    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_external_reconcile", "seller_display_name": "External Fiscal Sponsor"}'::jsonb
-));
-
 -- Active events covering RSVP and ticket reconciliation paths
 select fx_event(:'rsvpEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'capacity', 1,
     'published', true,
     'starts_at', current_timestamp + interval '2 days',
     'waitlist_enabled', true
@@ -195,44 +167,13 @@ select fx_event(:'closedEventID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'waitlist_enabled', true
 ));
 
--- External-ready paid event that promotes without a Stripe provider gate
-select fx_event(:'externalReadyEventID', :'externalGroupID', :'eventCategoryID', jsonb_build_object(
+-- Canceled published event whose free queue could otherwise be promoted
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
     'event_kind_id', 'virtual',
-    'external_payment_url', 'https://pay.example.test/ready-queue',
-    'payment_currency_code', 'KRW',
     'published', true,
     'starts_at', current_timestamp + interval '2 days',
     'waitlist_enabled', true
-));
-
--- External-marked event on a Stripe-ready group that is not externally eligible
-select fx_event(:'externalUnreadyEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'event_kind_id', 'virtual',
-    'external_payment_url', 'https://pay.example.test/unready-queue',
-    'payment_currency_code', 'USD',
-    'published', true,
-    'starts_at', current_timestamp + interval '2 days',
-    'waitlist_enabled', true
-));
-
--- Event hosting an expired external pending hold
-select fx_event(:'externalExpiredEventID', :'externalGroupID', :'eventCategoryID', jsonb_build_object(
-    'event_kind_id', 'virtual',
-    'external_payment_instructions', 'Pay by bank transfer',
-    'external_payment_url', 'https://pay.example.test/expired-hold',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'starts_at', current_timestamp + interval '2 days'
-));
-
--- Event hosting a reminder-due external pending hold
-select fx_event(:'externalReminderEventID', :'externalGroupID', :'eventCategoryID', jsonb_build_object(
-    'event_kind_id', 'virtual',
-    'external_payment_instructions', 'Pay by bank transfer',
-    'external_payment_url', 'https://pay.example.test/reminder-hold',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'starts_at', current_timestamp + interval '2 days'
 ));
 
 -- Ticket tiers
@@ -251,44 +192,23 @@ select fx_event_ticket_type(:'retryTicketTypeID', :'retryEventID', jsonb_build_o
 select fx_event_ticket_type(:'dueTicketTypeID', :'dueEventID', jsonb_build_object('seats_total', 1));
 select fx_event_ticket_type(:'replacementTicketTypeID', :'replacementEventID', jsonb_build_object('seats_total', 1));
 select fx_event_ticket_type(:'closedTicketTypeID', :'closedEventID', jsonb_build_object('seats_total', 1));
-select fx_event_ticket_type(:'externalReadyTicketTypeID', :'externalReadyEventID', jsonb_build_object('seats_total', 1));
-select fx_event_ticket_type(:'externalUnreadyTicketTypeID', :'externalUnreadyEventID', jsonb_build_object('seats_total', 1));
-select fx_event_ticket_type(:'externalExpiredTicketTypeID', :'externalExpiredEventID', jsonb_build_object('seats_total', 1));
-select fx_event_ticket_type(:'externalReminderTicketTypeID', :'externalReminderEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'canceledTicketTypeID', :'canceledEventID', jsonb_build_object('seats_total', 1));
 
 -- Current prices, excluding the intentionally blocked no-price tier
-select fx_event_ticket_price_window(gen_random_uuid(), :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(gen_random_uuid(), :'scopedTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(gen_random_uuid(), :'paidTicketTypeID', jsonb_build_object('amount_minor', 1000));
-select fx_event_ticket_price_window(gen_random_uuid(), :'retryTicketTypeID', jsonb_build_object('amount_minor', 1000));
-select fx_event_ticket_price_window(gen_random_uuid(), :'dueTicketTypeID', jsonb_build_object('amount_minor', 1000));
-select fx_event_ticket_price_window(gen_random_uuid(), :'replacementTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(gen_random_uuid(), :'closedTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(gen_random_uuid(), :'externalReadyTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(gen_random_uuid(), :'externalUnreadyTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(gen_random_uuid(), :'externalExpiredTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(gen_random_uuid(), :'externalReminderTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'freePriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'scopedPriceWindowID', :'scopedTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'paidPriceWindowID', :'paidTicketTypeID', jsonb_build_object('amount_minor', 1000));
+select fx_event_ticket_price_window(:'retryPriceWindowID', :'retryTicketTypeID', jsonb_build_object('amount_minor', 1000));
+select fx_event_ticket_price_window(:'duePriceWindowID', :'dueTicketTypeID', jsonb_build_object('amount_minor', 1000));
+select fx_event_ticket_price_window(:'replacementPriceWindowID', :'replacementTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'closedPriceWindowID', :'closedTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'canceledPriceWindowID', :'canceledTicketTypeID', jsonb_build_object('amount_minor', 0));
 
--- RSVP events without a specialized ticket fixture use a default tier
-select fx_event_ticket_type(gen_random_uuid(), e.event_id, jsonb_build_object(
-    'seats_total', greatest(coalesce(e.capacity, 100), 1)
-))
-from event e
-where not exists (
-    select 1
-    from event_ticket_type ett
-    where ett.event_id = e.event_id
-);
+-- Single-seat RSVP tier
+select fx_event_ticket_type(:'rsvpTicketTypeID', :'rsvpEventID', jsonb_build_object('seats_total', 1));
 
--- Current free price for the RSVP event's default tier
-select fx_event_ticket_price_window(gen_random_uuid(), ett.event_ticket_type_id, jsonb_build_object('amount_minor', 0))
-from event_ticket_type ett
-where ett.event_id = :'rsvpEventID'
-and not exists (
-    select 1
-    from event_ticket_price_window etpw
-    where etpw.event_ticket_type_id = ett.event_ticket_type_id
-);
+-- Current free price for the RSVP tier
+select fx_event_ticket_price_window(:'rsvpPriceWindowID', :'rsvpTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Limited discount reserved by the checkout whose offer deadline elapsed
 insert into event_discount_code (
@@ -341,7 +261,7 @@ insert into event_waitlist (
 ) values (
     '2024-01-01 00:00:00+00',
     :'rsvpEventID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'rsvpEventID' limit 1),
+    :'rsvpTicketTypeID',
     :'rsvpUserID'
 ), (
     '2024-01-01 00:00:00+00',
@@ -390,105 +310,9 @@ insert into event_waitlist (
     :'closedQueueUserID'
 ), (
     '2024-01-01 00:00:00+00',
-    :'externalReadyEventID',
-    :'externalReadyTicketTypeID',
-    :'externalReadyUserID'
-), (
-    '2024-01-01 00:00:00+00',
-    :'externalUnreadyEventID',
-    :'externalUnreadyTicketTypeID',
-    :'externalUnreadyUserID'
-);
-
--- Expired external hold that should enqueue an expiry notification
-insert into event_purchase (
-    amount_minor,
-    charge_model,
-    currency_code,
-    event_id,
-    event_purchase_id,
-    event_ticket_type_id,
-    hold_expires_at,
-    platform_fee_bps,
-    provisional_platform_fee_amount_minor,
-    status,
-    ticket_title,
-    user_id
-) values (
-    5000,
-    'external',
-    'KRW',
-    :'externalExpiredEventID',
-    :'externalExpiredPurchaseID',
-    :'externalExpiredTicketTypeID',
-    current_timestamp - interval '1 minute',
-    0,
-    0,
-    'pending',
-    'External expired admission',
-    :'externalExpiredUserID'
-);
-
--- Reminder-due external hold within 24 hours of its deadline
-insert into event_purchase (
-    amount_minor,
-    charge_model,
-    created_at,
-    currency_code,
-    event_id,
-    event_purchase_id,
-    event_ticket_type_id,
-    hold_expires_at,
-    platform_fee_bps,
-    provisional_platform_fee_amount_minor,
-    status,
-    ticket_title,
-    user_id
-) values (
-    5000,
-    'external',
-    current_timestamp - interval '48 hours',
-    'KRW',
-    :'externalReminderEventID',
-    :'externalReminderPurchaseID',
-    :'externalReminderTicketTypeID',
-    current_timestamp + interval '12 hours',
-    0,
-    0,
-    'pending',
-    'External reminder admission',
-    :'externalReminderUserID'
-);
-
--- Short external hold that should not receive a closing-soon reminder
-insert into event_purchase (
-    amount_minor,
-    charge_model,
-    created_at,
-    currency_code,
-    event_id,
-    event_purchase_id,
-    event_ticket_type_id,
-    hold_expires_at,
-    platform_fee_bps,
-    provisional_platform_fee_amount_minor,
-    status,
-    ticket_title,
-    user_id
-) values (
-    5000,
-    'external',
-    current_timestamp,
-    'KRW',
-    :'externalReminderEventID',
-    :'externalShortPurchaseID',
-    :'externalReminderTicketTypeID',
-    current_timestamp + interval '12 hours',
-    0,
-    0,
-    'pending',
-    'External short admission',
-    :'externalShortUserID'
+    :'canceledEventID',
+    :'canceledTicketTypeID',
+    :'canceledUserID'
 );
 
 -- Checkout-pending offers with stale hold and deadline scenarios
@@ -790,33 +614,17 @@ select results_eq(
     'Should enqueue and audit each ticket waitlist offer exactly once'
 );
 
-select ok(
+-- Should pass the site theme to waitlist offer notifications
+select is(
     (
-        select ntd.data @> jsonb_build_object(
-            'amount_minor', 0,
-            'dashboard_url', format(
-                '/dashboard/user?tab=invitations#event-offer-%s',
-                (
-                    select ao.admission_offer_id
-                    from admission_offer ao
-                    where ao.event_id = :'freeEventID'::uuid
-                    and ao.user_id = :'freeUser1ID'::uuid
-                    and ao.status = 'pending'
-                )
-            ),
-            'event_id', :'freeEventID',
-            'event_ticket_type_id', :'freeTicketTypeID',
-            'theme', jsonb_build_object('primary_color', '#2563eb'),
-            'ticket_title', 'Free admission',
-            'timezone', 'UTC',
-            'user_id', :'freeUser1ID'
-        )
+        select ntd.data->'theme'
         from notification n
         join notification_template_data ntd using (notification_template_data_id)
         where n.kind = 'event-ticket-waitlist-offer'
         and n.user_id = :'freeUser1ID'
     ),
-    'Should enqueue complete ticket waitlist offer context'
+    '{"primary_color": "#2563eb"}'::jsonb,
+    'Should pass the site theme to waitlist offer notifications'
 );
 
 -- Should limit promotion to a requested ticket tier
@@ -856,15 +664,16 @@ select throws_ok(
         :'freeEventID',
         :'dueTicketTypeID'
     ),
+    'P0001',
     'ticket type not found',
     'Should reject a scoped ticket type owned by another event'
 );
 
--- Should never skip a blocked queue head
+-- Should not promote queues of a canceled event
 select is(
-    reconcile_event_enrollment(:'noPriceEventID'),
+    reconcile_event_enrollment(:'canceledEventID'),
     array[]::uuid[],
-    'Should stop when the FIFO head has no current price'
+    'Should not promote queues of a canceled event'
 );
 
 select results_eq(
@@ -873,16 +682,11 @@ select results_eq(
             select user_id
             from event_waitlist
             where event_id = %L::uuid
-            order by created_at, user_id
         $$,
-        :'noPriceEventID'
+        :'canceledEventID'
     ),
-    format(
-        $$ values (%L::uuid), (%L::uuid) $$,
-        :'noPriceUser1ID',
-        :'noPriceUser2ID'
-    ),
-    'Should keep every no-price queue entry in place'
+    format($$ values (%L::uuid) $$, :'canceledUserID'),
+    'Should keep the canceled event queue in place'
 );
 
 -- Should expire stale offers without promoting closed registration queues
@@ -1047,143 +851,6 @@ select results_eq(
         :'replacementUserID'
     ),
     'Should retain expired history and create one replacement offer'
-);
-
--- Should promote an external-ready paid queue without a Stripe provider
-select is(
-    reconcile_event_enrollment(:'externalReadyEventID'),
-    array[:'externalReadyUserID'::uuid],
-    'Should promote an external-ready paid queue without a Stripe provider'
-);
-
--- Should leave an external-marked unready queue idle even with Stripe configured
-select is(
-    reconcile_event_enrollment(:'externalUnreadyEventID', null, 'stripe'),
-    array[]::uuid[],
-    'Should leave an external-marked unready queue idle even with Stripe configured'
-);
-
--- Should keep the external-marked unready queue head in place
-select results_eq(
-    format(
-        $$
-            select user_id
-            from event_waitlist
-            where event_id = %L::uuid
-            order by created_at, user_id
-        $$,
-        :'externalUnreadyEventID'
-    ),
-    format($$ values (%L::uuid) $$, :'externalUnreadyUserID'),
-    'Should keep the external-marked unready queue head in place'
-);
-
--- Should expire a due external pending hold
-select is(
-    reconcile_event_enrollment(:'externalExpiredEventID'),
-    array[]::uuid[],
-    'Should expire a due external pending hold'
-);
-
--- Should mark the due external hold expired
-select is(
-    (
-        select status
-        from event_purchase
-        where event_purchase_id = :'externalExpiredPurchaseID'
-    ),
-    'expired',
-    'Should mark the due external hold expired'
-);
-
--- Should enqueue one external payment expired notification
-select is(
-    (
-        select count(*)::int
-        from notification n
-        join notification_template_data ntd using (notification_template_data_id)
-        where n.kind = 'event-external-payment-expired'
-        and n.user_id = :'externalExpiredUserID'
-        and (ntd.data->>'event_purchase_id')::uuid = :'externalExpiredPurchaseID'::uuid
-    ),
-    1,
-    'Should enqueue one external payment expired notification'
-);
-
--- Should reconcile a reminder-due external hold
-select is(
-    reconcile_event_enrollment(:'externalReminderEventID'),
-    array[]::uuid[],
-    'Should reconcile a reminder-due external hold'
-);
-
--- Should persist the reminder sent marker before retries
-select ok(
-    (
-        select external_payment_reminder_sent_at is not null
-        from event_purchase
-        where event_purchase_id = :'externalReminderPurchaseID'
-    ),
-    'Should persist the reminder sent marker before retries'
-);
-
--- Should enqueue exactly one external payment reminder notification
-select is(
-    (
-        select count(*)::int
-        from notification n
-        join notification_template_data ntd using (notification_template_data_id)
-        where n.kind = 'event-external-payment-reminder'
-        and n.user_id = :'externalReminderUserID'
-        and (ntd.data->>'event_purchase_id')::uuid = :'externalReminderPurchaseID'::uuid
-    ),
-    1,
-    'Should enqueue exactly one external payment reminder notification'
-);
-
--- Should not enqueue a duplicate external payment reminder
-select is(
-    reconcile_event_enrollment(:'externalReminderEventID'),
-    array[]::uuid[],
-    'Should not enqueue a duplicate external payment reminder'
-);
-
--- Should keep a single external payment reminder after repeated reconciliation
-select is(
-    (
-        select count(*)::int
-        from notification n
-        join notification_template_data ntd using (notification_template_data_id)
-        where n.kind = 'event-external-payment-reminder'
-        and n.user_id = :'externalReminderUserID'
-        and (ntd.data->>'event_purchase_id')::uuid = :'externalReminderPurchaseID'::uuid
-    ),
-    1,
-    'Should keep a single external payment reminder after repeated reconciliation'
-);
-
--- Should not mark a short external hold as reminder-sent
-select ok(
-    (
-        select external_payment_reminder_sent_at is null
-        from event_purchase
-        where event_purchase_id = :'externalShortPurchaseID'
-    ),
-    'Should not mark a short external hold as reminder-sent'
-);
-
--- Should not enqueue a closing-soon reminder for a hold shorter than 24 hours
-select is(
-    (
-        select count(*)::int
-        from notification n
-        join notification_template_data ntd using (notification_template_data_id)
-        where n.kind = 'event-external-payment-reminder'
-        and n.user_id = :'externalShortUserID'
-        and (ntd.data->>'event_purchase_id')::uuid = :'externalShortPurchaseID'::uuid
-    ),
-    0,
-    'Should not enqueue a closing-soon reminder for a hold shorter than 24 hours'
 );
 
 -- ============================================================================

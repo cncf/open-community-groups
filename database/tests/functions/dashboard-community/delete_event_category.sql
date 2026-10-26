@@ -1,3 +1,5 @@
+-- Tests deleting dashboard community event categories.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,12 +11,14 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c090000-0000-0000-0000-000000000009'
 \set communityID '2c090000-0000-0000-0000-000000000001'
 \set eventID '2c090000-0000-0000-0000-000000000002'
+\set foreignEventCategoryID '2c090000-0000-0000-0000-000000000006'
 \set groupCategoryID '2c090000-0000-0000-0000-000000000003'
 \set groupID '2c090000-0000-0000-0000-000000000004'
 \set inUseEventCategoryID '2c090000-0000-0000-0000-000000000005'
-\set unknownEventCategoryID '2c090000-0000-0000-0000-000000000006'
+\set otherCommunityID '2c090000-0000-0000-0000-000000000008'
 \set unusedEventCategoryID '2c090000-0000-0000-0000-000000000007'
 
 -- ============================================================================
@@ -28,7 +32,15 @@ select fx_event_category(:'inUseEventCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 select fx_event(:'eventID', :'groupID', :'inUseEventCategoryID');
 
+-- Unused event category deleted by the success scenario
 select fx_event_category(:'unusedEventCategoryID', :'communityID', jsonb_build_object('name', 'Webinar'));
+
+-- Other community with its own event category
+select fx_community(:'otherCommunityID');
+select fx_event_category(:'foreignEventCategoryID', :'otherCommunityID');
+
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'delete-event-category-audit-actor'));
 
 -- ============================================================================
 -- TESTS
@@ -54,10 +66,11 @@ select throws_ok(
 select lives_ok(
     format(
         $$ select delete_event_category(
-        null::uuid,
+        %L::uuid,
         %L::uuid,
         %L::uuid
     ) $$,
+        :'actorUserID',
         :'communityID',
         :'unusedEventCategoryID'
     ),
@@ -93,21 +106,22 @@ select results_eq(
         $$
         values (
             'event_category_deleted',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'delete-event-category-audit-actor',
             %L::uuid,
             '{"name": "Webinar"}'::jsonb,
             'event_category',
             %L::uuid
         )
         $$,
+        :'actorUserID',
         :'communityID',
         :'unusedEventCategoryID'
     ),
     'Should create the expected audit row'
 );
 
--- Should fail when target category does not exist
+-- Should fail when target category belongs to another community
 select throws_ok(
     format(
         $$ select delete_event_category(
@@ -116,11 +130,11 @@ select throws_ok(
         %L::uuid
     ) $$,
         :'communityID',
-        :'unknownEventCategoryID'
+        :'foreignEventCategoryID'
     ),
     'OCG01',
     'event category not found',
-    'Should fail when deleting a non-existing event category'
+    'Should fail when deleting an event category from another community'
 );
 
 -- ============================================================================

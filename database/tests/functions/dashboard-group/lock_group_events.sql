@@ -134,6 +134,7 @@ select throws_ok(
         $$select lock_group_events(%L::uuid, '{}'::uuid[])$$,
         :'groupID'
     ),
+    'P0001',
     'event_ids cannot be empty',
     'Should reject an empty target list'
 );

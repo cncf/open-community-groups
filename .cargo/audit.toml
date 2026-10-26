@@ -17,6 +17,13 @@ ignore = [
     # not untrusted input. Revisit when upstream moves to rkyv 0.8.
     "RUSTSEC-2026-0235",
 
+    # `crypto-bigint 0.5.5` is pulled by `aws-sigv4` (`sigv4a`) and by the
+    # `ssi` stack through `k256`/`elliptic-curve 0.13`. RustSec only lists a
+    # fix in 0.7.6+, there is no patched 0.5.x release, and the latest
+    # `aws-sigv4` still requires 0.5. The 0.7.x entry in Cargo.lock is already
+    # on a fixed release. Revisit when upstream moves off crypto-bigint 0.5.
+    "RUSTSEC-2026-0387",
+
     # `quinn-proto 0.11.15` is only recorded in Cargo.lock through a `reqwest`
     # weak dependency feature (`quinn?/...`). The `http3` feature is not
     # enabled, so quinn is never compiled into the workspace. Revisit if HTTP/3

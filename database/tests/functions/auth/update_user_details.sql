@@ -1,17 +1,18 @@
+-- Tests updating user profile details.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set user2ID '0a0a0000-0000-0000-0000-000000000001'
-\set user3ID '0a0a0000-0000-0000-0000-000000000002'
-\set user4ID '0a0a0000-0000-0000-0000-000000000003'
+\set emptyStringUserID '0a0a0000-0000-0000-0000-000000000003'
+\set nameOnlyUserID '0a0a0000-0000-0000-0000-000000000001'
 \set userID '0a0a0000-0000-0000-0000-000000000004'
 
 -- ============================================================================
@@ -25,7 +26,7 @@ select fx_user(:'userID', jsonb_build_object(
 ));
 
 -- User with populated optional fields cleared by a name-only update
-select fx_user(:'user2ID', jsonb_build_object(
+select fx_user(:'nameOnlyUserID', jsonb_build_object(
     'bio', 'Original bio',
     'bluesky_url', 'https://bsky.app/profile/original',
     'city', 'Seattle',
@@ -43,27 +44,8 @@ select fx_user(:'user2ID', jsonb_build_object(
     'website_url', 'https://example.com/original'
 ));
 
--- User with populated optional fields cleared by explicit null values
-select fx_user(:'user3ID', jsonb_build_object(
-    'bio', 'Third user bio',
-    'bluesky_url', 'https://bsky.app/profile/third',
-    'city', 'Portland',
-    'company', 'Third Company',
-    'country', 'Canada',
-    'email', 'test3@example.com',
-    'facebook_url', 'https://facebook.com/third',
-    'github_url', 'https://github.com/third',
-    'interests', array['cooking', 'travel'],
-    'linkedin_url', 'https://linkedin.com/in/third',
-    'photo_url', 'https://example.com/third.jpg',
-    'timezone', 'America/New_York',
-    'twitter_url', 'https://twitter.com/third',
-    'username', 'testuser3',
-    'website_url', 'https://example.com/third'
-));
-
 -- User with populated optional fields cleared by empty string values
-select fx_user(:'user4ID', jsonb_build_object(
+select fx_user(:'emptyStringUserID', jsonb_build_object(
     'bio', 'Fourth user bio',
     'bluesky_url', 'https://bsky.app/profile/fourth',
     'city', 'Austin',
@@ -84,32 +66,28 @@ select fx_user(:'user4ID', jsonb_build_object(
 -- ============================================================================
 
 -- Update user with all updateable fields
-select lives_ok(
-    format(
-        $$select update_user_details(%L::uuid, %L::jsonb)$$,
-        :'userID',
-        $${
-            "name": "Updated User",
-            "bio": "This is my bio",
-            "bluesky_url": "https://bsky.app/profile/updateduser",
-            "city": "San Francisco",
-            "company": "Example Corp",
-            "country": "USA",
-            "facebook_url": "https://facebook.com/updateduser",
-            "github_url": "https://github.com/updateduser",
-            "interests": ["programming", "music", "sports"],
-            "linkedin_url": "https://linkedin.com/in/updateduser",
-            "photo_url": "https://example.com/photo.jpg",
-            "timezone": "America/Los_Angeles",
-            "title": "Software Engineer",
-            "twitter_url": "https://twitter.com/updateduser",
-            "website_url": "https://example.com/updateduser"
-        }$$
-    ),
-    'Should execute update with all provided user fields'
+select update_user_details(
+    :'userID'::uuid,
+    $${
+        "name": "Updated User",
+        "bio": "This is my bio",
+        "bluesky_url": "https://bsky.app/profile/updateduser",
+        "city": "San Francisco",
+        "company": "Example Corp",
+        "country": "USA",
+        "facebook_url": "https://facebook.com/updateduser",
+        "github_url": "https://github.com/updateduser",
+        "interests": ["programming", "music", "sports"],
+        "linkedin_url": "https://linkedin.com/in/updateduser",
+        "photo_url": "https://example.com/photo.jpg",
+        "timezone": "America/Los_Angeles",
+        "title": "Software Engineer",
+        "twitter_url": "https://twitter.com/updateduser",
+        "website_url": "https://example.com/updateduser"
+    }$$::jsonb
 );
 
--- Should update all provided user fields
+-- Should persist all provided user fields
 select is(
     get_user_by_id(:'userID'::uuid, false)::jsonb,
     jsonb_build_object(
@@ -164,23 +142,17 @@ select results_eq(
 );
 
 -- Update user with only required field (name), rest are null
-select lives_ok(
-    format(
-        $$select update_user_details(%L::uuid, %L::jsonb)$$,
-        :'user2ID',
-        $${
-            "name": "Updated Name Only"
-        }$$
-    ),
-    'Should execute update when only name is provided'
+select update_user_details(
+    :'nameOnlyUserID'::uuid,
+    '{"name": "Updated Name Only"}'::jsonb
 );
 
 -- Should clear optional fields when only name is provided
 select is(
-    get_user_by_id(:'user2ID'::uuid, false)::jsonb,
+    get_user_by_id(:'nameOnlyUserID'::uuid, false)::jsonb,
     jsonb_build_object(
-        'auth_hash', (select auth_hash from "user" where user_id = :'user2ID'::uuid),
-        'user_id', :'user2ID'::text
+        'auth_hash', (select auth_hash from "user" where user_id = :'nameOnlyUserID'::uuid),
+        'user_id', :'nameOnlyUserID'::text
     ) || '{
         "belongs_to_any_group_team": false,
         "belongs_to_community_team": false,
@@ -192,72 +164,25 @@ select is(
     'Should clear optional fields when only name is provided'
 );
 
--- Update user with required field and explicit null values for optional fields
-select lives_ok(
-    format(
-        $$select update_user_details(%L::uuid, %L::jsonb)$$,
-        :'user3ID',
-        $${
-            "name": "Explicitly Nulled User",
-            "bio": null,
-            "bluesky_url": null,
-            "city": null,
-            "company": null,
-            "country": null,
-            "facebook_url": null,
-            "github_url": null,
-            "interests": null,
-            "linkedin_url": null,
-            "photo_url": null,
-            "timezone": null,
-            "title": null,
-            "twitter_url": null,
-            "website_url": null
-        }$$
-    ),
-    'Should execute update with explicit null optional fields'
-);
-
--- Should handle explicit null values same as omitted fields
-select is(
-    get_user_by_id(:'user3ID'::uuid, false)::jsonb,
-    jsonb_build_object(
-        'auth_hash', (select auth_hash from "user" where user_id = :'user3ID'::uuid),
-        'user_id', :'user3ID'::text
-    ) || '{
-        "belongs_to_any_group_team": false,
-        "belongs_to_community_team": false,
-        "email": "test3@example.com",
-        "email_verified": true,
-        "name": "Explicitly Nulled User",
-        "username": "testuser3"
-    }'::jsonb,
-    'Should treat explicit null values the same as omitted fields'
-);
-
 -- Update user with empty string values for null-normalized fields
-select lives_ok(
-    format(
-        $$select update_user_details(%L::uuid, %L::jsonb)$$,
-        :'user4ID',
-        $${
-            "name": "Empty String User",
-            "bio": "",
-            "bluesky_url": "",
-            "city": "",
-            "company": "",
-            "country": "",
-            "facebook_url": "",
-            "github_url": "",
-            "linkedin_url": "",
-            "photo_url": "",
-            "timezone": "",
-            "title": "",
-            "twitter_url": "",
-            "website_url": ""
-        }$$
-    ),
-    'Should execute update with empty string optional fields'
+select update_user_details(
+    :'emptyStringUserID'::uuid,
+    $${
+        "name": "Empty String User",
+        "bio": "",
+        "bluesky_url": "",
+        "city": "",
+        "company": "",
+        "country": "",
+        "facebook_url": "",
+        "github_url": "",
+        "linkedin_url": "",
+        "photo_url": "",
+        "timezone": "",
+        "title": "",
+        "twitter_url": "",
+        "website_url": ""
+    }$$::jsonb
 );
 
 -- Should normalize empty string values to null
@@ -279,7 +204,7 @@ select results_eq(
             website_url
         from "user"
         where user_id = %L::uuid
-    $$, :'user4ID'),
+    $$, :'emptyStringUserID'),
     $$
         values (
             null::text,

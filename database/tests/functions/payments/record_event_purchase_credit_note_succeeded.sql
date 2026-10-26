@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,7 +22,9 @@ select plan(4);
 \set purchaseID 'd7370000-0000-0000-0000-000000000008'
 \set refundID 'd7370000-0000-0000-0000-000000000009'
 \set refundJobID 'd7370000-0000-0000-0000-000000000013'
+\set staleClaimID 'd7370000-0000-0000-0000-000000000014'
 \set ticketTypeID 'd7370000-0000-0000-0000-000000000010'
+\set unknownCreditNoteID 'd7370000-0000-0000-0000-000000000015'
 \set userID 'd7370000-0000-0000-0000-000000000011'
 
 -- ============================================================================
@@ -115,6 +117,39 @@ insert into event_purchase_credit_note (
 -- TESTS
 -- ============================================================================
 
+-- Should reject a blank provider credit-note id
+select throws_ok(
+    format(
+        'select record_event_purchase_credit_note_succeeded(%L, %L, %L, null, null)',
+        :'creditNoteID', :'claimID', ' '
+    ),
+    'P0001',
+    'provider credit-note id is required',
+    'Should reject a blank provider credit-note id'
+);
+
+-- Should reject an unknown credit note
+select throws_ok(
+    format(
+        'select record_event_purchase_credit_note_succeeded(%L, %L, %L, null, null)',
+        :'unknownCreditNoteID', :'claimID', 'cn_credit'
+    ),
+    'P0001',
+    'credit note not found',
+    'Should reject an unknown credit note'
+);
+
+-- Should reject a stale credit-note claim
+select throws_ok(
+    format(
+        'select record_event_purchase_credit_note_succeeded(%L, %L, %L, null, null)',
+        :'creditNoteID', :'staleClaimID', 'cn_credit'
+    ),
+    'P0001',
+    'credit-note claim is stale',
+    'Should reject a stale credit-note claim'
+);
+
 -- Should complete a claimed credit note
 select lives_ok(
     format(
@@ -133,7 +168,7 @@ select results_eq(
             epcn.provider_hosted_url,
             epcn.provider_pdf_url,
             pj.status,
-            pj.completed_at is not null
+            pj.completed_at = current_timestamp
         from event_purchase_credit_note epcn
         join payment_job pj using (payment_job_id)
         where event_purchase_credit_note_id = %L::uuid
@@ -157,12 +192,31 @@ select lives_ok(
     'Should accept an idempotent credit-note completion replay'
 );
 
+-- Should keep the issued credit note and URLs after the replay
+select results_eq(
+    format($$
+        select
+            provider_credit_note_id,
+            provider_hosted_url,
+            provider_pdf_url
+        from event_purchase_credit_note
+        where event_purchase_credit_note_id = %L::uuid
+    $$, :'creditNoteID'),
+    $$ values (
+        'cn_credit'::text,
+        'https://credit.test/one'::text,
+        'https://credit.test/one.pdf'::text
+    ) $$,
+    'Should keep the issued credit note and URLs after the replay'
+);
+
 -- Should reject a conflicting credit-note completion replay
 select throws_ok(
     format(
         'select record_event_purchase_credit_note_succeeded(%L, %L, %L, null, null)',
         :'creditNoteID', :'claimID', 'cn_other'
     ),
+    'P0001',
     'credit note has a different provider id',
     'Should reject a conflicting credit-note completion replay'
 );

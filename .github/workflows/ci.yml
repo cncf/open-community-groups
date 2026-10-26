@@ -229,6 +229,60 @@ jobs:
       - name: Check database test seed keys
         run: PGPASSWORD=tests sh database/scripts/check-seed-keys.sh -h postgres -p ${{ job.services.postgres.ports[5432] }} -U tests tests
 
+  test-database-migrations:
+    needs: changes
+    if: needs.changes.outputs.database == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    container: ghcr.io/cncf/open-community-groups/db-tests
+    services:
+      postgres:
+        image: ghcr.io/cncf/open-community-groups/postgres-db-tests
+        env:
+          POSTGRES_USER: tests
+          POSTGRES_PASSWORD: tests
+          POSTGRES_DB: tests
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      # Mirrors `just db-migration-tests`: for each seed file, migrate a fresh
+      # database to the schema before the migration, load the seed, migrate the
+      # rest plus the functions, and run the matching pgTAP test.
+      - name: Run database migration tests
+        working-directory: ./database
+        env:
+          PGHOST: postgres
+          PGPASSWORD: tests
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          PGUSER: tests
+        run: |
+          set -eu
+          # Print tern's per-migration SQL echo only when it fails.
+          migrate() {
+            if ! output=$(tern migrate --host "$PGHOST" --port "$PGPORT" --user "$PGUSER" --database "$db" "$@" 2>&1); then
+              printf '%s\n' "$output"
+              return 1
+            fi
+          }
+          for seed in tests/migrations/*_seed.sql; do
+            version=$(basename "$seed" | cut -d_ -f1)
+            db="tests_migration_$version"
+            test_file=$(ls tests/migrations/"$version"_*.sql | grep -v '_seed\.sql$')
+            echo "- Testing migration $version.."
+            psql -d tests -q -v ON_ERROR_STOP=1 -c "create database $db"
+            psql -d "$db" -q -v ON_ERROR_STOP=1 -c 'create extension pgtap'
+            migrate --migrations migrations/schema --version-table version_schema --destination "$(expr "$version" - 1)"
+            psql -d "$db" -q -v ON_ERROR_STOP=1 -f "$seed"
+            migrate --migrations migrations/schema --version-table version_schema
+            migrate --migrations migrations/functions --version-table version_functions
+            pg_prove --dbname "$db" --verbose "$test_file"
+          done
+
   test-database-contracts:
     needs: changes
     if: needs.changes.outputs.database_contracts == 'true'

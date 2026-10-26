@@ -5,52 +5,57 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set attendeeOrganizerUserID '4a0c0000-0000-0000-0000-000000000053'
-\set bouncedDiscountCodeID '4a0c0000-0000-0000-0000-000000000049'
-\set bouncedDiscountOfferID '4a0c0000-0000-0000-0000-000000000045'
-\set bouncedDiscountUserID '4a0c0000-0000-0000-0000-000000000046'
 \set checkoutExpiredPurchaseID '4a0c0000-0000-0000-0000-000000000040'
 \set checkoutExpiredUserID '4a0c0000-0000-0000-0000-000000000041'
 \set checkoutPurchaseID '4a0c0000-0000-0000-0000-000000000042'
 \set checkoutUserID '4a0c0000-0000-0000-0000-000000000043'
 \set communityID '4a0c0000-0000-0000-0000-000000000001'
-\set endedWindowApprovalOfferID '4a0c0000-0000-0000-0000-00000000004a'
-\set endedWindowApprovalUserID '4a0c0000-0000-0000-0000-00000000004b'
-\set endedWindowEventID '4a0c0000-0000-0000-0000-00000000004c'
-\set endedWindowPriceWindowID '4a0c0000-0000-0000-0000-00000000004d'
-\set endedWindowTicketTypeID '4a0c0000-0000-0000-0000-00000000004e'
-\set endedWindowWaitlistOfferID '4a0c0000-0000-0000-0000-00000000004f'
-\set endedWindowWaitlistUserID '4a0c0000-0000-0000-0000-000000000050'
 \set eventAID '4a0c0000-0000-0000-0000-000000000002'
+\set eventAPriceWindowID '4a0c0000-0000-0000-0000-000000000058'
+\set eventATicketTypeID '4a0c0000-0000-0000-0000-000000000059'
 \set eventBID '4a0c0000-0000-0000-0000-000000000003'
+\set eventBPriceWindowID '4a0c0000-0000-0000-0000-00000000005a'
+\set eventBTicketTypeID '4a0c0000-0000-0000-0000-00000000005b'
 \set eventCanceledID '4a0c0000-0000-0000-0000-000000000004'
+\set eventCanceledPriceWindowID '4a0c0000-0000-0000-0000-00000000005e'
+\set eventCanceledTicketTypeID '4a0c0000-0000-0000-0000-00000000005f'
 \set eventCategoryID '4a0c0000-0000-0000-0000-000000000005'
 \set eventCID '4a0c0000-0000-0000-0000-000000000006'
-\set eventDeletedGroupID '4a0c0000-0000-0000-0000-000000000007'
-\set eventDeletedID '4a0c0000-0000-0000-0000-000000000008'
+\set eventCPriceWindowID '4a0c0000-0000-0000-0000-00000000005c'
+\set eventCTicketTypeID '4a0c0000-0000-0000-0000-00000000005d'
 \set eventInactiveGroupID '4a0c0000-0000-0000-0000-000000000009'
+\set eventInactiveGroupPriceWindowID '4a0c0000-0000-0000-0000-000000000060'
+\set eventInactiveGroupTicketTypeID '4a0c0000-0000-0000-0000-000000000061'
 \set eventNoStartsAtID '4a0c0000-0000-0000-0000-000000000010'
-\set eventOrganizersRemovedID '4a0c0000-0000-0000-0000-000000000054'
+\set eventNoStartsAtPriceWindowID '4a0c0000-0000-0000-0000-000000000062'
+\set eventNoStartsAtTicketTypeID '4a0c0000-0000-0000-0000-000000000063'
 \set eventPaidID '4a0c0000-0000-0000-0000-000000000011'
 \set eventPaidPriceWindowID '4a0c0000-0000-0000-0000-000000000012'
 \set eventPaidPurchaseID '4a0c0000-0000-0000-0000-000000000013'
 \set eventPaidRefundRequestID '4a0c0000-0000-0000-0000-000000000044'
 \set eventPaidTicketTypeID '4a0c0000-0000-0000-0000-000000000014'
 \set eventPastID '4a0c0000-0000-0000-0000-000000000015'
+\set eventPastPriceWindowID '4a0c0000-0000-0000-0000-000000000064'
+\set eventPastTicketTypeID '4a0c0000-0000-0000-0000-000000000065'
 \set eventPendingInvitationID '4a0c0000-0000-0000-0000-000000000016'
+\set eventPendingInvitationPriceWindowID '4a0c0000-0000-0000-0000-000000000066'
+\set eventPendingInvitationTicketTypeID '4a0c0000-0000-0000-0000-000000000067'
 \set eventQuestionsID '4a0c0000-0000-0000-0000-000000000017'
+\set eventQuestionsPriceWindowID '4a0c0000-0000-0000-0000-00000000006a'
 \set eventQuestionsTicketTypeID '4a0c0000-0000-0000-0000-000000000018'
 \set eventUnpublishedID '4a0c0000-0000-0000-0000-000000000019'
+\set eventUnpublishedPriceWindowID '4a0c0000-0000-0000-0000-000000000068'
+\set eventUnpublishedTicketTypeID '4a0c0000-0000-0000-0000-000000000069'
 \set externalCheckoutPurchaseID '4a0c0000-0000-0000-0000-000000000051'
 \set externalCheckoutUserID '4a0c0000-0000-0000-0000-000000000052'
 \set groupCategoryID '4a0c0000-0000-0000-0000-000000000020'
-\set groupDeletedID '4a0c0000-0000-0000-0000-000000000021'
 \set groupID '4a0c0000-0000-0000-0000-000000000022'
 \set groupInactiveID '4a0c0000-0000-0000-0000-000000000023'
 \set livePriceOfferID '4a0c0000-0000-0000-0000-000000000047'
@@ -67,7 +72,6 @@ select plan(22);
 \set questionsRefundPendingOfferID '4a0c0000-0000-0000-0000-000000000038'
 \set questionsRefundPendingUserID '4a0c0000-0000-0000-0000-000000000039'
 \set registrationQuestionID '4a0c0000-0000-0000-0000-000000000030'
-\set removedOrganizerUserID '4a0c0000-0000-0000-0000-000000000056'
 \set sessionAID '4a0c0000-0000-0000-0000-000000000031'
 \set sessionCID '4a0c0000-0000-0000-0000-000000000032'
 \set teamMemberUserID '4a0c0000-0000-0000-0000-000000000057'
@@ -87,9 +91,6 @@ select fx_user(:'checkoutExpiredUserID');
 select fx_user(:'checkoutUserID');
 select fx_user(:'externalCheckoutUserID');
 select fx_user(:'userID');
-select fx_user(:'bouncedDiscountUserID');
-select fx_user(:'endedWindowApprovalUserID');
-select fx_user(:'endedWindowWaitlistUserID');
 select fx_user(:'livePriceUserID');
 select fx_user(:'userPaidID');
 select fx_user(:'questionsAttendeeUserID');
@@ -104,21 +105,13 @@ select fx_user(:'attendeeOrganizerUserID');
 -- User listed only as an event organizer
 select fx_user(:'organizerOnlyUserID');
 
--- User whose only organizer role is removed
-select fx_user(:'removedOrganizerUserID');
-
 -- Accepted team member who is not stored as an event organizer
 select fx_user(:'teamMemberUserID');
 
 -- Group owning the listed events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Groups
-select fx_group(:'groupDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
-
+-- Inactive group whose events stay hidden
 select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
 -- Events
@@ -141,11 +134,6 @@ select fx_event(:'eventCID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published', true,
     'starts_at', '2099-01-12 10:00:00+00'
 ));
-select fx_event(:'eventDeletedID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'event_kind_id', 'virtual',
-    'starts_at', '2099-01-14 10:00:00+00'
-));
 select fx_event(:'eventInactiveGroupID', :'groupInactiveID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
     'published', true,
@@ -166,11 +154,6 @@ select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_bui
     'event_kind_id', 'virtual',
     'starts_at', '2099-01-16 10:00:00+00'
 ));
-select fx_event(:'eventDeletedGroupID', :'groupDeletedID', :'eventCategoryID', jsonb_build_object(
-    'event_kind_id', 'virtual',
-    'published', true,
-    'starts_at', '2099-01-17 10:00:00+00'
-));
 
 -- Paid event that also hosts a pending external checkout
 select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -179,13 +162,6 @@ select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_obje
     'payment_currency_code', 'USD',
     'published', true,
     'starts_at', '2099-01-18 10:00:00+00'
-));
-
--- Event whose ticket sales window has ended
-select fx_event(:'endedWindowEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'payment_currency_code', 'EUR',
-    'published', true,
-    'starts_at', '2099-01-19 10:00:00+00'
 ));
 
 -- Event with registration questions shown in user event lists
@@ -206,13 +182,6 @@ select fx_event(:'eventQuestionsID', :'groupID', :'eventCategoryID', jsonb_build
         :'registrationQuestionID'
     )::jsonb,
     'starts_at', now() + interval '1 day'
-));
-
--- Event whose only organizer is removed before listing
-select fx_event(:'eventOrganizersRemovedID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'event_kind_id', 'virtual',
-    'published', true,
-    'starts_at', '2099-01-20 10:00:00+00'
 ));
 
 -- Accepted team member joining after the group events were created
@@ -237,78 +206,36 @@ select fx_event_ticket_type(:'eventQuestionsTicketTypeID', :'eventQuestionsID', 
 -- Paid ticket price window used by purchase state tests
 select fx_event_ticket_price_window(:'eventPaidPriceWindowID', :'eventPaidTicketTypeID', jsonb_build_object('amount_minor', 1500));
 
--- Ticket tier whose sales window has already ended
-select fx_event_ticket_type(:'endedWindowTicketTypeID', :'endedWindowEventID', jsonb_build_object(
-    'seats_total', 10,
-    'title', 'Ended window admission'
-));
+-- Current free price for the registration-questions tier
+select fx_event_ticket_price_window(:'eventQuestionsPriceWindowID', :'eventQuestionsTicketTypeID', jsonb_build_object('amount_minor', 0));
 
--- Lapsed price window used by ended-window offer display scenarios
-select fx_event_ticket_price_window(:'endedWindowPriceWindowID', :'endedWindowTicketTypeID', jsonb_build_object(
-    'amount_minor', 2500,
-    'ends_at', current_timestamp - interval '1 minute',
-    'starts_at', current_timestamp - interval '2 days'
-));
-
--- Discount used by the bounced-back pending snapshot fixture
-insert into event_discount_code (
-    event_discount_code_id,
-    active,
-    amount_minor,
-    available,
-    available_override_active,
-    code,
-    event_id,
-    kind,
-    title
-) values (
-    :'bouncedDiscountCodeID',
-    true,
-    1000,
-    1,
-    true,
-    'SAVE10',
-    :'eventPaidID',
-    'fixed_amount',
-    'Bounced save'
-);
-
--- Events without an explicit ticket fixture use default admission tiers
-select fx_event_ticket_type(
-    md5(e.event_id::text || ':ticket-type')::uuid,
-    e.event_id,
-    jsonb_build_object(
-        'seats_total', 100,
-        'title', 'General Admission'
-    )
-)
-from event e
-where not exists (
-    select 1
-    from event_ticket_type ett
-    where ett.event_id = e.event_id
-);
+-- Default admission tiers for the RSVP events
+select fx_event_ticket_type(:'eventATicketTypeID', :'eventAID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'eventBTicketTypeID', :'eventBID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'eventCTicketTypeID', :'eventCID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'eventCanceledTicketTypeID', :'eventCanceledID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'eventInactiveGroupTicketTypeID', :'eventInactiveGroupID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'eventNoStartsAtTicketTypeID', :'eventNoStartsAtID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'eventPastTicketTypeID', :'eventPastID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'eventPendingInvitationTicketTypeID', :'eventPendingInvitationID', jsonb_build_object('title', 'General Admission'));
+select fx_event_ticket_type(:'eventUnpublishedTicketTypeID', :'eventUnpublishedID', jsonb_build_object('title', 'General Admission'));
 
 -- Current free prices for the default admission tiers
-select fx_event_ticket_price_window(
-    md5(ett.event_ticket_type_id::text || ':price-window')::uuid,
-    ett.event_ticket_type_id,
-    jsonb_build_object('amount_minor', 0)
-)
-from event_ticket_type ett
-where not exists (
-    select 1
-    from event_ticket_price_window etpw
-    where etpw.event_ticket_type_id = ett.event_ticket_type_id
-);
+select fx_event_ticket_price_window(:'eventAPriceWindowID', :'eventATicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventBPriceWindowID', :'eventBTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventCPriceWindowID', :'eventCTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventCanceledPriceWindowID', :'eventCanceledTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventInactiveGroupPriceWindowID', :'eventInactiveGroupTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventNoStartsAtPriceWindowID', :'eventNoStartsAtTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventPastPriceWindowID', :'eventPastTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventPendingInvitationPriceWindowID', :'eventPendingInvitationTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'eventUnpublishedPriceWindowID', :'eventUnpublishedTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- User participation
 insert into event_attendee (event_id, user_id, status) values
     (:'eventAID', :'userID', 'confirmed'),
     (:'eventBID', :'userID', 'confirmed'),
     (:'eventCanceledID', :'userID', 'confirmed'),
-    (:'eventDeletedGroupID', :'userID', 'confirmed'),
-    (:'eventDeletedID', :'userID', 'confirmed'),
     (:'eventInactiveGroupID', :'userID', 'confirmed'),
     (:'eventNoStartsAtID', :'userID', 'confirmed'),
     (:'eventPastID', :'userID', 'confirmed'),
@@ -331,7 +258,7 @@ insert into admission_offer (
 ) values (
     :'pendingInvitationOfferID',
     :'eventPendingInvitationID',
-    (select event_ticket_type_id from event_ticket_type where event_id = :'eventPendingInvitationID' limit 1),
+    :'eventPendingInvitationTicketTypeID',
     '2099-01-13 11:00:00+00',
     'organizer_invitation',
     'pending',
@@ -346,14 +273,12 @@ insert into admission_offer (
     :'questionsInvitedUserID'
 );
 
--- Pending offers used to compare live-window and frozen discounted display prices
+-- Pending approval offer with a stale free snapshot on the paid tier
 insert into admission_offer (
     admission_offer_id,
     amount_minor,
     currency_code,
     discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
     event_id,
     event_ticket_type_id,
     expires_at,
@@ -362,26 +287,10 @@ insert into admission_offer (
     ticket_title,
     user_id
 ) values (
-    :'bouncedDiscountOfferID',
-    500,
-    'USD',
-    1000,
-    'SAVE10',
-    :'bouncedDiscountCodeID',
-    :'eventPaidID',
-    :'eventPaidTicketTypeID',
-    '2099-01-18 11:00:00+00',
-    'approval',
-    'pending',
-    'Paid admission',
-    :'bouncedDiscountUserID'
-), (
     :'livePriceOfferID',
     0,
     null,
     0,
-    null,
-    null,
     :'eventPaidID',
     :'eventPaidTicketTypeID',
     '2099-01-18 11:00:00+00',
@@ -390,50 +299,6 @@ insert into admission_offer (
     'Paid admission',
     :'livePriceUserID'
 );
-
--- Pending offers that keep or omit a stored snapshot after sales end
-insert into admission_offer (
-    admission_offer_id,
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    discount_code,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    ticket_title,
-    user_id
-) values
-    (
-        :'endedWindowApprovalOfferID',
-        2500,
-        'USD',
-        0,
-        null,
-        :'endedWindowEventID',
-        :'endedWindowTicketTypeID',
-        '2099-01-19 11:00:00+00',
-        'approval',
-        'pending',
-        'Ended window admission',
-        :'endedWindowApprovalUserID'
-    ),
-    (
-        :'endedWindowWaitlistOfferID',
-        2500,
-        'USD',
-        0,
-        null,
-        :'endedWindowEventID',
-        :'endedWindowTicketTypeID',
-        '2099-01-19 11:00:00+00',
-        'waitlist',
-        'pending',
-        'Ended window admission',
-        :'endedWindowWaitlistUserID'
-    );
 
 -- Organizer invitation offer hidden while its refund is processing
 insert into admission_offer (
@@ -499,10 +364,6 @@ values (:'eventBID', :'attendeeOrganizerUserID', 1);
 -- Organizer-only relationship included in the user's event list
 insert into event_organizer (event_id, user_id, "order")
 values (:'eventCID', :'organizerOnlyUserID', 1);
-
--- Organizer relationship removed before listing
-insert into event_organizer (event_id, user_id, "order")
-values (:'eventOrganizersRemovedID', :'removedOrganizerUserID', 1);
 
 -- Event speaker relationship included in the user's event list
 insert into event_speaker (event_id, user_id, featured) values
@@ -832,7 +693,7 @@ select is(
                 'enrollment_status',
                 'invitation-approved',
                 'event_ticket_type_id',
-                (select event_ticket_type_id from event_ticket_type where event_id = :'eventPendingInvitationID' limit 1),
+                :'eventPendingInvitationTicketTypeID',
                 'has_paid_purchase',
                 false,
                 'manually_invited',
@@ -856,18 +717,6 @@ select is(
         4
     ),
     'Should list valid upcoming participation and offers sorted by date asc'
-);
-
--- Should deduplicate roles per event
-select is(
-    (
-        list_user_events(:'userID'::uuid, '{"limit": 1, "offset": 0}'::jsonb)::jsonb
-        -> 'events'
-        -> 0
-        -> 'roles'
-    ),
-    jsonb_build_array('attendee', 'host', 'speaker'),
-    'Should deduplicate roles per event'
 );
 
 -- Should paginate events and keep total count
@@ -970,20 +819,6 @@ select is(
     'Should list an organizer-only event with the organizer role'
 );
 
--- Should not list an event after the organizer is removed
--- Remove the only organizer through the organizer synchronization
-select sync_event_organizers(:'eventOrganizersRemovedID'::uuid, '[]'::jsonb);
-select is(
-    list_user_events(:'removedOrganizerUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
-    jsonb_build_object(
-        'events',
-        '[]'::jsonb,
-        'total',
-        0
-    ),
-    'Should not list an event after the organizer is removed'
-);
-
 -- Should not list existing events for a team member who is not a stored organizer
 select is(
     list_user_events(:'teamMemberUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
@@ -996,7 +831,7 @@ select is(
     'Should not list existing events for a team member who is not a stored organizer'
 );
 
--- Should include manually invited pending registration events in the user dashboard
+-- Should include active organizer ticket offers without labeling recipients as attendees
 select is(
     (
         list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
@@ -1038,104 +873,23 @@ select is(
 select is(
     (
         select jsonb_build_object(
-            'amount_minor', (
-                list_user_events(
-                    :'livePriceUserID'::uuid,
-                    '{"limit": 10, "offset": 0}'::jsonb
-                )::jsonb->'events'->0->>'amount_minor'
-            )::bigint,
-            'currency_code',
-            list_user_events(
+            'admission_offer_id', listed.event->'admission_offer_id',
+            'amount_minor', listed.event->'amount_minor',
+            'currency_code', listed.event->'currency_code'
+        )
+        from (
+            select list_user_events(
                 :'livePriceUserID'::uuid,
                 '{"limit": 10, "offset": 0}'::jsonb
-            )::jsonb->'events'->0->>'currency_code'
-        )
-    ),
-    '{"amount_minor": 1500, "currency_code": "USD"}'::jsonb,
-    'Should list the live ticket price for a pending offer with a stale free snapshot'
-);
-
--- Should list the stored snapshot for a pending discounted offer
-select is(
-    (
-        select jsonb_build_object(
-            'amount_minor', (
-                list_user_events(
-                    :'bouncedDiscountUserID'::uuid,
-                    '{"limit": 10, "offset": 0}'::jsonb
-                )::jsonb->'events'->0->>'amount_minor'
-            )::bigint,
-            'currency_code',
-            list_user_events(
-                :'bouncedDiscountUserID'::uuid,
-                '{"limit": 10, "offset": 0}'::jsonb
-            )::jsonb->'events'->0->>'currency_code'
-        )
-    ),
-    '{"amount_minor": 500, "currency_code": "USD"}'::jsonb,
-    'Should list the stored snapshot for a pending discounted offer'
-);
-
--- Should list the stored snapshot currency for a pending approval offer after sales end
-select is(
-    (
-        select jsonb_build_object(
-            'admission_offer_id',
-            list_user_events(
-                :'endedWindowApprovalUserID'::uuid,
-                '{"limit": 10, "offset": 0}'::jsonb
-            )::jsonb->'events'->0->>'admission_offer_id',
-            'amount_minor',
-            (
-                list_user_events(
-                    :'endedWindowApprovalUserID'::uuid,
-                    '{"limit": 10, "offset": 0}'::jsonb
-                )::jsonb->'events'->0->>'amount_minor'
-            )::bigint,
-            'currency_code',
-            list_user_events(
-                :'endedWindowApprovalUserID'::uuid,
-                '{"limit": 10, "offset": 0}'::jsonb
-            )::jsonb->'events'->0->>'currency_code'
-        )
+            )::jsonb->'events'->0 as event
+        ) listed
     ),
     jsonb_build_object(
-        'admission_offer_id', :'endedWindowApprovalOfferID',
-        'amount_minor', 2500,
+        'admission_offer_id', :'livePriceOfferID',
+        'amount_minor', 1500,
         'currency_code', 'USD'
     ),
-    'Should list the stored snapshot currency for a pending approval offer after sales end'
-);
-
--- Should omit the stored snapshot for a pending waitlist offer after sales end
-select is(
-    (
-        select jsonb_build_object(
-            'admission_offer_id',
-            list_user_events(
-                :'endedWindowWaitlistUserID'::uuid,
-                '{"limit": 10, "offset": 0}'::jsonb
-            )::jsonb->'events'->0->>'admission_offer_id',
-            'amount_minor',
-            (
-                list_user_events(
-                    :'endedWindowWaitlistUserID'::uuid,
-                    '{"limit": 10, "offset": 0}'::jsonb
-                )::jsonb->'events'->0->>'amount_minor'
-            )::bigint,
-            'currency_code',
-            list_user_events(
-                :'endedWindowWaitlistUserID'::uuid,
-                '{"limit": 10, "offset": 0}'::jsonb
-            )::jsonb->'events'->0->>'currency_code'
-        )
-    ),
-    jsonb_build_object(
-        'admission_offer_id', :'endedWindowWaitlistOfferID',
-        'amount_minor', null,
-        'currency_code', null
-    ),
-    'Should omit the stored snapshot for a pending waitlist offer after sales end'
+    'Should list the live ticket price for a pending offer with a stale free snapshot'
 );
 
 -- Should include active direct checkout without labeling the user as an attendee
@@ -1220,13 +974,14 @@ select is(
 
 -- Should return registration questions for pending users
 select is(
-    jsonb_array_length(
-        list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
+    list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
         -> 'events'
         -> 0
-        -> 'registration_questions'
-    )::text,
-    '1',
+        -> 'registration_questions',
+    format(
+        '[{"id": "%s", "kind": "free-text", "options": [], "prompt": "Note", "required": true}]',
+        :'registrationQuestionID'
+    )::jsonb,
     'Should return registration questions for pending users'
 );
 

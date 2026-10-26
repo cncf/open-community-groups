@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,21 +15,28 @@ select plan(9);
 \set eventCategoryID '3a1a0000-0000-0000-0000-000000000002'
 \set eventEmptyID '3a1a0000-0000-0000-0000-000000000003'
 \set eventID '3a1a0000-0000-0000-0000-000000000004'
-\set groupCategoryID '3a1a0000-0000-0000-0000-000000000005'
-\set groupID '3a1a0000-0000-0000-0000-000000000006'
-\set label1ID '3a1a0000-0000-0000-0000-000000000007'
-\set label2ID '3a1a0000-0000-0000-0000-000000000008'
-\set proposal1ID '3a1a0000-0000-0000-0000-000000000009'
-\set proposal2ID '3a1a0000-0000-0000-0000-000000000010'
-\set proposal3ID '3a1a0000-0000-0000-0000-000000000011'
-\set reviewer1ID '3a1a0000-0000-0000-0000-000000000012'
-\set reviewer2ID '3a1a0000-0000-0000-0000-000000000013'
-\set sessionID '3a1a0000-0000-0000-0000-000000000014'
-\set submission1ID '3a1a0000-0000-0000-0000-000000000015'
-\set submission2ID '3a1a0000-0000-0000-0000-000000000016'
-\set submission3ID '3a1a0000-0000-0000-0000-000000000017'
-\set user1ID '3a1a0000-0000-0000-0000-000000000018'
-\set user2ID '3a1a0000-0000-0000-0000-000000000019'
+\set eventSortID '3a1a0000-0000-0000-0000-000000000005'
+\set groupCategoryID '3a1a0000-0000-0000-0000-000000000006'
+\set groupID '3a1a0000-0000-0000-0000-000000000007'
+\set label1ID '3a1a0000-0000-0000-0000-000000000008'
+\set label2ID '3a1a0000-0000-0000-0000-000000000009'
+\set proposal1ID '3a1a0000-0000-0000-0000-000000000010'
+\set proposal2ID '3a1a0000-0000-0000-0000-000000000011'
+\set proposal3ID '3a1a0000-0000-0000-0000-000000000012'
+\set proposal4ID '3a1a0000-0000-0000-0000-000000000013'
+\set reviewer1ID '3a1a0000-0000-0000-0000-000000000014'
+\set reviewer2ID '3a1a0000-0000-0000-0000-000000000015'
+\set reviewer3ID '3a1a0000-0000-0000-0000-000000000016'
+\set sessionID '3a1a0000-0000-0000-0000-000000000017'
+\set sortSubmission1ID '3a1a0000-0000-0000-0000-000000000018'
+\set sortSubmission2ID '3a1a0000-0000-0000-0000-000000000019'
+\set sortSubmission3ID '3a1a0000-0000-0000-0000-000000000020'
+\set sortSubmission4ID '3a1a0000-0000-0000-0000-000000000021'
+\set submission1ID '3a1a0000-0000-0000-0000-000000000022'
+\set submission2ID '3a1a0000-0000-0000-0000-000000000023'
+\set submission3ID '3a1a0000-0000-0000-0000-000000000024'
+\set user1ID '3a1a0000-0000-0000-0000-000000000025'
+\set user2ID '3a1a0000-0000-0000-0000-000000000026'
 
 -- ============================================================================
 -- SEED DATA
@@ -46,6 +53,7 @@ select fx_user(:'user1ID', jsonb_build_object('username', 'alice-list-event-cfs-
 select fx_user(:'user2ID', jsonb_build_object('username', 'bob-list-event-cfs-submissions'));
 select fx_user(:'reviewer1ID', jsonb_build_object('username', 'reviewer-1'));
 select fx_user(:'reviewer2ID', jsonb_build_object('username', 'reviewer-2'));
+select fx_user(:'reviewer3ID', jsonb_build_object('username', 'reviewer-3-list-event-cfs-submissions'));
 
 -- Session proposals
 insert into session_proposal (
@@ -83,6 +91,15 @@ insert into session_proposal (
         'beginner',
         'SQL Tuning',
         :'user1ID'
+    ),
+    (
+        :'proposal4ID',
+        '2024-01-05 00:00:00+00',
+        'Talk about Postgres',
+        make_interval(mins => 30),
+        'intermediate',
+        'Postgres Internals',
+        :'user2ID'
     );
 
 -- Event
@@ -98,6 +115,12 @@ insert into event_label (event_label_id, event_id, name, color) values
 
 -- Empty event
 select fx_event(:'eventEmptyID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Event description',
+    'published', true
+));
+
+-- Sort event, whose submissions give a distinct order per sort key
+select fx_event(:'eventSortID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'description', 'Event description',
     'published', true
 ));
@@ -143,6 +166,19 @@ insert into cfs_submission (
         null,
         '2024-01-07 00:00:00+00'
     );
+
+-- Sort event submissions created in id order (the fourth one stays unrated)
+insert into cfs_submission (
+    cfs_submission_id,
+    created_at,
+    event_id,
+    session_proposal_id,
+    status_id
+) values
+    (:'sortSubmission1ID', '2024-01-01 00:00:00+00', :'eventSortID', :'proposal1ID', 'not-reviewed'),
+    (:'sortSubmission2ID', '2024-01-02 00:00:00+00', :'eventSortID', :'proposal2ID', 'not-reviewed'),
+    (:'sortSubmission3ID', '2024-01-03 00:00:00+00', :'eventSortID', :'proposal3ID', 'not-reviewed'),
+    (:'sortSubmission4ID', '2024-01-04 00:00:00+00', :'eventSortID', :'proposal4ID', 'not-reviewed');
 
 -- Session
 insert into session (
@@ -196,6 +232,19 @@ insert into cfs_submission_rating (
         'Excellent fit',
         '2024-02-02 00:00:00+00'
     );
+
+-- Sort event ratings: 3 ratings averaging 4.0, 1 rating of 5.0 and 2 ratings averaging 3.0
+insert into cfs_submission_rating (
+    cfs_submission_id,
+    reviewer_id,
+    stars
+) values
+    (:'sortSubmission1ID', :'reviewer1ID', 3),
+    (:'sortSubmission1ID', :'reviewer2ID', 4),
+    (:'sortSubmission1ID', :'reviewer3ID', 5),
+    (:'sortSubmission2ID', :'reviewer1ID', 5),
+    (:'sortSubmission3ID', :'reviewer1ID', 2),
+    (:'sortSubmission3ID', :'reviewer2ID', 4);
 
 -- ============================================================================
 -- TESTS
@@ -408,79 +457,53 @@ select is(
     'Should filter submissions requiring all selected labels'
 );
 
--- Should sort submissions by created date ascending
-select is(
-    (
-        select jsonb_agg(submission->'cfs_submission_id')
-        from jsonb_array_elements(
-            list_event_cfs_submissions(
-                :'eventID'::uuid,
-                '{"limit": 10, "offset": 0, "sort": "created-asc"}'::jsonb
-            )::jsonb->'submissions'
-        ) submission
+-- Should sort submissions by each sort key, falling back to created date descending
+select results_eq(
+    format(
+        $$
+            select
+                sorts.sort_key,
+                array(
+                    select (listed.submission->>'cfs_submission_id')::uuid
+                    from jsonb_array_elements(
+                        list_event_cfs_submissions(
+                            %L::uuid,
+                            jsonb_build_object('limit', 10, 'offset', 0, 'sort', sorts.sort_key)
+                        )::jsonb->'submissions'
+                    ) with ordinality as listed(submission, position)
+                    order by listed.position
+                ) as submission_ids
+            from (
+                values
+                    (1, 'created-asc'),
+                    (2, 'created-desc'),
+                    (3, 'ratings-count-asc'),
+                    (4, 'ratings-count-desc'),
+                    (5, 'stars-asc'),
+                    (6, 'stars-desc'),
+                    (7, 'unknown')
+            ) as sorts(position, sort_key)
+            order by sorts.position
+        $$,
+        :'eventSortID'
     ),
-    jsonb_build_array(:'submission1ID'::uuid, :'submission2ID'::uuid),
-    'Should sort submissions by created date ascending'
-);
-
--- Should sort submissions by ratings count descending
-select is(
-    (
-        select jsonb_agg(submission->'cfs_submission_id')
-        from jsonb_array_elements(
-            list_event_cfs_submissions(
-                :'eventID'::uuid,
-                '{"limit": 10, "offset": 0, "sort": "ratings-count-desc"}'::jsonb
-            )::jsonb->'submissions'
-        ) submission
+    format(
+        $$
+            values
+                ('created-asc', array[%1$L, %2$L, %3$L, %4$L]::uuid[]),
+                ('created-desc', array[%4$L, %3$L, %2$L, %1$L]::uuid[]),
+                ('ratings-count-asc', array[%4$L, %2$L, %3$L, %1$L]::uuid[]),
+                ('ratings-count-desc', array[%1$L, %3$L, %2$L, %4$L]::uuid[]),
+                ('stars-asc', array[%3$L, %1$L, %2$L, %4$L]::uuid[]),
+                ('stars-desc', array[%2$L, %1$L, %3$L, %4$L]::uuid[]),
+                ('unknown', array[%4$L, %3$L, %2$L, %1$L]::uuid[])
+        $$,
+        :'sortSubmission1ID',
+        :'sortSubmission2ID',
+        :'sortSubmission3ID',
+        :'sortSubmission4ID'
     ),
-    jsonb_build_array(:'submission2ID'::uuid, :'submission1ID'::uuid),
-    'Should sort submissions by ratings count descending'
-);
-
--- Should sort submissions by ratings count ascending
-select is(
-    (
-        select jsonb_agg(submission->'cfs_submission_id')
-        from jsonb_array_elements(
-            list_event_cfs_submissions(
-                :'eventID'::uuid,
-                '{"limit": 10, "offset": 0, "sort": "ratings-count-asc"}'::jsonb
-            )::jsonb->'submissions'
-        ) submission
-    ),
-    jsonb_build_array(:'submission1ID'::uuid, :'submission2ID'::uuid),
-    'Should sort submissions by ratings count ascending'
-);
-
--- Should sort stars ascending
-select is(
-    (
-        select jsonb_agg(submission->'cfs_submission_id')
-        from jsonb_array_elements(
-            list_event_cfs_submissions(
-                :'eventID'::uuid,
-                '{"limit": 10, "offset": 0, "sort": "stars-asc"}'::jsonb
-            )::jsonb->'submissions'
-        ) submission
-    ),
-    jsonb_build_array(:'submission1ID'::uuid, :'submission2ID'::uuid),
-    'Should sort stars ascending'
-);
-
--- Should sort stars descending
-select is(
-    (
-        select jsonb_agg(submission->'cfs_submission_id')
-        from jsonb_array_elements(
-            list_event_cfs_submissions(
-                :'eventID'::uuid,
-                '{"limit": 10, "offset": 0, "sort": "stars-desc"}'::jsonb
-            )::jsonb->'submissions'
-        ) submission
-    ),
-    jsonb_build_array(:'submission2ID'::uuid, :'submission1ID'::uuid),
-    'Should sort stars descending'
+    'Should sort submissions by each sort key, falling back to created date descending'
 );
 
 -- ============================================================================

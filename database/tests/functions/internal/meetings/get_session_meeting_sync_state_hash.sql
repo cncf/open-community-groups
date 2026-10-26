@@ -1,9 +1,11 @@
+-- Tests hashing session meeting sync inputs.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -153,6 +155,65 @@ select isnt(
     get_session_meeting_sync_state_hash(:'sessionID'),
     :'hashBefore',
     'Should change hash when session speakers change'
+);
+
+-- Should change the hash when parent event hosts change
+select get_session_meeting_sync_state_hash(:'sessionID') as "hashBefore" \gset
+
+-- Remove a parent event host included in the hash
+delete from event_host
+where event_id = :'eventID';
+
+select isnt(
+    get_session_meeting_sync_state_hash(:'sessionID'),
+    :'hashBefore',
+    'Should change hash when parent event hosts change'
+);
+
+-- Should keep the hash when explicit meeting hosts are reordered
+update session
+set meeting_hosts = array['first@example.com', 'second@example.com']
+where session_id = :'sessionID';
+
+select get_session_meeting_sync_state_hash(:'sessionID') as "hashBefore" \gset
+
+-- Store the same explicit meeting hosts in reverse order
+update session
+set meeting_hosts = array['second@example.com', 'first@example.com']
+where session_id = :'sessionID';
+
+select is(
+    get_session_meeting_sync_state_hash(:'sessionID'),
+    :'hashBefore',
+    'Should keep same hash when explicit meeting hosts are reordered'
+);
+
+-- Should change the hash when the session start changes
+select get_session_meeting_sync_state_hash(:'sessionID') as "hashBefore" \gset
+
+-- Move the session start included in the provider payload
+update session
+set starts_at = '2026-06-01 10:15:00+00'
+where session_id = :'sessionID';
+
+select isnt(
+    get_session_meeting_sync_state_hash(:'sessionID'),
+    :'hashBefore',
+    'Should change hash when session start changes'
+);
+
+-- Should change the hash when the parent event is canceled
+select get_session_meeting_sync_state_hash(:'sessionID') as "hashBefore" \gset
+
+-- Cancel the parent event, a lifecycle input included in the hash
+update event
+set canceled = true
+where event_id = :'eventID';
+
+select isnt(
+    get_session_meeting_sync_state_hash(:'sessionID'),
+    :'hashBefore',
+    'Should change hash when parent event is canceled'
 );
 
 -- ============================================================================

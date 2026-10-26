@@ -5,13 +5,15 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '6e000000-0000-0000-0000-000000000001'
+\set endedCanceledEventID '6e000000-0000-0000-0000-000000000035'
+\set endedEventID '6e000000-0000-0000-0000-000000000036'
 \set eventCategoryID '6e000000-0000-0000-0000-000000000002'
 \set eventID '6e000000-0000-0000-0000-000000000003'
 \set externalPaymentID '6e000000-0000-0000-0000-000000000033'
@@ -26,6 +28,7 @@ select plan(13);
 \set ticketTypeID '6e000000-0000-0000-0000-000000000009'
 \set attendeeID '6e000000-0000-0000-0000-000000000010'
 \set attendeePurchaseID '6e000000-0000-0000-0000-000000000011'
+\set endedAttendeeID '6e000000-0000-0000-0000-000000000037'
 \set expiredOfferID '6e000000-0000-0000-0000-000000000012'
 \set expiredUserID '6e000000-0000-0000-0000-000000000013'
 \set offerID '6e000000-0000-0000-0000-000000000014'
@@ -56,6 +59,7 @@ select fx_community(:'otherCommunityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_user(:'attendeeID');
+select fx_user(:'endedAttendeeID');
 select fx_user(:'expiredUserID');
 select fx_user(:'externalPaymentUserID');
 select fx_user(:'offeredUserID');
@@ -87,6 +91,19 @@ select fx_event(:'openEventID', :'groupID', :'eventCategoryID', jsonb_build_obje
     'starts_at', '2099-01-02 10:00:00+00'
 ));
 
+-- Seed ended published events, one of them canceled.
+select fx_event(:'endedCanceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', '2020-01-01 12:00:00+00',
+    'published', true,
+    'starts_at', '2020-01-01 10:00:00+00'
+));
+select fx_event(:'endedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', '2020-01-01 12:00:00+00',
+    'published', true,
+    'starts_at', '2020-01-01 10:00:00+00'
+));
+
 -- Seed one ticket tier for each event.
 select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 20));
 select fx_event_ticket_type(:'openTicketTypeID', :'openEventID', jsonb_build_object('seats_total', 10));
@@ -106,7 +123,9 @@ insert into event_attendee (
 ) values
     (true, '2026-01-01 10:00:00+00', :'eventID', true, 'confirmed', :'attendeeID'),
     (false, null, :'eventID', false, 'confirmed', :'refundUserID'),
-    (false, null, :'eventID', false, 'confirmed', :'rejectedRefundUserID');
+    (false, null, :'eventID', false, 'confirmed', :'rejectedRefundUserID'),
+    (false, null, :'endedCanceledEventID', false, 'confirmed', :'endedAttendeeID'),
+    (false, null, :'endedEventID', false, 'confirmed', :'endedAttendeeID');
 
 -- Seed active, expired, and refund-linked admission offers.
 insert into admission_offer (
@@ -476,6 +495,20 @@ select is(
     get_event_enrollment(:'communityID', :'openEventID', :'openRequestUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
     'Should ignore approval requests when approval is disabled'
+);
+
+-- Should keep enrollment visible for an ended canceled event
+select is(
+    get_event_enrollment(:'communityID', :'endedCanceledEventID', :'endedAttendeeID')::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "attendee"}'::jsonb,
+    'Should keep enrollment visible for an ended canceled event'
+);
+
+-- Should not expose enrollment for an ended event that was not canceled
+select is(
+    get_event_enrollment(:'communityID', :'endedEventID', :'endedAttendeeID')::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
+    'Should not expose enrollment for an ended event that was not canceled'
 );
 
 -- Should not expose enrollment across communities

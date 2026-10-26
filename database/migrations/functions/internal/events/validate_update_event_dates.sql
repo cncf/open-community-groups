@@ -14,8 +14,6 @@ declare
     v_is_past_event boolean;
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
-    v_registration_ends_at timestamptz;
-    v_registration_starts_at timestamptz;
     v_session jsonb;
     v_session_before_ends_at timestamptz;
     v_session_before_starts_at timestamptz;
@@ -26,34 +24,18 @@ begin
     -- Parse the submitted schedule in the payload timezone
     v_new_ends_at := (p_event->>'ends_at')::timestamp at time zone v_timezone;
     v_new_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
-    v_registration_ends_at := (p_event->>'registration_ends_at')::timestamp at time zone v_timezone;
-    v_registration_starts_at := (p_event->>'registration_starts_at')::timestamp at time zone v_timezone;
 
     -- Published events must keep the start date required by publish_event
     if p_before.published = true and v_new_starts_at is null then
         raise exception 'published event must have a start date' using errcode = 'OCG01';
     end if;
 
-    -- Require configured registration openings to leave time before close
-    if v_registration_starts_at is not null
-       and v_registration_ends_at is not null
-       and v_registration_starts_at >= v_registration_ends_at then
-        raise exception 'registration starts_at must be before registration ends_at' using errcode = 'OCG01';
-    end if;
-
-    -- Keep configured registration openings from extending past the event start
-    if v_registration_starts_at is not null
-       and v_new_starts_at is not null
-       and v_registration_starts_at > v_new_starts_at then
-        raise exception 'registration starts_at cannot be after event starts_at' using errcode = 'OCG01';
-    end if;
-
-    -- Keep configured registration closes from extending past the event start
-    if v_registration_ends_at is not null
-       and v_new_starts_at is not null
-       and v_registration_ends_at > v_new_starts_at then
-        raise exception 'registration ends_at cannot be after event starts_at' using errcode = 'OCG01';
-    end if;
+    -- Validate the configured registration window against the new event start
+    perform validate_event_registration_window(
+        (p_event->>'registration_starts_at')::timestamp at time zone v_timezone,
+        (p_event->>'registration_ends_at')::timestamp at time zone v_timezone,
+        v_new_starts_at
+    );
 
     -- Detect whether the current event is already over, treating dateless events as non-past
     v_is_past_event := coalesce(coalesce(v_before_ends_at, v_before_starts_at) < current_timestamp, false);
@@ -73,6 +55,7 @@ begin
         -- Reject sessions moved into the future
         for v_session in select jsonb_array_elements(p_event->'sessions')
         loop
+            -- Parse the submitted session schedule in the payload timezone
             v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
             v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
 
@@ -87,6 +70,7 @@ begin
             end if;
         end loop;
 
+        -- Skip the live and future rules that do not apply to past events
         return;
     end if;
 
@@ -109,6 +93,7 @@ begin
     -- Apply the same rules to each submitted session against its stored row
     for v_session in select jsonb_array_elements(p_event->'sessions')
     loop
+        -- Reset the stored schedule and parse the submitted one in the payload timezone
         v_session_before_ends_at := null;
         v_session_before_starts_at := null;
         v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;

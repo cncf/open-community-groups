@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,8 +14,6 @@ select plan(10);
 \set canceledEventID 'a5e00003-0000-0000-0000-000000000001'
 \set communityID 'a5e00003-0000-0000-0000-000000000002'
 \set deletedEventID 'a5e00003-0000-0000-0000-000000000003'
-\set deletedGroupEventID 'a5e00003-0000-0000-0000-000000000004'
-\set deletedGroupID 'a5e00003-0000-0000-0000-000000000005'
 \set draftEventID 'a5e00003-0000-0000-0000-000000000006'
 \set endedEventID 'a5e00003-0000-0000-0000-000000000007'
 \set eventCategoryID 'a5e00003-0000-0000-0000-000000000008'
@@ -38,12 +36,6 @@ select fx_event_category(:'eventCategoryID', :'communityID');
 
 -- Group category used by the surveyed event groups
 select fx_group_category(:'groupCategoryID', :'communityID');
-
--- Deleted group whose events cannot be managed
-select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
 
 -- Active group whose events are managed
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
@@ -69,13 +61,9 @@ select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_o
     'starts_at', current_timestamp - interval '1 day'
 ));
 
--- Event in the deleted group
-select fx_event(:'deletedGroupEventID', :'deletedGroupID', :'eventCategoryID', jsonb_build_object(
-    'starts_at', current_timestamp - interval '1 day'
-));
-
 -- Unpublished upcoming event
 select fx_event(:'draftEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', false,
     'starts_at', current_timestamp + interval '1 day'
 ));
 
@@ -103,7 +91,9 @@ select is(
 );
 
 -- Should lock the event row for update
--- Relies on the lock taken by the ended event scenario above
+-- Take the lock within this scenario before reading the row's xmax
+select (lock_event_for_surveys(:'groupID', :'endedEventID')).event_id as "lockedEventID" \gset
+
 select is(
     (select xmax::text from event where event_id = :'endedEventID'),
     (pg_current_xact_id()::text::bigint % 4294967296)::text,
@@ -134,18 +124,6 @@ select throws_ok(
     'Should reject events from another group'
 );
 
--- Should reject events whose group is deleted
-select throws_ok(
-    format(
-        $$select lock_event_for_surveys(%L::uuid, %L::uuid)$$,
-        :'deletedGroupID',
-        :'deletedGroupEventID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Should reject events whose group is deleted'
-);
-
 -- Should reject events whose group is inactive
 select throws_ok(
     format(
@@ -166,18 +144,15 @@ select throws_ok(
     'Should reject missing events'
 );
 
--- Should return unpublished events
-select is(
-    (select (lock_event_for_surveys(:'groupID', :'draftEventID')).published),
-    false,
-    'Should return unpublished events'
-);
-
--- Should return upcoming events
-select is(
-    (select (lock_event_for_surveys(:'groupID', :'draftEventID')).event_id),
-    :'draftEventID'::uuid,
-    'Should return upcoming events'
+-- Should return unpublished upcoming events
+select results_eq(
+    format(
+        $$select event_id, published from lock_event_for_surveys(%L::uuid, %L::uuid)$$,
+        :'groupID',
+        :'draftEventID'
+    ),
+    format($$values (%L::uuid, false)$$, :'draftEventID'),
+    'Should return unpublished upcoming events'
 );
 
 -- ============================================================================

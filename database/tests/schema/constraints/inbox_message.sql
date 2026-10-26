@@ -72,7 +72,7 @@ select throws_ok(
         :'conversationID'
     ),
     '23514',
-    null,
+    'new row for relation "inbox_message" violates check constraint "inbox_message_body_chk"',
     'Should reject a body longer than 5000 characters'
 );
 
@@ -83,7 +83,7 @@ select throws_ok(
         :'conversationID'
     ),
     '23505',
-    null,
+    'duplicate key value violates unique constraint "inbox_message_inbox_conversation_id_initial_idx"',
     'Should reject a second initial message in a conversation'
 );
 
@@ -94,7 +94,7 @@ select throws_ok(
         :'conversationID'
     ),
     '23514',
-    null,
+    'new row for relation "inbox_message" violates check constraint "inbox_message_body_chk"',
     'Should reject a whitespace-only body'
 );
 
@@ -105,7 +105,7 @@ select throws_ok(
         :'conversationID'
     ),
     '23514',
-    null,
+    'new row for relation "inbox_message" violates check constraint "inbox_message_kind_chk"',
     'Should reject an unknown message kind'
 );
 

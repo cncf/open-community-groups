@@ -1,21 +1,26 @@
+-- Tests updating a group team member role.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '3a3f0000-0000-0000-0000-000000000008'
 \set communityID '3a3f0000-0000-0000-0000-000000000001'
 \set groupCategoryID '3a3f0000-0000-0000-0000-000000000002'
 \set groupID '3a3f0000-0000-0000-0000-000000000003'
+\set lastAdminGroupID '3a3f0000-0000-0000-0000-000000000009'
 \set missingUserID '3a3f0000-0000-0000-0000-000000000004'
 \set pendingGroupID '3a3f0000-0000-0000-0000-000000000005'
 \set user1ID '3a3f0000-0000-0000-0000-000000000006'
 \set user2ID '3a3f0000-0000-0000-0000-000000000007'
+\set viewerUserID '3a3f0000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
@@ -24,18 +29,26 @@ select plan(8);
 -- Baseline communities, group categories, users and groups
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'actorUserID', jsonb_build_object('username', 'actor-update-group-team-member-role'));
 select fx_user(:'user1ID');
 select fx_user(:'user2ID');
+select fx_user(:'viewerUserID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'lastAdminGroupID', :'communityID', :'groupCategoryID');
 select fx_group(:'pendingGroupID', :'communityID', :'groupCategoryID');
 
--- Group team membership
+-- Group team with two accepted admins and an accepted viewer
 insert into group_team (group_id, user_id, role, accepted)
 values
     (:'groupID', :'user1ID', 'admin', true),
-    (:'groupID', :'user2ID', 'admin', true);
+    (:'groupID', :'user2ID', 'admin', true),
+    (:'groupID', :'viewerUserID', 'viewer', true);
 
--- Group team membership with a pending admin
+-- Group team with a single accepted admin
+insert into group_team (group_id, user_id, role, accepted)
+values (:'lastAdminGroupID', :'user1ID', 'admin', true);
+
+-- Group team with an accepted admin and a pending admin
 insert into group_team (group_id, user_id, role, accepted)
 values
     (:'pendingGroupID', :'user1ID', 'admin', true),
@@ -48,48 +61,52 @@ values
 -- Should change existing member role
 select lives_ok(
     format(
-        $$select update_group_team_member_role(null::uuid, %L::uuid, %L::uuid, 'admin')$$,
-        :'groupID', :'user1ID'
+        $$select update_group_team_member_role(%L::uuid, %L::uuid, %L::uuid, 'events-manager')$$,
+        :'actorUserID', :'groupID', :'viewerUserID'
     ),
     'Should change existing member role'
 );
 select results_eq(
     format(
         $$select role from group_team where group_id = %L::uuid and user_id = %L::uuid$$,
-        :'groupID', :'user1ID'
+        :'groupID', :'viewerUserID'
     ),
-    $$ values ('admin'::text) $$,
-    'Role should be updated to admin'
+    $$ values ('events-manager'::text) $$,
+    'Should update the member role to events-manager'
 );
 
 -- Should create the expected audit row
 select results_eq(
-    $$
-        select
-            action,
-            actor_user_id,
-            actor_username,
-            community_id,
-            group_id,
-            resource_type,
-            resource_id,
-            details
-        from audit_log
-    $$,
+    format(
+        $$
+            select
+                action,
+                actor_user_id,
+                actor_username,
+                community_id,
+                group_id,
+                resource_type,
+                resource_id,
+                details
+            from audit_log
+            where resource_id = %L::uuid
+        $$,
+        :'viewerUserID'
+    ),
     format(
         $$
         values (
             'group_team_member_role_updated',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'actor-update-group-team-member-role'::text,
             %L::uuid,
             %L::uuid,
             'user',
             %L::uuid,
-            jsonb_build_object('role', 'admin')
+            jsonb_build_object('role', 'events-manager')
         )
         $$,
-        :'communityID', :'groupID', :'user1ID'
+        :'actorUserID', :'communityID', :'groupID', :'viewerUserID'
     ),
     'Should create the expected audit row'
 );
@@ -97,8 +114,8 @@ select results_eq(
 -- Should block demoting the last accepted group admin when another admin is pending
 select throws_ok(
     format(
-        $$select update_group_team_member_role(null::uuid, %L::uuid, %L::uuid, 'viewer')$$,
-        :'pendingGroupID', :'user1ID'
+        $$select update_group_team_member_role(%L::uuid, %L::uuid, %L::uuid, 'viewer')$$,
+        :'actorUserID', :'pendingGroupID', :'user1ID'
     ),
     'OCG01',
     'cannot change role for the last accepted group admin',
@@ -108,8 +125,8 @@ select throws_ok(
 -- Should error when updating role for non-existing member
 select throws_ok(
     format(
-        $$select update_group_team_member_role(null::uuid, %L::uuid, %L::uuid, 'admin')$$,
-        :'groupID', :'missingUserID'
+        $$select update_group_team_member_role(%L::uuid, %L::uuid, %L::uuid, 'admin')$$,
+        :'actorUserID', :'groupID', :'missingUserID'
     ),
     'OCG01',
     'user is not a group team member',
@@ -119,28 +136,36 @@ select throws_ok(
 -- Should error when updating role to an invalid value
 select throws_ok(
     format(
-        $$select update_group_team_member_role(null::uuid, %L::uuid, %L::uuid, 'invalid')$$,
-        :'groupID', :'user1ID'
+        $$select update_group_team_member_role(%L::uuid, %L::uuid, %L::uuid, 'invalid')$$,
+        :'actorUserID', :'groupID', :'user1ID'
     ),
     '23503',
     null,
     'Should error when updating role to an invalid value'
 );
 
--- Should allow demoting an admin when another accepted admin remains
+-- Should allow demotion when another accepted admin exists
 select lives_ok(
     format(
-        $$select update_group_team_member_role(null::uuid, %L::uuid, %L::uuid, 'viewer')$$,
-        :'groupID', :'user1ID'
+        $$select update_group_team_member_role(%L::uuid, %L::uuid, %L::uuid, 'viewer')$$,
+        :'actorUserID', :'groupID', :'user1ID'
     ),
     'Should allow demotion when another accepted admin exists'
+);
+select results_eq(
+    format(
+        $$select role from group_team where group_id = %L::uuid and user_id = %L::uuid$$,
+        :'groupID', :'user1ID'
+    ),
+    $$ values ('viewer'::text) $$,
+    'Should update the demoted admin role to viewer'
 );
 
 -- Should block demoting the last accepted group admin
 select throws_ok(
     format(
-        $$select update_group_team_member_role(null::uuid, %L::uuid, %L::uuid, 'viewer')$$,
-        :'groupID', :'user2ID'
+        $$select update_group_team_member_role(%L::uuid, %L::uuid, %L::uuid, 'viewer')$$,
+        :'actorUserID', :'lastAdminGroupID', :'user1ID'
     ),
     'OCG01',
     'cannot change role for the last accepted group admin',

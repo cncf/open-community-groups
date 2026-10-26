@@ -40,23 +40,6 @@ begin
     order by event_purchase_id
     for update;
 
-    -- Reject Stripe purchases that cannot be handed to a refund worker
-    perform 1
-    from event_purchase
-    where event_id = p_event_id
-    and amount_minor > 0
-    and charge_model is distinct from 'external'
-    and status in ('completed', 'refund-requested')
-    and (
-        payment_provider_id is null
-        or provider_payment_reference is null
-    );
-
-    -- Reject cancellation while a paid purchase lacks its provider references
-    if found then
-        raise exception 'event has a paid purchase that is not ready for refund' using errcode = 'OCG01';
-    end if;
-
     -- Preserve attendance history while removing active access and capacity
     update event_attendee
     set

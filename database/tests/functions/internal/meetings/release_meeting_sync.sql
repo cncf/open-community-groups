@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(10);
 \set eventID 'f2090000-0000-0000-0000-000000000004'
 \set groupCategoryID 'f2090000-0000-0000-0000-000000000005'
 \set groupID 'f2090000-0000-0000-0000-000000000006'
+\set notHeldEventID 'f2090000-0000-0000-0000-000000000009'
 \set sessionID 'f2090000-0000-0000-0000-000000000007'
 \set staleEventID 'f2090000-0000-0000-0000-000000000008'
 
@@ -49,33 +50,46 @@ select fx_event(:'errorEventID', :'groupID', :'eventCategoryID', jsonb_build_obj
     'timezone', 'America/New_York'
 ));
 
--- Event whose claim was re-taken after the worker started
+-- Event claimed by another worker after the caller's claim expired
+select fx_event(:'notHeldEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'meeting_error', 'previous not held error',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'release-sync-not-held-host@example.com',
+    'meeting_sync_claimed_at', '2024-01-02 00:00:00+00',
+    'timezone', 'America/New_York'
+));
+
+-- Event whose state changed after the worker read it, with an earlier error
 select fx_event(:'staleEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
+    'meeting_error', 'previous stale error',
     'meeting_in_sync', false,
     'meeting_provider_host_user', 'release-sync-stale-host@example.com',
     'meeting_sync_claimed_at', '2024-01-02 00:00:00+00',
     'timezone', 'America/New_York'
 ));
 
--- Claimed session
+-- Claimed session whose sync succeeds, with an earlier error
 insert into session (
-    session_id,
     event_id,
-    name,
-    session_kind_id,
+    meeting_error,
     meeting_in_sync,
     meeting_provider_host_user,
     meeting_sync_claimed_at,
+    name,
+    session_id,
+    session_kind_id,
     starts_at
 ) values (
-    :'sessionID',
     :'eventID',
-    'Release Sync Session',
-    'virtual',
+    'previous session error',
     false,
     'release-sync-session-host@example.com',
     '2024-01-01 00:00:00+00',
+    'Release Sync Session',
+    :'sessionID',
+    'virtual',
     '2025-06-01 10:00:00-04'
 );
 
@@ -125,7 +139,7 @@ select results_eq(
     'Should store the error and keep the row in sync with the synchronized state'
 );
 
--- Should leave the row out of sync when the state changed since the worker read it
+-- Should leave the row out of sync and keep its error when the state changed since the worker read it
 select is(
     release_meeting_sync(
         :'staleEventID',
@@ -139,24 +153,32 @@ select is(
 );
 select results_eq(
     format(
-        $$ select meeting_error, meeting_in_sync, meeting_sync_claimed_at from event where event_id = %L $$,
+        $$ select meeting_error, meeting_in_sync, meeting_provider_host_user, meeting_sync_claimed_at from event where event_id = %L $$,
         :'staleEventID'
     ),
-    $$ values (null::text, false, null::timestamptz) $$,
-    'Should keep the row out of sync without recording the late error'
+    $$ values ('previous stale error', false, null::text, null::timestamptz) $$,
+    'Should keep the row out of sync and the previous error without recording the late error'
 );
 
 -- Should ignore a claim that is no longer held
 select is(
     release_meeting_sync(
-        :'staleEventID',
+        :'notHeldEventID',
         null,
         '2024-01-01 00:00:00+00',
-        get_event_meeting_sync_state_hash(:'staleEventID'),
+        get_event_meeting_sync_state_hash(:'notHeldEventID'),
         null
     ),
     false,
     'Should report a claim that is no longer held'
+);
+select results_eq(
+    format(
+        $$ select meeting_error, meeting_in_sync, meeting_provider_host_user, meeting_sync_claimed_at from event where event_id = %L $$,
+        :'notHeldEventID'
+    ),
+    $$ values ('previous not held error', false, 'release-sync-not-held-host@example.com', '2024-01-02 00:00:00+00'::timestamptz) $$,
+    'Should leave a row whose claim is no longer held unchanged'
 );
 
 -- Should release a held session claim
@@ -177,7 +199,7 @@ select results_eq(
         :'sessionID'
     ),
     $$ values (null::text, true, null::text, null::timestamptz) $$,
-    'Should mark the session in sync and clear the claim'
+    'Should mark the session in sync and clear the claim and error'
 );
 
 -- Should do nothing without an event or session

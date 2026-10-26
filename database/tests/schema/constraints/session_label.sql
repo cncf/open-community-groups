@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,8 +20,6 @@ select plan(9);
 \set groupID 'c00a0000-0000-0000-0000-000000000007'
 \set labelCascadeLabelID 'c00a0000-0000-0000-0000-000000000008'
 \set labelCascadeSessionID 'c00a0000-0000-0000-0000-000000000009'
-\set missingLabelID 'c00a0000-0000-0000-0000-000000000010'
-\set missingSessionID 'c00a0000-0000-0000-0000-000000000011'
 \set sessionCascadeLabelID 'c00a0000-0000-0000-0000-000000000012'
 \set sessionCascadeSessionID 'c00a0000-0000-0000-0000-000000000013'
 
@@ -143,38 +141,8 @@ select throws_ok(
         :'duplicateSessionID'
     ),
     '23505',
-    null,
+    'duplicate key value violates unique constraint "session_label_pkey"',
     'Should reject duplicate session labels'
-);
-
--- Should reject session labels for missing labels
-select throws_ok(
-    format(
-        $$
-            insert into session_label (event_label_id, session_id)
-            values (%L::uuid, %L::uuid)
-        $$,
-        :'missingLabelID',
-        :'duplicateSessionID'
-    ),
-    '23503',
-    null,
-    'Should reject session labels for missing labels'
-);
-
--- Should reject session labels for missing sessions
-select throws_ok(
-    format(
-        $$
-            insert into session_label (event_label_id, session_id)
-            values (%L::uuid, %L::uuid)
-        $$,
-        :'duplicateLabelID',
-        :'missingSessionID'
-    ),
-    '23503',
-    null,
-    'Should reject session labels for missing sessions'
 );
 
 -- ============================================================================

@@ -1,3 +1,5 @@
+-- Tests enqueueing due event reminder notifications.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -14,7 +16,6 @@ select plan(19);
 \set eventCategoryID '8a020000-0000-0000-0000-000000000003'
 \set eventCategoryInactiveCommunityID '8a020000-0000-0000-0000-000000000004'
 \set eventAllFilteredID '8a020000-0000-0000-0000-000000000025'
-\set eventDeletedGroupID '8a020000-0000-0000-0000-000000000005'
 \set eventDisabledID '8a020000-0000-0000-0000-000000000006'
 \set eventDueID '8a020000-0000-0000-0000-000000000007'
 \set eventInactiveCommunityID '8a020000-0000-0000-0000-000000000008'
@@ -24,7 +25,6 @@ select plan(19);
 \set eventSentID '8a020000-0000-0000-0000-000000000012'
 \set groupCategoryID '8a020000-0000-0000-0000-000000000013'
 \set groupCategoryInactiveCommunityID '8a020000-0000-0000-0000-000000000014'
-\set groupDeletedID '8a020000-0000-0000-0000-000000000015'
 \set groupID '8a020000-0000-0000-0000-000000000016'
 \set groupInactiveCommunityID '8a020000-0000-0000-0000-000000000017'
 \set groupInactiveID '8a020000-0000-0000-0000-000000000018'
@@ -41,6 +41,7 @@ select plan(19);
 -- SEED DATA
 -- ============================================================================
 
+-- Site theme copied into reminder template data
 insert into site (site_id, title, description, theme) values (
     :'siteID',
     'Test Site',
@@ -54,31 +55,34 @@ select fx_community(:'communityID', jsonb_build_object('name', 'event-reminders-
 -- Inactive community
 select fx_community(:'communityInactiveID', jsonb_build_object('active', false));
 
--- Baseline categories, users and groups
+-- Group category for the active community groups
 select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group category for the inactive community group
 select fx_group_category(:'groupCategoryInactiveCommunityID', :'communityInactiveID');
+
+-- Event category for the active community events
 select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Verified user who signs up after the no-recipients event was evaluated
 select fx_user(:'userVerifiedLateSignupID');
+
+-- Group in the inactive community
 select fx_group(:'groupInactiveCommunityID', :'communityInactiveID', :'groupCategoryInactiveCommunityID');
 
 -- Event category for inactive community
 select fx_event_category(:'eventCategoryInactiveCommunityID', :'communityInactiveID', jsonb_build_object('name', 'Community'));
 
--- Group
+-- Owner group of the active community events, slugs used by the reminder link
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'slug', 'test-group',
     'slug_pretty', 'test-group-pretty'
 ));
 
--- Inactive and deleted groups
-select fx_group(:'groupDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
--- group
+-- Inactive group
 select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
--- Users
+-- Verified attendee and non-featured speaker of the due reminder event
 select fx_user(:'userVerifiedAttendeeID', jsonb_build_object('username', 'attendee-enqueue-due-event-reminders'));
 
 -- Speaker-only recipient for the due reminder event
@@ -107,7 +111,7 @@ select fx_user(:'userPreRegisteredInvitedID', jsonb_build_object(
     'registration_status', 'pre-registered'
 ));
 
--- Events
+-- Due event with verified attendee and speaker recipients
 select fx_event(:'eventDueID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp + interval '24 hours',
     'event_kind_id', 'hybrid',
@@ -144,7 +148,8 @@ select fx_event(:'eventNoRecipientsID', :'groupID', :'eventCategoryID', jsonb_bu
     'venue_country_name', 'United States',
     'venue_name', 'Remote'
 ));
--- event
+
+-- Published event starting outside the reminder window
 select fx_event(:'eventNotDueID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp + interval '31 hours',
     'published', true,
@@ -154,18 +159,8 @@ select fx_event(:'eventNotDueID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'venue_country_name', 'United States',
     'venue_name', 'Center'
 ));
--- event
-select fx_event(:'eventDeletedGroupID', :'groupDeletedID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', current_timestamp + interval '20 hours',
-    'event_kind_id', 'virtual',
-    'published', true,
-    'starts_at', current_timestamp + interval '19 hours',
-    'venue_city', 'San Francisco',
-    'venue_country_code', 'US',
-    'venue_country_name', 'United States',
-    'venue_name', 'Remote'
-));
--- event
+
+-- Due event in an inactive community
 select fx_event(:'eventInactiveCommunityID', :'groupInactiveCommunityID', :'eventCategoryInactiveCommunityID', jsonb_build_object(
     'ends_at', current_timestamp + interval '19 hours',
     'event_kind_id', 'virtual',
@@ -176,7 +171,8 @@ select fx_event(:'eventInactiveCommunityID', :'groupInactiveCommunityID', :'even
     'venue_country_name', 'United States',
     'venue_name', 'Remote'
 ));
--- event
+
+-- Due event in an inactive group
 select fx_event(:'eventInactiveGroupID', :'groupInactiveID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp + interval '18 hours',
     'event_kind_id', 'virtual',
@@ -216,7 +212,6 @@ select fx_event(:'eventSentID', :'groupID', :'eventCategoryID', jsonb_build_obje
 insert into event_attendee (event_id, user_id, status) values
     (:'eventAllFilteredID', :'userFilteredOptOutID', 'confirmed'),
     (:'eventDueID', :'userVerifiedAttendeeID', 'confirmed'),
-    (:'eventDeletedGroupID', :'userVerifiedAttendeeID', 'confirmed'),
     (:'eventInactiveCommunityID', :'userVerifiedAttendeeID', 'confirmed'),
     (:'eventInactiveGroupID', :'userVerifiedAttendeeID', 'confirmed'),
     (:'eventDueID', :'userUnverifiedID', 'confirmed'),
@@ -365,9 +360,9 @@ select is(
 );
 
 -- Should set reminder sent timestamp on due event when notifications are queued
-select isnt(
+select is(
     (select event_reminder_sent_at from event where event_id = :'eventDueID'),
-    null::timestamptz,
+    current_timestamp,
     'Should set reminder sent timestamp on due event when notifications are queued'
 );
 
@@ -385,13 +380,18 @@ select is(
 );
 
 -- Should mark all-filtered reminder events as sent and evaluated
-select ok(
-    (
-        select event_reminder_evaluated_for_starts_at = starts_at
-            and event_reminder_sent_at is not null
+select results_eq(
+    format(
+        $$
+        select
+            event_reminder_evaluated_for_starts_at = starts_at,
+            event_reminder_sent_at
         from event
-        where event_id = :'eventAllFilteredID'
+        where event_id = %L::uuid
+        $$,
+        :'eventAllFilteredID'
     ),
+    $$ values (true, current_timestamp) $$,
     'Should mark all-filtered reminder events as sent and evaluated'
 );
 
@@ -409,7 +409,7 @@ select is(
     'Should not set reminder sent timestamp when no recipients are found'
 );
 
--- Should skip not due, disabled, already sent, and inactive/deleted entity events
+-- Should skip not due, disabled, already sent, and inactive entity events
 select is(
     (
         select count(*)
@@ -417,7 +417,6 @@ select is(
         join notification_template_data ntd using (notification_template_data_id)
         where n.kind = 'event-reminder'
         and ntd.data->'event'->>'event_id' in (
-            :'eventDeletedGroupID',
             :'eventNotDueID',
             :'eventDisabledID',
             :'eventInactiveCommunityID',
@@ -426,7 +425,7 @@ select is(
         )
     ),
     0::bigint,
-    'Should skip not due, disabled, already sent, and inactive/deleted entity events'
+    'Should skip not due, disabled, already sent, and inactive entity events'
 );
 
 -- Should enqueue no additional notifications when run again

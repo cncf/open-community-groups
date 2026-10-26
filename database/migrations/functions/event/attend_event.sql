@@ -31,6 +31,7 @@ begin
         null
     );
 
+    -- Serialize concurrent enrollment attempts by this attendee
     perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(p_user_id::text));
 
     -- Require public registration for every new self-service enrollment
@@ -137,6 +138,7 @@ begin
             );
         end if;
 
+        -- Lock any earlier approval request by this attendee
         select eir.status
         into v_invitation_request_status
         from event_invitation_request eir
@@ -155,6 +157,7 @@ begin
             raise exception 'invitation request was already accepted for this event' using errcode = 'OCG01';
         end if;
 
+        -- Record the pending approval request for the resolved tier
         insert into event_invitation_request (
             event_id,
             event_ticket_type_id,
@@ -170,19 +173,12 @@ begin
         return 'pending-approval';
     end if;
 
-    -- Load the selected tier capacity after validating public availability
+    -- Load the capacity of the selected tier, already validated as public and purchasable
     select ett.seats_total
     into v_ticket_seats_total
     from event_ticket_type ett
     where ett.event_id = p_event_id
-    and ett.event_ticket_type_id = p_event_ticket_type_id
-    and ett.active = true
-    and ett.availability = 'public';
-
-    -- Reject unavailable tiers that should not reach checkout
-    if not found then
-        raise exception 'ticket type is not publicly available' using errcode = 'OCG01';
-    end if;
+    and ett.event_ticket_type_id = p_event_ticket_type_id;
 
     -- Reuse interrupted zero-value checkout holds for the selected tier
     select exists (

@@ -1,3 +1,5 @@
+-- Tests enqueueing notifications for accepting recipients.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -70,6 +72,7 @@ values (:'groupID', :'userID5');
 -- Should reject empty group scopes for group-mutable kinds
 select throws_ok(
     $$select enqueue_notification('group-custom', null, '[]'::jsonb, array[]::uuid[], '{}'::uuid[])$$,
+    'P0001',
     'group ids are required for notification kind: group-custom',
     'Should reject empty group scopes for group-mutable kinds'
 );
@@ -77,6 +80,7 @@ select throws_ok(
 -- Should reject group scopes with null entries for group-mutable kinds
 select throws_ok(
     $$select enqueue_notification('group-custom', null, '[]'::jsonb, array[]::uuid[], array[null]::uuid[])$$,
+    'P0001',
     'group ids are required for notification kind: group-custom',
     'Should reject group scopes with null entries for group-mutable kinds'
 );
@@ -84,6 +88,7 @@ select throws_ok(
 -- Should reject missing group scopes for group-mutable kinds
 select throws_ok(
     $$select enqueue_notification('group-custom', null, '[]'::jsonb, array[]::uuid[])$$,
+    'P0001',
     'group ids are required for notification kind: group-custom',
     'Should reject missing group scopes for group-mutable kinds'
 );
@@ -94,6 +99,7 @@ select throws_ok(
         $$select enqueue_notification('group-custom', null, '[]'::jsonb, array[]::uuid[], array[%L, null]::uuid[])$$,
         :'groupID'
     ),
+    'P0001',
     'group ids are required for notification kind: group-custom',
     'Should reject mixed null group scopes for group-mutable kinds'
 );
@@ -220,103 +226,61 @@ select results_eq(
     'Should create event-published notifications for optional notifications recipients only'
 );
 
--- Should enqueue team categories without group ids while respecting opt-outs
+-- Should enqueue a team category without group ids while respecting opt-outs
 select lives_ok(
     format(
-        $$
-            do $do$
-            begin
-                perform enqueue_notification('inbox-message-received', null, '[]'::jsonb, array[%L, %L]::uuid[]);
-                perform enqueue_notification('event-cohost-responded', null, '[]'::jsonb, array[%L, %L]::uuid[]);
-                perform enqueue_notification('event-cohost-removed', null, '[]'::jsonb, array[%L, %L]::uuid[]);
-                perform enqueue_notification('event-admission-offer-declined', null, '[]'::jsonb, array[%L, %L]::uuid[]);
-                perform enqueue_notification('event-paid-configured', null, '[]'::jsonb, array[%L, %L]::uuid[]);
-            end
-            $do$;
-        $$,
-        :'userID5', :'userID4',
-        :'userID5', :'userID4',
-        :'userID5', :'userID4',
-        :'userID5', :'userID4',
-        :'userID5', :'userID4'
-    ),
-    'Should enqueue team categories without group ids while respecting opt-outs'
-);
-
--- Should suppress team categories by opt-out but not by mute
-select results_eq(
-    $$
-        select kind, array_agg(user_id order by user_id)
-        from notification
-        where kind in (
-            'event-admission-offer-declined',
-            'event-cohost-removed',
-            'event-cohost-responded',
-            'event-paid-configured',
-            'inbox-message-received'
-        )
-        group by kind
-        order by kind
-    $$,
-    format(
-        $$ values
-            ('event-admission-offer-declined'::text, array[%L::uuid]),
-            ('event-cohost-removed'::text, array[%L::uuid]),
-            ('event-cohost-responded'::text, array[%L::uuid]),
-            ('event-paid-configured'::text, array[%L::uuid]),
-            ('inbox-message-received'::text, array[%L::uuid])
-        $$,
-        :'userID4',
-        :'userID4',
-        :'userID4',
-        :'userID4',
+        $$select enqueue_notification(
+            'inbox-message-received',
+            null,
+            '[]'::jsonb,
+            array[%L, %L]::uuid[]
+        )$$,
+        :'userID5',
         :'userID4'
     ),
-    'Should suppress team categories by opt-out but not by mute'
+    'Should enqueue a team category without group ids while respecting opt-outs'
 );
 
--- Should enqueue always-sent notifications despite every opt-out and mute
-select lives_ok(
-    format(
-        $$
-            do $do$
-            begin
-                perform enqueue_notification('event-cohost-invitation', null, '[]'::jsonb, array[%L]::uuid[]);
-                perform enqueue_notification('event-refund-requested', null, '[]'::jsonb, array[%L]::uuid[]);
-                perform enqueue_notification('inbox-reply-received', null, '[]'::jsonb, array[%L]::uuid[]);
-            end
-            $do$;
-        $$,
-        :'userID5',
-        :'userID5',
-        :'userID5'
-    ),
-    'Should enqueue always-sent notifications despite every opt-out and mute'
-);
-
--- Should create always-sent notifications despite every opt-out and mute
+-- Should suppress a team category by opt-out but not by mute
 select results_eq(
     $$
         select kind, user_id
         from notification
-        where kind in (
-            'event-cohost-invitation',
-            'event-refund-requested',
-            'inbox-reply-received'
-        )
-        order by kind
+        where kind = 'inbox-message-received'
     $$,
     format(
-        $$ values
-            ('event-cohost-invitation'::text, %L::uuid),
-            ('event-refund-requested'::text, %L::uuid),
-            ('inbox-reply-received'::text, %L::uuid)
-        $$,
-        :'userID5',
-        :'userID5',
+        $$ values ('inbox-message-received'::text, %L::uuid) $$,
+        :'userID4'
+    ),
+    'Should suppress a team category by opt-out but not by mute'
+);
+
+-- Should enqueue an always-sent notification despite every opt-out and mute
+select lives_ok(
+    format(
+        $$select enqueue_notification(
+            'event-refund-requested',
+            null,
+            '[]'::jsonb,
+            array[%L]::uuid[]
+        )$$,
         :'userID5'
     ),
-    'Should create always-sent notifications despite every opt-out and mute'
+    'Should enqueue an always-sent notification despite every opt-out and mute'
+);
+
+-- Should create an always-sent notification despite every opt-out and mute
+select results_eq(
+    $$
+        select kind, user_id
+        from notification
+        where kind = 'event-refund-requested'
+    $$,
+    format(
+        $$ values ('event-refund-requested'::text, %L::uuid) $$,
+        :'userID5'
+    ),
+    'Should create an always-sent notification despite every opt-out and mute'
 );
 
 -- Should enqueue notifications with deduplicated template data

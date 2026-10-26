@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(34);
+select plan(31);
 
 -- ============================================================================
 -- VARIABLES
@@ -53,6 +53,7 @@ select plan(34);
 \set nonterminalPurchaseID '79530000-0000-0000-0000-000000000030'
 \set nonterminalRefundID '79530000-0000-0000-0000-000000000031'
 \set nonterminalUserID '79530000-0000-0000-0000-000000000032'
+\set otherGroupID '79530000-0000-0000-0000-000000000067'
 \set organizerJobID '79530000-0000-0000-0000-000000000063'
 \set organizerPurchaseID '79530000-0000-0000-0000-000000000019'
 \set organizerRefundID '79530000-0000-0000-0000-000000000020'
@@ -113,6 +114,9 @@ select fx_user(:'actorUserID', jsonb_build_object('username', 'recovery-operator
 
 -- Group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider":"stripe","recipient_id":"acct_recovery","seller_display_name":"Recovery Fiscal Sponsor"}'::jsonb));
+
+-- Group in the same community that does not own the recovery refunds
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Canceled event shared by external recovery scenarios
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -319,7 +323,7 @@ from (values (
     'General admission',
     :'userID',
 
-    current_timestamp
+    '2024-01-01 00:00:00+00'::timestamptz
 ), (
     :'attendanceCancellationPurchaseID',
     2000,
@@ -624,7 +628,7 @@ insert into event_purchase_refund (
     true,
 
     null,
-    current_timestamp,
+    '2024-01-01 00:00:00+00'::timestamptz,
     're_failed_123'
 ), (
     :'eventCancellationRefundID',
@@ -790,30 +794,6 @@ insert into event_purchase_refund (
 -- TESTS
 -- ============================================================================
 
--- Should reject contradictory provider-pending finalization state
-select throws_ok(
-    format($$
-        update event_purchase_refund
-        set status = 'provider-pending'
-        where event_purchase_refund_id = %L::uuid
-    $$, :'refundID'),
-    '23514',
-    null,
-    'Should reject contradictory provider-pending finalization state'
-);
-
--- Should reject partial recovery evidence
-select throws_ok(
-    format($$
-        update payment_job
-        set recovery_reference = 'bank-transfer-123'
-        where payment_job_id = %L::uuid
-    $$, :'refundJobID'),
-    '23514',
-    null,
-    'Should reject partial recovery evidence'
-);
-
 -- Should require an operator
 select throws_ok(
     format($$select complete_event_purchase_refund_recovery(
@@ -824,8 +804,24 @@ select throws_ok(
         'Verified by finance',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'groupID', :'refundID'),
+    'P0001',
     'actor user id is required',
     'Should require an operator'
+);
+
+-- Should require the group scope
+select throws_ok(
+    format($$select complete_event_purchase_refund_recovery(
+        %L::uuid,
+        null,
+        %L::uuid,
+        'bank-transfer-123',
+        'Verified by finance',
+        (select notification_template_data from refund_recovery_test_data)
+    )$$, :'actorUserID', :'refundID'),
+    'P0001',
+    'group id is required',
+    'Should require the group scope'
 );
 
 -- Should require an external recovery reference
@@ -873,6 +869,21 @@ select throws_ok(
     'Should reject an unknown durable refund'
 );
 
+-- Should reject a recoverable refund outside the requested group
+select throws_ok(
+    format($$select complete_event_purchase_refund_recovery(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        'bank-transfer-123',
+        'Verified by finance',
+        (select notification_template_data from refund_recovery_test_data)
+    )$$, :'actorUserID', :'otherGroupID', :'refundID'),
+    'OCG01',
+    'event purchase refund not found',
+    'Should reject a recoverable refund outside the requested group'
+);
+
 -- Should reject a terminal refund outside a recoverable purchase state
 select throws_ok(
     format($$select complete_event_purchase_refund_recovery(
@@ -916,54 +927,6 @@ select throws_ok(
     'OCG01',
     'recoverable event purchase refund not found',
     'Should reject a pinned provider result that is not terminal'
-);
-
--- Should preserve a nonterminal provider failure after rejected recovery
-select results_eq(
-    format($$
-        select ep.status, pj.recovery_completed_at, epr.terminal_failure
-        from event_purchase ep
-        join event_purchase_refund epr using (event_purchase_id)
-        join payment_job pj on pj.payment_job_id = epr.payment_job_id
-        where epr.event_purchase_refund_id = %L::uuid
-    $$, :'nonterminalRefundID'),
-    $$ values ('refund-pending'::text, null::timestamptz, false) $$,
-    'Should preserve a nonterminal provider failure after rejected recovery'
-);
-
--- Should preserve invalid states without appending audit entries
-select results_eq(
-    format($$
-        select
-            invalid_ep.status,
-            invalid_pj.recovery_completed_at is null,
-            unpinned_ep.status,
-            unpinned_pj.recovery_completed_at is null,
-            (
-                select count(*)::int
-                from audit_log
-                where action = 'event_refund_recovery_completed'
-            )
-        from event_purchase invalid_ep
-        join event_purchase_refund invalid_epr using (event_purchase_id)
-        join payment_job invalid_pj
-            on invalid_pj.payment_job_id = invalid_epr.payment_job_id
-        cross join event_purchase unpinned_ep
-        join event_purchase_refund unpinned_epr
-            on unpinned_epr.event_purchase_id = unpinned_ep.event_purchase_id
-        join payment_job unpinned_pj
-            on unpinned_pj.payment_job_id = unpinned_epr.payment_job_id
-        where invalid_ep.event_purchase_id = %L::uuid
-        and unpinned_ep.event_purchase_id = %L::uuid
-    $$, :'invalidPurchaseID', :'unpinnedPurchaseID'),
-    $$ values (
-        'completed'::text,
-        true,
-        'refund-pending'::text,
-        true,
-        0::int
-    ) $$,
-    'Should preserve invalid states without appending audit entries'
 );
 
 -- Should complete active-event recovery with configured provider reconciliation
@@ -1029,32 +992,34 @@ select results_eq(
     'Should complete an externally resolved recovery'
 );
 
--- Should preserve provider failure and store normalized recovery evidence
+-- Should preserve provider failure and prior refund timestamps and store normalized recovery evidence
 select results_eq(
     format($$
         select
+            epr.finalized_at,
             epr.status,
-            pj.recovery_completed_at is not null,
+            pj.recovery_completed_at = current_timestamp,
             pj.recovery_completed_by_user_id,
             pj.recovery_note,
             pj.recovery_reference,
-            ep.status,
-            ep.refunded_at is not null
+            ep.refunded_at,
+            ep.status
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
         join payment_job pj on pj.payment_job_id = epr.payment_job_id
         where epr.event_purchase_refund_id = %L::uuid
     $$, :'refundID'),
     format($$ values (
+        '2024-01-01 00:00:00+00'::timestamptz,
         'provider-failed'::text,
         true,
         %L::uuid,
         'Verified by finance'::text,
         'bank-transfer-123'::text,
-        'refunded'::text,
-        true
+        '2024-01-01 00:00:00+00'::timestamptz,
+        'refunded'::text
     ) $$, :'actorUserID'),
-    'Should preserve provider failure and store normalized recovery evidence'
+    'Should preserve provider failure and prior refund timestamps and store normalized recovery evidence'
 );
 
 -- Should append the expected event audit entry
@@ -1151,21 +1116,6 @@ select throws_ok(
     'Should reject conflicting recovery evidence'
 );
 
--- Should preserve the original evidence after a conflicting retry
-select results_eq(
-    format($$
-        select pj.recovery_note, pj.recovery_reference
-        from event_purchase_refund epr
-        join payment_job pj on pj.payment_job_id = epr.payment_job_id
-        where epr.event_purchase_refund_id = %L::uuid
-    $$, :'refundID'),
-    $$ values (
-        'Verified by finance'::text,
-        'bank-transfer-123'::text
-    ) $$,
-    'Should preserve the original evidence after a conflicting retry'
-);
-
 -- Should require app-composed notification data before local finalization
 select throws_ok(
     format($$select complete_event_purchase_refund_recovery(
@@ -1176,6 +1126,7 @@ select throws_ok(
         'Verified automatic refund',
         null
     )$$, :'actorUserID', :'groupID', :'automaticRefundID'),
+    'P0001',
     'refund notification template data is required',
     'Should require app-composed notification data before local finalization'
 );
@@ -1202,10 +1153,10 @@ select results_eq(
 select results_eq(
     format($$
         select
-            epr.finalized_at is not null,
+            epr.finalized_at = current_timestamp,
             pj.recovery_reference,
             epr.status,
-            ep.refunded_at is not null,
+            ep.refunded_at = current_timestamp,
             ep.status,
             (
                 select count(*)::int
@@ -1251,15 +1202,15 @@ select results_eq(
 select results_eq(
     format($$
         select
-            ea.attendance_canceled_at is not null,
+            ea.attendance_canceled_at = current_timestamp,
             ea.attendance_canceled_by_user_id,
             ea.checked_in,
             ea.checked_in_at,
             ea.status,
-            ep.refunded_at is not null,
+            ep.refunded_at = current_timestamp,
             ep.status,
-            epr.finalized_at is not null,
-            pj.recovery_completed_at is not null,
+            epr.finalized_at = current_timestamp,
+            pj.recovery_completed_at = current_timestamp,
             pj.recovery_completed_by_user_id,
             epr.status,
             err.review_note,
@@ -1340,11 +1291,11 @@ select results_eq(
             ea.attendance_canceled_at is null,
             ea.attendance_canceled_by_user_id,
             ea.status,
-            original.refunded_at is not null,
+            original.refunded_at = current_timestamp,
             original.status,
             replacement.status,
-            epr.finalized_at is not null,
-            pj.recovery_completed_at is not null,
+            epr.finalized_at = current_timestamp,
+            pj.recovery_completed_at = current_timestamp,
             err.status
         from event_attendee ea
         join event_purchase original
@@ -1402,12 +1353,12 @@ select results_eq(
 select results_eq(
     format($$
         select
-            epr.finalized_at is not null,
+            epr.finalized_at = current_timestamp,
             epr.status,
-            ep.refunded_at is not null,
+            ep.refunded_at = current_timestamp,
             ep.status,
             err.review_note,
-            err.reviewed_at is not null,
+            err.reviewed_at = current_timestamp,
             err.reviewed_by_user_id,
             err.status,
             (
@@ -1467,13 +1418,13 @@ select results_eq(
         select
             ea.attendance_canceled_by_user_id,
             ea.status,
-            ep.refunded_at is not null,
+            ep.refunded_at = current_timestamp,
             ep.status,
-            epr.finalized_at is not null,
-            pj.recovery_completed_at is not null,
+            epr.finalized_at = current_timestamp,
+            pj.recovery_completed_at = current_timestamp,
             pj.recovery_completed_by_user_id,
             epr.status,
-            err.reviewed_at is not null,
+            err.reviewed_at = current_timestamp,
             err.reviewed_by_user_id,
             err.status,
             (

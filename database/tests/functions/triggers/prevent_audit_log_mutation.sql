@@ -1,3 +1,5 @@
+-- Tests rejecting updates and deletes on the append-only audit log.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -30,6 +32,7 @@ values ('community_updated', :'userID', 'audit-user', :'resourceID', 'community'
 -- Should reject updates
 select throws_ok(
     $$update audit_log set action = 'group_updated'$$,
+    'P0001',
     'audit_log is append-only',
     'Should reject updates to audit_log'
 );
@@ -37,6 +40,7 @@ select throws_ok(
 -- Should reject deletes
 select throws_ok(
     $$delete from audit_log$$,
+    'P0001',
     'audit_log is append-only',
     'Should reject deletes from audit_log'
 );

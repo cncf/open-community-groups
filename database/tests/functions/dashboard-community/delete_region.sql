@@ -1,3 +1,5 @@
+-- Tests deleting dashboard community regions.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -9,11 +11,13 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
+\set actorUserID '2c0c0000-0000-0000-0000-000000000008'
 \set communityID '2c0c0000-0000-0000-0000-000000000001'
+\set foreignRegionID '2c0c0000-0000-0000-0000-000000000005'
 \set groupCategoryID '2c0c0000-0000-0000-0000-000000000002'
 \set groupID '2c0c0000-0000-0000-0000-000000000003'
 \set inUseRegionID '2c0c0000-0000-0000-0000-000000000004'
-\set unknownRegionID '2c0c0000-0000-0000-0000-000000000005'
+\set otherCommunityID '2c0c0000-0000-0000-0000-000000000007'
 \set unusedRegionID '2c0c0000-0000-0000-0000-000000000006'
 
 -- ============================================================================
@@ -24,6 +28,7 @@ select plan(5);
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 
+-- Region in use by a group and unused region deleted by the success scenario
 insert into region (
     region_id,
     community_id,
@@ -34,6 +39,14 @@ insert into region (
 
 -- Group using the first region
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('region_id', :'inUseRegionID'));
+
+-- Other community with its own region
+select fx_community(:'otherCommunityID');
+insert into region (region_id, community_id, name)
+values (:'foreignRegionID', :'otherCommunityID', 'Asia');
+
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'delete-region-audit-actor'));
 
 -- ============================================================================
 -- TESTS
@@ -59,10 +72,11 @@ select throws_ok(
 select lives_ok(
     format(
         $$ select delete_region(
-        null::uuid,
+        %L::uuid,
         %L::uuid,
         %L::uuid
     ) $$,
+        :'actorUserID',
         :'communityID',
         :'unusedRegionID'
     ),
@@ -98,21 +112,22 @@ select results_eq(
         $$
         values (
             'region_deleted',
-            null::uuid,
-            null::text,
+            %L::uuid,
+            'delete-region-audit-actor',
             %L::uuid,
             '{"name": "Europe"}'::jsonb,
             'region',
             %L::uuid
         )
         $$,
+        :'actorUserID',
         :'communityID',
         :'unusedRegionID'
     ),
     'Should create the expected audit row'
 );
 
--- Should fail when target region does not exist
+-- Should fail when target region belongs to another community
 select throws_ok(
     format(
         $$ select delete_region(
@@ -121,11 +136,11 @@ select throws_ok(
         %L::uuid
     ) $$,
         :'communityID',
-        :'unknownRegionID'
+        :'foreignRegionID'
     ),
     'OCG01',
     'region not found',
-    'Should fail when deleting a non-existing region'
+    'Should fail when deleting a region from another community'
 );
 
 -- ============================================================================
